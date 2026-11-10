@@ -41,8 +41,10 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
+from esolangs.runtime._program import Program
 
 _FORBIN_ALPHABET = ascii_letters
 _FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
@@ -333,3 +335,15 @@ def _balance(table: str, default: str) -> str:
     )
     rows = _join_tokens(spaced, width, "").split("\n")
     return "\n".join(row.rstrip() for row in rows)
+
+
+def forbin_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return forbin(request.table, request.width)
+    return forbin(request.table)
+
+
+def forbin_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

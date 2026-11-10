@@ -50,7 +50,7 @@ def _measure(example: BooleanExample) -> dict[str, bool]:
     pairs: set[tuple[str, str]] = set()
     for n in _ARITIES:
         for table in _tables(n):
-            template = example.generator(table, **dict(example.kwargs))
+            template = example.emit(table)
             programs = {
                 bits: example.fill(template, list(bits))
                 for bits in itertools.product((0, 1), repeat=n)

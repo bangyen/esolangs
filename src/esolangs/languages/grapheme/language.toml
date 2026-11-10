@@ -61,7 +61,7 @@ seed = 1847
 size = 492
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.grapheme.generator:grapheme"
+construction = "esolangs.languages.grapheme.generator:grapheme_request"
 
 [[evidence.anchors]]
 arity = 16
@@ -70,7 +70,7 @@ seed = 1847
 size = 20015
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.grapheme.generator:grapheme"
+construction = "esolangs.languages.grapheme.generator:grapheme_request"
 
 [resource_evidence]
 version = 1
@@ -82,7 +82,7 @@ arities = [2, 3, 5]
 first = 2
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.grapheme.generator:grapheme"
+construction = "esolangs.languages.grapheme.generator:grapheme_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2, d the digits of 2^T: one per program character", formula = "17n + 15 + d" }
 
 [resource_evidence.workspace]
@@ -92,7 +92,7 @@ arities = [2, 3, 5]
 first = 2
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.grapheme.generator:grapheme"
+construction = "esolangs.languages.grapheme.generator:grapheme_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2", formula = "16d + 136n + 155 + bl(17n+d) + max(T+14, 2bl(λ)+2) + bl(2n) + bl(n)" }
 
 [resource_evidence.scaling]
@@ -102,7 +102,7 @@ arities = [2, 3, 5]
 first = 2
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.grapheme.generator:grapheme"
+construction = "esolangs.languages.grapheme.generator:grapheme_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2", formula = "17n + 15 + digits(2^T)" }
 
 [semantic_evidence]
@@ -126,5 +126,5 @@ source = { unit = "chars", value = 51 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.grapheme.generator:grapheme"
+construction = "esolangs.languages.grapheme.generator:grapheme_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: correctness repair: borrowing in76/706 can leave a leading6, which closes integer mode. A decimal Horner fallback avoids it; literal6 is3*2. Only one-digit/10 recursive calls occur, so long values do not consume recursion depth. Both dialects execute all0..999 literals and a1001-digit leading6 regression. Public lifted literals retain their old spelling; 4240 small public rows, default pins and Size anchors unchanged."

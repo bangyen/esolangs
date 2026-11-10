@@ -60,7 +60,7 @@ rule = "and"
 size = 1910
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.suffolk.generator:suffolk"
+construction = "esolangs.languages.suffolk.generator:suffolk_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -68,7 +68,7 @@ rule = "majority"
 size = 5933
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.suffolk.generator:suffolk"
+construction = "esolangs.languages.suffolk.generator:suffolk_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -77,7 +77,7 @@ seed = 1847
 size = 7405
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.suffolk.generator:suffolk"
+construction = "esolangs.languages.suffolk.generator:suffolk_request"
 
 [resource_evidence]
 version = 1
@@ -89,7 +89,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.suffolk.generator:suffolk"
+construction = "esolangs.languages.suffolk.generator:suffolk_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, R the prefix through the first read: one pass, then EOF", formula = "L + R" }
 
 [resource_evidence.workspace]
@@ -99,7 +99,7 @@ arities = [3, 5, 6]
 first = 3
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.suffolk.generator:suffolk"
+construction = "esolangs.languages.suffolk.generator:suffolk_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} from n=3: input storage and countdown", formula = "W" }
 
 [resource_evidence.scaling]
@@ -109,7 +109,7 @@ arities = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 4
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.suffolk.generator:suffolk"
+construction = "esolangs.languages.suffolk.generator:suffolk_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n >= 4", formula = "F" }
 
 [semantic_evidence]

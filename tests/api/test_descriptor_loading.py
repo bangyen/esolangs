@@ -8,9 +8,11 @@ import sys
 
 import pytest
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
 from esolangs.registry._functions import FunctionRef
+from esolangs.registry._operations import OperationRef
 from tests.support.reference import REFERENCE
 
 
@@ -58,7 +60,10 @@ print(json.dumps(names))
 
 def test_declared_callable_parameters_match_implementations():
     def check(value):
-        if isinstance(value, FunctionRef):
+        if isinstance(value, OperationRef):
+            assert not hasattr(value, "parameters")
+            assert tuple(inspect.signature(value.load()).parameters) == ("request",)
+        elif isinstance(value, FunctionRef):
             assert not hasattr(value, "__signature__")
             target = value.load()
             assert callable(target)
@@ -76,11 +81,11 @@ def test_declared_callable_parameters_match_implementations():
 
 def test_callable_references_observe_mutation(monkeypatch):
     reference = LANGUAGES[REFERENCE].backend.entrypoint
-    assert isinstance(reference, FunctionRef)
+    assert isinstance(reference, OperationRef)
     original = reference.load()
     module = sys.modules[reference.module]
     monkeypatch.setattr(module, reference.name, lambda _table: "fault")
-    assert reference("01") == "fault"
+    assert reference(GenerationRequest("01")) == "fault"
     monkeypatch.setattr(module, reference.name, original)
     assert reference.load() is original
 
@@ -98,13 +103,14 @@ def test_backend_options_are_declared_without_loading():
 
     plain = BooleanBackend(str, balance=str)
     assert not plain.layout_width
-    assert plain.balance_parameters == ()
+    assert not hasattr(plain, "balance_parameters")
     declared = BooleanBackend(
-        FunctionRef("unloaded.module", "emit", ("table", "width")),
-        balance=FunctionRef(
-            "unloaded.module", "balance", ("table", "source", "option")
-        ),
+        OperationRef("unloaded.module", "emit"),
+        layout_width=True,
+        balance=OperationRef("unloaded.module", "balance"),
     )
     assert declared.layout_width
-    assert declared.balance_parameters == ("table", "source", "option")
+    assert not hasattr(declared.entrypoint, "parameters")
+    with pytest.raises(TypeError, match="typed request"):
+        BooleanBackend(FunctionRef("unloaded.module", "emit", ("table",)))
     assert "unloaded.module" not in sys.modules

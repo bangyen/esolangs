@@ -1,13 +1,16 @@
 """Runtime and compiler capabilities for SLOW ACV MAMMALIAN."""
 
 from esolangs._dialect import DialectSchema
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.slow_acv_mammalian.dialect import LEAPFROG_RESUMES, MODULI
 from esolangs.languages.slow_acv_mammalian.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "SLOW ACV MAMMALIAN",
@@ -37,11 +40,11 @@ LANGUAGE = Language(
         ),
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
+        entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.slow_acv_mammalian.generator",
-            "slow_acv_mammalian",
-            ("truth_table", "cell_modulus", "io_modulus", "leapfrog_resume"),
+            "slow_acv_mammalian_request",
         ),
+        layout_width=False,
         # Not a tree: a branch-free chain into a flat leaf table.
         shape=Shape.LOOKUP,
         # Four-character cells align the ``SEED`` runs; longer words span cells.

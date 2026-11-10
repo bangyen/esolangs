@@ -24,6 +24,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def _run(entry: str, count: int) -> str:
@@ -97,3 +99,8 @@ def unsquare(truth_table: str) -> str:
         else:
             out += "iA"
     return out + "A" + "+" * (_ASCII_ZERO // 2) + "Po"
+
+
+def unsquare_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return unsquare(request.table)

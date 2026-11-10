@@ -32,6 +32,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     move_text,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 _MAX_SOURCE = 256 * 1024 * 1024
 _LIMITS = TextLimits(32 * 1024 * 1024, _MAX_SOURCE, 256 * 1024)
@@ -81,3 +83,8 @@ def _zeros(brainfuck: str) -> int:
                 "Unary source exceeds the 256 Mi-character generation-work cap"
             )
     return count
+
+
+def unary_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return unary(request.table)

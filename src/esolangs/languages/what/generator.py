@@ -26,6 +26,8 @@ Decisions:
 
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import change_points
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Row literals stay below 2^15, at most 5 digits.
 _LOW_INPUTS = 15
@@ -66,3 +68,8 @@ def what(truth_table: str) -> str:
 
 
 #: Break between tokens, never inside a literal, a ``?`` run or a test.
+
+
+def what_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return what(request.table)

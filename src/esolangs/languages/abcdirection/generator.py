@@ -63,7 +63,9 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 RIGHT, DOWN, LEFT, UP = range(4)
 _STEPS = ((1, 0), (0, 1), (-1, 0), (0, -1))
@@ -490,3 +492,13 @@ def abcdirection(truth_table: str) -> str:
     """Build an ABCDirection program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
     return _layout(truth_table, n)
+
+
+def abcdirection_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return abcdirection(request.table)
+
+
+def abcdirection_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

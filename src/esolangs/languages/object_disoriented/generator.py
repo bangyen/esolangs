@@ -29,6 +29,8 @@ from itertools import count, product
 from string import ascii_letters, digits
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: ``I`` is the bit 1; ``N`` is 1 until a 1 bit calls it.
 _HEADER = "dI.fpzrzzzdN.fpzcbsrzzzdB.iiiiiiicitclN.pftprtzzdmain.ozozolI.olI.ozozoz"
@@ -139,3 +141,8 @@ def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
             below.setdefault(one, [0, 0])[0] += texts
         uses = below
     return names
+
+
+def object_disoriented_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return object_disoriented(request.table)

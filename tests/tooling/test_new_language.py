@@ -32,7 +32,7 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
     assert {path.name for path in packages} == {"__init__.py", "language.toml"}
     assert descriptor.name == "descriptor.py"
     assert descriptor.parent == source.parent
-    assert "FunctionRef" in descriptor.read_text()
+    assert "OperationRef" in descriptor.read_text()
     assert test.parent == generator_test.parent == source.parent / "tests"
     assert (test.name, generator_test.name) == (
         "test_tiny_lang.py",

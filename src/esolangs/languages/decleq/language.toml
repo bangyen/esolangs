@@ -61,7 +61,7 @@ seed = 1847
 size = 3496
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.decleq.generator:decleq"
+construction = "esolangs.languages.decleq.generator:decleq_request"
 
 [resource_evidence]
 version = 1
@@ -73,7 +73,7 @@ arities = [2, 3, 6]
 first = 2
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.decleq.generator:decleq"
+construction = "esolangs.languages.decleq.generator:decleq_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: 47 passes, n - 2 copy jumps" }
 
 [resource_evidence.workspace]
@@ -83,7 +83,7 @@ arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.decleq.generator:decleq"
+construction = "esolangs.languages.decleq.generator:decleq_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: memory, pointer and input cursor", formula = "M + 5n + bl(C) + bl(n) + 5" }
 
 [resource_evidence.scaling]
@@ -93,7 +93,7 @@ arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.decleq.generator:decleq"
+construction = "esolangs.languages.decleq.generator:decleq_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: six cells per distinct subtree", formula = "B" }
 
 [semantic_evidence]

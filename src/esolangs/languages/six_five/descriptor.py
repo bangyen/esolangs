@@ -1,12 +1,14 @@
 """Runtime and compiler capabilities for 6-5."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import _six_five
 from esolangs.languages.six_five.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "6-5",
@@ -18,9 +20,10 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.six_five.generator", "six_five", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.six_five.generator", "six_five_request"
         ),
+        layout_width=False,
         # 7n/8n are two-character tokens; see ``_SIX_FIVE_COMMAND``.
         wrap=_six_five,
     ),

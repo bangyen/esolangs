@@ -71,7 +71,7 @@ rule = "parity"
 size = 13741
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+construction = "esolangs.languages.b_tapemark.generator:b_tapemark_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -80,7 +80,7 @@ seed = 1847
 size = 13741
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+construction = "esolangs.languages.b_tapemark.generator:b_tapemark_request"
 
 [resource_evidence]
 version = 1
@@ -92,7 +92,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "steps"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+construction = "esolangs.languages.b_tapemark.generator:b_tapemark_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the all-zero row of the least-area layout", formula = "E" }
 
 [resource_evidence.workspace]
@@ -102,7 +102,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+construction = "esolangs.languages.b_tapemark.generator:b_tapemark_request"
 description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit} to n = 8, at most B after: program cells, marks, pointers", formula = "W" }
 
 [resource_evidence.scaling]
@@ -112,7 +112,7 @@ arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+construction = "esolangs.languages.b_tapemark.generator:b_tapemark_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the least-area of four layouts", formula = "A" }
 
 [semantic_evidence]
@@ -131,5 +131,5 @@ source = { unit = "cells", value = 570 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.b_tapemark.generator:b_tapemark"
+construction = "esolangs.languages.b_tapemark.generator:b_tapemark_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Remove the discarded default-dialect build before the requested build. No generated source changes; both dialects match the previous bytes through n=3 at default and width=1, with every default row executed. A regression refuses any default-dialect call when old is requested. Existing bounds, pins and Size anchors stay unchanged. The earlier area_default derivation predates area_copy; current tests/formulas.py traces arbitrary run lengths, and proof_formulas.py bounds the area fold using c>=5 and r>=3. Corrected default-new-dialect execution derivation: Execution bound for the default new dialect: Te=2^m projected entries, S=ceil(Te/c), and stage weights sum to Te-1. The uncompacted folded count is Te+6Sc+8S-3c+44n-2+sum(4ceil(w/r)-6 for ceil(w/r)>=2), by the copy/stage accounting in tests/formulas.py; deleting blank rows or columns can only shorten it. For n>=2 all three copy candidates have c>=5 and r>=3. The area candidate is at most best: floor(sqrt(104T/(63n))) <= floor(sqrt(4T/3)) <= best, and best>=6n-3>=9 covers its floor5. Thus 3c<=18n-9+4T/3. With Sc<=Te+c, S<=Te/c+1, and turn sum<=4(Te-1)/r, the count is at most149Te/15+3c+44n+6 <=169T/15+62n-3, below15T+62n+9. At n=1 the folded copy choices2/3/5 have weight1 and no multi-run penalty; the same count is at most67, below101. The narrow bound remains13N+2Te+37n+9<=15T+37n+9 since N=max(Te,n+1)<=T. Wide remains4T+42n+5; constants take2n+2. This covers the area candidate's run3 without the former invalid run>=9 assumption. "

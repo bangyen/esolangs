@@ -25,7 +25,9 @@ from esolangs.generation.helpers import (
     grid_width,
     input_weights,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
+from esolangs.runtime._program import Program
 
 __all__ = ["qoibl"]
 
@@ -256,3 +258,15 @@ def balance_qoibl(table: str, default: str) -> str:
     literal = max(map(len, default.split()))
     widths = [(2 * len(default) + a * literal) ** 0.5 for a in (0, 3, 6)]
     return min((qoibl(table, round(width)) for width in widths), key=balance_score)
+
+
+def qoibl_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return qoibl(request.table, request.width)
+    return qoibl(request.table)
+
+
+def qoibl_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_qoibl(request.table, request.text_source())

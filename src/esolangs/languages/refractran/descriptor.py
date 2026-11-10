@@ -1,12 +1,14 @@
 """Runtime and compiler capabilities for REFRACTRAN."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.refractran.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 PAIR = ("0", "1")
 
@@ -22,14 +24,13 @@ LANGUAGE = Language(
         empty_program="REFRACTRAN needs an initial integer",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.refractran.generator",
-            "refractran",
-            ("truth_table", "width"),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.refractran.generator", "refractran_request"
         ),
+        layout_width=True,
         wrap=wrap_space_delimited,
-        balance=FunctionRef(
-            "esolangs.languages.refractran.generator", "_balance", ("table", "default")
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.refractran.generator", "refractran_balance_request"
         ),
         template=TemplateSpec(pair=PAIR),
     ),

@@ -18,6 +18,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 from esolangs.runtime.memory import format_integer
 
 
@@ -39,3 +41,8 @@ def creativescript_v2(truth_table: str) -> str:
         if count < len(essential) - 1:
             lines.append("mul! q q q")
     return "\n".join([*lines, "div! N p N", "mod! N two N", "out! N"])
+
+
+def creativescript_v2_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return creativescript_v2(request.table)

@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Alight."""
 
 from esolangs._dialect import DialectSchema
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.alight.dialect import (
     EXPRESSION_SYNTAXES,
     LIST_UPDATES,
@@ -14,9 +15,10 @@ from esolangs.languages.alight.dialect import (
 from esolangs.languages.alight.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 
 def _dialect(expression_syntax: str = "infix", list_update: str = "in_place") -> None:
@@ -48,17 +50,14 @@ LANGUAGE = Language(
         empty_program="empty program",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.alight.generator",
-            "alight",
-            ("truth_table", "width", "expression_syntax", "list_update"),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.alight.generator", "alight_request"
         ),
+        layout_width=True,
         # Not a tree: a Horner row index into a string literal.
         shape=Shape.LOOKUP,
-        balance=FunctionRef(
-            "esolangs.languages.alight.generator",
-            "balance_alight",
-            ("table", "default", "expression_syntax"),
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.alight.generator", "alight_balance_request"
         ),
         no_wrap="a command is a word walked cell by cell; a row end cuts it",
     ),

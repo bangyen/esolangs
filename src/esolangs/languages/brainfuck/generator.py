@@ -33,7 +33,9 @@ from esolangs.generation.helpers import (
     in_input_order,
     move_text,
 )
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_flag import flag_tree_body, shared_flag_tree
+from esolangs.runtime._program import Program
 
 __all__ = ["brainfuck"]
 
@@ -161,3 +163,8 @@ def _tree_for(truth_table: str, perm: tuple[int, ...], tail: str) -> str:
         # dilute. Keep the original body budget ([ablations.shared_ascii_counter]).
         plain = _counter_reads(n) + plain[len(header) :]
     return plain
+
+
+def brainfuck_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return brainfuck(request.table)

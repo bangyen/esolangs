@@ -70,7 +70,7 @@ seed = 1847
 size = 1981
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.dimensional.generator:dimensional"
+construction = "esolangs.languages.dimensional.generator:dimensional_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -78,7 +78,7 @@ rule = "and"
 size = 362
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.dimensional.generator:dimensional"
+construction = "esolangs.languages.dimensional.generator:dimensional_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -86,7 +86,7 @@ rule = "majority"
 size = 1845
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.dimensional.generator:dimensional"
+construction = "esolangs.languages.dimensional.generator:dimensional_request"
 
 [resource_evidence]
 version = 1
@@ -98,7 +98,7 @@ arities = [4, 6]
 first = 4
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.dimensional.generator:dimensional"
+construction = "esolangs.languages.dimensional.generator:dimensional_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: zero runs of nine loop" }
 
 [resource_evidence.workspace]
@@ -108,7 +108,7 @@ arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.dimensional.generator:dimensional"
+construction = "esolangs.languages.dimensional.generator:dimensional_request"
 description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit}", formula = "Σ_{k≤T} bl(k) + 5T + n(n-1)/2 + 4n + 11 + bl(2T+20n+40) + bl(2n-1)" }
 
 [resource_evidence.scaling]
@@ -118,7 +118,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.dimensional.generator:dimensional"
+construction = "esolangs.languages.dimensional.generator:dimensional_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: two per entry" }
 
 [semantic_evidence]

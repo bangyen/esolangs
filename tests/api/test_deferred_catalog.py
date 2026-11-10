@@ -19,7 +19,7 @@ from esolangs.operations.source import _read_source
 import pytest
 from esolangs import registry
 from esolangs.registry._backend import Generator
-from esolangs.registry._functions import FunctionRef
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import SourceKind
 from tests.support.evaluation import _evaluate
 
@@ -29,7 +29,7 @@ for retired in ('Generator', 'SourceKind'):
         exec(f'from esolangs.registry._table import {retired}', {})
 pilots = [lang for lang in registry.LANGUAGES.values()
           if lang.backend is not None
-          and isinstance(lang.backend.entrypoint, FunctionRef)]
+          and isinstance(lang.backend.entrypoint, OperationRef)]
 assert pilots, 'no deferred descriptor exercised'
 assert 'GENERATORS' not in dir(registry)
 assert not hasattr(registry, 'GENERATORS')
@@ -78,7 +78,7 @@ for lang in pilots:
     assert not hasattr(module, 'LANGUAGE')
     assert inspect.getsourcefile(generate) == module.__file__
     assert (tuple(inspect.signature(generate).parameters)
-            == backend.entrypoint.parameters)
+            == ('request',))
     assert replace(backend, entrypoint=generate).generate is generate
     assert registry.LANGUAGES[lang.name].backend.generate is generate
 sample = next(lang for lang in pilots if not lang.parameterized

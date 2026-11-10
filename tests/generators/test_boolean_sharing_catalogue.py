@@ -22,7 +22,7 @@ from esolangs.registry._backend import Shape
 from scripts.docs.catalogue import load as _catalogue_load
 from scripts.source_units import source_units
 from tests.generators.source_support import generator_symbols as _source
-from tests.support.generator_support import assert_proved_resource_cap
+from tests.support.generator_support import assert_proved_resource_cap, generator_for
 from tests.support.witness_tables import dense, parity
 
 #: Arities probed, smallest first; routes switch with size (Inject shares
@@ -59,7 +59,7 @@ def _blocks(n: int, seed: int) -> tuple[str, str]:
 
 
 def _ratios(name: str, n: int):
-    build = LANGUAGES[name].backend.generate
+    build = generator_for(name)
     assert build is not None
     yield source_units(build(parity(n))) / source_units(build(dense(n)))
     pairs = [_blocks(n, seed) for seed in range(8)]

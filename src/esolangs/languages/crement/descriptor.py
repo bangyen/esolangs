@@ -1,11 +1,14 @@
 """Runtime and compiler capabilities for Crement."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.crement.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Crement",
@@ -17,16 +20,17 @@ LANGUAGE = Language(
         category="program_based",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.crement.generator", "crement", ("truth_table", "width")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.crement.generator", "crement_request"
         ),
+        layout_width=True,
         same_layout=FunctionRef(
             "esolangs.languages.crement.generator",
             "_same_layout",
             ("template", "plain", "layout"),
         ),
-        balance=FunctionRef(
-            "esolangs.languages.crement.generator", "_balance", ("_table", "default")
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.crement.generator", "crement_balance_request"
         ),
         no_wrap="jumps and patches name instruction numbers, so lines stay whole",
         template=TemplateSpec(

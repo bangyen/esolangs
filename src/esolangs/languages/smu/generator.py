@@ -40,6 +40,8 @@ from string import ascii_letters
 
 from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: ``k`` drops a run's bit and outputs nothing; ``n`` is a node less its
 #: halves, ``m`` a pad; ``z``/``o`` print ``'0'`` (0x30), ``'1'`` (0x31) low bit first.
@@ -118,3 +120,8 @@ def smu(truth_table: str) -> str:
 
     used = render("XYW")[len(_MACROS) + 12 :]
     return render("".join(c for c in "XYW" if used.count(c) > 4))
+
+
+def smu_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return smu(request.table)

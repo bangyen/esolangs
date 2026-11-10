@@ -16,6 +16,8 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Rows a packed character holds are ``2**_BITS``; the offset is a multiple of that.
 _BITS = 3
@@ -53,3 +55,8 @@ def parenthesys(truth_table: str) -> str:
     )
     column = f"[ord|[ind|{_grouped(n - _BITS)}|{table}]|0]"
     return f"([gt|[%|[*|[^|2|{_grouped(_BITS)}]|{column}]|256]|127])"
+
+
+def parenthesys_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return parenthesys(request.table)

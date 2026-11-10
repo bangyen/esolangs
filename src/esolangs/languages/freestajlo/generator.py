@@ -28,8 +28,10 @@ from esolangs.generation.helpers import (
     read_at,
     symmetric_weights,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_program, balance_score
+from esolangs.runtime._program import Program
 
 #: A string, ``'`` and its character, or a digit run is one unit: a break
 #: inside pushes a newline or splits a number.
@@ -104,3 +106,13 @@ def _pack(table: str) -> str:
         chr(_BASE + int(table[start : start + _WORD][::-1], 2))
         for start in range(0, len(table), _WORD)
     )
+
+
+def freestajlo_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return freestajlo(request.table)
+
+
+def freestajlo_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

@@ -56,7 +56,7 @@ rule = "parity"
 size = 578
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.dinac.generator:dinac"
+construction = "esolangs.languages.dinac.generator:dinac_request"
 
 [resource_evidence]
 version = 1
@@ -68,7 +68,7 @@ arities = [2, 3, 5]
 first = 2
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.dinac.generator:dinac"
+construction = "esolangs.languages.dinac.generator:dinac_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}" }
 
 [resource_evidence.workspace]
@@ -78,7 +78,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.dinac.generator:dinac"
+construction = "esolangs.languages.dinac.generator:dinac_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: scopes and at most n pending conjunction nodes" }
 
 [resource_evidence.scaling]
@@ -88,7 +88,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.dinac.generator:dinac"
+construction = "esolangs.languages.dinac.generator:dinac_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: rarer-answer scan" }
 
 [semantic_evidence]

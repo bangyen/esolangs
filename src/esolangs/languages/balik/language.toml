@@ -58,7 +58,7 @@ rule = "parity"
 size = 685
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.balik.generator:balik"
+construction = "esolangs.languages.balik.generator:balik_request"
 
 [resource_evidence]
 version = 1
@@ -70,7 +70,7 @@ arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.balik.generator:balik"
+construction = "esolangs.languages.balik.generator:balik_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}", formula = "34·2^(n/2)+7n-40 even, 44·2^((n-1)/2)+7n-38 odd, n≥4; n=1..3: 19,40,69" }
 
 [resource_evidence.workspace]
@@ -80,7 +80,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.balik.generator:balik"
+construction = "esolangs.languages.balik.generator:balik_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]

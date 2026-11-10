@@ -29,6 +29,8 @@ from math import comb
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.lookup import symmetric_outputs
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: ``R_i`` with ``{}`` for ``R_(i+1)``.
 _READ = "S(KK)(S(K(S(0K)))(S(KK)(S(KK)(S(K(S(0K)))(S(K(S(0K)))(S(KK)(S(K({})))))))))"
@@ -102,3 +104,8 @@ def hot(truth_table: str) -> str:
     )
     majority = profile == "0" * (n // 2 + 1) + "1" * (n - n // 2)
     return f"{program}({_tree(truth_table, ids, majority=majority)})"
+
+
+def hot_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return hot(request.table)

@@ -58,7 +58,7 @@ rule = "parity"
 size = 139
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.stisp.generator:stisp"
+construction = "esolangs.languages.stisp.generator:stisp_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -67,7 +67,7 @@ seed = 1847
 size = 1964
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.stisp.generator:stisp"
+construction = "esolangs.languages.stisp.generator:stisp_request"
 
 [resource_evidence]
 version = 1
@@ -79,7 +79,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "rewrites"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.stisp.generator:stisp"
+construction = "esolangs.languages.stisp.generator:stisp_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: one frame an input" }
 
 [resource_evidence.workspace]
@@ -89,7 +89,7 @@ arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.stisp.generator:stisp"
+construction = "esolangs.languages.stisp.generator:stisp_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} through n=7, at most beyond: frames/head 16n each plus rendered flag", formula = "32n+1" }
 
 [resource_evidence.scaling]
@@ -99,7 +99,7 @@ arities = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 first = 3
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.stisp.generator:stisp"
+construction = "esolangs.languages.stisp.generator:stisp_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: named-diagram ceiling plus selectors", formula = "F+28" }
 
 [semantic_evidence]
@@ -121,5 +121,5 @@ source = { unit = "chars", value = 65 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.stisp.generator:stisp"
+construction = "esolangs.languages.stisp.generator:stisp_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: restore missing registry arities1/2 alongside3..7, matching the existing exact owner checks and restoration record. All rows of the seven existing witnesses execute and attain32/64/96/128/160/192/224 bits before the halt dump. Emitted bytes, numeric bounds, flags and pins unchanged."

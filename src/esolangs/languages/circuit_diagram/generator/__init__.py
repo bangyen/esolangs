@@ -56,12 +56,14 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.circuit_diagram.generator.columns import _FreeColumns
 from esolangs.languages.circuit_diagram.generator.layout import (
     _Layout,
     _layout_area,
     _resolve_order,
 )
+from esolangs.runtime._program import Program
 
 # Gate characters used by muxes and the two self-fed constant forms.
 _GateGlyph = Literal["a", "o", "A", "O", "x", "X"]
@@ -774,10 +776,22 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     return _narrowest_present(flat, banded, affine)
 
 
-def _balance(table: str, default: Any, **options: Any) -> Any:
+def _balance(table: str, default: str) -> str:
     """Defer to the ``balance`` submodule, which imports this one."""
     from esolangs.languages.circuit_diagram.generator.balance import (
         balance_circuit_diagram,  # circular
     )
 
-    return balance_circuit_diagram(table, default, **options)
+    return balance_circuit_diagram(table, default)
+
+
+def circuit_diagram_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return circuit_diagram(request.table, request.width)
+    return circuit_diagram(request.table)
+
+
+def circuit_diagram_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

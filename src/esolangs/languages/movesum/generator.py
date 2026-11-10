@@ -23,6 +23,8 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Cells: 0 sum/test, 1/2/3/4 addends (4 stays 0), 5 V,
 #: 8 one, 9 counter seed, 10 the input.
@@ -49,3 +51,8 @@ def movesum(truth_table: str) -> str:
         lines.append("move 2 -1" if bit == "1" else "move 4 -1")
         lines.append("move 5 0")
     return "\n".join(lines) + "\n"
+
+
+def movesum_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return movesum(request.table)

@@ -1,11 +1,14 @@
 """Runtime and compiler capabilities for Minsky Swap."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.minsky_swap.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Minsky Swap",
@@ -17,11 +20,10 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.minsky_swap.generator",
-            "minsky_swap",
-            ("truth_table", "width"),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.minsky_swap.generator", "minsky_swap_request"
         ),
+        layout_width=True,
         same_layout=FunctionRef(
             "esolangs.languages.minsky_swap.generator",
             "_same_layout",
@@ -29,8 +31,8 @@ LANGUAGE = Language(
         ),
         # Each input adds its weight; a ``~`` cascade picks one of two leaves.
         shape=Shape.LOOKUP,
-        balance=FunctionRef(
-            "esolangs.languages.minsky_swap.generator", "_balance", ("table", "default")
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.minsky_swap.generator", "minsky_swap_balance_request"
         ),
         no_wrap="only line 1 is code; line 2 gives its numeric jump distances",
         template=TemplateSpec(

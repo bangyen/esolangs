@@ -48,8 +48,10 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.lookup import symmetric_outputs
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_flag import flag_tree_body
+from esolangs.runtime._program import Program
 
 type _Kind = Literal["and", "xor"]
 type _Normal = tuple[_Kind | None, int, bool, bool, int | None]
@@ -421,3 +423,8 @@ def _boolfuck_tree(truth_table: str) -> str:
     out.printer()
 
     return "".join(out.out)
+
+
+def boolfuck_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return boolfuck(request.table)

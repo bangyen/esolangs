@@ -1,11 +1,14 @@
 """Runtime and compiler capabilities for Blindfolded Arithmetic."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.blindfolded_arithmetic.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Blindfolded Arithmetic",
@@ -18,11 +21,11 @@ LANGUAGE = Language(
         empty_program="a Blindfolded Arithmetic program needs at least one instruction",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
+        entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.blindfolded_arithmetic.generator",
-            "blindfolded_arithmetic",
-            ("truth_table",),
+            "blindfolded_arithmetic_request",
         ),
+        layout_width=False,
         wrap=FunctionRef(
             "esolangs.languages.blindfolded_arithmetic.generator",
             "_wrap",

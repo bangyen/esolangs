@@ -25,6 +25,8 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.lookup import symmetric_outputs
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 __all__ = ["decleq"]
 
@@ -219,3 +221,8 @@ class _OwnerBuilder(_CodeBuilder):
                 key = one
         for address, key in fixups:
             self.mem[address] = addresses[key]
+
+
+def decleq_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return decleq(request.table)

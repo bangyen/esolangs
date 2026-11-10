@@ -23,6 +23,8 @@ from string import ascii_letters
 
 from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: a name or ``::``.
 #: a name.
@@ -85,3 +87,8 @@ def _name(node: int, level: int) -> str:
         letters.append(ascii_letters[digit])
     name = "".join(reversed(letters))
     return "mai0" if name == "main" else name
+
+
+def bleh_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return bleh(request.table)

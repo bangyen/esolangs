@@ -64,7 +64,7 @@ rule = "parity"
 size = 16
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.super_snusp.generator:super_snusp"
+construction = "esolangs.languages.super_snusp.generator:super_snusp_request"
 
 [[evidence.anchors]]
 arity = 16
@@ -72,7 +72,7 @@ rule = "and"
 size = 19876
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.super_snusp.generator:super_snusp"
+construction = "esolangs.languages.super_snusp.generator:super_snusp_request"
 
 [[evidence.anchors]]
 arity = 16
@@ -80,7 +80,7 @@ rule = "parity"
 size = 19875
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.super_snusp.generator:super_snusp"
+construction = "esolangs.languages.super_snusp.generator:super_snusp_request"
 
 [resource_evidence]
 version = 1
@@ -92,7 +92,7 @@ arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.super_snusp.generator:super_snusp"
+construction = "esolangs.languages.super_snusp.generator:super_snusp_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: straight line", formula = "D+8n+19" }
 
 [resource_evidence.workspace]
@@ -102,7 +102,7 @@ arities = [5, 6]
 first = 5
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.super_snusp.generator:super_snusp"
+construction = "esolangs.languages.super_snusp.generator:super_snusp_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: flat lookup" }
 
 [resource_evidence.scaling]
@@ -112,7 +112,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.super_snusp.generator:super_snusp"
+construction = "esolangs.languages.super_snusp.generator:super_snusp_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one row", formula = "D+8n+19" }
 
 [semantic_evidence]

@@ -34,7 +34,9 @@ from __future__ import annotations
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_chars
+from esolangs.runtime._program import Program
 from esolangs.runtime.source_hints import with_hint
 
 from .constant import _constant_program
@@ -76,3 +78,8 @@ def malbolge(truth_table: str) -> str:
             ),
         )
     return _digits_program(truth_table, n)
+
+
+def malbolge_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return malbolge(request.table)

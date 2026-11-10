@@ -27,6 +27,7 @@ Decisions:
 from itertools import pairwise
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_block import (
     BranchCost,
     ContinuationCost,
@@ -40,6 +41,7 @@ from esolangs.generation.shared_block import (
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.sstack.generator._binary import _PROLOGUE, best_binary_bank
 from esolangs.languages.sstack.generator._walk import _Hooks, _TreeWalk
+from esolangs.runtime._program import Program
 
 _LEAF = {"0": ":c:", "1": ":b:"}
 
@@ -191,3 +193,8 @@ def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str
         out.append("]")
         cost = dispatch_cost(cost, normal_cost(body) + 4, 1)
     return "".join(out), normal_cost(cost) + 2
+
+
+def sstack_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return sstack(request.table)

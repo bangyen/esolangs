@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Container."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.container.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Container",
@@ -20,15 +22,12 @@ LANGUAGE = Language(
         eof="an exhausted read sets IN to the spec's 0",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.container.generator",
-            "container",
-            ("truth_table", "width"),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.container.generator", "container_request"
         ),
-        balance=FunctionRef(
-            "esolangs.languages.container.generator",
-            "balance_container",
-            ("table", "default"),
+        layout_width=True,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.container.generator", "container_balance_request"
         ),
         no_wrap="each line declares a container or one of its rules",
     ),

@@ -21,6 +21,8 @@ Decisions:
 
 from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Register 1 holds '1' (49), register 3 holds '0' (48).
 _SETUP = ["1 49 0", "3 48 0"]
@@ -92,3 +94,8 @@ def iebel(truth_table: str) -> str:
     return "\n".join(
         line if isinstance(line, str) else line[0].format(at[line[1]]) for line in lines
     )
+
+
+def iebel_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return iebel(request.table)

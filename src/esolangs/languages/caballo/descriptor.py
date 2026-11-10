@@ -1,12 +1,14 @@
 """Runtime and compiler capabilities for Caballo."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.caballo.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Caballo",
@@ -20,9 +22,10 @@ LANGUAGE = Language(
         eof="the whole input is read once as the initial stack; no read meets EOF",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.caballo.generator", "caballo", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.caballo.generator", "caballo_request"
         ),
+        layout_width=False,
         wrap=wrap_chars,
     ),
     contract=BooleanContract(

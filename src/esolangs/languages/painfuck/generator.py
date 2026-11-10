@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     in_input_order,
 )
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_block import (
     repeated_bank,
     repeated_block,
@@ -35,6 +36,7 @@ from esolangs.generation.shared_block import (
 )
 from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
 from esolangs.languages.painfuck.interpreter import _CYCLES
+from esolangs.runtime._program import Program
 
 __all__ = ["painfuck"]
 
@@ -199,3 +201,8 @@ def _painfuck_shared(
         ),
     )
     return _encode(header + body + "o"), len(header) + commands + 1
+
+
+def painfuck_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return painfuck(request.table)

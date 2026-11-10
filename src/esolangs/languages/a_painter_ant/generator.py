@@ -38,6 +38,8 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.lookup import near_unanimity
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 __all__ = ["a_painter_ant"]
 
@@ -131,3 +133,8 @@ def _westward_flipped(table: str, weights: list[int], *, invert: bool) -> str:
         out.append("e" * weight + "SN")
     out.append("s" + "nN" * invert)
     return "".join(out)
+
+
+def a_painter_ant_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return a_painter_ant(request.table)

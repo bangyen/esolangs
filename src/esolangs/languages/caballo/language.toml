@@ -62,7 +62,7 @@ rule = "and"
 size = 38
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.caballo.generator:caballo"
+construction = "esolangs.languages.caballo.generator:caballo_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -71,7 +71,7 @@ seed = 1847
 size = 5541
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.caballo.generator:caballo"
+construction = "esolangs.languages.caballo.generator:caballo_request"
 
 [resource_evidence]
 version = 1
@@ -83,7 +83,7 @@ arities = [3, 6]
 first = 3
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.caballo.generator:caballo"
+construction = "esolangs.languages.caballo.generator:caballo_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: a skipped dp chain, 2 a level" }
 
 [resource_evidence.workspace]
@@ -93,7 +93,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.caballo.generator:caballo"
+construction = "esolangs.languages.caballo.generator:caballo_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: nested frames" }
 
 [resource_evidence.scaling]
@@ -103,7 +103,7 @@ arities = [2, 3, 6]
 first = 2
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.caballo.generator:caballo"
+construction = "esolangs.languages.caballo.generator:caballo_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: parity" }
 
 [semantic_evidence]

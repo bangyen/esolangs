@@ -65,7 +65,7 @@ seed = 1847
 size = 3104
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -73,7 +73,7 @@ rule = "and"
 size = 2610
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 
 [resource_evidence]
 version = 1
@@ -85,7 +85,7 @@ arities = [4, 5, 6, 8]
 first = 4
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: planting and two walks" }
 
 [resource_evidence.workspace]
@@ -95,7 +95,7 @@ arities = [4, 5, 6, 8]
 first = 4
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: tape and cursors" }
 
 [resource_evidence.scaling]
@@ -105,7 +105,7 @@ arities = [4, 6, 8]
 first = 4
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bit_tilde.generator:bit_tilde"
+construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: minority planting", formula = "3T+19n+115" }
 
 [semantic_evidence]

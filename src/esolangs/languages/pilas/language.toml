@@ -59,7 +59,7 @@ rule = "parity"
 size = 250
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.pilas.generator:pilas"
+construction = "esolangs.languages.pilas.generator:pilas_request"
 
 [resource_evidence]
 version = 1
@@ -71,7 +71,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.pilas.generator:pilas"
+construction = "esolangs.languages.pilas.generator:pilas_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = 1: 29 at n=1", formula = "46n - 21" }
 
 [resource_evidence.workspace]
@@ -81,7 +81,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.pilas.generator:pilas"
+construction = "esolangs.languages.pilas.generator:pilas_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
@@ -91,7 +91,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.pilas.generator:pilas"
+construction = "esolangs.languages.pilas.generator:pilas_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: before zero-add cancellation" }
 
 [semantic_evidence]

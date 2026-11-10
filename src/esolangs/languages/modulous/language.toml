@@ -67,7 +67,7 @@ seed = 1847
 size = 1165
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.modulous.generator:modulous"
+construction = "esolangs.languages.modulous.generator:modulous_request"
 
 [[evidence.anchors]]
 arity = 12
@@ -76,7 +76,7 @@ seed = 1847
 size = 2804
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.modulous.generator:modulous"
+construction = "esolangs.languages.modulous.generator:modulous_request"
 
 [resource_evidence]
 version = 1
@@ -88,7 +88,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.modulous.generator:modulous"
+construction = "esolangs.languages.modulous.generator:modulous_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst7 at n=1; split literal adds H-1", formula = "E" }
 
 [resource_evidence.workspace]
@@ -98,7 +98,7 @@ arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.modulous.generator:modulous"
+construction = "esolangs.languages.modulous.generator:modulous_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst13 at n=1; split literal uses max(P,actual) command cursor", formula = "W" }
 
 [resource_evidence.scaling]
@@ -108,7 +108,7 @@ arities = [1, 2, 3, 4, 5, 8]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.modulous.generator:modulous"
+construction = "esolangs.languages.modulous.generator:modulous_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst68 at n=1", formula = "S" }
 
 [semantic_evidence]

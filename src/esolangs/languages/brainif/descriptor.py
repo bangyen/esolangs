@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for BrainIf."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.brainif.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "BrainIf",
@@ -18,11 +20,12 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.brainif.generator", "brainif", ("truth_table", "width")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.brainif.generator", "brainif_request"
         ),
-        balance=FunctionRef(
-            "esolangs.languages.brainif.generator", "_balance", ("_table", "default")
+        layout_width=True,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.brainif.generator", "brainif_balance_request"
         ),
         no_wrap="each line is one instruction and goto targets are line numbers",
     ),

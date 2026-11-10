@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Fargo."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.fargo.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Fargo",
@@ -18,11 +20,12 @@ LANGUAGE = Language(
         eof="the interpreter reads before the program starts",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.fargo.generator", "fargo", ("truth_table", "width")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.fargo.generator", "fargo_request"
         ),
-        balance=FunctionRef(
-            "esolangs.languages.fargo.generator", "_balance", ("table", "default")
+        layout_width=True,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.fargo.generator", "fargo_balance_request"
         ),
         no_wrap="each physical line is one command; expressions have no continuation",
     ),

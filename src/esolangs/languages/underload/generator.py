@@ -44,8 +44,10 @@ from esolangs.generation.helpers import (
     reflected_table,
     same_up_to_wrapping,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import wrap_tokens
+from esolangs.runtime._program import Program
 
 # A zero duplicates the returned bit, giving both selectors five characters.
 PAIR = ("(!^:)", "(~!^)")
@@ -188,3 +190,15 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
         if _underload_layout_tokens(template) == _underload_layout_tokens(narrow):
             return True
     return same_up_to_wrapping(template, plain)
+
+
+def underload_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return underload(request.table, request.width)
+    return underload(request.table)
+
+
+def underload_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

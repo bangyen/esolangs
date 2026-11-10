@@ -29,6 +29,8 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.lookup import prefix_counts
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 __all__ = ["dinac"]
 
@@ -116,3 +118,8 @@ def _scan(truth_table: str, mark: str, reads: list[str]) -> str:
     visit(0, len(truth_table), None)
     lines += ["IF a", f"    OUT '{mark}", "ELSE", f"    OUT '{1 - int(mark)}"]
     return "\n".join(lines)
+
+
+def dinac_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return dinac(request.table)

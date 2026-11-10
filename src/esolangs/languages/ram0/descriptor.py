@@ -1,12 +1,15 @@
 """Runtime and compiler capabilities for RAM0."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.ram0.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 PAIR = ("Z", "A")
 
@@ -21,9 +24,10 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.ram0.generator", "ram0", ("truth_table", "width")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.ram0.generator", "ram0_request"
         ),
+        layout_width=True,
         same_layout=FunctionRef(
             "esolangs.generation.helpers",
             "same_token_layout",
@@ -32,8 +36,8 @@ LANGUAGE = Language(
         # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
         # only safe break.
         wrap=wrap_space_delimited,
-        balance=FunctionRef(
-            "esolangs.languages.ram0.generator", "_balance", ("_table", "default")
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.ram0.generator", "ram0_balance_request"
         ),
         template=TemplateSpec(pair=PAIR),
     ),

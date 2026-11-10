@@ -42,8 +42,10 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 #: Entries are ``a``/``b`` so a ``0``/``1`` input line is never mistaken for
 #: one; ``L``/``E`` are sentinels, ``M``/``R`` and the read ``0``/``1`` markers.
@@ -490,3 +492,15 @@ def balance_thue(truth_table: str, default: str) -> str:
             )
         )
     return min(candidates, key=balance_score)
+
+
+def thue_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return thue(request.table, request.width)
+    return thue(request.table)
+
+
+def thue_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_thue(request.table, request.text_source())

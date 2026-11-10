@@ -19,7 +19,9 @@ from esolangs.generation.helpers import (
     input_weights,
     symmetric_weights,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score, balance_width
+from esolangs.runtime._program import Program
 
 
 def egl(truth_table: str, width: int | None = None) -> str:
@@ -95,3 +97,15 @@ def _balance(_table: str, default: str) -> str:
     return min(
         default, _wrap(default, max(floor, balance_width(default))), key=balance_score
     )
+
+
+def egl_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return egl(request.table, request.width)
+    return egl(request.table)
+
+
+def egl_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

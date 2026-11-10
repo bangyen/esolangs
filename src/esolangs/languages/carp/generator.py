@@ -27,7 +27,9 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.carp.descriptor import MAX_INPUTS as MAX_INPUTS
+from esolangs.runtime._program import Program
 from esolangs.runtime.source_hints import with_hint
 
 _K = 15  # register held at 15: ``INC r15 L`` is a jump to L
@@ -130,3 +132,8 @@ class _Builder:
         if not self.reference(one, branch, jump=False):
             self.code[branch][2] = self.line()
             self.node(level + 1, one)
+
+
+def carp_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return carp(request.table)

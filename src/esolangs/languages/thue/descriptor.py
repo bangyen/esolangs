@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Thue."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.thue.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Thue",
@@ -22,15 +24,14 @@ LANGUAGE = Language(
         ),
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.thue.generator", "thue", ("truth_table", "width")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.thue.generator", "thue_request"
         ),
+        layout_width=True,
         # Not a tree: the table is the state, and each read halves it.
         shape=Shape.LOOKUP,
-        balance=FunctionRef(
-            "esolangs.languages.thue.generator",
-            "balance_thue",
-            ("truth_table", "default"),
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.thue.generator", "thue_balance_request"
         ),
         no_wrap="a newline ends a rule, and the state's own newlines are part of it",
     ),

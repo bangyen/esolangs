@@ -24,6 +24,8 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def caballo(truth_table: str) -> str:
@@ -72,3 +74,8 @@ def _tree(truth_table: str, n: int) -> str:
 
     node(0, 0)
     return "".join(out)
+
+
+def caballo_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return caballo(request.table)

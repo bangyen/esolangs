@@ -25,6 +25,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 __all__ = ["bit_tilde"]
 
@@ -174,3 +176,8 @@ def _block_lookup(used: list[int], table: str, n: int) -> str:
             weight = 3 << (width - 2 - depth[i])
             prog.append("<" * 7 + ")>>~>~>>>>{" + "<" * weight + "}")
     return "".join([*prog, _FINISH])
+
+
+def bit_tilde_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return bit_tilde(request.table)

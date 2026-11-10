@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Piet."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.piet.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec, SourceKind, SourceLoader
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Piet",
@@ -20,13 +22,12 @@ LANGUAGE = Language(
         eof="an exhausted input command is ignored, as the spec requires",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.piet.generator",
-            "piet",
-            ("truth_table", "width", "scale"),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.piet.generator", "piet_request"
         ),
-        balance=FunctionRef(
-            "esolangs.languages.piet.generator", "_balance", ("truth_table", "default")
+        layout_width=True,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.piet.generator", "piet_balance_request"
         ),
     ),
     contract=BooleanContract(

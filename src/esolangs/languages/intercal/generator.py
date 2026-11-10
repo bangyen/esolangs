@@ -29,8 +29,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     in_input_order,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import _join_tokens, balance_score
 from esolangs.languages.intercal import descriptor
+from esolangs.runtime._program import Program
 
 _VARIABLE_MAX = 65535  # the largest INTERCAL variable number
 
@@ -422,3 +424,15 @@ def _same_layout(template: str, _plain: str, layout: Callable[[int], Any]) -> bo
     return isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
         narrow
     )
+
+
+def intercal_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return intercal(request.table, request.width)
+    return intercal(request.table)
+
+
+def intercal_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_intercal(request.table, request.text_source())

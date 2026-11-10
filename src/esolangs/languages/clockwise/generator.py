@@ -33,8 +33,10 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 # The ring's own columns: 3 descends at the start, 2 climbs into the first
 # gadget, 0 climbs home.  Column 1 is the gap that keeps the three apart.
@@ -556,3 +558,15 @@ def _balance(table: str, default: str) -> str:
         *(_clockwise_banded(table, s) for s in sorted(splits)),
         key=balance_score,
     )
+
+
+def clockwise_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return clockwise(request.table, request.width)
+    return clockwise(request.table)
+
+
+def clockwise_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

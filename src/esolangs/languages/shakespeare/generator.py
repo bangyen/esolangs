@@ -31,6 +31,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Bits packed by one sentence; bounds the parser's nesting.
 _CHUNK = 64
@@ -152,3 +154,8 @@ def shakespeare(truth_table: str) -> str:
         return _parity(n, essential, invert=bool(bias))
     # A rule, not a race: see [ablations.polarity].
     return _program(table, n, essential, invert=2 * table.count("1") > len(table))
+
+
+def shakespeare_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return shakespeare(request.table)

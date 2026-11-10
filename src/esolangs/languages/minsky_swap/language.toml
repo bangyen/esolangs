@@ -71,7 +71,7 @@ seed = 1847
 size = 684
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -80,7 +80,7 @@ seed = 1847
 size = 2343
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 
 [[evidence.anchors]]
 arity = 12
@@ -89,7 +89,7 @@ seed = 1847
 size = 8913
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 
 [resource_evidence]
 version = 1
@@ -101,7 +101,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: unary index or ignored-tail macros; dump follows", formula = "max(T+6n+5,16n-3)" }
 
 [resource_evidence.workspace]
@@ -111,7 +111,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n=1,2,3,6: registers, pointer, cursor and dump latch", formula = "W" }
 
 [resource_evidence.scaling]
@@ -121,7 +121,7 @@ arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.minsky_swap.generator:minsky_swap"
+construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} through n=5; at most beyond", formula = "N" }
 
 [semantic_evidence]

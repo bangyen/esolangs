@@ -42,10 +42,12 @@ from esolangs.generation.helpers import (
     read_at,
     symmetric_weights,
 )
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.rotfuck.dialect import (
     ROTFUCK_CYCLES,
     validate_rotation,
 )
+from esolangs.runtime._program import Program
 
 __all__ = ["rotfuck"]
 
@@ -430,3 +432,8 @@ def _count(n: int, used: list[int], *, raw: bool) -> str:
         else:
             out.append(f">{_read(raw=raw)}[-<+>]<")
     return "".join(out) + _unbias(len(used), raw=raw) + _walk(2)
+
+
+def rotfuck_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return rotfuck(request.table, rotation=request.options.text("rotation"))

@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for Packlang."""
 
 from esolangs._dialect import DialectSchema
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.packlang.dialect import (
     LITERAL_POLICIES,
     PacklangLiterals,
@@ -10,7 +11,9 @@ from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 
 def _dialect(literal_policy: str = "decimal") -> None:
@@ -36,11 +39,10 @@ LANGUAGE = Language(
         empty_program="empty program",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.packlang.generator",
-            "packlang",
-            ("truth_table", "width", "literal_policy"),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.packlang.generator", "packlang_request"
         ),
+        layout_width=True,
         # Not a tree: one painted array cell per differing row, read by index.
         shape=Shape.LOOKUP,
         # One statement a line; each folds on its own.
@@ -55,10 +57,8 @@ LANGUAGE = Language(
             "same_ignoring_whitespace",
             ("template", "plain", "_layout"),
         ),
-        balance=FunctionRef(
-            "esolangs.languages.packlang.generator",
-            "balance_packlang",
-            ("_table", "default"),
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.packlang.generator", "packlang_balance_request"
         ),
     ),
     contract=BooleanContract(

@@ -17,7 +17,7 @@ from tests.support.witness_tables import witnesses
 
 
 def test_boolean_generators_take_a_truth_table() -> None:
-    """Each generator takes ``truth_table`` and no required extra."""
+    """Each backend generator takes one typed request."""
     failures = {}
     for name, lang in LANGUAGES.items():
         if lang.backend is None:
@@ -27,10 +27,10 @@ def test_boolean_generators_take_a_truth_table() -> None:
         issues = []
         if not params:
             issues.append("takes no arguments")
-        elif params[0].name != "truth_table":
+        elif params[0].name != "request":
             issues.append(f"first parameter is {params[0].name!r}")
         issues.extend(
-            f"requires {param.name!r} beyond truth_table"
+            f"requires {param.name!r} beyond request"
             for param in params[1:]
             if param.default is inspect.Parameter.empty
         )

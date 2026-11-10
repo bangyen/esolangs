@@ -15,6 +15,7 @@ from scripts.source_units import source_units
 from tests.support.generator_support import (
     assert_proved_resource_cap,
     evaluate_generated,
+    generator_for,
 )
 from tests.support.witness_tables import _one_minterm, dense, parity, row_bits
 
@@ -118,7 +119,7 @@ _PARITY = "01101001"
 )
 def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
     """A tree folds a one-dependency table; a reducing sum drops its inputs."""
-    fn = LANGUAGES[name].backend.generate
+    fn = generator_for(name)
     assert fn is not None
     try:
         best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
@@ -156,7 +157,7 @@ def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
     The round trips execute n=2..3; the CI deep band builds to n=8 but lets a
     capped row refuse, so this is the local gate on n=1, 4 and 5.
     """
-    fn = BY_BOOLEAN[name].backend.generate
+    fn = generator_for(BY_BOOLEAN[name].name)
     built = 0
     for n in range(1, 6):
         for shape, make in _SHAPES:
@@ -282,7 +283,7 @@ _LINEAR_SCALING = sorted(
 def test_generators_scale_linearly(name: str) -> None:
     """Three same-parity rungs grow by four, whatever the prologue."""
     lang = LANGUAGES[name]
-    fn = lang.backend.generate
+    fn = generator_for(lang.name)
     assert fn is not None
     arities = load_certification(lang).scaling_rungs
     sizes = [source_units(fn(parity(n))) for n in arities]

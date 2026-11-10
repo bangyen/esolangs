@@ -60,7 +60,7 @@ rule = "parity"
 size = 6139
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.thisthat.generator:thisthat"
+construction = "esolangs.languages.thisthat.generator:thisthat_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -68,7 +68,7 @@ rule = "and"
 size = 2367
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.thisthat.generator:thisthat"
+construction = "esolangs.languages.thisthat.generator:thisthat_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -77,7 +77,7 @@ seed = 1847
 size = 36199
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.thisthat.generator:thisthat"
+construction = "esolangs.languages.thisthat.generator:thisthat_request"
 
 [resource_evidence]
 version = 1
@@ -89,7 +89,7 @@ arities = [3, 4]
 first = 3
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.thisthat.generator:thisthat"
+construction = "esolangs.languages.thisthat.generator:thisthat_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula}", formula = "32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T" }
 
 [resource_evidence.workspace]
@@ -99,7 +99,7 @@ arities = [3, 5]
 first = 3
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.thisthat.generator:thisthat"
+construction = "esolangs.languages.thisthat.generator:thisthat_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}", formula = "4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c))" }
 
 [resource_evidence.scaling]
@@ -109,7 +109,7 @@ arities = [3, 4, 5, 6, 7, 8]
 first = 3
 unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.thisthat.generator:thisthat"
+construction = "esolangs.languages.thisthat.generator:thisthat_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: H-tree `O(sqrt(T))` sides", formula = "N" }
 
 [semantic_evidence]

@@ -33,6 +33,8 @@ from esolangs.generation.helpers import (
     input_weights,
     read_at,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def _resolve(lines: list[str], width: int | None = None) -> str:
@@ -666,3 +668,15 @@ def _emit_loop(lines: list[str], strip: _Strip, level: int, size: int) -> None:
 def _balance(_table: str, default: str) -> str:
     """Return the DAG; the full and small zero-jump trees never won (n=1..8)."""
     return default
+
+
+def brainif_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return brainif(request.table, request.width)
+    return brainif(request.table)
+
+
+def brainif_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

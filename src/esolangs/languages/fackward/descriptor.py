@@ -1,12 +1,14 @@
 """Runtime and compiler capabilities for Fackward."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.fackward.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 _wrap = TokenWrapper(r"\d+|[\s\S]")
 
@@ -22,9 +24,10 @@ LANGUAGE = Language(
         eof="a read at EOF halts the run",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.fackward.generator", "fackward", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.fackward.generator", "fackward_request"
         ),
+        layout_width=False,
         # Whitespace only separates tokens, so a newline between two is harmless.
         wrap=_wrap,
     ),

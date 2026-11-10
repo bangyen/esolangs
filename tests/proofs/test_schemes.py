@@ -9,6 +9,7 @@ from esolangs.registry import BY_BOOLEAN
 from scripts.source_units import source_units
 from tests.proofs._ledger import Ledger, Row, load
 from tests.proofs._schemes import folds_without_tree
+from tests.support.generator_support import generator_for
 
 #: Every table at ``n == 3`` that depends on exactly one input, both
 #: polarities, all at ones-count 4 -- the same ones-count as parity, so the
@@ -51,9 +52,9 @@ def ledger() -> Ledger:
 
 def _generator(row: Row) -> object:
     """The callable behind a ledger row."""
-    for key, lang in BY_BOOLEAN.items():
+    for lang in BY_BOOLEAN.values():
         if lang.name == row.generator:
-            return BY_BOOLEAN[key].backend.generate
+            return generator_for(lang.name)
     raise AssertionError(f"{row.generator} is not in BY_BOOLEAN")
 
 

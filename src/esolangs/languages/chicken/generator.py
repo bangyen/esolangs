@@ -27,6 +27,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Opcodes, as chickens a line.
 _CHICKEN, _ADD, _SUB, _MUL, _CMP, _LOAD = 1, 2, 3, 4, 5, 6
@@ -86,3 +88,8 @@ def chicken(truth_table: str) -> str:
         # Explicit exit prints the pad zero; add the final data cell 1 for one.
         return _line(_ADD) + "\nchicken" if truth_table[0] == "1" else "\n"
     return _program(read_at(truth_table, essential, n), essential)
+
+
+def chicken_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return chicken(request.table)

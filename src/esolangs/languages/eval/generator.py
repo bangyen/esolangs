@@ -24,6 +24,8 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Stage the bit on the tree stack (``0`` or backtick), ``=`` moves it to the
 #: input stack.  Each input is a run of :data:`TEMPLATE_CHAR` this wide.
@@ -123,3 +125,8 @@ def _ordered(truth_table: str, ops: str, n: int, used: list[int]) -> str:
         out.extend(("~=~?*", ";" * remaining))
     out.append(".")
     return "".join(out)
+
+
+def eval_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return eval(request.table)

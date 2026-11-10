@@ -24,6 +24,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 
@@ -55,3 +57,8 @@ def cyclic_tag(truth_table: str) -> str:
     # a 0 appends one 0 that is deleted last.
     rules.extend("" if answer == "1" else "0" for answer in table)
     return ";".join(rules) + "," + TEMPLATE_CHAR * n + "1"
+
+
+def cyclic_tag_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return cyclic_tag(request.table)

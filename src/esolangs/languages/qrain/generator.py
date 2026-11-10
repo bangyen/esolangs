@@ -33,8 +33,10 @@ from esolangs.generation.helpers import (
     in_input_order,
     move_text,
 )
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_block import repeated_block, repeated_blocks
 from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
+from esolangs.runtime._program import Program
 
 
 def _command_budget(n: int) -> int:
@@ -112,3 +114,8 @@ def qrain(truth_table: str) -> str:
         low = "+" if truth_table[0] == "1" else "++-"
         return ",>" + "," * (n - 1) + ">" + low + ".<<-."
     return in_input_order(truth_table, _qrain_ordered)
+
+
+def qrain_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return qrain(request.table)

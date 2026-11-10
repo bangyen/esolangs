@@ -23,7 +23,7 @@ from esolangs.generation.lookup import prefix_counts
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.registry import LANGUAGES
-from esolangs.registry._functions import FunctionRef
+from esolangs.registry._operations import OperationRef
 from tests.support.generator_support import evaluate_generated
 
 
@@ -39,7 +39,7 @@ def assert_analysis_complement(
     backend = LANGUAGES[name].backend
     assert backend is not None
     reference = backend.entrypoint
-    assert isinstance(reference, FunctionRef)
+    assert isinstance(reference, OperationRef)
     module = importlib.import_module(reference.module)
     owner, _, attribute = attribute.rpartition(".")
     module = getattr(module, owner) if owner else module

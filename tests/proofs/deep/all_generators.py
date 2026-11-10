@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from tests.support.generator_support import generator_for
+
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
@@ -103,7 +105,7 @@ def _assert_the_lemmas_bite() -> None:
 
 def battery(row: Row, key: str) -> Result:
     """Run every applicable lemma for one generator."""
-    fn = BY_BOOLEAN[key].backend.generate
+    fn = generator_for(BY_BOOLEAN[key].name)
     scheme = row.schemes[0] if row.schemes else "exception"
     allow = "cap" in row.labels or "exception" in row.labels
     result = Result(generator=row.generator, scheme=scheme)

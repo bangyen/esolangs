@@ -1,12 +1,14 @@
 """Runtime and compiler capabilities for AddSubJump."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_grid
 from esolangs.languages.addsubjump.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "AddSubJump",
@@ -18,9 +20,10 @@ LANGUAGE = Language(
         category="register_based",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.addsubjump.generator", "addsubjump", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.addsubjump.generator", "addsubjump_request"
         ),
+        layout_width=False,
         wrap=wrap_grid,
     ),
     contract=BooleanContract(

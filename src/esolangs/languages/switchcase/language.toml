@@ -58,7 +58,7 @@ rule = "parity"
 size = 188
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.switchcase.generator:switchcase"
+construction = "esolangs.languages.switchcase.generator:switchcase_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -67,7 +67,7 @@ seed = 1847
 size = 4139
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.switchcase.generator:switchcase"
+construction = "esolangs.languages.switchcase.generator:switchcase_request"
 
 [resource_evidence]
 version = 1
@@ -79,7 +79,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.switchcase.generator:switchcase"
+construction = "esolangs.languages.switchcase.generator:switchcase_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: define buffers, read all inputs, at most n binary branches, print", formula = "6n+8" }
 
 [resource_evidence.workspace]
@@ -89,7 +89,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.switchcase.generator:switchcase"
+construction = "esolangs.languages.switchcase.generator:switchcase_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n=1,2,3,5: buffers and branch", formula = "B+27+bl(n+diagram_cap(n))+bl(n)" }
 
 [resource_evidence.scaling]
@@ -99,7 +99,7 @@ arities = [1, 2, 3, 4, 5, 6, 8, 9, 10, 12]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.switchcase.generator:switchcase"
+construction = "esolangs.languages.switchcase.generator:switchcase_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: O(T/log T) shared residuals, O(log T) address digits", formula = "N" }
 
 [semantic_evidence]

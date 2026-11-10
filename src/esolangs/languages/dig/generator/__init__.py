@@ -48,6 +48,7 @@ from esolangs.generation.helpers import (
     grid_width,
     read_at,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.dig.generator._layout import _DIG_LEAF_BITS, _dig_layout
 from esolangs.languages.dig.generator._leaf import (
@@ -61,6 +62,7 @@ from esolangs.languages.dig.generator._leaf import (
     _render,
 )
 from esolangs.languages.dig.generator._shared import _dig_indexed_shared
+from esolangs.runtime._program import Program
 
 # Dig blocks for one level of the decision tree.  ``$`` takes its count
 # from the digit beside it and looks up, right, down, left for one, so the
@@ -570,3 +572,15 @@ def _balance(table: str, default: str) -> str:
         if grid_width(banded) < grid_width(flat):
             candidates.append(banded)
     return min(candidates, key=balance_score)
+
+
+def dig_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return dig(request.table, request.width)
+    return dig(request.table)
+
+
+def dig_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

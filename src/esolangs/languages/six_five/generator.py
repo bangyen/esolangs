@@ -32,6 +32,8 @@ from esolangs.generation.helpers import (
     subtree_ids,
     subtree_slot,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 __all__ = ["six_five"]
 
@@ -563,3 +565,8 @@ def _six_five_const(value: int) -> str:
     q, r = divmod(value, 6)
     # A remainder of five already satisfies 5*k <= value.
     return "6" * q + "62" * r
+
+
+def six_five_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return six_five(request.table)

@@ -24,9 +24,11 @@ from esolangs.generation.helpers import (
     subtree_ids,
     subtree_slot,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.languages.ram0.descriptor import PAIR as PAIR
+from esolangs.runtime._program import Program
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.
 #: RAM0 has no input command, so each input run is a fixed-length ``Z``,
@@ -254,3 +256,15 @@ def _balance(_table: str, default: str) -> str:
     tokens = default.split()
     width = balanced_token_width(tokens, " ")
     return _join_tokens(tokens, width, " ")
+
+
+def ram0_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return ram0(request.table, request.width)
+    return ram0(request.table)
+
+
+def ram0_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for NQ."""
 
 from esolangs._dialect import DialectSchema
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.nq.dialect import DEFAULT_GUARD_BINDING, GUARD_BINDINGS
 from esolangs.languages.nq.lifecycle import CAPABILITIES
@@ -8,7 +9,9 @@ from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "NQ",
@@ -28,9 +31,10 @@ LANGUAGE = Language(
         machine_preparation="prepare_machine",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.nq.generator", "nq", ("truth_table", "guard_binding")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.nq.generator", "nq_request"
         ),
+        layout_width=False,
         wrap=wrap_chars,
     ),
     contract=BooleanContract(

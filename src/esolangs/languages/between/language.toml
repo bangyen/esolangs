@@ -54,7 +54,7 @@ rule = "parity"
 size = 193
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.between.generator:between"
+construction = "esolangs.languages.between.generator:between_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -63,7 +63,7 @@ seed = 1847
 size = 4333
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.between.generator:between"
+construction = "esolangs.languages.between.generator:between_request"
 
 [resource_evidence]
 version = 1
@@ -75,7 +75,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.between.generator:between"
+construction = "esolangs.languages.between.generator:between_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
@@ -85,7 +85,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.between.generator:between"
+construction = "esolangs.languages.between.generator:between_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
@@ -95,7 +95,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "lines"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.between.generator:between"
+construction = "esolangs.languages.between.generator:between_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]

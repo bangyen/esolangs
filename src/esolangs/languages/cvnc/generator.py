@@ -33,6 +33,8 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 __all__ = ["cvnc"]
 
@@ -396,3 +398,8 @@ def cvnc(truth_table: str) -> str:
     if len(program) >= _reach(squarings):
         raise AssertionError("program exceeds the halting gadget reach")
     return program
+
+
+def cvnc_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return cvnc(request.table)

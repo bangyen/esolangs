@@ -25,6 +25,8 @@ Decisions:
 from heapq import heapify, heappop, heappush
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: The answer byte (ASCII ``0`` / ``1``, low bit first) as ``\`` and ``^``
 #: after the pointer move onto the cell that holds 1; a starts at 1 and ends 0.
@@ -173,3 +175,8 @@ def nandypants(truth_table: str) -> str:
             out.append(" ")
         out.append(token)
     return "".join(out)
+
+
+def nandypants_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return nandypants(request.table)

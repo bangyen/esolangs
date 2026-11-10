@@ -39,6 +39,8 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.runtime._program import Program
 
 __all__ = ["laserfuck"]
 
@@ -875,3 +877,15 @@ def balance_laserfuck(table: str, default: str) -> str:
         *(laserfuck(table, width) for width in sorted(widths)),
         key=balance_score,
     )
+
+
+def laserfuck_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return laserfuck(request.table, request.width)
+    return laserfuck(request.table)
+
+
+def laserfuck_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_laserfuck(request.table, request.text_source())

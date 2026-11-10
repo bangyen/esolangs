@@ -43,7 +43,9 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_tokens
+from esolangs.runtime._program import Program
 
 #: One instruction and its separator; a break after ``;`` is whitespace.
 _INSTRUCTION = r"[^;]*;?"
@@ -188,3 +190,8 @@ def blindfolded_arithmetic(truth_table: str) -> str:
 
 def _wrap(program: str, width: int) -> str:
     return wrap_tokens(program, width, _INSTRUCTION)
+
+
+def blindfolded_arithmetic_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return blindfolded_arithmetic(request.table)

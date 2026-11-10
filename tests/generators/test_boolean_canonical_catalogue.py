@@ -25,7 +25,7 @@ from esolangs.registry import LANGUAGES
 from scripts.docs.catalogue import load as _catalogue_load
 from scripts.source_units import source_units
 from tests.generators.source_support import generator_symbols as _source
-from tests.support.generator_support import assert_proved_resource_cap
+from tests.support.generator_support import assert_proved_resource_cap, generator_for
 from tests.support.witness_tables import dense
 
 RESIDUALS = (
@@ -107,7 +107,7 @@ def _lift(inner: str, at: int, n: int) -> str:
 
 
 def _size(name: str, table: str) -> int:
-    build = LANGUAGES[name].backend.generate
+    build = generator_for(name)
     assert build is not None
     try:
         return source_units(build(table))

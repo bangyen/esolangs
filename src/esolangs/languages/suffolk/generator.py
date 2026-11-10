@@ -23,6 +23,8 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: The cell plan.  Cost here is a cell's *index* -- every read spends one
 #: ``>`` per cell crossed -- so the countdown, which every sweep op reads,
@@ -254,3 +256,8 @@ def shared_dag(table: str, inputs: int) -> str | None:
         + "."
     )
     return "".join(out)
+
+
+def suffolk_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return suffolk(request.table)

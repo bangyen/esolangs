@@ -14,9 +14,11 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score, wrap_program
 from esolangs.languages.taglate.interpreter import _PREFIX, _SUFFIX, percent_encode
+from esolangs.runtime._program import Program
 
 
 def _half_select(pairs: int, ahead: int, n: int) -> str:
@@ -204,3 +206,15 @@ def balance_taglate(_table: str, default: str) -> str:
             wrap_program(program, "taglate", min(upper, max(lower, crossing)))
         )
     return min(candidates, key=balance_score)
+
+
+def taglate_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return taglate(request.table, request.width)
+    return taglate(request.table)
+
+
+def taglate_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_taglate(request.table, request.text_source())

@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Nandypants."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.nandypants.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Nandypants",
@@ -17,9 +19,10 @@ LANGUAGE = Language(
         category="tape_based",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.nandypants.generator", "nandypants", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.nandypants.generator", "nandypants_request"
         ),
+        layout_width=False,
         no_wrap="a line break inside a label would split one number into two",
     ),
     contract=BooleanContract(input_shape="char_stream"),

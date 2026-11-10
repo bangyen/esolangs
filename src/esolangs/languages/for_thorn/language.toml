@@ -58,7 +58,7 @@ rule = "parity"
 size = 397
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.for_thorn.generator:for_thorn"
+construction = "esolangs.languages.for_thorn.generator:for_thorn_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -66,7 +66,7 @@ rule = "and"
 size = 264
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.for_thorn.generator:for_thorn"
+construction = "esolangs.languages.for_thorn.generator:for_thorn_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -75,7 +75,7 @@ seed = 1847
 size = 5094
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.for_thorn.generator:for_thorn"
+construction = "esolangs.languages.for_thorn.generator:for_thorn_request"
 
 [resource_evidence]
 version = 1
@@ -87,7 +87,7 @@ arities = [3, 7]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.for_thorn.generator:for_thorn"
+construction = "esolangs.languages.for_thorn.generator:for_thorn_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: define each scope once; dispatch ends in literals or bit arithmetic" }
 
 [resource_evidence.workspace]
@@ -97,7 +97,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.for_thorn.generator:for_thorn"
+construction = "esolangs.languages.for_thorn.generator:for_thorn_request"
 description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}: frame text and the scope dictionary" }
 
 [resource_evidence.scaling]
@@ -107,7 +107,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.for_thorn.generator:for_thorn"
+construction = "esolangs.languages.for_thorn.generator:for_thorn_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: scope counts per level, twins called", formula = "S" }
 
 [semantic_evidence]

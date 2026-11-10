@@ -66,7 +66,7 @@ seed = 1847
 size = 1981
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.subleq.generator:subleq"
+construction = "esolangs.languages.subleq.generator:subleq_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -74,7 +74,7 @@ rule = "parity"
 size = 537
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.subleq.generator:subleq"
+construction = "esolangs.languages.subleq.generator:subleq_request"
 
 [resource_evidence]
 version = 1
@@ -86,7 +86,7 @@ arities = [9]
 first = 9
 unit = "steps"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.subleq.generator:subleq"
+construction = "esolangs.languages.subleq.generator:subleq_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the packed decoder" }
 
 [resource_evidence.workspace]
@@ -96,7 +96,7 @@ arities = [1, 2, 3, 5, 9]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.subleq.generator:subleq"
+construction = "esolangs.languages.subleq.generator:subleq_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: image, rewritten cells, pc, cursor", formula = "I + R + P + bl(n)" }
 
 [resource_evidence.scaling]
@@ -106,7 +106,7 @@ arities = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 9
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.subleq.generator:subleq"
+construction = "esolangs.languages.subleq.generator:subleq_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} at n = 9..14, at most elsewhere", formula = "min(P, H)" }
 
 [semantic_evidence]

@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Painfuck."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.painfuck.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Painfuck",
@@ -18,9 +20,10 @@ LANGUAGE = Language(
         random=True,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.painfuck.generator", "painfuck", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.painfuck.generator", "painfuck_request"
         ),
+        layout_width=False,
         wrap=wrap_chars,
     ),
 )

@@ -34,10 +34,12 @@ from esolangs.generation.helpers import (
     grid_width,
     input_weights,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.b_tapemark.dialect import (
     validate_swap_marker,
 )
+from esolangs.runtime._program import Program
 
 #: The stage, row by row, with its run of ``|`` left out.  The two ``*``
 #: copy a ``\`` and a ``%`` onto the blank grid beside the pointer, ``-``
@@ -464,4 +466,24 @@ def _balance(table: str, default: str, *, swap_marker: str = "new") -> str:
             *_closed_forms(table, swap_marker),
         ],
         key=balance_score,
+    )
+
+
+def b_tapemark_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return b_tapemark(
+            request.table,
+            request.width,
+            swap_marker=request.options.text("swap_marker"),
+        )
+    return b_tapemark(request.table, swap_marker=request.options.text("swap_marker"))
+
+
+def b_tapemark_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(
+        request.table,
+        request.text_source(),
+        swap_marker=request.options.text("swap_marker"),
     )

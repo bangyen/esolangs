@@ -35,8 +35,10 @@ from esolangs.generation.helpers import (
     runs,
     same_tokens,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens
+from esolangs.runtime._program import Program
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 
@@ -251,3 +253,15 @@ def _bitdeque_tokens(program: str) -> list[str]:
         else:
             tokens.append(token)
     return tokens
+
+
+def bitdeque_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return bitdeque(request.table, request.width)
+    return bitdeque(request.table)
+
+
+def bitdeque_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

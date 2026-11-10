@@ -55,7 +55,7 @@ rule = "parity"
 size = 1060
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.pointless.generator:pointless"
+construction = "esolangs.languages.pointless.generator:pointless_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -64,7 +64,7 @@ seed = 1847
 size = 6253
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.pointless.generator:pointless"
+construction = "esolangs.languages.pointless.generator:pointless_request"
 
 [resource_evidence]
 version = 1
@@ -76,7 +76,7 @@ arities = [3, 6]
 first = 3
 unit = "steps"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.pointless.generator:pointless"
+construction = "esolangs.languages.pointless.generator:pointless_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: setup 6n + 305, 16 a level", formula = "26n + 309" }
 
 [resource_evidence.workspace]
@@ -86,7 +86,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.pointless.generator:pointless"
+construction = "esolangs.languages.pointless.generator:pointless_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: a frame a level, the tape", formula = "(n+1)(2bl(L)+4) + 16n + 430" }
 
 [resource_evidence.scaling]
@@ -96,7 +96,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.pointless.generator:pointless"
+construction = "esolangs.languages.pointless.generator:pointless_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: every function declared", formula = "F" }
 
 [semantic_evidence]

@@ -30,6 +30,8 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 _CONSTANT = ("iic+", "ici*")
 
@@ -132,3 +134,8 @@ def _parity_reader(t: str, used: list[int], n: int) -> str | None:
         + ("<" if bias == 0 else ">")
         + "p"
     )
+
+
+def one_i_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return one_i(request.table)

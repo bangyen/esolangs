@@ -56,7 +56,7 @@ rule = "parity"
 size = 3675
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.underload.generator:underload"
+construction = "esolangs.languages.underload.generator:underload_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -64,7 +64,7 @@ rule = "and"
 size = 157
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.underload.generator:underload"
+construction = "esolangs.languages.underload.generator:underload_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -73,7 +73,7 @@ seed = 1847
 size = 6118
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.underload.generator:underload"
+construction = "esolangs.languages.underload.generator:underload_request"
 
 [resource_evidence]
 version = 1
@@ -85,7 +85,7 @@ arities = [3, 6]
 first = 3
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.underload.generator:underload"
+construction = "esolangs.languages.underload.generator:underload_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: n slots, 9 a level, carries" }
 
 [resource_evidence.workspace]
@@ -95,7 +95,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.underload.generator:underload"
+construction = "esolangs.languages.underload.generator:underload_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: spliced program, stack" }
 
 [resource_evidence.scaling]
@@ -105,7 +105,7 @@ arities = [4, 5, 6, 7]
 first = 4
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.underload.generator:underload"
+construction = "esolangs.languages.underload.generator:underload_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: 241 a five-input half", formula = "F" }
 
 [semantic_evidence]
@@ -124,5 +124,5 @@ source = { unit = "chars", value = 44 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.underload.generator:underload"
+construction = "esolangs.languages.underload.generator:underload_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: correctness repair: one-character !/* setters replace padded space/~ and the padded four-character pair. ()(~)$(!)* drops or concatenates the optional tilde, then appends ! to build ! or ~!. All widths below5 use this builder; no input padding remains. All12720 n1..3 variant rows pass; 276 default templates are byte-identical, with all8 pins and3 Size anchors unchanged. Default proofs/scopes and balanced example remain unchanged. Width1 XOR123->115chars; exhaustive n3 narrow total43620->40572. Width4 now constructs selectors instead of embedding the illegal padded pair. Both preserve the three-column floor and template provenance."

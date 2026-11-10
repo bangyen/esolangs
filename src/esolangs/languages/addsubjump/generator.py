@@ -23,6 +23,8 @@ from esolangs.generation.helpers import (
     input_weights,
     stored_inputs,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: The ``d`` operand of every instruction: cell 7, the last word of the
 #: first data block, which nothing writes, so ``*d > 0`` never holds and the
@@ -404,3 +406,8 @@ def _addsubjump_ordered(
     build(0, root)
 
     return " ".join(map(str, _memory(instructions, values, targets, [*named, *values])))
+
+
+def addsubjump_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return addsubjump(request.table)

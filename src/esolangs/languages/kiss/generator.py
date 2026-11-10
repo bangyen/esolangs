@@ -15,6 +15,8 @@ Size:
 """
 
 from esolangs.generation.helpers import subtree_ids
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Each leaf outputs its bit and halts.
 _LEAF = {"0": "KK", "1": "SK"}
@@ -48,3 +50,8 @@ def kiss(truth_table: str) -> str:
             parts.append("S(")
             work += [")", (depth + 1, hi), ")(", (depth + 1, lo)]
     return "".join(parts)
+
+
+def kiss_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return kiss(request.table)

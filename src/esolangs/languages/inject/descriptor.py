@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Inject."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.inject.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Inject",
@@ -19,11 +21,12 @@ LANGUAGE = Language(
         eof="an exhausted readto empties the block",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.inject.generator", "inject", ("truth_table", "width")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.inject.generator", "inject_request"
         ),
-        balance=FunctionRef(
-            "esolangs.languages.inject.generator", "_balance", ("table", "default")
+        layout_width=True,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.inject.generator", "inject_balance_request"
         ),
         no_wrap="blocks and executable commands are delimited by source lines",
     ),

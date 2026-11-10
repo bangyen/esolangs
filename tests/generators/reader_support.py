@@ -8,6 +8,7 @@ import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
+from tests.support.generator_support import generator_for
 from tests.support.witness_tables import row_bits
 
 
@@ -17,7 +18,7 @@ def _reader(language_id: str) -> tuple[Callable[[str], Any], Callable[..., None]
     assert lang.backend is not None
     assert lang.runtime.interpreter is not None
     module = importlib.import_module(f"esolangs.languages.{lang.id}.interpreter")
-    return lang.backend.generate, module.run
+    return generator_for(lang.name), module.run
 
 
 #: The tree readers whose ``LANGUAGE`` asks for these shared checks.

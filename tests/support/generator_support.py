@@ -15,6 +15,26 @@ from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import parity, row_bits
 
 
+def generator_for(language: str):
+    """Bind default dialect choices while exercising the typed backend."""
+    from functools import wraps
+
+    from esolangs.generation.requests import GenerationRequest, Options
+    from esolangs.registry import LANGUAGES
+
+    lang = LANGUAGES[resolve(language)]
+    assert lang.backend is not None
+    operation = lang.backend.generate
+    schema = lang.runtime.dialect_schema
+    options = Options(tuple(schema.defaults.items())) if schema else Options()
+
+    @wraps(operation)
+    def emit(table: str):
+        return operation(GenerationRequest(table, options=options))
+
+    return emit
+
+
 def assert_every_row(
     language: str, table: str, *, program: esolangs.ProgramSource | None = None
 ) -> None:
@@ -138,10 +158,9 @@ def assert_an_ignored_input_costs(name: str, n: int, cost: int) -> None:
     indexed by the essential inputs still reads the ignored one; it used to
     grow as much as a real input, the table doubled over the bit.
     """
-    from esolangs.registry import LANGUAGES
 
     inner = "".join(str(int(row.bit_count() == 1)) for row in range(2**n))
-    build = LANGUAGES[name].backend.generate
+    build = generator_for(name)
     assert build is not None
     for at in (0, n // 2, n):
         low = n - at

@@ -63,7 +63,7 @@ rule = "parity"
 size = 6477
 unit = "codels"
 scale = 1
-construction = "esolangs.languages.piet.generator:piet"
+construction = "esolangs.languages.piet.generator:piet_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -71,7 +71,7 @@ rule = "and"
 size = 66
 unit = "codels"
 scale = 1
-construction = "esolangs.languages.piet.generator:piet"
+construction = "esolangs.languages.piet.generator:piet_request"
 
 [[evidence.anchors]]
 arity = 8
@@ -79,7 +79,7 @@ rule = "majority"
 size = 87
 unit = "codels"
 scale = 1
-construction = "esolangs.languages.piet.generator:piet"
+construction = "esolangs.languages.piet.generator:piet_request"
 
 [resource_evidence]
 version = 1
@@ -91,7 +91,7 @@ arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "steps"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.piet.generator:piet"
+construction = "esolangs.languages.piet.generator:piet_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..7, then at most F: triples or small projections", formula = "F" }
 
 [resource_evidence.workspace]
@@ -101,7 +101,7 @@ arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.piet.generator:piet"
+construction = "esolangs.languages.piet.generator:piet_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..7, then at most F: stack and cursor", formula = "F" }
 
 [resource_evidence.scaling]
@@ -111,7 +111,7 @@ arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "codels"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.piet.generator:piet"
+construction = "esolangs.languages.piet.generator:piet_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..7, then at most F", formula = "F" }
 
 [semantic_evidence]

@@ -28,9 +28,11 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.lookup import packed_cells
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.befunge import descriptor
+from esolangs.runtime._program import Program
 from esolangs.runtime.source_hints import with_hint
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
@@ -362,3 +364,15 @@ def balance_befunge(truth_table: str, default: str) -> str:
     if n <= 10 and parity_bias(truth_table) is not None:
         candidates.append(befunge(truth_table, 1))
     return min(candidates, key=balance_score)
+
+
+def befunge_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return befunge(request.table, request.width)
+    return befunge(request.table)
+
+
+def befunge_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_befunge(request.table, request.text_source())

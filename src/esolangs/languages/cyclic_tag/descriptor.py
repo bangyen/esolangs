@@ -1,12 +1,14 @@
 """Runtime and compiler capabilities for Cyclic tag."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.cyclic_tag.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 PAIR = ("0", "1")
 
@@ -22,9 +24,10 @@ LANGUAGE = Language(
         empty_program="Cyclic tag requires productions,queue using bits and semicolons",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.cyclic_tag.generator", "cyclic_tag", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.cyclic_tag.generator", "cyclic_tag_request"
         ),
+        layout_width=False,
         # A positional production walk, not a tree of callable residuals.
         shape=Shape.LOOKUP,
         wrap=wrap_chars,

@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Back."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.back.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 PAIR = ("-", "+")
 
@@ -22,11 +24,12 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.back.generator", "back", ("truth_table", "width")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.back.generator", "back_request"
         ),
-        balance=FunctionRef(
-            "esolangs.languages.back.generator", "_balance", ("table", "default")
+        layout_width=True,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.back.generator", "back_balance_request"
         ),
         no_wrap="the beam path and embedded input occupy fixed grid coordinates",
         template=TemplateSpec(pair=PAIR),

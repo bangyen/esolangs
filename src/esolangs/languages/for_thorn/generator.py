@@ -26,6 +26,8 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     subtree_ids,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def _forth_const(value: int) -> str:
@@ -118,3 +120,8 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
     prog.append(reads)
     prog.append("1+:;.")
     return "".join(prog)
+
+
+def for_thorn_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return for_thorn(request.table)

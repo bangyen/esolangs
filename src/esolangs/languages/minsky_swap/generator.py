@@ -28,7 +28,9 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
     symmetric_weights,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 
@@ -216,3 +218,15 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
     return template in (layout(1), layout(10), layout(15)) or same_up_to_wrapping(
         template, plain
     )
+
+
+def minsky_swap_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return minsky_swap(request.table, request.width)
+    return minsky_swap(request.table)
+
+
+def minsky_swap_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

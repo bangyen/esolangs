@@ -29,6 +29,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 __all__ = ["home_row"]
 
@@ -105,3 +107,8 @@ def _program(truth_table: str, *, negated: bool = False) -> str:
         for at, (pair, length) in enumerate(runs[:-1], 1)
     ]
     return _SETUP + gates + "fff" + "".join(leaves) + _FLAGS[runs[-1][0]][2] + "k"
+
+
+def home_row_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return home_row(request.table)

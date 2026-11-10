@@ -1,12 +1,14 @@
 """Runtime and compiler capabilities for Hot."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.hot.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Hot",
@@ -20,9 +22,10 @@ LANGUAGE = Language(
         empty_program="a Hot program needs at least one combinator",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.hot.generator", "hot", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.hot.generator", "hot_request"
         ),
+        layout_width=False,
         wrap=wrap_chars,
     ),
     contract=BooleanContract(input_shape="char_stream"),

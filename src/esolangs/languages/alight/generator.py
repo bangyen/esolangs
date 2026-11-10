@@ -24,8 +24,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight.descriptor import _dialect as _dialect
+from esolangs.runtime._program import Program
 
 __all__ = ["alight"]
 
@@ -550,3 +552,28 @@ def _balance_projected(
             table, n, {len(table)}, essential, postfix=postfix, columns=columns
         )
     return min(candidates, key=balance_score)
+
+
+def alight_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return alight(
+            request.table,
+            request.width,
+            expression_syntax=request.options.text("expression_syntax"),
+            list_update=request.options.text("list_update"),
+        )
+    return alight(
+        request.table,
+        expression_syntax=request.options.text("expression_syntax"),
+        list_update=request.options.text("list_update"),
+    )
+
+
+def alight_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_alight(
+        request.table,
+        request.text_source(),
+        expression_syntax=request.options.text("expression_syntax"),
+    )

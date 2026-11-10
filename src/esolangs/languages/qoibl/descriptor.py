@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Qoibl."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.qoibl.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Qoibl",
@@ -18,13 +20,14 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.qoibl.generator", "qoibl", ("truth_table", "width")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.qoibl.generator", "qoibl_request"
         ),
+        layout_width=True,
         # Not a tree: the table is one binary literal the reads divide down.
         shape=Shape.LOOKUP,
-        balance=FunctionRef(
-            "esolangs.languages.qoibl.generator", "balance_qoibl", ("table", "default")
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.qoibl.generator", "qoibl_balance_request"
         ),
     ),
     contract=BooleanContract(

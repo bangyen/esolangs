@@ -27,6 +27,7 @@ from esolangs.generation.helpers import (
     input_weights,
     symmetric_weights,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _BRACKET_LITERAL,
@@ -34,6 +35,7 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_space_delimited,
 )
+from esolangs.runtime._program import Program
 
 # Characters around the table in its literal push: ``[PSH STR "`` opens it
 # (10 chars) and ``"]`` closes the literal (2 chars).
@@ -191,3 +193,15 @@ def _balance(table: str, default: str) -> str:
     centre = _chunked_columns(size, list(map(len, suffix)))
     candidates.extend(modulous(table, centre + offset) for offset in (-3, -1, 1, 3))
     return min(candidates, key=balance_score)
+
+
+def modulous_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return modulous(request.table, request.width)
+    return modulous(request.table)
+
+
+def modulous_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

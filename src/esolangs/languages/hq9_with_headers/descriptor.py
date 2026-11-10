@@ -1,10 +1,12 @@
 """Runtime and compiler capabilities for HQ9+ with headers."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.hq9_with_headers.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "HQ9+ with headers",
@@ -20,11 +22,10 @@ LANGUAGE = Language(
         ),
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.hq9_with_headers.generator",
-            "hq9_with_headers",
-            ("truth_table",),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.hq9_with_headers.generator", "hq9_with_headers_request"
         ),
+        layout_width=False,
         # Not a tree: the table is one decimal literal the reads divide down.
         shape=Shape.LOOKUP,
         no_wrap="a line break ends a header line; only a trailing \\ joins two",

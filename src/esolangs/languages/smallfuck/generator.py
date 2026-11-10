@@ -38,6 +38,7 @@ from esolangs.generation.helpers import (
     unmark,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_block import (
     _repeated_blocks,
@@ -46,6 +47,7 @@ from esolangs.generation.shared_block import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _RUN, balance_score, wrap_program
+from esolangs.runtime._program import Program
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
@@ -828,3 +830,15 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
         if template.replace("\n", "") == str(layout(width)).replace("\n", ""):
             return True
     return same_up_to_wrapping(template, plain)
+
+
+def smallfuck_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return smallfuck(request.table, request.width)
+    return smallfuck(request.table)
+
+
+def smallfuck_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

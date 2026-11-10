@@ -33,6 +33,8 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 __all__ = ["three_x"]
 
@@ -387,3 +389,8 @@ def _three_x_emit(
     """
     body = _Emitter(table, essential, shares).emit_all()
     return _key_pieces(_read_head(body, perm, n) + body)
+
+
+def three_x_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return three_x(request.table)

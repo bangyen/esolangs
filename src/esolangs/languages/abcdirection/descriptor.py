@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for ABCDirection."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.abcdirection.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "ABCDirection",
@@ -19,16 +21,13 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.abcdirection.generator",
-            "abcdirection",
-            ("truth_table",),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.abcdirection.generator", "abcdirection_request"
         ),
+        layout_width=False,
         shape=Shape.REDUCING,
-        balance=FunctionRef(
-            "esolangs.languages.abcdirection.generator",
-            "_balance",
-            ("table", "default"),
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.abcdirection.generator", "abcdirection_balance_request"
         ),
         no_wrap="a newline adds a grid row and moves every vertical path",
         grid=True,

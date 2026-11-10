@@ -43,7 +43,9 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
+from esolangs.runtime._program import Program
 
 __all__ = ["crement"]
 
@@ -245,3 +247,15 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
         or same_tokens(template, layout(layout_width(template)))
         or same_up_to_wrapping(template, plain)
     )
+
+
+def crement_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return crement(request.table, request.width)
+    return crement(request.table)
+
+
+def crement_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

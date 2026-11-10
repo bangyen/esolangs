@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
     layout_width,
     same_tokens,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _join_tokens,
@@ -35,6 +36,7 @@ from esolangs.generation.wrap import (
     wrap_program,
 )
 from esolangs.languages.fractran.interpreter.index import SMALL_BASE
+from esolangs.runtime._program import Program
 
 #: How each input is set: the exponent of its prime in the starting value.
 #: One digit wide, so the run is one :data:`TEMPLATE_CHAR`.
@@ -194,3 +196,15 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
         same_tokens(template, program)
         for program in (layout(1), layout(layout_width(template)), plain)
     )
+
+
+def fractran_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return fractran(request.table, request.width)
+    return fractran(request.table)
+
+
+def fractran_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

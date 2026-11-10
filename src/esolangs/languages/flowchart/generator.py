@@ -38,7 +38,9 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 # Fewest table rows a subtree must span for the stacked layout to draw it once.
 _SHARE_ROWS = 8
@@ -972,3 +974,15 @@ def _balance(table: str, default: str) -> str:
         ),
         key=balance_score,
     )
+
+
+def flowchart_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return flowchart(request.table, request.width)
+    return flowchart(request.table)
+
+
+def flowchart_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

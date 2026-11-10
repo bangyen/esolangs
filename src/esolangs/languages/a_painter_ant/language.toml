@@ -65,7 +65,7 @@ rule = "parity"
 size = 6684
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -73,7 +73,7 @@ rule = "and"
 size = 1071
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant_request"
 
 [resource_evidence]
 version = 1
@@ -85,7 +85,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one pass to the fixed point, one proving the repeat", formula = "2L" }
 
 [resource_evidence.workspace]
@@ -96,7 +96,7 @@ arities = [3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant_request"
 description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}: corridor, answers, ant, cursor, visited bounds" }
 
 [resource_evidence.scaling]
@@ -106,7 +106,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant"
+construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]

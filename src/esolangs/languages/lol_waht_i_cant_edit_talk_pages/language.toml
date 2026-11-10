@@ -61,7 +61,7 @@ rule = "parity"
 size = 1222
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages"
+construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages_request"
 
 [resource_evidence]
 version = 1
@@ -73,7 +73,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages"
+construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
@@ -83,7 +83,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages"
+construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
@@ -93,7 +93,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages"
+construction = "esolangs.languages.lol_waht_i_cant_edit_talk_pages.generator:lol_waht_i_cant_edit_talk_pages_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one while-equal loop per branch" }
 
 [semantic_evidence]

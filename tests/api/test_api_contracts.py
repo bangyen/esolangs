@@ -1,6 +1,5 @@
 """Contracts the public API owes a caller who has only read the docs."""
 
-import inspect
 import pathlib
 import re
 import subprocess
@@ -155,8 +154,7 @@ class TestDescribe:
         signature = {
             name
             for name, lang in LANGUAGES.items()
-            if lang.backend is not None
-            and "width" in inspect.signature(lang.backend.generate).parameters
+            if lang.backend is not None and lang.backend.layout_width
         }
         assert aware == signature
         assert aware, "no generator lays itself out; the flag guards nothing"

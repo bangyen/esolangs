@@ -20,6 +20,8 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Pushes 48, the byte ``'0'``.
 _ZERO_BYTE = "6:+:+:+"
@@ -83,3 +85,8 @@ def pilas(truth_table: str) -> str:
             else:
                 line.append(char)
     return "".join(line) + "\n0{0}"
+
+
+def pilas_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return pilas(request.table)

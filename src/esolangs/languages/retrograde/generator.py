@@ -16,6 +16,8 @@ from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     subtree_ids,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def _moves(source: str) -> str:
@@ -112,3 +114,8 @@ def retrograde(truth_table: str) -> str:
         stack.extend(reversed(parts))
     chunks.append(">" * n)
     return _moves("".join(chunks))
+
+
+def retrograde_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return retrograde(request.table)

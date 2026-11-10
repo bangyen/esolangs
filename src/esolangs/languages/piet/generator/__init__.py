@@ -17,6 +17,7 @@ from functools import cache
 
 from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
 from esolangs.generation.lookup import packed_cells
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.piet.generator.balance import (
     _bounded_operations,
     balance,
@@ -43,6 +44,7 @@ from esolangs.languages.piet.generator.operations import (
 )
 from esolangs.languages.piet.generator.packing import _raster_score, smallest
 from esolangs.raster import Raster
+from esolangs.runtime._program import Program
 
 
 @cache
@@ -168,3 +170,15 @@ def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raste
     if width is not None:
         return folded(truth_table, width).upscaled(scale)
     return _default(truth_table).upscaled(scale)
+
+
+def piet_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return piet(request.table, request.width)
+    return piet(request.table)
+
+
+def piet_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.raster_source())

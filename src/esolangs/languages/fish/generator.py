@@ -38,7 +38,9 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.lookup import packed_cells
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 
 def fish(truth_table: str, width: int | None = None) -> str:
@@ -289,3 +291,15 @@ def balance_fish(truth_table: str, default: str) -> str:
         for scale in (0.9, 1.0, 1.1, 1.2)
     )
     return min(candidates, key=balance_score)
+
+
+def fish_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return fish(request.table, request.width)
+    return fish(request.table)
+
+
+def fish_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_fish(request.table, request.text_source())

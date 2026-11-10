@@ -17,6 +17,8 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 _READ = "im awesome tottaly but no x"
 
@@ -55,3 +57,8 @@ def lol_waht_i_cant_edit_talk_pages(truth_table: str) -> str:
     }
     body = fold_subtables(truth_table, terminals, _branch)
     return "\n".join(("user:x", *body))
+
+
+def lol_waht_i_cant_edit_talk_pages_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return lol_waht_i_cant_edit_talk_pages(request.table)

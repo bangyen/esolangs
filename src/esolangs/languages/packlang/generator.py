@@ -37,6 +37,7 @@ from esolangs.generation.helpers import (
     input_weights,
     subtree_ids,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width, run_widths
 from esolangs.generation.wrap import (
     _join_tokens,
@@ -50,6 +51,7 @@ from esolangs.languages.packlang.wrapping import (
     _PACKLANG_LEXEME,
     _packlang,
 )
+from esolangs.runtime._program import Program
 
 __all__ = ["packlang"]
 
@@ -365,3 +367,21 @@ def _folded(statements: list[str]) -> list[str]:
         else:
             lines.append(statement)
     return lines
+
+
+def packlang_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return packlang(
+            request.table,
+            request.width,
+            literal_policy=request.options.text("literal_policy"),
+        )
+    return packlang(
+        request.table, literal_policy=request.options.text("literal_policy")
+    )
+
+
+def packlang_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_packlang(request.table, request.text_source())

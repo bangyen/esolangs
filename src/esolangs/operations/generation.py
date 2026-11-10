@@ -1,10 +1,10 @@
 """Generate and bind explicit program artifacts."""
 
-from collections.abc import Callable
 from functools import cache
 from math import isqrt
-from typing import Any, cast
+from typing import cast
 
+from esolangs._dialect import Scalar
 from esolangs.artifacts import (
     Artifact,
     ProgramArtifact,
@@ -19,6 +19,7 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
     unmark,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest, Options
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_program, wrap_program
 from esolangs.raster import Raster
@@ -29,7 +30,6 @@ from esolangs.registry import (
     resolve,
     template_setters,
 )
-from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_bits, check_flag, check_scale, check_width
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
@@ -120,10 +120,14 @@ def generate(
     check_width(width)
     laid_out = width is not None and backend.layout_width
     try:
-        generated = (
-            fn(truth_table, width, **options)
-            if laid_out
-            else fn(truth_table, **options)
+        schema = lang.runtime.dialect_schema
+        choices = (schema.defaults if schema is not None else {}) | options
+        generated = fn(
+            GenerationRequest(
+                truth_table,
+                width if laid_out else None,
+                Options(tuple(choices.items())),
+            )
         )
     except EsolangError:
         raise
@@ -147,10 +151,18 @@ def generate(
     return TemplateArtifact(text, resolved, TemplateBindings(char, pairs), settings)
 
 
+def _backend_options(language: str, options: dict[str, Scalar]) -> Options:
+    """Return complete choices for the selected backend request."""
+    schema = LANGUAGES[resolve(language)].runtime.dialect_schema
+    return Options(
+        tuple(((schema.defaults if schema is not None else {}) | options).items())
+    )
+
+
 def _generate_balanced(
     language: str,
     truth_table: str,
-    options: dict[str, Any],
+    options: dict[str, Scalar],
     settings: DialectSettings | None,
 ) -> Artifact:
     """Return ``generate(..., balance=True)``: the default, rebuilt squarest."""
@@ -168,19 +180,18 @@ def _generate_balanced(
     if isinstance(source, Raster):
         if balancer is None:
             return default
-        raster_balance = cast(Callable[[str, Raster], Raster], balancer)
-        return ProgramArtifact(
-            raster_balance(truth_table, source), name, settings, scale=1
+        balanced = balancer(
+            BalanceRequest(truth_table, source, _backend_options(lang.id, options))
         )
+        if not isinstance(balanced, Raster):
+            raise ProgramError(f"{name}'s balancer did not return a Raster")
+        return ProgramArtifact(balanced, name, settings, scale=1)
     if balancer is not None:
-        # A dialect setting the balancer names changes what it rebuilds.
-        accepted = backend.balance_parameters
-        balance_options = {
-            key: value for key, value in options.items() if key in accepted
-        }
-        text = cast(Callable[..., str], balancer)(
-            truth_table, source, **balance_options
+        text = balancer(
+            BalanceRequest(truth_table, source, _backend_options(lang.id, options))
         )
+        if not isinstance(text, str):
+            raise ProgramError(f"{name}'s balancer did not return text")
         if isinstance(default, TemplateArtifact):
             text, char, pairs = render_template(lang.id, text, default.bindings.inputs)
             return TemplateArtifact(text, name, TemplateBindings(char, pairs), settings)
@@ -222,8 +233,11 @@ def _is_template_for(
     width_aware = backend.layout_width
 
     @cache
-    def layout(width: int) -> Program:
-        return generate(name, truth_table, width=width, settings=settings).source
+    def layout(width: int) -> str:
+        source = generate(name, truth_table, width=width, settings=settings).source
+        if not isinstance(source, str):
+            raise TemplateError("template layouts must return text")
+        return source
 
     # Layouts may switch representations; their floor is a named candidate,
     # unlike whitespace wrapping, so compare that template exactly too.

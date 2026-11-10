@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Basicfuck."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.basicfuck.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Basicfuck",
@@ -19,9 +21,10 @@ LANGUAGE = Language(
         eof="`read` at EOF raises: the page's cat covers three EOF conventions",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.basicfuck.generator", "basicfuck", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.basicfuck.generator", "basicfuck_request"
         ),
+        layout_width=False,
         no_wrap="the directive and #allocate are lines one and two",
     ),
     contract=BooleanContract(input_shape="char_stream"),

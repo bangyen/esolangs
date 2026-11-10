@@ -32,6 +32,8 @@ from esolangs.generation.helpers import (
     input_weights,
     symmetric_weights,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def _bfstack_encoder(weights: list[int], start: int = 1) -> str:
@@ -180,3 +182,8 @@ def _bfstack_plain(truth_table: str) -> str:
         return ">+," + "-" * _ASCII_ZERO + "[<-" + one + ">]<[<" + zero + ">]<"
 
     return build(0, 0, len(truth_table))
+
+
+def bfstack_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return bfstack(request.table)

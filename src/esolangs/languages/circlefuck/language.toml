@@ -73,7 +73,7 @@ seed = 1847
 size = 1541
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.circlefuck.generator:circlefuck"
+construction = "esolangs.languages.circlefuck.generator:circlefuck_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -81,7 +81,7 @@ rule = "parity"
 size = 423
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.circlefuck.generator:circlefuck"
+construction = "esolangs.languages.circlefuck.generator:circlefuck_request"
 
 [[evidence.anchors]]
 arity = 16
@@ -89,7 +89,7 @@ rule = "and"
 size = 753
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.circlefuck.generator:circlefuck"
+construction = "esolangs.languages.circlefuck.generator:circlefuck_request"
 
 [resource_evidence]
 version = 1
@@ -101,7 +101,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.circlefuck.generator:circlefuck"
+construction = "esolangs.languages.circlefuck.generator:circlefuck_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} to n=7: indexed deletion and clamped reads", formula = "E" }
 
 [resource_evidence.workspace]
@@ -111,7 +111,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.circlefuck.generator:circlefuck"
+construction = "esolangs.languages.circlefuck.generator:circlefuck_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: tape and cursors", formula = "B + bl(L-1) + bl(h) + bl(n) + 1" }
 
 [resource_evidence.scaling]
@@ -121,7 +121,7 @@ arities = [1, 2, 3, 5, 8, 9]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.circlefuck.generator:circlefuck"
+construction = "esolangs.languages.circlefuck.generator:circlefuck_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the table, batched clamped reads, digit-cell walks", formula = "N" }
 
 [semantic_evidence]

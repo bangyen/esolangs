@@ -59,7 +59,7 @@ seed = 1847
 size = 7154
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.nq.generator:nq"
+construction = "esolangs.languages.nq.generator:nq_request"
 
 [resource_evidence]
 version = 1
@@ -71,7 +71,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.nq.generator:nq"
+construction = "esolangs.languages.nq.generator:nq_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: one extra guard for compact parity leaves" }
 
 [resource_evidence.workspace]
@@ -81,7 +81,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.nq.generator:nq"
+construction = "esolangs.languages.nq.generator:nq_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: queued trits, flag, cursor, lap and input progress" }
 
 [resource_evidence.scaling]
@@ -91,7 +91,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.nq.generator:nq"
+construction = "esolangs.languages.nq.generator:nq_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]

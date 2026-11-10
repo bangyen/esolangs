@@ -23,8 +23,10 @@ from math import isqrt
 from typing import NamedTuple
 
 from esolangs.generation.helpers import _validate_truth_table, short_name, subtree_ids
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT, balanced_token_width
 from esolangs.generation.wrap import wrap_space_delimited
+from esolangs.runtime._program import Program
 
 
 class _Node(NamedTuple):
@@ -162,3 +164,13 @@ def _balance(_table: str, default: str) -> str:
     if isqrt(CELL_ASPECT * len(default)) < max(map(len, words)):
         words = [t for w in words for t in _cut(w, _CUT)]
     return wrap_space_delimited(" ".join(words), balanced_token_width(words, " "))
+
+
+def quassaunt_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return quassaunt(request.table)
+
+
+def quassaunt_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

@@ -43,9 +43,7 @@ __all__ = [
 # sweep skip sixteen boolean generators silently, which is how one
 # language's input count survived; one map leaves no wrong pick.
 BY_BOOLEAN: dict[str, Language] = {
-    lang.backend.generator_name: lang
-    for lang in LANGUAGES.values()
-    if lang.backend is not None
+    lang.id: lang for lang in LANGUAGES.values() if lang.backend is not None
 }
 
 # Display name -> (interpreter module, split lines).

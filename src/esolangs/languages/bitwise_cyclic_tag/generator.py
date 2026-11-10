@@ -24,6 +24,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 
@@ -50,3 +52,8 @@ def bitwise_cyclic_tag(truth_table: str) -> str:
         "1" + table[i] + "0" + table[i + 1] + "100" for i in range(0, len(table), 2)
     )
     return f"{reads}1{_SENTINEL}0{rows},{TEMPLATE_CHAR * n}{_SENTINEL}"
+
+
+def bitwise_cyclic_tag_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return bitwise_cyclic_tag(request.table)

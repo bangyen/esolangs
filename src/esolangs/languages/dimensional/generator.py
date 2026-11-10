@@ -34,11 +34,13 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.lookup import change_points
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _DIMENSIONAL_COMMAND,
     wrap_program,
 )
+from esolangs.runtime._program import Program
 
 __all__ = ["dimensional"]
 
@@ -227,3 +229,15 @@ def _balance(table: str, default: str) -> str:
     tokens = re.findall(_DIMENSIONAL_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
     return _program(table, width)
+
+
+def dimensional_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return dimensional(request.table, request.width)
+    return dimensional(request.table)
+
+
+def dimensional_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

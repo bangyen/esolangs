@@ -73,7 +73,7 @@ seed = 1847
 size = 126380
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian"
+construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
 
 [[evidence.anchors]]
 arity = 12
@@ -82,7 +82,7 @@ seed = 1847
 size = 323670
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian"
+construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
 
 [resource_evidence]
 version = 1
@@ -94,7 +94,7 @@ arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian"
+construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "E" }
 
 [resource_evidence.workspace]
@@ -104,7 +104,7 @@ arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian"
+construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "B" }
 
 [resource_evidence.scaling]
@@ -114,7 +114,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian"
+construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "V" }
 
 [semantic_evidence]
@@ -133,5 +133,5 @@ source = { unit = "chars", value = 24423 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian"
+construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: construction repair: precompute weight-minus-suffix carry deltas, then update a leaf address at the lowest set bit of each binary row. Weight reads n5/6/7 fall160/384/896->5/6/7, removing the nT scan without changing leaf order or tokens.562 before/after programs are byte-identical;102 native controls include generic n5..12 and both IO moduli. All8 pins and Size anchors remain unchanged; numerical proof bounds/scopes unchanged. Pool wording now distinguishes the four blind pooled weights from the first light read arm."

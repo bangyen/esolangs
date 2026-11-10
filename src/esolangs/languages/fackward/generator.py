@@ -17,6 +17,8 @@ Size:
 """
 
 from esolangs.generation.decision import fold_subtables
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def _node(zero: str, one: str) -> str:
@@ -53,3 +55,8 @@ def fackward(truth_table: str) -> str:
 
 
 #: Break anywhere but inside a number, which a newline would split.
+
+
+def fackward_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return fackward(request.table)

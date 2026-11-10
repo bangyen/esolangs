@@ -21,6 +21,8 @@ from esolangs.generation.packed_decoder import (
     _sbleq_constant,
     packed_decoder,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Tables up to this many rows keep the shared tree; larger ones also try
 #: the packed decoder.
@@ -167,3 +169,8 @@ def _tree_min_chars(truth_table: str, n: int) -> int:
         + 13 * leaf_bits.bit_count()
         + digits(code_base)
     )
+
+
+def s_bleq_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return s_bleq(request.table)

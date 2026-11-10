@@ -48,7 +48,9 @@ Decisions:
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.interprogck8 import descriptor
+from esolangs.runtime._program import Program
 from esolangs.runtime.source_hints import with_hint
 
 #: The rung.  ``DownAccLines`` jumps to ``ip + 1 + acc``.
@@ -236,3 +238,8 @@ def interprogck8(truth_table: str) -> str:
     plan = _Plan(truth_table, n, free)
     plan.lay(0, 0)
     return plan.text()
+
+
+def interprogck8_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return interprogck8(request.table)

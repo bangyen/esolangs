@@ -56,7 +56,7 @@ seed = 1847
 size = 203
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.thue.generator:thue"
+construction = "esolangs.languages.thue.generator:thue_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -65,7 +65,7 @@ seed = 1847
 size = 735
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.thue.generator:thue"
+construction = "esolangs.languages.thue.generator:thue_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -73,7 +73,7 @@ rule = "and"
 size = 585
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.thue.generator:thue"
+construction = "esolangs.languages.thue.generator:thue_request"
 
 [resource_evidence]
 version = 1
@@ -85,7 +85,7 @@ arities = [3, 7]
 first = 1
 unit = "rewrites"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.thue.generator:thue"
+construction = "esolangs.languages.thue.generator:thue_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: n marker sweeps, one expanding pairs" }
 
 [resource_evidence.workspace]
@@ -95,7 +95,7 @@ arities = [3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.thue.generator:thue"
+construction = "esolangs.languages.thue.generator:thue_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the T + 3 character state string" }
 
 [resource_evidence.scaling]
@@ -105,7 +105,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.thue.generator:thue"
+construction = "esolangs.languages.thue.generator:thue_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: T/2 + 223 once pairs pack" }
 
 [semantic_evidence]
@@ -131,6 +131,6 @@ source = { unit = "chars", value = 195 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.thue.generator:thue"
+construction = "esolangs.languages.thue.generator:thue_request"
 seed = 0
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: correctness repair: a queued single-entry layout now carries R left after chunk expansion, before S reads. All9932 small candidate rows pass with one active rewrite, including the formerly broken LSaRE state; old failure control halts without output. Public default/narrow/balanced source comparisons stay byte-identical; default bounds, pins and anchors unchanged. Fold prose corrected to eight extra rules,78 newline-inclusive chars."

@@ -62,7 +62,7 @@ seed = 1847
 size = 738
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.alight.generator:alight"
+construction = "esolangs.languages.alight.generator:alight_request"
 
 [[evidence.anchors]]
 arity = 16
@@ -71,7 +71,7 @@ seed = 1847
 size = 33092
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.alight.generator:alight"
+construction = "esolangs.languages.alight.generator:alight_request"
 
 [resource_evidence]
 version = 1
@@ -83,7 +83,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.alight.generator:alight"
+construction = "esolangs.languages.alight.generator:alight_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n Horner reads and one `at`" }
 
 [resource_evidence.workspace]
@@ -93,7 +93,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.alight.generator:alight"
+construction = "esolangs.languages.alight.generator:alight_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n in 1..25", formula = "15n + 19 + bl(L-4) + 2bl(n)" }
 
 [resource_evidence.scaling]
@@ -103,7 +103,7 @@ arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.alight.generator:alight"
+construction = "esolangs.languages.alight.generator:alight_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one literal", formula = "T/2 + 16n + 61 + digits(48(T/2-1))" }
 
 [semantic_evidence]

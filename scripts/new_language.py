@@ -90,6 +90,8 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def {slug}(truth_table: str) -> str:
@@ -98,13 +100,20 @@ def {slug}(truth_table: str) -> str:
     raise NotImplementedError("{name} generator")
 
 
+def {slug}_request(request: GenerationRequest) -> Program:
+    """Emit source through a typed backend request."""
+    return {slug}(request.table)
+
+
 '''
 
 _DESCRIPTOR = '''"""Runtime and compiler capabilities for {name}."""
 
 from esolangs.registry._language import Language
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._functions import FunctionRef
+from esolangs.registry._operations import OperationRef
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 from esolangs.runtime._capabilities import DebugSpec, MachineCapabilities
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._definition import RuntimeSpec
@@ -117,8 +126,8 @@ LANGUAGE = Language(
             completion=Completion.HALTED, debug=DebugSpec(ip="ind")
         ),
     ),
-    backend=BooleanBackend(entrypoint=FunctionRef(
-        "esolangs.languages.{slug}.generator", "{slug}", ("truth_table",)
+    backend=BooleanBackend(entrypoint=OperationRef[GenerationRequest, Program](
+        "esolangs.languages.{slug}.generator", "{slug}_request"
     )),
 )
 '''
@@ -253,7 +262,7 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
             f'declare LANGUAGE = Language("{name}", '
             f'runtime=RuntimeSpec("{slug}", ...)) with explicit '
             "machine_preparation, completion_entrypoint and capabilities; "
-            "add a BooleanBackend with a FunctionRef entrypoint for a generator, "
+            "add a BooleanBackend with an OperationRef entrypoint for a generator, "
             "split=True only when run() takes source lines, "
             "and the Boolean I/O contract; "
             "run `python scripts/docs/generate.py docs` to refresh documentation",

@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Chicken."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.chicken.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Chicken",
@@ -18,9 +20,10 @@ LANGUAGE = Language(
         eof="a short input is a shorter string; a missing bit is not 1, so reads 0",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.chicken.generator", "chicken", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.chicken.generator", "chicken_request"
         ),
+        layout_width=False,
         shape=Shape.LOOKUP,
         no_wrap="a line break is the instruction boundary and a blank line is a cell",
     ),

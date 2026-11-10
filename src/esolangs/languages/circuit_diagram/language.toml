@@ -92,7 +92,7 @@ rule = "and"
 size = 1207
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -100,7 +100,7 @@ rule = "parity"
 size = 211
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -109,7 +109,7 @@ seed = 1847
 size = 300724
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 
 [[evidence.anchors]]
 arity = 8
@@ -117,7 +117,7 @@ rule = "zero"
 size = 19
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 
 [resource_evidence]
 version = 1
@@ -129,7 +129,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: atomic muxes only shorten paths" }
 
 [resource_evidence.workspace]
@@ -139,7 +139,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, n ≤ 7; 7T + 2n - 9 after: latches, pulses", formula = "7T/2 + 2n - 5" }
 
 [resource_evidence.scaling]
@@ -149,7 +149,7 @@ arities = [9, 10, 11]
 first = 9
 unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: H-tree pool caps it", formula = "F" }
 
 [semantic_evidence]
@@ -172,7 +172,7 @@ source = { unit = "cells", value = 247 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Reuse the first narrow banded build below the five-column gate floor. With next_column>=1 and narrow stride4, limits1..4 make identical room decisions; free-column reuse is also limit-independent. Larger widths still reserve the output dash and colon through the second build. No emitted program, numerical bound, pin or Size anchor changes."
 
 [ablations.compact_balance_20261109]
@@ -185,5 +185,5 @@ scale = 1
 rows = [0, 1023]
 budget = 15
 band = "medium"
-construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram"
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 notes = "Adds a balanced-only H-pool candidate: existing atomic muxes, leaf extents rounded with unchanged routing clearance, and one retained function definition. Admission preserves the primitive area ceiling and expanded G<=T+n. Default pins and Size anchors remain unchanged. This smoke witness retains its prior winner; direct n=9/10 pool controls execute the new layout. Strict seeded n=10/12 enclosing-square exponent: 1.069, with 12 larger rows within unchanged resource bounds. Text may grow: this repairs shape growth, not source size."

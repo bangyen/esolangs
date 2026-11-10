@@ -64,7 +64,7 @@ rule = "parity"
 size = 132
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.painfuck.generator:painfuck"
+construction = "esolangs.languages.painfuck.generator:painfuck_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -73,7 +73,7 @@ seed = 1847
 size = 10156
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.painfuck.generator:painfuck"
+construction = "esolangs.languages.painfuck.generator:painfuck_request"
 
 [resource_evidence]
 version = 1
@@ -85,7 +85,7 @@ arities = [3, 6]
 first = 3
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.painfuck.generator:painfuck"
+construction = "esolangs.languages.painfuck.generator:painfuck_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} at n=3, then max(P,B,22n): affine, admitted banks or inline", formula = "62" }
 
 [resource_evidence.workspace]
@@ -95,7 +95,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.painfuck.generator:painfuck"
+construction = "esolangs.languages.painfuck.generator:painfuck_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: 2n + 2 cells, loop stack ≤ n" }
 
 [resource_evidence.scaling]
@@ -105,7 +105,7 @@ arities = [4, 7]
 first = 4
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.painfuck.generator:painfuck"
+construction = "esolangs.languages.painfuck.generator:painfuck_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: to n = 15" }
 
 [semantic_evidence]
@@ -130,6 +130,6 @@ source = { unit = "chars", value = 45 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.painfuck.generator:painfuck"
+construction = "esolangs.languages.painfuck.generator:painfuck_request"
 seed = 0
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Reuse the public validated arity when checking affine form. Whole constants already returned, so a successful affine form cannot have all-zero coefficients. No private helper contract or emitted program changes."

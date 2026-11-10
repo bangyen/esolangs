@@ -33,8 +33,10 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.lookup import change_points
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 #: The names Container gives its own meaning, which a generated container
 #: may not take.  The names draw from a mixed-case alphabet and so reach
@@ -632,3 +634,15 @@ def balance_container(table: str, default: str) -> str:
     if len(table) >= 16:
         candidates.append(_container_blocks(table))
     return min(candidates, key=balance_score)
+
+
+def container_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return container(request.table, request.width)
+    return container(request.table)
+
+
+def container_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_container(request.table, request.text_source())

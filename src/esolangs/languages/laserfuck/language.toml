@@ -75,7 +75,7 @@ seed = 1847
 size = 548
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.laserfuck.generator:laserfuck"
+construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 
 [[evidence.anchors]]
 arity = 5
@@ -84,7 +84,7 @@ seed = 1847
 size = 1640
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.laserfuck.generator:laserfuck"
+construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 
 [[evidence.anchors]]
 arity = 6
@@ -93,7 +93,7 @@ seed = 1847
 size = 4241
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.laserfuck.generator:laserfuck"
+construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -102,7 +102,7 @@ seed = 1847
 size = 15387
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.laserfuck.generator:laserfuck"
+construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 
 [[evidence.anchors]]
 arity = 16
@@ -110,7 +110,7 @@ rule = "and"
 size = 984713
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.laserfuck.generator:laserfuck"
+construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 
 [[evidence.anchors]]
 arity = 8
@@ -118,7 +118,7 @@ rule = "zero"
 size = 36
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.laserfuck.generator:laserfuck"
+construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 
 [resource_evidence]
 version = 1
@@ -130,7 +130,7 @@ arities = [5, 6, 7]
 first = 5
 unit = "steps"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.laserfuck.generator:laserfuck"
+construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 5, 6, then 11T+56n+2 at seed 2; other headings add at most 2", formula = "T+296n+682" }
 
 [resource_evidence.workspace]
@@ -140,7 +140,7 @@ arities = [5, 6, 7]
 first = 5
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.laserfuck.generator:laserfuck"
+construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} at n = 5, 6, then 12T+n+7+2bl(n)", formula = "8n+27" }
 
 [resource_evidence.scaling]
@@ -150,7 +150,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.laserfuck.generator:laserfuck"
+construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: a tree to n = 6, then three rows", formula = "N" }
 
 [semantic_evidence]

@@ -54,7 +54,7 @@ rule = "parity"
 size = 111
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.basicfuck.generator:basicfuck"
+construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 
 [resource_evidence]
 version = 1
@@ -66,7 +66,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.basicfuck.generator:basicfuck"
+construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: reads, two tests and a call a level, block tests" }
 
 [resource_evidence.workspace]
@@ -76,7 +76,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.basicfuck.generator:basicfuck"
+construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: digit cells, the answer, flags, counter" }
 
 [resource_evidence.scaling]
@@ -86,7 +86,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.basicfuck.generator:basicfuck"
+construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree" }
 
 [semantic_evidence]
@@ -106,5 +106,5 @@ source = { unit = "chars", value = 98 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.basicfuck.generator:basicfuck"
+construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: kept for parity and its complement, with canonical ignored-input reduction. Add ASCII48/49 in the explicit two-value range48..49, initializing the accumulator before the reads. Modular addition XORs the low bits; one reused input cell, one accumulator and the compiler's required variable-operand scratch replace the flag tree. Ignored inputs are read but not added; source8n+5m+59 and stepsn+m+2 for m essential inputs, so projections still fold. No loop, old-program race or table of cases. n7 537->150 chars (72.067%); n8 621->163 (73.752%); full parity has size13n+59 and commands2n+2. Savings keep growing: the old53-name budget loses linear parity sharing, reaching2725 chars at22 versus1797 from its earlier linear prices; the new rule remains linear, so there is no finite global saving peak. All-small old/new native runs4240, with254 unchanged programs and22 changed parity programs; n3 source39327->38742, commands23128->22800. Sampled native rows at4..6 and every row at7/8 pass; larger controls through22 execute. A modulo-three mutant fails on11. EOF still raises before output and sentinels remain unread. Global source/execution/workspace ceilings and exact arity scopes remain unchanged; eight pins remeasured, three changed; parity Size anchors updated, AND anchor and example unchanged."

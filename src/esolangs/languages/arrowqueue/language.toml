@@ -62,7 +62,7 @@ rule = "and"
 size = 4893
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+construction = "esolangs.languages.arrowqueue.generator:arrowqueue_request"
 
 [resource_evidence]
 version = 1
@@ -74,7 +74,7 @@ arities = [1, 7]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+construction = "esolangs.languages.arrowqueue.generator:arrowqueue_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: Horner doubling 8 a marker, a row 1, fold corridors" }
 
 [resource_evidence.workspace]
@@ -84,7 +84,7 @@ arities = [1, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+construction = "esolangs.languages.arrowqueue.generator:arrowqueue_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: queue, position, heading, halt and dump flags" }
 
 [resource_evidence.scaling]
@@ -94,7 +94,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+construction = "esolangs.languages.arrowqueue.generator:arrowqueue_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the least-area cascade or fold, T - 1 leaves", formula = "A" }
 
 [semantic_evidence]
@@ -113,5 +113,5 @@ source = { unit = "cells", value = 150 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.arrowqueue.generator:arrowqueue"
+construction = "esolangs.languages.arrowqueue.generator:arrowqueue_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Clamp and deduplicate the four proposed fold heights before construction. The two-input case builds10 and11 once rather than10 three times. Candidate order and emitted programs remain unchanged; no proof bound, pin or Size anchor changes. Corrected execution derivation (numeric ceiling unchanged): Execution: an essential stage costs 8m+14 steps on m markers, so all stages cost at most 8T+6n-8; ignored stages cost one. Entry costs4 and the middle29. Folded selection takes at most T+5 steps, including the six-step zero exit. A non-last strip's corridor costs at most used+18: its Manhattan path costs used+exit+shift+width+next_shift+next_entry+4-2*lane, bounded by used+18 for the stage, middle and leaf widths. Total used is at most T+6n+8. At most n+1 non-last strips contain a stage or middle; every other non-last strip holds at least cap-1 leaf lines. Thus steps are at most 10T+30n+56+18(T+2)/(cap-1). The previous 20(T+2)/(cap-1) <= T+36 estimate (checked n=3..7; cap-1>=20 from n=8) gives the preserved 11T+32n+92 ceiling. The unfolded cascade takes at most 2(T-1)+5 selection steps, hence 10T+6n+28, also below the ceiling. The older 12T derivation failed to credit the fold's one-line leaves.  Workspace derivation remains a separate open investigation."

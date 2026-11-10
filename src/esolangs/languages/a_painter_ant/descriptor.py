@@ -1,12 +1,14 @@
 """Runtime and compiler capabilities for A Painter Ant."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.a_painter_ant.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 PAIR = ("n", "N")
 
@@ -21,11 +23,10 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.a_painter_ant.generator",
-            "a_painter_ant",
-            ("truth_table",),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.a_painter_ant.generator", "a_painter_ant_request"
         ),
+        layout_width=False,
         # Not a tree: one corridor cell per row, walked by the inputs' weights.
         shape=Shape.LOOKUP,
         wrap=wrap_chars,

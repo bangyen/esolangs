@@ -47,7 +47,7 @@ scale = 1
 rows = [0, 341, 682, 1023]
 budget = 10
 band = "fast"
-construction = "esolangs.languages.refractran.generator:refractran"
+construction = "esolangs.languages.refractran.generator:refractran_request"
 notes = "Adds one balanced-only root-first DAG path with counter and visited-marker primes; markers prevent inverse transfers through unrelated parents. The short initial token removes the rail header's width wall. Existing plain/wrapped candidates remain for smaller shapes. Default size pins and Size anchor are unchanged. Strict seeded n=10/12 enclosing-square growth exponent: 0.844; 2,120 supported small rows and 12 larger rows executed within unchanged resource bounds."
 
 [interpreter_ablations]
@@ -70,7 +70,7 @@ seed = 1847
 size = 30327
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.refractran.generator:refractran"
+construction = "esolangs.languages.refractran.generator:refractran_request"
 
 [resource_evidence]
 version = 1
@@ -82,7 +82,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.refractran.generator:refractran"
+construction = "esolangs.languages.refractran.generator:refractran_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: each four-fraction swap takes at most eight inspections, plus the final dump" }
 
 [resource_evidence.workspace]
@@ -92,7 +92,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.refractran.generator:refractran"
+construction = "esolangs.languages.refractran.generator:refractran_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: prime rails or summed constant exponents, fraction cursor and direction" }
 
 [resource_evidence.scaling]

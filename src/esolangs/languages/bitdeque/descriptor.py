@@ -1,11 +1,14 @@
 """Runtime and compiler capabilities for Bitdeque."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.bitdeque.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Bitdeque",
@@ -17,11 +20,10 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.bitdeque.generator",
-            "bitdeque",
-            ("truth_table", "width"),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.bitdeque.generator", "bitdeque_request"
         ),
+        layout_width=True,
         same_layout=FunctionRef(
             "esolangs.languages.bitdeque.generator",
             "_same_layout",
@@ -31,8 +33,8 @@ LANGUAGE = Language(
         wrap=FunctionRef(
             "esolangs.languages.bitdeque.generator", "_bitdeque", ("program", "width")
         ),
-        balance=FunctionRef(
-            "esolangs.languages.bitdeque.generator", "_balance", ("_table", "default")
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.bitdeque.generator", "bitdeque_balance_request"
         ),
         template=TemplateSpec(
             setters=FunctionRef(

@@ -37,6 +37,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     short_name,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Single-character names: no reserved word is one, and 53 cover every table
 #: a string can hold (n + 1 <= 53 up to 2**52 rows).
@@ -166,3 +168,8 @@ def _program(truth_table: str, n: int, mark: str, base: int) -> str:
     blocks = "".join(f"if({flags[key]}){{{text(key)}}}" for key in flags)
     head = f"#basicfuck t={len(names)} r=0~255 o=wrap\n#allocate {','.join(names)}\n"
     return f"{head}{reads}{arm(root)}{blocks}{answer}+={base};write<-{answer};"
+
+
+def basicfuck_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return basicfuck(request.table)

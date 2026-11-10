@@ -29,7 +29,7 @@ def test_catalog_identifiers_resolve_and_keep_their_owned_namespace() -> None:
             )
             fn = lang.backend.generate
             assert getattr(generator, fn.__name__) is fn
-            assert fn.__name__ in (lang.id, lang.id.replace("_", "")), name
+            assert fn.__name__ == f"{lang.id}_request", name
 
 
 def test_a_slug_drops_only_punctuation_the_language_has() -> None:

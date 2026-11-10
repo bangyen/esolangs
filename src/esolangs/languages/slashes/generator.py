@@ -35,8 +35,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import _join_tokens, _tokens, balance_score
+from esolangs.runtime._program import Program
 
 #: Binary to unary, most significant bit first: the row as that many ``*``.
 _UNARY = "/b/a*//*a/a**//a//"
@@ -144,3 +146,8 @@ def _is_unfilled_template(code: str) -> bool:
         return False
     bits = table.replace("qA", "0").replace("qB", "1")
     return prefix == head + _UNARY + _sweep_rules(bits)
+
+
+def slashes_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return slashes(request.table)

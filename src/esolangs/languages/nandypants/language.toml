@@ -58,7 +58,7 @@ rule = "parity"
 size = 130
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.nandypants.generator:nandypants"
+construction = "esolangs.languages.nandypants.generator:nandypants_request"
 
 [resource_evidence]
 version = 1
@@ -70,7 +70,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.nandypants.generator:nandypants"
+construction = "esolangs.languages.nandypants.generator:nandypants_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
@@ -80,7 +80,7 @@ arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.nandypants.generator:nandypants"
+construction = "esolangs.languages.nandypants.generator:nandypants_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}", formula = "bl(L-1) + bl(n) + 16" }
 
 [resource_evidence.scaling]

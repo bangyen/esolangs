@@ -65,7 +65,7 @@ seed = 1847
 size = 1754
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.eval.generator:eval"
+construction = "esolangs.languages.eval.generator:eval_request"
 
 [[evidence.anchors]]
 arity = 16
@@ -73,7 +73,7 @@ rule = "and"
 size = 98450
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.eval.generator:eval"
+construction = "esolangs.languages.eval.generator:eval_request"
 
 [resource_evidence]
 version = 1
@@ -85,7 +85,7 @@ arities = [4, 6]
 first = 4
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.eval.generator:eval"
+construction = "esolangs.languages.eval.generator:eval_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: unwrapped L<=S; all-one setters skip nothing" }
 
 [resource_evidence.workspace]
@@ -95,7 +95,7 @@ arities = [4, 6]
 first = 4
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.eval.generator:eval"
+construction = "esolangs.languages.eval.generator:eval_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: one frame and staged Boolean cells", formula = "W" }
 
 [resource_evidence.scaling]
@@ -105,7 +105,7 @@ arities = [4, 6]
 first = 4
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.eval.generator:eval"
+construction = "esolangs.languages.eval.generator:eval_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: Gray-indexed table halves", formula = "S" }
 
 [semantic_evidence]

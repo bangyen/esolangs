@@ -59,7 +59,7 @@ seed = 1847
 size = 13658
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.sstack.generator:sstack"
+construction = "esolangs.languages.sstack.generator:sstack_request"
 
 [[evidence.anchors]]
 arity = 12
@@ -68,7 +68,7 @@ seed = 1847
 size = 53351
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.sstack.generator:sstack"
+construction = "esolangs.languages.sstack.generator:sstack_request"
 
 [[evidence.anchors]]
 arity = 16
@@ -76,7 +76,7 @@ rule = "parity"
 size = 16617
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.sstack.generator:sstack"
+construction = "esolangs.languages.sstack.generator:sstack_request"
 
 [resource_evidence]
 version = 1
@@ -88,7 +88,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sstack.generator:sstack"
+construction = "esolangs.languages.sstack.generator:sstack_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, six a tree node plus guarded dispatch" }
 
 [resource_evidence.workspace]
@@ -98,7 +98,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sstack.generator:sstack"
+construction = "esolangs.languages.sstack.generator:sstack_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, K commands: n stacked input bytes", formula = "6n + 12 + bl(K) + bl(n)" }
 
 [resource_evidence.scaling]
@@ -108,7 +108,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sstack.generator:sstack"
+construction = "esolangs.languages.sstack.generator:sstack_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: 21 a node, 3 a leaf, 12 prologue" }
 
 [semantic_evidence]
@@ -127,5 +127,5 @@ source = { unit = "chars", value = 75 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.sstack.generator:sstack"
+construction = "esolangs.languages.sstack.generator:sstack_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Keep the public arity validated at entry instead of validating it again after constructing a shared candidate. Independent private constructors retain their checks. Emitted programs and all numeric proof scopes remain unchanged."

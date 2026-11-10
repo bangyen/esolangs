@@ -20,6 +20,8 @@ Size:
 
 from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 _MACROS = "@o(>(Subtract 49>%))@z(>(Divide 48>(Subtract 1>%)))@y(Input!o %)"
 
@@ -68,3 +70,8 @@ def sendstuff(truth_table: str) -> str:
 
 
 #: Break between words: a newline inside ``>17``, ``>%`` or ``!o`` splits a name.
+
+
+def sendstuff_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return sendstuff(request.table)

@@ -166,10 +166,12 @@ def check_ladder(
 
 def _language_of(fn: Builder) -> str | None:
     """The registry name of the generator ``fn`` is, if it is one."""
+    from inspect import unwrap
+
     from esolangs.registry import BY_BOOLEAN
 
     for lang in BY_BOOLEAN.values():
-        if lang.backend.generate is fn:
+        if lang.backend.generate is unwrap(fn):
             return lang.name
     return None
 

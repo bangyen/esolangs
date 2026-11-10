@@ -31,6 +31,8 @@ from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Each input is one atom, ``0`` or ``1``, inside its frame.
 #: The drain: under a leaf every remaining frame rewrites to the leaf.
@@ -89,3 +91,8 @@ def stisp(truth_table: str) -> str:
     equations = "".join(definitions[node] for node in nodes if node in named)
     frames = f"->s[{TEMPLATE_CHAR}]" * n
     return prefix + equations + _DRAIN + heads[diagram.root] + frames
+
+
+def stisp_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return stisp(request.table)

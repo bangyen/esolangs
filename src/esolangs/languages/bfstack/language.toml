@@ -63,7 +63,7 @@ rule = "parity"
 size = 633
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.bfstack.generator:bfstack"
+construction = "esolangs.languages.bfstack.generator:bfstack_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -71,7 +71,7 @@ rule = "and"
 size = 640
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.bfstack.generator:bfstack"
+construction = "esolangs.languages.bfstack.generator:bfstack_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -80,7 +80,7 @@ seed = 1847
 size = 5211
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.bfstack.generator:bfstack"
+construction = "esolangs.languages.bfstack.generator:bfstack_request"
 
 [resource_evidence]
 version = 1
@@ -92,7 +92,7 @@ arities = [8, 9, 10]
 first = 9
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bfstack.generator:bfstack"
+construction = "esolangs.languages.bfstack.generator:bfstack_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}", formula = "60n + 1290" }
 
 [resource_evidence.workspace]
@@ -102,7 +102,7 @@ arities = [3, 5, 6, 9, 10, 11]
 first = 5
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bfstack.generator:bfstack"
+construction = "esolangs.languages.bfstack.generator:bfstack_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} at n = 5 and past n = 8, d = max(n-8,0) + min(T,255) + 1", formula = "n+6+bl(n)+(d+1)bl(L)" }
 
 [resource_evidence.scaling]
@@ -112,7 +112,7 @@ arities = [3, 4, 5, 6, 7, 8, 9]
 first = 3
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.bfstack.generator:bfstack"
+construction = "esolangs.languages.bfstack.generator:bfstack_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: zero-row walk telescopes to T", formula = "N" }
 
 [semantic_evidence]

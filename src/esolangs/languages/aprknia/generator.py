@@ -26,6 +26,8 @@ Decisions:
 from functools import cache
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: ``11*`` pushes 2, 0, 1, 1, 0.  Its top 0 is a read selector (``_SKIP``);
 #: ``!!!`` leaves 2, 0 so ``~*`` after the read is byte mod 2, the bit.
@@ -78,3 +80,8 @@ def aprknia(truth_table: str) -> str:
 
     emit(0, 0)
     return "".join(pieces)
+
+
+def aprknia_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return aprknia(request.table)

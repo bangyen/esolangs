@@ -58,7 +58,7 @@ rule = "parity"
 size = 661
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -67,7 +67,7 @@ seed = 1847
 size = 661
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers_request"
 
 [[evidence.anchors]]
 arity = 8
@@ -75,7 +75,7 @@ rule = "zero"
 size = 180
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers_request"
 
 [resource_evidence]
 version = 1
@@ -87,7 +87,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
@@ -97,7 +97,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers"
+construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: variables, op index and reads" }
 
 [resource_evidence.scaling]

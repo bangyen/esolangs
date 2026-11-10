@@ -62,7 +62,7 @@ rule = "parity"
 size = 398
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.sendstuff.generator:sendstuff"
+construction = "esolangs.languages.sendstuff.generator:sendstuff_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -71,7 +71,7 @@ seed = 1847
 size = 4091
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.sendstuff.generator:sendstuff"
+construction = "esolangs.languages.sendstuff.generator:sendstuff_request"
 
 [resource_evidence]
 version = 1
@@ -83,7 +83,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "steps"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sendstuff.generator:sendstuff"
+construction = "esolangs.languages.sendstuff.generator:sendstuff_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n=1, 4 at n=1; unary readers n+1/n+3, constants n+2", formula = "4n+2" }
 
 [resource_evidence.workspace]
@@ -93,7 +93,7 @@ arities = [3, 4, 5, 6, 7]
 first = 3
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sendstuff.generator:sendstuff"
+construction = "esolangs.languages.sendstuff.generator:sendstuff_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, N_d by V_j: pending frames", formula = "10n + 12 + bl(n) + Σ_{d<n} bl(N_d)" }
 
 [resource_evidence.scaling]
@@ -103,7 +103,7 @@ arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.sendstuff.generator:sendstuff"
+construction = "esolangs.languages.sendstuff.generator:sendstuff_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one definition a distinct subtable, longest ids", formula = "C" }
 
 [semantic_evidence]

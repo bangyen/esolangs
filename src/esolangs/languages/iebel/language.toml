@@ -55,7 +55,7 @@ rule = "parity"
 size = 130
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.iebel.generator:iebel"
+construction = "esolangs.languages.iebel.generator:iebel_request"
 
 [resource_evidence]
 version = 1
@@ -67,7 +67,7 @@ arities = [2, 3, 6]
 first = 2
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.iebel.generator:iebel"
+construction = "esolangs.languages.iebel.generator:iebel_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}" }
 
 [resource_evidence.workspace]
@@ -77,7 +77,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.iebel.generator:iebel"
+construction = "esolangs.languages.iebel.generator:iebel_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]

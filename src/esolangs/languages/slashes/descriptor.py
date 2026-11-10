@@ -1,11 +1,14 @@
 """Runtime and compiler capabilities for ///."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.slashes.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "///",
@@ -20,9 +23,10 @@ LANGUAGE = Language(
     id="slashes",
     aliases=("Slashalash",),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.slashes.generator", "slashes", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.slashes.generator", "slashes_request"
         ),
+        layout_width=False,
         # Not a tree: an indexed table rewrite.
         shape=Shape.LOOKUP,
         no_wrap="newlines are literal output and substitution data",

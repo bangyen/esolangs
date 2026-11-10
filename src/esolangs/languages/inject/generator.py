@@ -39,7 +39,9 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 __all__ = ["inject"]
 
@@ -299,3 +301,15 @@ def _balance(table: str, default: str) -> str:
         _inject_banded(table, square=True),
         key=balance_score,
     )
+
+
+def inject_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return inject(request.table, request.width)
+    return inject(request.table)
+
+
+def inject_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

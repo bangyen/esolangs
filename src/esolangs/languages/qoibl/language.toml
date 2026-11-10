@@ -65,7 +65,7 @@ rule = "parity"
 size = 1468
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.qoibl.generator:qoibl"
+construction = "esolangs.languages.qoibl.generator:qoibl_request"
 
 [[evidence.anchors]]
 arity = 16
@@ -74,7 +74,7 @@ seed = 1847
 size = 66190
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.qoibl.generator:qoibl"
+construction = "esolangs.languages.qoibl.generator:qoibl_request"
 
 [resource_evidence]
 version = 1
@@ -86,7 +86,7 @@ arities = [1, 2, 3, 6, 10]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.qoibl.generator:qoibl"
+construction = "esolangs.languages.qoibl.generator:qoibl_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} in default layout, one statement per input", formula = "n + 6" }
 
 [resource_evidence.workspace]
@@ -96,7 +96,7 @@ arities = [1, 2, 3, 6, 10]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.qoibl.generator:qoibl"
+construction = "esolangs.languages.qoibl.generator:qoibl_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} in default layout: row/half, digit cells and cursors", formula = "max(T+18,2T+15) + bl(n+6) + bl(n)" }
 
 [resource_evidence.scaling]
@@ -106,7 +106,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.qoibl.generator:qoibl"
+construction = "esolangs.languages.qoibl.generator:qoibl_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: T-1 bit literal, 35 an input" }
 
 [semantic_evidence]

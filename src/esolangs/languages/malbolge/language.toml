@@ -72,7 +72,7 @@ seed = 1847
 size = 13340
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.malbolge.generator:malbolge"
+construction = "esolangs.languages.malbolge.generator:malbolge_request"
 
 [resource_evidence]
 version = 1
@@ -84,7 +84,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.malbolge.generator:malbolge"
+construction = "esolangs.languages.malbolge.generator:malbolge_request"
 description = { growth = "unmeasured", claim = "at most", template = "{claim} {formula} {unit} at n=1 and 5,953 at n=16: main plus longest stub; exact at n=2,3,6", formula = "6,748" }
 
 [resource_evidence.workspace]
@@ -94,7 +94,7 @@ arities = [1, 2, 3]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.malbolge.generator:malbolge"
+construction = "esolangs.languages.malbolge.generator:malbolge_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: a bit a step, ten a write", formula = "B + E + 10(P+S) + 49 + bl(n)" }
 
 [resource_evidence.scaling]
@@ -104,7 +104,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.malbolge.generator:malbolge"
+construction = "esolangs.languages.malbolge.generator:malbolge_request"
 description = { growth = "measured", claim = "worst", template = "{claim} {formula} {unit} to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole", formula = "13340" }
 
 [semantic_evidence]
@@ -123,5 +123,5 @@ source = { unit = "chars", value = 13340 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.malbolge.generator:malbolge"
+construction = "esolangs.languages.malbolge.generator:malbolge_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Reject negative or wrapped popcount readout addresses before placement or rendering. The shipped 20480 readouts remain in 6565..59040; seventeen-input parity emits identical bytes before/after and four boundary rows execute correctly. Existing proof bounds, pins and Size anchors are unchanged."

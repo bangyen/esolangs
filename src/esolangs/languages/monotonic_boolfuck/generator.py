@@ -22,6 +22,8 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Read onto ``p``, then consume the byte's other seven bits on a set bit.
 _READ = ">1<,>,,,,,,,<"
@@ -65,3 +67,8 @@ def monotonic_boolfuck(truth_table: str) -> str:
 
     # Opposite adjacent moves touch no cell on the infinite zero tape.
     return ("1>" + tree(0, 0, 0)).replace("><", "")
+
+
+def monotonic_boolfuck_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return monotonic_boolfuck(request.table)

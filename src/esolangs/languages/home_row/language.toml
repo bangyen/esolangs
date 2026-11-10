@@ -62,7 +62,7 @@ rule = "and"
 size = 703
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.home_row.generator:home_row"
+construction = "esolangs.languages.home_row.generator:home_row_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -71,7 +71,7 @@ seed = 1847
 size = 5241
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.home_row.generator:home_row"
+construction = "esolangs.languages.home_row.generator:home_row_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -79,7 +79,7 @@ rule = "parity"
 size = 4773
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.home_row.generator:home_row"
+construction = "esolangs.languages.home_row.generator:home_row_request"
 
 [resource_evidence]
 version = 1
@@ -91,7 +91,7 @@ arities = [2, 3, 5]
 first = 2
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.home_row.generator:home_row"
+construction = "esolangs.languages.home_row.generator:home_row_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: every leaf run, all weights set" }
 
 [resource_evidence.workspace]
@@ -101,7 +101,7 @@ arities = [2, 3, 4, 5, 6]
 first = 2
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.home_row.generator:home_row"
+construction = "esolangs.languages.home_row.generator:home_row_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: index cell, four flags, cursor, a -1 setter cell", formula = "n + 49 + bl(6T+10n+61)" }
 
 [resource_evidence.scaling]
@@ -111,7 +111,7 @@ arities = [2, 3, 5]
 first = 2
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.home_row.generator:home_row"
+construction = "esolangs.languages.home_row.generator:home_row_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: pairs" }
 
 [semantic_evidence]
@@ -130,5 +130,5 @@ source = { unit = "chars", value = 113 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.home_row.generator:home_row"
+construction = "esolangs.languages.home_row.generator:home_row_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Whole constants return before projection, so the remaining essential-input list is nonempty. Remove its unreachable one-input fallback and nullable last-input branch; both normal and negated private builds keep their constant support."

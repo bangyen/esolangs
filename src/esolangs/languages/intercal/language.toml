@@ -63,7 +63,7 @@ rule = "parity"
 size = 810
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.intercal.generator:intercal"
+construction = "esolangs.languages.intercal.generator:intercal_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -72,7 +72,7 @@ seed = 1847
 size = 3338
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.intercal.generator:intercal"
+construction = "esolangs.languages.intercal.generator:intercal_request"
 
 [resource_evidence]
 version = 1
@@ -84,7 +84,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.intercal.generator:intercal"
+construction = "esolangs.languages.intercal.generator:intercal_request"
 description = { growth = "linear", claim = "exact", template = "{claim} {formula}", formula = "S statements per emitted program: straight-line" }
 
 [resource_evidence.workspace]
@@ -94,7 +94,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.intercal.generator:intercal"
+construction = "esolangs.languages.intercal.generator:intercal_request"
 description = { growth = "linear", claim = "exact", template = "{claim} {formula} {unit} per emitted program: all-one worst row", formula = "W" }
 
 [resource_evidence.scaling]
@@ -104,7 +104,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.intercal.generator:intercal"
+construction = "esolangs.languages.intercal.generator:intercal_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: unshared-select envelope plus bounded spilling", formula = "F" }
 
 [semantic_evidence]

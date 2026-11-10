@@ -67,7 +67,7 @@ seed = 1847
 size = 2974
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.s_bleq.generator:s_bleq"
+construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -75,7 +75,7 @@ rule = "parity"
 size = 461
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.s_bleq.generator:s_bleq"
+construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -83,7 +83,7 @@ rule = "and"
 size = 312
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.s_bleq.generator:s_bleq"
+construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
 
 [resource_evidence]
 version = 1
@@ -95,7 +95,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "instructions"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.s_bleq.generator:s_bleq"
+construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} through n=9, at most beyond, the tree route; packed, worst 8T+(7n+5)(⌊T/n⌋-1)+26n-8 steps", formula = "3n + 2" }
 
 [resource_evidence.workspace]
@@ -105,7 +105,7 @@ arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.s_bleq.generator:s_bleq"
+construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the self-modified program, decimal cells", formula = "B + 6n + bl(3C) + bl(n) + 1" }
 
 [resource_evidence.scaling]
@@ -115,7 +115,7 @@ arities = [5, 8, 10, 11, 12, 13, 19, 20, 21, 22, 23, 24, 25]
 first = 11
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.s_bleq.generator:s_bleq"
+construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 11..28; below, at most min(tree, P)", formula = "P" }
 
 [semantic_evidence]

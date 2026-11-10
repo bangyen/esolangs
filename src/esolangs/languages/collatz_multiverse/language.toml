@@ -74,7 +74,7 @@ rule = "parity"
 size = 1531
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -82,7 +82,7 @@ rule = "and"
 size = 3689
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -91,7 +91,7 @@ seed = 1847
 size = 11408
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse_request"
 
 [[evidence.anchors]]
 arity = 8
@@ -99,7 +99,7 @@ rule = "zero"
 size = 412
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse_request"
 
 [resource_evidence]
 version = 1
@@ -111,7 +111,7 @@ arities = [3, 5, 6, 8]
 first = 3
 unit = "lines"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: one step per line", formula = "T/4 + 3n + 4m + 2K + 10" }
 
 [resource_evidence.workspace]
@@ -121,7 +121,7 @@ arities = [3, 4, 5, 6, 7, 9]
 first = 3
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse_request"
 description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: top code repeated", formula = "end-state registers, arrays A and D, ip, input counter" }
 
 [resource_evidence.scaling]
@@ -131,7 +131,7 @@ arities = [3, 4, 5, 6, 7]
 first = 3
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse"
+construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: a line per cell", formula = "N" }
 
 [semantic_evidence]

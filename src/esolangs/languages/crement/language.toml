@@ -58,7 +58,7 @@ rule = "parity"
 size = 398
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.crement.generator:crement"
+construction = "esolangs.languages.crement.generator:crement_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -67,7 +67,7 @@ seed = 1847
 size = 6283
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.crement.generator:crement"
+construction = "esolangs.languages.crement.generator:crement_request"
 
 [resource_evidence]
 version = 1
@@ -79,7 +79,7 @@ arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.crement.generator:crement"
+construction = "esolangs.languages.crement.generator:crement_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} over halting rows, shared self-patching testers", formula = "E" }
 
 [resource_evidence.workspace]
@@ -89,7 +89,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.crement.generator:crement"
+construction = "esolangs.languages.crement.generator:crement_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: whole program state", formula = "2bl(N) + 32 + bl(2n+3) + 2n(10+bl(N-1)) + P(28+3bl(2n+2)+2bl(N-2))" }
 
 [resource_evidence.scaling]
@@ -99,7 +99,7 @@ arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "lines"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.crement.generator:crement"
+construction = "esolangs.languages.crement.generator:crement_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: subtree ids", formula = "N" }
 
 [semantic_evidence]

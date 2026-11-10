@@ -1,12 +1,14 @@
 """Runtime and compiler capabilities for Aprknia."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.aprknia.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Aprknia",
@@ -18,9 +20,10 @@ LANGUAGE = Language(
         category="stack_based",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.aprknia.generator", "aprknia", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.aprknia.generator", "aprknia_request"
         ),
+        layout_width=False,
         wrap=wrap_chars,
     ),
     contract=BooleanContract(input_shape="char_stream"),

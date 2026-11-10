@@ -14,6 +14,8 @@ Size:
 from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.helpers import _validate_truth_table, in_input_order
 from esolangs.generation.packed_decoder import packed_decoder
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def subleq(truth_table: str) -> str:
@@ -28,3 +30,8 @@ def subleq(truth_table: str) -> str:
 def _subleq_shared(table: str, perm: tuple[int, ...]) -> str:
     """Fold constants and equal halves; emit each residual once."""
     return hoisted_tree(table, perm, direct=True)
+
+
+def subleq_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return subleq(request.table)

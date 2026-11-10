@@ -54,7 +54,7 @@ rule = "parity"
 size = 1678
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.chicken.generator:chicken"
+construction = "esolangs.languages.chicken.generator:chicken_request"
 
 [resource_evidence]
 version = 1
@@ -66,7 +66,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.chicken.generator:chicken"
+construction = "esolangs.languages.chicken.generator:chicken_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
@@ -76,7 +76,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.chicken.generator:chicken"
+construction = "esolangs.languages.chicken.generator:chicken_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
@@ -86,7 +86,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.chicken.generator:chicken"
+construction = "esolangs.languages.chicken.generator:chicken_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]

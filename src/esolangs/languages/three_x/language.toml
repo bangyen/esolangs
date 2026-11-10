@@ -66,7 +66,7 @@ rule = "parity"
 size = 2351
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.three_x.generator:three_x"
+construction = "esolangs.languages.three_x.generator:three_x_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -74,7 +74,7 @@ rule = "and"
 size = 472
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.three_x.generator:three_x"
+construction = "esolangs.languages.three_x.generator:three_x_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -83,7 +83,7 @@ seed = 1847
 size = 9050
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.three_x.generator:three_x"
+construction = "esolangs.languages.three_x.generator:three_x_request"
 
 [resource_evidence]
 version = 1
@@ -95,7 +95,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.three_x.generator:three_x"
+construction = "esolangs.languages.three_x.generator:three_x_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the all-ones row enters every guard, no loop repeats" }
 
 [resource_evidence.workspace]
@@ -105,7 +105,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.three_x.generator:three_x"
+construction = "esolangs.languages.three_x.generator:three_x_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "n·bl(L) + bl(2n-1) + 3G + 2n + 2K(N) + 6bl(N-1) + 9 + Σ_{i≤N}(K(i)+3)" }
 
 [resource_evidence.scaling]
@@ -115,7 +115,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.three_x.generator:three_x"
+construction = "esolangs.languages.three_x.generator:three_x_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree under fixed keys", formula = "K" }
 
 [semantic_evidence]

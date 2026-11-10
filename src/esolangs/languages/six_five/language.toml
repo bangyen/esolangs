@@ -60,7 +60,7 @@ rule = "parity"
 size = 207
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.six_five.generator:six_five"
+construction = "esolangs.languages.six_five.generator:six_five_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -68,7 +68,7 @@ rule = "and"
 size = 118
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.six_five.generator:six_five"
+construction = "esolangs.languages.six_five.generator:six_five_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -77,7 +77,7 @@ seed = 1847
 size = 3236
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.six_five.generator:six_five"
+construction = "esolangs.languages.six_five.generator:six_five_request"
 
 [resource_evidence]
 version = 1
@@ -89,7 +89,7 @@ arities = [3, 7]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.six_five.generator:six_five"
+construction = "esolangs.languages.six_five.generator:six_five_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the walk's home loop reruns 3 commands a cell; other routes loop-free" }
 
 [resource_evidence.workspace]
@@ -99,7 +99,7 @@ arities = [8]
 first = 7
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.six_five.generator:six_five"
+construction = "esolangs.languages.six_five.generator:six_five_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: a tape of 2T cells" }
 
 [resource_evidence.scaling]
@@ -109,7 +109,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.six_five.generator:six_five"
+construction = "esolangs.languages.six_five.generator:six_five_request"
 description = { growth = "linear, time n log", claim = "at most", template = "{claim} {formula} {unit}: two raced orders over canonical subtree IDs", formula = "N" }
 
 [semantic_evidence]
@@ -128,5 +128,5 @@ source = { unit = "chars", value = 39 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.six_five.generator:six_five"
+construction = "esolangs.languages.six_five.generator:six_five_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Plain trees now reject labels above 35 instead of clamping silently. Shared probe/final text still clamps while counting, then the existing marker gate discards an over-budget candidate. Valid builds, proof bounds, pins and Size anchors stay unchanged."

@@ -26,8 +26,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 __all__ = ["super_snusp"]
 
@@ -248,3 +250,15 @@ def _balance(table: str, default: str) -> str:
             for divisor in (2, 4, 8)
         ]
     return min(layouts, key=balance_score)
+
+
+def super_snusp_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return super_snusp(request.table, request.width)
+    return super_snusp(request.table)
+
+
+def super_snusp_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

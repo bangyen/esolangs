@@ -59,7 +59,7 @@ rule = "parity"
 size = 772
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.movesum.generator:movesum"
+construction = "esolangs.languages.movesum.generator:movesum_request"
 
 [resource_evidence]
 version = 1
@@ -71,7 +71,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.movesum.generator:movesum"
+construction = "esolangs.languages.movesum.generator:movesum_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
@@ -81,7 +81,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.movesum.generator:movesum"
+construction = "esolangs.languages.movesum.generator:movesum_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]

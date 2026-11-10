@@ -23,6 +23,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 _SPACE = " "
 _TAB = "\t"
@@ -79,3 +81,8 @@ def whitespace(truth_table: str) -> str:
     if shared:
         parts += [_mark(""), step, _RETURN]
     return "".join(parts)
+
+
+def whitespace_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return whitespace(request.table)

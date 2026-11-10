@@ -18,6 +18,8 @@ Decisions:
 """
 
 from esolangs.generation.decision import decision_layers
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def basicer(truth_table: str) -> str:
@@ -40,3 +42,8 @@ def basicer(truth_table: str) -> str:
         if bit < used[-1]:  # the last leaf halts by falling off
             rows.append("GOTO 0")
     return "\n".join(f"{num} {row}" for num, row in enumerate(rows, 1))
+
+
+def basicer_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return basicer(request.table)

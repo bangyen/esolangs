@@ -61,7 +61,7 @@ rule = "parity"
 size = 323
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -69,7 +69,7 @@ rule = "parity"
 size = 4391
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 
 [resource_evidence]
 version = 1
@@ -81,7 +81,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: half the rows set, run once" }
 
 [resource_evidence.workspace]
@@ -91,7 +91,7 @@ arities = [3, 5]
 first = 3
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: b and its even copy" }
 
 [resource_evidence.scaling]
@@ -101,7 +101,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: six an instruction" }
 
 [semantic_evidence]
@@ -120,5 +120,5 @@ source = { unit = "chars", value = 161 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic"
+construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: The generic octal table builder already leaves c=2. Remove the duplicate lookup assignment; the parity builder alone restores c from 3 to 2. Generic nonconstants lose six characters and one command, constants and parity sizes stay fixed. Tighten source/step ceilings by 6/1 and the pre-tail workspace cursor by one; parity at n=4 still meets the reduced ceiling. All eight size/command pins are remeasured, and both parity Size anchors remain unchanged."

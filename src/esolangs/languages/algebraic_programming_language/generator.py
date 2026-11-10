@@ -35,7 +35,9 @@ from esolangs.generation.helpers import (
     read_at,
     short_name,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 #: Input variable names in harness order; a variable is bound by being
 #: named on an executed line, so these must be codepoint-ascending
@@ -568,3 +570,15 @@ def balance_apl(table: str, default: str) -> str:
         program, width = _apl_narrow_layout(table, perm, width)
         candidates.append(program)
     return min(candidates, key=balance_score)
+
+
+def algebraic_programming_language_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return algebraic_programming_language(request.table, request.width)
+    return algebraic_programming_language(request.table)
+
+
+def algebraic_programming_language_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance_apl(request.table, request.text_source())

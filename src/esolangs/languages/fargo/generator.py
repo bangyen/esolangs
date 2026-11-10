@@ -46,7 +46,9 @@ from esolangs.generation.helpers import (
     grid_width,
     short_name,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 __all__ = ["fargo"]
 
@@ -415,3 +417,15 @@ def _balance(table: str, default: str) -> str:
         walk.append(_packed_program(expression, n, side, share=share))
         packed += walk
     return min(default, *packed, key=balance_score)
+
+
+def fargo_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return fargo(request.table, request.width)
+    return fargo(request.table)
+
+
+def fargo_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

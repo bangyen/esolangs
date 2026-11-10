@@ -30,6 +30,8 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 _OPENING: tuple[str, ...] = ("r'", "d'")
 _TABLE: dict[str, tuple[str, ...]] = {
@@ -99,3 +101,8 @@ def rubic(truth_table: str) -> str:
 
     node(0, 0)
     return " ".join(out)
+
+
+def rubic_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return rubic(request.table)

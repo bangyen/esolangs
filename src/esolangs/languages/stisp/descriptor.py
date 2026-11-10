@@ -1,12 +1,14 @@
 """Runtime and compiler capabilities for Stisp."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.stisp.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 _TOKEN = r"->|[A-Za-z0-9_]+|[\s\S]"
 
@@ -25,9 +27,10 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.stisp.generator", "stisp", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.stisp.generator", "stisp_request"
         ),
+        layout_width=False,
         wrap=TokenWrapper(_TOKEN),
         template=TemplateSpec(pair=PAIR),
     ),

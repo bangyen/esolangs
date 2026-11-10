@@ -38,6 +38,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.slow_acv_mammalian._mammalian255 import decision_tree
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
 from esolangs.languages.slow_acv_mammalian._sums import (
@@ -56,6 +57,7 @@ from esolangs.languages.slow_acv_mammalian.dialect import (
     DEFAULT_MODULI,
     MammalianModuli,
 )
+from esolangs.runtime._program import Program
 
 __all__ = ["slow_acv_mammalian"]
 
@@ -845,4 +847,14 @@ def _constant_read(bit: str, inputs: int) -> str:
             "DIGEST",
             "PRONOUNCE",
         ]
+    )
+
+
+def slow_acv_mammalian_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return slow_acv_mammalian(
+        request.table,
+        cell_modulus=request.options.integer("cell_modulus"),
+        io_modulus=request.options.integer("io_modulus"),
+        leapfrog_resume=request.options.text("leapfrog_resume"),
     )

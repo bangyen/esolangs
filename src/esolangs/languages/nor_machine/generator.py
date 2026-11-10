@@ -27,6 +27,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 class _Queue:
@@ -188,3 +190,8 @@ def _low_from_singleton(q: _Queue, value: str) -> str:
     low = q.inv(zero)
     q.unary("L", low, low)
     return low
+
+
+def nor_machine_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return nor_machine(request.table)

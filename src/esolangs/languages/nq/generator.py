@@ -17,7 +17,9 @@ Size:
 
 from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.nq.interpreter import guard_dialect
+from esolangs.runtime._program import Program
 
 
 def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
@@ -62,3 +64,8 @@ def nq(truth_table: str, *, guard_binding: str = "opcode") -> str:
             chunks.append(">1(")
             stack.extend(((depth + 1, 2 * k), ")", (depth + 1, 2 * k + 1)))
     return "".join(chunks)
+
+
+def nq_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return nq(request.table, guard_binding=request.options.text("guard_binding"))

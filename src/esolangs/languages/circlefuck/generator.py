@@ -22,6 +22,8 @@ from esolangs.generation.helpers import (
     read_at,
     symmetric_weights,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: Bits an index digit carries: seven is the widest power of two a byte can
 #: also count out (:func:`_deleter` plants that many in the digit below).
@@ -121,3 +123,8 @@ def _deleter(digit: int) -> str:
     if digit == 0:
         return "[-<}]"
     return f"[-<{'+' * (1 << _DIGIT_BITS)}{_deleter(digit - 1)}>]"
+
+
+def circlefuck_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return circlefuck(request.table)

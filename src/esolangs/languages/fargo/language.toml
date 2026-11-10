@@ -72,7 +72,7 @@ rule = "parity"
 size = 80
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.fargo.generator:fargo"
+construction = "esolangs.languages.fargo.generator:fargo_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -81,7 +81,7 @@ seed = 1847
 size = 1810
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.fargo.generator:fargo"
+construction = "esolangs.languages.fargo.generator:fargo_request"
 
 [resource_evidence]
 version = 1
@@ -93,7 +93,7 @@ arities = [1, 2, 3, 7]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.fargo.generator:fargo"
+construction = "esolangs.languages.fargo.generator:fargo_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: each expanded token runs once, plus 2 per executed shared-name reference", formula = "9T - 5" }
 
 [resource_evidence.workspace]
@@ -103,7 +103,7 @@ arities = [6]
 first = 6
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.fargo.generator:fargo"
+construction = "esolangs.languages.fargo.generator:fargo_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: one frame's tokens, pending calls; lone $ bounded by 18 bits", formula = "max(16(L-3)+bl(L)+11, 18)" }
 
 [resource_evidence.scaling]
@@ -113,7 +113,7 @@ arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.fargo.generator:fargo"
+construction = "esolangs.languages.fargo.generator:fargo_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: inline Davio form", formula = "F" }
 
 [semantic_evidence]

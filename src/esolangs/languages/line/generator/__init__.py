@@ -33,6 +33,7 @@ from esolangs.generation.helpers import (
     permute_truth_table,
     read_at,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.line.generator.forward import streaming_canvas
 from esolangs.languages.line.generator.layout import (
     Node,
@@ -48,6 +49,7 @@ from esolangs.languages.line.generator.shared import CanvasPlan
 from esolangs.languages.line.generator.small_tree import small_tree_canvas
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
+from esolangs.runtime._program import Program
 
 
 def line_boolean(
@@ -344,3 +346,13 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
         ),
         selected,
     )
+
+
+def line_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return line(request.table)
+
+
+def line_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return balance(request.table, request.raster_source())

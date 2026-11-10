@@ -1,10 +1,12 @@
 """Runtime and compiler capabilities for Befunge."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.befunge.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 MAX_INPUTS = 13
 
@@ -23,15 +25,14 @@ LANGUAGE = Language(
     ),
     backend=BooleanBackend(
         max_inputs=MAX_INPUTS,
-        entrypoint=FunctionRef(
-            "esolangs.languages.befunge.generator", "befunge", ("truth_table", "width")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.befunge.generator", "befunge_request"
         ),
+        layout_width=True,
         # Not a tree: reads a packed grid cell with ``g``.
         shape=Shape.LOOKUP,
-        balance=FunctionRef(
-            "esolangs.languages.befunge.generator",
-            "balance_befunge",
-            ("truth_table", "default"),
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.befunge.generator", "befunge_balance_request"
         ),
         no_wrap="a row is a grid row and the lookup table is indexed by column",
         grid=True,

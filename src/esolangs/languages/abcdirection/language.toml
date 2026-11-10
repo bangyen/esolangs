@@ -62,7 +62,7 @@ seed = 1847
 size = 1079
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.abcdirection.generator:abcdirection"
+construction = "esolangs.languages.abcdirection.generator:abcdirection_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -71,7 +71,7 @@ seed = 1847
 size = 8199
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.abcdirection.generator:abcdirection"
+construction = "esolangs.languages.abcdirection.generator:abcdirection_request"
 
 [[evidence.anchors]]
 arity = 8
@@ -79,7 +79,7 @@ rule = "zero"
 size = 559
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.abcdirection.generator:abcdirection"
+construction = "esolangs.languages.abcdirection.generator:abcdirection_request"
 
 [resource_evidence]
 version = 1
@@ -91,7 +91,7 @@ arities = [1, 2, 3, 7]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.abcdirection.generator:abcdirection"
+construction = "esolangs.languages.abcdirection.generator:abcdirection_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: row 0 of AND", formula = "5T + 69n + 157 + d + 6⌈d/3⌉ + max(0, 8n+35-T)" }
 
 [resource_evidence.workspace]
@@ -101,7 +101,7 @@ arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.abcdirection.generator:abcdirection"
+construction = "esolangs.languages.abcdirection.generator:abcdirection_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the tape, one bit a cell" }
 
 [resource_evidence.scaling]
@@ -111,7 +111,7 @@ arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.abcdirection.generator:abcdirection"
+construction = "esolangs.languages.abcdirection.generator:abcdirection_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: five rows", formula = "10T+45n+50+10⌈d/3⌉+5max(0,8n+35-T)" }
 
 [semantic_evidence]

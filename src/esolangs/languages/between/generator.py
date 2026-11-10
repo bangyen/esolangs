@@ -27,6 +27,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     short_name,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def _layout(root: int, nodes: list[DecisionNode]) -> list[tuple[int, str]]:
@@ -96,3 +98,8 @@ def between(truth_table: str) -> str:
         if mode == "b":
             lines.append(f"|{start[one]}|f.")
     return "\n".join(lines)
+
+
+def between_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return between(request.table)

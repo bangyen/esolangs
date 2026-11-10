@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Algebraic Programming Language."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.algebraic_programming_language.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Algebraic Programming Language",
@@ -17,15 +19,14 @@ LANGUAGE = Language(
         category="variable_based",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
+        entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.algebraic_programming_language.generator",
-            "algebraic_programming_language",
-            ("truth_table", "width"),
+            "algebraic_programming_language_request",
         ),
-        balance=FunctionRef(
+        layout_width=True,
+        balance=OperationRef[BalanceRequest, Program](
             "esolangs.languages.algebraic_programming_language.generator",
-            "balance_apl",
-            ("table", "default"),
+            "algebraic_programming_language_balance_request",
         ),
         no_wrap="a line with '=' defines, one without runs",
     ),

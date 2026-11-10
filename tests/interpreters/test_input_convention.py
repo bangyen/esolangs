@@ -48,7 +48,7 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
     example = BOOLEAN_EXAMPLES[name]
     from esolangs.raster import Raster
 
-    program = example.generator("0110")
+    program = example.emit("0110")
     if isinstance(program, Raster):
         from esolangs import run
 

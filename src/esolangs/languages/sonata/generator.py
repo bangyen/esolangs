@@ -33,6 +33,8 @@ from esolangs.generation.helpers import (
     read_at,
     symmetric_weights,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: The index rules, then the set-up rules around the table.
 # After setup, a remaining bit matches the index rules; otherwise a nonempty
@@ -100,3 +102,8 @@ def _program(n: int, essential: list[int], table: str, index: str) -> str:
     kept = "".join("^" + _name(k) for k in essential)
     setup = f"{'%' if n == 2 else ''}{bits}->{kept}@#{table}"
     return _RULES.format(index=index, setup=setup, marker=_MARKER if n == 2 else "")
+
+
+def sonata_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return sonata(request.table)

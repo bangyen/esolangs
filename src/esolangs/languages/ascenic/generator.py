@@ -43,6 +43,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 _PRINT, _INPUT, _PUSH, _ADD, _SUB, _MUL, _DIV, _MOD = 1, 2, 3, 4, 5, 6, 7, 8
 _POP = 10
@@ -178,3 +180,8 @@ def ascenic(truth_table: str) -> str:
     # changes sit at the end is cheaper read from the other end.
     mirrored = _scan(table[::-1], n, used, mirror=True)
     return min(forward, mirrored, key=len)
+
+
+def ascenic_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return ascenic(request.table)

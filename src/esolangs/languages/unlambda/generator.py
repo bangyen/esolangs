@@ -27,6 +27,8 @@ from esolangs.generation.helpers import (
     SubtreeDiagram,
     _validate_truth_table,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 #: ``@`` reads a character and applies its argument -- the promise of everything
 #: after the read -- to ``i``, or to ``v`` at end of input.
@@ -122,3 +124,8 @@ def unlambda(truth_table: str) -> str:
         return _READ * n + f".{root}"
     # The root is applied to a share either way: ``v`` when nothing is bound.
     return min(("`" + node(root, None) + "v", *bound(root)), key=len)
+
+
+def unlambda_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return unlambda(request.table)

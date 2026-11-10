@@ -28,8 +28,10 @@ from __future__ import annotations
 from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.helpers import TEMPLATE_CHAR, _validate_truth_table
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_space_delimited
+from esolangs.runtime._program import Program
 
 
 def _primes(count: int) -> list[int]:
@@ -184,3 +186,15 @@ def _balance(table: str, default: str) -> str:
             width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
             candidates.append(wrap_space_delimited(program, width))
     return min(candidates, key=balance_score)
+
+
+def refractran_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return refractran(request.table, request.width)
+    return refractran(request.table)
+
+
+def refractran_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

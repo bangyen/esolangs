@@ -22,6 +22,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 def switchcase(truth_table: str) -> str:
@@ -82,3 +84,8 @@ def _diagram(n: int, essential: list[int], table: str) -> str:
     end = n + count + 4
     cases += [f"$a\n0?@'{end}", "$a\n0?+1@", "$_\n-1?+0"]
     return "\n".join(cases) + "\n"
+
+
+def switchcase_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return switchcase(request.table)

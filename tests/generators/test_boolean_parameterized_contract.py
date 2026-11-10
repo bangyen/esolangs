@@ -7,10 +7,11 @@ import pytest
 import esolangs
 from esolangs.generation.helpers import runs
 from esolangs.registry import LANGUAGES, resolve
+from tests.support.generator_support import generator_for
 from tests.support.pick import languages
 
 _PARAMETERIZED = [
-    (language.id, language.backend.generate)
+    (language.id, generator_for(language.name))
     for language in LANGUAGES.values()
     if language.parameterized and language.backend is not None
 ]
@@ -57,7 +58,7 @@ class TestGeneratorEdgePaths:
     @pytest.mark.parametrize("name", languages(parameterized=True)[:2])
     def test_parameterized_validation(self, name: str) -> None:
         """A template generator rejects malformed truth tables."""
-        generate = LANGUAGES[name].backend.generate
+        generate = generator_for(name)
         assert generate is not None
         with pytest.raises(ValueError, match="power-of-two"):
             generate("011")

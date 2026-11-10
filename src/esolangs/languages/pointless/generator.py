@@ -24,6 +24,8 @@ Size:
 import re
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 _OUT = 50  # cell 50 holds "0", cell 51 holds "1"
 _X = 52  # level d's character and bit cell is 52 + 2d, its flag 53 + 2d
@@ -170,3 +172,8 @@ def _expand(functions: dict[str, str], declared: set[str], key: str) -> str:
 
 #: A call in a body, ``"name"``; names hold no quote.
 _CALL = re.compile(r'"([^"]*)"')
+
+
+def pointless_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return pointless(request.table)

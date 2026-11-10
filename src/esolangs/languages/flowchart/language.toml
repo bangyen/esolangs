@@ -69,7 +69,7 @@ seed = 1847
 size = 9754
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.flowchart.generator:flowchart"
+construction = "esolangs.languages.flowchart.generator:flowchart_request"
 
 [[evidence.anchors]]
 arity = 12
@@ -78,7 +78,7 @@ seed = 1847
 size = 35074
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.flowchart.generator:flowchart"
+construction = "esolangs.languages.flowchart.generator:flowchart_request"
 
 [resource_evidence]
 version = 1
@@ -90,7 +90,7 @@ arities = [2, 3, 5]
 first = 2
 unit = "nodes"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.flowchart.generator:flowchart"
+construction = "esolangs.languages.flowchart.generator:flowchart_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: preload T plus T - 1 runs" }
 
 [resource_evidence.workspace]
@@ -100,7 +100,7 @@ arities = [3, 4, 5]
 first = 3
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.flowchart.generator:flowchart"
+construction = "esolangs.languages.flowchart.generator:flowchart_request"
 description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: 4T+6·2^⌊n/2⌋+6·2^⌈n/2⌉+18n-7 exit-memory cells, the deques, the counters", formula = "F" }
 
 [resource_evidence.scaling]
@@ -110,7 +110,7 @@ arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.flowchart.generator:flowchart"
+construction = "esolangs.languages.flowchart.generator:flowchart_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: two rows", formula = "20T+16·2^⌊n/2⌋+12·2^⌈n/2⌉+72n+14" }
 
 [semantic_evidence]

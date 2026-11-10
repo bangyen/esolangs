@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Fish."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.fish.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Fish",
@@ -21,15 +23,14 @@ LANGUAGE = Language(
         empty_program="Fish program cannot be empty",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.fish.generator", "fish", ("truth_table", "width")
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.fish.generator", "fish_request"
         ),
+        layout_width=True,
         # Not a tree: an indexed table read.
         shape=Shape.LOOKUP,
-        balance=FunctionRef(
-            "esolangs.languages.fish.generator",
-            "balance_fish",
-            ("truth_table", "default"),
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.fish.generator", "fish_balance_request"
         ),
         no_wrap="a row is a codebox row and the lookup table is indexed by column",
         grid=True,

@@ -5,14 +5,15 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
 
 from esolangs.generation.helpers import TEMPLATE_CHAR, Setters, check_setters
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.registry._functions import FunctionRef
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._program import Program
 
-# The width-aware generators also take ``width``, hence ``...``.
-Generator = Callable[..., Program]
+Generator = Callable[[GenerationRequest], Program]
+Balancer = Callable[[BalanceRequest], Program]
 
 
 class Shape(StrEnum):
@@ -57,8 +58,8 @@ class TemplateSpec:
 class BooleanBackend:
     """Generator, accepted tables, input binding and source layout rules."""
 
-    #: Bare callables accept the table alone; FunctionRef declares options.
-    entrypoint: Generator
+    entrypoint: OperationRef[GenerationRequest, Program] | Generator
+    layout_width: bool = False
     template: TemplateSpec | None = None
     max_inputs: int | None = None
     restrictions: str = ""
@@ -74,36 +75,22 @@ class BooleanBackend:
     no_wrap: str = ""
     #: Whether a template matches a ``layout(width)`` of the default build;
     #: default: equal up to wrapping newlines.
-    same_layout: Callable[[str, str, Callable[[int], Any]], bool] | None = None
+    same_layout: Callable[[str, str, Callable[[int], str]], bool] | None = None
     #: ``balance(table, default)``: the squarest layout a reflow cannot find.
-    balance: Callable[..., Any] | None = None
-
-    @property
-    def layout_width(self) -> bool:
-        """Whether the declared generator lays its source out to a width."""
-        return (
-            isinstance(self.entrypoint, FunctionRef)
-            and "width" in self.entrypoint.parameters
-        )
-
-    @property
-    def balance_parameters(self) -> tuple[str, ...]:
-        """Declared balancer parameters; bare callables take table and source."""
-        return self.balance.parameters if isinstance(self.balance, FunctionRef) else ()
-
-    @property
-    def generator_name(self) -> str:
-        """Return the declared export name without loading its implementation."""
-        return self.entrypoint.__name__
+    balance: OperationRef[BalanceRequest, Program] | Balancer | None = None
 
     @property
     def generate(self) -> Generator:
         """Load only the selected generator; ordinary callables remain unchanged."""
         entrypoint = self.entrypoint
-        return entrypoint.load() if isinstance(entrypoint, FunctionRef) else entrypoint
+        return entrypoint.load() if isinstance(entrypoint, OperationRef) else entrypoint
 
     def __post_init__(self) -> None:
         """Require a generator and consistent wrapping declarations."""
+        if isinstance(self.entrypoint, FunctionRef) or isinstance(
+            self.balance, FunctionRef
+        ):
+            raise TypeError("backend operations require typed request references")
         if not callable(self.entrypoint):
             raise ValueError("a Boolean backend requires a callable generator")
         if self.wrap is not None and self.no_wrap:

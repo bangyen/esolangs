@@ -1,11 +1,14 @@
 """Runtime and compiler capabilities for INTERCAL."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.intercal.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Example, Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 PAIR = ("#0", "#1")
 
@@ -25,20 +28,17 @@ LANGUAGE = Language(
         empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.intercal.generator",
-            "intercal",
-            ("truth_table", "width"),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.intercal.generator", "intercal_request"
         ),
+        layout_width=True,
         same_layout=FunctionRef(
             "esolangs.languages.intercal.generator",
             "_same_layout",
             ("template", "_plain", "layout"),
         ),
-        balance=FunctionRef(
-            "esolangs.languages.intercal.generator",
-            "balance_intercal",
-            ("_table", "default"),
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.intercal.generator", "intercal_balance_request"
         ),
         template=TemplateSpec(pair=PAIR, char=TEMPLATE_CHAR),
     ),

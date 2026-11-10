@@ -63,7 +63,7 @@ rule = "parity"
 size = 16
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.freestajlo.generator:freestajlo"
+construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -72,7 +72,7 @@ seed = 1847
 size = 230
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.freestajlo.generator:freestajlo"
+construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 
 [resource_evidence]
 version = 1
@@ -84,7 +84,7 @@ arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.freestajlo.generator:freestajlo"
+construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} to n = 4, then 4n + 17: the literal, the reads and folds, the decode", formula = "4n" }
 
 [resource_evidence.workspace]
@@ -94,7 +94,7 @@ arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.freestajlo.generator:freestajlo"
+construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the literal's codes on the stack, plain or packed", formula = "max(P, W)" }
 
 [resource_evidence.scaling]
@@ -104,7 +104,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.freestajlo.generator:freestajlo"
+construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]

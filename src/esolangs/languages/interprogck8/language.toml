@@ -69,7 +69,7 @@ seed = 1847
 size = 160984
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.interprogck8.generator:interprogck8"
+construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -77,7 +77,7 @@ rule = "parity"
 size = 143940
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.interprogck8.generator:interprogck8"
+construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -85,7 +85,7 @@ rule = "and"
 size = 8160
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.interprogck8.generator:interprogck8"
+construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 
 [[evidence.anchors]]
 arity = 8
@@ -93,7 +93,7 @@ rule = "zero"
 size = 44
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.interprogck8.generator:interprogck8"
+construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 
 [resource_evidence]
 version = 1
@@ -105,7 +105,7 @@ arities = [3, 4, 5, 6, 7, 8, 9, 10]
 first = 3
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.interprogck8.generator:interprogck8"
+construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 3..12; at most F to n = 34: max of generic and parity walks", formula = "F" }
 
 [resource_evidence.workspace]
@@ -115,7 +115,7 @@ arities = [3, 4, 5, 6]
 first = 3
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.interprogck8.generator:interprogck8"
+construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: accumulator, line cursor, input cursor, slot and frame bodies", formula = "bl(R) + bl(2n) + 543" }
 
 [resource_evidence.scaling]
@@ -125,7 +125,7 @@ arities = [3, 4, 5, 6, 7, 8, 9, 10]
 first = 3
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.interprogck8.generator:interprogck8"
+construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 3..10; at most beyond", formula = "F" }
 
 [semantic_evidence]
@@ -149,6 +149,6 @@ source = { unit = "chars", value = 1000 }
 scale = 1
 budget = 10
 band = "fast"
-construction = "esolangs.languages.interprogck8.generator:interprogck8"
+construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 seed = 0
 notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Reject a private flight request when free+n-3 exceeds ceiling80; (32,52) formerly returned a negative column. Public general/parity gates already stay below this floor. Valid sources, numeric bounds, pins and Size anchors are unchanged. Existing column invariants cover general arities through40 and parity through31."

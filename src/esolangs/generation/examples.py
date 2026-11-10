@@ -16,7 +16,7 @@ Template bindings come from the backend declaration, shared with runtime.
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import Any, cast
+from typing import Any
 
 from esolangs.artifacts import ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
@@ -25,9 +25,11 @@ from esolangs.generation.helpers import (
     Setters,
     fill_runs,
 )
+from esolangs.generation.requests import GenerationRequest, Options
 from esolangs.generation.wrap import DEFAULT_WIDTH, wrap_program
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, Language, canonical_id, example_stems, resolve
+from esolangs.registry._backend import Generator
 from esolangs.registry._contracts import (
     CHAR_STREAMS,
     AnswerMode,
@@ -52,7 +54,7 @@ class BooleanExample:
     chunks; ``expected`` is the whole stdout.
     """
 
-    generator: Callable[..., Program]
+    generator: Generator
     table: str
     interpreter: str
     expected: str
@@ -147,10 +149,7 @@ class BooleanExample:
             return artifact
         backend = LANGUAGES[resolve(self.language)].backend
         assert backend is not None
-        if width is not None and backend.layout_width:
-            program = self.generator(self.table, width)
-        else:
-            program = self.generator(self.table)
+        program = self.emit(self.table, width=width)
         if isinstance(program, CompressedText):
             return ProgramArtifact(program.wrapped(width), self.language)
         if isinstance(program, Raster):
@@ -161,6 +160,17 @@ class BooleanExample:
             program = self.fill(program, list(self.bits))
         return ProgramArtifact(
             wrap_program(program, self.language, width), self.language
+        )
+
+    def emit(self, table: str, *, width: int | None = None) -> Program:
+        """Emit example source through the canonical backend request."""
+        language = LANGUAGES[resolve(self.language)]
+        backend = language.backend
+        assert backend is not None
+        schema = language.runtime.dialect_schema
+        options = Options(tuple(schema.defaults.items())) if schema else Options()
+        return self.generator(
+            GenerationRequest(table, width if backend.layout_width else None, options)
         )
 
     @property
@@ -196,7 +206,7 @@ def _contract_for(interpreter: str) -> BooleanContract:
 
 
 def _reader(
-    generator: Callable[[str], Program],
+    generator: Generator,
     interpreter: str,
     *,
     table: str = AND2,
@@ -222,7 +232,7 @@ def _reader(
 
 
 def _embedded(
-    generator: Callable[[str], str],
+    generator: Generator,
     interpreter: str,
     *,
     setters: Callable[[str, int], Setters],
@@ -281,7 +291,7 @@ def _register() -> None:
         spec = lang.example
         if lang.backend.template is not None:
             example = _embedded(
-                cast(Callable[[str], str], lang.backend.entrypoint),
+                lang.backend.entrypoint,
                 lang.runtime.interpreter,
                 table=spec.table,
                 bits=spec.bits,

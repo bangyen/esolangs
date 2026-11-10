@@ -12,10 +12,12 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.grapheme.dialect import (
     DEFAULT_GRAPHEME,
     GraphemeDialect,
 )
+from esolangs.runtime._program import Program
 from esolangs.runtime.memory import format_integer
 
 #: Int-mode digits: ``Z`` is 0 and ``A``-``Y`` are 1 to 25, so the one value
@@ -141,3 +143,10 @@ def grapheme(
     )
     literal = _grapheme_literal(_grapheme_table(entries), dialect)
     return head + literal + shift + low_bit + ("T" if negate else "") + "Y"
+
+
+def grapheme_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return grapheme(
+        request.table, integer_conversion=request.options.text("integer_conversion")
+    )

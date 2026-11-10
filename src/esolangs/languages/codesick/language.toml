@@ -59,7 +59,7 @@ rule = "parity"
 size = 1317
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.codesick.generator:codesick"
+construction = "esolangs.languages.codesick.generator:codesick_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -68,7 +68,7 @@ seed = 1847
 size = 14942
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.codesick.generator:codesick"
+construction = "esolangs.languages.codesick.generator:codesick_request"
 
 [resource_evidence]
 version = 1
@@ -80,7 +80,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "steps"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.codesick.generator:codesick"
+construction = "esolangs.languages.codesick.generator:codesick_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: three a level, two at the last" }
 
 [resource_evidence.workspace]
@@ -90,7 +90,7 @@ arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.codesick.generator:codesick"
+construction = "esolangs.languages.codesick.generator:codesick_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: the input as key, the unread bits, the ip", formula = "16n + 8 + 8·digits(C+1) + bl(3C+1)" }
 
 [resource_evidence.scaling]
@@ -100,7 +100,7 @@ arities = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 2
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.codesick.generator:codesick"
+construction = "esolangs.languages.codesick.generator:codesick_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} for n>=2: bounded label widths", formula = "(68+10digits(C+1))C+43" }
 
 [semantic_evidence]

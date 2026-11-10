@@ -31,6 +31,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
     _FALSE_COMMAND,
@@ -38,6 +39,7 @@ from esolangs.generation.wrap import (
     balance_score,
     wrap_program,
 )
+from esolangs.runtime._program import Program
 
 #: ``'0`` and ``'1`` differ in their low bit, so ``1&`` is the bit and ``?``
 #: takes any nonzero flag; ``$`` leaves a copy under it for the ``0`` test.
@@ -545,3 +547,15 @@ def _balance(_table: str, default: str) -> str:
     tokens = re.findall(_FALSE_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
     return min(default, _join_tokens(tokens, width, ""), key=balance_score)
+
+
+def false_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return false(request.table, request.width)
+    return false(request.table)
+
+
+def false_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

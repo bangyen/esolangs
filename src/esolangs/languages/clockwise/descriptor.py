@@ -1,11 +1,13 @@
 """Runtime and compiler capabilities for Clockwise."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.clockwise.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Clockwise",
@@ -19,15 +21,14 @@ LANGUAGE = Language(
         empty_program="Clockwise program cannot be empty",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.clockwise.generator",
-            "clockwise",
-            ("truth_table", "width"),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.clockwise.generator", "clockwise_request"
         ),
+        layout_width=True,
         # Not a tree: a countdown stops on the entry's own column.
         shape=Shape.LOOKUP,
-        balance=FunctionRef(
-            "esolangs.languages.clockwise.generator", "_balance", ("table", "default")
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.clockwise.generator", "clockwise_balance_request"
         ),
         no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
         grid=True,

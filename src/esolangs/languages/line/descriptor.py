@@ -1,10 +1,12 @@
 """Runtime and compiler capabilities for Line."""
 
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.line.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec, SourceKind, SourceLoader
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Line",
@@ -19,15 +21,12 @@ LANGUAGE = Language(
         empty_program="image contains no ink",
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.line.generator",
-            "line",
-            ("truth_table", "scale", "unit"),
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.line.generator", "line_request"
         ),
-        balance=FunctionRef(
-            "esolangs.languages.line.generator",
-            "balance",
-            ("truth_table", "default", "unit"),
+        layout_width=False,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.line.generator", "line_balance_request"
         ),
         no_wrap="tree geometry fixes the width; balance chooses orientation",
     ),

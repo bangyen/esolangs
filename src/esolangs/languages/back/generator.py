@@ -50,7 +50,9 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.lookup import symmetric_outputs
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 _Node = tuple[int, int]
 _Grid = dict[tuple[int, int], str]
@@ -548,3 +550,15 @@ def _balance(table: str, default: str) -> str:
         if len(reduced) > 1 << base
     )
     return min(candidates, key=balance_score)
+
+
+def back_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return back(request.table, request.width)
+    return back(request.table)
+
+
+def back_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

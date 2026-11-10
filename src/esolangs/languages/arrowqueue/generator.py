@@ -40,7 +40,9 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
 
@@ -304,3 +306,15 @@ def _balance(table: str, default: str) -> str:
     if constant_output(table) is not None:
         return default
     return min([default, *_folds(table)], key=balance_score)
+
+
+def arrowqueue_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return arrowqueue(request.table, request.width)
+    return arrowqueue(request.table)
+
+
+def arrowqueue_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

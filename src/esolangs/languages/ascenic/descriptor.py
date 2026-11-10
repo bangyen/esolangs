@@ -1,10 +1,12 @@
 """Runtime and compiler capabilities for Ascenic."""
 
+from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.ascenic.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
-from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
+from esolangs.registry._operations import OperationRef
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Ascenic",
@@ -17,9 +19,10 @@ LANGUAGE = Language(
         random=True,
     ),
     backend=BooleanBackend(
-        entrypoint=FunctionRef(
-            "esolangs.languages.ascenic.generator", "ascenic", ("truth_table",)
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.ascenic.generator", "ascenic_request"
         ),
+        layout_width=False,
         no_wrap="a line's length is its opcode and argument",
     ),
 )

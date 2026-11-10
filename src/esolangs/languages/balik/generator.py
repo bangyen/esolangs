@@ -30,6 +30,8 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 
 @dataclass
@@ -145,3 +147,8 @@ def balik(truth_table: str) -> str:
         "".join(row.get(c, " ") for c in range(max(row, default=-1) + 1))
         for row in rows
     )
+
+
+def balik_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return balik(request.table)

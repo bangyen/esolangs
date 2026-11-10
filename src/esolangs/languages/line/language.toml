@@ -71,7 +71,7 @@ rule = "parity"
 size = 1892800
 unit = "pixels"
 scale = 1
-construction = "esolangs.languages.line.generator:line"
+construction = "esolangs.languages.line.generator:line_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -79,7 +79,7 @@ rule = "and"
 size = 1691200
 unit = "pixels"
 scale = 1
-construction = "esolangs.languages.line.generator:line"
+construction = "esolangs.languages.line.generator:line_request"
 
 [[evidence.anchors]]
 arity = 8
@@ -88,7 +88,7 @@ seed = 1847
 size = 23976000
 unit = "pixels"
 scale = 1
-construction = "esolangs.languages.line.generator:line"
+construction = "esolangs.languages.line.generator:line_request"
 
 [resource_evidence]
 version = 1
@@ -100,7 +100,7 @@ arities = [1, 2, 3, 5, 6, 8]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.line.generator:line"
+construction = "esolangs.languages.line.generator:line_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} through n = 5, 3n + 4 beyond; balanced layouts retain 5n", formula = "5n default" }
 
 [resource_evidence.workspace]
@@ -110,7 +110,7 @@ arities = [5]
 first = 5
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.line.generator:line"
+construction = "esolangs.languages.line.generator:line_request"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} from n=5", formula = "n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1)" }
 
 [resource_evidence.scaling]
@@ -120,7 +120,7 @@ arities = [6, 7]
 first = 6
 unit = "pixels"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.line.generator:line"
+construction = "esolangs.languages.line.generator:line_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=6: projected tree envelope", formula = "F" }
 
 [semantic_evidence]

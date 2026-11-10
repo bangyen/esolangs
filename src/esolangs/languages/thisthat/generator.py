@@ -32,7 +32,9 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
+from esolangs.runtime._program import Program
 
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
 _OPPOSITE = {"E": "W", "W": "E", "N": "S", "S": "N"}
@@ -830,3 +832,15 @@ def shared_tree(table: str) -> tuple[str, int] | None:
     _hollow_crossings(builder)
     _draw_input_chain(builder, n, m, ess)
     return builder.render(), 2 * n + 2 * m + 4 + costs[nodes[0]]
+
+
+def thisthat_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    if request.width is not None:
+        return thisthat(request.table, request.width)
+    return thisthat(request.table)
+
+
+def thisthat_balance_request(request: BalanceRequest) -> Program:
+    """Lay out source through the declared balance request interface."""
+    return _balance(request.table, request.text_source())

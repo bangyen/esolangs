@@ -16,7 +16,9 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._digits import digit_limit_for
+from esolangs.runtime._program import Program
 
 
 def _hex(command: str) -> str:
@@ -65,3 +67,8 @@ def hq9_with_headers(truth_table: str) -> str:
         program,
     ]
     return "\n".join(lines) + "\n"
+
+
+def hq9_with_headers_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return hq9_with_headers(request.table)

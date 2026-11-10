@@ -32,6 +32,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     reflected_table,
 )
+from esolangs.generation.requests import GenerationRequest
+from esolangs.runtime._program import Program
 
 # Non-bit ASCII words keep bit+marker tests unique without a # separator.
 _ALPHABET = "".join(
@@ -117,3 +119,8 @@ def codesick(truth_table: str) -> str:
     lines += [f"{c} codesick out {c} * *;" for c in sorted(printed)]
     # Spaces, not newlines: one line per instruction is too short to wrap.
     return " ".join(lines)
+
+
+def codesick_request(request: GenerationRequest) -> Program:
+    """Emit source through the declared generation request interface."""
+    return codesick(request.table)

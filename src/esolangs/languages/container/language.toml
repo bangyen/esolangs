@@ -67,7 +67,7 @@ seed = 1847
 size = 790
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.container.generator:container"
+construction = "esolangs.languages.container.generator:container_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -75,7 +75,7 @@ rule = "parity"
 size = 2241
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.container.generator:container"
+construction = "esolangs.languages.container.generator:container_request"
 
 [resource_evidence]
 version = 1
@@ -87,7 +87,7 @@ arities = [1, 2, 3, 7]
 first = 1
 unit = "commands"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.container.generator:container"
+construction = "esolangs.languages.container.generator:container_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, default tree/threshold builds", formula = "2n + 2" }
 
 [resource_evidence.workspace]
@@ -97,7 +97,7 @@ arities = [1, 2, 3, 7]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.container.generator:container"
+construction = "esolangs.languages.container.generator:container_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} over containers + 2bl(2n+2) + bl(EXIT): peak ≤ start + (2n+2)Σ⁺deltas", formula = "Σ (8|name| + bl(peak))" }
 
 [resource_evidence.scaling]
@@ -107,7 +107,7 @@ arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.container.generator:container"
+construction = "esolangs.languages.container.generator:container_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "the threshold build on 0 0 (1 0)^(T/2-1)" }
 
 [semantic_evidence]

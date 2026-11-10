@@ -60,7 +60,7 @@ seed = 1847
 size = 33170
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.quassaunt.generator:quassaunt"
+construction = "esolangs.languages.quassaunt.generator:quassaunt_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -68,7 +68,7 @@ rule = "parity"
 size = 3062
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.quassaunt.generator:quassaunt"
+construction = "esolangs.languages.quassaunt.generator:quassaunt_request"
 
 [resource_evidence]
 version = 1
@@ -80,7 +80,7 @@ arities = [1, 2, 3, 6]
 first = 1
 unit = "steps"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.quassaunt.generator:quassaunt"
+construction = "esolangs.languages.quassaunt.generator:quassaunt_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: store loop, then one path", formula = "26N + 15n + 66" }
 
 [resource_evidence.workspace]
@@ -90,7 +90,7 @@ arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.quassaunt.generator:quassaunt"
+construction = "esolangs.languages.quassaunt.generator:quassaunt_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: frames, stack, globals, locals and input", formula = "G" }
 
 [resource_evidence.scaling]
@@ -100,7 +100,7 @@ arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
 first = 1
 unit = "characters"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.quassaunt.generator:quassaunt"
+construction = "esolangs.languages.quassaunt.generator:quassaunt_request"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: bounded names and nodes", formula = "F" }
 
 [semantic_evidence]

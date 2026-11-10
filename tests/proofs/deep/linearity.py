@@ -14,6 +14,7 @@ from scripts.source_units import source_units
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import load as load_audit
 from tests.proofs.deep import deep_arities
+from tests.support.generator_support import generator_for
 from tests.support.witness_tables import nested_dense as _nested_dense
 from tests.support.witness_tables import parity as _parity
 
@@ -177,7 +178,7 @@ def _ratio(series: list[tuple[int, int]]) -> float | None:
 
 def measure(key: str, name: str) -> Growth:
     """Worst-fitting shape for one generator, past any route change."""
-    fn = BY_BOOLEAN[key].backend.generate
+    fn = generator_for(BY_BOOLEAN[key].name)
     top = ARITY_OVERRIDE.get(key, MAX_ARITY)
     worst = Growth(generator=name, reason="no shape produced enough rungs")
     for shape, make in _SHAPES:

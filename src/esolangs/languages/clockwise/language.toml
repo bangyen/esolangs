@@ -67,7 +67,7 @@ seed = 1847
 size = 6223
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.clockwise.generator:clockwise"
+construction = "esolangs.languages.clockwise.generator:clockwise_request"
 
 [[evidence.anchors]]
 arity = 10
@@ -76,7 +76,7 @@ seed = 1847
 size = 23967
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.clockwise.generator:clockwise"
+construction = "esolangs.languages.clockwise.generator:clockwise_request"
 
 [[evidence.anchors]]
 arity = 12
@@ -85,7 +85,7 @@ seed = 1847
 size = 94703
 unit = "chars"
 scale = 1
-construction = "esolangs.languages.clockwise.generator:clockwise"
+construction = "esolangs.languages.clockwise.generator:clockwise_request"
 
 [resource_evidence]
 version = 1
@@ -97,7 +97,7 @@ arities = [2, 3, 5]
 first = 2
 unit = "steps"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.clockwise.generator:clockwise"
+construction = "esolangs.languages.clockwise.generator:clockwise_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the pointer's path to the last row" }
 
 [resource_evidence.workspace]
@@ -107,7 +107,7 @@ arities = [3, 6]
 first = 1
 unit = "bits"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.clockwise.generator:clockwise"
+construction = "esolangs.languages.clockwise.generator:clockwise_request"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: 7n-character queue" }
 
 [resource_evidence.scaling]
@@ -117,7 +117,7 @@ arities = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 first = 2
 unit = "cells"
 witnesses = "tests.proofs.measurement:tables"
-construction = "esolangs.languages.clockwise.generator:clockwise"
+construction = "esolangs.languages.clockwise.generator:clockwise_request"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}", formula = "25T + 40n + 20" }
 
 [semantic_evidence]
