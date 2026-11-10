@@ -19,6 +19,10 @@ Releases before 0.10.0 are described on the
 - Tighten worker, snapshot and persistence validation. Supported version-1
   JSON/PNG formats and ordinary native source files remain readable.
 - Correct missing native completion-phase accounting in affected languages.
+- Complete bounded lifecycle and workspace-accounting acceptance for all 117
+  languages on Python 3.12–3.15.
+- Preserve large numeric inputs and deep cycle evidence across execution modes.
+- Fix strict balanced-growth construction for REFRACTRAN and Circuit Diagram.
 - Add optional gzip text export through `save_program(..., gzip=True)` and
   `generate --gzip`. Raster exports retain PNG; compressed bytes do not redefine
   expanded program size or workspace accounting.
