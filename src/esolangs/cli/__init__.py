@@ -43,10 +43,7 @@ from esolangs import (
     LanguageInfo,
     Raster,
     __version__,
-    describe,
     encode_inputs,
-    generate,
-    instantiate,
     list_languages,
     read_answer,
 )
@@ -64,7 +61,7 @@ from esolangs.cli.args import (
     _settings_of,
     _split_positional,
 )
-from esolangs.cli.help import HELP, USAGE
+from esolangs.cli.help import COMMANDS, USAGE, help_text
 from esolangs.cli.hints import (
     _as_argument,
     _cli_error_text,
@@ -80,9 +77,23 @@ from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.raster import png
 from esolangs.registry import LANGUAGES, Language, resolve
-from esolangs.registry._contracts import AnswerMode, ProofStatus, SourceForm
-from esolangs.registry._describe import INPUT_SHAPES
+from esolangs.registry._contracts import AnswerMode, InputShape, ProofStatus, SourceForm
+from esolangs.registry._describe import _spec
 from esolangs.runtime._program import Program
+
+
+def describe(language: str) -> LanguageInfo:
+    """Load full catalog descriptions for commands that display them."""
+    from esolangs import describe as describe_language
+
+    return describe_language(language)
+
+
+def __getattr__(name: str) -> dict[str, str]:
+    """Expose rendered help to callers that request it."""
+    if name == "HELP":
+        return {command: help_text(command) for command in COMMANDS}
+    raise AttributeError(name)
 
 
 def _encode(rest: list[str]) -> None:
@@ -100,28 +111,42 @@ def _encode(rest: list[str]) -> None:
 
 #: ``list``'s filters; every other fact is in ``list --json --details``.
 _FLAG_FILTERS: dict[str, Callable[[Language], bool]] = {
-    "--generator": lambda lang: lang.backend is not None,
-    "--interpreter-only": lambda lang: lang.backend is None,
+    "--generator": lambda lang: lang.has_backend,
+    "--interpreter-only": lambda lang: not lang.has_backend,
 }
 
 
 _CATALOG_FILTERS: dict[str, tuple[str, tuple[str, ...]]] = {
     "--source-kind": ("source_kind", get_args(SourceForm.__value__)),
     "--answer-mode": ("answer_mode", get_args(AnswerMode.__value__)),
-    "--input-shape": ("input_shape", (*INPUT_SHAPES, "template")),
+    "--input-shape": ("input_shape", (*get_args(InputShape.__value__), "template")),
     "--proof-status": ("proof_status", get_args(ProofStatus.__value__)),
 }
 
 
 def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> bool:
     """Match declared interfaces, proof categories and arity caps."""
+    declaration = LANGUAGES[name]
+    if "--source-kind" in options and options["--source-kind"] != (
+        declaration.runtime.source_kind.value
+    ):
+        return False
+    if "--answer-mode" in options and options["--answer-mode"] != (
+        declaration.contract.answer_mode
+    ):
+        return False
+    if not options.keys() & {"--input-shape", "--proof-status"} and inputs is None:
+        return True
     facts = describe(name)
-    for option, (field, _) in _CATALOG_FILTERS.items():
-        actual = cast(Mapping[str, object], facts)[field]
-        if option == "--input-shape" and facts["parameterized"]:
-            actual = "template"
-        if option in options and actual != options[option]:
+    if "--input-shape" in options:
+        shape = "template" if facts["parameterized"] else facts["input_shape"]
+        if shape != options["--input-shape"]:
             return False
+    if (
+        "--proof-status" in options
+        and facts["proof_status"] != options["--proof-status"]
+    ):
+        return False
     if inputs is not None:
         cap = facts["generator_max_inputs"]
         if not facts["boolean_generator"] or (cap is not None and cap < inputs):
@@ -155,7 +180,7 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
         name
         for name in list_languages()
         if all(test(LANGUAGES[name]) for test in wanted)
-        and (pattern is None or pattern.search(describe(name)["spec"]))
+        and (pattern is None or pattern.search(_spec(name)))
         and (not options or _catalog_matches(name, options, inputs))
     ]
 
@@ -284,6 +309,8 @@ def _emit(artifact: Artifact, *, plain: bool, gzip: bool = False) -> None:
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
+    from esolangs import generate, instantiate
+
     value_options = {"--bits", "--scale", "--settings"}
     flag_options = {"--balance", "--plain", "--gzip"}
     rest, set_pairs = _pop_set_pairs(rest)
@@ -451,12 +478,13 @@ def _describe(rest: list[str]) -> None:
     as_json = "--json" in flags
     as_spec = "--spec" in flags
     _check_count("describe", rest, 1)
+    if as_spec:
+        with _errors():
+            spec = _spec(rest[0])
+        print(json.dumps(spec) if as_json else spec)
+        return
     with _errors():
         facts = describe(rest[0])
-    if as_spec:
-        # ``--json`` encodes the spec; it printed every fact, ignoring --spec.
-        print(json.dumps(facts["spec"]) if as_json else facts["spec"])
-        return
     if as_json:
         # Verbatim, including the keys the reading layout hides: a caller
         # asking for JSON is not reading it, and a field that vanishes when
@@ -506,13 +534,14 @@ def _read_answer(rest: list[str]) -> None:
     _check_count("read-answer", rest, 1)
     language = rest[0]
     with _errors():
-        facts = describe(language)
-    if facts["answer_mode"] == "termination":
-        zero, one = facts["answer_encoding"]
+        declaration = LANGUAGES[resolve(language)]
+    contract = declaration.contract
+    if contract.answer_mode == "termination":
+        zero, one = contract.answer_values
         _fail(
-            f"{facts['name']} answers 0 if it {zero} and 1 if it {one}, so "
+            f"{declaration.name} answers 0 if it {zero} and 1 if it {one}, so "
             f"there is no output to read; use: esolangs run "
-            f"--timeout <seconds> {facts['name']} <program-file> and observe "
+            f"--timeout <seconds> {declaration.name} <program-file> and observe "
             f"whether it halts"
         )
     output = _read_stdin(hint="; pipe a program's output in, or close stdin")
@@ -611,18 +640,18 @@ def _dispatch() -> None:
         print(f"esolangs {__version__}")
         sys.exit(0)
     if cmd in ("--help", "-h", "help"):
-        if rest and rest[0] not in HELP:
+        if rest and rest[0] not in COMMANDS:
             # `help nope` printed the usage and exited 0.
-            _fail(f"unknown command: {rest[0]}{_did_you_mean(rest[0], set(HELP))}")
-        sys.stdout.write(HELP[rest[0]] if rest else USAGE)
+            _fail(f"unknown command: {rest[0]}{_did_you_mean(rest[0], set(COMMANDS))}")
+        sys.stdout.write(help_text(rest[0]) if rest else USAGE)
         sys.exit(0)
-    if cmd not in HELP:
+    if cmd not in COMMANDS:
         # Languages and options both suggest a near miss; the subcommands
         # they are typed after did not, so `esolangs lst` got the whole
         # usage block and no hint that `list` was one letter away.
-        _fail(f"unknown command: {cmd}{_did_you_mean(cmd, set(HELP))}\n\n{USAGE}")
+        _fail(f"unknown command: {cmd}{_did_you_mean(cmd, set(COMMANDS))}\n\n{USAGE}")
     if {"--help", "-h"} & set(option_argv[1:]):
-        sys.stdout.write(HELP[cmd])
+        sys.stdout.write(help_text(cmd))
         sys.exit(0)
 
     rest = _expand_short_options(rest)

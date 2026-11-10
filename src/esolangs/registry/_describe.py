@@ -11,10 +11,9 @@ from esolangs.registry import (
     example_stems,
     wiki_url,
 )
-from esolangs.registry._backend import Shape
 from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import (
-    InputShape,
+    GeneratorShape,
     ProofStatus,
     StateModel,
     WidthEffect,
@@ -52,9 +51,8 @@ _STATE_MODELS: dict[str, StateModel] = {
 #: The ``state_model`` labels (the language's category) and generator shapes;
 #: the CLI's ``--state-model`` and ``--shape`` filters accept exactly these.
 STATE_MODELS: tuple[str, ...] = tuple(_STATE_MODELS.values())
-SHAPES: tuple[str, ...] = tuple(shape.value for shape in Shape)
-#: The ``input_shape`` and ``width_effect`` labels, for the CLI's filters.
-INPUT_SHAPES: tuple[str, ...] = get_args(InputShape.__value__)
+SHAPES: tuple[str, ...] = get_args(GeneratorShape.__value__)
+#: The ``width_effect`` labels.
 WIDTH_EFFECTS: tuple[str, ...] = get_args(WidthEffect.__value__)
 #: A Sphinx role; ``~`` keeps only the last dotted component.
 _ROLE = re.compile(r":(?:class|func|meth|mod|attr|exc|data|obj):`(~?)([^`]+)`")
@@ -211,5 +209,6 @@ def list_languages(*, catalog: "Catalog | None" = None) -> list[str]:
 def _proof_status(scaling: str) -> ProofStatus:
     """Return the ledger category without its argument."""
     return cast(
-        ProofStatus, scaling.partition(":")[0].replace(", ", "-").replace(" ", "-")
+        ProofStatus,
+        scaling.partition(":")[0].replace(", ", "-").replace(" ", "-"),
     )

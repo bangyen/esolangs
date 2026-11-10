@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import shlex
 
-from esolangs.generation.wrap import DEFAULT_WIDTH
 from esolangs.registry import LANGUAGES, SourceKind
 
 
@@ -40,14 +39,13 @@ def _capability_examples() -> tuple[str, str]:
     return templates, dialects
 
 
-_TEMPLATE_EXAMPLE, _DIALECT_EXAMPLES = _capability_examples()
 _TERMINATION_NAMES = ", ".join(
     name
     for name, lang in sorted(LANGUAGES.items())
     if lang.contract.answer_mode == "termination"
 )
 
-USAGE = f"""usage: esolangs <command> [...]
+USAGE = """usage: esolangs <command> [...]
 
 commands:
   Generator-made (the API invents source from a truth table):
@@ -90,13 +88,12 @@ examples:
   esolangs encode brainfuck 10
   esolangs generate brainfuck 0110 > prog.txt
   esolangs generate --width brainfuck 10010110
-{_TEMPLATE_EXAMPLE}
   esolangs encode brainfuck 10 | esolangs run brainfuck prog.txt \\
     | esolangs read-answer brainfuck
 """
 
 
-HELP = {
+_HELP = {
     "encode": """usage: esolangs encode <language> <bits>
 
 Print the stdin that feeds <bits> to a <language> program, so it can be
@@ -156,7 +153,7 @@ examples:
   esolangs list --inputs 8 --proof-status linear --details
   esolangs list --json --details | jq -r '.[] | select(.shape == "lookup") | .name'
 """,
-    "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
+    "generate": """usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]
                          [--plain | --gzip] <language> <truth-table>
 
@@ -305,3 +302,21 @@ examples:
     | esolangs read-answer brainfuck
 """,
 }
+
+
+COMMANDS = tuple(_HELP)
+
+
+def help_text(command: str) -> str:
+    """Render one command's help, loading synthesis for generation help."""
+    text = _HELP[command]
+    if command == "generate":
+        from esolangs.generation.wrap import DEFAULT_WIDTH
+
+        template, dialects = _capability_examples()
+        text = (
+            text.replace("{DEFAULT_WIDTH}", str(DEFAULT_WIDTH))
+            .replace("{_TEMPLATE_EXAMPLE}", template)
+            .replace("{_DIALECT_EXAMPLES}", dialects)
+        )
+    return text

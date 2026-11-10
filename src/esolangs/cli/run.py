@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from contextlib import nullcontext
 
-from esolangs import describe, run
+from esolangs import run
 from esolangs.cli.args import (
     _check_count,
     _errors,
@@ -41,6 +41,7 @@ from esolangs.exceptions import (
     ExecutionTimeoutError,
     TemplateError,
 )
+from esolangs.registry import LANGUAGES, resolve
 from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._isolated import check_memory
 from esolangs.settings import dialect_options
@@ -112,14 +113,14 @@ def _run(rest: list[str]) -> None:
     # have answered without reading a byte.
     with _errors():
         dialect_options(language, settings)
-        facts = describe(language)
+        declaration = LANGUAGES[resolve(language)]
         # Before stdin too: held open, `run --seed 1 brainfuck` hung here.
-        check_seed_for(facts["name"], seed)
+        check_seed_for(declaration.name, seed)
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
     program = _read_program(path, timeout, language=language)
-    stdin = _read_stdin(timeout, _stdin_hint(facts))
+    stdin = _read_stdin(timeout, _stdin_hint(declaration))
     try:
         with (
             _unbounded_notice("run")

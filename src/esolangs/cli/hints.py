@@ -7,7 +7,7 @@ from difflib import get_close_matches
 
 from esolangs import LanguageInfo
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
-from esolangs.registry import SUGGESTION_CUTOFF
+from esolangs.registry import SUGGESTION_CUTOFF, Language
 from esolangs.runtime.source_hints import error_text
 
 #: A run stopped by its ``--timeout``, following timeout(1).  Distinct from
@@ -126,21 +126,11 @@ def _decode_note(exc: UnicodeDecodeError) -> str:
     return f"invalid UTF-8 at byte {exc.start}"
 
 
-def _stdin_hint(facts: LanguageInfo) -> str:
-    """Return a clause naming what this language wants on stdin, if anything.
-
-    Suggests rather than skips: some embed-only languages
-    have an input command a hand-written program may use.
-    """
-    if not facts["reads_input"] and facts["parameterized"]:
-        return (
-            f"; {facts['name']}'s generated programs embed their inputs and "
-            f"read no stdin, so there is probably nothing to send -- close it"
-        )
-    if not facts["boolean_generator"]:
-        # ``encode`` refuses these (Deadfish, HQ9+, Nope.): no input command.
-        return f"; {facts['name']} reads no stdin -- close it"
-    return "; try: esolangs encode <language> <bits> | ..."
+def _stdin_hint(language: Language) -> str:
+    """Suggest how to finish waiting for caller-supplied input."""
+    if not language.has_backend:
+        return f"; {language.name} reads no stdin -- close it"
+    return "; send the input this program needs, or close stdin"
 
 
 def _input_sentence(facts: LanguageInfo) -> str:

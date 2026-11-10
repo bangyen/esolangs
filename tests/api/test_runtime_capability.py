@@ -149,6 +149,8 @@ sys.meta_path.insert(0, Block())
 import importlib
 import sys
 from dataclasses import replace
+from pathlib import Path
+import subprocess
 
 import esolangs
 from esolangs.languages.deadfish.descriptor import LANGUAGE
@@ -158,6 +160,20 @@ installed = esolangs.Language(LANGUAGE.name)
 assert installed.run('$io').output == '1\n'
 assert installed.read_answer('1\n') == '1'
 assert installed.prepare('$io').run(isolated=True).output == '1\n'
+path = Path(sys.argv[1]) / 'program.txt'
+path.write_text('$io')
+for options in ([], ['--isolated'], ['--max-steps', '20']):
+    cli = subprocess.run(
+        [sys.executable, '-m', 'esolangs', 'run', *options, LANGUAGE.name, str(path)],
+        input='', capture_output=True, text=True, check=True, timeout=5,
+    )
+    assert cli.stdout == '1\n' and cli.stderr == ''
+cli = subprocess.run(
+    [sys.executable, '-m', 'esolangs', 'read-answer', LANGUAGE.name],
+    input='1\n', capture_output=True, text=True, check=True, timeout=5,
+)
+assert cli.stdout == '1\n' and cli.stderr == ''
+
 for steps in (None, 20):
     scoped = esolangs.Catalog([LANGUAGE]).bind(LANGUAGE.name)
     limits = esolangs.ExecutionLimits(max_steps=steps)
@@ -212,7 +228,7 @@ else:
             filter(None, (temporary, os.environ.get("PYTHONPATH")))
         )
         result = subprocess.run(
-            [sys.executable, "-c", code],
+            [sys.executable, "-c", code, temporary],
             env={**os.environ, "PYTHONPATH": pythonpath},
             capture_output=True,
             text=True,

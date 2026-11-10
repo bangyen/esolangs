@@ -13,10 +13,9 @@ from collections.abc import Collection, Iterator
 from contextlib import contextmanager
 from typing import NoReturn
 
-from esolangs.cli.help import HELP
+from esolangs.cli.help import help_text
 from esolangs.cli.hints import _cli_error_text, _did_you_mean
 from esolangs.exceptions import EsolangError
-from esolangs.generation.wrap import DEFAULT_WIDTH
 from esolangs.registry import resolve
 from esolangs.runtime._json import unique_object
 from esolangs.runtime._validate import check_scale, check_timeout
@@ -188,7 +187,7 @@ def _check_count(
         # The whole synopsis, not its first line: ``generate``'s wraps onto
         # a second, so a missing truth table was reported with a usage
         # string that did not mention the truth table.
-        synopsis = HELP[command].split("\n\n", 1)[0]
+        synopsis = help_text(command).split("\n\n", 1)[0]
         # And say which one is missing.  The synopsis alone left the reader
         # to diff what they typed against a usage line -- easy for two
         # arguments, and it is exactly the two-argument commands that get
@@ -246,6 +245,8 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
                 # A bare ``--width`` has no value to quote, so the option
                 # itself is what a repeat report names.
                 seen["--width"] = arg
+                from esolangs.generation.wrap import DEFAULT_WIDTH
+
                 width = DEFAULT_WIDTH
                 bare = True
                 i += 1
