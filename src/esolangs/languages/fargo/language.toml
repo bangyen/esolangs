@@ -88,12 +88,17 @@ version = 2
 construction = "esolangs.languages.fargo.generator:fargo_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.fargo.proof_formulas:execution"
+# The stated execution bound, evaluated for n and the program.
+#
+# Commands = 7 + expanded tokens + 2 per executed shared-name reference
+# (reference token and frame finish).  A block of size s >= 2 costs at most
+# 4 + 2c(s/2) tokens with its four references named, so c(s) <= 9s - 12.
+expression = "9T - 5"
 exact = false
 arities = [1, 2, 3, 7]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: each expanded token runs once, plus 2 per executed shared-name reference", formula = "9T - 5" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: each expanded token runs once, plus 2 per executed shared-name reference" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.fargo.proof_formulas:workspace"

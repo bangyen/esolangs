@@ -109,12 +109,23 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.brainfuck.tests.formulas:_chars"
+# 35T/2 + 55n + 25: the inherited tree envelope before zero-arm pruning.
+#
+# Reads and the print are 49n + 2(n - 1) + 2(n - 1) + 2n + 49.  A test node is
+# 12 commands plus its arms; a leaf arm moves to the answer cell and back
+# (4(n - i) for a 1, 4(n - i) - 1 under the zero side, nothing for a 0), so the
+# longest tree tests every node with a 1-leaf at the bottom: 16 a bottom node,
+# then 12 + 2 x (child + a 1- or 2-cell hop) a level up.  Folding equal halves
+# only drops nodes; the shared-flag tree and the affine stream are conditional
+# and never counted.  A recurrence over (level, flag the child leaves the
+# pointer on) matches this closed form n = 1..16 and the plain tree exactly
+# on every table n <= 4 before the zero-arm and redundant-move cleanup.
+expression = "35T/2 + 55n + 25"
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree", formula = "35T/2 + 55n + 25" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree" }
 
 [semantic_evidence]
 version = 1

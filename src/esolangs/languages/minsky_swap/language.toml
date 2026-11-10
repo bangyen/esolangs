@@ -96,12 +96,13 @@ version = 2
 construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.minsky_swap.proof_formulas:execution"
+# The maximal native commands before the post-halt dump.
+expression = "max(T+6n+5,16n-3)"
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: unary index or ignored-tail macros; dump follows", formula = "max(T+6n+5,16n-3)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: unary index or ignored-tail macros; dump follows" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.minsky_swap.proof_formulas:workspace"

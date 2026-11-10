@@ -101,12 +101,17 @@ unit = "bits"
 description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: 4T+6·2^⌊n/2⌋+6·2^⌈n/2⌉+18n-7 exit-memory cells, the deques, the counters", formula = "F" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.flowchart.tests.formulas:_cells"
+# 20T + 16 * 2^floor(n/2) + 12 * 2^ceil(n/2) + 72n + 14 = 2 * row.
+#
+# A row is 4 a set (R = T - 1 runs), 6 a push, 4 a ``[ >`` and 4 a cursor
+# rail (2^floor(n/2) - 1 each: deques of 2^ceil(n/2) entries), 12 a pop
+# pair (2^(ceil(n/2) - 1) - 1), 4 a ``/ /`` (8n - 7) and a switch (n).
+expression = "20T+16·2^⌊n/2⌋+12·2^⌈n/2⌉+72n+14"
 exact = true
 arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "cells"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: two rows", formula = "20T+16·2^⌊n/2⌋+12·2^⌈n/2⌉+72n+14" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: two rows" }
 
 [semantic_evidence]
 version = 1

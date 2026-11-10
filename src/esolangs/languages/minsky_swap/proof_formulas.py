@@ -6,11 +6,6 @@ def commands(n: int) -> int:
     return max((1 << n) + 6 * n + 12, 16 * n + 4)
 
 
-def execution(n: int, _p: str) -> int:
-    """The maximal native commands before the post-halt dump."""
-    return max((1 << n) + 6 * n + 5, 16 * n - 3)
-
-
 def workspace(n: int, _p: str) -> int:
     """Bound registers, pointer, full code cursor and post-halt dump latch."""
     # Held scratch uses two bits, the index at most m-1. A tail macro uses

@@ -94,12 +94,17 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: every leaf run, all weights set" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.home_row.proof_formulas:workspace"
+# Index, flags and cursor: ``n + 49 + bl(S)``, S the worst program length.
+#
+# A negated setter's cell reaches -1, one bit more.  The reversed twin is
+# picked only on a shorter program, yet one still reaches the top bit length
+# of S: a long run of equal pairs at the front.
+expression = "n + 49 + bl(6T+10n+61)"
 exact = true
 arities = [2, 3, 4, 5, 6]
 first = 2
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: index cell, four flags, cursor, a -1 setter cell", formula = "n + 49 + bl(6T+10n+61)" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: index cell, four flags, cursor, a -1 setter cell" }
 
 [resource_evidence.scaling]
 expression = "6T + 10n + 61"

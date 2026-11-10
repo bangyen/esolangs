@@ -96,12 +96,12 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: tape and cursors" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.bit_tilde.tests.formulas:_chars"
+expression = "3T+19n+115"
 exact = true
 arities = [4, 6, 8]
 first = 4
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: minority planting", formula = "3T+19n+115" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: minority planting" }
 
 [semantic_evidence]
 version = 1

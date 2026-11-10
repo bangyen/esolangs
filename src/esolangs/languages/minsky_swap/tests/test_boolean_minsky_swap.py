@@ -219,8 +219,11 @@ def _check_pair_source_cap() -> None:
 
     from esolangs.languages.minsky_swap.generator import minsky_swap_setters
     from esolangs.languages.minsky_swap.interpreter import _Machine
-    from esolangs.languages.minsky_swap.proof_formulas import execution, workspace
+    from esolangs.languages.minsky_swap.proof_formulas import workspace
     from esolangs.languages.minsky_swap.tests.formulas import _chars
+    from scripts.docs.resource_evidence import resource_bounds
+
+    execution = resource_bounds("Minsky Swap")["execution"].formula
 
     for n in range(1, 9):
         table = "0" * (1 << (n - 1)) + "1" * (1 << (n - 1))

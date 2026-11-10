@@ -10,11 +10,6 @@ def diagram_cap(n: int) -> int:
     )
 
 
-def execution(n: int, _p: str) -> int:
-    """Every read, at most n dispatches, and a printing leaf; parity attains it."""
-    return 6 * n + 8
-
-
 def workspace(n: int, _p: str) -> int:
     """Buffered names/bytes plus a default-arm branch; exact at n=1,2,3,5."""
     # Full input environment: B+18 bits for buffers, a and _. A branch's

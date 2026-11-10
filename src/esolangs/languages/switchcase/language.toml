@@ -74,12 +74,13 @@ version = 2
 construction = "esolangs.languages.switchcase.generator:switchcase_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.switchcase.proof_formulas:execution"
+# Every read, at most n dispatches, and a printing leaf; parity attains it.
+expression = "6n+8"
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: define buffers, read all inputs, at most n binary branches, print", formula = "6n+8" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: define buffers, read all inputs, at most n binary branches, print" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.switchcase.proof_formulas:workspace"

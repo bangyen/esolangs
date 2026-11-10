@@ -97,12 +97,16 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the string at its longest, an index of T - 1 units beside the table" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.sonata.tests.formulas:_chars"
+# Full-support nonsymmetric doubling attains through six inputs.
+# The n=1 identity stays on doubling: symmetric_weights requires m>=2.
+# A projection costs 2**m+2n+2m+80, plus21 if n=2. Pair packing
+# from m=7 instead costs <=2**(m-1)+2n+2m+115, below this ceiling.
+expression = "T+4n+101-21min(1,(n-2)^2)"
 exact = [1, 2, 3, 4, 5, 6]
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: exact n=1..6, upper bound thereafter", formula = "T+4n+101-21min(1,(n-2)^2)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: exact n=1..6, upper bound thereafter" }
 
 [semantic_evidence]
 version = 1
