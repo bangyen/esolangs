@@ -3799,3 +3799,28 @@ Their 952 production-file hashes match the installed wheel; these source runs
 retain their own provenance separately from guarded installed receipts.
 Evidence: `notes/migration-closure-batch2`. Completion rows: 97 closed, 20 open;
 19 accounting reviews remain pending.
+
+Forbin retains all 78 original definitions and adds an independent 343-record
+bounded accounting model: 69 base/extra cases, all 256 byte inputs, seventeen
+error records and the original finite closure-loop tail. Existing caps and
+three post-halt idles remain unchanged; the selected medium owner retains its
+old body, with no new nodes or duration changes.
+
+Forty-eight installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared,
+VM and debugger each match 2,453 boundaries, eight constructor refusals and
+1,135 successful steps; the written-state peak is 144 bits. Each version checks
+343 bounded and 343 ordinary public calls, nineteen representative workers,
+four worker caps and twelve physical failure/retry histories. Ten actual
+capture erasures, two typed IO controls, two readonly futures and six touched
+raw-cycle mutations are detected. Full workspace envelopes round-trip; native
+closure-bearing cycle snapshot serialization remains open.
+
+The saved reader, full relocation and 23 corruption controls pass; result
+mutations also change saved stdout. All 92 children and 140 startup markers
+reconcile under the 952-file guard. Active leaf time is 89.55s, maximum 5.05s
+against unchanged 60s caps. The fatal proof-import selector exits 87: installed
+permanent coverage is the new hook, with zero whole-owner credit; the required
+repository gate covers the preserved original tests. Native and generator code
+are unchanged. Forbin's bounded accounting review is complete; arbitrary
+grammar, raw closure persistence and universal accounting remain open.
+Accounting reviews pending: 18; language completion is reconciled separately.

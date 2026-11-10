@@ -295,3 +295,9 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
     )
 
     check_constructor_error_observations()
+
+    from esolangs.languages.forbin.tests.accounting_checks import (
+        check_accounting_forbin,
+    )
+
+    check_accounting_forbin()
