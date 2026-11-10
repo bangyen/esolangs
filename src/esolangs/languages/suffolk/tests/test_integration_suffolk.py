@@ -9,10 +9,10 @@ import esolangs
 import esolangs.debugger as debugger_api
 import esolangs.operations.execution as _execution_operations
 from esolangs import run
-from esolangs.debugger import complete_vm
 from esolangs.runtime._lifecycle import POST_HALT_REPORT, Completion
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
+    complete_vm,
     make_vm,
     run_until_halt,
     run_until_halt_or_cycle,

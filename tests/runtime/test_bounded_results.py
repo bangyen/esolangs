@@ -10,11 +10,20 @@ from esolangs.vm import _capture_result, complete_vm, make_vm
 from tests.support.reference import REFERENCE
 
 
-def test_step_exhaustion_does_not_publish_a_completed_result():
+def test_step_exhaustion_does_not_publish_a_completed_result(monkeypatch):
+    from esolangs.debugger import Debugger
+
+    def refuse_debugger(*_args, **_kwargs):
+        raise AssertionError("bounded execution must not construct a debugger")
+
+    monkeypatch.setattr(Debugger, "__init__", refuse_debugger)
     with pytest.raises(esolangs.ExecutionTimeoutError, match="max_steps") as caught:
         _execution_operations._run_bounded_result(REFERENCE, "+.[]", max_steps=10)
     assert caught.value.partial_output == "\x01"
     assert caught.value.bound == "max_steps"
+    result = _execution_operations._run_bounded_result(REFERENCE, "+.", max_steps=2)
+    assert result.output == "\x01"
+    assert result.steps == 2
 
 
 def test_an_active_vm_has_no_successful_result():

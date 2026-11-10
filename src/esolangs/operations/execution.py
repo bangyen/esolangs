@@ -3,12 +3,12 @@
 from collections.abc import Callable
 from functools import partial
 
-from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError
 from esolangs.operations.source import _check_program
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
+from esolangs.runtime._controller import ExecutionController
 from esolangs.runtime._execution import (
     check_signal_timeout,
     interpreter_module,
@@ -27,7 +27,7 @@ from esolangs.runtime._validate import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.vm import _capture_observation, _capture_result
+from esolangs.vm import _capture_observation, _capture_result, make_vm
 
 io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO
 
@@ -53,15 +53,17 @@ def _run_bounded_result(
     """
     check_whole(max_steps, "max_steps")
     check_timeout(timeout)
-    debugger = make_debugger(
-        language, program, stdin=stdin, scale=scale, settings=settings, seed=seed
+    controller = ExecutionController(
+        make_vm(
+            language, program, stdin=stdin, scale=scale, settings=settings, seed=seed
+        )
     )
     try:
-        reason = debugger.run(max_steps=max_steps, timeout=timeout)
+        reason = controller.run(max_steps=max_steps, timeout=timeout)
     except EsolangError as exc:
-        exc.partial_output = debugger.output
-        observation = exc.execution or _capture_observation(debugger.vm)
-        exc.execution = observation._replace(steps=debugger._steps)  # noqa: SLF001
+        exc.partial_output = controller.output
+        observation = exc.execution or _capture_observation(controller.vm)
+        exc.execution = observation._replace(steps=controller._steps)  # noqa: SLF001
         raise
     if reason != "halted":
         # One wording per bound: a timeout reads as it does unstepped.
@@ -70,13 +72,13 @@ def _run_bounded_result(
             if reason == "timeout"
             else f"execution stopped at the {reason} bound"
         )
-        error.partial_output = debugger.output
+        error.partial_output = controller.output
         error.bound = "timeout" if reason == "timeout" else "max_steps"
-        error.execution = _capture_observation(debugger.vm)._replace(
-            steps=debugger._steps  # noqa: SLF001
+        error.execution = _capture_observation(controller.vm)._replace(
+            steps=controller._steps  # noqa: SLF001
         )
         raise error
-    return _capture_result(debugger.vm)._replace(steps=debugger._steps)  # noqa: SLF001
+    return _capture_result(controller.vm)._replace(steps=controller._steps)  # noqa: SLF001
 
 
 def run(

@@ -82,7 +82,7 @@ class TestPackageSurface:
                 if inspect.isfunction(value):
                     live[f"{module.__name__}.{name}"] = str(inspect.signature(value))
         for cls in PUBLIC_MEMBERS:
-            for name, value in vars(cls).items():
+            for name, value in inspect.getmembers(cls):
                 function = getattr(value, "__func__", value)
                 if (name == "__init__" or not name.startswith("_")) and (
                     inspect.isfunction(function)
