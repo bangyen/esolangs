@@ -1,23 +1,19 @@
 """Execute source through native, cooperative or isolated routes."""
 
 from collections.abc import Callable
-from functools import partial
 
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionTimeoutError
-from esolangs.operations.source import _check_program
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
-from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._controller import ExecutionController
 from esolangs.runtime._execution import (
     check_signal_timeout,
     interpreter_module,
-    prepare_call,
-    run_prepared,
 )
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._isolated import run_isolated_result as _run_isolated_result
+from esolangs.runtime._prepared import PreparedProgram, prepare_program
 from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
 from esolangs.runtime._validate import (
     check_flag,
@@ -44,6 +40,7 @@ def _run_bounded_result(
     seed: int | None = None,
     catalog: "Catalog | None" = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
+    prepared: PreparedProgram | None = None,
 ) -> ExecutionResult:
     """Execute cooperatively, returning a result only after completed halt.
 
@@ -66,6 +63,7 @@ def _run_bounded_result(
             seed=seed,
             catalog=catalog,
             io_factory=io_factory,
+            prepared=prepared,
         )
     )
     try:
@@ -194,6 +192,7 @@ def _run_result(
     settings: DialectSettings | None = None,
     catalog: "Catalog | None" = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
+    prepared: PreparedProgram | None = None,
 ) -> ExecutionResult:
     """Execute through one route, retaining its result metadata."""
     from esolangs.registry._catalog import get_catalog
@@ -240,6 +239,7 @@ def _run_result(
             seed=seed,
             catalog=catalog,
             io_factory=io_factory,
+            prepared=prepared,
         )
     # Before ``_run``, so every ValueError from the run is the
     # interpreter's.  The message names both routes out for a worker
@@ -254,20 +254,18 @@ def _run_result(
         ".run(timeout=...), "
         "which steps and so needs no signal",
     )
-    name = catalog.resolve(language)
-    artifact = _check_program(name, program, stdin, catalog=catalog)
-    settings = effective_settings(name, artifact, settings, catalog=catalog)
-    scale = effective_scale(language, artifact, scale, catalog=catalog)
-    program = artifact.source
-    entrypoint = catalog.languages[name].runtime.completion_entrypoint
-    run_fn = getattr(interpreter_module(name, catalog=catalog), entrypoint)
-    program_args, options = prepare_call(
-        name,
-        program,
-        ExecutionContext(scale=scale, seed=seed, settings=settings),
-        catalog=catalog,
+    if prepared is None:
+        prepared = prepare_program(
+            language,
+            program,
+            settings=settings,
+            scale=scale,
+            catalog=catalog,
+            module_loader=interpreter_module,
+        )
+    from esolangs.runtime._input import check_input
+
+    check_input(stdin)
+    return prepared._run_native(  # noqa: SLF001
+        stdin, timeout=timeout, seed=seed, io_factory=io_factory
     )
-    if options:
-        run_fn = partial(run_fn, **options)
-    io_obj = io_factory(stdin)
-    return run_prepared(name, run_fn, program_args, io_obj, timeout, catalog=catalog)

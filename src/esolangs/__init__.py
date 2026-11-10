@@ -52,6 +52,7 @@ from esolangs.settings import DialectSettings
 
 _LAZY = {
     "Catalog": "esolangs.registry._catalog",
+    "PreparedProgram": "esolangs.runtime._prepared",
     "Language": "esolangs._language",
     "run": "esolangs.operations.execution",
     "generate": "esolangs.operations.generation",
@@ -81,6 +82,7 @@ if TYPE_CHECKING:
     from esolangs.registry._describe import list_languages as list_languages
     from esolangs.runtime._answers import encode_inputs as encode_inputs
     from esolangs.runtime._answers import read_answer as read_answer
+    from esolangs.runtime._prepared import PreparedProgram as PreparedProgram
 else:
 
     def __getattr__(name: str) -> object:
@@ -122,6 +124,7 @@ __all__ = [
     "Language",
     "LanguageInfo",
     "MissingDependencyError",
+    "PreparedProgram",
     "Program",
     "ProgramArtifact",
     "ProgramError",

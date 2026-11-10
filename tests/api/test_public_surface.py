@@ -38,6 +38,7 @@ class TestPackageSurface:
             "Language",
             "LanguageInfo",
             "MissingDependencyError",
+            "PreparedProgram",
             "Program",
             "ProgramArtifact",
             "ProgramError",

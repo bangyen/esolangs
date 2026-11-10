@@ -1,0 +1,168 @@
+"""Reusable source preparation, independent of invocation state and Boolean I/O."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from functools import partial
+from types import ModuleType
+from typing import TYPE_CHECKING, Any, cast
+
+from esolangs.artifacts import ProgramArtifact
+from esolangs.registry._catalog import Catalog, get_catalog
+from esolangs.results import ExecutionResult
+from esolangs.runtime._context import ExecutionContext
+from esolangs.runtime._execution import (
+    interpreter_errors,
+    interpreter_module,
+    prepare_call,
+    run_prepared,
+)
+from esolangs.runtime._input import InputSource
+from esolangs.runtime._machine import MachineFactory, MachinePreparation
+from esolangs.runtime._program import Program, RunnerProgram
+from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
+from esolangs.runtime.io import ScriptedIO
+from esolangs.settings import DialectSettings, dialect_options, effective_settings
+
+if TYPE_CHECKING:
+    from esolangs.vm import VM
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedProgram:
+    """Loaded source and bound runtime; every invocation owns its IO and RNG.
+
+    Source decoding and language resolution happen once. Language preparation
+    hooks own parsing; a hook may defer parsing until machine construction.
+    Native runners retain their own compiled representations and caches.
+    """
+
+    artifact: ProgramArtifact[Program]
+    catalog: Catalog = field(repr=False)
+    _module: ModuleType = field(repr=False, compare=False)
+
+    @property
+    def language(self) -> str:
+        """The canonical language owning this program."""
+        return self.artifact.language
+
+    def _call(
+        self, *, seed: int | None = None, reproducible: bool = False
+    ) -> tuple[RunnerProgram, dict[str, Any]]:
+        # Never retain options: an RNG, or a split grid changed by a runner,
+        # belongs to this invocation rather than the reusable source.
+        return prepare_call(
+            self.language,
+            self.artifact.source,
+            ExecutionContext(
+                scale=self.artifact.scale,
+                settings=self.artifact.settings,
+                seed=seed,
+                reproducible=reproducible,
+            ),
+            catalog=self.catalog,
+        )
+
+    def _factory(self, *, seed: int | None = None) -> MachineFactory:
+        code, options = self._call(seed=seed, reproducible=True)
+        runtime = self.catalog.languages[self.language].runtime
+        prepare = cast(
+            MachinePreparation, getattr(self._module, runtime.machine_preparation)
+        )
+        return prepare(code, options)
+
+    def _run_native(
+        self,
+        stdin: InputSource,
+        *,
+        timeout: float | None,
+        seed: int | None,
+        io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
+    ) -> ExecutionResult:
+        code, options = self._call(seed=seed)
+        runtime = self.catalog.languages[self.language].runtime
+        runner = getattr(self._module, runtime.completion_entrypoint)
+        if options:
+            runner = partial(runner, **options)
+        return run_prepared(
+            self.language,
+            runner,
+            code,
+            io_factory(stdin),
+            timeout,
+            catalog=self.catalog,
+        )
+
+    def run(
+        self,
+        *,
+        stdin: InputSource = "",
+        timeout: float | None = None,
+        seed: int | None = None,
+        isolated: bool = False,
+        max_steps: int | None = None,
+        max_output: int | None = None,
+        max_memory: int | None = None,
+    ) -> ExecutionResult:
+        """Run fresh state; arguments and errors follow :func:`esolangs.run`."""
+        from esolangs.operations.execution import _run_result
+
+        return _run_result(
+            self.language,
+            self.artifact,
+            stdin=stdin,
+            timeout=timeout,
+            seed=seed,
+            isolated=isolated,
+            max_steps=max_steps,
+            max_output=max_output,
+            max_memory=max_memory,
+            catalog=self.catalog,
+            prepared=self,
+        )
+
+    def make_vm(self, *, stdin: InputSource = "", seed: int | None = None) -> VM:
+        """Create an independent step machine; errors follow debugger.make_vm."""
+        from esolangs.vm import _make_vm
+
+        return _make_vm(
+            self.language,
+            self.artifact,
+            stdin=stdin,
+            seed=seed,
+            catalog=self.catalog,
+            prepared=self,
+        )
+
+
+def prepare_program(
+    language: str,
+    program: ProgramSource,
+    *,
+    settings: DialectSettings | None = None,
+    scale: int | None = None,
+    catalog: Catalog | None = None,
+    module_loader: Callable[..., ModuleType] = interpreter_module,
+) -> PreparedProgram:
+    """Load source once, resolving provenance and explicit execution choices."""
+    from esolangs.operations.source import _check_program
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
+    settings = effective_settings(name, program, settings, catalog=catalog)
+    dialect_options(name, settings, catalog=catalog)
+    scale = effective_scale(name, program, scale, catalog=catalog)
+    artifact = _check_program(name, program, catalog=catalog)
+    settings = effective_settings(name, artifact, settings, catalog=catalog)
+    scale = effective_scale(name, artifact, scale, catalog=catalog)
+    check_scale_for(name, scale, catalog=catalog)
+    with interpreter_errors(
+        f"the {name} interpreter recursed deeper than CPython's stack "
+        "limit allows while loading this program",
+        language=name,
+    ):
+        module = module_loader(name, catalog=catalog)
+    return PreparedProgram(
+        ProgramArtifact(artifact.source, name, settings, scale), catalog, module
+    )

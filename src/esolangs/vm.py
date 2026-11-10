@@ -46,25 +46,22 @@ from esolangs.exceptions import EsolangError as _EsolangError
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as IpShape
-from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._drive import finalize
 from esolangs.runtime._execution import (
     check_seed_for,
     interpreter_errors,
     interpreter_module,
-    prepare_call,
 )
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._lifecycle import Completion, CompletionReport
-from esolangs.runtime._machine import MachinePreparation
-from esolangs.runtime._program import Program
-from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
+from esolangs.runtime._prepared import PreparedProgram, prepare_program
+from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._state import WorkspaceSnapshot
 from esolangs.runtime._traits import trait, traits
 from esolangs.runtime._validate import check_seed, check_whole
 from esolangs.runtime._vm_views import machine_views
 from esolangs.runtime.io import ScriptedIO
-from esolangs.settings import DialectSettings, dialect_options, effective_settings
+from esolangs.settings import DialectSettings
 
 
 def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
@@ -211,11 +208,9 @@ class _DelegatingVM:
     def __init__(
         self,
         language: str,
-        program: Program,
+        program: PreparedProgram,
         stdin: InputSource = "",
         *,
-        scale: int | None = None,
-        settings: DialectSettings | None = None,
         seed: int | None = None,
         catalog: Catalog | None = None,
         io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
@@ -226,19 +221,8 @@ class _DelegatingVM:
         self.language = language
         self._io = io_factory(stdin)
         self._capabilities = catalog.languages[language].runtime.capabilities
-        module = interpreter_module(language, catalog=catalog)
-        code, options = prepare_call(
-            language,
-            program,
-            ExecutionContext(
-                scale=scale, seed=seed, reproducible=True, settings=settings
-            ),
-            catalog=catalog,
-        )
-        preparation = catalog.languages[language].runtime.machine_preparation
-        prepare = cast(MachinePreparation, getattr(module, preparation))
         try:
-            self._machine = prepare(code, options)(self._io)
+            self._machine = program._factory(seed=seed)(self._io)  # noqa: SLF001
         except Exception as error:
             # Initializers can print/read before construction fails.
             # Refusals with no observed IO keep their unavailable observation.
@@ -442,24 +426,27 @@ def _make_vm(
     seed: int | None = None,
     catalog: Catalog | None = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
+    prepared: PreparedProgram | None = None,
 ) -> VM:
     """Prepare a scoped VM with an invocation-owned input/output factory."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    from esolangs.operations.source import _check_program
+    from esolangs.runtime._input import check_input
 
     name = catalog.resolve(language)
     check_seed(seed)
     check_seed_for(name, seed, catalog=catalog)
-    settings = effective_settings(name, program, settings, catalog=catalog)
-    dialect_options(name, settings, catalog=catalog)
-    scale = effective_scale(name, program, scale, catalog=catalog)
-    artifact = _check_program(name, program, stdin, catalog=catalog)
-    settings = effective_settings(name, artifact, settings, catalog=catalog)
-    scale = effective_scale(name, artifact, scale, catalog=catalog)
-    source = artifact.source
-    check_scale_for(name, scale, catalog=catalog)
+    check_input(stdin)
+    if prepared is None:
+        prepared = prepare_program(
+            name,
+            program,
+            settings=settings,
+            scale=scale,
+            catalog=catalog,
+            module_loader=interpreter_module,
+        )
     with interpreter_errors(
         f"the {name} interpreter recursed deeper than CPython's stack "
         "limit allows while loading this program",
@@ -467,10 +454,8 @@ def _make_vm(
     ):
         return _DelegatingVM(
             name,
-            source,
+            prepared,
             stdin,
-            scale=scale,
-            settings=settings,
             seed=seed,
             catalog=catalog,
             io_factory=io_factory,

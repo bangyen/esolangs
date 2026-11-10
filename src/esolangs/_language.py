@@ -11,6 +11,7 @@ from esolangs.registry import Catalog, get_catalog
 from esolangs.registry._describe import LanguageInfo
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
+from esolangs.runtime._prepared import PreparedProgram, prepare_program
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource
 from esolangs.settings import DialectSettings, effective_settings
@@ -85,6 +86,21 @@ class Language:
         )
         assert isinstance(artifact, ProgramArtifact)
         return ProgramArtifact(artifact.source, self.name, retained, artifact.scale)
+
+    def prepare(
+        self,
+        program: ProgramSource,
+        *,
+        settings: DialectSettings | None = None,
+        scale: int | None = None,
+    ) -> PreparedProgram:
+        """Load reusable source; arguments and errors follow :func:`esolangs.run`.
+
+        Each run or VM owns fresh IO, machine state and randomness.
+        """
+        return prepare_program(
+            self.name, program, settings=settings, scale=scale, catalog=self.catalog
+        )
 
     def generate(
         self,

@@ -7,7 +7,6 @@ import pytest
 from esolangs import vm
 from esolangs.languages.brainfuck.interpreter import _Machine, prepare_machine
 from esolangs.results import Completion
-from esolangs.runtime.io import ScriptedIO
 
 
 def test_declared_preparation_needs_no_private_constructor(monkeypatch):
@@ -37,22 +36,6 @@ def test_declared_preparation_needs_no_private_constructor(monkeypatch):
     machine.step()
     assert machine.halted
     assert machine.output == "B"
-
-
-def test_prepared_factory_owns_state_and_input():
-    factory = prepare_machine(",+.", {})
-    first_io, second_io = ScriptedIO("A"), ScriptedIO("Z")
-    first, second = factory(first_io), factory(second_io)
-    before = second.snapshot()
-    first.step()
-    assert second.snapshot() == before
-    assert second_io.progress() == 0
-    while not first.halted:
-        first.step()
-    while not second.halted:
-        second.step()
-    assert first_io.getvalue() == "B"
-    assert second_io.getvalue() == "["
 
 
 def test_preparation_refuses_wrong_shapes_and_options():

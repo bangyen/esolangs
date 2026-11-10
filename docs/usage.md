@@ -134,7 +134,10 @@ assert bf.read_answer(result.output) == "1"
 info = bf.describe()
 ```
 
-It also binds `instantiate`; use the package functions across languages.
+`prepared = bf.prepare(program)` loads source once. Use `prepared.run(stdin=...)`
+or `prepared.make_vm(stdin=...)` for fresh IO, machine state and randomness on
+each invocation. Parsing remains language-owned and may happen during machine
+construction. It also binds `instantiate`; use package functions across languages.
 
 `Catalog` owns immutable declarations and lookup indexes. Construct one from
 `esolangs.registry.CATALOG.languages.values()`; `with_language(record)` returns
@@ -191,6 +194,7 @@ Types:
 - `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
 - `esolangs.Language` -- bind a canonical language name to one immutable catalog
 - `esolangs.LanguageInfo` -- what `describe` returns, as a type a caller can annotate with
+- `esolangs.PreparedProgram` -- loaded source and bound runtime; every invocation owns its IO and RNG
 - `esolangs.Program` -- `str | Raster | CompressedText`
 - `esolangs.ProgramArtifact` -- runnable source with its language and retained dialect choices
 - `esolangs.ProgramSource` -- `Program | Artifact | bytes | PathLike[str] | IO[str] | IO[bytes]`
