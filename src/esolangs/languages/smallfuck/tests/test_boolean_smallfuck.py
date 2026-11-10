@@ -332,7 +332,7 @@ def test_davio_weights_use_spare_band_cells(
     assert boolean.anf_coefficients is anf_coefficients
     assert boolean.constant_output is constant_output
     for name, broken, table, row, expected in (
-        ("anf_coefficients", lambda _: [0] * 4, "0001", 3, "1"),
+        ("anf_coefficients", lambda _: (0,) * 4, "0001", 3, "1"),
         ("constant_output", lambda _: "1", "00000010", 0, "0"),
     ):
         with monkeypatch.context() as fault:

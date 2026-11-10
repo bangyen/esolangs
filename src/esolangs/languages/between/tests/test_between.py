@@ -49,7 +49,18 @@ def test_apostrophes_in_strings() -> None:
         )
 
 
-def test_groups_nest_and_compute() -> None:
+def test_groups_nest_and_compute(monkeypatch) -> None:
+    from esolangs.languages.between import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Between",
+        "'a'v.\n[a]s|12|\n[a]p.",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("", "12"), ("", "12"), ("", "12")),
+    )
     assert out("'a'v.\n[a]s|3|\n[a]s|[a]+|4||\n[a]s|[a]*|[a]+|1|||\n[a]p.") == "56"
     assert out("'a'v.\n[a]s|'12'c.|\n[a]p.") == "12"
 

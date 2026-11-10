@@ -71,7 +71,18 @@ def test_rpg_menu_branches_and_loops() -> None:
     assert "escaped" in io.getvalue()
 
 
-def test_unnumbered_lines_count_from_one() -> None:
+def test_unnumbered_lines_count_from_one(monkeypatch) -> None:
+    from esolangs.languages.basicer import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "BASICER",
+        "10 GOTO 30\n20 PRINT no\n30 PRINT yes",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("", "yes\n"), ("", "yes\n"), ("", "yes\n")),
+    )
     assert _out("GOTO 3\nPRINT no\nPRINT yes") == "yes\n"
 
 

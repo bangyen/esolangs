@@ -35,7 +35,7 @@ Decisions:
     nothing from n=9, and grow balanced thr2 by a quarter: not built.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from math import isqrt
 from string import ascii_lowercase
@@ -174,7 +174,7 @@ class _ArmBuilder:
 
 def _arm_expression(
     table: str,
-    coeffs: list[int],
+    coeffs: Sequence[int],
     n: int,
     at: tuple[int, ...],
 ) -> str:

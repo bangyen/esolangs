@@ -19,7 +19,18 @@ def test_a_jump_skips_the_rest_of_its_arm() -> None:
     assert _output("$_\n0?'3@\n$_\n0?+1\n$_\n0?@") == "0"
 
 
-def test_a_case_with_no_match_and_no_default_does_nothing() -> None:
+def test_a_case_with_no_match_and_no_default_does_nothing(monkeypatch) -> None:
+    from esolangs.languages.switchcase import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "SwitchCase",
+        "$_\n5?+1\n$_\n0?@",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("", "0"), ("", "0"), ("", "0")),
+    )
     assert _output("$_\n5?+1\n$_\n0?@") == "0"
 
 

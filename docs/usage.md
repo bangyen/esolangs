@@ -159,6 +159,12 @@ These language-owned plans retain parsed source:
 - Bitwise Cyclic Tag: program bits, initial data and source offsets.
 - Cyclic tag: productions, initial queue and source offsets.
 - NQ: instructions with guard targets compiled for the selected dialect.
+- BASICER: numbered instructions and line index.
+- Basicfuck: compiled operations and tape bounds.
+- Between: instructions and nested operands.
+- CARP: validated register instructions.
+- SStack: operations and resolved bracket targets.
+- SwitchCase: cases and read-only arm maps.
 
 `Language` also binds `instantiate`; use package functions across languages.
 

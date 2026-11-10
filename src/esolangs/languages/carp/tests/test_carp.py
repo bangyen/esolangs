@@ -25,7 +25,18 @@ def test_page_addition_program(a: int, b: int) -> None:
     assert _run(ADD, f"{a} {b}") == str(a + b)
 
 
-def test_inc_at_15_jumps_without_wrapping() -> None:
+def test_inc_at_15_jumps_without_wrapping(monkeypatch) -> None:
+    from esolangs.languages.carp import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "CARP",
+        "INP r1 0\nOUT r1 0",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("1", "1"), ("2", "2"), ("7", "7")),
+    )
     from esolangs.languages.carp.tests.oracle_checks import check_raw_carp
 
     check_raw_carp()

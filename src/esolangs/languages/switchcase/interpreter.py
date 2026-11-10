@@ -45,6 +45,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -52,7 +53,7 @@ from esolangs.languages.switchcase.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -76,7 +77,7 @@ _ARM = re.compile(r"(-?\d+)\?(.*)", re.DOTALL)
 @dataclass(frozen=True, slots=True)
 class _Case:
     variable: str
-    arms: dict[int | str, tuple[_Command, ...]]
+    arms: Mapping[int | str, tuple[_Command, ...]]
 
 
 def _commands(text: str, line: str) -> tuple[_Command, ...]:
@@ -103,7 +104,7 @@ def _commands(text: str, line: str) -> tuple[_Command, ...]:
 
 
 def _parse(code: str) -> tuple[_Case, ...]:
-    cases: list[_Case] = []
+    cases: list[tuple[str, dict[int | str, tuple[_Command, ...]]]] = []
     for raw in code.split("\n"):
         line = raw.strip()
         if not line:
@@ -114,14 +115,14 @@ def _parse(code: str) -> tuple[_Case, ...]:
                     f"a SwitchCase case needs a variable name: {line!r}",
                     "write $name, for example $_",
                 )
-            cases.append(_Case(line[1:], {}))
+            cases.append((line[1:], {}))
             continue
         if not cases:
             raise syntax_error(
                 f"a SwitchCase arm comes before any case: {line!r}",
                 "start a case with $name first",
             )
-        arms = cases[-1].arms
+        _, arms = cases[-1]
         if line.startswith("!"):
             if "!" in arms:
                 raise syntax_error(
@@ -142,13 +143,13 @@ def _parse(code: str) -> tuple[_Case, ...]:
                 "give each arm of a case its own integer",
             )
         arms[key] = _commands(match.group(2), line)
-    for case in cases:
-        if not any(key != "!" for key in case.arms):
+    for variable, arms in cases:
+        if not any(key != "!" for key in arms):
             raise syntax_error(
-                f"the SwitchCase case on {case.variable} has no arm",
+                f"the SwitchCase case on {variable} has no arm",
                 "a case needs at least one integer?commands line",
             )
-    return tuple(cases)
+    return tuple(_Case(variable, MappingProxyType(arms)) for variable, arms in cases)
 
 
 def _get(env: _Env, name: str) -> int:
@@ -217,9 +218,9 @@ class _Machine:
     #: ``ip`` is the case, the selected arm's command, ``-1`` before one.
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | tuple[_Case, ...], io: IO) -> None:
         self.io = io
-        self.cases = _parse(code)
+        self.cases = _parse(code) if isinstance(code, str) else code
         self.state: _State = (0, None, 0, (("_", 0),))
 
     @property
@@ -265,22 +266,18 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("switchcase machines require text source")
     if options:
         raise TypeError("switchcase machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[_Case, ...], io: IO) -> CompletionReport:
     """Run a SwitchCase program."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

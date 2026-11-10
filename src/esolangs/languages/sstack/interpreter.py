@@ -41,7 +41,7 @@ Decisions:
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -49,7 +49,7 @@ from esolangs.languages.sstack.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
@@ -77,7 +77,7 @@ _TOKEN = re.compile(
 _CLOSERS = {">": "<", "+": "+", "-": "-"}
 
 
-def _parse(code: str) -> list[_Op]:
+def _parse(code: str) -> tuple[_Op, ...]:
     """Tokenize ``code`` with whitespace removed and resolve the brackets.
 
     Positions in errors count from the start of the original source.
@@ -117,14 +117,14 @@ def _parse(code: str) -> list[_Op]:
         pos = match.end()
     if opens:
         raise unmatched("[", opens[-1][1])
-    return ops
+    return tuple(ops)
 
 
 def _top(stack: _Stack) -> int:
     return stack[0] if stack is not None else 0
 
 
-def _advance(state: _State, ops: list[_Op], byte: int | None = None) -> _State:
+def _advance(state: _State, ops: Sequence[_Op], byte: int | None = None) -> _State:
     """Return the state after the op at the cursor; ``;``'s byte is ``byte``.
 
     Pure: the stacks are immutable and only the touched slots are rebuilt.
@@ -162,9 +162,9 @@ _WORKSPACE_MODEL = WorkspaceModel(
 class _Machine:
     """An SStack run: one immutable ``_State``, rebound per step."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | tuple[_Op, ...], io: IO) -> None:
         self.io = io
-        self.ops = _parse(code)
+        self.ops = _parse(code) if isinstance(code, str) else code
         self.state: _State = (0, (None,) * len(_NAMES))
 
     @property
@@ -221,22 +221,18 @@ class _Machine:
         self.state = _advance(self.state, self.ops, byte)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("sstack machines require text source")
     if options:
         raise TypeError("sstack machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[_Op, ...], io: IO) -> CompletionReport:
     """Run an SStack program."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

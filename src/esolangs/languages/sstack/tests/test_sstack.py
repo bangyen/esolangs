@@ -47,7 +47,17 @@ def test_pop_exposes_the_value_below() -> None:
     assert _out('"66/a""67/a"~a~:a:') == "B"
 
 
-def test_input_pushes_bytes_and_eof_raises() -> None:
+def test_input_pushes_bytes_and_eof_raises(monkeypatch) -> None:
+    from esolangs.languages.sstack import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "SStack",
+        ";a;:a:",
+        interpreter,
+        "_parse",
+        monkeypatch,
+    )
     assert _out(";a;;b;:b::a:", "xy") == "yx"
     with pytest.raises(EOFError):
         _out(";a;", "")

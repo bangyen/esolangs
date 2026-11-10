@@ -30,12 +30,12 @@ def _scalar_coefficients(table: str) -> list[int]:
 def test_packed_coefficients_match_elementwise_transform(n: int) -> None:
     rng = random.Random(20260929 + n)
     table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
-    assert anf_coefficients(table) == _scalar_coefficients(table)
+    assert anf_coefficients(table) == tuple(_scalar_coefficients(table))
 
 
 @pytest.mark.parametrize("table", ["0", "1"])
 def test_reduced_constants_keep_their_coefficient(table: str) -> None:
-    assert anf_coefficients(table) == [int(table)]
+    assert anf_coefficients(table) == (int(table),)
 
 
 @pytest.mark.medium

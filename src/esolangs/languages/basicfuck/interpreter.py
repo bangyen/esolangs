@@ -62,7 +62,7 @@ from esolangs.languages.basicfuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -259,7 +259,10 @@ def _range(directive: re.Match[str]) -> tuple[int | None, _Range]:
     return length, (bot, top, mode)
 
 
-def _compile(code: str) -> tuple[tuple[_Op, ...], int, _Range]:
+type _Image = tuple[tuple[_Op, ...], int, _Range]
+
+
+def _compile(code: str) -> _Image:
     """Return the ops, the tape length and the range of a program."""
     lines = [line.partition("//")[0].strip() for line in code.split("\n")]
     lines = [line for line in lines if line]
@@ -304,9 +307,9 @@ class _Machine:
     # ``ip`` counts compiled statements, not source characters.
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
-        self.ops, length, self.range = _compile(code)
+        self.ops, length, self.range = _compile(code) if isinstance(code, str) else code
         self.state: _State = (0, (0,) * length)
 
     @property
@@ -345,22 +348,18 @@ class _Machine:
             self.io.print_char(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("basicfuck machines require text source")
     if options:
         raise TypeError("basicfuck machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _compile(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Basicfuck program to its end."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

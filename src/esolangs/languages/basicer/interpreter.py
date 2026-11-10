@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import ArgumentError, HaltError
@@ -48,7 +49,7 @@ from esolangs.languages.basicer.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -82,7 +83,10 @@ def _instruction(body: str) -> _Line:
     )
 
 
-def _parse(code: str) -> tuple[tuple[_Line, ...], dict[int, int]]:
+type _Image = tuple[tuple[_Line, ...], Mapping[int, int]]
+
+
+def _parse(code: str) -> _Image:
     """Return the lines in run order and a map from line number to index."""
     rows = [row.strip() for row in code.split("\n") if row.strip()]
     numbered = [row.split(" ", 1)[0].isdigit() for row in rows]
@@ -92,20 +96,25 @@ def _parse(code: str) -> tuple[tuple[_Line, ...], dict[int, int]]:
         )
     if not any(numbered):
         lines = tuple(_instruction(row) for row in rows)
-        return lines, {num: num - 1 for num in range(1, len(lines) + 1)}
+        return lines, MappingProxyType(
+            {num: num - 1 for num in range(1, len(lines) + 1)}
+        )
     pairs = sorted(
         (int(num), body) for num, _, body in (r.partition(" ") for r in rows)
     )
     nums = [num for num, _ in pairs]
     if len(set(nums)) < len(nums):
         raise syntax_error("a duplicate line number", "give every line its own number")
-    return tuple(_instruction(body) for _, body in pairs), {
-        num: ind for ind, num in enumerate(nums)
-    }
+    return tuple(_instruction(body) for _, body in pairs), MappingProxyType(
+        {num: ind for ind, num in enumerate(nums)}
+    )
 
 
 def _advance(
-    ind: int, lines: tuple[_Line, ...], index: dict[int, int], choice: int | None = None
+    ind: int,
+    lines: tuple[_Line, ...],
+    index: Mapping[int, int],
+    choice: int | None = None,
 ) -> tuple[int, str | None]:
     """Return the next line index and any printed line; pure.
 
@@ -128,8 +137,8 @@ class _Machine:
 
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.lines, self.index = _parse(code)
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        self.lines, self.index = _parse(code) if isinstance(code, str) else code
         self.io = io
         self.ind = 0
 
@@ -168,22 +177,18 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("basicer machines require text source")
     if options:
         raise TypeError("basicer machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a BASICER program until it leaves its last line."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

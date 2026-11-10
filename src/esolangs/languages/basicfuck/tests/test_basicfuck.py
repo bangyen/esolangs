@@ -135,7 +135,17 @@ def test_while_not_runs_until_nonzero() -> None:
     assert _run(code) == "\x01"
 
 
-def test_read_takes_characters_including_newlines() -> None:
+def test_read_takes_characters_including_newlines(monkeypatch) -> None:
+    from esolangs.languages.basicfuck import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Basicfuck",
+        WRAP + "#allocate a\nread -> a; write <- a;",
+        interpreter,
+        "_compile",
+        monkeypatch,
+    )
     code = WRAP + "#allocate a\nread -> a; write <- a; read -> a; write <- a;"
     assert _run(code, "x\n") == "x\n"
 
