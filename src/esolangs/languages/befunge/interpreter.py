@@ -62,7 +62,7 @@ from esolangs.languages.befunge.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -269,32 +269,44 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _Program(NamedTuple):
+    """The validated, padded torus before any self-modification."""
+
+    grid: _Grid
+
+
+def _parse_grid(code: Sequence[str]) -> _Program:
+    """Validate source once and retain the immutable 80-by-25 playfield."""
+    # Spaces past column 80 are no content: the torus is 80 wide either
+    # way.  The wiki's FizzBuzz and short 99 Bottles carry such padding.
+    code = [row[:_WIDTH] if not row[_WIDTH:].strip(" ") else row for row in code]
+    if not code or not (width := max(map(len, code), default=0)):
+        raise syntax_error(
+            "Befunge program cannot be empty",
+            "provide a nonempty grid; @ halts immediately",
+        )
+    if width > _WIDTH or len(code) > _HEIGHT:
+        raise syntax_error(
+            "Befunge program exceeds its 80x25 playfield",
+            "keep each row at most 80 characters and the grid at most 25 rows",
+        )
+    if any(ord(char) > 0xFF for row in code for char in row):
+        raise ValueError("Befunge source cells must be bytes")
+    rows = [row.ljust(_WIDTH) for row in code]
+    rows.extend(" " * _WIDTH for _ in range(_HEIGHT - len(rows)))
+    return _Program(tuple(tuple(row) for row in rows))
+
+
 class _Machine:
     """Protocol shell holding one immutable Befunge state value."""
 
     #: The first draw is a fact about the program, so a seed makes it repeat.
 
     def __init__(
-        self, code: Sequence[str], io: IO, rng: Randomness | None = None
+        self, code: Sequence[str] | _Program, io: IO, rng: Randomness | None = None
     ) -> None:
-        # Spaces past column 80 are no content: the torus is 80 wide either
-        # way.  The wiki's FizzBuzz and short 99 Bottles carry such padding.
-        code = [row[:_WIDTH] if not row[_WIDTH:].strip(" ") else row for row in code]
-        if not code or not (width := max(map(len, code), default=0)):
-            raise syntax_error(
-                "Befunge program cannot be empty",
-                "provide a nonempty grid; @ halts immediately",
-            )
-        if width > _WIDTH or len(code) > _HEIGHT:
-            raise syntax_error(
-                "Befunge program exceeds its 80x25 playfield",
-                "keep each row at most 80 characters and the grid at most 25 rows",
-            )
-        if any(ord(char) > 0xFF for row in code for char in row):
-            raise ValueError("Befunge source cells must be bytes")
-        rows = [row.ljust(_WIDTH) for row in code]
-        rows.extend(" " * _WIDTH for _ in range(_HEIGHT - len(rows)))
-        self.grid = tuple(tuple(row) for row in rows)
+        program = code if isinstance(code, _Program) else _parse_grid(code)
+        self.grid = program.grid
         self.io, self._rng = io, rng
         self.state = _State((0, 0, 1, 0), self.grid, None, string=False, done=False)
 
@@ -390,21 +402,21 @@ class _Machine:
             self.io.print_str(effect)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source and caller-owned RNG without drawing from it."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the parsed torus and bind an invocation-owned random source."""
     if not isinstance(source, list):
         raise TypeError("befunge machines require split text source")
     if options.keys() - {"rng"}:
         raise TypeError("befunge machines accept only the rng runtime option")
-    code = tuple(source)
-    rng = options.get("rng")
+    program = _parse_grid(source)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(list(code), io, rng)
+    def build(io: IO, rng: Randomness | None) -> _Machine:
+        return _Machine(program, io, rng)
 
-    return build
+    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+        return drive(build(io, rng), policy=CAPABILITIES.completion)
+
+    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
 
 
 def _execute(

@@ -131,9 +131,18 @@ def test_random_direction_uses_the_supplied_draw() -> None:
         assert moved[0][:2] == (x, y)
 
 
-def test_a_seeded_run_is_reproducible() -> None:
+def test_a_seeded_run_is_reproducible(monkeypatch) -> None:
     program = "@@@\n@?@\n@@@"
     assert run_befunge(program, rng=Seeded(0)) == run_befunge(program, rng=Seeded(0))
+    from esolangs.languages.befunge import interpreter
+    from tests.support.prepared_support import check_random_plan_reuse
+
+    # Each draw follows a straight branch that prints 1, 2, 3 or 4 and halts.
+    rows = ["?1.@" + " " * 73 + "@.3", "2", ".", "@"]
+    rows += [""] * 18 + ["@", ".", "4"]
+    check_random_plan_reuse(
+        "Befunge", "\n".join(rows), interpreter, "_parse_grid", monkeypatch
+    )
 
     source = ["?@"]
     rng, before, options, factory = rng_factory(prepare_machine, source)

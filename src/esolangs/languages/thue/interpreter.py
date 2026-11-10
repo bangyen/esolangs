@@ -49,7 +49,7 @@ from esolangs.languages.thue.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -64,6 +64,7 @@ _OUTPUT = "~"
 
 #: A rule: its left-hand side and its right-hand side, verbatim.
 type _Rule = tuple[str, str]
+type _Program = tuple[tuple[_Rule, ...], str]
 #: One rewrite a step could make: which rule, and at what offset.
 type _Match = tuple[int, int]
 #: The whole run as a value: the string being rewritten, and nothing else --
@@ -86,7 +87,7 @@ def _separator(lines: list[str]) -> int | None:
     return None
 
 
-def _parse(code: str) -> tuple[tuple[_Rule, ...], str]:
+def _parse(code: str) -> _Program:
     """Return the rules and the starting state.
 
     The state is every line after the separator, rejoined, so a multi-line
@@ -347,8 +348,10 @@ _WORKSPACE_MODEL = WorkspaceModel("thue-v1", ("text", "input_cursor"))
 class _Machine:
     """The run state: the rewritten string, against fixed rules."""
 
-    def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
-        self.rules, state = _parse(code)
+    def __init__(
+        self, code: str | _Program, io: IO, rng: Randomness | None = None
+    ) -> None:
+        self.rules, state = _parse(code) if isinstance(code, str) else code
         self._text = _Text(state, [lhs for lhs, _rhs in self.rules])
         self.io = io
         self._rng = rng
@@ -430,20 +433,21 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind text and caller-owned RNG; construct state only when IO is supplied."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed rules; bind only invocation-owned rewrite state and RNG."""
     if not isinstance(source, str):
         raise TypeError("thue machines require text source")
     if options.keys() - {"rng"}:
         raise TypeError("thue machines accept only the rng runtime option")
-    rng = options.get("rng")
+    program = _parse(source)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io, rng)
+    def build(io: IO, rng: Randomness | None) -> _Machine:
+        return _Machine(program, io, rng)
 
-    return build
+    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+        return drive(build(io, rng), policy=CAPABILITIES.completion)
+
+    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
 
 
 def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:

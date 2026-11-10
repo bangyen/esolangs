@@ -15,6 +15,7 @@ from esolangs.registry._catalog import Catalog, get_catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
+    execution_options,
     interpreter_errors,
     interpreter_module,
     prepare_call,
@@ -22,7 +23,12 @@ from esolangs.runtime._execution import (
 )
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory, MachinePreparation, RuntimePlan
+from esolangs.runtime._machine import (
+    MachineFactory,
+    MachinePreparation,
+    RandomRuntimePlan,
+    RuntimePlan,
+)
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
 from esolangs.runtime._vm_protocol import VM
@@ -34,15 +40,16 @@ from esolangs.settings import DialectSettings, dialect_options, effective_settin
 class PreparedProgram:
     """Loaded source and bound runtime; every invocation owns its IO and RNG.
 
-    Source decoding and language resolution happen once. Deterministic runtime
-    plans retain language-owned parsed data; other hooks may defer parsing.
+    Source decoding and language resolution happen once. Runtime plans retain
+    language-owned parsed data and bind fresh randomness for each invocation;
+    other hooks may defer parsing.
     Native runners retain their own compiled representations and caches.
     """
 
     artifact: ProgramArtifact[Program]
     catalog: Catalog = field(repr=False)
     _module: ModuleType = field(repr=False, compare=False)
-    _plan: RuntimePlan | None = field(
+    _plan: RuntimePlan | RandomRuntimePlan | None = field(
         default=None, init=False, repr=False, compare=False
     )
 
@@ -51,35 +58,53 @@ class PreparedProgram:
         """The canonical language owning this program."""
         return self.artifact.language
 
+    def _context(
+        self, *, seed: int | None = None, reproducible: bool = False
+    ) -> ExecutionContext:
+        return ExecutionContext(
+            scale=self.artifact.scale,
+            settings=self.artifact.settings,
+            seed=seed,
+            reproducible=reproducible,
+        )
+
+    def _options(
+        self, *, seed: int | None = None, reproducible: bool = False
+    ) -> dict[str, Any]:
+        return execution_options(
+            self.language,
+            self._context(seed=seed, reproducible=reproducible),
+            catalog=self.catalog,
+        )
+
     def _call(
         self, *, seed: int | None = None, reproducible: bool = False
     ) -> tuple[RunnerProgram, dict[str, Any]]:
-        # Never retain options: an RNG, or a split grid changed by a runner,
-        # belongs to this invocation rather than the reusable source.
         return prepare_call(
             self.language,
             self.artifact.source,
-            ExecutionContext(
-                scale=self.artifact.scale,
-                settings=self.artifact.settings,
-                seed=seed,
-                reproducible=reproducible,
-            ),
+            self._context(seed=seed, reproducible=reproducible),
             catalog=self.catalog,
         )
 
     def _factory(self, *, seed: int | None = None) -> MachineFactory:
         runtime = self.catalog.languages[self.language].runtime
-        if not runtime.random and self._plan is not None:
+        if isinstance(self._plan, RuntimePlan):
             return self._plan
+        if isinstance(self._plan, RandomRuntimePlan):
+            options = self._options(seed=seed, reproducible=True)
+            return self._plan.bind(options.get("rng"))
         code, options = self._call(seed=seed, reproducible=True)
         prepare = cast(
             MachinePreparation, getattr(self._module, runtime.machine_preparation)
         )
         plan = prepare(code, options)
-        # Random factories bind an invocation-owned RNG and must never be shared.
-        if isinstance(plan, RuntimePlan) and not runtime.random:
-            object.__setattr__(self, "_plan", plan)
+        # Keep only the read-only origin of an RNG-bound invocation plan.
+        if isinstance(plan, RuntimePlan):
+            if runtime.random and plan.random_source is not None:
+                object.__setattr__(self, "_plan", plan.random_source)
+            elif not runtime.random and plan.random_source is None:
+                object.__setattr__(self, "_plan", plan)
         return plan
 
     def _run_native(
@@ -90,9 +115,14 @@ class PreparedProgram:
         seed: int | None,
         io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     ) -> ExecutionResult:
-        code, options = self._call(seed=seed)
         runtime = self.catalog.languages[self.language].runtime
-        if isinstance(self._plan, RuntimePlan):
+        if self._plan is None:
+            code, options = self._call(seed=seed)
+        else:
+            code, options = self.artifact.source, self._options(seed=seed)
+        if isinstance(self._plan, RandomRuntimePlan):
+            runner = partial(_run_plan, self._plan.bind(options.get("rng")))
+        elif isinstance(self._plan, RuntimePlan):
             runner = partial(_run_plan, self._plan)
         else:
             runner = getattr(self._module, runtime.completion_entrypoint)
@@ -202,7 +232,7 @@ def prepare_program(
     prepared = PreparedProgram(
         ProgramArtifact(artifact.source, name, settings, scale), catalog, module
     )
-    if bind_machine and not catalog.languages[name].runtime.random:
+    if bind_machine:
         with interpreter_errors(
             f"the {name} interpreter recursed deeper than CPython's stack "
             "limit allows while preparing this program",

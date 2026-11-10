@@ -60,10 +60,14 @@ def test_every_occurrence_is_a_candidate_including_overlapping_ones() -> None:
     assert _matches("aaa", rules) == ((0, 0), (0, 1))
 
 
-def test_a_seeded_run_repeats_itself() -> None:
+def test_a_seeded_run_repeats_itself(monkeypatch) -> None:
     program = "b::=~1\nab::=~2\n::=\naab"
     first = [run_program(run, program, rng=Seeded(5)) for _ in range(5)]
     assert len(set(first)) == 1
+    from esolangs.languages.thue import interpreter
+    from tests.support.prepared_support import check_random_plan_reuse
+
+    check_random_plan_reuse("Thue", GREETING, interpreter, "_parse", monkeypatch)
 
     rng, before, options, factory = rng_factory(prepare_machine, program)
     options.clear()

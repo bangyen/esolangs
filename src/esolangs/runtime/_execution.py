@@ -272,6 +272,16 @@ def prepare_call(
         if catalog.languages[name].runtime.split and isinstance(program, str)
         else program
     )
+    return code, execution_options(name, context, catalog=catalog)
+
+
+def execution_options(
+    name: str, context: ExecutionContext, *, catalog: Catalog | None = None
+) -> dict[str, Any]:
+    """Bind invocation choices and fresh RNG state without reshaping source."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     options: dict[str, Any] = {}
     if context.scale is not None:
         options["scale"] = context.scale
@@ -289,7 +299,7 @@ def prepare_call(
                 ("use a supported seed value, for example the integer seed=0"),
             ) from exc
     options.update(dialect_options(name, context.settings, catalog=catalog))
-    return code, options
+    return options
 
 
 @contextmanager

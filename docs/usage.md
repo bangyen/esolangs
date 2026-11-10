@@ -138,8 +138,8 @@ info = bf.describe()
 
 `prepared = bf.prepare(program)` loads source once. Use `prepared.run(stdin=...)`
 or `prepared.make_vm(stdin=...)` for fresh IO, machine state and randomness on
-each invocation. In-process deterministic runtime plans retain parsed data for
-native and stepped runs. Other hooks may still parse during machine construction.
+each invocation. In-process runtime plans retain parsed data for native and
+stepped runs, binding fresh randomness for each invocation. Other hooks may still parse during machine construction.
 Isolated workers prepare their own source.
 These language-owned plans retain parsed source:
 
@@ -149,6 +149,8 @@ These language-owned plans retain parsed source:
 - IEBEL: validated instructions and source lines.
 - CreativeScript v2: commands, source offsets and variable slots.
 - Freestajlo: resolved instructions and source end.
+- Thue: rewrite rules and initial text.
+- Befunge: validated initial playfield.
 
 `Language` also binds `instantiate`; use package functions across languages.
 

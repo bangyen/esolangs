@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from esolangs.runtime._lifecycle import CompletionReport
     from esolangs.runtime._program import RunnerProgram
     from esolangs.runtime.io import IO
+    from esolangs.runtime.randomness import Randomness
 
 
 type MachineFactory = Callable[[IO], _StepMachine]
@@ -34,7 +35,26 @@ class RuntimePlan:
 
     machine: MachineFactory
     run: Callable[[IO], CompletionReport]
+    random_source: RandomRuntimePlan | None = field(
+        default=None, repr=False, compare=False
+    )
 
     def __call__(self, io: IO) -> _StepMachine:
         """Construct independent state from the retained parse data."""
         return self.machine(io)
+
+
+@dataclass(frozen=True, slots=True)
+class RandomRuntimePlan:
+    """Read-only parsed source with randomness supplied for each invocation."""
+
+    machine: Callable[[IO, Randomness | None], _StepMachine]
+    run: Callable[[IO, Randomness | None], CompletionReport]
+
+    def bind(self, rng: Randomness | None) -> RuntimePlan:
+        """Bind caller-owned randomness without retaining it in the source plan."""
+        return RuntimePlan(
+            lambda io: self.machine(io, rng),
+            lambda io: self.run(io, rng),
+            random_source=self,
+        )
