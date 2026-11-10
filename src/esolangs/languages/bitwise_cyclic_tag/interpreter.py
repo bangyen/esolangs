@@ -27,14 +27,13 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import partial
 from typing import Any
 
 from esolangs.languages.bitwise_cyclic_tag.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -46,7 +45,10 @@ from esolangs.runtime.source_hints import syntax_error
 type _State = tuple[int, int]
 
 
-def _parse(code: str) -> tuple[str, str, tuple[int, ...]]:
+type _Image = tuple[str, str, tuple[int, ...]]
+
+
+def _parse(code: str) -> _Image:
     """Return the program, the initial data-string, and each bit's source offset.
 
     Offsets, because whitespace is dropped: a program position is not a place
@@ -106,10 +108,12 @@ class _Machine:
     #: stops at ``halted`` has driven the program right and holds no output.
     completion = CAPABILITIES.completion
 
-    def __init__(self, code: str, io: IO) -> None:
-        """Parse ``code`` into the program and the initial data-string."""
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        """Allocate fresh queue state for literal or prepared source."""
         self.io = io
-        self.program, data, self.offsets = _parse(code)
+        self.program, data, self.offsets = (
+            _parse(code) if isinstance(code, str) else code
+        )
         self.data = list(data)
         self.state: _State = (0, 0)
         self.printed = False
@@ -187,18 +191,17 @@ class _Machine:
             self.data.append(append)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind fresh machines after shared source and option preparation."""
     if not isinstance(source, str):
         raise TypeError("bitwise_cyclic_tag machines require text source")
     if options:
         raise TypeError("bitwise_cyclic_tag machines accept no runtime options")
-    return partial(_Machine, source, **options)
+    image = _parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a BCT program, printing the bit its last deletion consumed."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

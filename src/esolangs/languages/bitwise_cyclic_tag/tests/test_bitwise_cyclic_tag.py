@@ -73,11 +73,21 @@ class TestTheOtherWikiExamples:
 
 
 class TestBitwiseCyclicTag:
-    def test_the_answer_is_the_last_deletion(self) -> None:
+    def test_the_answer_is_the_last_deletion(self, monkeypatch) -> None:
+        from esolangs.languages.bitwise_cyclic_tag import interpreter
         from esolangs.languages.bitwise_cyclic_tag.tests.oracle_checks import (
             check_raw_bitwise_cyclic_tag,
         )
+        from tests.support.prepared_support import check_image_reuse
 
+        check_image_reuse(
+            "Bitwise Cyclic Tag",
+            "1 0 0, 1",
+            interpreter,
+            "_parse",
+            monkeypatch,
+            cases=(("", "0"),) * 3,
+        )
         check_raw_bitwise_cyclic_tag()
         assert run_program(run, "0,1") == "1"
         assert run_program(run, "0,0") == "0"

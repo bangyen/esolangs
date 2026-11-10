@@ -17,21 +17,22 @@ Errors:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import partial
 from typing import Any
 
 from esolangs.languages.cyclic_tag.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
+type _Image = tuple[tuple[str, ...], str, tuple[int, ...]]
 
-def _parse(code: str) -> tuple[tuple[str, ...], list[str], tuple[int, ...]]:
+
+def _parse(code: str) -> _Image:
     """Return the productions, the queue, and each production's source offset."""
     positions = [at for at, c in enumerate(code) if not c.isspace()]
     source = "".join(code[at] for at in positions)
@@ -52,7 +53,7 @@ def _parse(code: str) -> tuple[tuple[str, ...], list[str], tuple[int, ...]]:
     # A production starts the source or follows a semicolon, and the comma
     # always comes later, so an empty production still has a character.
     starts = [0, *(i + 1 for i, c in enumerate(source) if c == ";")]
-    return tuple(rules.split(";")), list(queue), tuple(positions[i] for i in starts)
+    return tuple(rules.split(";")), queue, tuple(positions[i] for i in starts)
 
 
 def _advance(read: int, program: tuple[str, ...], bit: str) -> tuple[int, str]:
@@ -74,9 +75,12 @@ class _Machine:
 
     completion = CAPABILITIES.completion
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
-        self.program, self.data, self._starts = _parse(code)
+        self.program, queue, self._starts = (
+            _parse(code) if isinstance(code, str) else code
+        )
+        self.data = list(queue)
         # Deleting advances ``read`` rather than shifting ``data``: O(1) a step.
         self.read = 0
         self.printed = False
@@ -132,18 +136,17 @@ class _Machine:
             self.printed = True
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind fresh source-step machines; Cyclic tag has no runtime options."""
     if not isinstance(source, str):
         raise TypeError("Cyclic tag machines require text source")
     if options:
         raise TypeError("Cyclic tag machines accept no runtime options")
-    return partial(_Machine, source)
+    image = _parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Return completion after printing the last deleted bit."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

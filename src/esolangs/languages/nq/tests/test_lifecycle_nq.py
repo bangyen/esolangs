@@ -85,3 +85,16 @@ def test_nq_declared_construction_preserves_guard_readings(monkeypatch, binding)
     else:
         assert vm.run_until_halt(machine, limit=20)
         assert machine.output == "#"
+    from esolangs.languages.nq import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    expected = " " if binding == "recursive" else "#"
+    check_image_reuse(
+        "NQ",
+        "+0->1>0+2+0WH",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("", expected),) * 3,
+        settings=esolangs.Language("NQ").settings(guard_binding=binding),
+    )

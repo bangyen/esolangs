@@ -91,10 +91,23 @@ def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Cyclic tag", "0,1;", "semicolons only before")
 
 
-def test_native_completion_reports_the_dump_and_run_keeps_its_return_contract():
+def test_native_completion_reports_the_dump_and_run_keeps_its_return_contract(
+    monkeypatch,
+):
     io = ScriptedIO()
     report = _execute(",1", io)
     assert report.kind is Completion.POST_HALT
     assert report.cycle is None
     assert io.getvalue() == "1"
     assert run(",1", ScriptedIO()) is None
+    from esolangs.languages.cyclic_tag import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Cyclic tag",
+        "0 ; , 1",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("", "0"),) * 3,
+    )

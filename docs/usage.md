@@ -156,6 +156,9 @@ These language-owned plans retain parsed source:
 - brainfuck: source loop map and a lazily compiled native view.
 - Boolfuck: source loop map.
 - Monotonic Boolfuck: source loop map.
+- Bitwise Cyclic Tag: program bits, initial data and source offsets.
+- Cyclic tag: productions, initial queue and source offsets.
+- NQ: instructions with guard targets compiled for the selected dialect.
 
 `Language` also binds `instantiate`; use package functions across languages.
 

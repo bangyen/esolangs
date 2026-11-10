@@ -12,17 +12,18 @@ def check_image_reuse(
     monkeypatch,
     *,
     cases=(("A", "A"), ("Z", "Z"), ("Q", "Q")),
+    settings=None,
 ):
     calls = []
     parse = getattr(module, parser_name)
 
-    def counted(source):
+    def counted(source, **options):
         calls.append(source)
-        return parse(source)
+        return parse(source, **options)
 
     with monkeypatch.context() as patch:
         patch.setattr(module, parser_name, counted)
-        prepared = esolangs.Language(language).prepare(code)
+        prepared = esolangs.Language(language).prepare(code, settings=settings)
         assert calls == [code]
         (first_in, first_out), (second_in, second_out), (third_in, third_out) = cases
         first, second = (

@@ -40,7 +40,6 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Mapping
-from functools import partial
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import ArgumentError, HaltError
@@ -49,7 +48,7 @@ from esolangs.languages.nq.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -227,9 +226,15 @@ class _Machine:
     """A queue with immutable control state and precompiled guard targets."""
 
     def __init__(
-        self, code: str, io: IO, *, guard_binding: str = DEFAULT_GUARD_BINDING
+        self,
+        code: str | tuple[_Instruction, ...],
+        io: IO,
+        *,
+        guard_binding: str = DEFAULT_GUARD_BINDING,
     ) -> None:
-        self.code = _parse(code, guard_binding=guard_binding)
+        self.code = (
+            _parse(code, guard_binding=guard_binding) if isinstance(code, str) else code
+        )
         self.state = _State(0, 0, first=True, stopped=not self.code)
         self.queue: deque[int] = deque()
         self.io = io
@@ -291,17 +296,19 @@ class _Machine:
             self.io.print_str(effect.output)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind fresh NQ machines under the selected guard reading."""
     if not isinstance(source, str):
         raise TypeError("NQ machines require text source")
-    return partial(_Machine, source, **options)
+    image = _parse(source, **options)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
 def _execute(
-    code: str, io: IO, *, guard_binding: str = DEFAULT_GUARD_BINDING
+    code: str | tuple[_Instruction, ...],
+    io: IO,
+    *,
+    guard_binding: str = DEFAULT_GUARD_BINDING,
 ) -> CompletionReport:
     """Run NQ until H; a nonempty source without H can wrap forever."""
     return drive(
