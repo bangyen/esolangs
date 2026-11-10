@@ -19,6 +19,7 @@ import pytest
 from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec
+from tests.tooling.receipt_support import check_receipt_controls
 from tests.tooling.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -397,6 +398,7 @@ assert ready.exists(), 'producer stalled on captured output'
         assert "START" + "x" * 1000000 + "END" in Path(log).read_text()
     else:
         assert "START" not in output
+        check_receipt_controls(tmp_path)
 
 
 class TestGeneratorScope:
