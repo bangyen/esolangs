@@ -10,14 +10,14 @@ qualification = "equal-width inputs feed a reduced diagram; actual folded expres
 definitions = ["S = emitted DO/PLEASE statement count, including GIVE UP, independent of wrapping; separate global ceilings are not claimed attained", "W = Boolean scalar keys/values, two-bit named masks, actual array dimensions/written elements, and bl(S)", "F = U+3 without spilling, otherwise 5(U+3)+DIM; U is the full unshared-select template"]
 
 [generator_sizes]
-"00000001" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 103 }
-"00001100" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 103 }
-"00110110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 144 }
-"0110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5 }, source_units = 102 }
-"01101001" = { commands = 7, commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 7, "5" = 7, "6" = 7, "7" = 7 }, source_units = 177 }
-"0110100110010110" = { commands = 11, commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 11, "7" = 11, "8" = 11, "9" = 11, "10" = 11, "11" = 11, "12" = 11, "13" = 11, "14" = 11, "15" = 11 }, source_units = 265 }
-"1101001101101101" = { commands = 9, commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9, "8" = 9, "9" = 9, "10" = 9, "11" = 9, "12" = 9, "13" = 9, "14" = 9, "15" = 9 }, source_units = 238 }
-"11111110" = { commands = 6, commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 136 }
+"00000001" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 103 }
+"00001100" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 103 }
+"00110110" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 144 }
+"0110" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5 }, source_units = 102 }
+"01101001" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 7, "5" = 7, "6" = 7, "7" = 7 }, source_units = 177 }
+"0110100110010110" = { commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 11, "7" = 11, "8" = 11, "9" = 11, "10" = 11, "11" = 11, "12" = 11, "13" = 11, "14" = 11, "15" = 11 }, source_units = 265 }
+"1101001101101101" = { commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 9, "5" = 9, "6" = 9, "7" = 9, "8" = 9, "9" = 9, "10" = 9, "11" = 9, "12" = 9, "13" = 9, "14" = 9, "15" = 9 }, source_units = 238 }
+"11111110" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 136 }
 
 [catalogue]
 sharing_local = "_intercal_shared"  # named shared diagram variables

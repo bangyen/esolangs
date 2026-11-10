@@ -124,9 +124,16 @@ def test_update_does_not_rewrite_an_unchanged_baseline(
     fragment = packages / lang.id / "language.toml"
     monkeypatch.setattr(sizes.generator_sizes, "PACKAGES", packages)
     monkeypatch.setattr(sizes, "LANGUAGES", {REFERENCE: lang})
-    monkeypatch.setattr(sizes, "sweep", lambda **_kwargs: [dict(RECORD)])
+    record = {
+        **RECORD,
+        "commands": None,
+        "executions": [{"row": 0, "commands": 179}, {"row": 3, "commands": None}],
+    }
+    monkeypatch.setattr(sizes, "sweep", lambda **_kwargs: [record])
     assert sizes.main(["--update"]) == 0
     assert "wrote the package-fragment baseline" in capsys.readouterr().out
+    assert "commands =" not in fragment.read_text()
+    assert sizes.recorded_baseline() == baseline([record])
     before = (fragment.read_bytes(), fragment.stat().st_mtime_ns)
     assert sizes.main(["--update"]) == 0
     out = capsys.readouterr().out

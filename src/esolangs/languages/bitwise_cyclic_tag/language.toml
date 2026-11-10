@@ -9,14 +9,14 @@ labels = ["parameterized lookup"]
 qualification = "the table is the program, one seven-bit cell per two rows; each embedded bit above the lowest appends three walk zeros per unit of its pair index, the lowest two, and a cell consumes exactly three whichever of its row bits is a delete or an operand, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire its first or second row; the trailing `00` consumes the answer it just appended, without which a 1 would cascade into the cells below"
 
 [generator_sizes]
-"00000001" = { commands = 36, commands_by_row = { "0" = 19, "1" = 23, "2" = 24, "3" = 28, "4" = 29, "5" = 33, "6" = 35, "7" = 36 }, source_units = 61 }
-"00001100" = { commands = 24, commands_by_row = { "0" = 13, "1" = 13, "2" = 17, "3" = 17, "4" = 18, "5" = 18, "6" = 24, "7" = 24 }, source_units = 35 }
-"00110110" = { commands = 43, commands_by_row = { "0" = 19, "1" = 23, "2" = 26, "3" = 26, "4" = 30, "5" = 31, "6" = 34, "7" = 43 }, source_units = 61 }
-"0110" = { commands = 23, commands_by_row = { "0" = 13, "1" = 14, "2" = 17, "3" = 23 }, source_units = 33 }
-"01101001" = { commands = 36, commands_by_row = { "0" = 20, "1" = 21, "2" = 24, "3" = 28, "4" = 29, "5" = 33, "6" = 35, "7" = 36 }, source_units = 61 }
-"0110100110010110" = { commands = 82, commands_by_row = { "0" = 33, "1" = 34, "2" = 37, "3" = 41, "4" = 42, "5" = 46, "6" = 48, "7" = 49, "8" = 52, "9" = 56, "10" = 58, "11" = 59, "12" = 63, "13" = 64, "14" = 67, "15" = 82 }, source_units = 115 }
-"1101001101101101" = { commands = 69, commands_by_row = { "0" = 34, "1" = 34, "2" = 38, "3" = 39, "4" = 42, "5" = 46, "6" = 49, "7" = 49, "8" = 53, "9" = 54, "10" = 57, "11" = 61, "12" = 64, "13" = 64, "14" = 68, "15" = 69 }, source_units = 115 }
-"11111110" = { commands = 43, commands_by_row = { "0" = 21, "1" = 21, "2" = 26, "3" = 26, "4" = 31, "5" = 31, "6" = 34, "7" = 43 }, source_units = 61 }
+"00000001" = { commands_by_row = { "0" = 19, "1" = 23, "2" = 24, "3" = 28, "4" = 29, "5" = 33, "6" = 35, "7" = 36 }, source_units = 61 }
+"00001100" = { commands_by_row = { "0" = 13, "1" = 13, "2" = 17, "3" = 17, "4" = 18, "5" = 18, "6" = 24, "7" = 24 }, source_units = 35 }
+"00110110" = { commands_by_row = { "0" = 19, "1" = 23, "2" = 26, "3" = 26, "4" = 30, "5" = 31, "6" = 34, "7" = 43 }, source_units = 61 }
+"0110" = { commands_by_row = { "0" = 13, "1" = 14, "2" = 17, "3" = 23 }, source_units = 33 }
+"01101001" = { commands_by_row = { "0" = 20, "1" = 21, "2" = 24, "3" = 28, "4" = 29, "5" = 33, "6" = 35, "7" = 36 }, source_units = 61 }
+"0110100110010110" = { commands_by_row = { "0" = 33, "1" = 34, "2" = 37, "3" = 41, "4" = 42, "5" = 46, "6" = 48, "7" = 49, "8" = 52, "9" = 56, "10" = 58, "11" = 59, "12" = 63, "13" = 64, "14" = 67, "15" = 82 }, source_units = 115 }
+"1101001101101101" = { commands_by_row = { "0" = 34, "1" = 34, "2" = 38, "3" = 39, "4" = 42, "5" = 46, "6" = 49, "7" = 49, "8" = 53, "9" = 54, "10" = 57, "11" = 61, "12" = 64, "13" = 64, "14" = 68, "15" = 69 }, source_units = 115 }
+"11111110" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 26, "3" = 26, "4" = 31, "5" = 31, "6" = 34, "7" = 43 }, source_units = 61 }
 
 [catalogue]
 folding_constant_local = "bitwise_cyclic_tag"  # delete inputs and a literal bit

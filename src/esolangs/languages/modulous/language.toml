@@ -11,14 +11,14 @@ qualification = "pair literal for asymmetric inputs; O(n)-source symmetric count
 definitions = ["S = 6T+28n+21 at n=2..4; 3T+28n+144 at n=5; otherwise T/2+48n+157+sum(digits(2^k),k=0..n-2)", "E = T+3n+2 at n=2..4; T/2+3n+6 at n=5; otherwise 5T/2+5n-31", "P = T+3n+2 at n=2..4; T/2+3n+14 at n=5; otherwise 6n+17 default commands", "W = 6T+2+bl(P)+bl(2n-1)+bl(n) at n=2..4; otherwise 3T+(2 if n<=5 else n+1)+bl(P)+bl(2n-1)+bl(n)", "H = number of table-literal pushes"]
 
 [generator_sizes]
-"00000001" = { commands = 15, commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
-"00001100" = { commands = 14, commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 12, "4" = 13, "5" = 13, "6" = 14, "7" = 14 }, source_units = 115 }
-"00110110" = { commands = 19, commands_by_row = { "0" = 12, "1" = 13, "2" = 14, "3" = 15, "4" = 16, "5" = 17, "6" = 18, "7" = 19 }, source_units = 153 }
-"0110" = { commands = 11, commands_by_row = { "0" = 9, "1" = 10, "2" = 10, "3" = 11 }, source_units = 95 }
-"01101001" = { commands = 15, commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
-"0110100110010110" = { commands = 19, commands_by_row = { "0" = 15, "1" = 16, "2" = 16, "3" = 17, "4" = 16, "5" = 17, "6" = 17, "7" = 18, "8" = 16, "9" = 17, "10" = 17, "11" = 18, "12" = 17, "13" = 18, "14" = 18, "15" = 19 }, source_units = 163 }
-"1101001101101101" = { commands = 30, commands_by_row = { "0" = 15, "1" = 16, "2" = 17, "3" = 18, "4" = 19, "5" = 20, "6" = 21, "7" = 22, "8" = 23, "9" = 24, "10" = 25, "11" = 26, "12" = 27, "13" = 28, "14" = 29, "15" = 30 }, source_units = 229 }
-"11111110" = { commands = 15, commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
+"00000001" = { commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
+"00001100" = { commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 12, "4" = 13, "5" = 13, "6" = 14, "7" = 14 }, source_units = 115 }
+"00110110" = { commands_by_row = { "0" = 12, "1" = 13, "2" = 14, "3" = 15, "4" = 16, "5" = 17, "6" = 18, "7" = 19 }, source_units = 153 }
+"0110" = { commands_by_row = { "0" = 9, "1" = 10, "2" = 10, "3" = 11 }, source_units = 95 }
+"01101001" = { commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
+"0110100110010110" = { commands_by_row = { "0" = 15, "1" = 16, "2" = 16, "3" = 17, "4" = 16, "5" = 17, "6" = 17, "7" = 18, "8" = 16, "9" = 17, "10" = 17, "11" = 18, "12" = 17, "13" = 18, "14" = 18, "15" = 19 }, source_units = 163 }
+"1101001101101101" = { commands_by_row = { "0" = 15, "1" = 16, "2" = 17, "3" = 18, "4" = 19, "5" = 20, "6" = 21, "7" = 22, "8" = 23, "9" = 24, "10" = 25, "11" = 26, "12" = 27, "13" = 28, "14" = 29, "15" = 30 }, source_units = 229 }
+"11111110" = { commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
 
 [catalogue]
 folding_constant_local = "input_weights"  # one projected table entry

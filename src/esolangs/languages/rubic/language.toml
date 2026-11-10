@@ -10,14 +10,14 @@ labels = ["tree"]
 qualification = "the last literal prints its byte or stores it and prints 49-P before undoing; every subtree preserves the opening cube, expressions are checked on X/Y, equal halves read untested and constants fold"
 
 [generator_sizes]
-"00000001" = { commands = 40, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 40, "7" = 40 }, source_units = 197 }
-"00001100" = { commands = 44, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 44, "7" = 44 }, source_units = 213 }
-"00110110" = { commands = 53, commands_by_row = { "0" = 38, "1" = 38, "2" = 41, "3" = 41, "4" = 37, "5" = 37, "6" = 49, "7" = 53 }, source_units = 290 }
-"0110" = { commands = 37, commands_by_row = { "0" = 21, "1" = 21, "2" = 33, "3" = 37 }, source_units = 128 }
-"01101001" = { commands = 40, commands_by_row = { "0" = 34, "1" = 34, "2" = 46, "3" = 50, "4" = 46, "5" = 50, "6" = 40, "7" = 40 }, source_units = 300 }
-"0110100110010110" = { commands = 69, commands_by_row = { "0" = 47, "1" = 47, "2" = 59, "3" = 63, "4" = 59, "5" = 63, "6" = 53, "7" = 53, "8" = 59, "9" = 63, "10" = 53, "11" = 53, "12" = 53, "13" = 53, "14" = 65, "15" = 69 }, source_units = 644 }
-"1101001101101101" = { commands = 56, commands_by_row = { "0" = 51, "1" = 51, "2" = 50, "3" = 50, "4" = 54, "5" = 54, "6" = 57, "7" = 57, "8" = 50, "9" = 50, "10" = 62, "11" = 66, "12" = 57, "13" = 57, "14" = 56, "15" = 56 }, source_units = 582 }
-"11111110" = { commands = 53, commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 49, "7" = 53 }, source_units = 239 }
+"00000001" = { commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 40, "7" = 40 }, source_units = 197 }
+"00001100" = { commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 44, "7" = 44 }, source_units = 213 }
+"00110110" = { commands_by_row = { "0" = 38, "1" = 38, "2" = 41, "3" = 41, "4" = 37, "5" = 37, "6" = 49, "7" = 53 }, source_units = 290 }
+"0110" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 33, "3" = 37 }, source_units = 128 }
+"01101001" = { commands_by_row = { "0" = 34, "1" = 34, "2" = 46, "3" = 50, "4" = 46, "5" = 50, "6" = 40, "7" = 40 }, source_units = 300 }
+"0110100110010110" = { commands_by_row = { "0" = 47, "1" = 47, "2" = 59, "3" = 63, "4" = 59, "5" = 63, "6" = 53, "7" = 53, "8" = 59, "9" = 63, "10" = 53, "11" = 53, "12" = 53, "13" = 53, "14" = 65, "15" = 69 }, source_units = 644 }
+"1101001101101101" = { commands_by_row = { "0" = 51, "1" = 51, "2" = 50, "3" = 50, "4" = 54, "5" = 54, "6" = 57, "7" = 57, "8" = 50, "9" = 50, "10" = 62, "11" = 66, "12" = 57, "13" = 57, "14" = 56, "15" = 56 }, source_units = 582 }
+"11111110" = { commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 41, "5" = 41, "6" = 49, "7" = 53 }, source_units = 239 }
 
 [catalogue]
 sharing_exempt = "no jump or call: code runs once per place it is written"

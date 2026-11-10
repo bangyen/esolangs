@@ -19,10 +19,10 @@ evidence = "docs/limitations.md#unary"
 
 
 [generator_sizes]
-"00" = { commands = 1, commands_by_row = { "0" = 1, "1" = 1 }, source_units = 13 }
+"00" = { commands_by_row = { "0" = 1, "1" = 1 }, source_units = 13 }
 "0001" = { commands_by_row = { "0" = 4, "1" = 7, "2" = 4 }, commands_by_row_nulls = [3], source_units = 27452351 }
 "01" = { commands_by_row = { "0" = 2 }, commands_by_row_nulls = [1], source_units = 887 }
-"10" = { commands = 3, commands_by_row = { "1" = 3 }, commands_by_row_nulls = [0], source_units = 6839 }
+"10" = { commands_by_row = { "1" = 3 }, commands_by_row_nulls = [0], source_units = 6839 }
 "11" = { commands_by_row = {}, commands_by_row_nulls = [0, 1], source_units = 6903 }
 
 [ablations]

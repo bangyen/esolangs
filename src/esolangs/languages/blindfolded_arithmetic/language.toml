@@ -10,14 +10,14 @@ labels = ["linear lookup"]
 qualification = "the table read at its essential inputs is one integer built by Horner in base8 (parity: base16), and each essential bit of the row divides it by 1 or by 2^2^m, squared up from 2, so its low bit is the answer"
 
 [generator_sizes]
-"00000001" = { commands = 36, commands_by_row = { "0" = 36, "1" = 36, "2" = 36, "3" = 36, "4" = 36, "5" = 36, "6" = 36, "7" = 36 }, source_units = 215 }
-"00001100" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27 }, source_units = 161 }
-"00110110" = { commands = 38, commands_by_row = { "0" = 38, "1" = 38, "2" = 38, "3" = 38, "4" = 38, "5" = 38, "6" = 38, "7" = 38 }, source_units = 227 }
-"0110" = { commands = 27, commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27 }, source_units = 161 }
-"01101001" = { commands = 39, commands_by_row = { "0" = 39, "1" = 39, "2" = 39, "3" = 39, "4" = 39, "5" = 39, "6" = 39, "7" = 39 }, source_units = 233 }
-"0110100110010110" = { commands = 54, commands_by_row = { "0" = 54, "1" = 54, "2" = 54, "3" = 54, "4" = 54, "5" = 54, "6" = 54, "7" = 54, "8" = 54, "9" = 54, "10" = 54, "11" = 54, "12" = 54, "13" = 54, "14" = 54, "15" = 54 }, source_units = 323 }
-"1101001101101101" = { commands = 52, commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 52, "5" = 52, "6" = 52, "7" = 52, "8" = 52, "9" = 52, "10" = 52, "11" = 52, "12" = 52, "13" = 52, "14" = 52, "15" = 52 }, source_units = 311 }
-"11111110" = { commands = 37, commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 37 }, source_units = 221 }
+"00000001" = { commands_by_row = { "0" = 36, "1" = 36, "2" = 36, "3" = 36, "4" = 36, "5" = 36, "6" = 36, "7" = 36 }, source_units = 215 }
+"00001100" = { commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27 }, source_units = 161 }
+"00110110" = { commands_by_row = { "0" = 38, "1" = 38, "2" = 38, "3" = 38, "4" = 38, "5" = 38, "6" = 38, "7" = 38 }, source_units = 227 }
+"0110" = { commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27 }, source_units = 161 }
+"01101001" = { commands_by_row = { "0" = 39, "1" = 39, "2" = 39, "3" = 39, "4" = 39, "5" = 39, "6" = 39, "7" = 39 }, source_units = 233 }
+"0110100110010110" = { commands_by_row = { "0" = 54, "1" = 54, "2" = 54, "3" = 54, "4" = 54, "5" = 54, "6" = 54, "7" = 54, "8" = 54, "9" = 54, "10" = 54, "11" = 54, "12" = 54, "13" = 54, "14" = 54, "15" = 54 }, source_units = 323 }
+"1101001101101101" = { commands_by_row = { "0" = 52, "1" = 52, "2" = 52, "3" = 52, "4" = 52, "5" = 52, "6" = 52, "7" = 52, "8" = 52, "9" = 52, "10" = 52, "11" = 52, "12" = 52, "13" = 52, "14" = 52, "15" = 52 }, source_units = 311 }
+"11111110" = { commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 37 }, source_units = 221 }
 
 [catalogue]
 folding_constant_local = "read_at"  # one projected table bit, no lookup round

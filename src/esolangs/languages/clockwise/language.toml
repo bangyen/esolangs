@@ -10,14 +10,14 @@ labels = ["linear lookup"]
 qualification = "the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit"
 
 [generator_sizes]
-"00000001" = { commands = 196, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 321 }
-"00001100" = { commands = 110, commands_by_row = { "0" = 92, "1" = 92, "2" = 96, "3" = 96, "4" = 106, "5" = 106, "6" = 110, "7" = 110 }, source_units = 187 }
-"00110110" = { commands = 196, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 319 }
-"0110" = { commands = 110, commands_by_row = { "0" = 92, "1" = 96, "2" = 106, "3" = 110 }, source_units = 187 }
-"01101001" = { commands = 196, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 321 }
-"0110100110010110" = { commands = 346, commands_by_row = { "0" = 220, "1" = 224, "2" = 234, "3" = 238, "4" = 254, "5" = 258, "6" = 268, "7" = 272, "8" = 294, "9" = 298, "10" = 308, "11" = 312, "12" = 328, "13" = 332, "14" = 342, "15" = 346 }, source_units = 543 }
-"1101001101101101" = { commands = 346, commands_by_row = { "0" = 220, "1" = 224, "2" = 234, "3" = 238, "4" = 254, "5" = 258, "6" = 268, "7" = 272, "8" = 294, "9" = 298, "10" = 308, "11" = 312, "12" = 328, "13" = 332, "14" = 342, "15" = 346 }, source_units = 545 }
-"11111110" = { commands = 196, commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 319 }
+"00000001" = { commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 321 }
+"00001100" = { commands_by_row = { "0" = 92, "1" = 92, "2" = 96, "3" = 96, "4" = 106, "5" = 106, "6" = 110, "7" = 110 }, source_units = 187 }
+"00110110" = { commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 319 }
+"0110" = { commands_by_row = { "0" = 92, "1" = 96, "2" = 106, "3" = 110 }, source_units = 187 }
+"01101001" = { commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 321 }
+"0110100110010110" = { commands_by_row = { "0" = 220, "1" = 224, "2" = 234, "3" = 238, "4" = 254, "5" = 258, "6" = 268, "7" = 272, "8" = 294, "9" = 298, "10" = 308, "11" = 312, "12" = 328, "13" = 332, "14" = 342, "15" = 346 }, source_units = 543 }
+"1101001101101101" = { commands_by_row = { "0" = 220, "1" = 224, "2" = 234, "3" = 238, "4" = 254, "5" = 258, "6" = 268, "7" = 272, "8" = 294, "9" = 298, "10" = 308, "11" = 312, "12" = 328, "13" = 332, "14" = 342, "15" = 346 }, source_units = 545 }
+"11111110" = { commands_by_row = { "0" = 144, "1" = 148, "2" = 158, "3" = 162, "4" = 178, "5" = 182, "6" = 192, "7" = 196 }, source_units = 319 }
 
 [catalogue]
 folding_constant_local = "_constant_ring"  # read rotation and literal output

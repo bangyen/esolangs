@@ -6,12 +6,8 @@ table; this module is the dataset's one aggregator and its one writer.
 A package with no file or no section contributes nothing (an interpreter-
 only language, or one the sweep has not recorded yet).
 
-TOML has no null, and the baseline needs two: a language that cannot be
-stepped records ``commands = null``, and individual rows can be null
-inside an otherwise steppable record.  A fragment omits a null
-``commands`` outright and lists null rows by index in
-``commands_by_row_nulls``; aggregation reconstructs the exact JSON-era
-record shape, nulls included.
+TOML lists uncounted rows by index in ``commands_by_row_nulls``.
+Aggregation derives the summary command count from the last input row.
 """
 
 from __future__ import annotations
@@ -33,9 +29,7 @@ _HEADER = (
     "# Language-owned data, one section per dataset; aggregators read\n"
     "# only their own section and skip this file when it is absent.\n\n"
 )
-_FIELDS = frozenset(
-    {"source_units", "commands", "commands_by_row", "commands_by_row_nulls"}
-)
+_FIELDS = frozenset({"source_units", "commands_by_row", "commands_by_row_nulls"})
 
 
 def _count(path: Path, table: str, key: str, value: object) -> int:
@@ -57,35 +51,32 @@ def _validate_row(path: Path, table: str, row: object) -> dict[str, Any]:
     units = _count(path, table, "source_units", row["source_units"])
     if units == 0:
         raise ValueError(f"{path}: [{SECTION}] {table!r} source_units must be > 0")
-    record: dict[str, Any] = {
+    by_row: dict[str, int | None] = {}
+    stored = row.get("commands_by_row", {})
+    if not isinstance(stored, dict):
+        raise ValueError(f"{path}: [{SECTION}] {table!r} commands_by_row")
+    for key, value in stored.items():
+        if not key.isdigit():
+            raise ValueError(f"{path}: [{SECTION}] {table!r} row {key!r}")
+        by_row[key] = _count(path, table, f"row {key}", value)
+    nulls = row.get("commands_by_row_nulls", [])
+    if not isinstance(nulls, list):
+        raise ValueError(f"{path}: [{SECTION}] {table!r} null rows")
+    seen: set[int] = set()
+    for index in nulls:
+        _count(path, table, "null row", index)
+        if index in seen or str(index) in by_row:
+            raise ValueError(f"{path}: [{SECTION}] {table!r} null row {index}")
+        seen.add(index)
+        by_row[str(index)] = None
+    last = str(len(table) - 1)
+    if last not in by_row:
+        raise ValueError(f"{path}: [{SECTION}] {table!r} needs final row {last}")
+    return {
         "source_units": units,
-        "commands": (
-            _count(path, table, "commands", row["commands"])
-            if "commands" in row
-            else None
-        ),
+        "commands": by_row[last],
+        "commands_by_row": by_row,
     }
-    if "commands_by_row" in row or "commands_by_row_nulls" in row:
-        by_row: dict[str, Any] = {}
-        stored = row.get("commands_by_row", {})
-        if not isinstance(stored, dict):
-            raise ValueError(f"{path}: [{SECTION}] {table!r} commands_by_row")
-        for key, value in stored.items():
-            if not key.isdigit():
-                raise ValueError(f"{path}: [{SECTION}] {table!r} row {key!r}")
-            by_row[key] = _count(path, table, f"row {key}", value)
-        nulls = row.get("commands_by_row_nulls", [])
-        if not isinstance(nulls, list):
-            raise ValueError(f"{path}: [{SECTION}] {table!r} null rows")
-        seen: set[int] = set()
-        for index in nulls:
-            _count(path, table, "null row", index)
-            if index in seen or str(index) in by_row:
-                raise ValueError(f"{path}: [{SECTION}] {table!r} null row {index}")
-            seen.add(index)
-            by_row[str(index)] = None
-        record["commands_by_row"] = by_row
-    return record
 
 
 def _validate_section(path: Path, section: dict[str, Any]) -> dict[str, Any]:
@@ -134,20 +125,20 @@ def aggregate_fragments(
     return aggregate(_AGGREGATES, packages, languages, _aggregate_fragments)
 
 
-def _render_row(record: Mapping[str, Any]) -> str:
+def _render_row(table: str, record: Mapping[str, Any]) -> str:
     """Return one record as a TOML inline table, nulls encoded as omissions."""
     parts = []
-    if record.get("commands") is not None:
-        parts.append(f"commands = {record['commands']}")
-    if "commands_by_row" in record:
-        by_row = record["commands_by_row"]
-        stored = {k: v for k, v in by_row.items() if v is not None}
-        inner = ", ".join(f'"{key}" = {stored[key]}' for key in sorted(stored, key=int))
-        rendered_rows = f"{{ {inner} }}" if inner else "{}"
-        parts.append(f"commands_by_row = {rendered_rows}")
-        nulls = sorted(int(k) for k, v in by_row.items() if v is None)
-        if nulls:
-            parts.append(f"commands_by_row_nulls = {nulls}")
+    by_row = record["commands_by_row"]
+    last = str(len(table) - 1)
+    if last not in by_row or by_row[last] != record["commands"]:
+        raise ValueError(f"{table!r}: summary command count must match row {last}")
+    stored = {k: v for k, v in by_row.items() if v is not None}
+    inner = ", ".join(f'"{key}" = {stored[key]}' for key in sorted(stored, key=int))
+    rendered_rows = f"{{ {inner} }}" if inner else "{}"
+    parts.append(f"commands_by_row = {rendered_rows}")
+    nulls = sorted(int(k) for k, v in by_row.items() if v is None)
+    if nulls:
+        parts.append(f"commands_by_row_nulls = {nulls}")
     parts.append(f"source_units = {record['source_units']}")
     return "{ " + ", ".join(parts) + " }"
 
@@ -156,7 +147,7 @@ def render_section(records: Mapping[str, Any]) -> str:
     """Return the ``[generator_sizes]`` block for one package's records."""
     lines = [f"[{SECTION}]"]
     lines.extend(
-        f'"{table}" = {_render_row(records[table])}' for table in sorted(records)
+        f'"{table}" = {_render_row(table, records[table])}' for table in sorted(records)
     )
     return "\n".join(lines) + "\n"
 

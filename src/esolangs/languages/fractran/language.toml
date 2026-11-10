@@ -9,14 +9,14 @@ labels = ["parameterized tree"]
 qualification = "the bits are the exponents of `n` primes in the starting value, a decision tree gives equal subtables one state prime, and the first-match rule is the else-branch"
 
 [generator_sizes]
-"00000001" = { commands = 4, commands_by_row = { "0" = 2, "1" = 3, "2" = 3, "3" = 4, "4" = 3, "5" = 4, "6" = 4, "7" = 4 }, source_units = 54 }
-"00001100" = { commands = 4, commands_by_row = { "0" = 2, "1" = 3, "2" = 3, "3" = 4, "4" = 3, "5" = 4, "6" = 3, "7" = 4 }, source_units = 43 }
-"00110110" = { commands = 4, commands_by_row = { "0" = 3, "1" = 4, "2" = 3, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4 }, source_units = 73 }
-"0110" = { commands = 3, commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3 }, source_units = 40 }
-"01101001" = { commands = 4, commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4 }, source_units = 70 }
-"0110100110010110" = { commands = 5, commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5, "8" = 5, "9" = 5, "10" = 5, "11" = 5, "12" = 5, "13" = 5, "14" = 5, "15" = 5 }, source_units = 106 }
-"1101001101101101" = { commands = 5, commands_by_row = { "0" = 4, "1" = 5, "2" = 5, "3" = 5, "4" = 4, "5" = 5, "6" = 4, "7" = 5, "8" = 5, "9" = 5, "10" = 5, "11" = 5, "12" = 4, "13" = 5, "14" = 5, "15" = 5 }, source_units = 123 }
-"11111110" = { commands = 4, commands_by_row = { "0" = 2, "1" = 3, "2" = 3, "3" = 4, "4" = 3, "5" = 4, "6" = 4, "7" = 4 }, source_units = 54 }
+"00000001" = { commands_by_row = { "0" = 2, "1" = 3, "2" = 3, "3" = 4, "4" = 3, "5" = 4, "6" = 4, "7" = 4 }, source_units = 54 }
+"00001100" = { commands_by_row = { "0" = 2, "1" = 3, "2" = 3, "3" = 4, "4" = 3, "5" = 4, "6" = 3, "7" = 4 }, source_units = 43 }
+"00110110" = { commands_by_row = { "0" = 3, "1" = 4, "2" = 3, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4 }, source_units = 73 }
+"0110" = { commands_by_row = { "0" = 3, "1" = 3, "2" = 3, "3" = 3 }, source_units = 40 }
+"01101001" = { commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4 }, source_units = 70 }
+"0110100110010110" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5, "8" = 5, "9" = 5, "10" = 5, "11" = 5, "12" = 5, "13" = 5, "14" = 5, "15" = 5 }, source_units = 106 }
+"1101001101101101" = { commands_by_row = { "0" = 4, "1" = 5, "2" = 5, "3" = 5, "4" = 4, "5" = 5, "6" = 4, "7" = 5, "8" = 5, "9" = 5, "10" = 5, "11" = 5, "12" = 4, "13" = 5, "14" = 5, "15" = 5 }, source_units = 123 }
+"11111110" = { commands_by_row = { "0" = 2, "1" = 3, "2" = 3, "3" = 4, "4" = 3, "5" = 4, "6" = 4, "7" = 4 }, source_units = 54 }
 
 [ablations]
 archive_refs = [
