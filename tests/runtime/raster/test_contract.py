@@ -10,7 +10,7 @@ import esolangs
 import esolangs.runtime._execution as _execution_runtime
 from esolangs.operations.source import _check_program, read_png_artifact
 from esolangs.raster import Raster, lazy_raster
-from esolangs.registry import LANGUAGES, SourceKind
+from esolangs.registry import CATALOG, LANGUAGES, SourceKind
 from tests.support.dialect_support import integer_setting
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
@@ -333,7 +333,7 @@ def test_explicit_scale_overrides_png_metadata(
     spec = LANGUAGES[language]
     caps = replace(spec.runtime.capabilities, supports_scale=False)
     runtime = replace(spec.runtime, capabilities=caps)
-    monkeypatch.setitem(LANGUAGES, language, replace(spec, runtime=runtime))
+    catalog = CATALOG.with_language(replace(spec, runtime=runtime))
     monkeypatch.setattr(module, "supports_scale", True)
     with pytest.raises(esolangs.ArgumentError, match="scale"):
-        esolangs.run(language, changed, scale=2)
+        esolangs.run(language, changed, scale=2, catalog=catalog)

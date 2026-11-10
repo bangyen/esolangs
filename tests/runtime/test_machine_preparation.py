@@ -21,7 +21,9 @@ def test_declared_preparation_needs_no_private_constructor(monkeypatch):
         return prepare_machine(source, options)
 
     monkeypatch.setattr(
-        vm, "interpreter_module", lambda _name: SimpleNamespace(prepare_machine=prepare)
+        vm,
+        "interpreter_module",
+        lambda _name, **_options: SimpleNamespace(prepare_machine=prepare),
     )
     machine = vm.make_vm("brainfuck", ",+.", stdin="A")
     assert calls == [(",+.", {})]

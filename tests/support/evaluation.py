@@ -29,6 +29,7 @@ from esolangs.runtime._answers import (
     read_answer,
 )
 from esolangs.runtime._execution import check_signal_timeout
+from esolangs.runtime._input import InputSource
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, check_scale_for
@@ -277,10 +278,17 @@ def _row_answerer(
     scale: int | None,
     max_output: int | None,
     max_memory: int | None,
+    io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
 ) -> Callable[[Program | Artifact, str, float | None], str]:
     """Return the call that turns one row's source, stdin and bound into its bit."""
     if not terminating:
-        run = esolangs.run
+        from esolangs.operations.execution import _run_result
+
+        run = (
+            esolangs.run
+            if io_factory is ScriptedIO
+            else partial(_run_result, io_factory=io_factory)
+        )
         return lambda source, stdin, bound: read_answer(
             name,
             run(
@@ -314,7 +322,9 @@ def _row_answerer(
                 max_memory=max_memory,
             )
         else:
-            proof = _termination_result(name, source, stdin, bound, settings=settings)
+            proof = _termination_result(
+                name, source, stdin, bound, settings=settings, io_factory=io_factory
+            )
         return halts_is if proof.decision.halts else diverges_is
 
     return answer

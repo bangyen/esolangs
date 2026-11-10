@@ -136,6 +136,13 @@ info = bf.describe()
 
 It also binds `instantiate`; use the package functions across languages.
 
+`Catalog` owns immutable declarations and lookup indexes. Construct one from
+`esolangs.registry.CATALOG.languages.values()`; `with_language(record)` returns
+a new scope. Use `catalog.bind(name)` or `Language(name, catalog=catalog)`.
+Package operations and VM/debugger factories also accept `catalog=`.
+Subprocess isolation requires runtime declarations matching the installed
+catalog; native and cooperative execution use the supplied declarations.
+
 ### Balance and scale
 
 `balance=True` picks the supported layout that fits the smallest on-screen
@@ -177,11 +184,12 @@ Functions:
 Types:
 
 - `esolangs.Artifact` -- `ProgramArtifact[Program] | TemplateArtifact`
+- `esolangs.Catalog` -- own a frozen declaration set; derived indexes share the same scope
 - `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
 - `esolangs.DialectSettings` -- validated overrides bound to one language schema
 - `esolangs.ExecutionResult` -- output, stdin usage and explicit completion evidence
 - `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
-- `esolangs.Language` -- bind a canonical language name to the package's existing functions
+- `esolangs.Language` -- bind a canonical language name to one immutable catalog
 - `esolangs.LanguageInfo` -- what `describe` returns, as a type a caller can annotate with
 - `esolangs.Program` -- `str | Raster | CompressedText`
 - `esolangs.ProgramArtifact` -- runnable source with its language and retained dialect choices

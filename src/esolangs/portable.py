@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import base64
 import json
-from collections.abc import Callable
 from dataclasses import asdict
 from os import PathLike
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, Protocol
 
 from esolangs.artifacts import (
     Artifact,
@@ -20,21 +19,26 @@ from esolangs.artifacts import (
 from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster, png
-from esolangs.registry import LANGUAGES, resolve, template_char
+from esolangs.registry import template_char
+from esolangs.registry._catalog import Catalog
 from esolangs.runtime._json import unique_object
 from esolangs.runtime._program import Program
 from esolangs.settings import (
     DialectSettings,
+    _settings_for,
     dialect_options,
     effective_settings,
-    settings_for,
 )
 
 _FORMAT = "esolangs.program"
 
 
 def save_program(
-    program: Program | Artifact, path: str | PathLike[str], *, gzip: bool = False
+    program: Program | Artifact,
+    path: str | PathLike[str],
+    *,
+    gzip: bool = False,
+    catalog: Catalog | None = None,
 ) -> None:
     """Write a program as a native source file.
 
@@ -51,6 +55,9 @@ def save_program(
         ProgramError: The source cannot be encoded or the file cannot be written.
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     if type(gzip) is not bool:
         raise ArgumentError("gzip must be a boolean")
     try:
@@ -75,7 +82,9 @@ def save_program(
             )
         elif isinstance(program, str):
             ending = (
-                "\n" if origin is None or LANGUAGES[origin].runtime.file_newline else ""
+                "\n"
+                if origin is None or catalog.languages[origin].runtime.file_newline
+                else ""
             )
             source = (
                 CompressedText.from_chunks((program, ending)).to_gzip()
@@ -100,6 +109,7 @@ def dump_program(
     program: Program | Artifact,
     *,
     settings: DialectSettings | None = None,
+    catalog: Catalog | None = None,
 ) -> str:
     """Return version-1 JSON preserving source, choices, and template setters.
 
@@ -113,19 +123,22 @@ def dump_program(
         ProgramError: ``program`` cannot be read (base of the above).
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     from esolangs.operations.source import read_artifact
 
-    name = resolve(language)
-    settings = effective_settings(name, program, settings)
-    values = dialect_options(name, settings)
-    acquired = read_artifact(name, program)
+    name = catalog.resolve(language)
+    settings = effective_settings(name, program, settings, catalog=catalog)
+    values = dialect_options(name, settings, catalog=catalog)
+    acquired = read_artifact(name, program, catalog=catalog)
     artifact = (
         program
         if isinstance(program, (ProgramArtifact, TemplateArtifact))
         else acquired
     )
-    settings = effective_settings(name, artifact, settings)
-    values = dialect_options(name, settings)
+    settings = effective_settings(name, artifact, settings, catalog=catalog)
+    values = dialect_options(name, settings, catalog=catalog)
     encoded = (
         None
         if settings is None
@@ -174,15 +187,22 @@ def dump_program(
     )
 
 
-def _settings(value: Any, language: str) -> DialectSettings | None:
+def _settings(
+    value: Any, language: str, *, catalog: Catalog | None = None
+) -> DialectSettings | None:
     """Restore saved dialect settings, validated for ``language``."""
-    settings = decode_settings(value, language)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    settings = decode_settings(value, language, catalog=catalog)
     if settings is not None:
-        dialect_options(language, settings)
+        dialect_options(language, settings, catalog=catalog)
     return settings
 
 
-def decode_settings(value: Any, language: str | None) -> DialectSettings | None:
+def decode_settings(
+    value: Any, language: str | None, *, catalog: Catalog | None = None
+) -> DialectSettings | None:
     """Restore saved dialect settings; shared with PNG metadata."""
     if value is None:
         return None
@@ -201,17 +221,24 @@ def decode_settings(value: Any, language: str | None) -> DialectSettings | None:
         choices[key] = item
     if language is None:
         raise ValueError("settings need a language to apply to")
-    return settings_for(language, **choices)
+    return _settings_for(language, choices, catalog=catalog)
 
 
 def _load_png(
-    value: dict[str, Any], name: str, settings: DialectSettings | None
+    value: dict[str, Any],
+    name: str,
+    settings: DialectSettings | None,
+    *,
+    catalog: Catalog | None = None,
 ) -> ProgramArtifact[Raster]:
     """Restore a ``png`` document's raster."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     from esolangs.operations.source import read_png_artifact
 
     data = base64.b64decode(value["source"], validate=True)
-    record = read_png_artifact(name, data)
+    record = read_png_artifact(name, data, catalog=catalog)
     metadata = png.read_metadata(data)
     if metadata is not None and record.settings != settings:
         raise ValueError("conflicting PNG and document settings")
@@ -219,9 +246,16 @@ def _load_png(
 
 
 def _load_gzip(
-    value: dict[str, Any], name: str, settings: DialectSettings | None
+    value: dict[str, Any],
+    name: str,
+    settings: DialectSettings | None,
+    *,
+    catalog: Catalog | None = None,
 ) -> ProgramArtifact[CompressedText]:
     """Restore a ``gzip`` document's compressed text."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     limits = value.get("limits")
     if limits is not None:
         if not isinstance(limits, dict) or set(limits) != {
@@ -239,19 +273,33 @@ def _load_gzip(
 
 
 def _load_text(
-    value: dict[str, Any], name: str, settings: DialectSettings | None
+    value: dict[str, Any],
+    name: str,
+    settings: DialectSettings | None,
+    *,
+    catalog: Catalog | None = None,
 ) -> ProgramArtifact[str]:
     """Restore a ``text`` document's source."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     return ProgramArtifact(value["source"], name, settings)
 
 
 def _load_template(
-    value: dict[str, Any], name: str, settings: DialectSettings | None
+    value: dict[str, Any],
+    name: str,
+    settings: DialectSettings | None,
+    *,
+    catalog: Catalog | None = None,
 ) -> TemplateArtifact:
     """Restore a ``template`` document's template and setters."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     if not isinstance(value["char"], str) or len(value["char"]) != 1:
         raise ValueError("template char must be one character")
-    if value["char"] != template_char(LANGUAGES[name].id):
+    if value["char"] != template_char(catalog.languages[name].id, catalog=catalog):
         raise ValueError("template char does not match the language")
     pairs = value["setters"]
     if not isinstance(pairs, list) or any(
@@ -266,10 +314,19 @@ def _load_template(
     )
 
 
+class _Loader(Protocol):
+    def __call__(
+        self,
+        value: dict[str, Any],
+        name: str,
+        settings: DialectSettings | None,
+        *,
+        catalog: Catalog | None = None,
+    ) -> Artifact: ...
+
+
 #: Source-kind dispatch for :func:`load_program`.
-_LOADERS: dict[
-    str, Callable[[dict[str, Any], str, DialectSettings | None], Artifact]
-] = {
+_LOADERS: dict[str, _Loader] = {
     "png": _load_png,
     "gzip": _load_gzip,
     "text": _load_text,
@@ -277,7 +334,9 @@ _LOADERS: dict[
 }
 
 
-def load_program(language: str, document: str) -> Artifact:
+def load_program(
+    language: str, document: str, *, catalog: Catalog | None = None
+) -> Artifact:
     """Restore version-1 JSON as an explicit program or template record.
 
     Raises:
@@ -287,9 +346,12 @@ def load_program(language: str, document: str) -> Artifact:
             ``language``, including invalid settings.
         MissingDependencyError: A PNG source needs ``esolangs[image]``.
     """
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     from esolangs.operations.source import _read_source
 
-    name = resolve(language)
+    name = catalog.resolve(language)
     if not isinstance(document, str):
         raise ArgumentError("document must be a JSON string")
     try:
@@ -317,11 +379,11 @@ def load_program(language: str, document: str) -> Artifact:
         # Strict UTF-8 everywhere, as a program file is read: a JSON
         # "\ud800" escape in the source or a setter loaded a lone surrogate.
         json.dumps(value, ensure_ascii=False).encode("utf-8")
-        settings = _settings(value["settings"], name)
+        settings = _settings(value["settings"], name, catalog=catalog)
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
-        artifact = _LOADERS[kind](value, name, settings)
-        _read_source(name, artifact)
+        artifact = _LOADERS[kind](value, name, settings, catalog=catalog)
+        _read_source(name, artifact, catalog=catalog)
         return artifact
     except (ValueError, TypeError) as error:
         raise ProgramError(f"invalid portable program: {error}") from error

@@ -129,7 +129,9 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
     monkeypatch.setattr(
         vm,
         "interpreter_module",
-        lambda _name: SimpleNamespace(prepare_machine=interpreter.prepare_machine),
+        lambda _name, **_options: SimpleNamespace(
+            prepare_machine=interpreter.prepare_machine
+        ),
     )
     debug = esolangs.debugger.make_debugger("A Painter Ant", "P")
     assert not debug.self_halts

@@ -1,28 +1,39 @@
 """Catalog validation and artifact overrides for scoped dialect choices."""
 
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 from esolangs._dialect import DialectSchema, Scalar
 from esolangs._dialect import DialectSettings as DialectSettings
 from esolangs.exceptions import ArgumentError
 
+if TYPE_CHECKING:
+    from esolangs.registry._catalog import Catalog
 
-def settings_for(language: str, **choices: Scalar) -> DialectSettings:
+
+def _settings_for(
+    language: str, choices: dict[str, Scalar], *, catalog: "Catalog | None" = None
+) -> DialectSettings:
     """Bind validated overrides to the selected language's immutable schema."""
-    from esolangs.registry import LANGUAGES, resolve
+    from esolangs.registry._catalog import get_catalog
 
-    name = resolve(language)
-    schema = LANGUAGES[name].runtime.dialect_schema or DialectSchema(name, {}, {})
+    catalog = get_catalog(catalog)
+
+    name = catalog.resolve(language)
+    schema = catalog.languages[name].runtime.dialect_schema or DialectSchema(
+        name, {}, {}
+    )
     settings = DialectSettings(schema, **choices)
-    dialect_options(name, settings)
+    dialect_options(name, settings, catalog=catalog)
     return settings
 
 
 def dialect_options(
-    language: str, settings: DialectSettings | None
+    language: str, settings: DialectSettings | None, *, catalog: "Catalog | None" = None
 ) -> dict[str, Scalar]:
     """Validate scope and choices before source or input acquisition."""
-    from esolangs.registry import LANGUAGES, resolve
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
 
     if settings is None:
         return {}
@@ -30,8 +41,8 @@ def dialect_options(
         raise ArgumentError(
             f"settings must be a DialectSettings object, got {type(settings).__name__}"
         )
-    name = resolve(language)
-    runtime = LANGUAGES[name].runtime
+    name = catalog.resolve(language)
+    runtime = catalog.languages[name].runtime
     schema = runtime.dialect_schema or DialectSchema(name, {}, {})
     if settings._schema != schema:  # noqa: SLF001 - verify the declared domain schema
         raise ArgumentError(
@@ -49,30 +60,38 @@ def dialect_options(
 
 
 def effective_settings(
-    language: str, program: object, settings: DialectSettings | None
+    language: str,
+    program: object,
+    settings: DialectSettings | None,
+    *,
+    catalog: "Catalog | None" = None,
 ) -> DialectSettings | None:
     """Merge explicit choices over retained same-language source provenance."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     from esolangs.artifacts import ProgramArtifact, TemplateArtifact
-    from esolangs.registry import resolve
 
     if settings is not None and not isinstance(settings, DialectSettings):
         raise ArgumentError(
             f"settings must be a DialectSettings object, got {type(settings).__name__}"
         )
-    dialect_options(language, settings)
-    if not isinstance(program, (ProgramArtifact, TemplateArtifact)) or resolve(
+    dialect_options(language, settings, catalog=catalog)
+    if not isinstance(program, (ProgramArtifact, TemplateArtifact)) or catalog.resolve(
         program.language
-    ) != resolve(language):
+    ) != catalog.resolve(language):
         return settings
     retained = program.settings
-    dialect_options(language, retained)
+    dialect_options(language, retained, catalog=catalog)
     if retained is None:
         return settings
     if settings is None:
         return retained
     # Validate the combined choices after explicit fields replace retained fields.
-    merged = settings_for(language, **(dict(retained._items) | dict(settings._items)))  # noqa: SLF001
-    dialect_options(language, merged)
+    retained_values = dict(retained._items)  # noqa: SLF001
+    explicit_values = dict(settings._items)  # noqa: SLF001
+    merged = _settings_for(language, retained_values | explicit_values, catalog=catalog)
+    dialect_options(language, merged, catalog=catalog)
     return merged
 
 
@@ -83,11 +102,15 @@ class DialectOption(TypedDict):
     choices: tuple[int | str, ...]
 
 
-def dialect_choices(language: str) -> dict[str, DialectOption]:
+def dialect_choices(
+    language: str, *, catalog: "Catalog | None" = None
+) -> dict[str, DialectOption]:
     """Return fresh choices and explicitly declared defaults."""
-    from esolangs.registry import LANGUAGES, resolve
+    from esolangs.registry._catalog import get_catalog
 
-    runtime = LANGUAGES[resolve(language)].runtime
+    catalog = get_catalog(catalog)
+
+    runtime = catalog.languages[catalog.resolve(language)].runtime
     if runtime.dialect is None:
         return {}
     schema = runtime.dialect_schema
@@ -97,3 +120,8 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
         key: {"default": default, "choices": choices[key]}
         for key, default in schema.defaults.items()
     }
+
+
+def settings_for(language: str, **choices: Scalar) -> DialectSettings:
+    """Bind dialect choices against the installed catalog."""
+    return _settings_for(language, choices)

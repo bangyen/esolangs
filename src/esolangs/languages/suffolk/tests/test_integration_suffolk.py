@@ -157,7 +157,9 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     monkeypatch.setattr(
         vm,
         "interpreter_module",
-        lambda _name: SimpleNamespace(prepare_machine=interpreter.prepare_machine),
+        lambda _name, **_options: SimpleNamespace(
+            prepare_machine=interpreter.prepare_machine
+        ),
     )
     debug = debugger_api.make_debugger("Suffolk", "<")
     assert not debug.self_halts

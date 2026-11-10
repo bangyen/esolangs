@@ -1,13 +1,13 @@
 """The public API with one language bound."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from os import PathLike
 from pathlib import Path
 
 import esolangs
 import esolangs.operations.source as _source_operations
 from esolangs.artifacts import Artifact, ProgramArtifact
-from esolangs.registry import resolve
+from esolangs.registry import Catalog, get_catalog
 from esolangs.registry._describe import LanguageInfo
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
@@ -18,7 +18,7 @@ from esolangs.settings import DialectSettings, effective_settings
 
 @dataclass(frozen=True, slots=True)
 class Language:
-    """Bind a canonical language name to the package's existing functions.
+    """Bind a canonical language name to one immutable catalog.
 
     Methods follow the package split by who supplies the program:
     ``generate``/``instantiate`` are generator-made, ``run`` executes
@@ -28,10 +28,12 @@ class Language:
     """
 
     name: str
+    catalog: Catalog = field(default_factory=get_catalog, kw_only=True, repr=False)
 
     def __post_init__(self) -> None:
         """Resolve the supplied name before any operation."""
-        object.__setattr__(self, "name", resolve(self.name))
+        object.__setattr__(self, "catalog", get_catalog(self.catalog))
+        object.__setattr__(self, "name", self.catalog.resolve(self.name))
 
     def settings(self, **choices: int | str) -> DialectSettings:
         """Return overrides validated within this language's dialect schema.
@@ -39,9 +41,9 @@ class Language:
         Raises:
             ArgumentError: A choice is unknown or outside its declared values.
         """
-        from esolangs.settings import settings_for
+        from esolangs.settings import _settings_for
 
-        return settings_for(self.name, **choices)
+        return _settings_for(self.name, choices, catalog=self.catalog)
 
     def from_source(
         self, source: Program, *, settings: DialectSettings | None = None
@@ -55,7 +57,7 @@ class Language:
             ProgramError: Source has an unsupported type or foreign provenance.
             ArgumentError: Dialect settings are invalid for this language.
         """
-        retained = effective_settings(self.name, source, settings)
+        retained = effective_settings(self.name, source, settings, catalog=self.catalog)
         return ProgramArtifact(source, self.name, retained)
 
     def from_file(
@@ -72,11 +74,15 @@ class Language:
         from esolangs.exceptions import ArgumentError
         from esolangs.settings import dialect_options
 
-        dialect_options(self.name, settings)
+        dialect_options(self.name, settings, catalog=self.catalog)
         if not isinstance(path, (str, PathLike)):
             raise ArgumentError("path must be a string or Path")
-        artifact = _source_operations.read_artifact(self.name, Path(path))
-        retained = effective_settings(self.name, artifact, settings)
+        artifact = _source_operations.read_artifact(
+            self.name, Path(path), catalog=self.catalog
+        )
+        retained = effective_settings(
+            self.name, artifact, settings, catalog=self.catalog
+        )
         assert isinstance(artifact, ProgramArtifact)
         return ProgramArtifact(artifact.source, self.name, retained, artifact.scale)
 
@@ -100,6 +106,7 @@ class Language:
             balance=balance,
             scale=scale,
             settings=settings,
+            catalog=self.catalog,
         )
 
     def instantiate(
@@ -122,6 +129,7 @@ class Language:
             width=width,
             truth_table=truth_table,
             settings=settings,
+            catalog=self.catalog,
         )
 
     def dump_program(
@@ -131,14 +139,16 @@ class Language:
 
         Arguments and errors: :func:`esolangs.dump_program`.
         """
-        return esolangs.dump_program(self.name, program, settings=settings)
+        return esolangs.dump_program(
+            self.name, program, settings=settings, catalog=self.catalog
+        )
 
     def load_program(self, document: str) -> Artifact:
         """Restore portable JSON as this language's program or template artifact.
 
         Arguments and errors: :func:`esolangs.load_program`.
         """
-        return esolangs.load_program(self.name, document)
+        return esolangs.load_program(self.name, document, catalog=self.catalog)
 
     def run(
         self,
@@ -170,6 +180,7 @@ class Language:
             max_memory=max_memory,
             settings=settings,
             scale=scale,
+            catalog=self.catalog,
         )
 
     def describe(self) -> LanguageInfo:
@@ -177,7 +188,7 @@ class Language:
 
         Arguments and errors: :func:`esolangs.describe`.
         """
-        return esolangs.describe(self.name)
+        return esolangs.describe(self.name, catalog=self.catalog)
 
     def encode_inputs(
         self, bits: list[int] | tuple[int, ...], *, truth_table: str | None = None
@@ -186,11 +197,13 @@ class Language:
 
         Arguments and errors: :func:`esolangs.encode_inputs`.
         """
-        return esolangs.encode_inputs(self.name, bits, truth_table=truth_table)
+        return esolangs.encode_inputs(
+            self.name, bits, truth_table=truth_table, catalog=self.catalog
+        )
 
     def read_answer(self, output: str) -> str:
         """Extract the answer bit from raw output.
 
         Arguments and errors: :func:`esolangs.read_answer`.
         """
-        return esolangs.read_answer(self.name, output)
+        return esolangs.read_answer(self.name, output, catalog=self.catalog)

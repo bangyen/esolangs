@@ -78,7 +78,9 @@ def test_declared_debug_surface_ignores_incidental_machine_attributes(monkeypatc
     monkeypatch.setattr(
         vm,
         "interpreter_module",
-        lambda _name: SimpleNamespace(prepare_machine=interpreter.prepare_machine),
+        lambda _name, **_options: SimpleNamespace(
+            prepare_machine=interpreter.prepare_machine
+        ),
     )
     machine = vm.make_vm("Cyclic tag", ",10")
     assert machine.dumps_on_the_post_halt_step

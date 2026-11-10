@@ -19,7 +19,7 @@ from esolangs import exceptions
 from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
 from esolangs.raster import Pixel, Raster, Rows
-from esolangs.registry import resolve
+from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource, read_input
 from esolangs.runtime._json import canonical_integer, worker_dumps, worker_loads
@@ -37,9 +37,9 @@ from esolangs.runtime._validate import check_timeout, check_whole
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import (
     DialectSettings,
+    _settings_for,
     dialect_options,
     effective_settings,
-    settings_for,
 )
 
 type _WorkerResult = ExecutionResult | TerminationResult
@@ -263,6 +263,25 @@ def _limit_memory(max_memory: int) -> None:
     resource.setrlimit(resource.RLIMIT_AS, (ceiling, hard))
 
 
+def _check_worker_runtime(
+    name: str, catalog: Catalog, *, termination: bool = False
+) -> None:
+    """Refuse scoped declarations that the fresh worker cannot reproduce."""
+    from esolangs.registry._catalog import get_catalog
+
+    default = get_catalog().languages.get(name)
+    selected = catalog.languages[name]
+    if (
+        default is None
+        or selected.id != default.id
+        or selected.runtime != default.runtime
+        or (termination and selected.contract != default.contract)
+    ):
+        raise exceptions.ArgumentError(
+            "isolated execution requires a runtime declared in the installed catalog"
+        )
+
+
 def run_isolated_result(
     language: str,
     program: ProgramSource,
@@ -275,6 +294,7 @@ def run_isolated_result(
     max_memory: int | None = None,
     settings: DialectSettings | None = None,
     max_steps: int | None = None,
+    catalog: Catalog | None = None,
 ) -> ExecutionResult:
     """Return a result from a subprocess; the deadline includes loading and startup.
 
@@ -282,6 +302,9 @@ def run_isolated_result(
     notes and output; timeout kills and reaps the child.
     A blocked caller-owned stream read may finish in the background after timeout.
     """
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     from esolangs.operations.source import _check_program
 
     check_limits(max_output, max_memory, isolated=True)
@@ -293,18 +316,19 @@ def run_isolated_result(
             exceptions.ArgumentError("isolated execution requires a finite timeout"),
             ("set a positive finite timeout, for example timeout=5.0"),
         )
-    name = resolve(language)
-    scale = effective_scale(name, program, scale)
-    settings = effective_settings(name, program, settings)
-    dialect_options(name, settings)
+    name = catalog.resolve(language)
+    _check_worker_runtime(name, catalog)
+    scale = effective_scale(name, program, scale, catalog=catalog)
+    settings = effective_settings(name, program, settings, catalog=catalog)
+    dialect_options(name, settings, catalog=catalog)
     deadline = monotonic() + timeout
     box: list[str | BaseException] = []
 
     def prepare() -> None:
         try:
-            artifact = _check_program(name, program, stdin)
+            artifact = _check_program(name, program, stdin, catalog=catalog)
             source = artifact.source
-            retained = effective_settings(name, artifact, settings)
+            retained = effective_settings(name, artifact, settings, catalog=catalog)
             box.append(
                 worker_dumps(
                     _request_wire(
@@ -313,10 +337,11 @@ def run_isolated_result(
                         read_input(stdin),
                         settings=retained,
                         seed=seed,
-                        scale=effective_scale(name, artifact, scale),
+                        scale=effective_scale(name, artifact, scale, catalog=catalog),
                         max_memory=max_memory,
                         max_output=max_output,
                         max_steps=max_steps,
+                        catalog=catalog,
                     )
                 )
             )
@@ -507,9 +532,13 @@ def _request_wire(
     max_output: int | None = None,
     max_steps: int | None = None,
     termination: bool = False,
+    catalog: Catalog | None = None,
 ) -> dict[str, Any]:
     """Encode one complete worker request, including unavailable options."""
-    choices = dialect_options(name, settings)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    choices = dialect_options(name, settings, catalog=catalog)
     return {
         "language": name,
         **_source_transport(source),
@@ -543,8 +572,14 @@ def termination_result_isolated(
     settings: DialectSettings | None = None,
     max_output: int | None = None,
     max_memory: int | None = None,
+    catalog: Catalog | None = None,
 ) -> TerminationResult:
     """Retain worker IO and exact proof evidence; a deadline remains undecided."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(name)
+    _check_worker_runtime(name, catalog, termination=True)
     check_memory(max_memory, isolated=True)
     request = worker_dumps(
         _request_wire(
@@ -555,6 +590,7 @@ def termination_result_isolated(
             max_output=max_output,
             max_memory=max_memory,
             termination=True,
+            catalog=catalog,
         )
     )
     with _timeout_named(timeout):
@@ -595,17 +631,13 @@ def _exit_with_parent() -> None:
     Thread(target=watch, daemon=True).start()
 
 
-def _worker() -> None:
-    """Serve one request, restoring I/O factories for in-process callers."""
-    import esolangs.operations.execution as _execution_operations
-    from esolangs import vm
+def _worker(*, catalog: Catalog | None = None) -> None:
+    """Serve one request with invocation-owned streaming I/O."""
+    from esolangs.registry._catalog import get_catalog
 
-    native_io, vm_io = _execution_operations.io_factory, vm.io_factory
-    try:
-        _serve_request()
-    finally:
-        _execution_operations.io_factory = native_io
-        vm.io_factory = vm_io
+    catalog = get_catalog(catalog)
+
+    _serve_request(catalog=catalog)
 
 
 def _read_request(stream: TextIO) -> dict[str, Any]:
@@ -688,10 +720,12 @@ def _check_raster_request(runs: Any) -> None:
                 raise ValueError("invalid worker raster pixel")
 
 
-def _serve_request() -> None:
+def _serve_request(*, catalog: Catalog | None = None) -> None:
     """Stream live output and validated execution or termination metadata."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     import esolangs.operations.execution as _execution_operations
-    from esolangs import vm
     from esolangs.runtime.io import ScriptedIO
 
     request = _read_request(sys.stdin)
@@ -720,10 +754,6 @@ def _serve_request() -> None:
                     hint="reduce output or raise max_output if the output is needed",
                 )
 
-    # The worker swaps the IO class process-wide so program output streams
-    # to the parent; both execution routes use the same streaming policy.
-    _execution_operations.io_factory = StreamingIO
-    vm.io_factory = StreamingIO
     # Release a small reserve before reporting allocation failure under RLIMIT_AS.
     reserve = bytearray(65_536)
     try:
@@ -739,12 +769,13 @@ def _serve_request() -> None:
             program = CompressedText(base64.b64decode(program, validate=True))
         if request["raster"]:
             program = Raster(_raster_rows(program))
-        settings = settings_for(
+        settings = _settings_for(
             request["language"],
-            **{
+            {
                 key: int(value, 16) if key in request["integer_settings"] else value
                 for key, value in request["settings"].items()
             },
+            catalog=catalog,
         )
         # The parent already decoded and checked runnable source.
         program = ProgramArtifact(program, request["language"], settings)
@@ -757,6 +788,8 @@ def _serve_request() -> None:
                 request["stdin"],
                 None,
                 settings=settings,
+                catalog=catalog,
+                io_factory=StreamingIO,
             )
             result = proved.observation
         else:
@@ -771,6 +804,8 @@ def _serve_request() -> None:
                 scale=request["scale"],
                 settings=settings,
                 max_steps=request["max_steps"],
+                catalog=catalog,
+                io_factory=StreamingIO,
             )
         try:
             message = {"result": result.output, "execution": encode_result(result)}

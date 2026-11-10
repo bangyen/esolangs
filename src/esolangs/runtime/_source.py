@@ -6,7 +6,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import IO
+from typing import IO, TYPE_CHECKING
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
@@ -16,6 +16,10 @@ from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error, with_hint
+
+if TYPE_CHECKING:
+    from esolangs.registry._catalog import Catalog
+
 
 type ProgramSource = Program | Artifact | bytes | os.PathLike[str] | IO[str] | IO[bytes]
 
@@ -139,31 +143,52 @@ _SOURCE_LOADERS: dict[
 }
 
 
-def source_for(language: str, source: ProgramSource | _FileSource) -> Program:
+def source_for(
+    language: str,
+    source: ProgramSource | _FileSource,
+    *,
+    catalog: Catalog | None = None,
+) -> Program:
     """Decode containers using declared policy without importing an interpreter."""
-    from esolangs.registry import LANGUAGES, resolve
+    from esolangs.registry._catalog import get_catalog
 
-    return _SOURCE_LOADERS[LANGUAGES[resolve(language)].runtime.source_loader](source)
+    catalog = get_catalog(catalog)
+
+    return _SOURCE_LOADERS[
+        catalog.languages[catalog.resolve(language)].runtime.source_loader
+    ](source)
 
 
-def effective_scale(language: str, program: object, scale: int | None) -> int | None:
+def effective_scale(
+    language: str, program: object, scale: int | None, *, catalog: Catalog | None = None
+) -> int | None:
     """Prefer an explicit scale, then the program artifact's metadata."""
-    if scale is None and isinstance(program, ProgramArtifact):
-        from esolangs.registry import resolve
+    from esolangs.registry._catalog import get_catalog
 
-        if resolve(program.language) == resolve(language):
-            return program.scale
+    catalog = get_catalog(catalog)
+    if (
+        scale is None
+        and isinstance(program, ProgramArtifact)
+        and catalog.resolve(program.language) == catalog.resolve(language)
+    ):
+        return program.scale
     return scale
 
 
-def check_scale_for(language: str, scale: int | None) -> None:
+def check_scale_for(
+    language: str, scale: int | None, *, catalog: Catalog | None = None
+) -> None:
     """Validate scale using the interpreter's declared capability."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     if scale is None:
         return
-    from esolangs.registry import LANGUAGES, resolve
 
     check_scale(scale)
-    if not LANGUAGES[resolve(language)].runtime.capabilities.supports_scale:
+    if not catalog.languages[
+        catalog.resolve(language)
+    ].runtime.capabilities.supports_scale:
         raise with_hint(
             ArgumentError("scale is only supported for raster interpreters"),
             ("omit scale for text languages; apply it only to raster source"),

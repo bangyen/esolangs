@@ -13,6 +13,7 @@ from inspect import signature
 from typing import cast, get_args
 
 from esolangs.exceptions import ArgumentError
+from esolangs.registry._catalog import Catalog
 from esolangs.runtime._controller import ExecutionController as _ExecutionController
 from esolangs.runtime._controller import StopReason as StopReason
 from esolangs.runtime._input import InputSource
@@ -272,6 +273,7 @@ def make_debugger(
     scale: int | None = None,
     settings: DialectSettings | None = None,
     seed: int | None = None,
+    catalog: Catalog | None = None,
 ) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
@@ -285,6 +287,12 @@ def make_debugger(
     """
     return Debugger(
         make_vm(
-            language, program, stdin=stdin, scale=scale, settings=settings, seed=seed
+            language,
+            program,
+            stdin=stdin,
+            scale=scale,
+            settings=settings,
+            seed=seed,
+            catalog=catalog,
         )
     )

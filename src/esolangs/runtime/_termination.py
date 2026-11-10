@@ -1,5 +1,6 @@
 """Observe IO while proving halting or a repeated machine state."""
 
+from collections.abc import Callable
 from functools import partial
 from typing import cast
 
@@ -7,7 +8,9 @@ import esolangs.runtime._execution as _execution_runtime
 from esolangs._cycles import _BranchingStepMachine, _halt_or_cycle_result, _unwrap
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import EsolangError, InterpreterLimitError
+from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
+from esolangs.runtime._input import InputSource
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import (
     BranchProof,
@@ -17,7 +20,7 @@ from esolangs.runtime._proof import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options
-from esolangs.vm import VM, _capture_observation, make_vm
+from esolangs.vm import VM, _capture_observation, _make_vm
 
 
 def _observe_branch_path(machine: VM, proof: BranchProof) -> None:
@@ -60,12 +63,19 @@ def _termination_result(
     bound: float | None,
     *,
     settings: DialectSettings | None = None,
+    catalog: "Catalog | None" = None,
+    io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
 ) -> TerminationResult:
     """Retain live IO and proof evidence without taking a post-halt dump step."""
-    dialect_options(name, settings)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    dialect_options(name, settings, catalog=catalog)
 
     def _drive(*_args: object) -> TerminationResult:
-        factory = make_vm if settings is None else partial(make_vm, settings=settings)
+        factory = partial(
+            _make_vm, settings=settings, catalog=catalog, io_factory=io_factory
+        )
         machine = factory(name, source, stdin=stdin)
         try:
             decision = _halt_or_cycle_result(machine)

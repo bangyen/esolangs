@@ -395,8 +395,8 @@ def test_unwrappable_languages_have_no_wrapper() -> None:
 
 
 @pytest.mark.parametrize("structural", [False, True])
-def test_multiline_reflow_follows_registry_metadata(monkeypatch, structural) -> None:
-    from esolangs import registry
+def test_multiline_reflow_follows_registry_metadata(structural) -> None:
+    from esolangs import Catalog
 
     def wrapper(program: str, _width: int) -> str:
         return program.replace("\n", " ")
@@ -406,10 +406,10 @@ def test_multiline_reflow_follows_registry_metadata(monkeypatch, structural) -> 
         id="synthetic",
         backend=BooleanBackend(entrypoint=str, wrap=wrapper, wrap_multiline=structural),
     )
-    monkeypatch.setattr(registry, "LANGUAGES", {language.name: language})
+    catalog = Catalog([language])
     source = "first\nsecond"
     expected = "first second" if structural else source
-    assert wrap_program(source, "synthetic", 40) == expected
+    assert wrap_program(source, "synthetic", 40, catalog=catalog) == expected
 
 
 def test_wrap_tokens_refuses_a_pattern_that_does_not_tile() -> None:

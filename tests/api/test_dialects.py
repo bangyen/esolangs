@@ -10,7 +10,7 @@ import esolangs
 from esolangs import DialectSettings
 from esolangs import settings as settings_api
 from esolangs.operations.source import read_png_artifact
-from esolangs.registry import LANGUAGES
+from esolangs.registry import CATALOG, LANGUAGES
 from esolangs.registry._functions import FunctionRef
 from esolangs.runtime import _execution
 from esolangs.vm import make_vm
@@ -48,7 +48,7 @@ def _invalid() -> list[tuple[str, DialectSettings]]:
     return cases
 
 
-def test_every_dialect_declares_its_values(monkeypatch) -> None:
+def test_every_dialect_declares_its_values() -> None:
     """A language's ``dialect`` and ``dialect_schema`` name the same settings."""
     for name, language in LANGUAGES.items():
         settings = (
@@ -101,6 +101,7 @@ def test_every_dialect_declares_its_values(monkeypatch) -> None:
     def record_mode(mode):
         entered.append(mode)
 
+    catalog = CATALOG
     for schema in schemas:
         original = LANGUAGES[schema.language]
         runtime = replace(
@@ -108,21 +109,37 @@ def test_every_dialect_declares_its_values(monkeypatch) -> None:
             dialect_schema=schema,
             dialect=record_mode,
         )
-        monkeypatch.setitem(
-            LANGUAGES, schema.language, replace(original, runtime=runtime)
-        )
-    one = esolangs.Language(first).settings(mode=2)
-    two = esolangs.Language(second).settings(mode="right")
+        catalog = catalog.with_language(replace(original, runtime=runtime))
+    one = esolangs.Language(first, catalog=catalog).settings(mode=2)
+    two = esolangs.Language(second, catalog=catalog).settings(mode="right")
     assert one.options(first) == {"mode": 2}
     assert two.options(second) == {"mode": "right"}
     assert entered == [2, "right"]
     for language, value in ((first, "right"), (second, 2)):
         with pytest.raises(esolangs.ArgumentError, match="choices:"):
-            esolangs.Language(language).settings(mode=value)
+            esolangs.Language(language, catalog=catalog).settings(mode=value)
     with pytest.raises(esolangs.ArgumentError, match="settings belong"):
-        esolangs.run(first, Unreadable(), stdin=Unreadable(), settings=two)
+        esolangs.run(
+            first, Unreadable(), stdin=Unreadable(), settings=two, catalog=catalog
+        )
     with pytest.raises(esolangs.ArgumentError, match="settings belong"):
-        esolangs.generate(second, "01", settings=one)
+        esolangs.generate(second, "01", settings=one, catalog=catalog)
+    named = DialectSchema(first, {"catalog": ("left", "right")}, {"catalog": "left"})
+    declaration = LANGUAGES[first]
+    scoped = CATALOG.with_language(
+        replace(
+            declaration,
+            runtime=replace(
+                declaration.runtime,
+                dialect_schema=named,
+                dialect=lambda catalog: catalog,
+            ),
+        )
+    )
+    assert scoped.bind(first).settings(catalog="right").options(first) == {
+        "catalog": "right"
+    }
+    assert CATALOG.languages[first] is declaration
 
 
 @pytest.mark.parametrize(

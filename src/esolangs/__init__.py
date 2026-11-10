@@ -51,6 +51,7 @@ from esolangs.runtime._source import ProgramSource
 from esolangs.settings import DialectSettings
 
 _LAZY = {
+    "Catalog": "esolangs.registry._catalog",
     "Language": "esolangs._language",
     "run": "esolangs.operations.execution",
     "generate": "esolangs.operations.generation",
@@ -74,6 +75,7 @@ if TYPE_CHECKING:
     from esolangs.portable import dump_program as dump_program
     from esolangs.portable import load_program as load_program
     from esolangs.portable import save_program as save_program
+    from esolangs.registry._catalog import Catalog as Catalog
     from esolangs.registry._describe import LanguageInfo as LanguageInfo
     from esolangs.registry._describe import describe as describe
     from esolangs.registry._describe import list_languages as list_languages
@@ -106,6 +108,7 @@ else:
 __all__ = [
     "ArgumentError",
     "Artifact",
+    "Catalog",
     "CompressedText",
     "DialectSettings",
     "EsolangError",

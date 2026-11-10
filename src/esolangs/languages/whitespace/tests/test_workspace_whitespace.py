@@ -151,7 +151,7 @@ def test_repacked_storage_retains_semantic_workspace(monkeypatch, program, stdin
         monkeypatch.setattr(
             vm_api,
             "interpreter_module",
-            lambda _name: SimpleNamespace(prepare_machine=prepare_machine),
+            lambda _name, **_options: SimpleNamespace(prepare_machine=prepare_machine),
         )
         declared = make_vm("Whitespace", source)
         assert declared.ip_shape == "offset"

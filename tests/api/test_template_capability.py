@@ -7,7 +7,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
-from esolangs.registry import LANGUAGES
+from esolangs.registry import CATALOG, LANGUAGES
 from esolangs.registry._backend import TemplateSpec
 from esolangs.registry._language import Example
 from tests.support.pick import languages, one
@@ -30,16 +30,16 @@ def test_template_declaration_refuses_ambiguous_or_invalid_bindings(kwargs, mess
 
 
 @pytest.mark.parametrize("language", languages(parameterized=True))
-def test_changing_an_example_cannot_change_generated_bindings(language, monkeypatch):
+def test_changing_an_example_cannot_change_generated_bindings(language):
     original = LANGUAGES[language]
     before = esolangs.dump_program(language, esolangs.generate(language, "0110"))
-    monkeypatch.setitem(
-        LANGUAGES,
-        language,
-        replace(original, example=Example(table="01", bits=(1,), expected="other")),
+    catalog = CATALOG.with_language(
+        replace(original, example=Example(table="01", bits=(1,), expected="other"))
     )
-    assert LANGUAGES[language].parameterized
-    after = esolangs.dump_program(language, esolangs.generate(language, "0110"))
+    assert catalog.languages[language].parameterized
+    after = esolangs.dump_program(
+        language, esolangs.generate(language, "0110", catalog=catalog), catalog=catalog
+    )
     assert before == after
 
 
@@ -52,7 +52,7 @@ def test_execution_and_portable_bindings_do_not_import_examples(language):
 import importlib
 import sys
 import esolangs
-from esolangs.registry import LANGUAGES
+from esolangs.registry import CATALOG, LANGUAGES
 sys.modules['esolangs.generation.examples'] = None
 language = {language!r}
 source = esolangs.generate(language, '0110', balance=True)

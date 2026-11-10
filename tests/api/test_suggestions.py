@@ -8,8 +8,10 @@ import pytest
 
 import esolangs
 from esolangs.cli.hints import _did_you_mean
-from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
+from esolangs.registry import CATALOG, SUGGESTION_CUTOFF, canonical_id
 from tests.support.reference import REFERENCE
+
+_BY_ID = CATALOG.by_id
 
 
 class TestPackageEntryPoint:

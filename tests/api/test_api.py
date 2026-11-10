@@ -32,7 +32,7 @@ def test_list_languages() -> None:
     assert names == sorted(names)
 
 
-def test_seed_hint_tracks_registered_random_languages(monkeypatch) -> None:
+def test_seed_hint_tracks_registered_random_languages() -> None:
     from esolangs.registry import Language
     from esolangs.runtime import _execution
 
@@ -58,14 +58,19 @@ def test_seed_hint_tracks_registered_random_languages(monkeypatch) -> None:
             ),
         ),
     }
-    monkeypatch.setattr(_execution, "LANGUAGES", registered)
+    catalog = esolangs.Catalog(registered.values())
     with pytest.raises(
         esolangs.ArgumentError, match="the languages that draw are Draws"
     ):
-        _execution.prepare_call(REFERENCE, "", ExecutionContext(seed=1))
+        _execution.prepare_call(
+            REFERENCE, "", ExecutionContext(seed=1), catalog=catalog
+        )
     del registered["Draws"]
+    catalog = esolangs.Catalog(registered.values())
     with pytest.raises(esolangs.ArgumentError, match="no registered language draws"):
-        _execution.prepare_call(REFERENCE, "", ExecutionContext(seed=1))
+        _execution.prepare_call(
+            REFERENCE, "", ExecutionContext(seed=1), catalog=catalog
+        )
 
 
 @pytest.mark.parametrize(

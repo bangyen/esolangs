@@ -30,6 +30,10 @@ if TYPE_CHECKING:
     from esolangs.registry._backend import BooleanBackend
 
 # 80: the conventional review/diff width, close to the repo's 88 for Python.
+if TYPE_CHECKING:
+    from esolangs.registry._catalog import Catalog
+
+
 DEFAULT_WIDTH = 80
 
 
@@ -212,25 +216,39 @@ _bracket_literal = TokenWrapper(_BRACKET_LITERAL)
 _quote_literal = TokenWrapper(_EVAL_UNIT)
 
 
-def _backend(language_id: str) -> "BooleanBackend | None":
+def _backend(
+    language_id: str, *, catalog: "Catalog | None" = None
+) -> "BooleanBackend | None":
     """Return the registered backend for ``language_id``, if any."""
-    from esolangs.registry import LANGUAGES
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
 
     return next(
-        (lang.backend for lang in LANGUAGES.values() if lang.id == language_id), None
+        (lang.backend for lang in catalog.languages.values() if lang.id == language_id),
+        None,
     )
 
 
-def wrap_program(program: str, language_id: str, width: int | None) -> str:
+def wrap_program(
+    program: str,
+    language_id: str,
+    width: int | None,
+    *,
+    catalog: "Catalog | None" = None,
+) -> str:
     """Return ``program`` wrapped to ``width`` columns, if that is possible.
 
     ``None`` means do not wrap (the default).  A language that cannot take
     newlines, and a program already multi-line, are returned unchanged
     rather than raising; a multiline wrapper knows which lines are structural.
     """
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     if width is None or width <= 0:
         return program
-    backend = _backend(language_id)
+    backend = _backend(language_id, catalog=catalog)
     if backend is None or backend.wrap is None:
         return program
     if "\n" in program and not backend.wrap_multiline:
@@ -258,26 +276,36 @@ def _token_fit(program: str, tokens: list[str], separator: str = "") -> str:
     return min(program, _join_tokens(tokens, width, separator), key=balance_score)
 
 
-def balance_program(program: str, language_id: str) -> str:
+def balance_program(
+    program: str, language_id: str, *, catalog: "Catalog | None" = None
+) -> str:
     """Balance whole-token fits and term folds; otherwise estimate source area."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     if "\n" not in program:
-        balanced = _balance_line(program, language_id)
+        balanced = _balance_line(program, language_id, catalog=catalog)
         if balanced is not None:
             return balanced
     # Token wrappers break before the width, so a neighbour can tie the side
     # with one row fewer or one column narrower.
     width = balance_width(program)
     candidates = [
-        wrap_program(program, language_id, candidate)
+        wrap_program(program, language_id, candidate, catalog=catalog)
         for candidate in (width - 1, width, width + 1)
         if candidate > 0
     ]
     return min((program, *candidates), key=balance_score)
 
 
-def _balance_line(program: str, language_id: str) -> str | None:
+def _balance_line(
+    program: str, language_id: str, *, catalog: "Catalog | None" = None
+) -> str | None:
     """Balance a one-line program by its wrapper's tokens, or None to estimate."""
-    backend = _backend(language_id)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    backend = _backend(language_id, catalog=catalog)
     if backend is None:
         return None
     if backend.wrap_balance is not None:
@@ -299,7 +327,9 @@ def _balance_line(program: str, language_id: str) -> str | None:
         ]
         width = balanced_token_width(aligned, " ", rstrip_rows=True)
         return min(
-            program, wrap_program(program, language_id, width), key=balance_score
+            program,
+            wrap_program(program, language_id, width, catalog=catalog),
+            key=balance_score,
         )
     return None
 

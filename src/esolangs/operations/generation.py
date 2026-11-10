@@ -24,12 +24,11 @@ from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_program, wrap_program
 from esolangs.raster import Raster
 from esolangs.registry import (
-    LANGUAGES,
     SourceKind,
     render_template,
-    resolve,
     template_setters,
 )
+from esolangs.registry._catalog import Catalog
 from esolangs.runtime._validate import check_bits, check_flag, check_scale, check_width
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
@@ -43,6 +42,7 @@ def generate(
     balance: bool = False,
     scale: int = 1,
     settings: DialectSettings | None = None,
+    catalog: "Catalog | None" = None,
 ) -> Artifact:
     """Return an immutable program or template computing ``truth_table``.
 
@@ -78,11 +78,17 @@ def generate(
             (``describe(language)["generator_max_inputs"]`` and
             ``["generator_restrictions"]``).
     """
-    options = dialect_options(language, settings)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    options = dialect_options(language, settings, catalog=catalog)
     check_scale(scale)
     check_flag(balance, "balance")
     if scale != 1:
-        if LANGUAGES[resolve(language)].runtime.source_kind is not SourceKind.RASTER:
+        if (
+            catalog.languages[catalog.resolve(language)].runtime.source_kind
+            is not SourceKind.RASTER
+        ):
             raise with_hint(
                 ArgumentError("scale is only supported for raster generators"),
                 "omit scale for text languages; apply it only to raster source",
@@ -90,7 +96,12 @@ def generate(
         artifact = cast(
             ProgramArtifact[Raster],
             generate(
-                language, truth_table, width=width, balance=balance, settings=settings
+                language,
+                truth_table,
+                width=width,
+                balance=balance,
+                settings=settings,
+                catalog=catalog,
             ),
         )
         return ProgramArtifact(
@@ -105,9 +116,11 @@ def generate(
             ),
         )
     if balance:
-        return _generate_balanced(language, truth_table, options, settings)
-    resolved = resolve(language)
-    lang = LANGUAGES[resolved]
+        return _generate_balanced(
+            language, truth_table, options, settings, catalog=catalog
+        )
+    resolved = catalog.resolve(language)
+    lang = catalog.languages[resolved]
     backend = lang.backend
     if backend is None:
         # The language reads input but cannot meet the generator's size contract.
@@ -141,19 +154,28 @@ def generate(
         return ProgramArtifact(generated.wrapped(width), resolved, settings)
     slots = str(generated)
     if not lang.parameterized:
-        program = slots if laid_out else wrap_program(slots, lang.id, width)
+        program = (
+            slots if laid_out else wrap_program(slots, lang.id, width, catalog=catalog)
+        )
         return ProgramArtifact(program, resolved, settings)
     # The generator spells each input as a run; the public template is
     # that, wrapped with every run whole (see render_template).
     inputs = len(truth_table).bit_length() - 1
     wrap_to = None if laid_out else width
-    text, char, pairs = render_template(lang.id, slots, inputs, wrap_to)
+    text, char, pairs = render_template(
+        lang.id, slots, inputs, wrap_to, catalog=catalog
+    )
     return TemplateArtifact(text, resolved, TemplateBindings(char, pairs), settings)
 
 
-def _backend_options(language: str, options: dict[str, Scalar]) -> Options:
+def _backend_options(
+    language: str, options: dict[str, Scalar], *, catalog: "Catalog | None" = None
+) -> Options:
     """Return complete choices for the selected backend request."""
-    schema = LANGUAGES[resolve(language)].runtime.dialect_schema
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    schema = catalog.languages[catalog.resolve(language)].runtime.dialect_schema
     return Options(
         tuple(((schema.defaults if schema is not None else {}) | options).items())
     )
@@ -164,12 +186,17 @@ def _generate_balanced(
     truth_table: str,
     options: dict[str, Scalar],
     settings: DialectSettings | None,
+    *,
+    catalog: "Catalog | None" = None,
 ) -> Artifact:
     """Return ``generate(..., balance=True)``: the default, rebuilt squarest."""
-    default = generate(language, truth_table, settings=settings)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    default = generate(language, truth_table, settings=settings, catalog=catalog)
     source = default.source
-    name = resolve(language)
-    lang = LANGUAGES[name]
+    name = catalog.resolve(language)
+    lang = catalog.languages[name]
     backend = lang.backend
     assert backend is not None  # the default was generated above
     balancer = backend.balance
@@ -181,27 +208,39 @@ def _generate_balanced(
         if balancer is None:
             return default
         balanced = balancer(
-            BalanceRequest(truth_table, source, _backend_options(lang.id, options))
+            BalanceRequest(
+                truth_table, source, _backend_options(lang.id, options, catalog=catalog)
+            )
         )
         if not isinstance(balanced, Raster):
             raise ProgramError(f"{name}'s balancer did not return a Raster")
         return ProgramArtifact(balanced, name, settings, scale=1)
     if balancer is not None:
         text = balancer(
-            BalanceRequest(truth_table, source, _backend_options(lang.id, options))
+            BalanceRequest(
+                truth_table, source, _backend_options(lang.id, options, catalog=catalog)
+            )
         )
         if not isinstance(text, str):
             raise ProgramError(f"{name}'s balancer did not return text")
         if isinstance(default, TemplateArtifact):
-            text, char, pairs = render_template(lang.id, text, default.bindings.inputs)
+            text, char, pairs = render_template(
+                lang.id, text, default.bindings.inputs, catalog=catalog
+            )
             return TemplateArtifact(text, name, TemplateBindings(char, pairs), settings)
         return ProgramArtifact(text, name, settings)
     if isinstance(default, TemplateArtifact):
         bindings = default.bindings
         marked = mark_runs(default.source, bindings.char, bindings.setters)
-        text = unmark(balance_program(marked, lang.id), bindings.char, bindings.inputs)
+        text = unmark(
+            balance_program(marked, lang.id, catalog=catalog),
+            bindings.char,
+            bindings.inputs,
+        )
         return TemplateArtifact(text, name, bindings, settings)
-    return ProgramArtifact(balance_program(source, lang.id), name, settings)
+    return ProgramArtifact(
+        balance_program(source, lang.id, catalog=catalog), name, settings
+    )
 
 
 def _is_template_for(
@@ -209,18 +248,28 @@ def _is_template_for(
     name: str,
     truth_table: str,
     settings: DialectSettings | None = None,
+    *,
+    catalog: "Catalog | None" = None,
 ) -> bool:
     """Return whether ``template`` is what ``name`` generates for the table.
 
     Compare wrapping using the language's whitespace rules.
     """
-    canonical = generate(name, truth_table, settings=settings)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    canonical = generate(name, truth_table, settings=settings, catalog=catalog)
     if not isinstance(canonical, TemplateArtifact):
         return False
     bindings = canonical.bindings
     expected = TemplateBindings(
         bindings.char,
-        template_setters(LANGUAGES[name].id, template.source, bindings.inputs),
+        template_setters(
+            catalog.languages[name].id,
+            template.source,
+            bindings.inputs,
+            catalog=catalog,
+        ),
     )
     if template.bindings != expected:
         return False
@@ -228,13 +277,15 @@ def _is_template_for(
     plain = canonical.source
     if text == plain:
         return True
-    backend = LANGUAGES[name].backend
+    backend = catalog.languages[name].backend
     assert backend is not None  # generate above refuses absent backends
     width_aware = backend.layout_width
 
     @cache
     def layout(width: int) -> str:
-        source = generate(name, truth_table, width=width, settings=settings).source
+        source = generate(
+            name, truth_table, width=width, settings=settings, catalog=catalog
+        ).source
         if not isinstance(source, str):
             raise TemplateError("template layouts must return text")
         return source
@@ -262,6 +313,7 @@ def instantiate(
     width: int | None = None,
     truth_table: str | None = None,
     settings: DialectSettings | None = None,
+    catalog: "Catalog | None" = None,
 ) -> ProgramArtifact[str]:
     """Fill a parameterized generator's template with ``bits``.
 
@@ -285,9 +337,12 @@ def instantiate(
         ArgumentError: A bit is not an integer 0 or 1, or an option is
             invalid.
     """
-    name = resolve(language)
-    settings = effective_settings(name, template, settings)
-    dialect_options(name, settings)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
+    settings = effective_settings(name, template, settings, catalog=catalog)
+    dialect_options(name, settings, catalog=catalog)
     check_width(width)
     body = (
         template.source
@@ -302,7 +357,7 @@ def instantiate(
             ),
             "run the raster with stdin=encode_inputs(language, bits)",
         )
-    if not LANGUAGES[name].parameterized:
+    if not catalog.languages[name].parameterized:
         raise with_hint(
             TemplateError(
                 f"{name} reads its inputs rather than embedding them, "
@@ -318,10 +373,10 @@ def instantiate(
             ),
             "retain generate()'s template or restore it with load_program()",
         )
-    if resolve(template.language) != name:
+    if catalog.resolve(template.language) != name:
         raise TemplateError(f"template belongs to {template.language}, not {name}")
     if truth_table is not None and not _is_template_for(
-        template, name, truth_table, settings
+        template, name, truth_table, settings, catalog=catalog
     ):
         raise with_hint(
             TemplateError(
@@ -348,7 +403,9 @@ def instantiate(
             f"pass exactly {inputs} integer bits to instantiate(), one per input",
         )
     filled = artifact.fill(bits)
-    program = wrap_program(filled.source, LANGUAGES[name].id, width)
+    program = wrap_program(
+        filled.source, catalog.languages[name].id, width, catalog=catalog
+    )
     if (
         program is not filled.source
         or settings is not filled.settings

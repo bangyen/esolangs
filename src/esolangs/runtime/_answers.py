@@ -12,7 +12,7 @@ from esolangs.exceptions import (
     ProgramError,
 )
 from esolangs.generation.helpers import _validate_truth_table, check_table_text
-from esolangs.registry import LANGUAGES, resolve
+from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import CHAR_STREAMS
 from esolangs.runtime._validate import check_bits
 
@@ -22,6 +22,7 @@ def encode_inputs(
     bits: list[int] | tuple[int, ...],
     *,
     truth_table: str | None = None,
+    catalog: "Catalog | None" = None,
 ) -> str:
     """Return the stdin that feeds ``bits`` to a ``language`` program.
 
@@ -43,8 +44,11 @@ def encode_inputs(
         TruthTableError: ``truth_table`` is not a binary string of length
             ``2**n``.
     """
-    name = resolve(language)
-    lang = LANGUAGES[name]
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
+    lang = catalog.languages[name]
     contract = lang.contract
     if lang.parameterized:
         raise ArgumentError(
@@ -88,7 +92,7 @@ def encode_inputs(
     return "".join(f"{digit}\n" for digit in digits)
 
 
-def read_answer(language: str, output: str) -> str:
+def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None) -> str:
     """Return the answer bit, ``"0"`` or ``"1"``, a program's ``output`` carries.
 
     Most print it (last non-whitespace character); some dump their state.
@@ -103,10 +107,13 @@ def read_answer(language: str, output: str) -> str:
             string.
         ProgramError: ``output`` holds no readable answer.
     """
-    name = resolve(language)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
     if not isinstance(output, str):
         raise ArgumentError(f"output must be a string, got {type(output).__name__}")
-    contract = LANGUAGES[name].contract
+    contract = catalog.languages[name].contract
     if contract.answer_mode == "termination":
         raise ArgumentError(
             f"{name} answers by terminating, not by printing; a timeout is undecided"

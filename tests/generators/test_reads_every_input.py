@@ -32,7 +32,7 @@ def _audit(
     name,
     program,
     n,
-    mp,
+    _mp,
     *,
     table=None,
     selected=None,
@@ -62,19 +62,21 @@ def _audit(
         io._write = checked
         return io
 
-    mp.setattr(execution_operations, "io_factory", new)
-    mp.setattr(vm, "io_factory", new)
     rows = unread = past = 0
     for row in range(1 << n) if selected is None else selected:
         stdin = esolangs.encode_inputs(name, [row >> s & 1 for s in reversed(range(n))])
         if INFOS[name]["answer_mode"] != "termination":
-            output = esolangs.run(name, program, stdin=stdin, timeout=10).output
+            output = execution_operations._run_result(
+                name, program, stdin=stdin, timeout=10, io_factory=new
+            ).output
             if table is not None:
                 assert esolangs.read_answer(name, output) == table[row], (name, row)
         else:
             # A proven cycle is an answer too; its input must still be consumed.
             if table is None:
-                vm.run_until_halt_or_cycle(vm.make_vm(name, program, stdin=stdin))
+                vm.run_until_halt_or_cycle(
+                    vm._make_vm(name, program, stdin=stdin, io_factory=new)
+                )
             else:
                 answer = _row_answerer(
                     name,
@@ -84,6 +86,7 @@ def _audit(
                     scale=None,
                     max_output=None,
                     max_memory=None,
+                    io_factory=new,
                 )
                 assert answer(program, stdin, 10) == table[row], (name, row)
         if sentinel:

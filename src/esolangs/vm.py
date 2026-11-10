@@ -43,7 +43,7 @@ from esolangs._cycles import (
 )
 from esolangs.exceptions import ArgumentError, InterpreterLimitError
 from esolangs.exceptions import EsolangError as _EsolangError
-from esolangs.registry import LANGUAGES, resolve
+from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as IpShape
 from esolangs.runtime._context import ExecutionContext
@@ -87,9 +87,6 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
         else Completion.HALTED,
     )
     return vm.output
-
-
-io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO
 
 
 @runtime_checkable
@@ -220,19 +217,25 @@ class _DelegatingVM:
         scale: int | None = None,
         settings: DialectSettings | None = None,
         seed: int | None = None,
+        catalog: Catalog | None = None,
+        io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     ) -> None:
+        from esolangs.registry._catalog import get_catalog
+
+        catalog = get_catalog(catalog)
         self.language = language
         self._io = io_factory(stdin)
-        self._capabilities = LANGUAGES[language].runtime.capabilities
-        module = interpreter_module(language)
+        self._capabilities = catalog.languages[language].runtime.capabilities
+        module = interpreter_module(language, catalog=catalog)
         code, options = prepare_call(
             language,
             program,
             ExecutionContext(
                 scale=scale, seed=seed, reproducible=True, settings=settings
             ),
+            catalog=catalog,
         )
-        preparation = LANGUAGES[language].runtime.machine_preparation
+        preparation = catalog.languages[language].runtime.machine_preparation
         prepare = cast(MachinePreparation, getattr(module, preparation))
         try:
             self._machine = prepare(code, options)(self._io)
@@ -399,10 +402,13 @@ def _capture_workspace(vm: VM) -> WorkspaceSnapshot:
 
 
 @cache
-def machine_traits(language: str) -> dict[str, bool]:
+def machine_traits(language: str, *, catalog: Catalog | None = None) -> dict[str, bool]:
     """Return the language's declared driving traits without loading execution."""
-    name = resolve(language)
-    return traits(LANGUAGES[name].runtime.capabilities)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
+    return traits(catalog.languages[name].runtime.capabilities)
 
 
 @runtime_checkable
@@ -426,6 +432,51 @@ class SnapshotVM(VM, Protocol):
         """
 
 
+def _make_vm(
+    language: str,
+    program: ProgramSource,
+    *,
+    stdin: InputSource = "",
+    scale: int | None = None,
+    settings: DialectSettings | None = None,
+    seed: int | None = None,
+    catalog: Catalog | None = None,
+    io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
+) -> VM:
+    """Prepare a scoped VM with an invocation-owned input/output factory."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    from esolangs.operations.source import _check_program
+
+    name = catalog.resolve(language)
+    check_seed(seed)
+    check_seed_for(name, seed, catalog=catalog)
+    settings = effective_settings(name, program, settings, catalog=catalog)
+    dialect_options(name, settings, catalog=catalog)
+    scale = effective_scale(name, program, scale, catalog=catalog)
+    artifact = _check_program(name, program, stdin, catalog=catalog)
+    settings = effective_settings(name, artifact, settings, catalog=catalog)
+    scale = effective_scale(name, artifact, scale, catalog=catalog)
+    source = artifact.source
+    check_scale_for(name, scale, catalog=catalog)
+    with interpreter_errors(
+        f"the {name} interpreter recursed deeper than CPython's stack "
+        "limit allows while loading this program",
+        language=name,
+    ):
+        return _DelegatingVM(
+            name,
+            source,
+            stdin,
+            scale=scale,
+            settings=settings,
+            seed=seed,
+            catalog=catalog,
+            io_factory=io_factory,
+        )
+
+
 def make_vm(
     language: str,
     program: ProgramSource,
@@ -434,6 +485,7 @@ def make_vm(
     scale: int | None = None,
     settings: DialectSettings | None = None,
     seed: int | None = None,
+    catalog: Catalog | None = None,
 ) -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
@@ -446,24 +498,12 @@ def make_vm(
     and ``settings``. A seed overrides reproducible stepping's language default;
     the checked value is what reaches the interpreter.
     """
-    from esolangs.operations.source import _check_program
-
-    name = resolve(language)
-    check_seed(seed)
-    check_seed_for(name, seed)
-    settings = effective_settings(name, program, settings)
-    dialect_options(name, settings)
-    scale = effective_scale(name, program, scale)
-    artifact = _check_program(name, program, stdin)
-    settings = effective_settings(name, artifact, settings)
-    scale = effective_scale(name, artifact, scale)
-    source = artifact.source
-    check_scale_for(name, scale)
-    with interpreter_errors(
-        f"the {name} interpreter recursed deeper than CPython's stack "
-        "limit allows while loading this program",
-        language=name,
-    ):
-        return _DelegatingVM(
-            name, source, stdin, scale=scale, settings=settings, seed=seed
-        )
+    return _make_vm(
+        language,
+        program,
+        stdin=stdin,
+        scale=scale,
+        settings=settings,
+        seed=seed,
+        catalog=catalog,
+    )

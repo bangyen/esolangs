@@ -3,9 +3,9 @@
 from collections.abc import Callable
 from functools import partial
 
-from esolangs.exceptions import EsolangError, ExecutionTimeoutError
+from esolangs.exceptions import ArgumentError, EsolangError, ExecutionTimeoutError
 from esolangs.operations.source import _check_program
-from esolangs.registry import LANGUAGES, resolve
+from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._controller import ExecutionController
@@ -27,9 +27,7 @@ from esolangs.runtime._validate import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.vm import _capture_observation, _capture_result, make_vm
-
-io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO
+from esolangs.vm import _capture_observation, _capture_result, _make_vm
 
 _ISOLATED_TIMEOUT = 30.0
 
@@ -44,6 +42,8 @@ def _run_bounded_result(
     timeout: float | None = None,
     scale: int | None = None,
     seed: int | None = None,
+    catalog: "Catalog | None" = None,
+    io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
 ) -> ExecutionResult:
     """Execute cooperatively, returning a result only after completed halt.
 
@@ -51,11 +51,21 @@ def _run_bounded_result(
     with ``partial_output``. Works on Windows and worker threads; loading
     and individual steps cannot be interrupted.
     """
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     check_whole(max_steps, "max_steps")
     check_timeout(timeout)
     controller = ExecutionController(
-        make_vm(
-            language, program, stdin=stdin, scale=scale, settings=settings, seed=seed
+        _make_vm(
+            language,
+            program,
+            stdin=stdin,
+            scale=scale,
+            settings=settings,
+            seed=seed,
+            catalog=catalog,
+            io_factory=io_factory,
         )
     )
     try:
@@ -94,6 +104,7 @@ def run(
     max_output: int | None = None,
     max_memory: int | None = None,
     settings: DialectSettings | None = None,
+    catalog: "Catalog | None" = None,
 ) -> ExecutionResult:
     """Execute ``program`` and return output, input usage and completion evidence.
 
@@ -149,6 +160,9 @@ def run(
         MissingDependencyError: The language needs an uninstalled extra
             (``esolangs[image]`` for PNG).
     """
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     return _run_result(
         language,
         program,
@@ -161,6 +175,7 @@ def run(
         max_output=max_output,
         max_memory=max_memory,
         settings=settings,
+        catalog=catalog,
     )
 
 
@@ -177,12 +192,17 @@ def _run_result(
     max_output: int | None = None,
     max_memory: int | None = None,
     settings: DialectSettings | None = None,
+    catalog: "Catalog | None" = None,
+    io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
 ) -> ExecutionResult:
     """Execute through one route, retaining its result metadata."""
-    settings = effective_settings(language, program, settings)
-    scale = effective_scale(language, program, scale)
-    dialect_options(language, settings)  # validate before any route
-    check_scale_for(language, scale)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    settings = effective_settings(language, program, settings, catalog=catalog)
+    scale = effective_scale(language, program, scale, catalog=catalog)
+    dialect_options(language, settings, catalog=catalog)  # validate before any route
+    check_scale_for(language, scale, catalog=catalog)
     check_seed(seed)
     check_timeout(timeout)
     check_flag(isolated, "isolated")
@@ -190,6 +210,8 @@ def _run_result(
     if max_steps is not None:
         check_whole(max_steps, "max_steps")
     if isolated:
+        if io_factory is not ScriptedIO:
+            raise ArgumentError("custom I/O factories require in-process execution")
         deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
         # Every option defaults to None, so passing them unconditionally
         # matches the old per-combination cascade exactly.
@@ -204,6 +226,7 @@ def _run_result(
             max_memory=max_memory,
             settings=settings,
             max_steps=max_steps,
+            catalog=catalog,
         )
     if max_steps is not None:
         return _run_bounded_result(
@@ -215,6 +238,8 @@ def _run_result(
             scale=scale,
             settings=settings,
             seed=seed,
+            catalog=catalog,
+            io_factory=io_factory,
         )
     # Before ``_run``, so every ValueError from the run is the
     # interpreter's.  The message names both routes out for a worker
@@ -229,23 +254,20 @@ def _run_result(
         ".run(timeout=...), "
         "which steps and so needs no signal",
     )
-    name = resolve(language)
-    artifact = _check_program(name, program, stdin)
-    settings = effective_settings(name, artifact, settings)
-    scale = effective_scale(language, artifact, scale)
+    name = catalog.resolve(language)
+    artifact = _check_program(name, program, stdin, catalog=catalog)
+    settings = effective_settings(name, artifact, settings, catalog=catalog)
+    scale = effective_scale(language, artifact, scale, catalog=catalog)
     program = artifact.source
-    entrypoint = LANGUAGES[name].runtime.completion_entrypoint
-    run_fn = getattr(interpreter_module(name), entrypoint)
+    entrypoint = catalog.languages[name].runtime.completion_entrypoint
+    run_fn = getattr(interpreter_module(name, catalog=catalog), entrypoint)
     program_args, options = prepare_call(
-        name, program, ExecutionContext(scale=scale, seed=seed, settings=settings)
+        name,
+        program,
+        ExecutionContext(scale=scale, seed=seed, settings=settings),
+        catalog=catalog,
     )
     if options:
         run_fn = partial(run_fn, **options)
     io_obj = io_factory(stdin)
-    return run_prepared(
-        name,
-        run_fn,
-        program_args,
-        io_obj,
-        timeout,
-    )
+    return run_prepared(name, run_fn, program_args, io_obj, timeout, catalog=catalog)

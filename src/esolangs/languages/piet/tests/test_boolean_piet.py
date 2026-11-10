@@ -187,18 +187,16 @@ def test_invalid_truth_table_is_rejected(truth_table: str) -> None:
         generate(truth_table)
 
 
-def test_balance_raster_retains_layout(monkeypatch: pytest.MonkeyPatch) -> None:
-    from esolangs.registry import LANGUAGES
+def test_balance_raster_retains_layout() -> None:
+    from esolangs.registry import CATALOG, LANGUAGES
 
-    monkeypatch.setitem(
-        LANGUAGES,
-        "Piet",
+    catalog = CATALOG.with_language(
         replace(
             LANGUAGES["Piet"], backend=replace(LANGUAGES["Piet"].backend, balance=None)
         ),
     )
-    default = esolangs.generate("Piet", "0110").source
-    balanced = esolangs.generate("Piet", "0110", balance=True).source
+    default = esolangs.generate("Piet", "0110", catalog=catalog).source
+    balanced = esolangs.generate("Piet", "0110", balance=True, catalog=catalog).source
     assert isinstance(default, esolangs.Raster)
     assert isinstance(balanced, esolangs.Raster)
     assert balanced.to_png() == default.to_png()

@@ -20,7 +20,7 @@ from esolangs.exceptions import (
     InterpreterLimitError,
     ProgramError,
 )
-from esolangs.registry import INTERPRETERS, LANGUAGES
+from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._lifecycle import CompletionReport
@@ -117,9 +117,12 @@ def run_under_alarm[T](
             )
 
 
-def interpreter_module(name: str) -> ModuleType:
+def interpreter_module(name: str, *, catalog: Catalog | None = None) -> ModuleType:
     """Return the canonical language's interpreter module."""
-    return importlib.import_module(INTERPRETERS[name])
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    return importlib.import_module(catalog.interpreters[name])
 
 
 def run_prepared(
@@ -128,8 +131,13 @@ def run_prepared(
     program: RunnerProgram,
     io_obj: ScriptedIO,
     timeout: float | None,
+    *,
+    catalog: Catalog | None = None,
 ) -> ExecutionResult:
     """Execute prepared source and retain output, input usage and declared reports."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     with interpreter_errors(
         f"the {name} interpreter recursed deeper than CPython's stack "
         "limit allows on this program; the program is well formed, and "
@@ -144,7 +152,7 @@ def run_prepared(
                 "completion runner returned no completion report",
                 hint="check the declared completion entry point",
             )
-        capabilities = LANGUAGES[name].runtime.capabilities
+        capabilities = catalog.languages[name].runtime.capabilities
         if not capabilities.accepts_native(value.kind):
             raise InterpreterLimitError(
                 "completion report disagrees with declared policy",
@@ -214,9 +222,14 @@ def _value_error_hint(message: str, language: str | None) -> str:
     return "check the operands and input against the language's syntax"
 
 
-def _seed_refusal(name: str) -> ArgumentError:
+def _seed_refusal(name: str, *, catalog: Catalog | None = None) -> ArgumentError:
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     random_languages = ", ".join(
-        language for language, lang in sorted(LANGUAGES.items()) if lang.runtime.random
+        language
+        for language, lang in sorted(catalog.languages.items())
+        if lang.runtime.random
     )
     alternatives = (
         f"the languages that draw are {random_languages}"
@@ -232,29 +245,39 @@ def _seed_refusal(name: str) -> ArgumentError:
     )
 
 
-def check_seed_for(name: str, seed: int | None) -> None:
+def check_seed_for(
+    name: str, seed: int | None, *, catalog: Catalog | None = None
+) -> None:
     """Refuse a seed for a language that draws nothing, before any input."""
-    if seed is not None and not LANGUAGES[name].runtime.random:
-        raise _seed_refusal(name)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    if seed is not None and not catalog.languages[name].runtime.random:
+        raise _seed_refusal(name, catalog=catalog)
 
 
 def prepare_call(
     name: str,
     program: Program,
     context: ExecutionContext,
+    *,
+    catalog: Catalog | None = None,
 ) -> tuple[RunnerProgram, dict[str, Any]]:
     """Prepare source shape and options for a runner or machine constructor."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     code = (
         program.splitlines()
-        if LANGUAGES[name].runtime.split and isinstance(program, str)
+        if catalog.languages[name].runtime.split and isinstance(program, str)
         else program
     )
     options: dict[str, Any] = {}
     if context.scale is not None:
         options["scale"] = context.scale
-    runtime = LANGUAGES[name].runtime
+    runtime = catalog.languages[name].runtime
     if context.seed is not None and not runtime.random:
-        raise _seed_refusal(name)
+        raise _seed_refusal(name, catalog=catalog)
     if runtime.random and (context.seed is not None or context.reproducible):
         try:
             options["rng"] = Seeded(
@@ -265,7 +288,7 @@ def prepare_call(
                 ArgumentError(str(exc)),
                 ("use a supported seed value, for example the integer seed=0"),
             ) from exc
-    options.update(dialect_options(name, context.settings))
+    options.update(dialect_options(name, context.settings, catalog=catalog))
     return code, options
 
 

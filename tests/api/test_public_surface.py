@@ -24,6 +24,7 @@ class TestPackageSurface:
         assert sorted(esolangs.__all__) == [
             "ArgumentError",
             "Artifact",
+            "Catalog",
             "CompressedText",
             "DialectSettings",
             "EsolangError",
@@ -289,6 +290,7 @@ class TestProgramObjectsRefuseMisuse:
         import typing
 
         for cls in (
+            esolangs.Catalog,
             esolangs.Language,
             esolangs.Raster,
             esolangs.CompressedText,

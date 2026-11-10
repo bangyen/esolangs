@@ -7,7 +7,6 @@ import sys
 import pytest
 
 import esolangs
-import esolangs.operations.execution as _execution_operations
 import esolangs.runtime._execution as _execution_runtime
 from esolangs.runtime import _isolated
 from esolangs.runtime._isolated import _decode, _worker
@@ -47,9 +46,6 @@ def test_worker_memory_failure_retains_protocol(
     def reject(_limit: int) -> None:
         raise error("limit unavailable")
 
-    monkeypatch.setattr(
-        _execution_operations, "io_factory", _execution_operations.io_factory
-    )
     monkeypatch.setattr(_isolated, "_limit_memory", reject)
     monkeypatch.setattr(
         sys,
@@ -104,10 +100,6 @@ def test_worker_reports_a_translated_memory_error_as_the_cap(
     def explode(*_args: object, **_kwargs: object) -> None:
         raise MemoryError
 
-    # The worker installs a streaming ScriptedIO; undo it for the next test.
-    monkeypatch.setattr(
-        _execution_operations, "io_factory", _execution_operations.io_factory
-    )
     monkeypatch.setattr(_execution_runtime, "run_guard", explode)
     monkeypatch.setattr(
         sys,
@@ -121,9 +113,6 @@ def test_worker_reports_a_translated_memory_error_as_the_cap(
 
 def test_successful_worker_budget_retains_output_protocol(monkeypatch, capsys) -> None:
     calls = []
-    monkeypatch.setattr(
-        _execution_operations, "io_factory", _execution_operations.io_factory
-    )
     monkeypatch.setattr(_isolated, "_limit_memory", calls.append)
     request = _isolated._request_wire(
         REFERENCE, "+.", "", max_memory=_BUDGET, max_steps=2

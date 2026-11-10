@@ -214,7 +214,9 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             preparation = language.runtime.machine_preparation
             declared = SimpleNamespace(**{preparation: getattr(module, preparation)})
             control.setattr(
-                vm, "interpreter_module", lambda _name, proxy=declared: proxy
+                vm,
+                "interpreter_module",
+                lambda _name, proxy=declared, **_options: proxy,
             )
             debug = make_debugger(name, source, stdin=stdin, seed=seed)
             for _ in range(1000):
@@ -370,7 +372,9 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
 
             declared = SimpleNamespace(**{preparation: bind})
             control.setattr(
-                vm, "interpreter_module", lambda _name, proxy=declared: proxy
+                vm,
+                "interpreter_module",
+                lambda _name, proxy=declared, **_options: proxy,
             )
             make_debugger(name, source, stdin=stdin, seed=seed)
             from esolangs.runtime.io import ScriptedIO

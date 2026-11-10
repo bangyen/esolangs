@@ -41,7 +41,7 @@ def test_result_counts_unicode_characters_and_preserves_unread_input(route):
 
 
 @pytest.mark.parametrize("route", _ROUTES)
-def test_result_retains_a_caught_eof(route, monkeypatch):
+def test_result_retains_a_caught_eof(route):
     name = first(
         boolean_generator=True,
         parameterized=False,
@@ -60,8 +60,7 @@ def test_result_retains_a_caught_eof(route, monkeypatch):
                 attempts.append(True)
                 raise
 
-    monkeypatch.setattr(_execution_operations, "io_factory", ObservedIO)
-    native = esolangs.run(name, source)
+    native = _execution_operations._run_result(name, source, io_factory=ObservedIO)
     assert (native.input_position, native.input_reads) == (0, 0)
     assert attempts, "the EOF control did not perform a read"
     assert native.input_past_end == len(attempts)

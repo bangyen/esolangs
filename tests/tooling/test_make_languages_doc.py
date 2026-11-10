@@ -168,14 +168,11 @@ def test_language_listing_only_lists_available_interpreters(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = load_script()
-    monkeypatch.setitem(
-        module.LANGUAGES,
-        REFERENCE,
-        replace(
-            module.LANGUAGES[REFERENCE],
-            runtime=replace(module.LANGUAGES[REFERENCE].runtime, interpreter=None),
-        ),
+    changed = replace(
+        module.LANGUAGES[REFERENCE],
+        runtime=replace(module.LANGUAGES[REFERENCE].runtime, interpreter=None),
     )
+    monkeypatch.setattr(module, "LANGUAGES", {**module.LANGUAGES, REFERENCE: changed})
     rendered = module.render_languages_section()
     assert f"- [{REFERENCE}]" not in rendered
     assert rendered.count("- [") == len(module.LANGUAGES) - 1

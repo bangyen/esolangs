@@ -1,9 +1,10 @@
 """Collect language-owned descriptors without importing generators."""
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from importlib import import_module
 from importlib.resources import files
 
+from esolangs.registry._catalog import Catalog
 from esolangs.registry._language import Language
 
 __all__ = ["LANGUAGES", "Language"]
@@ -20,7 +21,5 @@ def _declarations() -> Iterator[Language]:
             ).LANGUAGE
 
 
-LANGUAGES: dict[str, Language] = {
-    lang.name: lang
-    for lang in sorted(_declarations(), key=lambda lang: lang.name.casefold())
-}
+CATALOG = Catalog(sorted(_declarations(), key=lambda lang: lang.name.casefold()))
+LANGUAGES: Mapping[str, Language] = CATALOG.languages

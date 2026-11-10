@@ -6,7 +6,8 @@ from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import MissingDependencyError, ProgramError, TemplateError
 from esolangs.raster import Raster, png
-from esolangs.registry import LANGUAGES, resolve, template_char
+from esolangs.registry import template_char
+from esolangs.registry._catalog import Catalog
 from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import (
@@ -44,14 +45,19 @@ def _looks_like_a_path(program: Program) -> bool:
     return rooted or bool(_PATH_EXTENSION.search(program))
 
 
-def _check_runnable(language: str, program: Program) -> None:
+def _check_runnable(
+    language: str, program: Program, *, catalog: "Catalog | None" = None
+) -> None:
     """Reject a program that is a path or an unfilled template.
 
     Both are valid input to an interpreter and each produced a confident
     wrong answer (an unfilled template can run as nothing).  Shared by
     ``_check_program`` and :func:`make_vm`.
     """
-    name = resolve(language)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
     if isinstance(program, (Raster, CompressedText)):
         return
     if not isinstance(program, str):
@@ -62,15 +68,17 @@ def _check_runnable(language: str, program: Program) -> None:
             f"program must be a string of source or a Raster, got "
             f"{type(program).__name__}"
         )
-    if not LANGUAGES[name].runtime.path_like_source and _looks_like_a_path(program):
+    if not catalog.languages[name].runtime.path_like_source and _looks_like_a_path(
+        program
+    ):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
             f"Read the file first, or pass pathlib.Path({program!r}); "
             f"source that only looks like one runs with a trailing newline"
         )
-    char = template_char(LANGUAGES[name].id)
+    char = template_char(catalog.languages[name].id, catalog=catalog)
     if char is not None and char in program:
-        backend = LANGUAGES[name].backend
+        backend = catalog.languages[name].backend
         assert backend is not None
         spec = backend.template
         assert spec is not None  # template_char uses the same declaration
@@ -84,13 +92,18 @@ def _check_runnable(language: str, program: Program) -> None:
         )
 
 
-def check_origin(language: str, origin: object) -> None:
+def check_origin(
+    language: str, origin: object, *, catalog: "Catalog | None" = None
+) -> None:
     """Reject known foreign provenance before reading a payload."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     if origin is None:
         return
     if not isinstance(origin, str):
         raise ProgramError("source language must be a string")
-    canonical = resolve(origin)
+    canonical = catalog.resolve(origin)
     if canonical != language:
         raise ProgramError(
             f"this program was generated for {canonical}, so running it as "
@@ -99,11 +112,16 @@ def check_origin(language: str, origin: object) -> None:
         )
 
 
-def read_png_artifact(language: str, data: bytes) -> ProgramArtifact[Raster]:
+def read_png_artifact(
+    language: str, data: bytes, *, catalog: "Catalog | None" = None
+) -> ProgramArtifact[Raster]:
     """Decode native metadata into its owning artifact, leaving pixels untagged."""
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
     from esolangs.portable import decode_settings
 
-    name = resolve(language)
+    name = catalog.resolve(language)
     try:
         metadata = png.read_metadata(data)
         settings = None
@@ -112,8 +130,10 @@ def read_png_artifact(language: str, data: bytes) -> ProgramArtifact[Raster]:
             origin = metadata.get("language")
             if origin is not None and not isinstance(origin, str):
                 raise ValueError("PNG language must be a string")
-            check_origin(name, origin)
-            settings = decode_settings(metadata.get("settings"), origin)
+            check_origin(name, origin, catalog=catalog)
+            settings = decode_settings(
+                metadata.get("settings"), origin, catalog=catalog
+            )
             scale = metadata.get("scale")
             if scale is not None:
                 check_scale(scale)
@@ -125,13 +145,21 @@ def read_png_artifact(language: str, data: bytes) -> ProgramArtifact[Raster]:
         raise ProgramError(f"not a readable PNG: {error}") from error
 
 
-def read_artifact(language: str, program: ProgramSource | _FileSource) -> Artifact:
+def read_artifact(
+    language: str,
+    program: ProgramSource | _FileSource,
+    *,
+    catalog: "Catalog | None" = None,
+) -> Artifact:
     """Acquire source once, retaining native metadata only in an explicit record."""
-    name = resolve(language)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
     if isinstance(program, (ProgramArtifact, TemplateArtifact)):
-        check_origin(name, program.language)
-        dialect_options(name, program.settings)
-        source = source_for(name, program.source)
+        check_origin(name, program.language, catalog=catalog)
+        dialect_options(name, program.settings, catalog=catalog)
+        source = source_for(name, program.source, catalog=catalog)
         if source is program.source and program.language == name:
             return program
         if isinstance(program, TemplateArtifact):
@@ -141,9 +169,9 @@ def read_artifact(language: str, program: ProgramSource | _FileSource) -> Artifa
         return ProgramArtifact(source, name, program.settings, program.scale)
     value, file = _read_container(program)
     if isinstance(value, bytes) and value.startswith(b"\x89PNG\r\n\x1a\n"):
-        record = read_png_artifact(name, value)
+        record = read_png_artifact(name, value, catalog=catalog)
         # Source-kind checking still belongs to the selected language's loader.
-        source = source_for(name, record.source)
+        source = source_for(name, record.source, catalog=catalog)
         return ProgramArtifact(source, name, record.settings, record.scale)
     snapshot: Program | bytes | _FileSource
     if file:
@@ -151,26 +179,41 @@ def read_artifact(language: str, program: ProgramSource | _FileSource) -> Artifa
         snapshot = _FileSource(str(program), value)
     else:
         snapshot = value
-    source = source_for(name, snapshot)
+    source = source_for(name, snapshot, catalog=catalog)
     return ProgramArtifact(source, name)
 
 
-def _read_source(language: str, program: ProgramSource | _FileSource) -> Program:
+def _read_source(
+    language: str,
+    program: ProgramSource | _FileSource,
+    *,
+    catalog: "Catalog | None" = None,
+) -> Program:
     """Project source for callers that explicitly need only the payload."""
-    return read_artifact(language, program).source
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    return read_artifact(language, program, catalog=catalog).source
 
 
 def _check_program(
-    language: str, program: ProgramSource | _FileSource, stdin: InputSource = ""
+    language: str,
+    program: ProgramSource | _FileSource,
+    stdin: InputSource = "",
+    *,
+    catalog: "Catalog | None" = None,
 ) -> ProgramArtifact[Program]:
     """Acquire a runnable record without consuming stdin or parsing commands."""
-    name = resolve(language)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
     if isinstance(program, TemplateArtifact):
         raise TemplateError("fill the template before execution")
     explicit = isinstance(program, ProgramArtifact)
-    record = read_artifact(name, program)
+    record = read_artifact(name, program, catalog=catalog)
     assert isinstance(record, ProgramArtifact)
     check_input(stdin)
     if not explicit:
-        _check_runnable(name, record.source)
+        _check_runnable(name, record.source, catalog=catalog)
     return record

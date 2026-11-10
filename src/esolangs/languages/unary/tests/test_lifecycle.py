@@ -34,7 +34,9 @@ def test_compressed_factory_keeps_source_and_owns_fresh_state(monkeypatch):
     monkeypatch.setattr(
         vm,
         "interpreter_module",
-        lambda _name: SimpleNamespace(prepare_machine=interpreter.prepare_machine),
+        lambda _name, **_options: SimpleNamespace(
+            prepare_machine=interpreter.prepare_machine
+        ),
     )
     for value in (source, source.to_gzip()):
         native = esolangs.run("Unary", value)

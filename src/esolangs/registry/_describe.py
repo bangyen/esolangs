@@ -7,13 +7,12 @@ from typing import TypedDict, cast, get_args
 
 from esolangs.exceptions import ProgramError
 from esolangs.registry import (
-    LANGUAGES,
     Language,
     example_stems,
-    resolve,
     wiki_url,
 )
 from esolangs.registry._backend import Shape
+from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import (
     AnswerMode,
     GeneratorShape,
@@ -102,7 +101,7 @@ class LanguageInfo(TypedDict):
     dialect_settings: dict[str, DialectOption]
 
 
-def describe(language: str) -> LanguageInfo:
+def describe(language: str, *, catalog: "Catalog | None" = None) -> LanguageInfo:
     """Return a structured description of ``language``.
 
     Returns:
@@ -147,27 +146,31 @@ def describe(language: str) -> LanguageInfo:
         ProgramError: The interpreter has no docstring for ``spec`` (Python
             run with ``-OO``).
     """
-    name = resolve(language)
-    lang = LANGUAGES[name]
-    stem = example_stems().get(lang.id, lang.id)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
+    lang = catalog.languages[name]
+    stem = example_stems(catalog=catalog).get(lang.id, lang.id)
     # Package-relative: repository-relative paths broke after a ``chdir`` and
     # when installed; absolute ones froze the install location into output.
     examples = sorted(
         f"languages/{lang.id}/{p.name}"
         for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
     )
-    traits = machine_traits(name)
+    traits = machine_traits(name, catalog=catalog)
     parameterized = lang.parameterized
     contract = lang.contract
     width_effect = _width_effect(lang)
-    scaling = _SCALING.get(lang.id)
+    packaged = get_catalog().languages.get(name)
+    scaling = _SCALING.get(lang.id) if lang == packaged else None
     backend = lang.backend
     generates = backend is not None
     reads_input = generates and not parameterized
     return {
         "name": name,
-        "dialect_settings": dialect_choices(name),
-        "spec": _spec(name),
+        "dialect_settings": dialect_choices(name, catalog=catalog),
+        "spec": _spec(name, catalog=catalog),
         "id": lang.id,
         "source_kind": lang.runtime.source_kind.value,
         "state_model": _STATE_MODELS[lang.runtime.category],
@@ -212,7 +215,7 @@ def _width_effect(lang: Language) -> WidthEffect:
     return "wrap" if backend.wrap is not None else "none"
 
 
-def _spec(language: str) -> str:
+def _spec(language: str, *, catalog: "Catalog | None" = None) -> str:
     """Return the interpreter's own description of ``language``.
 
     The module docstring: the command table and where this implementation
@@ -220,8 +223,11 @@ def _spec(language: str) -> str:
     Sphinx roles print as literals.  Raises under ``-OO``, which strips
     docstrings.
     """
-    name = resolve(language)
-    interpreter = interpreter_module(name)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
+    interpreter = interpreter_module(name, catalog=catalog)
     text = (interpreter.__doc__ or "").strip()
     text = _ROLE.sub(lambda m: f"``{m[2].rsplit('.', 1)[-1] if m[1] else m[2]}``", text)
     if not text:
@@ -235,9 +241,12 @@ def _spec(language: str) -> str:
     return text
 
 
-def list_languages() -> list[str]:
+def list_languages(*, catalog: "Catalog | None" = None) -> list[str]:
     """Return the supported language names, sorted."""
-    return sorted(LANGUAGES)
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    return sorted(catalog.languages)
 
 
 def _proof_status(scaling: str) -> ProofStatus:

@@ -9,7 +9,7 @@ import esolangs
 from esolangs import Raster, run
 from esolangs.exceptions import TemplateError
 from esolangs.operations.source import _looks_like_a_path
-from esolangs.registry import LANGUAGES
+from esolangs.registry import CATALOG, LANGUAGES
 from tests.support.evaluation import _evaluate
 from tests.support.input_convention import assert_reads_tokens_on_one_line
 from tests.support.pick import languages
@@ -39,20 +39,17 @@ def test_a_raster_is_not_a_path() -> None:
     assert not _looks_like_a_path(program.source)
 
 
-def test_raster_interpreter_owns_loading_and_scale_support(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_raster_interpreter_owns_loading_and_scale_support() -> None:
     program = esolangs.generate("Piet", "01", scale=2)
-    monkeypatch.setitem(
-        LANGUAGES,
-        "Piet",
-        replace(
-            LANGUAGES["Piet"],
-            backend=None,
-        ),
+    catalog = CATALOG.with_language(replace(LANGUAGES["Piet"], backend=None))
+    assert (
+        run("Piet", program.source.to_png(), stdin="1", scale=2, catalog=catalog).output
+        == "1"
     )
-    assert run("Piet", program.source.to_png(), stdin="1", scale=2).output == "1"
-    assert run("Piet", program, stdin="1", scale=2, max_steps=100).output == "1"
+    assert (
+        run("Piet", program, stdin="1", scale=2, max_steps=100, catalog=catalog).output
+        == "1"
+    )
 
 
 class TestSpecAbortsRatherThanReturningNothing:

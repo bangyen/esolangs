@@ -67,7 +67,7 @@ def test_nq_declared_construction_preserves_guard_readings(monkeypatch, binding)
     monkeypatch.setattr(
         vm,
         "interpreter_module",
-        lambda _name: SimpleNamespace(prepare_machine=prepare_machine),
+        lambda _name, **_options: SimpleNamespace(prepare_machine=prepare_machine),
     )
     assert settings.dialect_choices("NQ")["guard_binding"]["default"] == "opcode"
     machine = vm.make_vm(
