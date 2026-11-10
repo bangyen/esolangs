@@ -50,6 +50,10 @@ def check_raw_chicken():
     with pytest.raises(AssertionError):
         _latch_witness(missing_workspace(_Machine, "stopped"))
 
+    from .reference_checks import check_raw_chicken_reference
+
+    check_raw_chicken_reference()
+
 
 def _output_case(counts, stdin, expected):
     source = "\n".join(" ".join(["chicken"] * count) for count in counts)

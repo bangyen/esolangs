@@ -3990,3 +3990,30 @@ The strict saved reader, relocation and thirty corruption controls pass;
 stdout is changed alongside result mutations. All 64 leaves took 125.71 seconds
 with unchanged 60-second caps. Native and generator code are unchanged.
 Accounting reviews pending: 4; completion joins remain separate.
+
+Chicken retains its 102 original case families and all 128 existing reference
+cases, unchanged individual caps and three post-halt idles. The independent
+cell/instruction model checks 1,047 modeled boundaries, including three
+constructor refusals; each native route checks the remaining 1,044. All four
+workspace parts, full IO, captures and raw keys are checked; the measured
+corpus peak is 221 bits. Unified code/data cells remain mutable. Input cursor
+is readonly after construction; stopped-state erasures include honest no-ops.
+
+Sixty installed leaves pass on Python 3.12.11–final 3.15.0. Each version checks
+128 bounded and 127 finite ordinary calls, 72 workspace masks, forty readonly
+cursor controls and 32 physical histories. Sixteen constructor failures retry
+the same port; sixteen terminal writer failures commit state before raising
+and cannot retry. All 1,044 raw snapshots round-trip. All 128 bounded workers,
+eight cap/ordinary profile workers, three proof workers and two children from
+each complete old/new owner yield 572 children and 632 startup markers overall.
+The whole original owner constructs 107 parent machines; its expanded version
+constructs 245. The existing fast owner and all original assertions remain;
+no nodes, bands, native or generator code change.
+
+The first 60-run packet failed the reader's exact map-path check despite
+identical map bytes. The launcher now uses the frozen bundle's map path;
+all sixty leaves were rerun in 155.37 seconds with unchanged 60-second caps.
+The strict reader, relocation and 23 corruption controls pass, including
+coupled stdout mutations. Allocation beyond the model's existing 512-cell
+refusal, arbitrary parser/numeric behavior and provider universality remain
+unclaimed. Accounting reviews pending: 3; completion joins remain separate.
