@@ -29,14 +29,13 @@ Decisions:
 """
 
 from collections.abc import Mapping
-from functools import partial
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 from esolangs.languages.laserfuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -215,6 +214,25 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _GridImage(NamedTuple):
+    rows: tuple[tuple[str, ...], ...]
+    start: tuple[int, int] | None
+    second_start: bool
+
+
+def _prepare_grid(code: list[str]) -> _GridImage:
+    width = max(map(len, code), default=0)
+    rows = tuple(tuple(line.ljust(width)) for line in code)
+    start = None
+    for row, line in enumerate(rows):
+        for col, cell in enumerate(line):
+            if cell == "o":
+                if start is not None:
+                    return _GridImage(rows, start, second_start=True)
+                start = (row, col)
+    return _GridImage(rows, start, second_start=False)
+
+
 class _Machine:
     """A LaserFuck run: the grid, the live lasers, and the tape."""
 
@@ -232,7 +250,7 @@ class _Machine:
 
     def __init__(
         self,
-        code: list[str],
+        code: list[str] | _GridImage,
         io: IO,
         rng: Randomness | None = None,
     ) -> None:
@@ -246,10 +264,9 @@ class _Machine:
         self._rng = rng
         self._input_reads = 0
         self._draws = 0
-        text = [list(ln) for ln in code]
-        size = max(len(ln) for ln in text) if text else 0
-        self.text = tuple((*ln, *[" "] * (size - len(ln))) for ln in text)
-        self.rows = len(text)
+        image = code if isinstance(code, _GridImage) else _prepare_grid(code)
+        self.text = image.rows
+        self.rows = len(self.text)
 
         self.ptr = 0
         self.tape: _Tape = chunked(((0, 0),))  # value, touched
@@ -273,19 +290,14 @@ class _Machine:
         # over, never edited.  The list around them stays, since the
         # round-robin index has to survive that growing and shrinking.
         self.lsrs: list[tuple[int, int, int]] = []
-        for row, line in enumerate(self.text):
-            for col, c in enumerate(line):
-                if c == "o":
-                    if self.lsrs:
-                        self._second_start = True  # a second marker halts
-                        return
-                    # The random heading is part of LaserFuck's spec, not a
-                    # secret.
-                    d = draw(rng, 4)
-                    self._draws += 1
-                    self.start = (row, col)
-                    self.lsrs.append((row, col, d))
-                    self.pos = (row, col, d)
+        if image.start is not None:
+            # Even a second marker halts only after the first heading is drawn.
+            d = draw(rng, 4)
+            self._draws += 1
+            self.start = image.start
+            self.pos = (*self.start, d)
+            self.lsrs.append(self.pos)
+            self._second_start = image.second_start
 
     @property
     def halted(self) -> bool:
@@ -508,13 +520,21 @@ class _Machine:
             self.io.print_num(val)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines after shared source and option preparation."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the prepared grid and bind invocation-owned randomness."""
     if not isinstance(source, list):
         raise TypeError("laserfuck machines require source lines")
-    return partial(_Machine, source, **options)
+    if options.keys() - {"rng"}:
+        raise TypeError("laserfuck machines accept only the rng runtime option")
+    image = _prepare_grid(source)
+
+    def build(io: IO, rng: Randomness | None) -> _Machine:
+        return _Machine(image, io, rng)
+
+    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+        return drive(build(io, rng), policy=CAPABILITIES.completion)
+
+    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
 
 
 def _execute(

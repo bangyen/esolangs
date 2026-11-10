@@ -60,14 +60,14 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping, Sequence
 from types import MappingProxyType
-from typing import Any, Never, cast
+from typing import Any, NamedTuple, Never, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.fish.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -425,6 +425,24 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _GridImage(NamedTuple):
+    rows: tuple[str, ...]
+    width: int
+    cells: Mapping[tuple[int, int], int]
+
+
+def _prepare_grid(code: Sequence[str]) -> _GridImage:
+    if not code or not (width := max(map(len, code), default=0)):
+        raise syntax_error(
+            "Fish program cannot be empty",
+            "provide a nonempty grid; ; halts immediately",
+        )
+    cells = {
+        (x, y): ord(char) for y, row in enumerate(code) for x, char in enumerate(row)
+    }
+    return _GridImage(tuple(code), width, MappingProxyType(cells))
+
+
 class _Machine:
     """Fish shell: one immutable :data:`_Core`, rebound per step."""
 
@@ -433,33 +451,24 @@ class _Machine:
     eof_is_a_value = True
 
     def __init__(
-        self, code: Sequence[str], io: IO, rng: Randomness | None = None
+        self, code: Sequence[str] | _GridImage, io: IO, rng: Randomness | None = None
     ) -> None:
-        if not code or not (width := max(map(len, code), default=0)):
-            raise syntax_error(
-                "Fish program cannot be empty",
-                "provide a nonempty grid; ; halts immediately",
-            )
-        self.code = code
+        image = code if isinstance(code, _GridImage) else _prepare_grid(code)
+        self.code = image.rows if isinstance(code, _GridImage) else code
         self.io = io
         self._rng = rng
-        cells = {
-            (x, y): ord(char)
-            for y, row in enumerate(code)
-            for x, char in enumerate(row)
-        }
         self.state: _Core = (
             0,
             0,
             1,
             0,
-            MappingProxyType(cells),
+            image.cells,
             ((),),
             (None,),
             None,
             False,
-            width,
-            len(code),
+            image.width,
+            len(image.rows),
         )
 
     @property
@@ -597,21 +606,21 @@ class _Machine:
                 self.io.print_str(cast(str, value))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source and caller-owned RNG without drawing from it."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the prepared grid and bind invocation-owned randomness."""
     if not isinstance(source, list):
         raise TypeError("fish machines require split text source")
     if options.keys() - {"rng"}:
         raise TypeError("fish machines accept only the rng runtime option")
-    code = tuple(source)
-    rng = options.get("rng")
+    image = _prepare_grid(source)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(list(code), io, rng)
+    def build(io: IO, rng: Randomness | None) -> _Machine:
+        return _Machine(image, io, rng)
 
-    return build
+    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+        return drive(build(io, rng), policy=CAPABILITIES.completion)
+
+    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
 
 
 def _execute(

@@ -294,6 +294,8 @@ def test_random_merge_selects_one_pointer_and_nands_data() -> None:
     first, second = factory(ScriptedIO()), factory(ScriptedIO())
     assert first is not second
     assert first.rng is second.rng is rng
+    assert first.grid is second.grid
+    assert first.pointers is second.pointers
     assert rng._random.getstate() == before
     initial = second.snapshot()
     first.pointers = (

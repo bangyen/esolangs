@@ -14,6 +14,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
 from tests.support.cli_support import call_both, call_main
 from tests.support.generator_support import evaluate_generated, overruns
+from tests.support.prepared_support import check_random_plan_reuse
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import (
     _run_all,
@@ -22,9 +23,16 @@ from tests.support.vm_support import (
 )
 
 
-def test_bound_execution_passes_the_seed() -> None:
+def test_bound_execution_passes_the_seed(monkeypatch: pytest.MonkeyPatch) -> None:
     language = esolangs.Language("LaserFuck")
     assert [language.run("o+++.\n", seed=0).output for _ in range(6)] == ["3"] * 6
+    check_random_plan_reuse(
+        "LaserFuck",
+        "o\n+\n+\n+\n.",
+        interpreter_module("LaserFuck"),
+        "_prepare_grid",
+        monkeypatch,
+    )
 
 
 def test_seeded_run_accepts_an_opaque_runner(monkeypatch):

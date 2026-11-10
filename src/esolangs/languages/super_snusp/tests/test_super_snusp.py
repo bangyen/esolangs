@@ -256,6 +256,7 @@ def test_super_snusp_forks_every_value_equals_could_store() -> None:
     first, second = factory(ScriptedIO()), factory(ScriptedIO())
     assert first is not second
     assert first._rng is second._rng is rng
+    assert first.code is second.code
     assert rng._random.getstate() == before
     initial = second.snapshot()
     for _ in range(4):

@@ -50,14 +50,14 @@ from dataclasses import dataclass, field
 from itertools import product
 from math import prod
 from types import MappingProxyType
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal, NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.thisthat.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -615,6 +615,39 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _GridImage(NamedTuple):
+    rows: tuple[str, ...]
+    starts: tuple[_Pointer, ...]
+
+
+def _prepare_grid(code: list[str]) -> _GridImage:
+    width = max(map(len, code), default=0)
+    grid = tuple(line.ljust(width) for line in code)
+    starts = tuple(
+        _Pointer((x, y), None)
+        for y, line in enumerate(grid)
+        for x, cell in enumerate(line)
+        if cell == "▣"
+    )
+    if not starts:
+        raise HaltError(
+            "thisthat needs at least one start node",
+            hint="add a thisthat start node to the execution graph",
+        )
+    unknown = {
+        cell
+        for line in grid
+        for cell in line
+        if cell != " " and cell not in _PORTS and cell not in _NODES
+    }
+    if unknown:
+        raise HaltError(
+            f"unsupported thisthat cell: {min(unknown)!r}",
+            hint="use cells documented by esolangs describe --spec thisthat",
+        )
+    return _GridImage(grid, starts)
+
+
 class _Machine:
     """thisthat shell: one immutable :data:`_Core`, rebound per cycle."""
 
@@ -623,35 +656,16 @@ class _Machine:
     eof_is_a_value = True
 
     def __init__(
-        self, code: list[str], io: IO | None = None, rng: Randomness | None = None
+        self,
+        code: list[str] | _GridImage,
+        io: IO | None = None,
+        rng: Randomness | None = None,
     ) -> None:
         self.io = io if io is not None else IO()
         self.rng = rng
-        width = max(map(len, code), default=0)
-        self.grid = tuple(line.ljust(width) for line in code)
-        starts = tuple(
-            _Pointer((x, y), None)
-            for y, line in enumerate(self.grid)
-            for x, cell in enumerate(line)
-            if cell == "▣"
-        )
-        if not starts:
-            raise HaltError(
-                "thisthat needs at least one start node",
-                hint="add a thisthat start node to the execution graph",
-            )
-        unknown = {
-            cell
-            for line in self.grid
-            for cell in line
-            if cell != " " and cell not in _PORTS and cell not in _NODES
-        }
-        if unknown:
-            raise HaltError(
-                f"unsupported thisthat cell: {min(unknown)!r}",
-                hint="use cells documented by esolangs describe --spec thisthat",
-            )
-        self.state: _Core = (starts, MappingProxyType({}), 0, False, False)
+        image = code if isinstance(code, _GridImage) else _prepare_grid(code)
+        self.grid = image.rows
+        self.state: _Core = (image.starts, MappingProxyType({}), 0, False, False)
         self._input_reads = 0
 
     @property
@@ -870,21 +884,21 @@ class _Machine:
                 return
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source and caller-owned RNG without drawing from it."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the prepared grid and bind invocation-owned randomness."""
     if not isinstance(source, list):
         raise TypeError("thisthat machines require split text source")
     if options.keys() - {"rng"}:
         raise TypeError("thisthat machines accept only the rng runtime option")
-    code = tuple(source)
-    rng = options.get("rng")
+    image = _prepare_grid(source)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(list(code), io, rng)
+    def build(io: IO, rng: Randomness | None) -> _Machine:
+        return _Machine(image, io, rng)
 
-    return build
+    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+        return drive(build(io, rng), policy=CAPABILITIES.completion)
+
+    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
 
 
 def _execute(

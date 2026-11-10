@@ -84,6 +84,7 @@ def test_advance_takes_its_random_draw_as_an_argument() -> None:
     first, second = factory(ScriptedIO()), factory(ScriptedIO())
     assert first is not second
     assert first._rng is second._rng is rng
+    assert first.cells is second.cells
     assert rng._random.getstate() == before
     initial = second.snapshot()
     first.step()
@@ -114,6 +115,14 @@ def test_write_read_and_input() -> None:
 
 def test_get_put_and_negative_storage() -> None:
     assert _run("'A'01p01go;") == "A"
+    plan = prepare_machine(["'A'01p01go;"], {})
+    io = ScriptedIO()
+    first, second = plan(io), plan(ScriptedIO())
+    while not first.halted:
+        first.step()
+    assert io.getvalue() == "A"
+    assert first.cells[(0, 1)] == ord("A")
+    assert (0, 1) not in second.cells
     machine = _Machine(["'A'01-01-p;"], ScriptedIO(""))
     while not machine.halted:
         machine.step()

@@ -32,7 +32,7 @@ from esolangs.languages.super_snusp.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -402,29 +402,40 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _GridImage(NamedTuple):
+    rows: tuple[str, ...]
+    start: tuple[int, int]
+
+
+def _prepare_grid(code: Sequence[str]) -> _GridImage:
+    if not code or not (width := max(map(len, code), default=0)):
+        raise syntax_error(
+            "Super SNUSP program cannot be empty",
+            ("provide a nonempty grid with an entry point and a terminating path"),
+        )
+    grid = tuple(row.ljust(width) for row in code)
+    starts = [
+        (r, c)
+        for r, line in enumerate(grid)
+        for c, char in enumerate(line)
+        if char == '"'
+    ]
+    if not starts:
+        lines = [r for r, line in enumerate(code) if line.strip()] or [0]
+        starts = [(lines[-1], len(code[lines[-1]].rstrip()) - 1)]
+    return _GridImage(grid, starts[0])
+
+
 class _Machine:
     """Protocol shell holding one immutable Super SNUSP state value."""
 
     def __init__(
-        self, code: Sequence[str], io: IO, rng: Randomness | None = None
+        self, code: Sequence[str] | _GridImage, io: IO, rng: Randomness | None = None
     ) -> None:
-        if not code or not (width := max(map(len, code), default=0)):
-            raise syntax_error(
-                "Super SNUSP program cannot be empty",
-                ("provide a nonempty grid with an entry point and a terminating path"),
-            )
-        self.code = tuple(row.ljust(width) for row in code)
+        image = code if isinstance(code, _GridImage) else _prepare_grid(code)
+        self.code = image.rows
         self.io, self._rng = io, rng
-        starts = [
-            (r, c)
-            for r, line in enumerate(self.code)
-            for c, char in enumerate(line)
-            if char == '"'
-        ]
-        if not starts:
-            lines = [r for r, line in enumerate(code) if line.strip()] or [0]
-            starts = [(lines[-1], len(code[lines[-1]].rstrip()) - 1)]
-        row, col, heading = (*starts[0], 0)
+        row, col, heading = (*image.start, 0)
         self.state = _State((row, col, heading), (0, ()), (), digit=False, done=False)
 
     @property
@@ -563,21 +574,21 @@ class _Machine:
                 self.io.print_num(value)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source and caller-owned RNG without drawing from it."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the prepared grid and bind invocation-owned randomness."""
     if not isinstance(source, list):
         raise TypeError("super_snusp machines require split text source")
     if options.keys() - {"rng"}:
         raise TypeError("super_snusp machines accept only the rng runtime option")
-    code = tuple(source)
-    rng = options.get("rng")
+    image = _prepare_grid(source)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(list(code), io, rng)
+    def build(io: IO, rng: Randomness | None) -> _Machine:
+        return _Machine(image, io, rng)
 
-    return build
+    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+        return drive(build(io, rng), policy=CAPABILITIES.completion)
+
+    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
 
 
 def _execute(

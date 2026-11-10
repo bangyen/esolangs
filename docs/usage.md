@@ -176,6 +176,8 @@ These language-owned plans retain parsed source:
 - What!?: linked tokens.
 - ArrowQueue, Back and Balik: padded source grids.
 - Dig: padded initial grid with per-run writes.
+- Fish: initial codebox with per-run writes.
+- Super SNUSP, thisthat and LaserFuck: grid and entry points.
 
 `Language` also binds `instantiate`; use package functions across languages.
 
