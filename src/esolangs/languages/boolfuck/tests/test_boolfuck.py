@@ -45,6 +45,9 @@ def test_all_three_input_tables(n: int) -> None:
 @pytest.mark.medium
 def test_hints_for_bad_programs_and_input() -> None:
     assert_rejected_with_hint("Boolfuck", "[", "close this '[' with ']'")
+    from .workspace_checks import check_workspace_boolfuck
+
+    check_workspace_boolfuck(_corpus)
 
 
 def _corpus():

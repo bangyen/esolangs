@@ -3848,3 +3848,29 @@ leaves retain 60s caps. Native and generator code are unchanged. Fargo's bounded
 accounting review is complete; arbitrary grammar, host allocation and provider
 universality remain open. Accounting reviews pending: 17; completion joins are
 tracked separately.
+
+Boolfuck retains all 695 original oracle invocations and adds nineteen existing
+byte, hint and lifecycle cases. The independent transition engine is unchanged;
+its final observation wrapper exposes all state. Bounds remain 200, the three
+old lifecycle limits remain 100, and manual prefixes keep their exact bounds.
+The existing medium owner retains its old body; no nodes or bands change.
+
+Fifty-six installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared,
+VM and debugger each match 14,172 boundaries, three constructor refusals,
+11,451 successful steps and 41 live cap-200 runs. All three workspace parts,
+full IO, readonly source/brackets and retained captures are independently
+checked. The corpus peak is 24 bits; separate populated 17/19-bit witnesses
+exercise every component. Each version checks 714 bounded and 673 finite
+ordinary public calls, 72 actual capture masks and 28 physical fault histories.
+A populated ones freeze has zero bit loss and remains a detected state error.
+Full-byte writer refusal is retryable; terminal partial-flush refusal occurs
+after committing the halted state and does not retry on idle calls.
+
+All 14,172 raw snapshots round-trip per version. Twenty-four representative
+workers, four cap workers and three proof workers produce 124 children and
+180 startup markers overall under the 952-file guard. The strict saved reader,
+full relocation and 25 corruption controls pass; result mutations also change
+saved stdout. Active leaf time is 136.13s; 60s caps remain unchanged. Native and
+generator code are unchanged. Boolfuck's bounded accounting review is complete;
+arbitrary syntax, allocation and provider universality remain open. Accounting
+reviews pending: 16; completion joins are tracked separately.
