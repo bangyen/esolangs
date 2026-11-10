@@ -3874,3 +3874,28 @@ saved stdout. Active leaf time is 136.13s; 60s caps remain unchanged. Native and
 generator code are unchanged. Boolfuck's bounded accounting review is complete;
 arbitrary syntax, allocation and provider universality remain open. Accounting
 reviews pending: 16; completion joins are tracked separately.
+
+Packlang retains all 1,132 existing scalar cases and cap 48. Its four old
+independent engine functions and ordered case recipe are unchanged. Rich
+observations add all three workspace parts, full IO, readonly program metadata,
+held captures and complete raw cycle keys. The existing medium owner retains
+its two literal-policy rows; no nodes, bands or bounds change.
+
+Forty-eight installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared,
+VM and debugger each match 9,167 boundaries, 4,645 successful commands and
+three active failures; the corpus peak is 126 bits. A separate 122-bit witness
+writes all three components. Each version checks 1,132 bounded and 1,132
+ordinary public calls, 21 representative workers, four cap workers and twelve
+physical refusal/retry histories. Twelve actual capture erasures, four typed IO
+controls, four readonly futures and a typed Result control fire. Every raw
+cycle snapshot round-trips. The complete original hook makes 1,135 constructor
+attempts; the complete installed medium owner makes 1,134.
+
+The strict saved reader, full relocation and 24 corruption controls pass; result
+mutations also change saved stdout. All 100 children and 148 startup markers
+reconcile under the 952-file guard. Active leaf time is 130.88s, maximum 5.97s
+against unchanged 60s caps. All package bytes are checked before and after each
+leaf. Native and generator code are unchanged. Packlang's bounded scalar
+accounting review is complete; arrays, calls, structured control and host
+expansion remain open. Accounting reviews pending: 15; completion joins remain
+separate.

@@ -540,6 +540,10 @@ def test_dependency_readings_under_each_literal_policy() -> None:
         run(DEPENDENCY, io, literal_policy=policy)
         assert io.getvalue() == expected
 
+    from .workspace_checks import check_accounting_packlang
+
+    check_accounting_packlang()
+
 
 @pytest.mark.parametrize("policy", ["decimal", "binary_digits"])
 def test_literal_roundtrip(policy) -> None:
