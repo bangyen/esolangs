@@ -1,5 +1,6 @@
 """Signed-coordinate byte tape with guards evaluated on each visit."""
 
+import re
 from itertools import product
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 from esolangs.languages.brainif.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
 from tests.interpreters.oracle_support import observed
+from tests.support.model_input import decimal_value
 from tests.support.workspace_oracle import check_erasures, workspace_view
 
 _WORKSPACE = WorkspaceModel(
@@ -14,18 +16,24 @@ _WORKSPACE = WorkspaceModel(
 )
 
 
+def _number(text):
+    if re.fullmatch(r"[+-]?\d(?:_?\d)*", text) is None:
+        raise ValueError
+    return decimal_value(text)
+
+
 def _parse(line):
     guard, value, *words = line.split()
     if guard != "if":
         raise ValueError
     command = " ".join(words)
-    if words[:1] == ["goto"] and len(words) == 2 and int(words[1]) > 0:
-        return int(value), int(words[1]) - 1
+    if words[:1] == ["goto"] and len(words) == 2 and _number(words[1]) > 0:
+        return _number(value), _number(words[1]) - 1
     aliases = {"inc": "increment", "move left": "left", "move right": "right"}
     command = aliases.get(command, command)
     if command not in {"increment", "left", "right", "input", "output"}:
         raise ValueError
-    return int(value), command
+    return _number(value), command
 
 
 def _model(lines, stdin):
@@ -105,6 +113,19 @@ def check_raw_brainif():
     ]
     for code, stdin in product(cases, ("", "ÿ", "Ł")):
         _check(_Machine, code, stdin)
+
+    # Exceed the host decimal cap in both parsed operand positions.
+    huge = "1" * 5000
+    for code in (
+        [f"if {huge} inc", "if 0 inc", "if 1 output"],
+        [f"if -{huge} input", "if 0 output"],
+        [f"if 0 goto {huge}"],
+        [f"if 1 goto {huge}", "if 0 inc", "if 1 output"],
+        [f"if 0 goto -{huge}"],
+        [f"if {huge}_ inc"],
+        ["if +\u0660_\u0660 inc", "if 1 output"],
+    ):
+        _check(_Machine, code, "")
 
     class StaleGuard(_Machine):
         def step(self):

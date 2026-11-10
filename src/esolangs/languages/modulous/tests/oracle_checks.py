@@ -2,10 +2,13 @@
 
 https://esolangs.org/wiki/Modulous, revision 143648, commands and rules.
 Stack, four variables, jumps, reset, strings and token/line input, 48 steps.
-Random draws remain in raw tests; backward wrap and bare PRT follow Decisions.
+A separate bounded-draw witness populates the random counter; backward wrap
+and bare PRT follow Decisions.
 """
 
 from itertools import product
+
+import pytest
 
 from esolangs.languages.modulous.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, reject_faults
@@ -162,7 +165,83 @@ def _check(factory, modules, stdin="unused", *, curly=False):
     )
 
 
+def _draw_model(modules, choice):
+    """Model bounded draws and integer prints without the production dispatcher."""
+    pc = draws = 0
+    stack, output, stopped, trace = [], "", False, []
+
+    def row():
+        state = (
+            pc,
+            tuple(stack),
+            tuple((f"VAR{i}", 0) for i in range(1, 5)),
+            stopped,
+            0,
+            draws,
+        )
+        return state, stopped or pc >= len(modules), output, 0, 0
+
+    for tick in range(49):
+        trace.append(row())
+        if stopped or pc >= len(modules):
+            return None, trace + [row()] * 3
+        if tick == 48:
+            break
+        command, *args = modules[pc]
+        if command == "RND":
+            bound = int(args[0])
+            assert bound > 0
+            stack.append(choice % bound)
+            draws += 1
+        elif command == "PRT":
+            assert args == ["INT"]
+            output += str(stack.pop())
+        else:
+            assert command == "END"
+            stopped = True
+        pc += 1
+    return None, trace
+
+
+def _check_draws(factory, choice):
+    modules = (("RND", "3"), ("RND", "5"), ("PRT", "INT"), ("END",))
+
+    class Draw:
+        def randbelow(self, upper):
+            return choice % upper
+
+    def build(code, io):
+        return factory(code, io, Draw())
+
+    expected = _draw_model(modules, choice)
+    assert expected[1][-1][0][-1] == 2
+    assert expected[1][-1][2] == str(choice % 5)
+    workspace.agrees(
+        expected,
+        (build, _source(modules, curly=False), ""),
+        (
+            _WORKSPACE,
+            lambda row: (*row[0][:2], frozenset(row[0][2]), row[-1], *row[0][3:]),
+        ),
+        _view,
+        cap=48,
+        context=(modules, choice),
+    )
+
+
+def _check_populated_draws():
+    for choice in (0, 4):
+        _check_draws(_Machine, choice)
+    for factory in (
+        workspace.missing_workspace(_Machine, "draws"),
+        workspace.missing_workspace(_Machine, "stack"),
+    ):
+        with pytest.raises(AssertionError):
+            _check_draws(factory, 4)
+
+
 def check_raw_modulous():
+    _check_populated_draws()
     for value, delta, command in product(
         (-3, 0, 1, 65, 256), (-2, 0, 5), ("ADD", "SUB")
     ):

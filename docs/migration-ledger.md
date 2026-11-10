@@ -3763,3 +3763,39 @@ against unchanged 60s caps; the wheel remains pinned to `8e4e4632b`. Native and
 generator code are unchanged. Subleq's bounded accounting review is complete;
 arbitrary syntax, host allocation and provider universality remain open.
 Accounting reviews pending: 19; language completion is reconciled separately.
+
+
+Ninety-two more completion rows are closed at their declared finite witness
+scopes. The 92 reviewed languages have exact semantic-admission owners in CI
+run 42682388228 (`5f4dfb781`): baseline cases pass without skips or errors, and
+live output faults reach assertions. Eighty-nine complete owned packages and
+their shared implementation, oracle and fixture dependencies match that source.
+Flowchart, Line and What!? instead retain their newer installed corpus packets.
+Python 3.12/3.13/3.15 have literal PASS records; 3.14 remains explicitly
+SOURCE_DERIVED_PASS from finished journals and closed owner/fixture control flow.
+The combined source/evidence reader and twelve corruption controls pass.
+
+Declared preparation, VM/debugger histories and successful API/CLI paths reuse
+source-qualified records. The two changed shared exception paths match the
+current 112-call constructor/IO cohort; the 236 canonical protocol cases and
+four-version 117-runtime catalog supply current installed integration checks.
+All 38 retirement families have explicit joins: 37 applicable control scopes
+and unchanged-format N/A. The final whole-migration referee remains pending.
+
+Alight's permanent 117 scalar witnesses and retained 568-case archive remain
+separate scopes. Smallfuck retains 194 programs across three stdin values and
+six controls. Suffolk retains its periodic certificates and EOF witnesses;
+default halting consumer rows do not replace them. Grapheme's existing frame
+model already covers calls, so its stale calls-pending label is removed.
+Six gaps have fresh complete semantic-admission passes on Python 3.12.11,
+3.13.15, 3.14.7 and final 3.15.0. BrainIf adds seven long-decimal/parser cases;
+Decleq writes, prints and overwrites a 4,097-cell store; Freestajlo populates
+functions and nested calls. Fish populates directions and an expanded grid,
+Modulous counts two real provider draws, and Super SNUSP changes row/heading.
+Independent boundary and charge checks include populated-component erasures.
+Every original case, fault, assertion and step cap remains; no nodes are added.
+The last three source-verifier profiles take 22.63s within their 60s cohort cap.
+Their 952 production-file hashes match the installed wheel; these source runs
+retain their own provenance separately from guarded installed receipts.
+Evidence: `notes/migration-closure-batch2`. Completion rows: 97 closed, 20 open;
+19 accounting reviews remain pending.

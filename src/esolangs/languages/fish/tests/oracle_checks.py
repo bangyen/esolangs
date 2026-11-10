@@ -1,12 +1,15 @@
 """Independent single-row Fish stack evaluator, capped at 48 cells executed.
 
 https://esolangs.org/wiki/Fish, stacks, registers and instruction tables.
-Arithmetic, scopes, strings, IO, reads, skips and toroidal wrap; movement,
-random turns and code writes remain in the raw grid regression suite.
+Arithmetic, scopes, strings, IO, reads, skips and toroidal wrap; named grid
+traces populate movement, code writes and rectangular growth. Random turns
+remain in the raw grid regression suite.
 """
 
 from itertools import product
 from operator import add, eq, gt, lt, mod, mul, sub, truediv
+
+import pytest
 
 from esolangs.languages.fish.interpreter import _Machine
 from tests.interpreters.oracle_support import reject_faults
@@ -196,7 +199,93 @@ def _check(factory, source, stdin="unused"):
     )
 
 
+def _grid_model(code):
+    """Model arrows, hexadecimal pushes and p's expanding rectangular store."""
+    width, height = max(map(len, code)), len(code)
+    cells = {(x, y): ord(c) for y, line in enumerate(code) for x, c in enumerate(line)}
+    x = y = 0
+    dx, dy, stack, stopped, trace = 1, 0, [], False, []
+
+    def row():
+        state = (
+            x,
+            y,
+            dx,
+            dy,
+            tuple(sorted(cells.items())),
+            (tuple(stack),),
+            (None,),
+            None,
+            stopped,
+            width,
+            height,
+        )
+        return state, stopped, "", 0, 0
+
+    for tick in range(49):
+        trace.append(row())
+        if stopped:
+            return None, trace + [row()] * 3
+        if tick == 48:
+            break
+        command = chr(cells.get((x, y), 0))
+        if command in "0123456789abcdef":
+            stack.append(int(command, 16))
+        elif command in "><^v":
+            dx = (1 if command == ">" else -1) if command in "><" else 0
+            dy = (1 if command == "v" else -1) if command in "v^" else 0
+        elif command == "p":
+            py, px, value = stack.pop(), stack.pop(), stack.pop()
+            cells[px, py] = value
+            width, height = max(width, px + 1), max(height, py + 1)
+        elif command == ";":
+            stopped = True
+            continue
+        else:
+            assert command in " \0"
+        x, y = (x + dx) % width, (y + dy) % height
+    return None, trace
+
+
+def _check_grid(factory, code):
+    expected = _grid_model(code)
+    workspace.agrees(
+        expected,
+        (factory, code, ""),
+        (
+            _WORKSPACE,
+            lambda row: (*row[0][:4], frozenset(row[0][4]), *row[0][5:], row[-1]),
+        ),
+        _view,
+        cap=48,
+        context=code,
+    )
+    return expected[1]
+
+
+def _check_populated_grid():
+    movement = ["v; ", ">^ "]
+    trace = _check_grid(_Machine, movement)
+    for index in (1, 2, 3):
+        assert any(row[0][index] != trace[0][0][index] for row in trace)
+    store = ["a99p;"]
+    trace = _check_grid(_Machine, store)
+    assert trace[-1][0][4] != trace[0][0][4]
+    assert trace[-1][0][9:11] == (10, 10)
+    for component, code in (
+        ("y", movement),
+        ("dx", movement),
+        ("dy", movement),
+        ("cells", store),
+        ("width", store),
+        ("height", store),
+    ):
+        with pytest.raises(AssertionError):
+            _check_grid(workspace.missing_workspace(_Machine, component), code)
+
+
 def check_raw_fish():
+    _check_populated_grid()
     for left, right, op in product("014af7b", "012f7b", "+-*,%=()"):
         _check(_Machine, left + right + op + "n;")
     for prefix, op in product(

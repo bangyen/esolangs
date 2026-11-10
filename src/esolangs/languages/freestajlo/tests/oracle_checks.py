@@ -192,6 +192,56 @@ def _check(factory, source, stdin="unused"):
     )
 
 
+def _check_calls(factory):
+    # Literal compiled boundaries for two definitions and a nested call.
+    source = "A{66 .}B{A}B"
+    empty = (-1,) * 52
+    defined_a = (1, *empty[1:])
+    defined_ab = (1, 5, *empty[2:])
+    boundaries = (
+        (0, 0, (), (), empty, ""),
+        (7, 4, (), (), defined_a, ""),
+        (11, 7, (), (), defined_ab, ""),
+        (9, 5, (), (8,), defined_ab, ""),
+        (2, 1, (), (6, 8), defined_ab, ""),
+        (5, 2, (66,), (6, 8), defined_ab, ""),
+        (6, 3, (), (6, 8), defined_ab, "B"),
+        (10, 6, (), (8,), defined_ab, "B"),
+        (12, 8, (), (), defined_ab, "B"),
+    )
+    trace = [
+        ((offset, values, 0, (), (), ip, calls, functions), ip == 8, output, 0, 0)
+        for offset, ip, values, calls, functions, output in boundaries
+    ]
+    trace.extend([trace[-1]] * 3)
+
+    def view(machine):
+        calls = []
+        rest = machine.state.calls
+        while rest is not None:
+            value, rest = rest
+            calls.append(value)
+        return (*_view(machine), tuple(calls), tuple(machine.state.funcs))
+
+    def parts(row):
+        _offset, values, index, others, transfer, ip, calls, functions = row[0]
+        return (
+            ip,
+            (len(values), tuple(reversed(values))),
+            (len(transfer), tuple(reversed(transfer))),
+            calls,
+            functions,
+            index,
+            frozenset(
+                (key, (len(items), tuple(reversed(items)))) for key, items in others
+            ),
+            row[-1],
+        )
+
+    checked = workspace.workspace_view(trace, _WORKSPACE, parts, view)
+    assert observed(factory, source, "", checked, cap=64) == (None, trace)
+
+
 def check_raw_freestajlo():
     def literal(value):
         return str(abs(value)) + (" _" if value < 0 else "")
@@ -227,3 +277,5 @@ def check_raw_freestajlo():
         with pytest.raises(AssertionError):
             _check(factory, code, "ab")
     workspace.check_erasures(_WORKSPACE, _check, _Machine, "1 2 + :")
+    _check_calls(_Machine)
+    workspace.check_erasures(_WORKSPACE, _check_calls, _Machine)

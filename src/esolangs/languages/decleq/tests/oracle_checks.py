@@ -6,7 +6,7 @@ import random
 import pytest
 
 from esolangs.languages.decleq.interpreter import _Machine, run
-from tests.interpreters.memory_oracles import agrees_memory, decleq
+from tests.interpreters.memory_oracles import MemoryObservation, agrees_memory, decleq
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model("decleq-v1", "memory instruction input_cursor")
@@ -98,6 +98,40 @@ def check_raw_decleq():
         ("0 4096 -1", ""),
     ):
         _agrees(_Machine, decleq, source, stdin)
+
+    # The general prefix model deliberately stops before this valid dense store.
+    dense_code = "-1 4096 0 -2 4096 0 0 -1 4097"
+    initial = (-1, 4096, 0, -2, 4096, 0, 0, -1, 4097)
+    populated = (*initial, *((0,) * (4096 - len(initial))), ord("Z"))
+    overwritten = (*populated[:-1], -2)
+    dense = [
+        MemoryObservation(
+            memory,
+            (pc,),
+            (),
+            string=False,
+            output=output,
+            consumed=consumed,
+            draws=0,
+            halted=halted,
+            error=None,
+        )
+        for memory, pc, output, consumed, halted in (
+            (initial, 0, "", 0, False),
+            (populated, 3, "", 1, False),
+            (populated, 6, "Z", 1, False),
+            (overwritten, 4097, "Z", 1, True),
+        )
+    ]
+
+    def dense_reference(code, stdin):
+        assert (code, stdin) == (dense_code, "Z")
+        return dense
+
+    _agrees(_Machine, dense_reference, dense_code, "Z", runner=run)
+    workspace.check_erasures(
+        _WORKSPACE, _agrees, _Machine, dense_reference, dense_code, "Z"
+    )
 
     class OldEnd(_Machine):
         def __init__(self, code, io):

@@ -1,8 +1,8 @@
 """Independent single-row model of Super SNUSP's command table, rev 116460.
 
 https://esolangs.org/wiki/Super_SNUSP. Tape, stack, arithmetic, skips,
-scripted random ranges, numeric/character I/O and halt; mirrors remain in
-raw grid tests. Character output retains the explicit public dialect choice.
+scripted random ranges, numeric/character I/O and halt. A named mirror path
+populates row/heading. Character output retains the public dialect choice.
 """
 
 import re
@@ -197,7 +197,75 @@ def _check(factory, source, stdin="unused", choice=0):
     )
 
 
+def _grid_model(code):
+    """Reflect the heading at / and backslash over a rectangular path."""
+    row = col = heading = 0
+    done, trace = False, []
+
+    def sample():
+        state = ((row, col, heading), (0, ()), (), False, done)
+        return state, done, "", 0, 0
+
+    for tick in range(65):
+        trace.append(sample())
+        if done:
+            return None, trace + [sample()] * 3
+        if tick == 64:
+            break
+        command = code[row][col]
+        # Headings are clockwise: right, down, left, up. Mirrors exchange axes.
+        if command == "/":
+            heading = 3 - heading
+        elif command == "\\":
+            heading = heading ^ 1
+        elif command == "'":
+            done = True
+            continue
+        else:
+            assert command in ' "'
+        row += (heading == 1) - (heading == 3)
+        col += (heading == 0) - (heading == 2)
+        done = not (0 <= row < len(code) and 0 <= col < len(code[0]))
+    return None, trace
+
+
+def _check_grid(factory, code):
+    expected = _grid_model(code)
+    workspace.agrees(
+        expected,
+        (factory, code, ""),
+        (
+            _WORKSPACE,
+            lambda row: (
+                *row[0][0],
+                row[0][1][0],
+                frozenset(row[0][1][1]),
+                *row[0][2:],
+                row[-1],
+            ),
+        ),
+        lambda machine: tuple(machine.state),
+        cap=64,
+        context=code,
+    )
+    return expected[1]
+
+
+def _check_populated_grid():
+    # Right -> down -> right -> up reaches the apostrophe above the final mirror.
+    code = ["\"\\'", " \\/"]
+    trace = _check_grid(_Machine, code)
+    for index in (0, 2):
+        assert any(row[0][0][index] != trace[0][0][0][index] for row in trace)
+    assert trace[-1][1]
+    for component in ("row", "heading"):
+        with pytest.raises(AssertionError):
+            _check_grid(workspace.missing_workspace(_Machine, component), code)
+
+
 def check_raw_super_snusp():
+    _check_populated_grid()
+
     def number(value):
         return str(abs(value)) + ("_" if value < 0 else "")
 
