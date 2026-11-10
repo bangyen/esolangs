@@ -142,19 +142,19 @@ only where source hashes and scope still match. Validate one integrated wheel
 through API/CLI generation, binding, persistence, execution and failure routes
 on Python 3.12–3.15. Keep lower-priority gaps explicit; priority alone closes no row.
 
-- [ ] Complete lifecycle and exact accounting acceptance for all 117 languages:
+- [x] Complete lifecycle and exact accounting acceptance for all 117 languages:
   native, stepped and isolated traces, input progress, workspace witnesses,
   snapshot isolation, errors and completion evidence.
-- [ ] Complete installed certification/import isolation and runtime acceptance on
+- [x] Complete installed certification/import isolation and runtime acceptance on
   Python 3.12–3.15, including stepped execution, failures and accounting.
-- [ ] Audit worker envelopes, nested evidence and persisted fixtures for obsolete
+- [x] Audit worker envelopes, nested evidence and persisted fixtures for obsolete
   or permissive protocol forms; reject retired forms with live negative controls.
   Retain supported canonical formats; version 1 alone does not imply obsolescence.
-- [ ] Audit the final source tree, public exports, docs, tests and installed wheel
+- [x] Audit the final source tree, public exports, docs, tests and installed wheel
   for compatibility modules, aliases, defaults, constructor adapters and import
   re-exports. Migrate any remaining consumers, then delete the layers and any
   one-time converters whose data migration is complete.
-- [ ] Reconcile every retirement family and all 117 language / 114 backend rows
+- [x] Reconcile every retirement family and all 117 language / 114 backend rows
   with current evidence. Close the eight workstreams only after corpus,
   execution, timing, resource/size and referee gates pass; leave unresolved
   acceptance rows open.

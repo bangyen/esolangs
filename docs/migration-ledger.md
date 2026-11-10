@@ -4118,3 +4118,7 @@ count. The strict reader, two relocation positives and 34 corruption controls
 pass. No nodes, bands, caps, native or generator code change. General grammar,
 default-entropy histories and provider universality remain unclaimed.
 Accounting reviews pending: 0; completion reconciliation remains separate.
+
+All 117 language completion rows and 114 backend scopes are reconciled at their named finite evidence bounds. All 38 retirement families retain current source/consumer/control joins (37 applicable, unchanged-format N/A). Final production 952-file membership/hashes and required corpus/execution/timing/resource-size/referee receipts qualify the retained integrated wheel. Python 3.14 source-derived outcomes remain labelled; canonical version 1 remains supported. Arbitrary grammar, provider universality, host allocation and unsupported raw closure persistence are not newly claimed. The eight roadmap workstreams meet their declared scoped acceptance.
+
+Evidence: `notes/migration-final-reconciliation`; required `just test` passes on the exact 2,250 final source inputs. The full run retains its sandbox process-listing failure (17,248 passed, 25 skipped); that same lifecycle test passes outside the sandbox, giving 17,249 passing outcomes across the two runs. No failed full-command result is relabeled.
