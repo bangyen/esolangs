@@ -1,16 +1,32 @@
 """Runtime and compiler capabilities for Bitwise Cyclic Tag."""
 
-from esolangs.generation.requests import GenerationRequest
-from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.bitwise_cyclic_tag.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
 
 PAIR = ("0", "1")
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import GenerationRequest
+    from esolangs.generation.wrap import wrap_chars
+    from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.bitwise_cyclic_tag.generator",
+            "bitwise_cyclic_tag_request",
+        ),
+        layout_width=False,
+        # A positional walk, not a tree of callable residuals.
+        shape=Shape.LOOKUP,
+        # Safe anywhere: every space and newline is stripped before parsing.
+        wrap=wrap_chars,
+        template=TemplateSpec(pair=PAIR),
+    )
 
 
 LANGUAGE = Language(
@@ -22,18 +38,7 @@ LANGUAGE = Language(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.bitwise_cyclic_tag.generator",
-            "bitwise_cyclic_tag_request",
-        ),
-        layout_width=False,
-        # A positional walk, not a tree of callable residuals.
-        shape=Shape.LOOKUP,
-        # Safe anywhere: every space and newline is stripped before parsing.
-        wrap=wrap_chars,
-        template=TemplateSpec(pair=PAIR),
-    ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         note="Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs "
         "are bits of the initial data-string, and the answer is the "

@@ -1,14 +1,28 @@
 """Runtime and compiler capabilities for Suffolk."""
 
-from esolangs.generation.requests import GenerationRequest
-from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.suffolk.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import GenerationRequest
+    from esolangs.generation.wrap import wrap_chars
+    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.suffolk.generator", "suffolk_request"
+        ),
+        layout_width=False,
+        # Both routes project to the essential inputs.
+        shape=Shape.REDUCING,
+        wrap=wrap_chars,
+    )
+
 
 LANGUAGE = Language(
     "Suffolk",
@@ -23,15 +37,7 @@ LANGUAGE = Language(
         eof="reads to exhaustion, so EOF is the halt",
         empty_program="Suffolk program cannot be empty",
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.suffolk.generator", "suffolk_request"
-        ),
-        layout_width=False,
-        # Both routes project to the essential inputs.
-        shape=Shape.REDUCING,
-        wrap=wrap_chars,
-    ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",
     ),

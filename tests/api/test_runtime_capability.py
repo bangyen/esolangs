@@ -1,10 +1,12 @@
 """Runtime declarations have one owner and no compiler dependencies."""
 
 import ast
+import os
 import subprocess
 import sys
 from dataclasses import FrozenInstanceError, fields, replace
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -132,22 +134,34 @@ def _check_runtime_catalog_without_synthesis():
                 else []
             )
             assert not any(name.startswith(forbidden) for name in imports), path
-    code = r"""
-import importlib
+    barrier = """
 import importlib.abc
 import sys
-from dataclasses import replace
 
 class Block(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
         if (fullname.startswith('esolangs.generation')
-                or fullname in (
-                    'esolangs.registry._table', 'esolangs.registry._backend')):
-            raise ImportError('runtime imported synthesis or installed catalog')
+                or fullname == 'esolangs.registry._backend'):
+            raise ImportError('runtime imported synthesis')
 sys.meta_path.insert(0, Block())
+"""
+    code = r"""
+import importlib
+import sys
+from dataclasses import replace
+
 import esolangs
 from esolangs.languages.deadfish.descriptor import LANGUAGE
 from esolangs.vm import complete_vm
+
+installed = esolangs.Language(LANGUAGE.name)
+assert installed.run('$io').output == '1\n'
+assert installed.read_answer('1\n') == '1'
+assert installed.prepare('$io').run(isolated=True).output == '1\n'
+for steps in (None, 20):
+    scoped = esolangs.Catalog([LANGUAGE]).bind(LANGUAGE.name)
+    limits = esolangs.ExecutionLimits(max_steps=steps)
+    assert scoped.execute('$io', isolated=True, limits=limits).unwrap().output == '1\n'
 
 class BackendTrap:
     @property
@@ -191,11 +205,18 @@ except AssertionError:
 else:
     raise AssertionError('backend trap did not fire')
 """
-    result = subprocess.run(
-        [sys.executable, "-c", code],
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
+    with TemporaryDirectory() as temporary:
+        # The worker starts a fresh interpreter and installs the same barrier.
+        (Path(temporary) / "sitecustomize.py").write_text(barrier)
+        pythonpath = os.pathsep.join(
+            filter(None, (temporary, os.environ.get("PYTHONPATH")))
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            env={**os.environ, "PYTHONPATH": pythonpath},
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
     assert result.returncode == 0, result.stdout + result.stderr

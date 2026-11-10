@@ -1,12 +1,28 @@
 """Runtime and compiler capabilities for Modulous."""
 
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.modulous.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._language import Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.modulous.generator", "modulous_request"
+        ),
+        layout_width=True,
+        # Not a tree: pops a ``PSH STR`` table down to the indexed character.
+        shape=Shape.LOOKUP,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.modulous.generator", "modulous_balance_request"
+        ),
+    )
+
 
 LANGUAGE = Language(
     "Modulous",
@@ -18,15 +34,5 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
         random=True,
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.modulous.generator", "modulous_request"
-        ),
-        layout_width=True,
-        # Not a tree: pops a ``PSH STR`` table down to the indexed character.
-        shape=Shape.LOOKUP,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.modulous.generator", "modulous_balance_request"
-        ),
-    ),
+    backend=DeferredBackend(_backend),
 )

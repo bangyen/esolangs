@@ -1,15 +1,36 @@
 """Runtime and compiler capabilities for Back."""
 
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.back.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    Example,
+    Language,
+)
 from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
-from esolangs.runtime._program import Program
 
 PAIR = ("-", "+")
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.back.generator", "back_request"
+        ),
+        layout_width=True,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.back.generator", "back_balance_request"
+        ),
+        no_wrap="the beam path and embedded input occupy fixed grid coordinates",
+        template=TemplateSpec(pair=PAIR),
+        grid=True,
+    )
 
 
 LANGUAGE = Language(
@@ -23,18 +44,7 @@ LANGUAGE = Language(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.back.generator", "back_request"
-        ),
-        layout_width=True,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.back.generator", "back_balance_request"
-        ),
-        no_wrap="the beam path and embedded input occupy fixed grid coordinates",
-        template=TemplateSpec(pair=PAIR),
-        grid=True,
-    ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="dump",
         note="Back has no output instruction and dumps its tape at halt; "

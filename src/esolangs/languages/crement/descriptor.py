@@ -1,25 +1,24 @@
 """Runtime and compiler capabilities for Crement."""
 
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.crement.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
-from esolangs.registry._language import Example, Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    Example,
+    Language,
+)
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
 
-LANGUAGE = Language(
-    "Crement",
-    RuntimeSpec(
-        "crement",
-        machine_preparation="prepare_machine",
-        completion_entrypoint="_execute",
-        capabilities=CAPABILITIES,
-        category="program_based",
-    ),
-    backend=BooleanBackend(
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._functions import FunctionRef
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.crement.generator", "crement_request"
         ),
@@ -40,7 +39,19 @@ LANGUAGE = Language(
                 ("template", "n"),
             )
         ),
+    )
+
+
+LANGUAGE = Language(
+    "Crement",
+    RuntimeSpec(
+        "crement",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="program_based",
     ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="termination",
         answer_values=("halts", "diverges"),

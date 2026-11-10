@@ -1,13 +1,33 @@
 """Runtime and compiler capabilities for LaserFuck."""
 
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.laserfuck.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    Example,
+    Language,
+)
 from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
-from esolangs.runtime._program import Program
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.laserfuck.generator", "laserfuck_request"
+        ),
+        layout_width=True,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.laserfuck.generator", "laserfuck_balance_request"
+        ),
+        grid=True,
+    )
+
 
 LANGUAGE = Language(
     "LaserFuck",
@@ -22,16 +42,7 @@ LANGUAGE = Language(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.laserfuck.generator", "laserfuck_request"
-        ),
-        layout_width=True,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.laserfuck.generator", "laserfuck_balance_request"
-        ),
-        grid=True,
-    ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="dump",
         note="the initial heading is random by spec, so the example pins "

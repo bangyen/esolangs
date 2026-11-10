@@ -1,16 +1,35 @@
 """Runtime and compiler capabilities for Piet."""
 
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.piet.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    Example,
+    Language,
+)
 from esolangs.runtime._definition import (
     RasterSourcePolicy,
     RuntimeSpec,
 )
-from esolangs.runtime._program import Program
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.piet.generator", "piet_request"
+        ),
+        layout_width=True,
+        balance=OperationRef[BalanceRequest, Program](
+            "esolangs.languages.piet.generator", "piet_balance_request"
+        ),
+    )
+
 
 LANGUAGE = Language(
     "Piet",
@@ -23,15 +42,7 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
         eof="an exhausted input command is ignored, as the spec requires",
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.piet.generator", "piet_request"
-        ),
-        layout_width=True,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.piet.generator", "piet_balance_request"
-        ),
-    ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         note="the committed example is drawn at 80 pixels per codel; "
         "generate draws 1 unless --scale says otherwise"

@@ -1,17 +1,29 @@
 """Runtime and compiler capabilities for Grapheme."""
 
 from esolangs._dialect import DialectSchema
-from esolangs.generation.requests import GenerationRequest
-from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.grapheme.dialect import INTEGER_CONVERSIONS
 from esolangs.languages.grapheme.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
-from esolangs.registry._language import Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import GenerationRequest
+    from esolangs.generation.wrap import wrap_chars
+    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.grapheme.generator", "grapheme_request"
+        ),
+        layout_width=False,
+        wrap=wrap_chars,
+    )
+
 
 LANGUAGE = Language(
     "Grapheme",
@@ -32,13 +44,7 @@ LANGUAGE = Language(
             {"integer_conversion": "between_letters"},
         ),
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.grapheme.generator", "grapheme_request"
-        ),
-        layout_width=False,
-        wrap=wrap_chars,
-    ),
+    backend=DeferredBackend(_backend),
     # Each input line is normalized with ord(line[0]) - 65 and then zero is
     # mapped to 1; the second step is what makes 'A' a 1 -- ord('A') - 65 is
     # 0, so the subtraction alone says the opposite.

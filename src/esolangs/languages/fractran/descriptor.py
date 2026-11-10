@@ -1,30 +1,27 @@
 """Runtime and compiler capabilities for FRACTRAN."""
 
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
-from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.fractran.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
-from esolangs.registry._language import Example, Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    Example,
+    Language,
+)
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
 
 PAIR = ("0", "1")
 
 
-LANGUAGE = Language(
-    "FRACTRAN",
-    RuntimeSpec(
-        "fractran",
-        machine_preparation="prepare_machine",
-        completion_entrypoint="_execute",
-        capabilities=CAPABILITIES,
-        category="register_based",
-        empty_program="a FRACTRAN program needs a starting value",
-    ),
-    backend=BooleanBackend(
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.wrap import wrap_space_delimited
+    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._functions import FunctionRef
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.fractran.generator", "fractran_request"
         ),
@@ -41,7 +38,20 @@ LANGUAGE = Language(
             "esolangs.languages.fractran.generator", "fractran_balance_request"
         ),
         template=TemplateSpec(pair=PAIR),
+    )
+
+
+LANGUAGE = Language(
+    "FRACTRAN",
+    RuntimeSpec(
+        "fractran",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        category="register_based",
+        empty_program="a FRACTRAN program needs a starting value",
     ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="dump",
         answer_values=("1", "2"),

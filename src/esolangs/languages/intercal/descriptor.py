@@ -1,14 +1,14 @@
 """Runtime and compiler capabilities for INTERCAL."""
 
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.intercal.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
-from esolangs.registry._language import Example, Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    Example,
+    Language,
+)
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
 
 PAIR = ("#0", "#1")
 
@@ -16,18 +16,14 @@ PAIR = ("#0", "#1")
 TEMPLATE_CHAR = "@"
 
 
-LANGUAGE = Language(
-    "INTERCAL",
-    RuntimeSpec(
-        "intercal",
-        category="variable_based",
-        machine_preparation="prepare_machine",
-        completion_entrypoint="_execute",
-        capabilities=CAPABILITIES,
-        random=True,
-        empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
-    ),
-    backend=BooleanBackend(
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._functions import FunctionRef
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.intercal.generator", "intercal_request"
         ),
@@ -41,7 +37,21 @@ LANGUAGE = Language(
             "esolangs.languages.intercal.generator", "intercal_balance_request"
         ),
         template=TemplateSpec(pair=PAIR, char=TEMPLATE_CHAR),
+    )
+
+
+LANGUAGE = Language(
+    "INTERCAL",
+    RuntimeSpec(
+        "intercal",
+        category="variable_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
+        random=True,
+        empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
     ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_pattern=r"(?s)^(_\n|I)\n$",
         answer_values=("_\n", "I"),

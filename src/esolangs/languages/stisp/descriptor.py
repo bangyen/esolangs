@@ -1,19 +1,31 @@
 """Runtime and compiler capabilities for Stisp."""
 
-from esolangs.generation.requests import GenerationRequest
-from esolangs.generation.wrap import TokenWrapper
 from esolangs.languages.stisp.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
 
 _TOKEN = r"->|[A-Za-z0-9_]+|[\s\S]"
 
 
 PAIR = ("0", "1")
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import GenerationRequest
+    from esolangs.generation.wrap import TokenWrapper
+    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.stisp.generator", "stisp_request"
+        ),
+        layout_width=False,
+        wrap=TokenWrapper(_TOKEN),
+        template=TemplateSpec(pair=PAIR),
+    )
 
 
 LANGUAGE = Language(
@@ -26,14 +38,7 @@ LANGUAGE = Language(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.stisp.generator", "stisp_request"
-        ),
-        layout_width=False,
-        wrap=TokenWrapper(_TOKEN),
-        template=TemplateSpec(pair=PAIR),
-    ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="dump",
         note="Stisp has no input or output: each input is the atom 0 or 1 "

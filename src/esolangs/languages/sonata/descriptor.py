@@ -1,13 +1,32 @@
 """Runtime and compiler capabilities for Sonata."""
 
-from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.sonata.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    Example,
+    Language,
+)
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import GenerationRequest
+    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.sonata.generator", "sonata_request"
+        ),
+        layout_width=False,
+        # Not a tree: the table is a literal the row index strips.
+        shape=Shape.LOOKUP,
+        no_wrap="a newline ends a rule, and a rule cannot span two lines",
+    )
+
 
 LANGUAGE = Language(
     "Sonata",
@@ -19,15 +38,7 @@ LANGUAGE = Language(
         category="program_based",
         eof="the input is the initial string, so an empty input is the empty string",
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.sonata.generator", "sonata_request"
-        ),
-        layout_width=False,
-        # Not a tree: the table is a literal the row index strips.
-        shape=Shape.LOOKUP,
-        no_wrap="a newline ends a rule, and a rule cannot span two lines",
-    ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",
         answer_mode="dump",

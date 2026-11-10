@@ -1,16 +1,35 @@
 """Runtime and compiler capabilities for A Painter Ant."""
 
-from esolangs.generation.requests import GenerationRequest
-from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.a_painter_ant.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    Example,
+    Language,
+)
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
 
 PAIR = ("n", "N")
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import GenerationRequest
+    from esolangs.generation.wrap import wrap_chars
+    from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.a_painter_ant.generator", "a_painter_ant_request"
+        ),
+        layout_width=False,
+        # Not a tree: one corridor cell per row, walked by the inputs' weights.
+        shape=Shape.LOOKUP,
+        wrap=wrap_chars,
+        template=TemplateSpec(pair=PAIR),
+    )
 
 
 LANGUAGE = Language(
@@ -22,16 +41,7 @@ LANGUAGE = Language(
         machine_preparation="prepare_machine",
         capabilities=CAPABILITIES,
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.a_painter_ant.generator", "a_painter_ant_request"
-        ),
-        layout_width=False,
-        # Not a tree: one corridor cell per row, walked by the inputs' weights.
-        shape=Shape.LOOKUP,
-        wrap=wrap_chars,
-        template=TemplateSpec(pair=PAIR),
-    ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="dump",
         answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",

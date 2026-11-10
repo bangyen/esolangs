@@ -11,7 +11,6 @@ from esolangs.exceptions import (
     ArgumentError,
     ProgramError,
 )
-from esolangs.generation.helpers import _validate_truth_table, check_table_text
 from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import CHAR_STREAMS
 from esolangs.runtime._validate import check_bits
@@ -63,7 +62,9 @@ def encode_inputs(
     # As in ``instantiate``: a 2 or a "1" is not caught downstream; it
     # encodes as a 1 and the program silently answers another row.
     bits = check_bits(bits, "bits")
-    if truth_table is not None and lang.backend is not None:
+    if truth_table is not None:
+        from esolangs.generation.helpers import _validate_truth_table, check_table_text
+
         check_table_text(truth_table)
         arity = _validate_truth_table(truth_table)
         if len(bits) != arity:

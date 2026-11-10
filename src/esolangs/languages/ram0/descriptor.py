@@ -1,29 +1,27 @@
 """Runtime and compiler capabilities for RAM0."""
 
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
-from esolangs.generation.wrap import wrap_space_delimited
 from esolangs.languages.ram0.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._functions import FunctionRef
-from esolangs.registry._language import Example, Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    Example,
+    Language,
+)
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime._program import Program
 
 PAIR = ("Z", "A")
 
 
-LANGUAGE = Language(
-    "RAM0",
-    RuntimeSpec(
-        "ram0",
-        category="register_based",
-        machine_preparation="prepare_machine",
-        completion_entrypoint="_execute",
-        capabilities=CAPABILITIES,
-    ),
-    backend=BooleanBackend(
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.wrap import wrap_space_delimited
+    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._functions import FunctionRef
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.ram0.generator", "ram0_request"
         ),
@@ -40,7 +38,19 @@ LANGUAGE = Language(
             "esolangs.languages.ram0.generator", "ram0_balance_request"
         ),
         template=TemplateSpec(pair=PAIR),
+    )
+
+
+LANGUAGE = Language(
+    "RAM0",
+    RuntimeSpec(
+        "ram0",
+        category="register_based",
+        machine_preparation="prepare_machine",
+        completion_entrypoint="_execute",
+        capabilities=CAPABILITIES,
     ),
+    backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="dump",
         answer_pattern=r"z: (\d+)",

@@ -56,9 +56,7 @@ class Catalog:
         object.__setattr__(
             self,
             "by_boolean",
-            MappingProxyType(
-                {lang.id: lang for lang in records if lang.backend is not None}
-            ),
+            MappingProxyType({lang.id: lang for lang in records if lang.has_backend}),
         )
         object.__setattr__(
             self,

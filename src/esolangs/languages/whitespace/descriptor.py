@@ -1,12 +1,25 @@
 """Runtime and compiler capabilities for Whitespace."""
 
-from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.whitespace.lifecycle import CAPABILITIES
-from esolangs.registry._backend import BooleanBackend, Shape
-from esolangs.registry._language import Language
-from esolangs.registry._operations import OperationRef
+from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
 from esolangs.runtime._definition import RuntimeSpec, VerbatimSourcePolicy
-from esolangs.runtime._program import Program
+
+
+def _backend() -> BackendDefinition:
+    from esolangs.generation.requests import GenerationRequest
+    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._operations import OperationRef
+    from esolangs.runtime._program import Program
+
+    return BooleanBackend(
+        entrypoint=OperationRef[GenerationRequest, Program](
+            "esolangs.languages.whitespace.generator", "whitespace_request"
+        ),
+        layout_width=False,
+        shape=Shape.REDUCING,
+        no_wrap="a line feed is a token, so a break changes the command it splits",
+    )
+
 
 LANGUAGE = Language(
     "Whitespace",
@@ -19,12 +32,5 @@ LANGUAGE = Language(
         machine_preparation="prepare_machine",
         empty_program="Whitespace program is empty",
     ),
-    backend=BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.whitespace.generator", "whitespace_request"
-        ),
-        layout_width=False,
-        shape=Shape.REDUCING,
-        no_wrap="a line feed is a token, so a break changes the command it splits",
-    ),
+    backend=DeferredBackend(_backend),
 )
