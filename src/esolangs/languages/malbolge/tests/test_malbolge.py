@@ -154,3 +154,7 @@ def test_a_non_graphic_rewrite_skips_the_encipherment() -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Malbolge", "?", "position-dependent")
+
+    from .workspace_checks import check_workspace_malbolge
+
+    check_workspace_malbolge()

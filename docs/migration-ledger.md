@@ -4017,3 +4017,35 @@ The strict reader, relocation and 23 corruption controls pass, including
 coupled stdout mutations. Allocation beyond the model's existing 512-cell
 refusal, arbitrary parser/numeric behavior and provider universality remain
 unclaimed. Accounting reviews pending: 3; completion joins remain separate.
+
+Malbolge retains all 27 original greeting cases and their fault control, with
+five focused cases, cap 128 and three post-halt idles. Its independent model
+checks 510 observations: 506 native captures and four constructor refusals,
+with 26 halts and two live caps. All six workspace parts, full IO, raw keys,
+charge and retained captures are checked. Logical memory has 59,049 words;
+accounting pages and cycle-key chunks remain distinct representations.
+
+Sixty-eight fresh installed leaves pass on Python 3.12.11–final 3.15.0 under
+the unchanged 952-file guard. Each of four wire leaves replays all 32 cases
+and 506 captures; only transport is partitioned into [0,128), [128,256),
+[256,384), [384,506), covering every capture exactly once per version.
+Two same-factory prepared siblings retain independent full histories; four
+physical failure histories retain exact state, IO and charge. Six populated
+erasures remain live. The 128 real workers and eight separate forbidden-import
+controls yield 204 startup markers overall; proof imports exit 87 after valid
+startup. No synthetic worker or collected-node credit is claimed.
+
+The complete existing medium owner executes the 32-case accounting hook on
+all four versions within its unchanged five-second band, using real pinned
+pytest wheel payloads. The registered semantic owner reaches only the old
+27-case greeting and receives no new accounting credit. No nodes, caps, bands,
+native or generator code change.
+
+The saved reader, full relocation, 26 original corruptions and two separately
+bound wire-window corruptions pass. The old/new
+comparison predicates agree on 2,551 actual pairs, including eleven negative
+controls. V1's bounded timer failure and V2's whole-wire timeout remain retained;
+neither supplies V3 outcome credit. Evidence: `notes/malbolge-accounting-final`.
+Finite corpus accounting is complete; arbitrary grammar, allocation and provider
+universality remain unclaimed. Accounting reviews pending: 2; completion
+reconciliation remains separate.
