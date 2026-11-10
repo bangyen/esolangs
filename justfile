@@ -77,6 +77,13 @@ test-quick *args:
 test-mid *args:
     PYTEST_ADDOPTS="-m 'not slow and not weekly'" {{PYTHON}} scripts/verify/gate.py --only pytest "$@"
 
+# controlled performance checks: one worker, no coverage, unchanged band limits
+[group('test')]
+[no-exit-message]
+[positional-arguments]
+test-costs *args:
+    {{PYTHON}} -m pytest -q -n 0 -m "not slow and not weekly" --check-cost-bands -p scripts.ci.shard --duration-output notes/benchmarks/test-costs.json "$@"
+
 # granular targets — each maps to one STEPS entry in scripts/verify/gate.py (see gate.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)
 #

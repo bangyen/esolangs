@@ -74,6 +74,32 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
     assert "coverage report --fail-under=98" in commands
 
     jobs = yaml.safe_load((ROOT / ".github/workflows/weekly.yml").read_text())["jobs"]
+    costs = jobs["costs"]
+    assert costs["strategy"]["matrix"]["shard"] == [0, 1, 2, 3]
+    assert costs["strategy"]["fail-fast"] is False
+    assert "matrix.shard" in costs["concurrency"]["group"]
+    assert costs["concurrency"]["cancel-in-progress"] is False
+    cost_commands = "\n".join(step.get("run", "") for step in costs["steps"])
+    assert (
+        '--marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 4'
+        in cost_commands
+    )
+    assert "-n 0 --check-cost-bands" in cost_commands
+    assert "--cov" not in cost_commands
+    assert "--exclude-node" not in cost_commands
+    cost_gate = jobs["cost-completeness"]
+    assert cost_gate["needs"] == "costs"
+    assert cost_gate["if"] == "always()"
+    assert cost_gate["steps"][0]["run"] == 'test "$RESULT" = success'
+    assert (
+        "checks/check_shard_manifests.py cost-evidence" in cost_gate["steps"][-1]["run"]
+    )
+    assert "--shards 4" in cost_gate["steps"][-1]["run"]
+    assert "--duration-output notes/ci/costs/test-costs.json" in cost_commands
+    assert all(
+        "--check-cost-bands" not in step.get("run", "")
+        for step in jobs["slow"]["steps"]
+    )
     versions = jobs["slow"]["strategy"]["matrix"]["python-version"]
     assert sorted([*versions, "3.14"]) == ["3.12", "3.13", "3.14", "3.15"]
     full = jobs["slow"]

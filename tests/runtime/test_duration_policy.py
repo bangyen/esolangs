@@ -4,6 +4,7 @@ import pytest
 
 from tests.support.duration_policy import (
     CI_SCALE,
+    cost_checks_enabled,
     evidence_violation,
     limits,
     violation,
@@ -87,6 +88,13 @@ def test_an_unmeasured_call_keeps_the_plain_wall_rule() -> None:
     """The caller may not have timed the CPU; then the ceiling is unchanged."""
     assert violation(set(), 1.01, None) is not None
     assert violation(set(), 1.01) is not None
+    assert not cost_checks_enabled(requested=False, workers=8, coverage_active=True)
+    assert cost_checks_enabled(requested=True, workers=0)
+    for workers in (1, 4, "auto"):
+        with pytest.raises(ValueError, match="serial"):
+            cost_checks_enabled(requested=True, workers=workers)
+    with pytest.raises(ValueError, match="coverage"):
+        cost_checks_enabled(requested=True, workers=0, coverage_active=True)
 
 
 def test_weekly_cost_requires_a_named_unique_regression() -> None:

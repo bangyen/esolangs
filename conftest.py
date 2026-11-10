@@ -12,7 +12,32 @@ import pytest
 from _pytest.reports import TestReport
 from coverage.collector import Collector
 
-from tests.support.duration_policy import evidence_violation, hard_ceiling, violation
+from tests.support.duration_policy import (
+    cost_checks_enabled,
+    evidence_violation,
+    hard_ceiling,
+    violation,
+)
+
+_COST_CHECKS = pytest.StashKey[bool]()
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Keep performance checks explicit and separate from correctness runs."""
+    parser.addoption("--check-cost-bands", action="store_true", default=False)
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Reject parallel or traced performance measurements."""
+    try:
+        config.stash[_COST_CHECKS] = cost_checks_enabled(
+            requested=config.getoption("check_cost_bands"),
+            workers=config.getoption("numprocesses", default=None),
+            coverage_active=bool(config.getoption("cov_source", default=None))
+            or coverage.Coverage.current() is not None,
+        )
+    except ValueError as error:
+        raise pytest.UsageError(str(error)) from error
 
 
 def _reject_stale_install() -> None:
@@ -81,6 +106,8 @@ _CPU_TIME = pytest.StashKey[float]()
 @pytest.hookimpl(wrapper=True)
 def pytest_runtest_call(item: pytest.Item) -> Generator[None, object, object]:
     """Record the call's CPU time, so a starved test can be told from a slow one."""
+    if not item.config.stash[_COST_CHECKS]:
+        return (yield)
     started = time.process_time()
     try:
         return (yield)
@@ -95,13 +122,16 @@ def pytest_runtest_makereport(
     """Fail tests whose call exceeds their cost band's ceiling."""
     del call
     report = yield
-    if report.when != "call" or not report.passed:
+    if (
+        not item.config.stash[_COST_CHECKS]
+        or report.when != "call"
+        or not report.passed
+    ):
         return report
-    # Under a branch tracer the band times the tracer: a 0.08 s cvnc test
-    # spent 3.05 s and 3.90 s of CPU in the deadcode scan (40589506957).
-    # The untraced runs, per push and weekly, still enforce every band.
     if coverage.Coverage.current() is not None:
-        return report
+        raise pytest.UsageError(
+            "cost checks require execution without coverage tracing"
+        )
     markers = {marker.name for marker in item.iter_markers()}
     message = violation(markers, report.duration, item.stash.get(_CPU_TIME, None))
     if message is not None:

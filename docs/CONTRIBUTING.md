@@ -49,10 +49,11 @@ helpers under `tests/`. Tests enforce a 1,200-line file cap and fewer than
 10,000 non-contract cases. Focused regression coverage may exceed source line
 counts; it needs no compensating refactor of unrelated tests.
 
-Tests have CPU-time bands: fast (default, 1 s), medium (5 s), slow and weekly.
-Exceeding the band fails. Rerun suite duration failures alone: rotating
-failures can be machine load; a test still over budget alone needs speeding
-up or the appropriate band. CI scales the ceilings.
+Tests have scheduling bands: fast (default), medium, slow and weekly. Every
+run retains hard hang deadlines. `just test-costs` checks the existing 1 s
+fast and 5 s medium cost bounds separately, serially and without coverage;
+the dedicated weekly serial cost jobs record environment, timings and completion.
+Correctness runs retain all selected witnesses without cost-band failures.
 
 The Brainfuck/Boolfuck/Subleq cost/fault pilot (0.80–1.08 s/cohort) retained
 independent oracles and rejected inert checks. One injected output-fault class

@@ -1,4 +1,4 @@
-"""Cost-band limits enforced by the pytest hook."""
+"""Scheduling bands, hard hang deadlines and explicit serial cost checks."""
 
 import os
 
@@ -69,7 +69,19 @@ def violation(
         return None
     return (
         f"{duration:.2f}s exceeds the {band} band limit of {limit:g}s; "
-        f"optimize, delete, or mark this test {next_band}.  Under -n load a "
-        "borderline test can overrun once; rerun it alone (uv run pytest -q "
-        "<node id>) and mark it only if it still fails"
+        f"optimize, delete, or mark this test {next_band}. "
+        "Reproduce in the serial cost job with just test-costs <node id>"
     )
+
+
+def cost_checks_enabled(
+    *, requested: bool, workers: object = None, coverage_active: bool = False
+) -> bool:
+    """Require serial, untraced execution before enforcing performance bounds."""
+    if not requested:
+        return False
+    if workers not in (None, 0):
+        raise ValueError("cost checks require serial pytest execution (-n 0)")
+    if coverage_active:
+        raise ValueError("cost checks require execution without coverage tracing")
+    return True

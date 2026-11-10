@@ -135,6 +135,68 @@ jobs:
     - name: Require complete selection and execution
       run: uv run python checks/check_shard_manifests.py shard-evidence --marker "" --shards 2
 
+  costs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    concurrency:
+      group: weekly-test-costs-${{ matrix.shard }}
+      cancel-in-progress: false
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - name: Set up Python
+      uses: ./.github/actions/setup
+      with:
+        python-version: "3.14"
+    - name: Check test costs without competing workers or coverage
+      run: >
+        uv run python scripts/ci/shard.py shard
+        --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 4
+        --manifest notes/ci/costs/test-costs.shard.json --
+        -n 0 --check-cost-bands -p scripts.ci.shard
+        --duration-output notes/ci/costs/test-costs.json
+    - name: Retain cost measurements and execution evidence
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: test-costs-${{ matrix.shard }}
+        path: notes/ci/costs/*
+        if-no-files-found: error
+        retention-days: 90
+
+  cost-completeness:
+    needs: costs
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Require successful cost jobs
+      env:
+        RESULT: ${{ needs.costs.result }}
+      run: test "$RESULT" = success
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - name: Set up Python
+      uses: ./.github/actions/setup
+      with:
+        python-version: "3.14"
+    - uses: actions/download-artifact@v8
+      with:
+        pattern: test-costs-*
+        path: cost-evidence
+    - name: Require complete cost corpus execution
+      run: >
+        uv run python checks/check_shard_manifests.py cost-evidence
+        --marker "not slow and not weekly" --shards 4
+
   # Generation *time* is the one axis the per-PR gate cannot judge: it is
   # machine- and load-dependent, and a threshold loose enough not to flake on
   # a shared runner is loose enough to miss the regression it is there for.
