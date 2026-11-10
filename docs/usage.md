@@ -151,6 +151,9 @@ These language-owned plans retain parsed source:
 - Freestajlo: resolved instructions and source end.
 - Thue: rewrite rules and initial text.
 - Befunge: validated initial playfield.
+- brainfuck: source loop map and a lazily compiled native view.
+- Boolfuck: source loop map.
+- Monotonic Boolfuck: source loop map.
 
 `Language` also binds `instantiate`; use package functions across languages.
 

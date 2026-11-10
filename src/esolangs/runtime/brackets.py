@@ -11,6 +11,11 @@ itself; all build a table once at load, never a scan per jump.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass
+from types import MappingProxyType
+from typing import Self
+
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -50,3 +55,16 @@ def match_brackets(
             open_char, stack[-1], f"close this {open_char!r} with {close_char!r}"
         )
     return res
+
+
+@dataclass(frozen=True, slots=True)
+class BracketProgram:
+    """Immutable source and its validated loop partners."""
+
+    source: str
+    brackets: Mapping[int, int]
+
+    @classmethod
+    def parse(cls, source: str) -> Self:
+        """Retain a read-only loop map without sharing execution state."""
+        return cls(source, MappingProxyType(match_brackets(source)))

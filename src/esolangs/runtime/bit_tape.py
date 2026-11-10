@@ -1,10 +1,11 @@
 """Two-sided bit tape, loop control and buffered little-endian byte I/O."""
 
+from collections.abc import Mapping
 from typing import NamedTuple
 
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
-from esolangs.runtime.brackets import match_brackets
+from esolangs.runtime.brackets import BracketProgram, match_brackets
 from esolangs.runtime.io import IO
 
 
@@ -17,7 +18,9 @@ class _State(NamedTuple):
     used: int  # its filled bits
 
 
-def _advance(state: _State, command: str, bit: int, brackets: dict[int, int]) -> _State:
+def _advance(
+    state: _State, command: str, bit: int, brackets: Mapping[int, int]
+) -> _State:
     """Advance control; tape writes and byte I/O are shell effects."""
     pc, ptr = state.pc, state.ptr
     if command == ">":
@@ -47,10 +50,12 @@ class _BitTapeMachine:
     set_command = "+"
     _workspace_model: WorkspaceModel
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.code = code
+    def __init__(self, code: str | BracketProgram, io: IO) -> None:
+        if isinstance(code, BracketProgram):
+            self.code, self.brackets = code.source, code.brackets
+        else:
+            self.code, self.brackets = code, match_brackets(code)
         self.io = io
-        self.brackets = match_brackets(code)
         self.state = _State(0, 0, 0, 0, 0, 0)
         self.ones: set[int] = set()
 

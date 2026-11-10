@@ -19,14 +19,15 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from functools import lru_cache, partial
+from functools import cached_property, lru_cache
 from typing import Any
 
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime.brackets import BracketProgram
 from esolangs.runtime.brackets import match_brackets as matches
 from esolangs.runtime.io import IO
 
@@ -75,7 +76,7 @@ def _written(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
 # :func:`_advance` is pure over an immutable ``_State`` and ``snapshot`` returns it
 # directly; the shell does ``.`` and ``,``. ``factor.py`` drives a decoded program
 # through it.
-def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
+def _advance(state: _State, code: str, brackets: Mapping[int, int]) -> _State:
     """Return the state after executing the command at the code position.
 
     Pure; ``,``'s value arrives already written.  Fields are unpacked and one
@@ -106,15 +107,26 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
     return (ind + 1, ptr, tape)
 
 
+class _Program(BracketProgram):
+    """The source-step view plus a native view compiled only when requested."""
+
+    @cached_property
+    def compiled(self) -> tuple[_Op, ...]:
+        """Lower source once without rebuilding its validated loop map."""
+        return _compile_ops(self.source, self.brackets)
+
+
 class _Machine:
     """A Brainfuck run: one immutable ``_State``, rebound per step."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.code = code
+    def __init__(self, code: str | BracketProgram, io: IO) -> None:
+        if isinstance(code, BracketProgram):
+            self.code, self.brackets = code.source, code.brackets
+        else:
+            self.code, self.brackets = code, matches(code)
         self.io = io
-        self.brackets = matches(code)
         # ``halted`` is read twice per command; take the length once.
-        self.size = len(code)
+        self.size = len(self.code)
         self.state: _State = (0, 0, (0,))
 
     # Views for ``factor.py``.
@@ -199,7 +211,11 @@ def _net_change(code: str, start: int) -> tuple[int, int]:
 @lru_cache(maxsize=16)
 def _compile(code: str) -> tuple[_Op, ...]:
     """Return compact operations for the effect-driven run path."""
-    brackets = matches(code)
+    return _compile_ops(code, matches(code))
+
+
+def _compile_ops(code: str, brackets: Mapping[int, int]) -> tuple[_Op, ...]:
+    """Lower validated source for the native runner, preserving its loop targets."""
     ops: list[_Op] = []
     op_at: dict[int, int] = {}
     ind = 0
@@ -288,20 +304,26 @@ def _advance_compiled(
     return (ind + 1, ptr), (prefix, suffix, writes), output, False
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Validate Brainfuck source shape and bind fresh source-step machines."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the loop map and lazily share native compilation across runs."""
     if not isinstance(source, str):
         raise TypeError("Brainfuck machines require text source")
     if options:
         raise TypeError("Brainfuck machines accept no runtime options")
-    return partial(_Machine, source)
+    program = _Program.parse(source)
+
+    def build(io: IO) -> _Machine:
+        return _Machine(program, io)
+
+    def execute(io: IO) -> CompletionReport:
+        return _execute(program.compiled, io)
+
+    return RuntimePlan(build, execute)
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
-    """Run compact operations, applying the pure core's tape and IO effects."""
-    ops = _compile(code)
+def _execute(code: str | tuple[_Op, ...], io: IO) -> CompletionReport:
+    """Run source or retained native operations with a fresh mutable tape."""
+    ops = _compile(code) if isinstance(code, str) else code
     tape = bytearray(1)
     state: _CompiledState = (0, 0)
     while state[0] < len(ops):

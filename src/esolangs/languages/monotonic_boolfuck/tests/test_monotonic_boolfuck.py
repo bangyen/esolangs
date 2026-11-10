@@ -70,5 +70,19 @@ def test_nodes_diverge_by_pointer_not_by_flag() -> None:
     assert out(monotonic_boolfuck("0101"), "10") == "0"
 
 
-def test_declared_byte_lifecycle() -> None:
+def test_declared_byte_lifecycle(monkeypatch) -> None:
     check_byte_lifecycle("Monotonic Boolfuck", "1")
+    from esolangs.runtime.brackets import BracketProgram
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Monotonic Boolfuck", ",;>" * 8, BracketProgram, "parse", monkeypatch
+    )
+    check_image_reuse(
+        "Monotonic Boolfuck",
+        "1;",
+        BracketProgram,
+        "parse",
+        monkeypatch,
+        cases=(("", "\x01"), ("", "\x01"), ("", "\x01")),
+    )

@@ -58,8 +58,12 @@ class TestBrainfuck:
         assert run_and_capture("+<<+++.>>.") == "\x03\x01"
         assert run_and_capture("+" + "<" * 100 + ">" * 100 + ".") == "\x01"
 
-    def test_input_echo(self) -> None:
+    def test_input_echo(self, monkeypatch) -> None:
         assert run_and_capture(",>,<.>.", inputs=["A", "B"]) == "AB"
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(REFERENCE, ",.", bf._Program, "parse", monkeypatch)
+        _check_lazy_native_plan(monkeypatch)
 
     def test_a_read_cell_and_an_incremented_one_agree(self) -> None:
         """The bug this pins was a disagreement, not just a wide value."""
@@ -149,3 +153,40 @@ def test_ordered_reads_retain_four_stores_at_one_cursor() -> None:
         assert io.getvalue() == prefix[0]
     assert len(set(states)) == 4
     assert len({state[0] for state in states}) == 1
+
+
+def _check_lazy_native_plan(monkeypatch):
+    import esolangs
+    from esolangs.runtime import brackets
+    from esolangs.vm import complete_vm
+
+    matched, compiled = [], []
+    match = brackets.match_brackets
+    compile_ops = bf._compile_ops
+
+    def counted_match(code):
+        matched.append(code)
+        return match(code)
+
+    def counted_compile(code, partners):
+        compiled.append(code)
+        return compile_ops(code, partners)
+
+    code = ",[>+<-]>."
+    with monkeypatch.context() as patch:
+        patch.setattr(brackets, "match_brackets", counted_match)
+        patch.setattr(bf, "_compile_ops", counted_compile)
+        prepared = esolangs.Language(REFERENCE).prepare(code)
+        assert matched == [code]
+        assert compiled == []
+        machine = prepared.make_vm(stdin="A")
+        assert complete_vm(machine) == "A"
+        assert compiled == []
+        for value in ("A", "Z", "Q"):
+            assert prepared.run(stdin=value).output == value
+        assert matched == compiled == [code]
+        assert prepared.run(stdin="B", max_steps=1000).output == "B"
+        assert matched == compiled == [code]
+    program = bf._Program.parse(code)
+    with pytest.raises(TypeError):
+        program.brackets[1] = 0

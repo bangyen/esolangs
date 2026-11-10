@@ -76,5 +76,17 @@ def test_oracle_controls(code, output) -> None:
     assert not agrees(_Machine, oracle, "+[]", "").halted  # a cap is not a halt
 
 
-def test_declared_byte_lifecycle() -> None:
+def test_declared_byte_lifecycle(monkeypatch) -> None:
     check_byte_lifecycle("Boolfuck", "+")
+    from esolangs.runtime.brackets import BracketProgram
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse("Boolfuck", ",;>" * 8, BracketProgram, "parse", monkeypatch)
+    check_image_reuse(
+        "Boolfuck",
+        "+;",
+        BracketProgram,
+        "parse",
+        monkeypatch,
+        cases=(("", "\x01"), ("", "\x01"), ("", "\x01")),
+    )

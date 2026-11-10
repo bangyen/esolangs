@@ -15,17 +15,17 @@ Errors:
 """
 
 from collections.abc import Mapping
-from functools import partial
 from typing import Any
 
 from esolangs.languages.boolfuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel
 from esolangs.runtime.bit_tape import _BitTapeMachine
+from esolangs.runtime.brackets import BracketProgram
 from esolangs.runtime.io import IO
 
 
@@ -37,15 +37,21 @@ class _Machine(_BitTapeMachine):
     )
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh language-owned bit-tape machines."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain validated loops while each run owns its tape and byte buffers."""
     if not isinstance(source, str):
         raise TypeError("boolfuck machines require text source")
     if options:
         raise TypeError("boolfuck machines accept no runtime options")
-    return partial(_Machine, source)
+    program = BracketProgram.parse(source)
+
+    def build(io: IO) -> _Machine:
+        return _Machine(program, io)
+
+    def execute(io: IO) -> CompletionReport:
+        return drive(build(io), policy=CAPABILITIES.completion)
+
+    return RuntimePlan(build, execute)
 
 
 def _execute(code: str, io: IO) -> CompletionReport:
