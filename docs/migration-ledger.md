@@ -3824,3 +3824,27 @@ repository gate covers the preserved original tests. Native and generator code
 are unchanged. Forbin's bounded accounting review is complete; arbitrary
 grammar, raw closure persistence and universal accounting remain open.
 Accounting reviews pending: 18; language completion is reconciled separately.
+
+Fargo retains all 266 existing records and cap 64. Independent expected plans
+are compiled once per row; every actual capture remains fully compared at every
+boundary. The old fast owner is unchanged. Two existing medium owners retain
+their old bodies and cover 96/170 accounting cases; no nodes or bands change.
+
+Sixty-four installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared,
+VM and debugger each match 10,398 model observations and a 180,002-bit peak.
+Each version checks 266 bounded and 264 finite ordinary public calls, twenty
+representative workers, four cap workers and three proof workers. All supported
+raw snapshots round-trip: 10,391 across 266 cases. Eight constructor provider
+refusals and two prepared writer histories preserve their actual phases. Twenty
+actual capture omissions and twenty positives fire across all four routes.
+The complete installed medium owners make 388/745 constructor attempts; the
+original operator owner separately makes 384.
+
+The strict saved reader, full relocation and 24 corruption controls pass; result
+mutations also change saved stdout. Its exact argv order was corrected to the
+recorded commands without changing evidence. All 108 children and 172 startup
+markers reconcile under the 952-file guard. Active leaf time is 156.34s; all
+leaves retain 60s caps. Native and generator code are unchanged. Fargo's bounded
+accounting review is complete; arbitrary grammar, host allocation and provider
+universality remain open. Accounting reviews pending: 17; completion joins are
+tracked separately.

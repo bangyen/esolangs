@@ -48,6 +48,10 @@ def test_bounded_run_executes_generated_xor() -> None:
         stdin = esolangs.encode_inputs("Fargo", tuple(map(int, format(row, "02b"))))
         assert run("Fargo", program, stdin=stdin, max_steps=1000).output == expected
 
+    from .oracle_checks import check_raw_fargo
+
+    check_raw_fargo(0, 96)
+
 
 class TestFargo:
     def test_frames_and_cursor(self) -> None:

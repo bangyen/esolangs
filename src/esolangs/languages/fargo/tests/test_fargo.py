@@ -433,6 +433,14 @@ def test_bad_programs_carry_a_repair_hint() -> None:
         "Fargo", "% 0 nope 1\n", "undefined function", "define the function"
     )
 
+    from .fargo_phase_checks import check_phases
+    from .fargo_resource_checks import check_resources
+    from .oracle_checks import check_raw_fargo
+
+    check_raw_fargo(96, 266)
+    check_resources()
+    check_phases()
+
 
 class TestPureTransition:
     """``_advance`` is a function of its arguments, and only of them."""
