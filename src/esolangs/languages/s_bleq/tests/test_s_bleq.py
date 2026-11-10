@@ -58,10 +58,20 @@ class TestSpecialAddresses:
     def test_output(self, program: str, stdin: str, expected: str) -> None:
         assert run_bounded(program, stdin=stdin) == expected
 
-    def test_invalid_address_rejected(self) -> None:
+    def test_invalid_address_rejected(self, monkeypatch) -> None:
         """An address below -3 is an invalid operation."""
         with pytest.raises(ValueError, match="invalid address"):
             run_bounded("-4 0 3 0 0 5 9")
+        from esolangs.languages.s_bleq import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "S*bleq",
+            "9 -2 0 10 9 0 -3 10 0 256 256",
+            interpreter,
+            "_parse",
+            monkeypatch,
+        )
 
 
 class TestMemoryState:

@@ -48,10 +48,14 @@ class TestIO:
         code = memory([[-2, 10, 0], [0, 0, 999]], {10: 65})
         assert _run(code) == "A"
 
-    def test_input(self) -> None:
+    def test_input(self, monkeypatch) -> None:
         # -1 10 0 reads a byte into memory[10]; -2 10 0 prints it.
         code = memory([[-1, 10, 3], [-2, 10, 0], [0, 0, 999]])
         assert _run(code, "Q") == "Q"
+        from esolangs.languages.decleq import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse("Decleq", code, interpreter, "_parse", monkeypatch)
 
     def test_input_running_out_raises_eof(self) -> None:
         io = ScriptedIO("")

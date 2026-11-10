@@ -47,7 +47,7 @@ from esolangs.languages.s_bleq.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime._validate import check_address
@@ -191,11 +191,16 @@ class _Machine:
     eof_is_a_value = True
 
     def __init__(
-        self, code: str, io: IO, store: str = "a", *, indirect: bool = False
+        self,
+        code: str | tuple[int, ...],
+        io: IO,
+        store: str = "a",
+        *,
+        indirect: bool = False,
     ) -> None:
         """Build a machine over the cells ``code`` parses to."""
         self.io = io
-        self.mem = _parse(code)
+        self.mem = _parse(code) if isinstance(code, str) else list(code)
         self.ip = 0
         self.store = store
         self.indirect = indirect
@@ -268,10 +273,8 @@ class _Machine:
             self.mem[addr] = value
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain an immutable parsed image; each invocation owns its run state."""
     if not isinstance(source, str):
         raise TypeError("s_bleq machines require text source")
     if options.keys() - {"store", "indirect"}:
@@ -279,10 +282,15 @@ def prepare_machine(
     store = options.get("store", "a")
     indirect = options.get("indirect", False)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io, store=store, indirect=indirect)
+    image = tuple(_parse(source))
 
-    return build
+    def build(io: IO) -> _Machine:
+        return _Machine(image, io, store=store, indirect=indirect)
+
+    def execute(io: IO) -> CompletionReport:
+        return drive(build(io), policy=CAPABILITIES.completion)
+
+    return RuntimePlan(build, execute)
 
 
 def _execute(

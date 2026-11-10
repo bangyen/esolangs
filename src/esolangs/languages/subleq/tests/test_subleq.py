@@ -71,8 +71,12 @@ def test_subleq_direct_jump_and_output() -> None:
     assert io.getvalue() == "Hi"
 
 
-def test_subleq_input_and_eof() -> None:
+def test_subleq_input_and_eof(monkeypatch) -> None:
     code = "-1 9 3 9 -1 6 0 0 -1 0"
+    from esolangs.languages.subleq import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse("Subleq", code, interpreter, "parse_int_memory", monkeypatch)
     io = ScriptedIO("A")
     run_subleq(code, io)
     assert io.getvalue() == "A"

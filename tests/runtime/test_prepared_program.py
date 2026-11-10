@@ -73,6 +73,21 @@ def _check_preparation_resets_seeded_randomness_for_each_invocation():
     prepared.run(seed=8)
     assert draws[0] == draws[1] != draws[2]
 
+    factories = []
+
+    def prepare(_code, options):
+        rng = options["rng"]
+        factories.append(rng)
+        return prepare_machine("+" * rng.randbelow(256) + ".", {})
+
+    setattr(module, declaration.runtime.machine_preparation, prepare)
+    first = complete_vm(prepared.make_vm(seed=7))
+    second = complete_vm(prepared.make_vm(seed=7))
+    third = complete_vm(prepared.make_vm(seed=8))
+    assert first == second != third
+    assert len(factories) == 3
+    assert len({id(rng) for rng in factories}) == 3
+
 
 def _check_prepared_factory_owns_state_and_input():
     factory = prepare_machine(",+.", {})

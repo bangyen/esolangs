@@ -111,7 +111,12 @@ class Language:
         Each run or VM owns fresh IO, machine state and randomness.
         """
         return prepare_program(
-            self.name, program, settings=settings, scale=scale, catalog=self.catalog
+            self.name,
+            program,
+            settings=settings,
+            scale=scale,
+            catalog=self.catalog,
+            bind_machine=True,
         )
 
     def generate(

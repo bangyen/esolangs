@@ -138,8 +138,14 @@ info = bf.describe()
 
 `prepared = bf.prepare(program)` loads source once. Use `prepared.run(stdin=...)`
 or `prepared.make_vm(stdin=...)` for fresh IO, machine state and randomness on
-each invocation. Parsing remains language-owned and may happen during machine
-construction. It also binds `instantiate`; use package functions across languages.
+each invocation. In-process deterministic runtime plans retain parsed data for
+native and stepped runs. Other hooks may still parse during machine construction.
+Isolated workers prepare their own source.
+These plans retain an immutable initial memory image:
+
+- Subleq.
+- Decleq.
+- S*bleq. It also binds `instantiate`; use package functions across languages.
 
 `bf.execute(program, limits=ExecutionLimits(max_steps=10_000))` returns an
 `ExecutionOutcome`: `completed`, `rejected`, `input_exhausted`, `fault` or `limit`.

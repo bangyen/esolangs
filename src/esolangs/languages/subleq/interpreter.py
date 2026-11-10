@@ -28,7 +28,7 @@ from esolangs.languages.subleq.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime._validate import check_address
@@ -53,8 +53,8 @@ class _Machine:
 
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.cells = parse_int_memory(code)
+    def __init__(self, code: str | tuple[int, ...], io: IO) -> None:
+        self.cells = parse_int_memory(code) if isinstance(code, str) else list(code)
         self.pc = 0
         self.io = io
 
@@ -126,19 +126,22 @@ class _Machine:
             self._write(b, result)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse once; every invocation copies the immutable initial memory image."""
     if not isinstance(source, str):
         raise TypeError("subleq machines require text source")
     if options:
         raise TypeError("subleq machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
+    image = tuple(parse_int_memory(source))
 
-    return build
+    def build(io: IO) -> _Machine:
+        return _Machine(image, io)
+
+    def execute(io: IO) -> CompletionReport:
+        return drive(build(io), policy=CAPABILITIES.completion)
+
+    return RuntimePlan(build, execute)
 
 
 def _execute(code: str, io: IO) -> CompletionReport:

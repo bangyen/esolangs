@@ -21,7 +21,8 @@ from esolangs.runtime._execution import (
     run_prepared,
 )
 from esolangs.runtime._input import InputSource
-from esolangs.runtime._machine import MachineFactory, MachinePreparation
+from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._machine import MachineFactory, MachinePreparation, RuntimePlan
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
 from esolangs.runtime._vm_protocol import VM
@@ -33,14 +34,17 @@ from esolangs.settings import DialectSettings, dialect_options, effective_settin
 class PreparedProgram:
     """Loaded source and bound runtime; every invocation owns its IO and RNG.
 
-    Source decoding and language resolution happen once. Language preparation
-    hooks own parsing; a hook may defer parsing until machine construction.
+    Source decoding and language resolution happen once. Deterministic runtime
+    plans retain language-owned parsed data; other hooks may defer parsing.
     Native runners retain their own compiled representations and caches.
     """
 
     artifact: ProgramArtifact[Program]
     catalog: Catalog = field(repr=False)
     _module: ModuleType = field(repr=False, compare=False)
+    _plan: RuntimePlan | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
 
     @property
     def language(self) -> str:
@@ -65,12 +69,18 @@ class PreparedProgram:
         )
 
     def _factory(self, *, seed: int | None = None) -> MachineFactory:
-        code, options = self._call(seed=seed, reproducible=True)
         runtime = self.catalog.languages[self.language].runtime
+        if not runtime.random and self._plan is not None:
+            return self._plan
+        code, options = self._call(seed=seed, reproducible=True)
         prepare = cast(
             MachinePreparation, getattr(self._module, runtime.machine_preparation)
         )
-        return prepare(code, options)
+        plan = prepare(code, options)
+        # Random factories bind an invocation-owned RNG and must never be shared.
+        if isinstance(plan, RuntimePlan) and not runtime.random:
+            object.__setattr__(self, "_plan", plan)
+        return plan
 
     def _run_native(
         self,
@@ -82,9 +92,12 @@ class PreparedProgram:
     ) -> ExecutionResult:
         code, options = self._call(seed=seed)
         runtime = self.catalog.languages[self.language].runtime
-        runner = getattr(self._module, runtime.completion_entrypoint)
-        if options:
-            runner = partial(runner, **options)
+        if isinstance(self._plan, RuntimePlan):
+            runner = partial(_run_plan, self._plan)
+        else:
+            runner = getattr(self._module, runtime.completion_entrypoint)
+            if options:
+                runner = partial(runner, **options)
         return run_prepared(
             self.language,
             runner,
@@ -166,6 +179,7 @@ def prepare_program(
     scale: int | None = None,
     catalog: Catalog | None = None,
     module_loader: Callable[..., ModuleType] = interpreter_module,
+    bind_machine: bool = False,
 ) -> PreparedProgram:
     """Load source once, resolving provenance and explicit execution choices."""
     from esolangs.operations.source import _check_program
@@ -185,6 +199,21 @@ def prepare_program(
         language=name,
     ):
         module = module_loader(name, catalog=catalog)
-    return PreparedProgram(
+    prepared = PreparedProgram(
         ProgramArtifact(artifact.source, name, settings, scale), catalog, module
     )
+    if bind_machine and not catalog.languages[name].runtime.random:
+        with interpreter_errors(
+            f"the {name} interpreter recursed deeper than CPython's stack "
+            "limit allows while preparing this program",
+            language=name,
+        ):
+            prepared._factory()  # noqa: SLF001 - preparation owns the plan
+    return prepared
+
+
+def _run_plan(
+    plan: RuntimePlan, _source: RunnerProgram, io: ScriptedIO
+) -> CompletionReport:
+    """Adapt a language-owned plan to the shared completion/error guard."""
+    return plan.run(io)

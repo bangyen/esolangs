@@ -38,7 +38,7 @@ from esolangs.languages.decleq.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime._validate import check_address
@@ -119,10 +119,10 @@ _WORKSPACE_MODEL = WorkspaceModel(
 class _Machine:
     """A Decleq run: one immutable ``_State``, rebound per step."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | tuple[int, ...], io: IO) -> None:
         """Parse ``code`` into memory and reset the pointer."""
         self.io = io
-        self.state: _State = (0, tuple(_parse(code)))
+        self.state: _State = (0, tuple(_parse(code)) if isinstance(code, str) else code)
 
     # Views on the state.
 
@@ -184,19 +184,22 @@ class _Machine:
         self.state = _advance(self.state, byte)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain an immutable parsed image; each invocation owns its run state."""
     if not isinstance(source, str):
         raise TypeError("decleq machines require text source")
     if options:
         raise TypeError("decleq machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
+    image = tuple(_parse(source))
 
-    return build
+    def build(io: IO) -> _Machine:
+        return _Machine(image, io)
+
+    def execute(io: IO) -> CompletionReport:
+        return drive(build(io), policy=CAPABILITIES.completion)
+
+    return RuntimePlan(build, execute)
 
 
 def _execute(code: str, io: IO) -> CompletionReport:
