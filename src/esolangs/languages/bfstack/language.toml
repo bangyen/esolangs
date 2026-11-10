@@ -87,12 +87,21 @@ version = 2
 construction = "esolangs.languages.bfstack.generator:bfstack_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.bfstack.proof_formulas:execution"
+# The stated execution bound, evaluated for n and the program.
+#
+# A one arm costs 60 commands a wide level (a zero arm 59) over the worst
+# eight-input block's 1,769 commands, one more under a tree (the closing
+# ``<``).
+# A projected identity costs only 2n, with the same branch-only pop.
+cases = [
+    { through = 8, expression = "60n + 1289" },
+    { expression = "60n + 1290" },
+]
 exact = true
 arities = [8, 9, 10]
 first = 9
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}", formula = "60n + 1290" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.bfstack.proof_formulas:workspace"

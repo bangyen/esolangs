@@ -14,7 +14,7 @@ from typing import Any, cast
 from esolangs.registry import LANGUAGES
 
 from .resource_description import parse_descriptions
-from .resource_formula import expression_formula
+from .resource_formula import arity_cases, case_formula, expression_formula
 
 PACKAGES = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
 COLUMNS = frozenset({"execution", "workspace", "scaling"})
@@ -103,6 +103,7 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
         if not isinstance(row, dict) or set(row) not in (
             required | {"expression"},
             required | {"provider"},
+            required | {"cases"},
         ):
             raise ValueError("invalid resource bound fields")
         arities = _arities(row["arities"])
@@ -139,6 +140,8 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
             if not isinstance(row["expression"], str):
                 raise ValueError("resource expression must be text")
             formula = expression_formula(row["expression"])
+        elif "cases" in row:
+            formula = case_formula(arity_cases(row["cases"]))
         else:
             formula = _provider(language, row["provider"])
         found[column] = ResourceBound(

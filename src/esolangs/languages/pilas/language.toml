@@ -66,12 +66,16 @@ version = 2
 construction = "esolangs.languages.pilas.generator:pilas_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.pilas.tests.formulas:_steps"
+# The inverted one-bit leaf takes 15 main commands and 14 idle commands.
+cases = [
+    { through = 1, expression = "29" },
+    { expression = "46n - 21" },
+]
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = 1: 29 at n=1", formula = "46n - 21" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
 expression = "3n + 24"

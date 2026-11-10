@@ -12,6 +12,7 @@ import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES
+from scripts.docs.resource_description import parse_descriptions
 from scripts.docs.resource_evidence import PACKAGES, parse_bounds
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.execution import FORMULAS, measure
@@ -63,3 +64,41 @@ def test_every_formula_cell_is_checked() -> None:
     commands, _ = measure(REFERENCE, "0110", program=program)
     with pytest.raises(AssertionError, match="bound"):
         assert commands <= bound.formula(2, program.source), "mutated execution bound"
+    _check_arity_cases(data)
+
+
+def _check_arity_cases(data: dict) -> None:
+    data = copy.deepcopy(data)
+    row = data["execution"]
+    del row["expression"]
+    row["cases"] = [
+        {"through": 1, "expression": "29"},
+        {"expression": "46n - 21"},
+    ]
+    row["first"] = 1
+    row["unit"] = "commands"
+    row["description"]["template"] = "{claim} {formula}"
+    formula = parse_bounds(REFERENCE, data)["execution"].formula
+    assert [formula(n, "") for n in (1, 2, 3)] == [29, 71, 117]
+    assert "29 commands for n=1, 46n - 21 commands for n≥2" in (
+        parse_descriptions(data).execution.clause
+    )
+    data["execution"]["first"] = 2
+    assert "29" not in parse_descriptions(data).execution.clause
+
+    for cases in (
+        [],
+        [{"through": 1, "expression": "29"}],
+        [{"through": True, "expression": "29"}, {"expression": "n"}],
+        [
+            {"through": 2, "expression": "29"},
+            {"through": 1, "expression": "n"},
+            {"expression": "2n"},
+        ],
+        [{"through": 1, "expression": "29"}, {"through": 2, "expression": "n"}],
+        [{"through": 1, "expression": "29"}, {"expression": "__import__('os')"}],
+    ):
+        broken = copy.deepcopy(data)
+        broken["execution"]["cases"] = cases
+        with pytest.raises(ValueError, match="resource case"):
+            parse_bounds(REFERENCE, broken)

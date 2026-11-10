@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from string import Formatter
 from typing import Any, NamedTuple
 
+from .resource_formula import arity_cases, describe_cases
+
 COLUMNS = frozenset({"scaling", "execution", "workspace"})
 SCALING_CLASSES = frozenset(
     {"linear", "linear, time n log", "T log T", "measured", "open", "lower bound"}
@@ -73,8 +75,11 @@ def _description(column: str, row: dict[str, Any]) -> ResourceDescription:
         )
     raw = row.get("description")
     fields = {"growth", "claim", "template"}
-    if not isinstance(raw, dict) or set(raw) != (
-        fields if "expression" in row else fields | {"formula"}
+    kinds = {"expression", "cases", "provider"} & row.keys()
+    if (
+        len(kinds) != 1
+        or not isinstance(raw, dict)
+        or set(raw) != (fields | {"formula"} if "provider" in kinds else fields)
     ):
         raise ValueError("invalid resource description fields")
     if not isinstance(raw["claim"], str) or raw["claim"] not in {
@@ -85,20 +90,24 @@ def _description(column: str, row: dict[str, Any]) -> ResourceDescription:
         raise ValueError("invalid resource claim kind")
     if raw["claim"] in {"worst", "exact"} and not row.get("exact"):
         raise ValueError("exact resource claim needs an exactness check")
-    formula = row.get("expression", raw.get("formula"))
     unit = row.get("unit")
     first = row.get("first")
     template = raw["template"]
     if (
-        not isinstance(formula, str)
-        or not formula
-        or not isinstance(unit, str)
+        not isinstance(unit, str)
         or not unit
         or type(first) is not int
         or first < 1
         or not isinstance(template, str)
     ):
         raise ValueError("invalid resource description values")
+    formula = (
+        describe_cases(arity_cases(row["cases"]), first, unit)
+        if "cases" in row
+        else row.get("expression", raw.get("formula"))
+    )
+    if not isinstance(formula, str) or not formula:
+        raise ValueError("invalid resource description formula")
     placeholders = set()
     try:
         for _, field, spec, conversion in Formatter().parse(template):

@@ -272,8 +272,12 @@ def _check_constants() -> None:
 
 def _check_one_row_nibbles() -> None:
     from esolangs.languages.befunge.interpreter import _Machine
-    from esolangs.languages.befunge.proof_formulas import execution, workspace
     from esolangs.languages.befunge.tests.ablations import ablate
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bounds = resource_bounds("Befunge")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     totals = [0, 0, 0]
     for value in range(256):

@@ -79,12 +79,16 @@ version = 2
 construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.freestajlo.tests.formulas:_execution"
+# 4n plain to n = 4; the packed literal's decode adds 17 from n = 5.
+cases = [
+    { through = 4, expression = "4n" },
+    { expression = "4n + 17" },
+]
 exact = true
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} to n = 4, then 4n + 17: the literal, the reads and folds, the decode", formula = "4n" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}; includes decode" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.freestajlo.tests.formulas:_freestajlo"

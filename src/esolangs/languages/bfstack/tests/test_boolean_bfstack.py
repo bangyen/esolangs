@@ -182,7 +182,10 @@ def test_small_tables_do_not_grow_and_execute() -> None:
 
 def _check_identities() -> None:
     from esolangs.languages.bfstack.interpreter import _Machine
-    from esolangs.languages.bfstack.proof_formulas import execution, workspace
+    from esolangs.languages.bfstack.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    execution = resource_bounds("BFStack")["execution"].formula
 
     for n in range(1, 13):
         for selected in range(n):

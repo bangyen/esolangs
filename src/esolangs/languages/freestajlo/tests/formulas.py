@@ -33,8 +33,3 @@ def _packed(n: int) -> int:
 def _freestajlo(n: int, _: str) -> int:
     """max(P, W): 117 at n = 4..6, the packed literal from n = 7."""
     return max(_plain(n), _packed(n))
-
-
-def _execution(n: int, _: str) -> int:
-    """4n plain to n = 4; the packed literal's decode adds 17 from n = 5."""
-    return 4 * n + 17 * (n >= 5)

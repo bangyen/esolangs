@@ -93,28 +93,46 @@ version = 2
 construction = "esolangs.languages.befunge.generator:befunge_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.befunge.proof_formulas:execution"
+# Natural projections or one-row nibbles through eight, then six-bit decode.
+# k>=3: factor9 + index(4k-11) + tail12 + ignored2(n-k).
+# k=2 needs a zero index; a natural projection costs 2n+23.
+cases = [
+    { through = 8, expression = "max(2n+23,4n+10)" },
+    { expression = "5n+67" },
+]
 exact = true
 arities = [2, 3, 9, 11]
 first = 2
 unit = "steps"
-description = { growth = "unmeasured", claim = "worst", template = "{claim} {formula} {unit} for n = 2..8, 5n+67 to 13", formula = "max(2n+23,4n+10)" }
+description = { growth = "unmeasured", claim = "worst", template = "{claim} {formula}; packed through n = 13" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.befunge.proof_formulas:workspace"
+# Immutable grid; nibble stack17, packed stack2n+11, plus written cursors.
+# Two essential bits need a zero index; otherwise the first index
+# input is bare. The 48* subtraction peaks at [f,cell,4,8].
+cases = [
+    { through = 1, expression = "14+bl(2n+23)+bl(2n-1)" },
+    { through = 8, expression = "18+bl(max(2n+18,4n+10))+bl(2n-1)" },
+    { expression = "2n+bl(2n-1)+23" },
+]
 exact = true
 arities = [2, 3, 9, 11]
 first = 2
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} for n = 2..8, then 2n+bl(2n-1)+23", formula = "18+bl(max(2n+18,4n+10))+bl(2n-1)" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.befunge.tests.formulas:_cells"
+# Worst natural projection/nibble row to eight, then an 80-column packed grid.
+cases = [
+    { through = 7, expression = "2max(2n+23,4n+10)" },
+    { through = 8, expression = "128" },
+    { expression = "80(⌈(5n+64)/78⌉+⌈T/480⌉)" },
+]
 exact = true
 arities = [7, 8, 9, 10, 11, 12, 13]
 first = 9
 unit = "cells"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one-row nibbles, six-bit packed from n = 9", formula = "N" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}; six-bit packed" }
 
 [semantic_evidence]
 version = 1

@@ -47,9 +47,11 @@ class TestLaserFuck:
         from esolangs.languages.laserfuck.proof_formulas import (
             all_heading_execution,
             execution,
-            workspace,
         )
         from esolangs.runtime.randomness import FirstDraw
+        from scripts.docs.resource_evidence import resource_bounds
+
+        workspace = resource_bounds("LaserFuck")["workspace"].formula
 
         for n in (7, 8):
             table = "0" * ((1 << n) - 1) + "1"

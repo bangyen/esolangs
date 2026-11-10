@@ -95,12 +95,19 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: a bit a step, ten a write", formula = "B + E + 10(P+S) + 49 + bl(n)" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.malbolge.tests.formulas:_chars"
+# 13340 characters to thirteen inputs, 19683 and 52480 at fourteen and
+# fifteen, the whole 3^10-cell store from sixteen.
+cases = [
+    { through = 13, expression = "13340" },
+    { through = 14, expression = "19683" },
+    { through = 15, expression = "52480" },
+    { expression = "59049" },
+]
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-description = { growth = "measured", claim = "worst", template = "{claim} {formula} {unit} to n = 13, 19683 at 14, 52480 at 15, then 59049: the 3^10-cell store whole", formula = "13340" }
+description = { growth = "measured", claim = "worst", template = "{claim} {formula}; final range uses the whole 3^10-cell store" }
 
 [semantic_evidence]
 version = 1

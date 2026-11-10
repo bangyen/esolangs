@@ -11,13 +11,6 @@ def execution(n: int, program: str) -> int:
     return 11 * (1 << n) + 56 * n + 2
 
 
-def workspace(n: int, _: str) -> int:
-    """Tree to n=6; then last-onehot/all-ones attains the 3T-cell peak."""
-    if n < 7:
-        return 8 * n + 27
-    return 12 * (1 << n) + n + 7 + 2 * n.bit_length()
-
-
 def all_heading_execution(n: int, program: str) -> int:
     """Bound default runs in every heading; down/left cross two extra cells."""
     return execution(n, program) + 2
