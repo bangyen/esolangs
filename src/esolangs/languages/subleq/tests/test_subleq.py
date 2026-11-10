@@ -18,6 +18,10 @@ def test_bad_programs_carry_a_repair_hint() -> None:
     assert_rejected_with_hint("Subleq", "x", "decimal integers")
     assert_halts_with_hint("Subleq", "0 0", "incomplete Subleq", "three addresses")
 
+    from .workspace_checks import check_workspace_subleq
+
+    check_workspace_subleq(_corpus)
+
 
 def _corpus():
     yield from ["", "12 13 -1", "3 -1 0 321", "-1 9 0 9 -1 0 9 9 -1 0", "0 0 0"]

@@ -3740,3 +3740,26 @@ retains that field, supplies integer zero for older eager-import grammar and
 rejects lazy or Boolean flags. All 84 original/adopted definition hashes match
 on all four versions. This verifies the named canonical controls; all-language
 retirement and the twenty pending accounting reviews remain open.
+
+
+Subleq retains the existing independent prefix oracle and all 327 invocations,
+cap 200 and three post-halt idles. Rich observations add all three workspace
+components, visited zeros, full IO and held captures. An existing medium owner
+retains its old body; no collected nodes or duration limits change. Its complete
+335-constructor placement is checked in the repository, separately from installed
+traces; certification-only assertions remain excluded by the fatal barrier.
+
+Eighty installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared, VM
+and debugger each match 15,290 boundaries, two constructor refusals, 126 active
+failures and 64 live cap-200 runs. Each version checks 327 bounded and 263 finite
+ordinary public calls, all 327 cases in real workers, 72 capture profiles and
+sixteen failure/retry histories. All raw snapshots round-trip. The written-state
+peak is 505 bits; separate populated 36/56-bit witnesses detect genuine losses.
+
+The saved reader, full relocation and 25 corruption controls pass; counter
+mutations also change saved stdout. All 1,352 children and 1,432 startup markers
+reconcile under the 952-file guard. Active leaf time is 700.09s, maximum 25.23s
+against unchanged 60s caps; the wheel remains pinned to `8e4e4632b`. Native and
+generator code are unchanged. Subleq's bounded accounting review is complete;
+arbitrary syntax, host allocation and provider universality remain open.
+Accounting reviews pending: 19; language completion is reconciled separately.
