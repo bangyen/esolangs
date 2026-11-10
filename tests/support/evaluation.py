@@ -23,11 +23,11 @@ from esolangs.exceptions import (
     TemplateError,
 )
 from esolangs.generation.helpers import MOST_INPUTS
-from esolangs.registry import LANGUAGES, resolve
-from esolangs.runtime._answers import (
+from esolangs.operations.boolean_io import (
     encode_inputs,
     read_answer,
 )
+from esolangs.registry import LANGUAGES, resolve
 from esolangs.runtime._execution import check_signal_timeout
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._isolated import check_limits

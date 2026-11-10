@@ -65,13 +65,15 @@ _LAZY = {
     "LanguageInfo": "esolangs.registry._info",
     "describe": "esolangs.registry._describe",
     "list_languages": "esolangs.registry._describe",
-    "encode_inputs": "esolangs.runtime._answers",
-    "read_answer": "esolangs.runtime._answers",
+    "encode_inputs": "esolangs.operations.boolean_io",
+    "read_answer": "esolangs.operations.boolean_io",
 }
 
 if TYPE_CHECKING:
     __version__: str
     from esolangs._language import Language as Language
+    from esolangs.operations.boolean_io import encode_inputs as encode_inputs
+    from esolangs.operations.boolean_io import read_answer as read_answer
     from esolangs.operations.execution import run as run
     from esolangs.operations.generation import generate as generate
     from esolangs.operations.generation import instantiate as instantiate
@@ -82,8 +84,6 @@ if TYPE_CHECKING:
     from esolangs.registry._describe import describe as describe
     from esolangs.registry._describe import list_languages as list_languages
     from esolangs.registry._info import LanguageInfo as LanguageInfo
-    from esolangs.runtime._answers import encode_inputs as encode_inputs
-    from esolangs.runtime._answers import read_answer as read_answer
     from esolangs.runtime._prepared import PreparedProgram as PreparedProgram
 else:
 

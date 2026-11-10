@@ -91,9 +91,9 @@ One kind of language needs a different call:
 Both carry explicit `.source`, language and dialect settings; raster programs
 also retain scale. `TemplateArtifact.fill(bits)` returns a runnable record.
 `run`, `instantiate`, `dump_program` and `save_program` accept records;
-`load_program` restores them, including template bindings. Unfilled templates
-cannot run. `Language` binds language-specific operations; saving uses the
-top-level `save_program` function.
+`load_program` restores them, including template bindings. Template artifacts
+must be filled before execution. `Language` binds language-specific operations;
+saving uses the top-level `save_program` function.
 
 `save_program(record, path, gzip=True)` compresses native text exports;
 `generate --gzip` does the same on the CLI. API exports are lossless by default;
@@ -343,8 +343,9 @@ answer bit.
 Some languages embed their inputs in the program. For these, `generate`
 returns a template with one ordered `$` run per input, exactly as long as
 its replacement. Fill it with `esolangs.instantiate(language, template, bits)`.
-Running an unfilled template is refused. `esolangs list --details` marks
-these languages `tmpl`.
+Running a `TemplateArtifact` is refused until it is filled. Literal source is
+interpreted directly, including placeholder-like characters.
+`esolangs list --details` marks these languages `tmpl`.
 
 ## Reading the answer
 

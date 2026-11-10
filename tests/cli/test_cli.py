@@ -218,17 +218,14 @@ class TestProgramFailuresAreReported:
         assert "Traceback" not in result.stderr
         assert "read past the end of input" in result.stderr
 
-    def test_an_unfilled_template_is_refused_by_name(self, tmp_path: Path) -> None:
-        """An unfilled run once ran, and printed a confident wrong answer."""
-        name = first(parameterized=True, boolean_generator=True)
-        generated = run_cli("generate", name, "0110")
-        path = tmp_path / "template.txt"
-        path.write_text(generated.stdout.rstrip("\n"))
-        result = run_cli("run", name, str(path))
-        assert result.returncode == 2
-        char = esolangs.generate(name, "0110").bindings.char
-        assert f"unfilled runs of {char!r}" in result.stderr
-        assert "Traceback" not in result.stderr
+    def test_native_source_is_not_guessed_from_template_characters(
+        self, tmp_path: Path
+    ) -> None:
+        path = _program(tmp_path, "$+.")
+        result = run_cli("run", REFERENCE, str(path))
+        assert result.returncode == 0
+        assert result.stdout == "\x01"
+        assert result.stderr == ""
 
 
 class TestOutputAndAbridging:

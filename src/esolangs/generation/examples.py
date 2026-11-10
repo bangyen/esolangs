@@ -281,7 +281,7 @@ def _stem(lang: Language) -> str:
 
 
 def _register() -> None:
-    from esolangs.runtime._answers import encode_inputs
+    from esolangs.operations.boolean_io import encode_inputs
 
     # Everything an example needs is in its ``LANGUAGE``: the registry facts
     # ``_reader`` takes, backend bindings, and the committed invocation.

@@ -365,9 +365,10 @@ def make_vm(
     resolves case-insensitively via
     :func:`~esolangs.registry.resolve`.  A name outside the registry raises
     :class:`UnknownLanguageError`. Text and raster use the same step interface. The
-    program and ``stdin`` are checked as :func:`esolangs.run` checks them (an
-    unfilled template otherwise runs to a confident ``'0'``), as are ``scale``
-    and ``settings``. A seed overrides reproducible stepping's language default;
+    program, ``stdin``, ``scale`` and ``settings`` are checked as
+    :func:`esolangs.run` checks them. TemplateArtifact must be filled first;
+    literal text is interpreted without template guessing. A seed overrides
+    reproducible stepping's language default;
     the checked value is what reaches the interpreter.
     """
     return _make_vm(

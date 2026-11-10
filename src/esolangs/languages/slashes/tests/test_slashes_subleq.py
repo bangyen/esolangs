@@ -11,9 +11,9 @@ from esolangs.languages.slashes import interpreter as native
 from esolangs.languages.slashes.generator import (
     _DECODE,
     _UNARY,
-    _is_unfilled_template,
     slashes,
 )
+from esolangs.languages.slashes.tests.template_shape import _is_unfilled_template
 from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import witnesses
 
@@ -90,8 +90,9 @@ def test_slashes_literal_dollar_and_serialized_template() -> None:
     with pytest.raises(TemplateError, match="fill the template"):
         esolangs.run("///", restored)
     partial = esolangs.generate("///", "0110").source.replace("$", "a", 1)
-    with pytest.raises(TemplateError, match="unfilled"):
-        esolangs.run("///", partial)
+    io = ScriptedIO()
+    native.run(partial, io)
+    assert esolangs.run("///", partial).output == io.getvalue()
 
 
 @pytest.mark.parametrize("tail", ["$", ">qAqB", "x>qAqB", "$>qAq", "$>qAqZ", "$>qA"])

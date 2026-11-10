@@ -13,8 +13,8 @@ from typing import Any
 import pytest
 
 import esolangs
+from esolangs.operations.boolean_io import encode_inputs
 from esolangs.registry import LANGUAGES
-from esolangs.runtime._answers import encode_inputs
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import make_vm
 from tests.support.samples import SAMPLES

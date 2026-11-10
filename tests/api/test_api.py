@@ -285,10 +285,10 @@ def test_isolated_seed_is_forwarded(monkeypatch) -> None:
 
 
 def test_runnable_guard_refuses_non_source_values() -> None:
-    from esolangs.operations.source import _check_runnable
+    from esolangs.operations.source import _check_program
 
     with pytest.raises(esolangs.ProgramError, match="got int"):
-        _check_runnable(REFERENCE, 7)
+        _check_program(REFERENCE, 7)
 
 
 def test_default_answer_contract_reads_the_final_bit() -> None:

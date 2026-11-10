@@ -33,14 +33,7 @@ LANGUAGE = Language(
         wrap_balance=FunctionRef(
             "esolangs.languages.slashes.generator", "_balance", ("program",)
         ),
-        template=TemplateSpec(
-            pair=("a", "b"),
-            unfilled=FunctionRef(
-                "esolangs.languages.slashes.generator",
-                "_is_unfilled_template",
-                ("code",),
-            ),
-        ),
+        template=TemplateSpec(pair=("a", "b")),
     ),
     contract=BooleanContract(
         note="Inputs fill the binary row index before unary selection; "

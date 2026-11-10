@@ -15,6 +15,7 @@ from esolangs.exceptions import (
     InterpreterLimitError,
     MissingDependencyError,
     ProgramError,
+    TemplateError,
     UnknownLanguageError,
 )
 from esolangs.results import ExecutionResult
@@ -29,7 +30,13 @@ def _failure_status(error: EsolangError) -> OutcomeStatus:
         return "limit"
     if isinstance(
         error,
-        (ArgumentError, ProgramError, UnknownLanguageError, MissingDependencyError),
+        (
+            ArgumentError,
+            ProgramError,
+            TemplateError,
+            UnknownLanguageError,
+            MissingDependencyError,
+        ),
     ):
         return "rejected"
     return "fault"

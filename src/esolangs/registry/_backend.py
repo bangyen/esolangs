@@ -34,8 +34,6 @@ class TemplateSpec:
     pair: tuple[str, str] | None = None
     setters: Callable[[str, int], Setters] | None = None
     char: str = TEMPLATE_CHAR
-    #: Whether text is unfilled, where ``char`` is also source.
-    unfilled: Callable[[str], bool] | None = None
 
     def __post_init__(self) -> None:
         """Require one binding rule and a single placeholder character."""

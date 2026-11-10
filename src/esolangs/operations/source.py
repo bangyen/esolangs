@@ -1,7 +1,6 @@
 """Acquire runnable source and validate language ownership."""
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
-from esolangs.compressed import CompressedText
 from esolangs.exceptions import MissingDependencyError, ProgramError, TemplateError
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
@@ -15,38 +14,6 @@ from esolangs.runtime._source import (
 )
 from esolangs.runtime._validate import check_scale
 from esolangs.settings import dialect_options
-
-
-def _check_runnable(
-    language: str, program: Program, *, catalog: "Catalog | None" = None
-) -> None:
-    """Reject unsupported source values and unfilled templates."""
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    name = catalog.resolve(language)
-    if isinstance(program, (Raster, CompressedText)):
-        return
-    if not isinstance(program, str):
-        # A non-source value otherwise fell through: an ``int`` leaked a
-        # ``TypeError`` from ``char in program`` for a template language and
-        # was silently accepted by every other one.
-        raise ProgramError(
-            f"program must be a string of source or a Raster, got "
-            f"{type(program).__name__}"
-        )
-    backend = catalog.languages[name].backend
-    spec = backend.template if backend is not None else None
-    if spec is not None and spec.char in program:
-        char = spec.char
-        unfilled = spec.unfilled
-        if unfilled is not None and not unfilled(program):
-            return
-        raise TemplateError(
-            f"{name}'s generator returns a template, and this one still has "
-            f"unfilled runs of {char!r} ({program.count(char)} characters); "
-            f"fill them with esolangs.instantiate({name!r}, program, bits)"
-        )
 
 
 def check_origin(
@@ -163,10 +130,7 @@ def _check_program(
     name = catalog.resolve(language)
     if isinstance(program, TemplateArtifact):
         raise TemplateError("fill the template before execution")
-    explicit = isinstance(program, ProgramArtifact)
     record = read_artifact(name, program, catalog=catalog, normalize=normalize)
     assert isinstance(record, ProgramArtifact)
     check_input(stdin)
-    if not explicit:
-        _check_runnable(name, record.source, catalog=catalog)
     return record

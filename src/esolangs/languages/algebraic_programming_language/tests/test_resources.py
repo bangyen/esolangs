@@ -16,7 +16,7 @@ from esolangs.languages.algebraic_programming_language.tests.formulas import (
     execution,
     workspace,
 )
-from esolangs.runtime._answers import read_answer
+from esolangs.operations.boolean_io import read_answer
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 

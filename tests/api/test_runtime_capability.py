@@ -1,5 +1,6 @@
 """Runtime declarations have one owner and no compiler dependencies."""
 
+import ast
 import subprocess
 import sys
 from dataclasses import FrozenInstanceError, fields, replace
@@ -119,21 +120,76 @@ else:
 # This runs within the existing runtime declaration contract, rather than
 # adding another near-identical import smoke test.
 def _check_runtime_catalog_without_synthesis():
+    root = Path(esolangs.__file__).parent / "runtime"
+    forbidden = ("esolangs.generation", "esolangs.registry._backend")
+    for path in root.rglob("*.py"):
+        for node in ast.walk(ast.parse(path.read_text())):
+            imports = (
+                [node.module or ""]
+                if isinstance(node, ast.ImportFrom)
+                else [alias.name for alias in node.names]
+                if isinstance(node, ast.Import)
+                else []
+            )
+            assert not any(name.startswith(forbidden) for name in imports), path
     code = r"""
+import importlib
 import importlib.abc
 import sys
+from dataclasses import replace
+
 class Block(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
         if (fullname.startswith('esolangs.generation')
-                or fullname == 'esolangs.registry._table'):
+                or fullname in (
+                    'esolangs.registry._table', 'esolangs.registry._backend')):
             raise ImportError('runtime imported synthesis or installed catalog')
 sys.meta_path.insert(0, Block())
 import esolangs
 from esolangs.languages.deadfish.descriptor import LANGUAGE
-api = esolangs.Catalog([LANGUAGE]).bind(LANGUAGE.name)
-assert api.prepare('io').run().output == '1\n'
-assert api.execute('io').unwrap().output == '1\n'
+from esolangs.vm import complete_vm
+
+class BackendTrap:
+    @property
+    def template(self):
+        raise AssertionError('runtime inspected a Boolean backend')
+
+class Unread:
+    def read(self):
+        raise AssertionError('template rejection consumed input')
+
+for backend in (None, BackendTrap()):
+    record = replace(LANGUAGE, backend=backend)
+    api = esolangs.Catalog([record]).bind(record.name)
+    assert api.prepare('$io').run().output == '1\n'
+    for options in ({}, {'limits': esolangs.ExecutionLimits(max_steps=20)}):
+        assert api.execute('$io', **options).unwrap().output == '1\n'
+    assert complete_vm(api.prepare('$io').make_vm()) == '1\n'
+    template = esolangs.TemplateArtifact('$', record.name,
+        esolangs.TemplateBindings(setters=(('i', 's'),)))
+    outcome = api.execute(template, stdin=Unread())
+    assert outcome.status == 'rejected'
+    assert isinstance(outcome.error, esolangs.TemplateError)
+    assert outcome.observation.input_reads is None
+    try:
+        api.prepare(template)
+    except esolangs.TemplateError:
+        pass
+    else:
+        raise AssertionError('an explicit template ran without filling')
 assert not any(name.startswith('esolangs.generation') for name in sys.modules)
+try:
+    importlib.import_module('esolangs.generation')
+except ImportError:
+    pass
+else:
+    raise AssertionError('import barrier did not fire')
+try:
+    BackendTrap().template
+except AssertionError:
+    pass
+else:
+    raise AssertionError('backend trap did not fire')
 """
     result = subprocess.run(
         [sys.executable, "-c", code],
