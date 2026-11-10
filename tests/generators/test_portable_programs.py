@@ -82,6 +82,17 @@ def test_document_argument_and_invalid_settings() -> None:
     with pytest.raises(esolangs.ArgumentError):
         esolangs.dump_program("Brainfuck", "+.", settings={})
 
+    from tests.support.pick import first
+
+    language = first(source_kind="raster", boolean_generator=True)
+    source = esolangs.generate(
+        language, "01", settings=esolangs.Language(language).settings()
+    )
+    document = json.loads(esolangs.dump_program(language, source))
+    document["settings"] = None
+    with pytest.raises(esolangs.ProgramError, match="conflicting PNG"):
+        esolangs.load_program(language, json.dumps(document))
+
 
 def test_template_kind_requires_parameterized_language() -> None:
     document = json.loads(esolangs.dump_program("Brainfuck", "+."))

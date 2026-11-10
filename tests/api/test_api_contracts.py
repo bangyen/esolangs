@@ -465,13 +465,14 @@ class TestTheArgumentBoundaryRefusesCleanly:
 
     def test_png_settings_are_validated_as_a_document_is(self, monkeypatch) -> None:
         """``{"integer": 5}`` said "int() can't convert non-string"."""
+        from esolangs.operations.source import read_png_artifact
         from esolangs.raster import png
 
         bad = {"version": 1, "settings": {"cell_modulus": {"integer": 5}}}
         monkeypatch.setattr(png, "read_metadata", lambda _data: bad)
         data = esolangs.Raster((((0, 0, 0),),)).to_png()
         with pytest.raises(ProgramError, match="hexadecimal"):
-            esolangs.Raster.from_png(data)
+            read_png_artifact(REFERENCE, data)
 
     def test_read_answer_of_a_non_string_is_an_argument_error(self) -> None:
         """Every other wrong-type argument already was."""

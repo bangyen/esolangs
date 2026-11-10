@@ -296,17 +296,15 @@ def run_isolated_result(
     name = resolve(language)
     scale = effective_scale(name, program, scale)
     settings = effective_settings(name, program, settings)
-    record = isinstance(program, ProgramArtifact)
     dialect_options(name, settings)
     deadline = monotonic() + timeout
     box: list[str | BaseException] = []
 
     def prepare() -> None:
         try:
-            source = _check_program(name, program, stdin)
-            retained = (
-                settings if record else effective_settings(name, source, settings)
-            )
+            artifact = _check_program(name, program, stdin)
+            source = artifact.source
+            retained = effective_settings(name, artifact, settings)
             box.append(
                 worker_dumps(
                     _request_wire(
@@ -315,11 +313,7 @@ def run_isolated_result(
                         read_input(stdin),
                         settings=retained,
                         seed=seed,
-                        scale=scale
-                        if scale is not None
-                        else source.scale
-                        if isinstance(source, Raster)
-                        else None,
+                        scale=effective_scale(name, artifact, scale),
                         max_memory=max_memory,
                         max_output=max_output,
                         max_steps=max_steps,

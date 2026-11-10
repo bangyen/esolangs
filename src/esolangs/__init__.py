@@ -21,7 +21,6 @@ Names resolve case-insensitively; deliberate errors derive from EsolangError.
 import importlib
 from typing import TYPE_CHECKING
 
-from esolangs._language import Language
 from esolangs.artifacts import (
     Artifact,
     ProgramArtifact,
@@ -44,40 +43,60 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
-from esolangs.operations.execution import run
-from esolangs.operations.generation import generate, instantiate
-from esolangs.portable import dump_program, load_program, save_program
 from esolangs.raster import Raster
-from esolangs.registry._describe import LanguageInfo, describe, list_languages
 from esolangs.results import ExecutionResult
-from esolangs.runtime._answers import encode_inputs, read_answer
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource
 from esolangs.settings import DialectSettings
 
-#: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
-#: the fallback covers an uninstalled tree.  Read on first access, not
-#: import: ``importlib.metadata`` was 23ms of the 56ms import (PEP 562).
-#: Hidden from type checkers, which otherwise typed ``esolangs.generat`` as
-#: ``str`` and ``from esolangs import generat`` as ``Any``.
+_LAZY = {
+    "Language": "esolangs._language",
+    "run": "esolangs.operations.execution",
+    "generate": "esolangs.operations.generation",
+    "instantiate": "esolangs.operations.generation",
+    "dump_program": "esolangs.portable",
+    "load_program": "esolangs.portable",
+    "save_program": "esolangs.portable",
+    "LanguageInfo": "esolangs.registry._describe",
+    "describe": "esolangs.registry._describe",
+    "list_languages": "esolangs.registry._describe",
+    "encode_inputs": "esolangs.runtime._answers",
+    "read_answer": "esolangs.runtime._answers",
+}
+
 if TYPE_CHECKING:
     __version__: str
+    from esolangs._language import Language as Language
+    from esolangs.operations.execution import run as run
+    from esolangs.operations.generation import generate as generate
+    from esolangs.operations.generation import instantiate as instantiate
+    from esolangs.portable import dump_program as dump_program
+    from esolangs.portable import load_program as load_program
+    from esolangs.portable import save_program as save_program
+    from esolangs.registry._describe import LanguageInfo as LanguageInfo
+    from esolangs.registry._describe import describe as describe
+    from esolangs.registry._describe import list_languages as list_languages
+    from esolangs.runtime._answers import encode_inputs as encode_inputs
+    from esolangs.runtime._answers import read_answer as read_answer
 else:
 
-    def __getattr__(name: str) -> str:
-        """Resolve ``__version__`` lazily; everything else is a normal miss."""
-        if name != "__version__":
-            raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-        import importlib.metadata
+    def __getattr__(name: str) -> object:
+        """Resolve service exports on use; importing value types needs no catalog."""
+        if name == "__version__":
+            from importlib import metadata
 
-        try:
-            version = importlib.metadata.version("esolangs")
-        except importlib.metadata.PackageNotFoundError:  # pragma: no cover
-            # A source tree that was never installed.
-            version = "0.0.0+unknown"
-        globals()["__version__"] = version
-        return version
+            try:
+                value = metadata.version("esolangs")
+            except metadata.PackageNotFoundError:  # pragma: no cover
+                value = "0.0.0+unknown"
+        else:
+            module = _LAZY.get(name)
+            if module is None:
+                raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+            value = getattr(importlib.import_module(module), name)
+        globals()[name] = value
+        return value
 
 
 #: The public surface.  Without it ``dir(esolangs)`` advertised ``Any``,

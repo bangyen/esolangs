@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
-from esolangs.operations.source import _check_program
+from esolangs.operations.source import _check_program, read_png_artifact
 from esolangs.raster import Raster, lazy_raster
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.support.dialect_support import integer_setting
@@ -221,9 +221,7 @@ def test_raster_refuses_with_a_program_error(rows: object) -> None:
 
 
 def test_raster_repr_names_its_size() -> None:
-    assert repr(Raster(((((1, 2, 3),) * 2),))) == (
-        "Raster(2x1, language=None, scale=None)"
-    )
+    assert repr(Raster(((((1, 2, 3),) * 2),))) == ("Raster(2x1)")
 
 
 def test_an_oversized_upscale_is_refused_before_rendering() -> None:
@@ -239,12 +237,12 @@ def test_an_oversized_upscale_is_refused_before_rendering() -> None:
 def test_png_metadata_round_trip_executes(language, scale, native_png) -> None:
     settings = esolangs.Language(language).settings()
     source = esolangs.generate(language, "0110", scale=scale, settings=settings)
-    restored = Raster.from_png(native_png(source))
-    assert restored.rows == source.source.rows
+    restored = _check_program(language, native_png(source))
+    assert restored.source.rows == source.source.rows
     assert restored.language == language
     assert restored.settings == settings
     assert restored.scale == scale
-    assert restored._payload is None
+    assert restored.source._payload is None
     assert _evaluate(language, restored, inputs=2) == "0110"
     assert _evaluate(language, restored, inputs=2, isolated=True) == "0110"
 
@@ -253,18 +251,24 @@ def test_plain_png_has_no_source_metadata() -> None:
     source = Raster((((1, 2, 3),),))
     restored = Raster.from_png(source.to_png())
     assert restored == source
-    assert restored.language is None
-    assert restored.settings is None
-    assert restored.scale is None
+    assert not hasattr(restored, "language")
+    assert not hasattr(restored, "settings")
+    assert not hasattr(restored, "scale")
 
 
 def test_scaling_composes_retained_factors(native_png) -> None:
     source = esolangs.generate(RASTER_LANGUAGES[0], "01", scale=2)
-    decoded = Raster.from_png(native_png(source))
-    assert Raster.from_png(decoded.upscaled(3).to_png()).scale == 6
+    decoded = _check_program(source.language, native_png(source))
+    enlarged = esolangs.ProgramArtifact(
+        decoded.source.upscaled(3),
+        decoded.language,
+        decoded.settings,
+        decoded.scale * 3,
+    )
+    assert _check_program(source.language, native_png(enlarged)).scale == 6
 
 
-def test_png_settings_retain_integer_choices() -> None:
+def test_png_settings_retain_integer_choices(native_png) -> None:
     """Integers travel as hex; a settings tag needs its language (1.0 audit)."""
     key = integer_setting()
     owner, choices = next(
@@ -274,8 +278,8 @@ def test_png_settings_retain_integer_choices() -> None:
         in (lang.runtime.dialect_schema.choices if lang.runtime.dialect_schema else {})
     )
     settings = esolangs.Language(owner).settings(**{key: choices[-1]})
-    source = Raster((((1, 2, 3),),), language=owner, settings=settings)
-    assert Raster.from_png(source.to_png()).settings == settings
+    source = esolangs.ProgramArtifact(Raster((((1, 2, 3),),)), owner, settings)
+    assert read_png_artifact(owner, native_png(source)).settings == settings
     huge = 1 << 20_000  # Past CPython's decimal rendering cap.
     with pytest.raises(esolangs.ArgumentError, match="integer with 20001 bits"):
         esolangs.Language(owner).settings(**{key: huge})
@@ -284,7 +288,7 @@ def test_png_settings_retain_integer_choices() -> None:
     with pytest.raises(
         esolangs.ArgumentError, match="invalid value for dialect setting"
     ):
-        Raster((((1, 2, 3),),), language=owner, settings=forged)
+        esolangs.ProgramArtifact(Raster((((1, 2, 3),),)), owner, forged)
 
 
 def test_png_language_tag_refuses_cross_language_execution(native_png) -> None:
@@ -295,28 +299,32 @@ def test_png_language_tag_refuses_cross_language_execution(native_png) -> None:
 
 def test_tagging_unknown_pixels_preserves_automatic_scale_detection() -> None:
     rows = (((255, 0, 0),) * 4,) * 4
-    source = Raster(rows).tagged(RASTER_LANGUAGES[0])
+    source = esolangs.ProgramArtifact(Raster(rows), RASTER_LANGUAGES[0])
     assert source.scale is None
-    assert source._normalized() == (((255, 0, 0),),)
+    assert source.source._normalized() == (((255, 0, 0),),)
 
 
 @pytest.mark.parametrize("scale", [0, True, -1])
 def test_retained_scale_is_validated(scale) -> None:
     with pytest.raises(esolangs.ArgumentError, match="scale"):
-        Raster((((1, 2, 3),),), scale=scale)
+        esolangs.ProgramArtifact(
+            Raster((((1, 2, 3),),)), RASTER_LANGUAGES[0], scale=scale
+        )
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
-def test_explicit_scale_overrides_png_metadata(language, monkeypatch) -> None:
+def test_explicit_scale_overrides_png_metadata(
+    language, monkeypatch, native_png
+) -> None:
     module = _execution_runtime.interpreter_module(language)
     assert not hasattr(module, "supports_scale")
     monkeypatch.setattr(module, "supports_scale", False, raising=False)
     source = esolangs.generate(language, "01", scale=2)
-    changed = Raster(source.source.rows, language=language, scale=7)
+    changed = esolangs.ProgramArtifact(Raster(source.source.rows), language, scale=7)
     result = esolangs.run(
         language,
-        changed.to_png(),
+        native_png(changed),
         stdin=esolangs.encode_inputs(language, [1]),
         scale=2,
         max_steps=1000,

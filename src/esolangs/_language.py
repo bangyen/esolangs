@@ -75,8 +75,10 @@ class Language:
         dialect_options(self.name, settings)
         if not isinstance(path, (str, PathLike)):
             raise ArgumentError("path must be a string or Path")
-        source = _source_operations._read_source(self.name, Path(path))  # noqa: SLF001 - API boundary
-        return self.from_source(source, settings=settings)
+        artifact = _source_operations.read_artifact(self.name, Path(path))
+        retained = effective_settings(self.name, artifact, settings)
+        assert isinstance(artifact, ProgramArtifact)
+        return ProgramArtifact(artifact.source, self.name, retained, artifact.scale)
 
     def generate(
         self,

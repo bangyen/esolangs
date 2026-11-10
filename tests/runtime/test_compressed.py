@@ -59,11 +59,13 @@ def test_wrapping_preserves_characters_and_bounds_lines() -> None:
 
 
 def test_compressed_source_retains_language_origin() -> None:
-    program = CompressedText.from_chunks((",.",)).tagged(REFERENCE)
+    program = esolangs.ProgramArtifact(CompressedText.from_chunks((",.",)), REFERENCE)
     assert esolangs.run(REFERENCE, program, stdin="Z").output == "Z"
     other = next(n for n in esolangs.list_languages() if n != REFERENCE)
     with pytest.raises(esolangs.ProgramError, match="generated for"):
-        esolangs.run(REFERENCE, program.tagged(other), stdin="Z")
+        esolangs.run(
+            REFERENCE, esolangs.ProgramArtifact(program.source, other), stdin="Z"
+        )
 
 
 def test_format_budgets_are_independent_and_survive_wrapping() -> None:
@@ -79,7 +81,7 @@ def test_format_budgets_are_independent_and_survive_wrapping() -> None:
             export()
     wrapped = program.wrapped(3)
     assert wrapped.limits == limits
-    assert wrapped.tagged(REFERENCE).limits == limits
+    assert esolangs.ProgramArtifact(wrapped, REFERENCE).source.limits == limits
     with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
         CompressedText.repeated("x", 31, limits=limits)
     with pytest.raises(esolangs.GeneratorCapError, match="work cap"):

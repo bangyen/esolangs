@@ -41,7 +41,6 @@ from esolangs._cycles import (
 from esolangs._cycles import (
     run_until_halt_or_value_growth as run_until_halt_or_value_growth,
 )
-from esolangs.artifacts import ProgramArtifact
 from esolangs.exceptions import ArgumentError, InterpreterLimitError
 from esolangs.exceptions import EsolangError as _EsolangError
 from esolangs.registry import LANGUAGES, resolve
@@ -452,14 +451,13 @@ def make_vm(
     name = resolve(language)
     check_seed(seed)
     check_seed_for(name, seed)
-    record = isinstance(program, ProgramArtifact)
     settings = effective_settings(name, program, settings)
     dialect_options(name, settings)
     scale = effective_scale(name, program, scale)
-    source = _check_program(name, program, stdin)
-    if not record:
-        settings = effective_settings(name, source, settings)
-    scale = effective_scale(name, source, scale)
+    artifact = _check_program(name, program, stdin)
+    settings = effective_settings(name, artifact, settings)
+    scale = effective_scale(name, artifact, scale)
+    source = artifact.source
     check_scale_for(name, scale)
     with interpreter_errors(
         f"the {name} interpreter recursed deeper than CPython's stack "

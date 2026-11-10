@@ -16,22 +16,26 @@ from esolangs.generation.helpers import (
 )
 from esolangs.raster import Raster
 from esolangs.runtime._program import Program
-from esolangs.runtime._validate import check_bits, check_provenance, check_scale
+from esolangs.runtime._validate import check_bits, check_scale
 
 __all__ = ["Artifact", "ProgramArtifact", "TemplateArtifact", "TemplateBindings"]
 
 from esolangs.settings import DialectSettings
 
 
-def _origin(source: object, language: str, settings: DialectSettings | None) -> str:
-    """Canonicalize provenance without interpreting the source."""
-    name = check_provenance(language, settings)
-    if name is None:
+def _origin(language: str, settings: DialectSettings | None) -> str:
+    """Validate explicit provenance without consulting the language catalog."""
+    if not isinstance(language, str) or not language.strip():
         raise ArgumentError("an artifact requires a language")
-    retained = source.language if isinstance(source, (Raster, CompressedText)) else None
-    if retained is not None and retained != name:
-        raise ProgramError(f"source belongs to {retained}, not {name}")
-    return name
+    if settings is not None:
+        if not isinstance(settings, DialectSettings):
+            raise ArgumentError("settings must be a DialectSettings or None")
+        if settings.language != language:
+            raise ArgumentError(
+                f"dialect settings belong to {settings.language}, not {language}"
+            )
+        settings.options(language)
+    return language
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,24 +48,15 @@ class ProgramArtifact[Source: Program]:
     scale: int | None = None
 
     def __post_init__(self) -> None:
-        """Validate source storage and retain canonical provenance."""
+        """Validate source storage and explicit provenance."""
         if isinstance(self.source, TemplateArtifact):
             raise TemplateError("fill the template before declaring runnable source")
         if not isinstance(self.source, (str, Raster, CompressedText)):
             raise ProgramError("a program needs text, compressed source, or a raster")
-        object.__setattr__(
-            self, "language", _origin(self.source, self.language, self.settings)
-        )
-        if self.settings is None and isinstance(self.source, (Raster, CompressedText)):
-            retained = self.source.settings
-            if retained is not None:
-                check_provenance(self.language, retained)
-                object.__setattr__(self, "settings", retained)
+        object.__setattr__(self, "language", _origin(self.language, self.settings))
         if isinstance(self.source, Raster):
-            scale = self.source.scale if self.scale is None else self.scale
-            if scale is not None:
-                check_scale(scale)
-            object.__setattr__(self, "scale", scale)
+            if self.scale is not None:
+                check_scale(self.scale)
         elif self.scale is not None:
             raise ArgumentError("scale is only supported for raster programs")
 
@@ -124,9 +119,7 @@ class TemplateArtifact:
             self.bindings, TemplateBindings
         ):
             raise TemplateError("template needs text source and TemplateBindings")
-        object.__setattr__(
-            self, "language", _origin(self.source, self.language, self.settings)
-        )
+        object.__setattr__(self, "language", _origin(self.language, self.settings))
         try:
             object.__setattr__(
                 self,

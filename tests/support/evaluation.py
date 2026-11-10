@@ -14,7 +14,7 @@ from typing import cast
 import esolangs
 import esolangs.operations.source as _source_operations
 import esolangs.runtime._execution as _execution_runtime
-from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
+from esolangs.artifacts import Artifact, TemplateArtifact
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -183,18 +183,12 @@ def _iter_evaluate(
         timeout, terminating=terminating, isolated=isolated, total=total_timeout
     )
     deadline = None if total_timeout is None else started + total_timeout
-    record = (
-        program if isinstance(program, (ProgramArtifact, TemplateArtifact)) else None
-    )
     program = _prepare(
-        lambda: _source_operations._read_source(name, program),
+        lambda: _source_operations.read_artifact(name, program),
         deadline,
         isolated=isolated,
     )
-    if record is not None:
-        program = record
-    else:
-        settings = effective_settings(name, program, settings)
+    settings = effective_settings(name, program, settings)
     if parameterized and not isinstance(program, TemplateArtifact):
         raise TemplateError(
             "evaluation needs a TemplateArtifact with explicit bindings"
@@ -312,7 +306,7 @@ def _row_answerer(
 
             proof = termination_result_isolated(
                 name,
-                _source_operations._check_program(name, source, stdin),
+                _source_operations._check_program(name, source, stdin).source,
                 stdin,
                 cast("float", bound),
                 settings=settings,

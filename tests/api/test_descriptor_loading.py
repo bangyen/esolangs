@@ -17,8 +17,24 @@ from tests.support.reference import REFERENCE
 @pytest.mark.medium
 def test_catalog_does_not_import_generators():
     code = """
-import esolangs, json, sys
+import esolangs, json, sys, typing
+assert 'esolangs.registry' not in sys.modules
+from esolangs._dialect import DialectSchema
+schema = DialectSchema('detached_scope', {'mode': ('a', 'b')}, {'mode': 'a'})
+settings = esolangs.DialectSettings(schema, mode='b')
+values = [
+    esolangs.ProgramArtifact('', 'detached_scope', settings),
+    esolangs.Raster((((0, 0, 0),),)),
+    esolangs.CompressedText.from_chunks(['x']),
+    esolangs.TemplateArtifact('$', 'detached_scope',
+        esolangs.TemplateBindings(setters=(('0','1'),))),
+]
+assert values[-1].fill([1]).source == '1'
+for value in values:
+    typing.get_type_hints(type(value))
+assert 'esolangs.registry' not in sys.modules, 'value model loaded the catalog'
 names = esolangs.list_languages()
+assert 'esolangs.registry._table' in sys.modules, 'catalog control did not fire'
 for name in names:
     esolangs.describe(name)
     esolangs.Language(name).settings().options(name)

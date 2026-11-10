@@ -11,8 +11,6 @@ from dataclasses import KW_ONLY, dataclass, field
 from pathlib import Path
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
-from esolangs.runtime._validate import check_provenance
-from esolangs.settings import DialectSettings
 
 
 @dataclass(frozen=True)
@@ -71,8 +69,6 @@ class CompressedText:
 
     data: bytes
     _: KW_ONLY
-    language: str | None = None
-    settings: DialectSettings | None = None
     limits: TextLimits | None = None
     _size: int = field(init=False, repr=False)
 
@@ -81,9 +77,6 @@ class CompressedText:
         if not isinstance(self.data, bytes):
             raise ProgramError("gzip source must be bytes")
         # Canonical, so an alias tag compares equal to the name ``run`` checks.
-        object.__setattr__(
-            self, "language", check_provenance(self.language, self.settings)
-        )
         _check_limits(self.limits)
         if self.limits is not None:
             _check_gzip(self.limits, len(self.data))
@@ -137,7 +130,7 @@ class CompressedText:
         data = output.getvalue()
         if limits is not None:
             _check_gzip(limits, len(data))
-        return cls._measured(data, count, limits, None, None)
+        return cls._measured(data, count, limits)
 
     @classmethod
     def _measured(
@@ -145,8 +138,6 @@ class CompressedText:
         data: bytes,
         size: int,
         limits: TextLimits | None,
-        language: str | None,
-        settings: DialectSettings | None,
     ) -> CompressedText:
         """Build from a stream already known valid and ``size`` characters long.
 
@@ -154,7 +145,7 @@ class CompressedText:
         Unary's generation time at nine inputs.
         """
         text = object.__new__(cls)
-        fields = {"data": data, "language": language, "settings": settings}
+        fields = {"data": data}
         for name, value in {**fields, "limits": limits, "_size": size}.items():
             object.__setattr__(text, name, value)
         return text
@@ -204,13 +195,6 @@ class CompressedText:
         """Write a gzip source file."""
         Path(path).write_bytes(self.data)
 
-    def tagged(
-        self, language: str | None, *, settings: DialectSettings | None = None
-    ) -> CompressedText:
-        """Retain generation provenance."""
-        language = check_provenance(language, settings)
-        return self._measured(self.data, self._size, self.limits, language, settings)
-
     def wrapped(self, width: int | None) -> CompressedText:
         """Insert line breaks at width without collecting expanded source."""
         if width is None:
@@ -237,6 +221,4 @@ class CompressedText:
                         column = 0
                 yield "".join(parts)
 
-        return self.from_chunks(chunks(), limits=self.limits).tagged(
-            self.language, settings=self.settings
-        )
+        return self.from_chunks(chunks(), limits=self.limits)

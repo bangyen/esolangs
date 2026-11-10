@@ -36,8 +36,11 @@ def test_raw_png_round_trip_executes(scale, tmp_path) -> None:
     source = esolangs.generate("Line", "01", scale=scale, settings=settings)
     path = tmp_path / "program.png"
     esolangs.save_program(source, path)
-    raw = Raster.from_png(path.read_bytes())
+    raw = esolangs.Language("Line").from_file(path)
     assert raw.settings == settings
+    assert raw.scale == scale
+    assert Raster.from_png(path.read_bytes()).rows == raw.source.rows
+    assert not hasattr(raw.source, "settings")
     restored = esolangs.load_program(
         "Line", esolangs.dump_program("Line", raw, settings=settings)
     )

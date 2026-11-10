@@ -69,9 +69,9 @@ def save_program(
                 raise ProgramError("gzip export requires text; rasters use PNG")
             source = png.write_source(
                 program.rows,
-                record.language if record is not None else program.language,
-                record.settings if record is not None else program.settings,
-                record.scale if isinstance(record, ProgramArtifact) else program.scale,
+                record.language if record is not None else None,
+                record.settings if record is not None else None,
+                record.scale if isinstance(record, ProgramArtifact) else None,
             )
         elif isinstance(program, str):
             ending = (
@@ -113,12 +113,19 @@ def dump_program(
         ProgramError: ``program`` cannot be read (base of the above).
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
-    from esolangs.operations.source import _read_source
+    from esolangs.operations.source import read_artifact
 
     name = resolve(language)
     settings = effective_settings(name, program, settings)
     values = dialect_options(name, settings)
-    source = _read_source(name, program)
+    acquired = read_artifact(name, program)
+    artifact = (
+        program
+        if isinstance(program, (ProgramArtifact, TemplateArtifact))
+        else acquired
+    )
+    settings = effective_settings(name, artifact, settings)
+    values = dialect_options(name, settings)
     encoded = (
         None
         if settings is None
@@ -133,11 +140,6 @@ def dump_program(
         "language": name,
         "settings": encoded,
     }
-    artifact = (
-        program
-        if isinstance(program, (ProgramArtifact, TemplateArtifact))
-        else ProgramArtifact(source, name, settings)
-    )
     body = artifact.source
     if isinstance(artifact, TemplateArtifact):
         document.update(
@@ -206,8 +208,14 @@ def _load_png(
     value: dict[str, Any], name: str, settings: DialectSettings | None
 ) -> ProgramArtifact[Raster]:
     """Restore a ``png`` document's raster."""
-    raster = Raster.from_png(base64.b64decode(value["source"], validate=True))
-    return ProgramArtifact(raster, name, settings, raster.scale)
+    from esolangs.operations.source import read_png_artifact
+
+    data = base64.b64decode(value["source"], validate=True)
+    record = read_png_artifact(name, data)
+    metadata = png.read_metadata(data)
+    if metadata is not None and record.settings != settings:
+        raise ValueError("conflicting PNG and document settings")
+    return ProgramArtifact(record.source, name, settings, record.scale)
 
 
 def _load_gzip(

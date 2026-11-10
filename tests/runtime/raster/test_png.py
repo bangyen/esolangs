@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from esolangs.operations.source import read_png_artifact
 from esolangs.raster import png
 from tests.support.pick import one
 
@@ -538,37 +539,38 @@ assert esolangs.Raster.from_png(data).rows == raster.rows
 )
 def test_bad_source_metadata_is_a_program_error(fields) -> None:
     from esolangs.exceptions import ProgramError
-    from esolangs.raster import Raster
 
     data = png.write_rgb((((1, 2, 3),),))
     data = png.write_metadata(data, {"version": 1, **fields})
     with pytest.raises(ProgramError, match="not a readable PNG"):
-        Raster.from_png(data)
+        read_png_artifact(one(source_kind="raster")[0], data)
 
 
 def test_future_metadata_versions_leave_pixels_readable() -> None:
-    from esolangs import ProgramError, Raster
+    from esolangs import ProgramError
 
     data = png.write_rgb((((1, 2, 3),),))
     tagged = png.write_metadata(data, {"version": 2, "language": True})
-    restored = Raster.from_png(tagged)
-    assert restored.rows == (((1, 2, 3),),)
-    assert restored.language is None
+    restored = read_png_artifact(one(source_kind="raster")[0], tagged)
+    assert restored.source.rows == (((1, 2, 3),),)
+    assert restored.language == one(source_kind="raster")[0]
+    assert not hasattr(restored.source, "language")
     versions = (None, True, False, 0, -1, 1.0, 2.0, "1", [], {})
     for fields in ({}, *({"version": v} for v in versions)):
         with pytest.raises(ProgramError, match="invalid esolangs PNG metadata version"):
-            Raster.from_png(png.write_metadata(data, fields))
+            read_png_artifact(
+                one(source_kind="raster")[0], png.write_metadata(data, fields)
+            )
 
 
 def test_duplicate_source_metadata_is_refused() -> None:
     from esolangs.exceptions import ProgramError
-    from esolangs.raster import Raster
 
     data = png.write_rgb((((1, 2, 3),),))
     data = png.write_metadata(data, {"version": 1})
     data = png.write_metadata(data, {"version": 1})
     with pytest.raises(ProgramError, match="duplicate"):
-        Raster.from_png(data)
+        read_png_artifact(one(source_kind="raster")[0], data)
     for body in (
         b'{"version":1,"version":1}',
         b'{"version":1,"settings":{"cell_modulus":2,"cell_modulus":2}}',
@@ -576,18 +578,17 @@ def test_duplicate_source_metadata_is_refused() -> None:
         plain = png.write_rgb((((1, 2, 3),),))
         duplicate = plain[:-12] + _chunk(b"esOL", body) + plain[-12:]
         with pytest.raises(ProgramError, match="duplicate field"):
-            Raster.from_png(duplicate)
+            read_png_artifact(one(source_kind="raster")[0], duplicate)
 
 
 @pytest.mark.parametrize("body", [b"[]", b"broken-json", b"x" * 16_385])
 def test_malformed_source_metadata_is_refused(body) -> None:
     from esolangs.exceptions import ProgramError
-    from esolangs.raster import Raster
 
     data = png.write_rgb((((1, 2, 3),),))
     data = data[:-12] + _chunk(b"esOL", body) + data[-12:]
     with pytest.raises(ProgramError, match="not a readable PNG"):
-        Raster.from_png(data)
+        read_png_artifact(one(source_kind="raster")[0], data)
 
 
 def test_metadata_writer_bounds_chunk_size() -> None:

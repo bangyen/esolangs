@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import cast
 
 #: The address a default ``repr`` embeds, matched only where it closes the
 #: repr's ``>``: quoted text ("['x at 0xdead']", b" at 0xab") is the caller's.
@@ -249,28 +248,3 @@ def check_flag(value: object, name: str) -> bool:
             f"{name} must be True or False, got {_argument_repr(value)}"
         )
     return value
-
-
-def check_provenance(language: object, settings: object) -> str | None:
-    """Return the tag's canonical name; refuse no language or wrong settings.
-
-    ``Raster(...).tagged("nonesuch")`` and ``.tagged(5)`` were kept as given,
-    and an alias (``"rotfuck"``) was stored as typed, so ``run`` refused the
-    program under every spelling.
-    """
-    from esolangs.exceptions import ArgumentError
-    from esolangs.registry import resolve
-    from esolangs.settings import DialectSettings
-
-    name = None if language is None else resolve(cast("str", language))
-    if settings is not None and not isinstance(settings, DialectSettings):
-        got = _argument_repr(settings)
-        raise ArgumentError(f"settings must be a DialectSettings or None, got {got}")
-    if settings is None:
-        return name
-    if name is None:
-        # ``run`` reads retained settings only off a tagged program; untagged,
-        # they were silently ignored.
-        raise ArgumentError("settings need a language to apply to; pass language=")
-    settings.options(name)  # As ``from_png`` checks what it reads.
-    return name

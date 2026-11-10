@@ -107,6 +107,8 @@ Both return `ProgramArtifact`; parsing still happens when the program executes.
 `generate` and `load_program` return artifacts; `instantiate` returns a filled
 `ProgramArtifact`. `run` returns `ExecutionResult`.
 Extract `.source` for native source operations and `.output` for output text.
+Raw rasters and compressed text contain payload only. Artifacts own language,
+settings and scale; `Language(...).from_file(...)` retains native PNG metadata.
 Source is a string, `Raster`, or `CompressedText` (Unary).
 
 `str()` of a `Raster` is a summary, not source; of a `CompressedText`, the

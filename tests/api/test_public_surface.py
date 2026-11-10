@@ -268,7 +268,7 @@ class TestProgramObjectsRefuseMisuse:
     @pytest.mark.parametrize("language", ["nonesuch", 5])
     def test_a_tag_must_name_a_language(self, language: object) -> None:
         with pytest.raises(esolangs.UnknownLanguageError):
-            esolangs.Raster((((0, 0, 0),),)).tagged(language)  # type: ignore[arg-type]
+            esolangs.Language(language).from_source(esolangs.Raster((((0, 0, 0),),)))  # type: ignore[arg-type]
 
     def test_compressed_limits_are_typed(self) -> None:
         import gzip
@@ -278,8 +278,8 @@ class TestProgramObjectsRefuseMisuse:
 
     def test_an_alias_tag_is_stored_canonically(self) -> None:
         """Stored as typed, ``run`` refused it under every spelling."""
-        tagged = esolangs.CompressedText.from_chunks(iter(["+."])).tagged(
-            REFERENCE.upper()
+        tagged = esolangs.Language(REFERENCE.upper()).from_source(
+            esolangs.CompressedText.from_chunks(iter(["+."]))
         )
         assert tagged.language == REFERENCE
         assert esolangs.run(REFERENCE, tagged).output == "\x01"
@@ -314,7 +314,12 @@ class TestProgramObjectsRefuseMisuse:
         raster = esolangs.Raster((((0, 0, 0),),)).upscaled(2)
         restored = pickle.loads(pickle.dumps(raster))
         assert restored == raster
-        assert restored.scale == 2
+        assert not hasattr(restored, "scale")
+        owned = esolangs.ProgramArtifact(raster, first(source_kind="raster"), scale=2)
+        restored_record = pickle.loads(pickle.dumps(owned))
+        assert restored_record == owned
+        assert restored_record.scale == 2
+        assert restored_record.source == restored
 
     @pytest.mark.parametrize(
         "call",
@@ -409,9 +414,11 @@ class TestProgramObjectsRefuseMisuse:
 
     def test_settings_need_a_language(self) -> None:
         """Untagged, ``run`` ignored them silently."""
-        with pytest.raises(esolangs.ArgumentError, match="need a language"):
-            esolangs.Raster(
-                (((0, 0, 0),),), settings=esolangs.Language("brainfuck").settings()
+        with pytest.raises(esolangs.ArgumentError, match="requires a language"):
+            esolangs.ProgramArtifact(
+                esolangs.Raster((((0, 0, 0),),)),
+                None,
+                esolangs.Language("brainfuck").settings(),
             )
 
     def test_an_uninspectable_predicate_is_refused(self) -> None:

@@ -12,10 +12,11 @@ import threading
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 
+from esolangs.artifacts import ProgramArtifact
 from esolangs.cli.args import _fail
 from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
 from esolangs.exceptions import EsolangError
-from esolangs.operations.source import _read_source
+from esolangs.operations.source import _check_program
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
 
@@ -80,10 +81,12 @@ def _waiting_notice(hint: str = "") -> _DelayedNotice:
     )
 
 
-def _read_program(path: str, timeout: float | None = None, *, language: str) -> Program:
+def _read_program(
+    path: str, timeout: float | None = None, *, language: str
+) -> ProgramArtifact[Program]:
     """Read bounded source, refusing a non-text or oversized file."""
     try:
-        return _read_source(language, _FileSource(path, _bounded_read(path, timeout)))
+        return _check_program(language, _FileSource(path, _bounded_read(path, timeout)))
     except EsolangError as exc:
         _fail(exc)
         raise  # pragma: no cover - _fail exits

@@ -147,11 +147,11 @@ def source_for(language: str, source: ProgramSource | _FileSource) -> Program:
 
 
 def effective_scale(language: str, program: object, scale: int | None) -> int | None:
-    """Prefer an explicit scale, then a record or native raster's metadata."""
-    if scale is None and isinstance(program, (ProgramArtifact, Raster)):
+    """Prefer an explicit scale, then the program artifact's metadata."""
+    if scale is None and isinstance(program, ProgramArtifact):
         from esolangs.registry import resolve
 
-        if program.language is None or program.language == resolve(language):
+        if resolve(program.language) == resolve(language):
             return program.scale
     return scale
 

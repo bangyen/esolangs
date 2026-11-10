@@ -131,9 +131,7 @@ class _Machine:
     ip_shape = "grid"
 
     def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
-        self.program = _freeze_program(
-            _compiled(program, scale if scale is not None else program.scale)
-        )
+        self.program = _freeze_program(_compiled(program, scale))
         self.state: _State = (0, 0, 0, ())
         self.io = io
 
@@ -199,7 +197,7 @@ def _execute(program: Raster, io: IO, *, scale: int | None = None) -> Completion
         _Machine.run_node(cast("Node", program._payload), io)  # noqa: SLF001
         return HALTED_REPORT
     _run_compiled(
-        _compiled(program, scale if scale is not None else program.scale),
+        _compiled(program, scale),
         _LINE_IO(read=io.input_num, write=io.print_num),
     )
     return HALTED_REPORT

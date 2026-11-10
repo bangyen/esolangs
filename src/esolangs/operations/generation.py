@@ -304,7 +304,7 @@ def instantiate(
             ),
             "retain generate()'s template or restore it with load_program()",
         )
-    if template.language != name:
+    if resolve(template.language) != name:
         raise TemplateError(f"template belongs to {template.language}, not {name}")
     if truth_table is not None and not _is_template_for(
         template, name, truth_table, settings
@@ -335,6 +335,10 @@ def instantiate(
         )
     filled = artifact.fill(bits)
     program = wrap_program(filled.source, LANGUAGES[name].id, width)
-    if program is not filled.source or settings is not filled.settings:
+    if (
+        program is not filled.source
+        or settings is not filled.settings
+        or filled.language != name
+    ):
         filled = ProgramArtifact(program, name, settings)
     return filled

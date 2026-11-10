@@ -2,14 +2,21 @@
 
 import re
 
-from esolangs.artifacts import ProgramArtifact, TemplateArtifact
+from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
-from esolangs.exceptions import ProgramError, TemplateError
-from esolangs.raster import Raster
+from esolangs.exceptions import MissingDependencyError, ProgramError, TemplateError
+from esolangs.raster import Raster, png
 from esolangs.registry import LANGUAGES, resolve, template_char
 from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._program import Program
-from esolangs.runtime._source import ProgramSource, _FileSource, source_for
+from esolangs.runtime._source import (
+    ProgramSource,
+    _FileSource,
+    _read_container,
+    source_for,
+)
+from esolangs.runtime._validate import check_scale
+from esolangs.settings import dialect_options
 
 #: Characters a filename is made of, and a program mostly is not.
 _PATH_CHARS = re.compile(r"^[\w./\\~-]+$")
@@ -77,58 +84,93 @@ def _check_runnable(language: str, program: Program) -> None:
         )
 
 
-def _read_source(language: str, program: ProgramSource | _FileSource) -> Program:
-    """Load source and check its kind and origin, allowing unfilled templates."""
+def check_origin(language: str, origin: object) -> None:
+    """Reject known foreign provenance before reading a payload."""
+    if origin is None:
+        return
+    if not isinstance(origin, str):
+        raise ProgramError("source language must be a string")
+    canonical = resolve(origin)
+    if canonical != language:
+        raise ProgramError(
+            f"this program was generated for {canonical}, so running it as "
+            f"{language} would read it as {language} source -- which may well run, "
+            "and answer nonsense"
+        )
+
+
+def read_png_artifact(language: str, data: bytes) -> ProgramArtifact[Raster]:
+    """Decode native metadata into its owning artifact, leaving pixels untagged."""
+    from esolangs.portable import decode_settings
+
     name = resolve(language)
+    try:
+        metadata = png.read_metadata(data)
+        settings = None
+        scale = None
+        if metadata is not None:
+            origin = metadata.get("language")
+            if origin is not None and not isinstance(origin, str):
+                raise ValueError("PNG language must be a string")
+            check_origin(name, origin)
+            settings = decode_settings(metadata.get("settings"), origin)
+            scale = metadata.get("scale")
+            if scale is not None:
+                check_scale(scale)
+        raster = Raster.from_png(data)
+        return ProgramArtifact(raster, name, settings, scale)
+    except (ProgramError, MissingDependencyError):
+        raise
+    except Exception as error:
+        raise ProgramError(f"not a readable PNG: {error}") from error
 
-    def check_origin(source: object) -> None:
-        if isinstance(
-            source, (ProgramArtifact, TemplateArtifact, Raster, CompressedText)
-        ):
-            origin = source.language
-            if origin is not None and origin != name:
-                raise ProgramError(
-                    f"this program was generated for {origin}, so running it as "
-                    f"{name} would read it as {name} source -- which may well run, "
-                    "and answer nonsense"
-                )
 
-    check_origin(program)
+def read_artifact(language: str, program: ProgramSource | _FileSource) -> Artifact:
+    """Acquire source once, retaining native metadata only in an explicit record."""
+    name = resolve(language)
     if isinstance(program, (ProgramArtifact, TemplateArtifact)):
-        program = program.source
-    check_origin(program)
-    program = source_for(name, program)
-    check_origin(program)
-    return program
+        check_origin(name, program.language)
+        dialect_options(name, program.settings)
+        source = source_for(name, program.source)
+        if source is program.source and program.language == name:
+            return program
+        if isinstance(program, TemplateArtifact):
+            if not isinstance(source, str):
+                raise TemplateError("template source must be text")
+            return TemplateArtifact(source, name, program.bindings, program.settings)
+        return ProgramArtifact(source, name, program.settings, program.scale)
+    value, file = _read_container(program)
+    if isinstance(value, bytes) and value.startswith(b"\x89PNG\r\n\x1a\n"):
+        record = read_png_artifact(name, value)
+        # Source-kind checking still belongs to the selected language's loader.
+        source = source_for(name, record.source)
+        return ProgramArtifact(source, name, record.settings, record.scale)
+    snapshot: Program | bytes | _FileSource
+    if file:
+        assert isinstance(value, bytes)
+        snapshot = _FileSource(str(program), value)
+    else:
+        snapshot = value
+    source = source_for(name, snapshot)
+    return ProgramArtifact(source, name)
+
+
+def _read_source(language: str, program: ProgramSource | _FileSource) -> Program:
+    """Project source for callers that explicitly need only the payload."""
+    return read_artifact(language, program).source
 
 
 def _check_program(
-    language: str, program: ProgramSource, stdin: InputSource = ""
-) -> Program:
-    """Return ``program`` as source, having checked what can be checked here.
-
-    Not a load check: it refuses the wrong *kind* of thing (a path as a
-    string, an unfilled template, an unsupported container, an unreadable file, an
-    unknown name) and type-checks ``stdin``, but ``_check_program("brainfuck",
-    "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
-    :func:`make_vm` calls this, so it cannot build a machine to check.
-    A :class:`~pathlib.Path`
-    is read here with one trailing newline stripped (some readers reject
-    one), so the whole call is::
-
-        path = importlib.resources.files("esolangs") / describe(lang)["examples"][0]
-        run(lang, path, stdin=encode_inputs(lang, [0, 1]))
-
-    Programs may also be UTF-8 text bytes, PNG bytes, or readable streams.
-    The interpreter chooses the decoder. Stdin streams are checked without
-    being consumed; execution snapshots their remaining text.
-    """
+    language: str, program: ProgramSource | _FileSource, stdin: InputSource = ""
+) -> ProgramArtifact[Program]:
+    """Acquire a runnable record without consuming stdin or parsing commands."""
     name = resolve(language)
     if isinstance(program, TemplateArtifact):
         raise TemplateError("fill the template before execution")
     explicit = isinstance(program, ProgramArtifact)
-    program = _read_source(name, program)
+    record = read_artifact(name, program)
+    assert isinstance(record, ProgramArtifact)
     check_input(stdin)
     if not explicit:
-        _check_runnable(name, program)
-    return program
+        _check_runnable(name, record.source)
+    return record

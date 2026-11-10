@@ -7,8 +7,9 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, Raster
+from esolangs import DialectSettings
 from esolangs import settings as settings_api
+from esolangs.operations.source import read_png_artifact
 from esolangs.registry import LANGUAGES
 from esolangs.registry._functions import FunctionRef
 from esolangs.runtime import _execution
@@ -190,13 +191,17 @@ def test_raster_scaling_retains_settings(balance, native_png) -> None:
         raster, "01", scale=2, balance=balance, settings=settings
     )
     assert source.settings is settings
-    pixels = Raster.from_png(native_png(source))
-    assert pixels.settings == settings
-    retained = pixels.settings
-    assert pixels.tagged(source.language).settings is retained
-    assert pixels.upscaled(1).settings is retained
-    assert pixels.upscaled(2).settings is retained
-    assert pixels.tagged(other).settings is None
+    restored = read_png_artifact(raster, native_png(source))
+    assert restored.settings == settings
+    retained = restored.settings
+    for scale in (1, 2):
+        changed = esolangs.ProgramArtifact(
+            restored.source.upscaled(scale), raster, retained, restored.scale * scale
+        )
+        assert changed.settings is retained
+    reassigned = esolangs.ProgramArtifact(restored.source, other)
+    assert reassigned.settings is None
+    assert not hasattr(restored.source, "settings")
 
 
 def test_inherited_choices_are_checked_before_input() -> None:

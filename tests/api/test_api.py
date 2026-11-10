@@ -299,7 +299,7 @@ def test_bound_language_runs_a_boolean_workflow() -> None:
     assert language.describe()["name"] == language.name
     program = language.generate("0110", balance=True)
     stdin = language.encode_inputs([0, 1], truth_table="0110")
-    assert _check_program(language.name, program, stdin) == program.source
+    assert _check_program(language.name, program, stdin).source == program.source
     assert language.read_answer(language.run(program, stdin=stdin).output) == "1"
     assert _evaluate(language.name, program, inputs=2) == "0110"
 

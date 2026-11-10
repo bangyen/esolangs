@@ -3,7 +3,6 @@
 from collections.abc import Callable
 from functools import partial
 
-from esolangs.artifacts import ProgramArtifact
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError
 from esolangs.operations.source import _check_program
@@ -178,7 +177,6 @@ def _run_result(
     settings: DialectSettings | None = None,
 ) -> ExecutionResult:
     """Execute through one route, retaining its result metadata."""
-    record = isinstance(program, ProgramArtifact)
     settings = effective_settings(language, program, settings)
     scale = effective_scale(language, program, scale)
     dialect_options(language, settings)  # validate before any route
@@ -230,10 +228,10 @@ def _run_result(
         "which steps and so needs no signal",
     )
     name = resolve(language)
-    program = _check_program(name, program, stdin)
-    if not record:
-        settings = effective_settings(name, program, settings)
-    scale = effective_scale(language, program, scale)
+    artifact = _check_program(name, program, stdin)
+    settings = effective_settings(name, artifact, settings)
+    scale = effective_scale(language, artifact, scale)
+    program = artifact.source
     entrypoint = LANGUAGES[name].runtime.completion_entrypoint
     run_fn = getattr(interpreter_module(name), entrypoint)
     program_args, options = prepare_call(

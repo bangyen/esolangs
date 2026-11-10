@@ -51,7 +51,7 @@ def test_artifact_persistence_executes_the_same_table(
 
     with monkeypatch.context() as patch:
         patch.setattr(portable, "source_adapter", refuse_adapter, raising=False)
-        patch.setattr(esolangs.Raster, "tagged", refuse_adapter)
+        patch.setattr(esolangs.Raster, "tagged", refuse_adapter, raising=False)
         document = esolangs.dump_program(language, source)
         restored = esolangs.load_program(language, document)
         assert esolangs.dump_program(language, restored) == document
@@ -183,7 +183,7 @@ def test_generation_keeps_the_final_record(language, table, options, monkeypatch
     def forbid_adapter(*_args):
         raise AssertionError("generation adapted an explicit record")
 
-    monkeypatch.setattr(esolangs.Raster, "tagged", forbid_adapter)
+    monkeypatch.setattr(esolangs.Raster, "tagged", forbid_adapter, raising=False)
     artifact = esolangs.generate(language, table, **options)
     assert isinstance(artifact, (ProgramArtifact, TemplateArtifact))
     assert artifact.language == language
@@ -251,7 +251,9 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
 
 def test_public_records_canonicalize_and_validate_metadata():
     artifact = ProgramArtifact("+.", REFERENCE.upper())
-    assert artifact.language == REFERENCE
+    assert artifact.language == REFERENCE.upper()
+    canonical = esolangs.Language(REFERENCE.upper()).from_source(artifact.source)
+    assert canonical.language == REFERENCE
     assert esolangs.run(REFERENCE, artifact).output == "\x01"
     with pytest.raises(esolangs.ArgumentError):
         ProgramArtifact("+.", REFERENCE, scale=1)
@@ -273,10 +275,8 @@ def test_public_records_canonicalize_and_validate_metadata():
     name = one(source_kind="raster", boolean_generator=True)[0]
     generated = esolangs.generate(name, "01")
     settings = esolangs.Language(name).settings()
-    native = esolangs.Raster(
-        generated.source.rows, language=name, settings=settings, scale=generated.scale
-    )
-    retained = ProgramArtifact(native, name)
+    native = esolangs.Raster(generated.source.rows)
+    retained = ProgramArtifact(native, name, settings, generated.scale)
     assert retained.settings is settings
     assert retained.scale == generated.scale
     assert esolangs.run(name, retained, stdin="1\n").output == "1"

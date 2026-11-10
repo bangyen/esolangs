@@ -41,7 +41,7 @@ def test_scale_validation_and_uniformity(name: str) -> None:
     image = Raster((((0, 0, 0), (255, 255, 255)), ((0, 0, 0), (0, 0, 0))))
     assert image.upscaled(1) is image
     assert normalize(image.rows) is image.rows
-    assert image.upscaled(2).language is None
+    assert not hasattr(image.upscaled(2), "language")
     with pytest.raises(ProgramError, match="uniform"):
         normalize(image.rows, 2)
     with pytest.raises(ProgramError, match="divisible"):

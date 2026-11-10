@@ -10,9 +10,8 @@ from operator import is_not
 from typing import cast
 
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
-from esolangs.runtime._validate import check_provenance, check_scale
+from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error
-from esolangs.settings import DialectSettings
 
 from . import png
 
@@ -106,52 +105,27 @@ def _assign(
     rows: Rows | None,
     materialize: Callable[[], Rows] | None,
     payload: object | None,
-    language: str | None,
-    settings: DialectSettings | None,
-    scale: int | None = None,
 ) -> Raster:
     """Initialize ``raster``'s fields; the one path both constructors share."""
-    if scale is not None:
-        check_scale(scale)
-    language = check_provenance(language, settings)
     object.__setattr__(raster, "_rows", rows)
     object.__setattr__(raster, "_normalizations", {})
     object.__setattr__(raster, "_materialize", materialize)
     object.__setattr__(raster, "_payload", payload)
-    object.__setattr__(raster, "_language", language)
-    object.__setattr__(raster, "_settings", settings)
-    object.__setattr__(raster, "_scale", scale)
     object.__setattr__(raster, "_hash", None)
     raster.__post_init__()
     return raster
 
 
-def _rebuilt(
-    rows: Rows,
-    language: str | None,
-    settings: DialectSettings | None,
-    scale: int | None,
-) -> Raster:
-    """Unpickle a :class:`Raster` (``__reduce__``'s constructor)."""
-    return Raster(rows, language=language, settings=settings, scale=scale)
-
-
 def lazy_raster(
     materialize: Callable[[], Rows],
     payload: object | None = None,
-    *,
-    language: str | None = None,
-    settings: DialectSettings | None = None,
-    scale: int | None = None,
 ) -> Raster:
     """Return a raster whose pixels a language-owned renderer supplies.
 
     Not a ``Raster`` constructor argument, so the public signature names
     no renderer internals.
     """
-    return _assign(
-        Raster.__new__(Raster), None, materialize, payload, language, settings, scale
-    )
+    return _assign(Raster.__new__(Raster), None, materialize, payload)
 
 
 @dataclass(frozen=True, init=False, eq=False)
@@ -166,22 +140,15 @@ class Raster:
         default=None, repr=False, compare=False
     )
     _payload: object | None = field(default=None, repr=False, compare=False)
-    _language: str | None = field(default=None, repr=False, compare=False)
-    _settings: DialectSettings | None = field(default=None, repr=False, compare=False)
-    _scale: int | None = field(default=None, repr=False, compare=False)
     # Tuples cache no hash before 3.14; an lru_cache key rehashes every pixel.
     _hash: int | None = field(default=None, repr=False, compare=False)
 
     def __init__(
         self,
         rows: Rows,
-        *,
-        language: str | None = None,
-        settings: DialectSettings | None = None,
-        scale: int | None = None,
     ) -> None:
         """Create a raster from RGB pixel rows."""
-        _assign(self, rows, None, None, language, settings, scale)
+        _assign(self, rows, None, None)
 
     def __post_init__(self) -> None:
         """Validate the rectangular raster shape."""
@@ -196,21 +163,21 @@ class Raster:
         object.__setattr__(self, "_rows", _freeze_rows(self._rows))
 
     def __repr__(self) -> str:
-        """Name the size, language and scale; a lazy raster stays unrendered."""
+        """Name the size; a lazy raster stays unrendered."""
         size = (
             f"{len(self._rows[0])}x{len(self._rows)}"
             if self._rows is not None
             else "unrendered"
         )
-        return f"Raster({size}, language={self.language!r}, scale={self.scale!r})"
+        return f"Raster({size})"
 
     def __eq__(self, other: object) -> bool:
         """Whether two rasters have identical RGB pixels."""
         return isinstance(other, Raster) and self.rows == other.rows
 
     def __reduce__(self) -> tuple[object, tuple[object, ...]]:
-        """Pickle the pixels and tags: an upscaled raster's renderer is a closure."""
-        return (_rebuilt, (self.rows, self.language, self.settings, self.scale))
+        """Pickle pixels; a lazy renderer may be a closure."""
+        return (Raster, (self.rows,))
 
     def __hash__(self) -> int:
         """Hash the immutable RGB pixels, once."""
@@ -219,42 +186,6 @@ class Raster:
             cached = hash(self.rows)
             object.__setattr__(self, "_hash", cached)
         return cached
-
-    @property
-    def language(self) -> str | None:
-        """The language retained by generated source or PNG metadata."""
-        return self._language
-
-    @property
-    def settings(self) -> DialectSettings | None:
-        """The retained dialect choices."""
-        return self._settings
-
-    @property
-    def scale(self) -> int | None:
-        """The retained pixel enlargement factor, absent on untagged images."""
-        return self._scale
-
-    def tagged(
-        self,
-        language: str,
-        *,
-        settings: DialectSettings | None = None,
-        scale: int | None = None,
-    ) -> Raster:
-        """Return this raster tagged as generated for ``language``."""
-        language = cast("str", check_provenance(language, None))
-        return _assign(
-            Raster.__new__(Raster),
-            self._rows,
-            self._materialize,
-            self._payload,
-            language,
-            self.settings
-            if settings is None and language == self.language
-            else settings,
-            self.scale if scale is None else scale,
-        )
 
     @property
     def rows(self) -> Rows:
@@ -268,8 +199,6 @@ class Raster:
         """Return cached codel rows; explicit and detected scales stay distinct."""
         from .scale import normalize
 
-        if scale is None:
-            scale = self.scale
         if scale is not None:
             check_scale(scale)
         if scale not in self._normalizations:
@@ -277,7 +206,7 @@ class Raster:
         return self._normalizations[scale]
 
     def upscaled(self, scale: int) -> Raster:
-        """Replicate pixels into solid squares, preserving language ownership."""
+        """Replicate pixels into solid squares."""
         check_scale(scale)
         if scale == 1:
             return self
@@ -299,9 +228,6 @@ class Raster:
         return lazy_raster(
             materialize,
             self._payload,
-            language=self.language,
-            settings=self.settings,
-            scale=(self.scale or 1) * scale,
         )
 
     @classmethod
@@ -323,33 +249,7 @@ class Raster:
             # Inside the guard too: a 0x0 image decodes cleanly and then
             # ``__post_init__`` rejects the empty rows, which is still a bad
             # PNG rather than a caller error.
-            metadata = png.read_metadata(data)
-            if metadata is None:
-                return cls(decoded)
-            from esolangs.registry import resolve
-            from esolangs.settings import DialectSettings
-
-            language = metadata.get("language")
-            if language is not None:
-                if not isinstance(language, str):
-                    raise ValueError("PNG language must be a string")
-                language = resolve(language)
-            scale = metadata.get("scale")
-            if scale is not None:
-                check_scale(scale)
-            # The JSON document's validation: ``{"integer": 5}`` once
-            # surfaced as "int() can't convert non-string".
-            from esolangs.portable import decode_settings
-
-            saved_settings = metadata.get("settings")
-            settings = None
-            if saved_settings is not None:
-                settings = decode_settings(saved_settings, language)
-            if settings is not None and language is not None:
-                settings.options(language)
-            return _assign(
-                cls.__new__(cls), decoded, None, None, language, settings, scale
-            )
+            return cls(decoded)
         except MissingDependencyError:
             raise
         except Exception as exc:
@@ -362,4 +262,4 @@ class Raster:
 
     def to_png(self) -> bytes:
         """Encode this raster as PNG bytes."""
-        return png.write_source(self.rows, self.language, self.settings, self.scale)
+        return png.write_rgb(self.rows)

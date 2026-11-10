@@ -103,7 +103,7 @@ def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
             return self.value
 
     program, stdin = Stream(b",.,."), Stream("\n\x00")
-    assert _check_program(REFERENCE, program, stdin) == ",.,."
+    assert _check_program(REFERENCE, program, stdin).source == ",.,."
     assert stdin.reads == 0
     assert esolangs.run(REFERENCE, ",.,.", stdin=stdin).output == "\n\x00"
     assert (program.reads, stdin.reads) == (1, 1)
@@ -122,7 +122,7 @@ def test_binary_stdin_uses_the_same_unicode_character_stream(stdin: Any) -> None
 def test_path_loading_retains_existing_newline_normalization(tmp_path: Path) -> None:
     path = tmp_path / "source.txt"
     path.write_bytes(b"+,\r\n.\r\n")
-    assert _check_program(REFERENCE, path) == "+,\n."
+    assert _check_program(REFERENCE, path).source == "+,\n."
     assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
 
 

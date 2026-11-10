@@ -43,11 +43,7 @@ PUBLIC_MEMBERS = {
     },
     esolangs.Raster: {
         "from_png",
-        "language",
         "rows",
-        "scale",
-        "settings",
-        "tagged",
         "to_png",
         "upscaled",
     },

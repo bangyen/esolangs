@@ -158,7 +158,7 @@ def _run(rest: list[str]) -> None:
     # result with no trailing newline runs into the next shell prompt.
     if output and not output.endswith("\n") and sys.stdout.isatty():
         sys.stdout.write("\n")
-    empty = isinstance(program, str) and not program.strip()
+    empty = isinstance(program.source, str) and not program.source.strip()
     if empty:
         # Legal, and almost never what was meant: an empty file is what you
         # get from a redirect that failed or a generate that was never run.
