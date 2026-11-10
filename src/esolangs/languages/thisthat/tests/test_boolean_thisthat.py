@@ -36,6 +36,10 @@ def test_source_growth_is_linear_in_the_table() -> None:
     assert all(right <= 3 * left for left, right in pairwise(sizes[3:]))
     assert max(size / (1 << n) for n, size in enumerate(sizes, 1)) < 300
 
+    from .workspace_checks import check_accounting_thisthat
+
+    check_accounting_thisthat(0)
+
 
 def _pops(program: str) -> int:
     return program.count("◧")
@@ -134,6 +138,10 @@ def test_pruning_never_grows_a_table() -> None:
     assert sum(len(thisthat(table)) for table in tables) == 47_482
     assert sum(len(_tree(table, prune=False)) for table in tables) == 188_416
 
+    from .workspace_checks import check_accounting_thisthat
+
+    check_accounting_thisthat(1)
+
 
 @pytest.mark.medium
 def test_tables_through_six_inputs_execute() -> None:
@@ -143,6 +151,10 @@ def test_tables_through_six_inputs_execute() -> None:
         for _ in range(12):
             table = "".join(rng.choice("01") for _ in range(1 << n))
             assert verify_generated("thisthat", table), table
+
+    from .workspace_checks import check_accounting_thisthat
+
+    check_accounting_thisthat(2)
 
 
 def test_layout_collisions_abort() -> None:
@@ -206,6 +218,10 @@ def test_narrow_strip_executes_every_small_table(monkeypatch) -> None:
         io = ScriptedIO(f"{row:02b}\nQ")
         run(damaged.splitlines(), io)
         assert (io.getvalue(), io.reads, io.input_token()) == ("0", 2, "Q")
+
+    from .workspace_checks import check_accounting_thisthat
+
+    check_accounting_thisthat(3)
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])
@@ -344,6 +360,10 @@ def test_shared_residual_buses_execute_within_ledger(monkeypatch) -> None:
             "Q",
         )
 
+    from .workspace_checks import check_accounting_thisthat
+
+    check_accounting_thisthat(4)
+
 
 @pytest.mark.medium
 def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:
@@ -362,6 +382,10 @@ def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:
                 run(source.splitlines(), io)
                 assert (io.getvalue(), io.reads) == (expected, 3)
     assert exercised > 0
+
+    from .workspace_checks import check_accounting_thisthat
+
+    check_accounting_thisthat(5)
 
 
 @pytest.mark.medium
@@ -383,6 +407,10 @@ def test_shared_area_envelope_admits_more_than_old_node_cap() -> None:
         run(source.splitlines(), io)
         assert (io.getvalue(), io.reads) == (expected, 6)
 
+    from .workspace_checks import check_accounting_thisthat
+
+    check_accounting_thisthat(6)
+
 
 @pytest.mark.medium
 def test_shared_unequal_bus_banks_execute_all_rows() -> None:
@@ -400,6 +428,10 @@ def test_shared_unequal_bus_banks_execute_all_rows() -> None:
         io = ScriptedIO(f"{row:09b}")
         run(source.splitlines(), io)
         assert (io.getvalue(), io.reads) == (expected, 9)
+
+    from .workspace_checks import check_accounting_thisthat
+
+    check_accounting_thisthat(7)
 
 
 @pytest.mark.medium
@@ -435,6 +467,10 @@ def test_balance_matches_the_old_one_column_narrowing_search() -> None:
     assert balance_score(searched("0110", thisthat("0110"))) < balance_score(
         _tree("0110")
     )
+
+    from .workspace_checks import check_accounting_thisthat
+
+    check_accounting_thisthat(8)
 
 
 def test_a_dag_over_the_cycle_bound_is_refused() -> None:

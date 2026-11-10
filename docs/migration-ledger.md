@@ -4091,3 +4091,30 @@ The strict reader, two relocation positives and 34 negative controls pass.
 The 9,167 raw boundaries, 126-bit peak, 100 children and 148 startup markers
 remain unchanged. This strengthens the existing finite scalar scope; broader
 Packlang syntax and host behavior remain unclaimed.
+
+thisthat retains all 66 original cases: 63 Cat inputs at cap 256, truth 0/1
+at cap 200 and Kolakoski at cap 4,000. One LF case at cap 32 supplies the
+seventh written-component witness. An independent box-rule model checks all
+seven workspace parts, readonly grids, full IO, typed raw keys, retained values
+and original hashes. Raw/prepared routes use FirstDraw(0); VM/debugger/public
+and workers use Seeded(0). The two policies have separate predictions.
+
+Each native route checks every current boundary and final retained value.
+All non-Kolakoski histories are complete. Eight origin windows per route
+partition all 8,006,001 Kolakoski history pairs; each window also checks all
+4,001 current/wire boundaries and final holds. Nine complete existing medium
+owners retain their bodies and decorators, adding two-statement tails.
+Their permanent hook checks all 67 cases and final holds without new wire
+work; the external cohort owns full transport and historical comparisons.
+
+All 192 installed leaves pass on Python 3.12.11–final 3.15.0, with 296 real
+children and 488 startup markers under the unchanged 952-file guard. Source
+qualification retains 38 V4 nonpure leaves, five V5 leaves and 149 V7 leaves;
+each keeps its original argv, nonce and receipts. Earlier failed probes and
+the replaced V4 pure result remain archived without acceptance credit.
+The final proof checks full independently predicted branch graphs, native/
+worker equality and typed wire; branching decisions correctly have no command
+count. The strict reader, two relocation positives and 34 corruption controls
+pass. No nodes, bands, caps, native or generator code change. General grammar,
+default-entropy histories and provider universality remain unclaimed.
+Accounting reviews pending: 0; completion reconciliation remains separate.
