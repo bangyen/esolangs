@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs._dialect import DialectSchema
 from esolangs.cli import HELP, USAGE
 from esolangs.registry import wiki_url
 from esolangs.registry._backend import BooleanBackend
@@ -48,8 +49,11 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
                 completion_entrypoint="_execute",
                 capabilities=MachineCapabilities(),
                 dialect=lambda mode="plain": mode,
-                dialect_values={"mode": ("plain", "with spaces")},
-                dialect_defaults={"mode": "plain"},
+                dialect_schema=DialectSchema(
+                    "Dialect Choice",
+                    {"mode": ("plain", "with spaces")},
+                    {"mode": "plain"},
+                ),
             ),
             backend=BooleanBackend(entrypoint=build),
         ),

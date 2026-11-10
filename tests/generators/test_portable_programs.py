@@ -5,7 +5,7 @@ import json
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, ProgramArtifact
+from esolangs import ProgramArtifact
 from tests.support.dialect_support import CASES
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
@@ -22,7 +22,7 @@ def test_restored_isolated_execution(language) -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("choices", [None, DialectSettings()])
+@pytest.mark.parametrize("choices", [None, esolangs.Language("brainfuck").settings()])
 def test_default_settings_distinction(choices) -> None:
     document = esolangs.dump_program(
         REFERENCE, ProgramArtifact("+.", REFERENCE, choices)

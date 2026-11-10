@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import esolangs
-from esolangs import DialectSettings
 from esolangs.registry import LANGUAGES
 from tests.support.cases import cases
 
@@ -43,7 +42,11 @@ def _program(name: str, trigger: dict[str, object]) -> esolangs.ProgramSource:
 def run_trigger(name: str, trigger: dict[str, object]) -> str:
     """Run one trigger; settings are built here, since they validate."""
     settings = trigger.get("settings")
-    chosen = DialectSettings(**settings) if isinstance(settings, dict) else None
+    chosen = (
+        esolangs.Language(name).settings(**settings)
+        if isinstance(settings, dict)
+        else None
+    )
     return esolangs.run(
         name,
         _program(name, trigger),

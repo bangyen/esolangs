@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for NQ."""
 
+from esolangs._dialect import DialectSchema
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.nq.dialect import DEFAULT_GUARD_BINDING, GUARD_BINDINGS
 from esolangs.languages.nq.lifecycle import CAPABILITIES
@@ -19,8 +20,11 @@ LANGUAGE = Language(
         dialect=FunctionRef(
             "esolangs.languages.nq.interpreter", "guard_dialect", ("guard_binding",)
         ),
-        dialect_values={"guard_binding": GUARD_BINDINGS},
-        dialect_defaults={"guard_binding": DEFAULT_GUARD_BINDING},
+        dialect_schema=DialectSchema(
+            "NQ",
+            {"guard_binding": GUARD_BINDINGS},
+            {"guard_binding": DEFAULT_GUARD_BINDING},
+        ),
         machine_preparation="prepare_machine",
     ),
     backend=BooleanBackend(

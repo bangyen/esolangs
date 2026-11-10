@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, Raster, run
+from esolangs import Raster, run
 from esolangs.cli import main
 from esolangs.languages.line.interpreter.extract import detect_scale, normalize_scale
 from esolangs.languages.line.interpreter.mask import Mask
@@ -32,7 +32,7 @@ def test_cli_scaled_raster(capsysbinary, scale) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("scale", [1, 2])
 def test_raw_png_round_trip_executes(scale, tmp_path) -> None:
-    settings = DialectSettings()
+    settings = esolangs.Language("Line").settings()
     source = esolangs.generate("Line", "01", scale=scale, settings=settings)
     path = tmp_path / "program.png"
     esolangs.save_program(source, path)

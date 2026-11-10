@@ -41,7 +41,7 @@ def test_each_dialect_answers_its_own_programs() -> None:
     tables = [table for n in (1, 2, 3) for table in witnesses(n)]
     tables += ["01101001", "0110100110010110"]
     for swap_marker in ("new", "old"):
-        settings = esolangs.DialectSettings(swap_marker=swap_marker)
+        settings = esolangs.Language("B-tapemark").settings(swap_marker=swap_marker)
         for table in tables:
             n = len(table).bit_length() - 1
             program = str(
@@ -66,7 +66,7 @@ def test_a_default_program_is_not_claimed_under_the_old_dialect() -> None:
 
 def test_swap_marker_must_be_a_registered_value() -> None:
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.DialectSettings(swap_marker="sideways")
+        esolangs.Language("B-tapemark").settings(swap_marker="sideways")
     with pytest.raises(ValueError, match="swap_marker"):
         tools.b_tapemark("01", swap_marker="sideways")
 

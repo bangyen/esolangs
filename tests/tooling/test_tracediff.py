@@ -80,11 +80,13 @@ def test_artifact_and_source_traces_match_for_split_grids():
         module, (program.source, stdin), frozenset(), **options
     )
 
-    name = next(name for name, lang in LANGUAGES.items() if lang.runtime.dialect_values)
+    name = next(name for name, lang in LANGUAGES.items() if lang.runtime.dialect_schema)
     runtime = LANGUAGES[name].runtime
-    key, values = next(iter(runtime.dialect_values.items()))
-    choice = next(value for value in values if value != runtime.dialect_defaults[key])
-    settings = esolangs.DialectSettings(**{key: choice})
+    key, values = next(iter(runtime.dialect_schema.choices.items()))
+    choice = next(
+        value for value in values if value != runtime.dialect_schema.defaults[key]
+    )
+    settings = esolangs.Language(name).settings(**{key: choice})
     record = esolangs.ProgramArtifact("source", name, settings=settings)
     runtime = replace(runtime, machine_preparation="bind_probe")
     capture = SimpleNamespace(

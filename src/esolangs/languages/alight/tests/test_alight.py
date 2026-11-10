@@ -7,6 +7,7 @@ from typing import ClassVar
 
 import pytest
 
+import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import HaltError
 from esolangs.generation.helpers import essential_inputs
@@ -705,10 +706,9 @@ def test_at_list_update_and_aliases(
     while not first.halted:
         first.step()
     assert first.io.getvalue() == expected
-    from esolangs import DialectSettings
     from esolangs import run as run_api
 
-    settings = DialectSettings(list_update=list_update)
+    settings = esolangs.Language("Alight").settings(list_update=list_update)
     native = run_api("Alight", program, settings=settings)
     assert native.output == expected
     debug = make_debugger("Alight", program, settings=settings)

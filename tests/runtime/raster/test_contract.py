@@ -237,7 +237,7 @@ def test_an_oversized_upscale_is_refused_before_rendering() -> None:
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 @pytest.mark.parametrize("scale", [1, 2])
 def test_png_metadata_round_trip_executes(language, scale, native_png) -> None:
-    settings = esolangs.DialectSettings()
+    settings = esolangs.Language(language).settings()
     source = esolangs.generate(language, "0110", scale=scale, settings=settings)
     restored = Raster.from_png(native_png(source))
     assert restored.rows == source.source.rows
@@ -268,19 +268,22 @@ def test_png_settings_retain_integer_choices() -> None:
     """Integers travel as hex; a settings tag needs its language (1.0 audit)."""
     key = integer_setting()
     owner, choices = next(
-        (n, lang.runtime.dialect_values[key])
+        (n, lang.runtime.dialect_schema.choices[key])
         for n, lang in LANGUAGES.items()
-        if key in (lang.runtime.dialect_values or {})
+        if key
+        in (lang.runtime.dialect_schema.choices if lang.runtime.dialect_schema else {})
     )
-    settings = esolangs.DialectSettings(**{key: choices[-1]})
+    settings = esolangs.Language(owner).settings(**{key: choices[-1]})
     source = Raster((((1, 2, 3),),), language=owner, settings=settings)
     assert Raster.from_png(source.to_png()).settings == settings
     huge = 1 << 20_000  # Past CPython's decimal rendering cap.
     with pytest.raises(esolangs.ArgumentError, match="integer with 20001 bits"):
-        esolangs.DialectSettings(**{key: huge})
-    forged = esolangs.DialectSettings()
+        esolangs.Language(owner).settings(**{key: huge})
+    forged = esolangs.Language(owner).settings()
     object.__setattr__(forged, "_items", ((key, huge),))
-    with pytest.raises(esolangs.ArgumentError, match="invalid dialect"):
+    with pytest.raises(
+        esolangs.ArgumentError, match="invalid value for dialect setting"
+    ):
         Raster((((1, 2, 3),),), language=owner, settings=forged)
 
 

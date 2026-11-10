@@ -6,9 +6,9 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import DialectSettings, run
+from esolangs import run
 from tests.support.cli_support import call_both
-from tests.support.dialect_support import Unreadable
+from tests.support.dialect_support import Unreadable, foreign_settings
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import _step_to_halt, assert_one_row_moves_along_it
@@ -46,13 +46,14 @@ def test_unknown_settings_key_suggests_the_fix(capsys) -> None:
     assert caught.value.code == 2
     error = capsys.readouterr().err
     assert "did you mean expression_syntax" in error
-    assert "Alight accepts: expression_syntax" in error
+    assert "unknown dialect setting for Alight" in error
+    assert "known settings: expression_syntax" in error
 
 
 @pytest.mark.parametrize("inputs", [1, 6])
 def test_balanced_postfix_chunks_execute(inputs) -> None:
     table = "01" * (1 << (inputs - 1))
-    settings = DialectSettings(expression_syntax="postfix")
+    settings = esolangs.Language("Alight").settings(expression_syntax="postfix")
     program = esolangs.generate("Alight", table, balance=True, settings=settings)
     assert _evaluate("Alight", program, inputs=inputs, settings=settings) == table
 
@@ -76,21 +77,27 @@ def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys) -> None:
 
 def test_single_choice_languages_refuse_other_keys() -> None:
     with pytest.raises(esolangs.ArgumentError):
-        run("Alight", Unreadable(), settings=DialectSettings(cell_modulus=255))
+        run(
+            "Alight",
+            Unreadable(),
+            settings=foreign_settings("Alight"),
+        )
 
 
 @pytest.mark.medium
 def test_postfix_one_entry_chunks() -> None:
     # Width 1 forces 64 one-entry chunks; parity would hide reversed inputs.
     table = "".join(str(((row * 37) ^ (row >> 1)).bit_count() % 2) for row in range(64))
-    settings = DialectSettings(expression_syntax="postfix")
+    settings = esolangs.Language("Alight").settings(expression_syntax="postfix")
     source = esolangs.generate("Alight", table, width=1, settings=settings)
     assert _evaluate("Alight", source, inputs=6, settings=settings) == table
 
 
 def test_foreign_language_guard_precedes_retained_choices() -> None:
     source = esolangs.generate(
-        "Alight", "01", settings=DialectSettings(expression_syntax="postfix")
+        "Alight",
+        "01",
+        settings=esolangs.Language("Alight").settings(expression_syntax="postfix"),
     )
     with pytest.raises(esolangs.ProgramError, match="generated for"):
         run("Brainfuck", source)
@@ -101,7 +108,9 @@ def test_short_settings_flag(capsys) -> None:
     output, error = call_both(["generate", "-s", settings, "Alight", "0110"], capsys)
     assert error == ""
     expected = esolangs.generate(
-        "Alight", "0110", settings=DialectSettings(expression_syntax="postfix")
+        "Alight",
+        "0110",
+        settings=esolangs.Language("Alight").settings(expression_syntax="postfix"),
     )
     assert output.rstrip("\n") == expected.source
 

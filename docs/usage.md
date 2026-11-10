@@ -176,7 +176,7 @@ Types:
 
 - `esolangs.Artifact` -- `ProgramArtifact[Program] | TemplateArtifact`
 - `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
-- `esolangs.DialectSettings` -- explicit overrides; omitted choices retain each language's defaults
+- `esolangs.DialectSettings` -- validated overrides bound to one language schema
 - `esolangs.ExecutionResult` -- output, stdin usage and explicit completion evidence
 - `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
 - `esolangs.Language` -- bind a canonical language name to the package's existing functions
@@ -320,8 +320,10 @@ including the languages it does not affect (`"none"`).
 ## Dialect settings
 
 `describe(language)["dialect_settings"]` lists a language's choices and
-defaults. Pass `settings=DialectSettings(expression_syntax="postfix")` to
-`generate`, `run` or `make_debugger`. On the CLI, use `--settings JSON` or the repeatable `--set KEY=VALUE`.
+defaults. Create overrides with
+`esolangs.Language("Alight").settings(expression_syntax="postfix")`, then pass
+them as `settings=` to `generate`, `run` or `make_debugger`. On the CLI, use
+`--settings JSON` or the repeatable `--set KEY=VALUE`.
 
 A generated program retains its settings. Plain text saved to a file does
 not, so `run` needs them again; `dump_program` keeps them.

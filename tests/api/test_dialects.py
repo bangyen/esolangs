@@ -18,7 +18,7 @@ from tests.support.dialect_support import (
     Unreadable,
     foreign_settings,
 )
-from tests.support.pick import languages
+from tests.support.pick import languages, one_where
 from tests.support.reference import REFERENCE
 
 
@@ -41,14 +41,14 @@ def _invalid() -> list[tuple[str, DialectSettings]]:
     """
     cases = []
     for name, key, bad in _out_of_range():
-        forged = DialectSettings()
+        forged = esolangs.Language(name).settings()
         object.__setattr__(forged, "_items", ((key, bad),))
         cases.append((name, forged))
     return cases
 
 
-def test_every_dialect_declares_its_values() -> None:
-    """A language's ``dialect`` and ``dialect_values`` name the same settings."""
+def test_every_dialect_declares_its_values(monkeypatch) -> None:
+    """A language's ``dialect`` and ``dialect_schema`` name the same settings."""
     for name, language in LANGUAGES.items():
         settings = (
             set(
@@ -61,14 +61,67 @@ def test_every_dialect_declares_its_values() -> None:
             if language.runtime.dialect is not None
             else set()
         )
-        assert set(language.runtime.dialect_values or {}) == settings, name
+        assert (
+            set(
+                language.runtime.dialect_schema.choices
+                if language.runtime.dialect_schema
+                else {}
+            )
+            == settings
+        ), name
         if settings:
             constructor = inspect.signature(
                 _execution.interpreter_module(name)._Machine
             )
-            assert language.runtime.dialect_defaults == {
+            assert language.runtime.dialect_schema.defaults == {
                 key: constructor.parameters[key].default for key in settings
             }, name
+
+    # The same option name may have unrelated enums in different languages.
+    from dataclasses import replace
+
+    from esolangs._dialect import DialectSchema
+
+    first, second = list(LANGUAGES)[:2]
+    entered = []
+    declared = {"mode": (1, 2)}
+    defaults = {"mode": 1}
+    first_schema = DialectSchema(first, declared, defaults)
+    declared["mode"] = (3, 4)
+    defaults["mode"] = 3
+    first_schema.choices["mode"] = (5, 6)
+    assert first_schema.choices == {"mode": (1, 2)}
+    assert first_schema.defaults == {"mode": 1}
+    schemas = (
+        first_schema,
+        DialectSchema(second, {"mode": ("left", "right")}, {"mode": "left"}),
+    )
+
+    def record_mode(mode):
+        entered.append(mode)
+
+    for schema in schemas:
+        original = LANGUAGES[schema.language]
+        runtime = replace(
+            original.runtime,
+            dialect_schema=schema,
+            dialect=record_mode,
+        )
+        monkeypatch.setitem(
+            LANGUAGES, schema.language, replace(original, runtime=runtime)
+        )
+    one = esolangs.Language(first).settings(mode=2)
+    two = esolangs.Language(second).settings(mode="right")
+    assert one.options(first) == {"mode": 2}
+    assert two.options(second) == {"mode": "right"}
+    assert entered == [2, "right"]
+    for language, value in ((first, "right"), (second, 2)):
+        with pytest.raises(esolangs.ArgumentError, match="choices:"):
+            esolangs.Language(language).settings(mode=value)
+    with pytest.raises(esolangs.ArgumentError, match="settings belong"):
+        esolangs.run(first, Unreadable(), stdin=Unreadable(), settings=two)
+    with pytest.raises(esolangs.ArgumentError, match="settings belong"):
+        esolangs.generate(second, "01", settings=one)
 
 
 @pytest.mark.parametrize(
@@ -103,8 +156,12 @@ def test_settings_require_the_public_object(operation, capsys) -> None:
         assert caught.value.code == 2
         assert "duplicate field" in capsys.readouterr().err
     assert _settings_of(
-        {"--settings": '{"cell_modulus":255}'}, ["cell_modulus=256"]
-    ) == esolangs.DialectSettings(cell_modulus=256)
+        {"--settings": '{"cell_modulus":255}'},
+        ["cell_modulus=256"],
+        language=one_where(lambda info: "cell_modulus" in info["dialect_settings"])[0],
+    ) == esolangs.Language(
+        one_where(lambda info: "cell_modulus" in info["dialect_settings"])[0]
+    ).settings(cell_modulus=256)
 
 
 def test_cli_help_shows_literal_settings_json(capsys) -> None:
@@ -122,13 +179,13 @@ def test_cli_help_shows_literal_settings_json(capsys) -> None:
 @pytest.mark.parametrize("key", ["index_base", "eof", "input_framing"])
 def test_omission_policies_are_not_public_choices(key) -> None:
     with pytest.raises(esolangs.ArgumentError, match="unknown dialect setting"):
-        DialectSettings(**{key: "default"})
+        esolangs.Language("brainfuck").settings(**{key: "default"})
 
 
 @pytest.mark.parametrize("balance", [False, True])
 def test_raster_scaling_retains_settings(balance, native_png) -> None:
     raster, other = languages(source_kind="raster", boolean_generator=True)[:2]
-    settings = DialectSettings()
+    settings = esolangs.Language(raster).settings()
     source = esolangs.generate(
         raster, "01", scale=2, balance=balance, settings=settings
     )
@@ -151,13 +208,18 @@ def test_inherited_choices_are_checked_before_input() -> None:
 
 @pytest.mark.parametrize(
     "settings",
-    [DialectSettings(), DialectSettings(expression_syntax="postfix")],
+    [
+        esolangs.Language("brainfuck").settings(),
+        esolangs.Language(
+            one_where(lambda info: "expression_syntax" in info["dialect_settings"])[0]
+        ).settings(expression_syntax="postfix"),
+    ],
 )
 def test_settings_are_immutable_and_repr_rebuilds_them(
     settings: DialectSettings,
 ) -> None:
     """It printed ``DialectSettings(_items=(...))``, a private field."""
-    assert eval(repr(settings), {"DialectSettings": DialectSettings}) == settings
+    assert eval(repr(settings), {"Language": esolangs.Language}) == settings
     with pytest.raises(FrozenInstanceError):
         settings._items = ()
 
@@ -179,13 +241,19 @@ def test_every_reported_default_and_choice_is_accepted(monkeypatch) -> None:
     for language in esolangs.list_languages():
         schema = settings_api.dialect_choices(language)
         defaults = {key: item["default"] for key, item in schema.items()}
-        assert DialectSettings(**defaults).options(language) == defaults
+        assert (
+            esolangs.Language(language).settings(**defaults).options(language)
+            == defaults
+        )
         for key, item in schema.items():
             for value in item["choices"]:
                 selected = defaults | {key: value}
-                assert DialectSettings(**selected).options(language) == selected
+                assert (
+                    esolangs.Language(language).settings(**selected).options(language)
+                    == selected
+                )
             choice = item["choices"][-1]
             invalid = choice + 1 if type(choice) is int else "bogus"
             for value in (None, invalid, True):
                 with pytest.raises(esolangs.ArgumentError, match="choices: "):
-                    DialectSettings(**{key: value})
+                    esolangs.Language(language).settings(**{key: value})

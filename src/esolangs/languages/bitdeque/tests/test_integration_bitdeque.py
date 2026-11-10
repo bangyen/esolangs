@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import DialectSettings, run
+from esolangs import run
 from tests.support.evaluation import _evaluate
 
 
@@ -29,7 +29,7 @@ class TestEveryDumpSaysWhereTheAnswerIs:
 
 @pytest.mark.parametrize("template", [False, True])
 def test_text_pickle_retains_settings(template) -> None:
-    settings = DialectSettings()
+    settings = esolangs.Language("Bitdeque").settings()
     source = esolangs.generate("Bitdeque", "0110", settings=settings)
     if not template:
         source = esolangs.instantiate("Bitdeque", source, [1, 0])
@@ -42,7 +42,7 @@ def test_text_pickle_retains_settings(template) -> None:
 
 
 def test_settings_through_explicit_template_and_override() -> None:
-    settings = DialectSettings()
+    settings = esolangs.Language("Bitdeque").settings()
     template = esolangs.generate("Bitdeque", "0110", settings=settings)
     assert not hasattr(template.source, "settings")
     explicit = esolangs.TemplateArtifact(
@@ -54,9 +54,17 @@ def test_settings_through_explicit_template_and_override() -> None:
 
     source = esolangs.generate("Brainfuck", "01")
     assert source.settings is None
-    assert run("Brainfuck", source, stdin="1", settings=DialectSettings()).output == "1"
+    assert (
+        run(
+            "Brainfuck",
+            source,
+            stdin="1",
+            settings=esolangs.Language("Brainfuck").settings(),
+        ).output
+        == "1"
+    )
     filled = esolangs.instantiate(
-        "Bitdeque", template, [1, 0], settings=DialectSettings()
+        "Bitdeque", template, [1, 0], settings=esolangs.Language("Bitdeque").settings()
     )
     assert filled.settings == settings
     assert run("Bitdeque", filled).output == "1"
@@ -64,7 +72,7 @@ def test_settings_through_explicit_template_and_override() -> None:
 
 @pytest.mark.parametrize("restored", [False, True])
 def test_balanced_bitdeque_setters(restored) -> None:
-    settings = DialectSettings()
+    settings = esolangs.Language("Bitdeque").settings()
     table = "10010110"
     program = esolangs.generate("Bitdeque", table, balance=True, settings=settings)
     for row, expected in enumerate(table):
@@ -84,7 +92,9 @@ def test_balanced_bitdeque_setters(restored) -> None:
 
 @pytest.mark.medium
 def test_filled_template_becomes_portable_text() -> None:
-    source = esolangs.generate("Bitdeque", "0110", settings=DialectSettings())
+    source = esolangs.generate(
+        "Bitdeque", "0110", settings=esolangs.Language("Bitdeque").settings()
+    )
     filled = esolangs.instantiate("Bitdeque", source, [1, 0])
     document = esolangs.dump_program("Bitdeque", filled)
     assert json.loads(document)["kind"] == "text"
@@ -92,7 +102,9 @@ def test_filled_template_becomes_portable_text() -> None:
 
 
 def test_foreign_language_is_rejected() -> None:
-    source = esolangs.generate("Bitdeque", "0110", settings=DialectSettings())
+    source = esolangs.generate(
+        "Bitdeque", "0110", settings=esolangs.Language("Bitdeque").settings()
+    )
     with pytest.raises(esolangs.ProgramError):
         esolangs.dump_program("Brainfuck", source)
     with pytest.raises(esolangs.ProgramError, match="program language"):
@@ -122,12 +134,16 @@ def test_invalid_template_fields(field, value) -> None:
 @pytest.mark.medium
 def test_bound_language_round_trip() -> None:
     language = esolangs.Language("Bitdeque")
-    source = language.generate("0110", settings=DialectSettings())
+    source = language.generate(
+        "0110", settings=esolangs.Language("Bitdeque").settings()
+    )
     document = language.dump_program(source)
     restored = language.load_program(document)
     assert _evaluate(language.name, restored, inputs=2) == "0110"
     filled = language.instantiate(source, [1, 0])
-    document = language.dump_program(filled, settings=DialectSettings())
+    document = language.dump_program(
+        filled, settings=esolangs.Language("Bitdeque").settings()
+    )
     assert language.run(language.load_program(document)).output == "1"
 
 

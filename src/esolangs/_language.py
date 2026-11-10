@@ -33,6 +33,16 @@ class Language:
         """Resolve the supplied name before any operation."""
         object.__setattr__(self, "name", resolve(self.name))
 
+    def settings(self, **choices: int | str) -> DialectSettings:
+        """Return overrides validated within this language's dialect schema.
+
+        Raises:
+            ArgumentError: A choice is unknown or outside its declared values.
+        """
+        from esolangs.settings import settings_for
+
+        return settings_for(self.name, **choices)
+
     def from_source(
         self, source: Program, *, settings: DialectSettings | None = None
     ) -> ProgramArtifact[Program]:

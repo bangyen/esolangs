@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Alight."""
 
+from esolangs._dialect import DialectSchema
 from esolangs.languages.alight.dialect import (
     EXPRESSION_SYNTAXES,
     LIST_UPDATES,
@@ -33,11 +34,14 @@ LANGUAGE = Language(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         dialect=_dialect,
-        dialect_values={
-            "expression_syntax": EXPRESSION_SYNTAXES,
-            "list_update": LIST_UPDATES,
-        },
-        dialect_defaults={"expression_syntax": "infix", "list_update": "in_place"},
+        dialect_schema=DialectSchema(
+            "Alight",
+            {
+                "expression_syntax": EXPRESSION_SYNTAXES,
+                "list_update": LIST_UPDATES,
+            },
+            {"expression_syntax": "infix", "list_update": "in_place"},
+        ),
         split=True,
         eof="it raises its own error before the read is reached",
         underfed_raises=True,

@@ -42,7 +42,7 @@ def test_artifact_persistence_executes_the_same_table(
     import esolangs.portable as portable
 
     inputs = len(table).bit_length() - 1
-    choices = esolangs.DialectSettings()
+    choices = esolangs.Language(language).settings()
     scale = 2 if LANGUAGES[language].runtime.source_kind == "raster" else 1
     source = esolangs.generate(language, table, scale=scale, settings=choices)
 
@@ -155,7 +155,7 @@ def test_generated_and_restored_bindings_need_no_recovery(
 
 
 def test_template_record_copies_bindings_and_retains_settings() -> None:
-    settings = esolangs.DialectSettings()
+    settings = esolangs.Language("brainfuck").settings()
     pairs = [["0", "1"]]
     template = TemplateArtifact(
         "$", REFERENCE, TemplateBindings(setters=pairs), settings=settings
@@ -200,7 +200,7 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
     import esolangs.artifacts as artifacts
     import esolangs.generation.helpers as helpers
 
-    choices = esolangs.DialectSettings()
+    choices = esolangs.Language(language).settings()
     artifact = esolangs.generate(language, "0110", settings=choices)
     assert isinstance(artifact, TemplateArtifact)
     restored = esolangs.load_program(
@@ -272,7 +272,7 @@ def test_public_records_canonicalize_and_validate_metadata():
 
     name = one(source_kind="raster", boolean_generator=True)[0]
     generated = esolangs.generate(name, "01")
-    settings = esolangs.DialectSettings()
+    settings = esolangs.Language(name).settings()
     native = esolangs.Raster(
         generated.source.rows, language=name, settings=settings, scale=generated.scale
     )

@@ -20,7 +20,7 @@ from esolangs.generation.wrap import DEFAULT_WIDTH
 from esolangs.registry import resolve
 from esolangs.runtime._json import unique_object
 from esolangs.runtime._validate import check_scale, check_timeout
-from esolangs.settings import DialectSettings, dialect_choices
+from esolangs.settings import DialectSettings, dialect_choices, settings_for
 
 #: Flags every subcommand accepts, so a near miss on one of them is
 #: suggested by whichever subcommand it was typed after.
@@ -386,11 +386,12 @@ def _scale_of(options: dict[str, str]) -> int | None:
         _fail(f"--scale must be a positive integer, got {options['--scale']!r}")
 
 
-def _set_value(key: str, raw: str) -> int | str | None:
+def _set_value(key: str, raw: str, language: str) -> int | str | None:
     """Read one ``--set`` value; the two modulus settings are integers."""
     if raw == "null":
         return None
-    if key in {"cell_modulus", "io_modulus"}:
+    schema = dialect_choices(language)
+    if key in schema and type(schema[key]["choices"][0]) is int:
         try:
             return int(raw, 0)
         except ValueError:
@@ -414,23 +415,18 @@ def _settings_of(
         if not isinstance(parsed, dict):
             _fail("--settings must be a JSON object")
         values.update(parsed)
+    if language is None and (values or set_pairs or "--settings" in options):
+        _fail("dialect settings require a language")
     for pair in set_pairs:
         key, sep, raw = pair.partition("=")
         if not sep or not key:
             _fail(f"--set needs KEY=VALUE, got {pair!r}")
-        values[key] = _set_value(key, raw)
+        assert language is not None
+        values[key] = _set_value(key, raw, language)
     if not values and "--settings" not in options and not set_pairs:
         return None
     try:
-        return DialectSettings(**values)  # type: ignore[arg-type]
+        assert language is not None
+        return settings_for(language, **values)  # type: ignore[arg-type]
     except EsolangError as exc:
-        message = str(exc)
-        if language is not None and message.startswith("unknown dialect setting:"):
-            try:
-                choices = dialect_choices(language)
-            except EsolangError:
-                choices = None
-            if choices is not None:
-                accepted = ", ".join(choices) if choices else "no dialect settings"
-                message += f"; {language} accepts: {accepted}"
-        _fail(message)
+        _fail(str(exc))

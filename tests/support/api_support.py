@@ -28,6 +28,7 @@ PUBLIC_MEMBERS = {
     esolangs.TemplateArtifact: {"source", "language", "bindings", "settings", "fill"},
     esolangs.TemplateBindings: {"char", "setters", "inputs", "fill"},
     esolangs.Language: {
+        "settings",
         "from_source",
         "from_file",
         "describe",
@@ -50,7 +51,7 @@ PUBLIC_MEMBERS = {
         "to_png",
         "upscaled",
     },
-    esolangs.DialectSettings: {"options"},
+    esolangs.DialectSettings: {"language", "options"},
     debugger_api.Debugger: {
         "break_at",
         "break_on_cell",

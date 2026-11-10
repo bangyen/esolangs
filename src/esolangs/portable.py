@@ -23,7 +23,12 @@ from esolangs.raster import Raster, png
 from esolangs.registry import LANGUAGES, resolve, template_char
 from esolangs.runtime._json import unique_object
 from esolangs.runtime._program import Program
-from esolangs.settings import DialectSettings, dialect_options, effective_settings
+from esolangs.settings import (
+    DialectSettings,
+    dialect_options,
+    effective_settings,
+    settings_for,
+)
 
 _FORMAT = "esolangs.program"
 
@@ -169,13 +174,13 @@ def dump_program(
 
 def _settings(value: Any, language: str) -> DialectSettings | None:
     """Restore saved dialect settings, validated for ``language``."""
-    settings = decode_settings(value)
+    settings = decode_settings(value, language)
     if settings is not None:
         dialect_options(language, settings)
     return settings
 
 
-def decode_settings(value: Any) -> DialectSettings | None:
+def decode_settings(value: Any, language: str | None) -> DialectSettings | None:
     """Restore saved dialect settings; shared with PNG metadata."""
     if value is None:
         return None
@@ -192,7 +197,9 @@ def decode_settings(value: Any) -> DialectSettings | None:
                 raise ValueError("integer settings need a hexadecimal string")
             item = int(literal, 16)
         choices[key] = item
-    return DialectSettings(**choices)
+    if language is None:
+        raise ValueError("settings need a language to apply to")
+    return settings_for(language, **choices)
 
 
 def _load_png(

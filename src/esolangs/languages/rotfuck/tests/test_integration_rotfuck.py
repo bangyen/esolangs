@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs import DialectSettings, run
+from esolangs import run
 from esolangs.vm import complete_vm, make_vm
 
 
@@ -16,7 +16,7 @@ def test_rotfuck_rotation_reaches_every_execution_path(isolated) -> None:
     The generator follows the choice: it emits a forward program that answers
     the table when run forward.
     """
-    forward = DialectSettings(rotation="forward")
+    forward = esolangs.Language("Rotfuck").settings(rotation="forward")
     assert run("ROTfuck", ",[", stdin="x", isolated=isolated).output == "x"
     assert (
         run("ROTfuck", ",,", stdin="x", settings=forward, isolated=isolated).output

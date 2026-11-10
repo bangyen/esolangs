@@ -375,7 +375,7 @@ def _check_native_constants(bit: str) -> None:
 
     for n in range(1, 13):
         for rotation in ("backward", "forward"):
-            settings = esolangs.DialectSettings(rotation=rotation)
+            settings = esolangs.Language("Rotfuck").settings(rotation=rotation)
             for options in ({}, {"width": 1}, {"balance": True}):
                 program = esolangs.generate(
                     "ROTfuck", bit * (1 << n), settings=settings, **options

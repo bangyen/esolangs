@@ -49,7 +49,7 @@ def test_language_contract(monkeypatch, capsys: pytest.CaptureFixture[str]) -> N
         assert len(source) <= 10 * len(table) - 6
         for binding in ("opcode", "recursive"):
             assert nq(table, guard_binding=binding) == source
-            settings = esolangs.DialectSettings(guard_binding=binding)
+            settings = esolangs.Language("NQ").settings(guard_binding=binding)
             for row, answer in enumerate(table):
                 bits = tuple((row >> (n - 1 - i)) & 1 for i in range(n))
                 vm = make_vm(
@@ -66,7 +66,7 @@ def test_language_contract(monkeypatch, capsys: pytest.CaptureFixture[str]) -> N
                 assert language.read_answer(vm.output) == answer
                 assert vm.snapshot()[-1] == n
     for binding in ("opcode", "recursive"):
-        settings = esolangs.DialectSettings(guard_binding=binding)
+        settings = esolangs.Language("NQ").settings(guard_binding=binding)
         for n in range(1, 9):
             table = "0" * ((1 << n) - 1) + "1"
             source = language.generate(table, width=1, settings=settings)
@@ -93,7 +93,7 @@ def test_language_contract(monkeypatch, capsys: pytest.CaptureFixture[str]) -> N
         patch.setattr(generator, "subtree_ids", wrong_children)
         for binding in ("opcode", "recursive"):
             program = language.generate(
-                "0011", settings=esolangs.DialectSettings(guard_binding=binding)
+                "0011", settings=esolangs.Language("NQ").settings(guard_binding=binding)
             )
             with pytest.raises(AssertionError):
                 assert_every_row("NQ", "0011", program=program)

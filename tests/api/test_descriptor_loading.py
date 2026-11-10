@@ -21,7 +21,7 @@ import esolangs, json, sys
 names = esolangs.list_languages()
 for name in names:
     esolangs.describe(name)
-    esolangs.DialectSettings().options(name)
+    esolangs.Language(name).settings().options(name)
 def loaded():
     return sorted(m for m in sys.modules
                   if m.startswith("esolangs.languages.") and ".generator" in m)

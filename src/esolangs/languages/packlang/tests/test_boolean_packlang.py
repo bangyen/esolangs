@@ -209,7 +209,9 @@ def test_constant_audit_reads_before_output_and_leaves_sentinel() -> None:
                     program = esolangs.generate(
                         "Packlang",
                         bit * (1 << n),
-                        settings=esolangs.DialectSettings(literal_policy=policy),
+                        settings=esolangs.Language("Packlang").settings(
+                            literal_policy=policy
+                        ),
                         **options,
                     ).source
                     if not options:

@@ -410,7 +410,9 @@ class TestProgramObjectsRefuseMisuse:
     def test_settings_need_a_language(self) -> None:
         """Untagged, ``run`` ignored them silently."""
         with pytest.raises(esolangs.ArgumentError, match="need a language"):
-            esolangs.Raster((((0, 0, 0),),), settings=esolangs.DialectSettings())
+            esolangs.Raster(
+                (((0, 0, 0),),), settings=esolangs.Language("brainfuck").settings()
+            )
 
     def test_an_uninspectable_predicate_is_refused(self) -> None:
         """``break_when(max)`` leaked inspect's bare ValueError."""

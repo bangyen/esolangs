@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from esolangs._dialect import DialectSchema
     from esolangs.runtime._capabilities import MachineCapabilities
 
 
@@ -42,7 +43,7 @@ class RuntimeSpec:
     file_newline: bool = True
     #: One defaulted keyword per supported dialect setting.
     dialect: Callable[..., Any] | None = None
-    dialect_values: Mapping[str, tuple[int | str, ...]] | None = None
+    dialect_schema: DialectSchema | None = None
     random: bool = False
     #: Seed for reproducible stepping; ordinary runs retain real randomness.
     reproducible_seed: int = 0
@@ -56,8 +57,6 @@ class RuntimeSpec:
     completion_entrypoint: str = field(kw_only=True)
     #: Typed preparation hook in the interpreter module.
     machine_preparation: str = field(kw_only=True)
-    #: Defaults for every dialect choice; absent only without a dialect.
-    dialect_defaults: Mapping[str, int | str] | None = None
 
     #: Explicit machine traits and optional debug surface.
     capabilities: MachineCapabilities = field(kw_only=True)
@@ -72,20 +71,8 @@ class RuntimeSpec:
             value = getattr(self, name)
             if not isinstance(value, str) or not value.isidentifier():
                 raise ValueError(f"runtime {name} must name a declared entry point")
-        choices = self.dialect_values or {}
         if self.dialect is None:
-            if self.dialect_defaults is not None or choices:
+            if self.dialect_schema is not None:
                 raise ValueError("dialect metadata requires a validator")
-            return
-        if (
-            not choices
-            or self.dialect_defaults is None
-            or self.dialect_defaults.keys() != choices.keys()
-        ):
-            raise ValueError("dialect defaults must match declared dialect choices")
-        for key, value in self.dialect_defaults.items():
-            if not any(
-                type(value) is type(choice) and value == choice
-                for choice in choices[key]
-            ):
-                raise ValueError(f"default for {key} must be a declared dialect choice")
+        elif self.dialect_schema is None or not self.dialect_schema.choices:
+            raise ValueError("dialect validator requires an explicit schema")

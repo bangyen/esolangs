@@ -8,7 +8,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from esolangs import DialectSettings, HaltError, run, settings, vm
+import esolangs
+from esolangs import HaltError, run, settings, vm
+from esolangs._dialect import DialectSchema
 from esolangs.languages.nq.interpreter import _Machine, prepare_machine
 from esolangs.registry import LANGUAGES
 from esolangs.results import Completion
@@ -42,13 +44,15 @@ assert module in sys.modules, 'loading control did not fire'
 
 def test_nq_refuses_invalid_dialect_metadata():
     runtime = LANGUAGES["NQ"].runtime
-    for defaults in (None, {}, {"other": "opcode"}, {"guard_binding": "bogus"}):
+    with pytest.raises(ValueError, match="dialect"):
+        replace(runtime, dialect_schema=None)
+    for defaults in ({}, {"other": "opcode"}, {"guard_binding": "bogus"}):
         with pytest.raises(ValueError, match="dialect"):
-            replace(runtime, dialect_defaults=defaults)
+            DialectSchema("NQ", runtime.dialect_schema.choices, defaults)
     with pytest.raises(ValueError, match="validator"):
         replace(runtime, dialect=None)
     with pytest.raises(ValueError, match="dialect"):
-        replace(runtime, dialect_values={"guard_binding": ()})
+        DialectSchema("NQ", {"guard_binding": ()}, {"guard_binding": "opcode"})
 
 
 @pytest.mark.parametrize("binding", ["opcode", "recursive"])
@@ -67,7 +71,9 @@ def test_nq_declared_construction_preserves_guard_readings(monkeypatch, binding)
     )
     assert settings.dialect_choices("NQ")["guard_binding"]["default"] == "opcode"
     machine = vm.make_vm(
-        "NQ", "+0->1>0+2WH", settings=DialectSettings(guard_binding=binding)
+        "NQ",
+        "+0->1>0+2WH",
+        settings=esolangs.Language("NQ").settings(guard_binding=binding),
     )
     assert machine.ip_shape == "offset"
     assert machine.views == ()

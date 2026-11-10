@@ -31,9 +31,8 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 @pytest.mark.parametrize("syntax", ["infix", "postfix"])
 def test_alight_balance_drops_ignored_inputs(syntax, monkeypatch) -> None:
-    from esolangs.settings import DialectSettings
 
-    settings = DialectSettings(expression_syntax=syntax)
+    settings = esolangs.Language("Alight").settings(expression_syntax=syntax)
     table = "0110" * 16  # 4 inputs ignored of 6
     program = str(
         esolangs.generate("Alight", table, balance=True, settings=settings).source
@@ -136,9 +135,8 @@ class TestAlightWidth:
         self, syntax: str
     ) -> None:
         """Dropping the first input of a 4-input table shrinks the area."""
-        from esolangs.settings import DialectSettings
 
-        settings = DialectSettings(expression_syntax=syntax)
+        settings = esolangs.Language("Alight").settings(expression_syntax=syntax)
 
         def area(program: str) -> int:
             rows = program.splitlines()
@@ -181,13 +179,12 @@ class TestAlightWidth:
 
     def test_postfix_ranks_candidates_by_area_alone(self) -> None:
         """The straight column (area 137) beats a 40-wide fold (area 1720)."""
-        from esolangs.settings import DialectSettings
 
         table = "00000011"
         built = boolean.alight(table, 40, expression_syntax="postfix")
         rows = built.splitlines()
         assert (max(map(len, rows)), len(rows)) == (1, 137)
-        settings = DialectSettings(expression_syntax="postfix")
+        settings = esolangs.Language("Alight").settings(expression_syntax="postfix")
         assert _evaluate("Alight", built, inputs=3, settings=settings) == table
 
     def test_width_must_have_one_column(self) -> None:
@@ -228,7 +225,9 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
 
     _check_native_constants(syntax, update, bit)
     table = bit * 256
-    settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
+    settings = esolangs.Language("Alight").settings(
+        expression_syntax=syntax, list_update=update
+    )
     program = esolangs.generate("Alight", table, settings=settings).source
     assert _evaluate("Alight", program, inputs=8, settings=settings) == table
 
@@ -243,7 +242,7 @@ def test_constant_lookup_drops_every_index_input(syntax, update, bit) -> None:
 def test_constant_lookup_executes_every_layout(syntax, bit, width, n) -> None:
 
     table = bit * (1 << n)
-    settings = esolangs.DialectSettings(expression_syntax=syntax)
+    settings = esolangs.Language("Alight").settings(expression_syntax=syntax)
     program = esolangs.generate(
         "Alight",
         table,
@@ -272,7 +271,9 @@ def test_alight_small_tables_at_width_40_keep_their_exact_silhouette() -> None:
 def _check_native_constants(syntax: str, update: str, bit: str) -> None:
     from esolangs.languages.alight.proof_formulas import workspace
 
-    settings = esolangs.DialectSettings(expression_syntax=syntax, list_update=update)
+    settings = esolangs.Language("Alight").settings(
+        expression_syntax=syntax, list_update=update
+    )
     for n in range(1, 13):
         for options in ({}, {"width": 1}, {"balance": True}):
             program = esolangs.generate(

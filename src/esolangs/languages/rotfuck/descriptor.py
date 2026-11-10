@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for ROTfuck."""
 
+from esolangs._dialect import DialectSchema
 from esolangs.generation.wrap import wrap_chars
 from esolangs.languages.rotfuck.dialect import ROTATIONS, validate_rotation
 from esolangs.languages.rotfuck.lifecycle import CAPABILITIES
@@ -24,8 +25,9 @@ LANGUAGE = Language(
         capabilities=CAPABILITIES,
         category="tape_based",
         dialect=_dialect,
-        dialect_values={"rotation": ROTATIONS},
-        dialect_defaults={"rotation": "backward"},
+        dialect_schema=DialectSchema(
+            "ROTfuck", {"rotation": ROTATIONS}, {"rotation": "backward"}
+        ),
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

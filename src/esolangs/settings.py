@@ -1,104 +1,51 @@
-"""Immutable specification choices for generation and execution."""
+"""Catalog validation and artifact overrides for scoped dialect choices."""
 
-from dataclasses import dataclass
-from difflib import get_close_matches
-from typing import Any, TypedDict
+from typing import TypedDict
 
+from esolangs._dialect import DialectSchema, Scalar
+from esolangs._dialect import DialectSettings as DialectSettings
 from esolangs.exceptions import ArgumentError
-from esolangs.runtime._validate import _argument_repr
 
 
-def _choices() -> dict[str, tuple[int | str, ...]]:
-    """Load catalog choices only when constructing settings."""
-    from esolangs.registry import LANGUAGES
+def settings_for(language: str, **choices: Scalar) -> DialectSettings:
+    """Bind validated overrides to the selected language's immutable schema."""
+    from esolangs.registry import LANGUAGES, resolve
 
-    return {
-        key: values
-        for language in LANGUAGES.values()
-        for key, values in (language.runtime.dialect_values or {}).items()
-    }
-
-
-@dataclass(frozen=True, init=False, repr=False)
-class DialectSettings:
-    """Explicit overrides; omitted choices retain each language's defaults."""
-
-    _items: tuple[tuple[str, int | str], ...]
-
-    def __init__(self, **choices: int | str) -> None:
-        """Copy overrides, each one of its key's enumerated values.
-
-        Each key belongs to one language, so a value outside its choices fails
-        here rather than at first use (``rotation="sideways"`` once reached
-        ``generate``).  Unsupported keys still fail only at use.
-        """
-        known_choices = _choices()
-        for key, value in choices.items():
-            if key not in known_choices:
-                known = sorted(known_choices)
-                close = get_close_matches(key, known, n=1, cutoff=0.6)
-                suggestion = f" (did you mean {close[0]}?)" if close else ""
-                raise ArgumentError(
-                    f"unknown dialect setting: {key}{suggestion}; "
-                    f"known settings: {', '.join(known)}"
-                )
-            values = known_choices[key]
-            # ``type`` rather than ``==`` alone: True == 1 and 256.0 == 256.
-            if type(value) is not type(values[0]) or value not in values:
-                raise ArgumentError(
-                    f"invalid value for dialect setting {key}: "
-                    f"{_argument_repr(value)}; "
-                    f"choices: {', '.join(map(str, values))}"
-                )
-        object.__setattr__(self, "_items", tuple(sorted(choices.items())))
-
-    def __repr__(self) -> str:
-        """Spell the call that rebuilds it; the dataclass one showed ``_items``."""
-        choices = ", ".join(f"{key}={value!r}" for key, value in self._items)
-        return f"DialectSettings({choices})"
-
-    def options(self, language: str) -> dict[str, Any]:
-        """Return these overrides validated for ``language``.
-
-        Raises:
-            ArgumentError: ``language`` has no such setting or value.
-        """
-        from esolangs.registry import LANGUAGES, resolve
-
-        name = resolve(language)
-        values: dict[str, Any] = dict(self._items)
-        runtime = LANGUAGES[name].runtime
-        dialect = runtime.dialect
-        if dialect is None:
-            if values:
-                raise ArgumentError(f"{name} supports no dialect settings")
-        else:
-            keys = list(runtime.dialect_values or {})
-            unknown = values.keys() - set(keys)
-            if unknown:
-                raise ArgumentError(
-                    f"invalid dialect settings for {name}: "
-                    f"unknown setting(s): {', '.join(sorted(unknown))}; "
-                    f"supported dialect settings: {', '.join(keys)}"
-                )
-            try:
-                dialect(**values)
-            except (TypeError, ValueError) as error:
-                raise ArgumentError(
-                    f"invalid dialect settings for {name}: {error}"
-                ) from error
-        return values
+    name = resolve(language)
+    schema = LANGUAGES[name].runtime.dialect_schema or DialectSchema(name, {}, {})
+    settings = DialectSettings(schema, **choices)
+    dialect_options(name, settings)
+    return settings
 
 
-def dialect_options(language: str, settings: DialectSettings | None) -> dict[str, Any]:
-    """Validate the public settings object before source or input acquisition."""
+def dialect_options(
+    language: str, settings: DialectSettings | None
+) -> dict[str, Scalar]:
+    """Validate scope and choices before source or input acquisition."""
+    from esolangs.registry import LANGUAGES, resolve
+
     if settings is None:
         return {}
     if not isinstance(settings, DialectSettings):
         raise ArgumentError(
             f"settings must be a DialectSettings object, got {type(settings).__name__}"
         )
-    return settings.options(language)
+    name = resolve(language)
+    runtime = LANGUAGES[name].runtime
+    schema = runtime.dialect_schema or DialectSchema(name, {}, {})
+    if settings._schema != schema:  # noqa: SLF001 - verify the declared domain schema
+        raise ArgumentError(
+            f"dialect settings belong to {settings.language}, not {name}"
+        )
+    values = settings.options(name)
+    if runtime.dialect is not None:
+        try:
+            runtime.dialect(**values)
+        except (TypeError, ValueError) as error:
+            raise ArgumentError(
+                f"invalid dialect settings for {name}: {error}"
+            ) from error
+    return values
 
 
 def effective_settings(
@@ -114,6 +61,7 @@ def effective_settings(
         raise ArgumentError(
             f"settings must be a DialectSettings object, got {type(settings).__name__}"
         )
+    dialect_options(language, settings)
     if not isinstance(
         program, (Raster, CompressedText, ProgramArtifact, TemplateArtifact)
     ) or program.language != resolve(language):
@@ -125,7 +73,7 @@ def effective_settings(
     if settings is None:
         return retained
     # Validate the combined choices after explicit fields replace retained fields.
-    merged = DialectSettings(**(dict(retained._items) | dict(settings._items)))  # noqa: SLF001
+    merged = settings_for(language, **(dict(retained._items) | dict(settings._items)))  # noqa: SLF001
     dialect_options(language, merged)
     return merged
 
@@ -144,9 +92,10 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
     runtime = LANGUAGES[resolve(language)].runtime
     if runtime.dialect is None:
         return {}
-    assert runtime.dialect_defaults is not None
-    choices = runtime.dialect_values or {}
+    schema = runtime.dialect_schema
+    assert schema is not None
+    choices = schema.choices
     return {
         key: {"default": default, "choices": choices[key]}
-        for key, default in runtime.dialect_defaults.items()
+        for key, default in schema.defaults.items()
     }

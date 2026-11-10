@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import DialectSettings, run
+from esolangs import run
 from esolangs.debugger import make_debugger
 from tests.support.cli_support import call_both, call_main
 from tests.support.evaluation import _evaluate
@@ -33,7 +33,9 @@ class TestGraphemeReadsWhatTheDocsNowSay:
 
 
 def test_conversion_reaches_debugger_and_bound_language() -> None:
-    settings = DialectSettings(integer_conversion="after_each_letter")
+    settings = esolangs.Language("Grapheme").settings(
+        integer_conversion="after_each_letter"
+    )
     language = esolangs.Language("Grapheme")
     assert language.run("FAFY", settings=settings).output == "10"
     debugger = make_debugger("Grapheme", "FAFY", settings=settings)
@@ -48,7 +50,9 @@ def test_called_code_uses_selected_conversion(source) -> None:
         run(
             "Grapheme",
             source,
-            settings=DialectSettings(integer_conversion="after_each_letter"),
+            settings=esolangs.Language("Grapheme").settings(
+                integer_conversion="after_each_letter"
+            ),
         ).output
         == "10"
     )
@@ -59,7 +63,9 @@ def test_numeric_and_function_conversion_remain_literal() -> None:
         run(
             "Grapheme",
             "FAFJYHABHJY",
-            settings=DialectSettings(integer_conversion="after_each_letter"),
+            settings=esolangs.Language("Grapheme").settings(
+                integer_conversion="after_each_letter"
+            ),
         ).output
         == "102"
     )
@@ -67,7 +73,9 @@ def test_numeric_and_function_conversion_remain_literal() -> None:
 
 def test_string_skip_count_uses_conversion() -> None:
     source = "FZFEAEFZFV" + "P" * 9 + "TY"
-    settings = DialectSettings(integer_conversion="after_each_letter")
+    settings = esolangs.Language("Grapheme").settings(
+        integer_conversion="after_each_letter"
+    )
     assert run("Grapheme", source, settings=settings).output == "0"
     assert run("Grapheme", source).output == "1"
 
@@ -79,7 +87,9 @@ def test_unset_names_read_as_themselves(source, expected) -> None:
 
 @pytest.mark.medium
 def test_generated_corpus() -> None:
-    settings = DialectSettings(integer_conversion="after_each_letter")
+    settings = esolangs.Language("Grapheme").settings(
+        integer_conversion="after_each_letter"
+    )
     for n in range(1, 4):
         for table in witnesses(n):
             for balance in (False, True):
@@ -95,7 +105,9 @@ def test_prose_conversion_at_six_inputs() -> None:
     source = esolangs.generate(
         "Grapheme",
         table,
-        settings=DialectSettings(integer_conversion="after_each_letter"),
+        settings=esolangs.Language("Grapheme").settings(
+            integer_conversion="after_each_letter"
+        ),
     )
     assert _evaluate("Grapheme", source, inputs=6) == table
 

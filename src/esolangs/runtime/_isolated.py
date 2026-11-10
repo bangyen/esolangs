@@ -35,7 +35,12 @@ from esolangs.runtime._result_wire import (
 from esolangs.runtime._source import ProgramSource, effective_scale
 from esolangs.runtime._validate import check_timeout, check_whole
 from esolangs.runtime.source_hints import with_hint
-from esolangs.settings import DialectSettings, dialect_options, effective_settings
+from esolangs.settings import (
+    DialectSettings,
+    dialect_options,
+    effective_settings,
+    settings_for,
+)
 
 type _WorkerResult = ExecutionResult | TerminationResult
 
@@ -740,11 +745,12 @@ def _serve_request() -> None:
             program = CompressedText(base64.b64decode(program, validate=True))
         if request["raster"]:
             program = Raster(_raster_rows(program))
-        settings = DialectSettings(
+        settings = settings_for(
+            request["language"],
             **{
                 key: int(value, 16) if key in request["integer_settings"] else value
                 for key, value in request["settings"].items()
-            }
+            },
         )
         # The parent already decoded and checked runnable source.
         program = ProgramArtifact(program, request["language"], settings)

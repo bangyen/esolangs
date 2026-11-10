@@ -56,7 +56,9 @@ def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
     program = compact_chain(
         table, 8, modulus=255, io_modulus=io_modulus, project_inputs=True
     )
-    settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
+    settings = esolangs.Language("SLOW ACV MAMMALIAN").settings(
+        cell_modulus=255, io_modulus=io_modulus
+    )
     for row in (0, 1, 85, 128, 170, 255):
         bits = [int(bit) for bit in f"{row:08b}"]
         output = execute(
@@ -85,7 +87,9 @@ def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
         str(sum((row >> (inputs - 1 - bit)) & 1 for bit in used) % 2)
         for row in range(1 << inputs)
     )
-    settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
+    settings = esolangs.Language("SLOW ACV MAMMALIAN").settings(
+        cell_modulus=255, io_modulus=io_modulus
+    )
     legacy = _unprojected_255(table, inputs, io_modulus)
     program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings).source
     assert len(program) <= len(legacy)
@@ -956,7 +960,9 @@ def test_mammalian_hands_back_a_program_with_no_words() -> None:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> None:
     table = bit * 256
-    settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
+    settings = esolangs.Language("SLOW ACV MAMMALIAN").settings(
+        cell_modulus=cell, io_modulus=io
+    )
     program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings).source
     assert program.split().count("ACCEPT") == 8
     assert "LEAPFROG" not in program
@@ -971,7 +977,9 @@ def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> No
 def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit) -> None:
     from esolangs.languages.slow_acv_mammalian.proof_formulas import workspace
 
-    settings = esolangs.DialectSettings(cell_modulus=cell, io_modulus=io)
+    settings = esolangs.Language("SLOW ACV MAMMALIAN").settings(
+        cell_modulus=cell, io_modulus=io
+    )
     for n in range(1, 13):
         for options in ({}, {"width": 1}, {"balance": True}):
             program = esolangs.generate(

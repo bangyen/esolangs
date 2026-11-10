@@ -111,7 +111,7 @@ def test_generator_literals_are_exact(mode: str) -> None:
         artifact = esolangs.generate(
             "Grapheme",
             "0011",
-            settings=esolangs.DialectSettings(integer_conversion=mode),
+            settings=esolangs.Language("Grapheme").settings(integer_conversion=mode),
         )
         assert _evaluate("Grapheme", artifact, inputs=2) == "1100"
         assert corrupted.called

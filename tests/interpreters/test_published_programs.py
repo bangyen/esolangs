@@ -24,7 +24,6 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import ExecutionTimeoutError, InputExhaustedError
-from esolangs.settings import DialectSettings
 from esolangs.vm import complete_vm, make_vm
 
 _DIR = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
@@ -74,7 +73,7 @@ def test_wiki_examples(language, page, example, citation) -> None:
     stdin = example.get("stdin", "")
     expected = _text(page, example, "expected")
     stop = example.get("stop", "halt")
-    settings = DialectSettings(**example.get("settings", {}))
+    settings = esolangs.Language(language).settings(**example.get("settings", {}))
     if stop == "halt":
         output = esolangs.run(
             language,

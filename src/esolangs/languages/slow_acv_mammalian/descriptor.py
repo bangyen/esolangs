@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for SLOW ACV MAMMALIAN."""
 
+from esolangs._dialect import DialectSchema
 from esolangs.languages.slow_acv_mammalian.dialect import LEAPFROG_RESUMES, MODULI
 from esolangs.languages.slow_acv_mammalian.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
@@ -21,16 +22,19 @@ LANGUAGE = Language(
             "MammalianModuli",
             ("cell_modulus", "io_modulus", "leapfrog_resume"),
         ),
-        dialect_values={
-            "cell_modulus": MODULI,
-            "io_modulus": MODULI,
-            "leapfrog_resume": LEAPFROG_RESUMES,
-        },
-        dialect_defaults={
-            "cell_modulus": 256,
-            "io_modulus": 255,
-            "leapfrog_resume": "after",
-        },
+        dialect_schema=DialectSchema(
+            "SLOW ACV MAMMALIAN",
+            {
+                "cell_modulus": MODULI,
+                "io_modulus": MODULI,
+                "leapfrog_resume": LEAPFROG_RESUMES,
+            },
+            {
+                "cell_modulus": 256,
+                "io_modulus": 255,
+                "leapfrog_resume": "after",
+            },
+        ),
     ),
     backend=BooleanBackend(
         entrypoint=FunctionRef(

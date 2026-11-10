@@ -286,7 +286,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         "dump_program",
         x.ArgumentError,
         lambda: esolangs.dump_program(
-            R, "+.", settings=esolangs.DialectSettings(nonsense_key=1)
+            R, "+.", settings=esolangs.Language("brainfuck").settings(nonsense_key=1)
         ),
         None,
     ),

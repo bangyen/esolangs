@@ -341,7 +341,10 @@ class Raster:
             # surfaced as "int() can't convert non-string".
             from esolangs.portable import decode_settings
 
-            settings = decode_settings(metadata.get("settings"))
+            saved_settings = metadata.get("settings")
+            settings = None
+            if saved_settings is not None:
+                settings = decode_settings(saved_settings, language)
             if settings is not None and language is not None:
                 settings.options(language)
             return _assign(

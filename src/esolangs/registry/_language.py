@@ -50,6 +50,9 @@ class Language:
         """Validate assembled capabilities and fill an absent canonical id."""
         if not isinstance(self.runtime.capabilities, MachineCapabilities):
             raise TypeError("runtime capabilities must be declared")
+        schema = self.runtime.dialect_schema
+        if schema is not None and schema.language != self.name:
+            raise ValueError("dialect schema must belong to the declaring language")
         if not self.id:
             object.__setattr__(self, "id", canonical_id(self.name))
 

@@ -6,25 +6,30 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, resolve
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 
 
-def foreign_settings() -> DialectSettings:
-    """Return a registered choice unsupported by the reference language."""
-    accepted = esolangs.describe(REFERENCE)["dialect_settings"]
+def foreign_settings(language: str = REFERENCE) -> DialectSettings:
+    """Return a valid choice owned by another registered language."""
+    owner = resolve(language)
     for name in esolangs.list_languages():
+        if name == owner:
+            continue
         for key, option in esolangs.describe(name)["dialect_settings"].items():
-            if key not in accepted:
-                return DialectSettings(**{key: option["default"]})
+            return esolangs.Language(name).settings(**{key: option["default"]})
     pytest.skip("no registered foreign dialect choice")
 
 
 def integer_setting() -> str:
     """Return a registered integer option, or skip when none remain."""
     for language in LANGUAGES.values():
-        for key, choices in (language.runtime.dialect_values or {}).items():
+        for key, choices in (
+            language.runtime.dialect_schema.choices
+            if language.runtime.dialect_schema
+            else {}
+        ).items():
             if type(choices[0]) is int:
                 return key
     pytest.skip("no registered integer dialect choice")
@@ -37,10 +42,12 @@ def _chosen(name: str) -> DialectSettings:
         k: next(c for c in i["choices"] if c != i["default"]) for k, i in schema.items()
     }
     try:
-        esolangs.generate(name, "01", settings=DialectSettings(**off))
+        esolangs.generate(name, "01", settings=esolangs.Language(name).settings(**off))
     except esolangs.ArgumentError:
-        return DialectSettings(**{k: i["default"] for k, i in schema.items()})
-    return DialectSettings(**off)
+        return esolangs.Language(name).settings(
+            **{k: i["default"] for k, i in schema.items()}
+        )
+    return esolangs.Language(name).settings(**off)
 
 
 CASES = [
