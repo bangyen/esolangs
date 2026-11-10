@@ -15,14 +15,13 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from functools import partial
-from typing import Any
+from typing import Any, NamedTuple
 
 from esolangs.languages.arrowqueue.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -76,6 +75,16 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _GridImage(NamedTuple):
+    rows: tuple[str, ...]
+    width: int
+
+
+def _prepare_grid(code: list[str]) -> _GridImage:
+    width = max(map(len, code), default=0)
+    return _GridImage(tuple(line.ljust(width) for line in code), width)
+
+
 class _Machine:
     """An ArrowQueue run: one immutable ``_State``, rebound per step.
 
@@ -87,14 +96,15 @@ class _Machine:
     #: at ``halted`` holds no output.
     completion = CAPABILITIES.completion
 
-    def __init__(self, code: list[str], io: IO | None = None) -> None:
+    def __init__(self, code: list[str] | _GridImage, io: IO | None = None) -> None:
         """Pad ``code`` to a rectangle and reset the machine to the corner.
 
         ``io`` defaults to a fresh :class:`IO` for step-only callers.
         """
         self.io = io if io is not None else IO()
-        self.width = max(map(len, code), default=0)
-        self.grid = tuple(line.ljust(self.width) for line in code)
+        self.grid, self.width = (
+            code if isinstance(code, _GridImage) else _prepare_grid(code)
+        )
         # An empty program has nowhere to start, so it is stopped already.
         self.state: _State = (0, 0, 0, (), not self.grid)
         # Out of ``_State``: the dump is the shell's, and ``snapshot`` must
@@ -184,18 +194,18 @@ class _Machine:
         self.state = _advance(self.state, self.grid, self.width)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines after shared source and option preparation."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the prepared grid and allocate state per invocation."""
     if not isinstance(source, list):
         raise TypeError("arrowqueue machines require source lines")
     if options:
         raise TypeError("arrowqueue machines accept no runtime options")
-    return partial(_Machine, source, **options)
+
+    image = _prepare_grid(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: list[str], io: IO) -> CompletionReport:
+def _execute(code: list[str] | _GridImage, io: IO) -> CompletionReport:
     """Run an ArrowQueue program and print the queue when it halts.
 
     The dump follows the interpreter-only convention: the queued headings as

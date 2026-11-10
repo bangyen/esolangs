@@ -174,6 +174,8 @@ These language-owned plans retain parsed source:
 - Rubic: commands and paired loops.
 - SendStuff: expanded commands and their targets.
 - What!?: linked tokens.
+- ArrowQueue, Back and Balik: padded source grids.
+- Dig: padded initial grid with per-run writes.
 
 `Language` also binds `instantiate`; use package functions across languages.
 

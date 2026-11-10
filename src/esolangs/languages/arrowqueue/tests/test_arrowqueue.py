@@ -3,11 +3,15 @@
 from functools import partial
 from typing import ClassVar
 
+import pytest
+
+from esolangs.languages.arrowqueue import interpreter as native
 from esolangs.languages.arrowqueue.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import run_printing
 from tests.support.evaluation import _row_answerer
+from tests.support.prepared_support import check_image_reuse
 
 run_and_capture = partial(run_printing, run)
 
@@ -36,11 +40,21 @@ class TestArrowQueue:
             )
             assert answer(declared, "", 3) == "0"
 
-    def test_the_dump_goes_to_the_caller_s_io(self) -> None:
+    def test_the_dump_goes_to_the_caller_s_io(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """``run`` must write through the ``io`` it is handed."""
         io = ScriptedIO("")
         run(["~~"], io)
         assert io.getvalue() == "0 0"
+        check_image_reuse(
+            "ArrowQueue",
+            "~~\n ",
+            native,
+            "_prepare_grid",
+            monkeypatch,
+            cases=(("", "0 0"),) * 3,
+        )
 
     def test_workspace_finalizes_without_counting_another_command(self) -> None:
         from tests.proofs.execution import measure

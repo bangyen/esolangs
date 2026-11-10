@@ -23,8 +23,11 @@ def check_image_reuse(
 
     with monkeypatch.context() as patch:
         patch.setattr(module, parser_name, counted)
-        prepared = esolangs.Language(language).prepare(code, settings=settings)
-        assert calls == [code]
+        api = esolangs.Language(language)
+        runtime = api.catalog.languages[api.name].runtime
+        source = code.splitlines() if runtime.split else code
+        prepared = api.prepare(code, settings=settings)
+        assert calls == [source]
         (first_in, first_out), (second_in, second_out), (third_in, third_out) = cases
         first, second = (
             prepared.make_vm(stdin=first_in),
@@ -38,7 +41,7 @@ def check_image_reuse(
         assert prepared.run(stdin=first_in).output == first_out
         assert prepared.run(stdin=second_in, max_steps=100).output == second_out
         assert prepared.execute(stdin=third_in).unwrap().output == third_out
-        assert calls == [code]
+        assert calls == [source]
 
 
 def check_random_plan_reuse(language, code, module, parser_name, monkeypatch):

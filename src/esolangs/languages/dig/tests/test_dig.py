@@ -221,6 +221,7 @@ def test_repeated_runs_keep_stores_private() -> None:
     first = factory(ScriptedIO("12\n"))
     second = factory(ScriptedIO("7\n"))
     before = second.snapshot()
+    assert first.code is second.code
     drive(first, policy=Completion.HALTED)
     assert first.code[0][4] == 12
     assert second.code[0][4] == ";"
@@ -234,6 +235,8 @@ def test_repeated_runs_keep_stores_private() -> None:
 
     third = factory(ScriptedIO("9"))
     assert third.code[0][4] == ";"
+    assert third.code is not first.code
+    assert third.code is not second.code
     assert third.snapshot() == before
     with pytest.raises(TypeError, match="split text"):
         prepare_machine("@", {})

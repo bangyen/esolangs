@@ -2,9 +2,11 @@
 
 import pytest
 
+from esolangs.languages.balik import interpreter as native
 from esolangs.languages.balik.interpreter import run
 from esolangs.languages.balik.tests.source_fixtures import _page_loop
 from tests.interpreters.runner import native_runner
+from tests.support.prepared_support import check_image_reuse
 
 _out = native_runner(run)
 
@@ -31,10 +33,20 @@ def test_page_loop_skips_its_body_on_nonzero() -> None:
     assert _out(_page_loop("+  ", "+. ", ".  ")) == "1"
 
 
-def test_short_lines_are_padded_not_out_of_bounds() -> None:
+def test_short_lines_are_padded_not_out_of_bounds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # South from the ``*`` through the empty line's padding to the ``.``;
     # ragged bounds would halt on the empty line and print nothing.
     assert _out("  *\n\n  .") == "0"
+    check_image_reuse(
+        "Balik",
+        "  *\n\n  .",
+        native,
+        "_prepare_grid",
+        monkeypatch,
+        cases=(("", "0"),) * 3,
+    )
 
 
 def test_turns_are_clockwise() -> None:

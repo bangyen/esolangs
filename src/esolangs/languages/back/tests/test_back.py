@@ -3,12 +3,16 @@
 from functools import partial
 from typing import ClassVar
 
+import pytest
+
+from esolangs.languages.back import interpreter as native
 from esolangs.languages.back.interpreter import _Machine as Back
 from esolangs.languages.back.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_printing
+from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import raises_message
 
 run_and_capture = partial(run_printing, run)
@@ -93,7 +97,9 @@ class TestContract(SnapshotContract, CycleContract):
     looping_program: ClassVar[list[str]] = ["-"]
 
 
-def test_the_heading_is_part_of_the_code_position() -> None:
+def test_the_heading_is_part_of_the_code_position(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Back's position is (row, col, a, b): two visits to one square
     # travelling different ways are not the same point in the program.
     machine = Back([">"], ScriptedIO())
@@ -103,3 +109,6 @@ def test_the_heading_is_part_of_the_code_position() -> None:
     from .oracle_checks import check_raw_back
 
     check_raw_back()
+    check_image_reuse(
+        "Back", "-*\n ", native, "_prepare_grid", monkeypatch, cases=(("", "1"),) * 3
+    )

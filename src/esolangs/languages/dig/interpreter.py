@@ -42,7 +42,7 @@ from esolangs.languages.dig.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -314,6 +314,21 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _GridImage(NamedTuple):
+    rows: _Grid
+    width: int
+
+
+def _prepare_grid(code: list[str]) -> _GridImage:
+    if not code or not any(line.strip() for line in code):
+        raise syntax_error(
+            "Dig program cannot be empty",
+            "provide a nonempty grid; @ halts immediately",
+        )
+    grid = _padded_grid(tuple(code))
+    return _GridImage(grid, len(grid[0]))
+
+
 class _Machine:
     """Per-run Dig state: the mole, its heading, and the underground counter.
 
@@ -325,18 +340,14 @@ class _Machine:
 
     def __init__(
         self,
-        code: list[str],
+        code: list[str] | _GridImage,
         io: IO,
     ) -> None:
         """Pad ``code`` to a rectangular grid, like :func:`run`."""
-        if not code or not any(line.strip() for line in code):
-            raise syntax_error(
-                "Dig program cannot be empty",
-                "provide a nonempty grid; @ halts immediately",
-            )
         self.io = io
-        self.code = _padded_grid(tuple(code))
-        self.size = len(self.code[0])
+        self.code, self.size = (
+            code if isinstance(code, _GridImage) else _prepare_grid(code)
+        )
         self.mole = self.num = self.row = self.col = 0
         self.move = 1
         self._done = False
@@ -468,24 +479,19 @@ class _Machine:
         self._restore(_advance(self._state, self.size, value))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source while giving each grid run private state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the prepared grid and allocate state per invocation."""
     if not isinstance(source, list):
         raise TypeError("dig machines require split text source")
     if options:
         raise TypeError("dig machines accept no runtime options")
-    code = tuple(source)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(list(code), io)
-
-    return build
+    image = _prepare_grid(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
 def _execute(
-    code: list[str],
+    code: list[str] | _GridImage,
     io: IO,
 ) -> CompletionReport:
     """Execute a Dig program with mole movement and underground work commands."""

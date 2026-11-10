@@ -44,14 +44,13 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from functools import partial
-from typing import Any
+from typing import Any, NamedTuple
 
 from esolangs.languages.back.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -118,6 +117,21 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _GridImage(NamedTuple):
+    rows: tuple[str, ...]
+    width: int
+
+
+def _prepare_grid(code: list[str]) -> _GridImage:
+    if not code or not any(line.strip() for line in code):
+        raise syntax_error(
+            "Back program cannot be empty",
+            "provide a nonempty grid; * halts immediately",
+        )
+    width = max(map(len, code))
+    return _GridImage(tuple(line.ljust(width) for line in code), width)
+
+
 class _Machine:
     """Per-run Back state: the beam, the bit tape, and the tape pointer.
 
@@ -130,16 +144,12 @@ class _Machine:
     #: at ``halted`` holds no output.
     completion = CAPABILITIES.completion
 
-    def __init__(self, code: list[str], io: IO) -> None:
+    def __init__(self, code: list[str] | _GridImage, io: IO) -> None:
         """Pad ``code`` to a rectangle and start the beam at the top-left."""
-        if not code or not any(line.strip() for line in code):
-            raise syntax_error(
-                "Back program cannot be empty",
-                "provide a nonempty grid; * halts immediately",
-            )
         self.io = io
-        self.size = max(map(len, code))
-        self.code = tuple(line.ljust(self.size) for line in code)
+        self.code, self.size = (
+            code if isinstance(code, _GridImage) else _prepare_grid(code)
+        )
         # Top-left heading right; (a, b) is (d_row, d_col).
         self.state: _State = (0, 0, 0, 1, (0,), 0, False)
         # Not in ``_State``: the dump is the shell's.
@@ -253,18 +263,18 @@ class _Machine:
         self.state = _advance(self.state, self.code, self.size)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines after shared source and option preparation."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the prepared grid and allocate state per invocation."""
     if not isinstance(source, list):
         raise TypeError("back machines require source lines")
     if options:
         raise TypeError("back machines accept no runtime options")
-    return partial(_Machine, source, **options)
+
+    image = _prepare_grid(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: list[str], io: IO) -> CompletionReport:
+def _execute(code: list[str] | _GridImage, io: IO) -> CompletionReport:
     """Run a Back program, printing the tape when it halts."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)
