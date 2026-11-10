@@ -149,6 +149,8 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
 
 def test_a_step_bound_does_not_claim_periodic_completion():
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        _execution_operations._run_bounded_result("A Painter Ant", "P", max_steps=3)
+        _execution_operations._execute_bounded(
+            "A Painter Ant", "P", max_steps=3
+        ).unwrap()
     assert caught.value.bound == "max_steps"
     assert caught.value.partial_output == ""

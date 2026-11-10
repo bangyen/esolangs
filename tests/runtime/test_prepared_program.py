@@ -106,8 +106,9 @@ def _check_prepared_factory_owns_state_and_input():
 
 
 @pytest.mark.medium
-def test_prepared_invocations_own_source_state_and_randomness():
+def test_prepared_invocations_own_source_state_and_randomness(monkeypatch):
     _check_uniform_outcomes_and_phase_limits()
+    _check_outcomes_are_the_internal_boundary(monkeypatch)
     _check_prepared_factory_owns_state_and_input()
     _check_preparation_consumes_source_once_and_keeps_fresh_invocations()
     _check_prepared_isolation_preserves_the_same_observation()
@@ -178,3 +179,40 @@ def _check_uniform_outcomes_and_phase_limits():
             esolangs.ExecutionLimits(**kwargs)
     with pytest.raises(esolangs.ArgumentError, match="completion evidence"):
         esolangs.ExecutionOutcome("completed", esolangs.ExecutionResult("", 0, 0, 0))
+
+
+def _check_outcomes_are_the_internal_boundary(monkeypatch):
+    from esolangs.operations import execution
+    from esolangs.runtime import _isolated
+
+    def refuse_legacy_run(*_args, **_kwargs):
+        raise AssertionError("execute used the raising result adapter")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(execution, "run", refuse_legacy_run)
+        api = esolangs.Language(REFERENCE)
+        for options in ({}, {"limits": esolangs.ExecutionLimits(max_steps=10)}):
+            assert api.execute(",+.", stdin="A", **options).unwrap().output == "B"
+            assert api.execute(".,", **options).status == "input_exhausted"
+        # The real worker runs the same primitive; direct serving is covered
+        # by the worker protocol tests, without this parent's monkeypatches.
+        assert api.execute(",+.", stdin="A", isolated=True).unwrap().output == "B"
+
+    fault = esolangs.HaltError("same fault", hint="retain this note")
+    observed = esolangs.ExecutionResult("prefix", 1, 1, 0, steps=2)
+    fault.execution, fault.partial_output = observed, observed.output
+    from esolangs.outcomes import _failed_outcome
+
+    failed = _failed_outcome(fault)
+    assert failed.error is fault
+    assert failed.observation is observed
+    assert failed.status == "fault"
+    with pytest.raises(esolangs.HaltError) as caught:
+        failed.unwrap()
+    assert caught.value is fault
+    assert "retain this note" in fault.__notes__[0]
+    response = _isolated._decode_outcome('{"output":"prefix"}\n', expired=True)
+    assert response.status == "limit"
+    assert response.observation == esolangs.ExecutionResult("prefix", None, None, None)
+    assert response.observation.completion is None
+    assert response.error.execution is None

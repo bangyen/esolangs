@@ -18,10 +18,12 @@ def test_step_exhaustion_does_not_publish_a_completed_result(monkeypatch):
 
     monkeypatch.setattr(Debugger, "__init__", refuse_debugger)
     with pytest.raises(esolangs.ExecutionTimeoutError, match="max_steps") as caught:
-        _execution_operations._run_bounded_result(REFERENCE, "+.[]", max_steps=10)
+        _execution_operations._execute_bounded(REFERENCE, "+.[]", max_steps=10).unwrap()
     assert caught.value.partial_output == "\x01"
     assert caught.value.bound == "max_steps"
-    result = _execution_operations._run_bounded_result(REFERENCE, "+.", max_steps=2)
+    result = _execution_operations._execute_bounded(
+        REFERENCE, "+.", max_steps=2
+    ).unwrap()
     assert result.output == "\x01"
     assert result.steps == 2
 

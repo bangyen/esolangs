@@ -282,12 +282,12 @@ def _row_answerer(
 ) -> Callable[[Program | Artifact, str, float | None], str]:
     """Return the call that turns one row's source, stdin and bound into its bit."""
     if not terminating:
-        from esolangs.operations.execution import _run_result
+        from tests.support.execution import run_observed
 
         run = (
             esolangs.run
             if io_factory is ScriptedIO
-            else partial(_run_result, io_factory=io_factory)
+            else partial(run_observed, io_factory=io_factory)
         )
         return lambda source, stdin, bound: read_answer(
             name,

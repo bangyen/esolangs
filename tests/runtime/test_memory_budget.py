@@ -9,10 +9,11 @@ import pytest
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
 from esolangs.runtime import _isolated
-from esolangs.runtime._isolated import _decode, _worker
+from esolangs.runtime._isolated import _worker
 from tests.support.cli_support import call_both
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import _BUDGET, _LINUX
+from tests.support.worker_response import _decode
 
 
 @pytest.mark.medium

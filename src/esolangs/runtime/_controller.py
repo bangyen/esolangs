@@ -5,10 +5,17 @@ from __future__ import annotations
 from time import monotonic
 from typing import Literal
 
-from esolangs.exceptions import ArgumentError, EsolangError
+from esolangs.exceptions import ArgumentError, EsolangError, ExecutionTimeoutError
+from esolangs.outcomes import ExecutionOutcome, _failed_outcome
 from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime._validate import _argument_repr, check_timeout, check_whole
-from esolangs.vm import VM, _capture_observation, complete_vm, run_until_halt
+from esolangs.vm import (
+    VM,
+    _capture_observation,
+    _capture_result,
+    complete_vm,
+    run_until_halt,
+)
 
 StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
 
@@ -180,6 +187,31 @@ class ExecutionController:
         if self._accept_stop():
             return "breakpoint"
         return "max_steps"
+
+    def _execute(self, *, max_steps: int, timeout: float | None) -> ExecutionOutcome:
+        """Finish a non-interactive invocation, retaining faults and bound stops."""
+        try:
+            reason = self.run(max_steps=max_steps, timeout=timeout)
+        except EsolangError as fault:
+            fault.partial_output = self.output
+            observation = fault.execution or _capture_observation(self.vm)
+            fault.execution = observation._replace(steps=self._steps)
+            return _failed_outcome(fault)
+        if reason == "halted":
+            return ExecutionOutcome(
+                "completed", _capture_result(self.vm)._replace(steps=self._steps)
+            )
+        if reason == "breakpoint":
+            raise ArgumentError("invocation execution cannot stop at a breakpoint")
+        error = ExecutionTimeoutError(
+            f"execution exceeded the {timeout}-second timeout"
+            if reason == "timeout"
+            else f"execution stopped at the {reason} bound"
+        )
+        error.partial_output = self.output
+        error.bound = "timeout" if reason == "timeout" else "max_steps"
+        error.execution = _capture_observation(self.vm)._replace(steps=self._steps)
+        return _failed_outcome(error)
 
     def _stop(self, deadline: float | None) -> bool:
         """Whether to stop before the next step: a breakpoint, or the clock."""

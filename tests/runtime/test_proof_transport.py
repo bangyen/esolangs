@@ -11,7 +11,7 @@ import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
-from esolangs.runtime._isolated import _decode, termination_result_isolated
+from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchProof, CycleDecision
 from esolangs.runtime._result_wire import (
@@ -23,6 +23,7 @@ from esolangs.runtime._termination import _termination_result
 from esolangs.vm import _capture_observation, make_vm
 from tests.support.certification_barrier import guarded_worker
 from tests.support.reference import REFERENCE
+from tests.support.worker_response import _decode
 
 
 def _request(name, bit):

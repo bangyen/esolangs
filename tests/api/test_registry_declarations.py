@@ -32,6 +32,7 @@ def _check_scoped_catalogs():
     from esolangs.registry import CATALOG
     from esolangs.runtime._definition import VerbatimSourcePolicy
     from esolangs.runtime.io import ScriptedIO
+    from tests.support.execution import run_observed
 
     records = list(LANGUAGES.values())
     snapshot = esolangs.Catalog(records)
@@ -90,7 +91,7 @@ def _check_scoped_catalogs():
         return create
 
     def call(catalog, label, stdin):
-        return execution._run_result(
+        return run_observed(
             "brainfuck",
             ",.",
             stdin=stdin,

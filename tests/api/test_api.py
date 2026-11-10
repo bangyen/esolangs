@@ -266,14 +266,17 @@ def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path) -> None:
 
 def test_isolated_seed_is_forwarded(monkeypatch) -> None:
     from esolangs.results import ExecutionResult
+    from esolangs.runtime._lifecycle import HALTED_REPORT
 
     seen = []
 
     def execute(language, program, stdin, timeout, **kwargs):
         seen.append((language, program, stdin, timeout, kwargs))
-        return ExecutionResult("result", 0, 0, 0)
+        return esolangs.ExecutionOutcome(
+            "completed", ExecutionResult("result", 0, 0, 0, HALTED_REPORT)
+        )
 
-    monkeypatch.setattr(_execution_operations, "_run_isolated_result", execute)
+    monkeypatch.setattr(_execution_operations, "_execute_isolated", execute)
     name = next(name for name, lang in LANGUAGES.items() if lang.runtime.random)
     assert esolangs.run(name, "+.", isolated=True, seed=7).output == "result"
     ((language, program, stdin, timeout, kwargs),) = seen
@@ -296,7 +299,7 @@ def test_isolated_worker_requires_a_deadline() -> None:
     from esolangs.runtime import _isolated
 
     with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
-        _isolated.run_isolated_result(REFERENCE, "+.", timeout=None)
+        _isolated.execute_isolated(REFERENCE, "+.", timeout=None).unwrap()
 
 
 def test_bound_language_runs_a_boolean_workflow() -> None:

@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from esolangs.exceptions import ArgumentError, EsolangError, ExecutionTimeoutError
+from esolangs.exceptions import ArgumentError, ExecutionTimeoutError
 from esolangs.limits import ExecutionLimits
-from esolangs.outcomes import ExecutionOutcome, _observe_execution
+from esolangs.outcomes import ExecutionOutcome, _capture_outcome
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._controller import ExecutionController
@@ -15,7 +15,7 @@ from esolangs.runtime._execution import (
 )
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._isolated import check_limits
-from esolangs.runtime._isolated import run_isolated_result as _run_isolated_result
+from esolangs.runtime._isolated import execute_isolated as _execute_isolated
 from esolangs.runtime._prepared import PreparedProgram, prepare_program
 from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
 from esolangs.runtime._validate import (
@@ -26,12 +26,13 @@ from esolangs.runtime._validate import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.vm import _capture_observation, _capture_result, _make_vm
+from esolangs.vm import _make_vm
 
 _ISOLATED_TIMEOUT = 30.0
 
 
-def _run_bounded_result(
+@_capture_outcome
+def _execute_bounded(
     language: str,
     program: ProgramSource,
     stdin: InputSource = "",
@@ -44,13 +45,8 @@ def _run_bounded_result(
     catalog: "Catalog | None" = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     prepared: PreparedProgram | None = None,
-) -> ExecutionResult:
-    """Execute cooperatively, returning a result only after completed halt.
-
-    Supply at least one bound. Limits raise :class:`ExecutionTimeoutError`
-    with ``partial_output``. Works on Windows and worker threads; loading
-    and individual steps cannot be interrupted.
-    """
+) -> ExecutionOutcome:
+    """Execute cooperatively; loading and individual steps cannot be interrupted."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
@@ -69,27 +65,7 @@ def _run_bounded_result(
             prepared=prepared,
         )
     )
-    try:
-        reason = controller.run(max_steps=max_steps, timeout=timeout)
-    except EsolangError as exc:
-        exc.partial_output = controller.output
-        observation = exc.execution or _capture_observation(controller.vm)
-        exc.execution = observation._replace(steps=controller._steps)  # noqa: SLF001
-        raise
-    if reason != "halted":
-        # One wording per bound: a timeout reads as it does unstepped.
-        error = ExecutionTimeoutError(
-            f"execution exceeded the {timeout}-second timeout"
-            if reason == "timeout"
-            else f"execution stopped at the {reason} bound"
-        )
-        error.partial_output = controller.output
-        error.bound = "timeout" if reason == "timeout" else "max_steps"
-        error.execution = _capture_observation(controller.vm)._replace(
-            steps=controller._steps  # noqa: SLF001
-        )
-        raise error
-    return _capture_result(controller.vm)._replace(steps=controller._steps)  # noqa: SLF001
+    return controller._execute(max_steps=max_steps, timeout=timeout)  # noqa: SLF001
 
 
 def run(
@@ -161,10 +137,7 @@ def run(
         MissingDependencyError: The language needs an uninstalled extra
             (``esolangs[image]`` for PNG).
     """
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    return _run_result(
+    return _execute_invocation(
         language,
         program,
         stdin=stdin,
@@ -177,10 +150,11 @@ def run(
         max_memory=max_memory,
         settings=settings,
         catalog=catalog,
-    )
+    ).unwrap()
 
 
-def _run_result(
+@_capture_outcome
+def _execute_invocation(
     language: str,
     program: ProgramSource,
     *,
@@ -197,7 +171,7 @@ def _run_result(
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     prepared: PreparedProgram | None = None,
     execution_timeout: float | None = None,
-) -> ExecutionResult:
+) -> ExecutionOutcome:
     """Execute through one route, retaining its result metadata."""
     from esolangs.registry._catalog import get_catalog
 
@@ -219,7 +193,7 @@ def _run_result(
         deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
         # Every option defaults to None, so passing them unconditionally
         # matches the old per-combination cascade exactly.
-        return _run_isolated_result(
+        return _execute_isolated(
             language,
             program,
             stdin,
@@ -234,7 +208,7 @@ def _run_result(
             catalog=catalog,
         )
     if max_steps is not None:
-        return _run_bounded_result(
+        return _execute_bounded(
             language,
             program,
             stdin,
@@ -272,11 +246,12 @@ def _run_result(
     from esolangs.runtime._input import check_input
 
     check_input(stdin)
-    return prepared._run_native(  # noqa: SLF001
+    return prepared._execute_native(  # noqa: SLF001
         stdin, timeout=timeout, seed=seed, io_factory=io_factory
     )
 
 
+@_capture_outcome
 def _execute_outcome(
     language: str,
     program: ProgramSource,
@@ -291,42 +266,34 @@ def _execute_outcome(
     prepared: PreparedProgram | None = None,
 ) -> ExecutionOutcome:
     """Apply explicit phase budgets and retain one outcome across all routes."""
-
-    def execute() -> ExecutionResult:
-        selected = ExecutionLimits() if limits is None else limits
-        if not isinstance(selected, ExecutionLimits):
-            raise ArgumentError("limits must be ExecutionLimits or None")
-        check_flag(isolated, "isolated")
-        use_worker = isolated or any(
-            value is not None
-            for value in (
-                selected.total_timeout,
-                selected.max_output,
-                selected.max_memory,
-            )
+    selected = ExecutionLimits() if limits is None else limits
+    if not isinstance(selected, ExecutionLimits):
+        raise ArgumentError("limits must be ExecutionLimits or None")
+    check_flag(isolated, "isolated")
+    use_worker = isolated or any(
+        value is not None
+        for value in (
+            selected.total_timeout,
+            selected.max_output,
+            selected.max_memory,
         )
-        try:
-            return _run_result(
-                language,
-                program,
-                stdin=stdin,
-                timeout=selected.total_timeout
-                if use_worker
-                else selected.execution_timeout,
-                execution_timeout=selected.execution_timeout if use_worker else None,
-                seed=seed,
-                isolated=use_worker,
-                max_steps=selected.max_steps,
-                max_output=selected.max_output,
-                max_memory=selected.max_memory,
-                settings=settings,
-                scale=scale,
-                catalog=catalog,
-                prepared=prepared,
-            )
-        except ExecutionTimeoutError as error:
-            if error.bound == "timeout":
-                error.bound = "total_timeout" if use_worker else "execution_timeout"
-            raise
-
-    return _observe_execution(execute)
+    )
+    outcome = _execute_invocation(
+        language,
+        program,
+        stdin=stdin,
+        timeout=selected.total_timeout if use_worker else selected.execution_timeout,
+        execution_timeout=selected.execution_timeout if use_worker else None,
+        seed=seed,
+        isolated=use_worker,
+        max_steps=selected.max_steps,
+        max_output=selected.max_output,
+        max_memory=selected.max_memory,
+        settings=settings,
+        scale=scale,
+        catalog=catalog,
+        prepared=prepared,
+    )
+    if isinstance(outcome.error, ExecutionTimeoutError) and outcome.bound == "timeout":
+        outcome.error.bound = "total_timeout" if use_worker else "execution_timeout"
+    return outcome

@@ -15,11 +15,11 @@ from esolangs.registry._catalog import Catalog, get_catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
+    execute_prepared,
     execution_options,
     interpreter_errors,
     interpreter_module,
     prepare_call,
-    run_prepared,
 )
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._lifecycle import CompletionReport
@@ -107,14 +107,14 @@ class PreparedProgram:
                 object.__setattr__(self, "_plan", plan)
         return plan
 
-    def _run_native(
+    def _execute_native(
         self,
         stdin: InputSource,
         *,
         timeout: float | None,
         seed: int | None,
         io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
-    ) -> ExecutionResult:
+    ) -> ExecutionOutcome:
         runtime = self.catalog.languages[self.language].runtime
         if self._plan is None:
             code, options = self._call(seed=seed)
@@ -128,7 +128,7 @@ class PreparedProgram:
             runner = getattr(self._module, runtime.completion_entrypoint)
             if options:
                 runner = partial(runner, **options)
-        return run_prepared(
+        return execute_prepared(
             self.language,
             runner,
             code,
@@ -171,9 +171,9 @@ class PreparedProgram:
         max_memory: int | None = None,
     ) -> ExecutionResult:
         """Run fresh state; arguments and errors follow :func:`esolangs.run`."""
-        from esolangs.operations.execution import _run_result
+        from esolangs.operations.execution import _execute_invocation
 
-        return _run_result(
+        return _execute_invocation(
             self.language,
             self.artifact,
             stdin=stdin,
@@ -185,7 +185,7 @@ class PreparedProgram:
             max_memory=max_memory,
             catalog=self.catalog,
             prepared=self,
-        )
+        ).unwrap()
 
     def make_vm(self, *, stdin: InputSource = "", seed: int | None = None) -> VM:
         """Create an independent step machine; errors follow debugger.make_vm."""

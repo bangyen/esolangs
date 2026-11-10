@@ -7,12 +7,12 @@ from dataclasses import replace
 import pytest
 
 import esolangs
-import esolangs.operations.execution as _execution_operations
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime.io import ScriptedIO
 from tests.support.certification_barrier import guarded_worker
+from tests.support.execution import run_observed
 from tests.support.pick import first, one_where
 from tests.support.reference import REFERENCE
 
@@ -60,7 +60,7 @@ def test_result_retains_a_caught_eof(route):
                 attempts.append(True)
                 raise
 
-    native = _execution_operations._run_result(name, source, io_factory=ObservedIO)
+    native = run_observed(name, source, io_factory=ObservedIO)
     assert (native.input_position, native.input_reads) == (0, 0)
     assert attempts, "the EOF control did not perform a read"
     assert native.input_past_end == len(attempts)

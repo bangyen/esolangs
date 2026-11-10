@@ -7,7 +7,6 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-import esolangs.operations.execution as _execution_operations
 from esolangs import run
 from esolangs.runtime._lifecycle import POST_HALT_REPORT, Completion
 from esolangs.runtime.io import ScriptedIO
@@ -20,6 +19,7 @@ from esolangs.vm import (
 )
 from tests.support.certification_barrier import guarded_worker
 from tests.support.cli_support import run_cli
+from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated
 from tests.support.vm_support import _STEP_BUDGET, _row
 
@@ -130,7 +130,7 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     machine.step()
     assert machine.snapshot() == state
     assert not machine.halted
-    result = _execution_operations._run_result("Suffolk", "<")
+    result = run_observed("Suffolk", "<")
     assert result.completion.kind is Completion.PERIODIC
     assert result.completion.cycle.state == state
     assert (
@@ -139,11 +139,9 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
         result.completion.cycle.commands_per_pass,
     ) == (0, 1, 1)
     with guarded_worker():
-        assert (
-            _execution_operations._run_result("Suffolk", "<", isolated=True) == result
-        )
+        assert run_observed("Suffolk", "<", isolated=True) == result
 
-    ended = _execution_operations._run_result("Suffolk", ",")
+    ended = run_observed("Suffolk", ",")
     assert ended.completion.kind is Completion.HALTED
     assert ended.completion.cycle is None
     assert (ended.input_position, ended.input_reads, ended.input_past_end) == (0, 0, 1)

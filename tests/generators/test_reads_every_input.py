@@ -3,12 +3,12 @@
 import pytest
 
 import esolangs
-import esolangs.operations.execution as execution_operations
 from esolangs import vm
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _row_answerer
+from tests.support.execution import run_observed
 from tests.support.generator_support import assert_proved_resource_cap
 from tests.support.reference import REFERENCE
 from tests.support.witness_tables import witnesses
@@ -66,7 +66,7 @@ def _audit(
     for row in range(1 << n) if selected is None else selected:
         stdin = esolangs.encode_inputs(name, [row >> s & 1 for s in reversed(range(n))])
         if INFOS[name]["answer_mode"] != "termination":
-            output = execution_operations._run_result(
+            output = run_observed(
                 name, program, stdin=stdin, timeout=10, io_factory=new
             ).output
             if table is not None:

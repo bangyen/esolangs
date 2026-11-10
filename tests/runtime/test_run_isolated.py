@@ -8,13 +8,14 @@ import pytest
 import esolangs
 import esolangs.operations.execution as _execution_operations
 from esolangs.results import ExecutionResult
-from esolangs.runtime._isolated import _decode, _request_wire, _worker
+from esolangs.runtime._isolated import _request_wire, _worker
 from esolangs.runtime._json import worker_dumps, worker_object
 from esolangs.runtime._lifecycle import HALTED_REPORT
 from esolangs.runtime._result_wire import encode_result
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import one
 from tests.support.reference import REFERENCE
+from tests.support.worker_response import _decode
 
 #: A run that never halts by itself, and one that answers by terminating.
 _UNUSUAL = [*one(self_halts=False), *one(answer_mode="termination")]
@@ -228,7 +229,7 @@ def test_cancellation_kills_and_reaps_child(monkeypatch) -> None:
         _isolated.subprocess, "Popen", lambda *_args, **_kwargs: Child()
     )
     with pytest.raises(KeyboardInterrupt):
-        _isolated.run_isolated_result(REFERENCE, "")
+        _isolated.execute_isolated(REFERENCE, "").unwrap()
     assert calls == ["communicate", "kill", "communicate"]
 
 
@@ -295,7 +296,7 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(
         return output.getvalue()
 
     payload = _request_wire(REFERENCE, "", "", max_output=8193)
-    monkeypatch.setattr(_execution_operations, "_run_result", dump)
+    monkeypatch.setattr(_execution_operations, "_execute_invocation", dump)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
     _worker()
     messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
@@ -345,7 +346,7 @@ def test_capped_protocol_truncated_record_retains_prefix(protocol_child) -> None
     ):
         child = protocol_child(['{"output":"prefix"}\n', malformed])
         with pytest.raises(esolangs.InterpreterLimitError) as caught:
-            _bounded_output(child, "{}", 1)
+            _bounded_output(child, "{}", 1).unwrap()
         assert caught.value.partial_output == "prefix"
         assert child.killed
         assert child.reaped
@@ -368,7 +369,7 @@ def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(
 
     child.wait = wait
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        _bounded_output(child, "{}", 1)
+        _bounded_output(child, "{}", 1).unwrap()
     assert caught.value.partial_output == "prefix"
     assert child.killed
     assert child.reaped
@@ -429,17 +430,19 @@ def test_process_creation_consumes_the_worker_deadline(
 
     def bounded(_child, _request, timeout):
         calls.append(timeout)
-        return ExecutionResult("", 0, 0, 0, HALTED_REPORT)
+        return esolangs.ExecutionOutcome(
+            "completed", ExecutionResult("", 0, 0, 0, HALTED_REPORT)
+        )
 
     monkeypatch.setattr(_isolated, "monotonic", lambda: clock[0])
     monkeypatch.setattr(_isolated.subprocess, "Popen", spawn)
     monkeypatch.setattr(_isolated, "_bounded_output", bounded)
     if startup > 1:
         with pytest.raises(esolangs.ExecutionTimeoutError):
-            _launch("{}", 1, max_output=max_output)
+            _launch("{}", 1, max_output=max_output).unwrap()
         assert calls == ["kill", None]
     else:
-        assert _launch("{}", 1, max_output=max_output).output == ""
+        assert _launch("{}", 1, max_output=max_output).unwrap().output == ""
         assert calls == [pytest.approx(0.6)]
 
 
@@ -465,8 +468,15 @@ def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
     monkeypatch.setattr(
         _isolated,
         "_launch",
-        lambda request, *_args, **_kwargs: ExecutionResult(
-            json.dumps(json.loads(request)["program"]), None, None, None, HALTED_REPORT
+        lambda request, *_args, **_kwargs: esolangs.ExecutionOutcome(
+            "completed",
+            ExecutionResult(
+                json.dumps(json.loads(request)["program"]),
+                None,
+                None,
+                None,
+                HALTED_REPORT,
+            ),
         ),
     )
     language = one(source_kind="raster", boolean_generator=True)[0]

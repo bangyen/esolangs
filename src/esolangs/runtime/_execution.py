@@ -20,6 +20,7 @@ from esolangs.exceptions import (
     InterpreterLimitError,
     ProgramError,
 )
+from esolangs.outcomes import ExecutionOutcome, _capture_outcome
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
@@ -125,7 +126,8 @@ def interpreter_module(name: str, *, catalog: Catalog | None = None) -> ModuleTy
     return importlib.import_module(catalog.interpreters[name])
 
 
-def run_prepared(
+@_capture_outcome
+def execute_prepared(
     name: str,
     run_fn: Callable[..., Any],
     program: RunnerProgram,
@@ -133,7 +135,7 @@ def run_prepared(
     timeout: float | None,
     *,
     catalog: Catalog | None = None,
-) -> ExecutionResult:
+) -> ExecutionOutcome:
     """Execute prepared source and retain output, input usage and declared reports."""
     from esolangs.registry._catalog import get_catalog
 
@@ -158,12 +160,15 @@ def run_prepared(
                 "completion report disagrees with declared policy",
                 hint="check the descriptor and native completion runner",
             )
-    return ExecutionResult(
-        io_obj.getvalue(),
-        io_obj.position(),
-        io_obj.reads,
-        io_obj.past_end,
-        value,
+    return ExecutionOutcome(
+        "completed",
+        ExecutionResult(
+            io_obj.getvalue(),
+            io_obj.position(),
+            io_obj.reads,
+            io_obj.past_end,
+            value,
+        ),
     )
 
 

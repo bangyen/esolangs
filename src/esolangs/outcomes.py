@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import wraps
 from typing import Literal
 
 from esolangs.exceptions import (
@@ -76,12 +77,24 @@ class ExecutionOutcome:
         return self.observation
 
 
-def _observe_execution(call: Callable[[], ExecutionResult]) -> ExecutionOutcome:
-    """Capture all deliberate execution failures without inventing completion."""
-    try:
-        return ExecutionOutcome("completed", call())
-    except EsolangError as error:
-        observation = error.execution
-        if observation is None:
-            observation = ExecutionResult(error.partial_output, None, None, None)
-        return ExecutionOutcome(_failure_status(error), observation, error)
+def _failed_outcome(error: EsolangError) -> ExecutionOutcome:
+    """Retain the original error and its unfinished execution observation."""
+    observation = error.execution
+    if observation is None:
+        observation = ExecutionResult(error.partial_output, None, None, None)
+    return ExecutionOutcome(_failure_status(error), observation, error)
+
+
+def _capture_outcome[**P](
+    execute: Callable[P, ExecutionOutcome],
+) -> Callable[P, ExecutionOutcome]:
+    """Capture deliberate boundary failures; implementation bugs still escape."""
+
+    @wraps(execute)
+    def capture(*args: P.args, **kwargs: P.kwargs) -> ExecutionOutcome:
+        try:
+            return execute(*args, **kwargs)
+        except EsolangError as error:
+            return _failed_outcome(error)
+
+    return capture

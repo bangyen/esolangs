@@ -18,6 +18,7 @@ from typing import Any, TextIO, cast
 from esolangs import exceptions
 from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
+from esolangs.outcomes import ExecutionOutcome, _capture_outcome, _failed_outcome
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
@@ -42,7 +43,7 @@ from esolangs.settings import (
     effective_settings,
 )
 
-type _WorkerResult = ExecutionResult | TerminationResult
+type _WorkerResponse = ExecutionOutcome | TerminationResult
 
 type _RasterRuns = tuple[tuple[int, tuple[tuple[int, Pixel], ...]], ...]
 
@@ -162,7 +163,7 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
     return error
 
 
-def _decode(text: str, *, expired: bool) -> _WorkerResult:
+def _decode_outcome(text: str, *, expired: bool) -> _WorkerResponse:
     error: exceptions.EsolangError
     output: list[str] = []
     result: dict[str, Any] | None = None
@@ -189,14 +190,14 @@ def _decode(text: str, *, expired: bool) -> _WorkerResult:
             "isolated execution exceeded its deadline"
         )
         error.partial_output = partial
-        raise error
+        return _failed_outcome(error)
     if result is None and not malformed:
         error = exceptions.InterpreterLimitError(
             "isolated interpreter exited without a result",
             hint="check the worker exit status and available system resources",
         )
         error.partial_output = partial
-        raise error
+        return _failed_outcome(error)
     try:
         if malformed or result is None:
             raise ValueError("invalid isolated stream")
@@ -215,12 +216,13 @@ def _decode(text: str, *, expired: bool) -> _WorkerResult:
             execution = decode_result(result["result"], result["execution"])
             if execution.completion is None:
                 raise ValueError("worker omitted output completion")
-            return execution
+            return ExecutionOutcome("completed", execution)
     except (TypeError, ValueError, KeyError) as cause:
         error = exceptions.InterpreterLimitError("invalid isolated execution result")
         error.partial_output = partial
-        raise error from cause
-    raise error
+        error.__cause__ = cause
+        return _failed_outcome(error)
+    return _failed_outcome(error)
 
 
 #: The worker's output-cap message, which also tells the parent the cap hit.
@@ -288,7 +290,8 @@ def _check_worker_runtime(
         )
 
 
-def run_isolated_result(
+@_capture_outcome
+def execute_isolated(
     language: str,
     program: ProgramSource,
     stdin: InputSource = "",
@@ -302,7 +305,7 @@ def run_isolated_result(
     max_steps: int | None = None,
     execution_timeout: float | None = None,
     catalog: Catalog | None = None,
-) -> ExecutionResult:
+) -> ExecutionOutcome:
     """Return a result from a subprocess; the deadline includes loading and startup.
 
     Works on Windows and worker threads. Errors retain their public class,
@@ -372,17 +375,22 @@ def run_isolated_result(
         raise request
     with _timeout_named(timeout):
         result = _launch(request, remaining, max_output=max_output)
-    if not isinstance(result, ExecutionResult) or result.completion is None:
-        error = exceptions.InterpreterLimitError(
-            "isolated worker omitted execution metadata"
-        )
-        error.partial_output = (
-            result.output
-            if isinstance(result, ExecutionResult)
-            else result.observation.output
-        )
-        raise error
-    return result
+    if isinstance(result, ExecutionOutcome):
+        if (
+            isinstance(result.error, exceptions.ExecutionTimeoutError)
+            and result.bound == "timeout"
+        ):
+            result.error.args = (f"execution exceeded the {timeout}-second timeout",)
+        return result
+    error = exceptions.InterpreterLimitError(
+        "isolated worker omitted execution metadata"
+    )
+    error.partial_output = (
+        result.output
+        if isinstance(result, ExecutionResult)
+        else result.observation.output
+    )
+    return _failed_outcome(error)
 
 
 @contextmanager
@@ -400,7 +408,7 @@ def _timeout_named(timeout: float) -> Iterator[None]:
 
 def _launch(
     request: str, timeout: float, *, max_output: int | None = None
-) -> _WorkerResult:
+) -> _WorkerResponse:
     """Run one JSON request, killing and reaping on deadline."""
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(sys.path)
@@ -422,7 +430,7 @@ def _launch(
         if remaining <= 0:
             child.kill()
             output, _stderr = child.communicate()
-            return _decode(output, expired=True)
+            return _decode_outcome(output, expired=True)
         if max_output is not None:
             return _bounded_output(child, request, remaining)
         expired = False
@@ -436,12 +444,12 @@ def _launch(
             child.kill()
             child.communicate()
             raise
-    return _decode(output, expired=expired)
+    return _decode_outcome(output, expired=expired)
 
 
 def _bounded_output(
     child: subprocess.Popen[str], request: str, timeout: float
-) -> _WorkerResult:
+) -> _WorkerResponse:
     """Read bounded worker records; kill and reap on an output limit or deadline."""
     records: Queue[str | BaseException | None] = Queue(maxsize=16)
     stopped = Event()
@@ -511,7 +519,7 @@ def _bounded_output(
         child.kill()
         child.wait()
         reader.join()
-    return _decode("".join(output), expired=expired)
+    return _decode_outcome("".join(output), expired=expired)
 
 
 def _source_transport(source: Program) -> dict[str, Any]:
@@ -605,7 +613,10 @@ def termination_result_isolated(
         )
     )
     with _timeout_named(timeout):
-        result = _launch(request, timeout, max_output=max_output)
+        response = _launch(request, timeout, max_output=max_output)
+        result = (
+            response.unwrap() if isinstance(response, ExecutionOutcome) else response
+        )
     if not isinstance(result, TerminationResult):
         error = exceptions.InterpreterLimitError(
             "termination worker omitted decision evidence"
@@ -732,6 +743,37 @@ def _check_raster_request(runs: Any) -> None:
                 raise ValueError("invalid worker raster pixel")
 
 
+def _failure_wire(
+    error: BaseException, execution_timeout: float | None
+) -> dict[str, Any]:
+    """Encode one retained failure for the worker's validated wire protocol."""
+    args: tuple[object, ...] = error.args
+    if isinstance(error, exceptions.UnknownLanguageError):
+        args = (error.language, error.suggestions)
+    elif isinstance(error, exceptions.InputExhaustedError):
+        args = (error.reads, error.supplied, error.unit)
+    observation = getattr(error, "execution", None)
+    if (
+        isinstance(error, exceptions.ExecutionTimeoutError)
+        and error.bound == "timeout"
+        and execution_timeout is not None
+    ):
+        error.bound = "execution_timeout"
+    return {
+        "error": type(error).__name__,
+        "args": args,
+        "notes": getattr(error, "__notes__", []),
+        "execution": encode_result(observation) if observation is not None else None,
+        **(
+            {"bound": error.bound}
+            if isinstance(error, exceptions.ExecutionTimeoutError)
+            else {}
+        ),
+        "output_limit": isinstance(error, exceptions.InterpreterLimitError)
+        and str(error) == _OUTPUT_LIMIT,
+    }
+
+
 def _serve_request(*, catalog: Catalog | None = None) -> None:
     """Stream live output and validated execution or termination metadata."""
     from esolangs.registry._catalog import get_catalog
@@ -768,6 +810,27 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
 
     # Release a small reserve before reporting allocation failure under RLIMIT_AS.
     reserve = bytearray(65_536)
+
+    def send_failure(error: BaseException) -> None:
+        nonlocal reserve
+        # ``run`` translates an in-process MemoryError; here it is the cap.
+        cause: BaseException | None = error
+        while cause is not None and not isinstance(cause, MemoryError):
+            cause = cause.__cause__
+        if cause is not None:
+            del reserve
+            send(
+                {
+                    "error": "InterpreterLimitError",
+                    "args": ["isolated memory limit exceeded"],
+                    "notes": [],
+                    "execution": None,
+                    "output_limit": False,
+                }
+            )
+            return
+        send(_failure_wire(error, request["execution_timeout"]))
+
     try:
         if request["max_memory"] is not None:
             try:
@@ -805,7 +868,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
             )
             result = proved.observation
         else:
-            result = _execution_operations._run_result(  # noqa: SLF001 - same result route as public run
+            outcome = _execution_operations._execute_invocation(  # noqa: SLF001 - same outcome route as public execute
                 request["language"],
                 program,
                 stdin=request["stdin"],
@@ -819,6 +882,10 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                 catalog=catalog,
                 io_factory=StreamingIO,
             )
+            if outcome.error is not None:
+                send_failure(outcome.error)
+                return
+            result = outcome.observation
         try:
             message = {"result": result.output, "execution": encode_result(result)}
             if request["termination"]:
@@ -829,51 +896,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                 "cannot transport execution evidence"
             ) from encoding_error
     except (MemoryError, exceptions.EsolangError) as error:
-        # ``run`` translates an in-process MemoryError; here it is the cap.
-        cause: BaseException | None = error
-        while cause is not None and not isinstance(cause, MemoryError):
-            cause = cause.__cause__
-        if cause is not None:
-            del reserve
-            send(
-                {
-                    "error": "InterpreterLimitError",
-                    "args": ["isolated memory limit exceeded"],
-                    "notes": [],
-                    "execution": None,
-                    "output_limit": False,
-                }
-            )
-            return
-        args: tuple[object, ...] = error.args
-        if isinstance(error, exceptions.UnknownLanguageError):
-            args = (error.language, error.suggestions)
-        elif isinstance(error, exceptions.InputExhaustedError):
-            args = (error.reads, error.supplied, error.unit)
-        observation = getattr(error, "execution", None)
-        if (
-            isinstance(error, exceptions.ExecutionTimeoutError)
-            and error.bound == "timeout"
-            and request["execution_timeout"] is not None
-        ):
-            error.bound = "execution_timeout"
-        send(
-            {
-                "error": type(error).__name__,
-                "args": args,
-                "notes": getattr(error, "__notes__", []),
-                "execution": encode_result(observation)
-                if observation is not None
-                else None,
-                **(
-                    {"bound": error.bound}
-                    if isinstance(error, exceptions.ExecutionTimeoutError)
-                    else {}
-                ),
-                "output_limit": isinstance(error, exceptions.InterpreterLimitError)
-                and str(error) == _OUTPUT_LIMIT,
-            }
-        )
+        send_failure(error)
 
 
 if __name__ == "__main__":

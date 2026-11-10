@@ -7,16 +7,16 @@ from fractions import Fraction
 import pytest
 
 import esolangs
-import esolangs.operations.execution as _execution_operations
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import interpreter_module
-from esolangs.runtime._isolated import _decode
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
 from esolangs.runtime._result_wire import decode_result, encode_result
 from esolangs.vm import make_vm
+from tests.support.execution import run_observed
 from tests.support.reference import REFERENCE
+from tests.support.worker_response import _decode
 
 
 @pytest.fixture
@@ -268,9 +268,7 @@ def test_worker_refuses_corrupt_counters_and_retains_output(counter, failure):
 @pytest.mark.parametrize("isolated", [False, True])
 def test_step_bound_retains_an_unfinished_observation(isolated):
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        _execution_operations._run_result(
-            REFERENCE, "+[.]", max_steps=4, isolated=isolated
-        )
+        run_observed(REFERENCE, "+[.]", max_steps=4, isolated=isolated)
     assert caught.value.execution == ExecutionResult("\x01", 0, 0, 0, steps=4)
     assert caught.value.partial_output == "\x01"
 
@@ -310,7 +308,7 @@ def test_normal_worker_cannot_omit_result_metadata(monkeypatch):
     with pytest.raises(
         esolangs.InterpreterLimitError, match="omitted execution"
     ) as caught:
-        _isolated.run_isolated_result(REFERENCE, "+.")
+        _isolated.execute_isolated(REFERENCE, "+.").unwrap()
     assert caught.value.partial_output == "prefix"
 
 
@@ -324,8 +322,8 @@ def test_seeded_worker_result_matches_native(language):
         esolangs.instantiate(language, template, [1]) if parameterized else template
     )
     stdin = "" if parameterized else esolangs.encode_inputs(language, [1])
-    native = _execution_operations._run_result(language, source, stdin=stdin, seed=7)
-    worker = _execution_operations._run_result(
+    native = run_observed(language, source, stdin=stdin, seed=7)
+    worker = run_observed(
         language,
         source,
         stdin=stdin,
