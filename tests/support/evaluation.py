@@ -12,6 +12,8 @@ from time import monotonic
 from typing import cast
 
 import esolangs
+import esolangs.operations.source as _source_operations
+import esolangs.runtime._execution as _execution_runtime
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import (
     ArgumentError,
@@ -93,7 +95,7 @@ def _prepare[T](call: Callable[[], T], deadline: float | None, *, isolated: bool
         if reader.is_alive():
             raise ExecutionTimeoutError("evaluation timed out during preparation")
     else:
-        esolangs._run(capture, "", ScriptedIO(""), bound)
+        _execution_runtime.run_guard(capture, "", ScriptedIO(""), bound)
     _remaining(deadline, None)
     if errors:
         raise errors[0]
@@ -185,7 +187,7 @@ def _iter_evaluate(
         program if isinstance(program, (ProgramArtifact, TemplateArtifact)) else None
     )
     program = _prepare(
-        lambda: esolangs._read_source(name, program),
+        lambda: _source_operations._read_source(name, program),
         deadline,
         isolated=isolated,
     )
@@ -310,7 +312,7 @@ def _row_answerer(
 
             proof = termination_result_isolated(
                 name,
-                esolangs._check_program(name, source, stdin),
+                _source_operations._check_program(name, source, stdin),
                 stdin,
                 cast("float", bound),
                 settings=settings,

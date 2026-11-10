@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+import esolangs.operations.execution as execution_operations
 from esolangs import vm
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
@@ -61,8 +62,8 @@ def _audit(
         io._write = checked
         return io
 
-    mp.setattr(esolangs, "ScriptedIO", new)
-    mp.setattr(vm, "ScriptedIO", new)
+    mp.setattr(execution_operations, "io_factory", new)
+    mp.setattr(vm, "io_factory", new)
     rows = unread = past = 0
     for row in range(1 << n) if selected is None else selected:
         stdin = esolangs.encode_inputs(name, [row >> s & 1 for s in reversed(range(n))])

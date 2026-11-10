@@ -12,10 +12,10 @@ import threading
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 
-from esolangs import _read_source
 from esolangs.cli.args import _fail
 from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
 from esolangs.exceptions import EsolangError
+from esolangs.operations.source import _read_source
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
 

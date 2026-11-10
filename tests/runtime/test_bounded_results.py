@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+import esolangs.operations.execution as _execution_operations
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._lifecycle import Completion
 from esolangs.vm import _capture_result, complete_vm, make_vm
@@ -11,7 +12,7 @@ from tests.support.reference import REFERENCE
 
 def test_step_exhaustion_does_not_publish_a_completed_result():
     with pytest.raises(esolangs.ExecutionTimeoutError, match="max_steps") as caught:
-        esolangs._run_bounded_result(REFERENCE, "+.[]", max_steps=10)
+        _execution_operations._run_bounded_result(REFERENCE, "+.[]", max_steps=10)
     assert caught.value.partial_output == "\x01"
     assert caught.value.bound == "max_steps"
 

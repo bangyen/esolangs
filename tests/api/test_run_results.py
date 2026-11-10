@@ -7,6 +7,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
+import esolangs.operations.execution as _execution_operations
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import Completion, CompletionReport, ExecutionResult
@@ -59,7 +60,7 @@ def test_result_retains_a_caught_eof(route, monkeypatch):
                 attempts.append(True)
                 raise
 
-    monkeypatch.setattr(esolangs, "ScriptedIO", ObservedIO)
+    monkeypatch.setattr(_execution_operations, "io_factory", ObservedIO)
     native = esolangs.run(name, source)
     assert (native.input_position, native.input_reads) == (0, 0)
     assert attempts, "the EOF control did not perform a read"

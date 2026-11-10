@@ -5,8 +5,11 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
-from esolangs import _check_program, debugger
+import esolangs.operations.execution as _execution_operations
+import esolangs.runtime._execution as _execution_runtime
+from esolangs import debugger
 from esolangs.exceptions import EsolangError, UnknownLanguageError
+from esolangs.operations.source import _check_program
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._context import ExecutionContext
@@ -104,7 +107,7 @@ def test_deliberate_error_keeps_partial_output(monkeypatch: pytest.MonkeyPatch) 
         io.print_str("before")
         raise error
 
-    monkeypatch.setattr(esolangs, "_run", stop)
+    monkeypatch.setattr(_execution_runtime, "run_guard", stop)
     with pytest.raises(EsolangError) as caught:
         esolangs.run(REFERENCE, "+")
     assert caught.value is error
@@ -265,7 +268,7 @@ def test_isolated_seed_is_forwarded(monkeypatch) -> None:
         seen.append((language, program, stdin, timeout, kwargs))
         return ExecutionResult("result", 0, 0, 0)
 
-    monkeypatch.setattr(esolangs, "_run_isolated_result", execute)
+    monkeypatch.setattr(_execution_operations, "_run_isolated_result", execute)
     assert esolangs.run(REFERENCE, "+.", isolated=True, seed=7).output == "result"
     ((language, program, stdin, timeout, kwargs),) = seen
     assert (language, program, stdin, timeout) == (REFERENCE, "+.", "", 30.0)
@@ -273,7 +276,7 @@ def test_isolated_seed_is_forwarded(monkeypatch) -> None:
 
 
 def test_runnable_guard_refuses_non_source_values() -> None:
-    from esolangs import _check_runnable
+    from esolangs.operations.source import _check_runnable
 
     with pytest.raises(esolangs.ProgramError, match="got int"):
         _check_runnable(REFERENCE, 7)

@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.generation.helpers import runs
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, resolve
 from tests.support.pick import languages
 
 _PARAMETERIZED = [
@@ -36,7 +36,7 @@ def test_generators_spell_their_own_runs(language: str, gen) -> None:
 def test_parameterized_generators_embed_each_input_once(language, gen, n) -> None:
     table = "0" * (1 << n)
     template = gen(table)
-    spec = LANGUAGES[esolangs.resolve(language)].backend.template
+    spec = LANGUAGES[resolve(language)].backend.template
     assert spec is not None
     spans = runs(template, spec.char, spec.bindings(template, n))
     assert len(spans) == n, (language, n, spans)

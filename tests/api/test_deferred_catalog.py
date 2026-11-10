@@ -15,6 +15,7 @@ import sys
 from dataclasses import replace
 
 import esolangs
+from esolangs.operations.source import _read_source
 import pytest
 from esolangs import registry
 from esolangs.registry._backend import Generator
@@ -50,7 +51,7 @@ try:
     for name, language in registry.LANGUAGES.items():
         source = (esolangs.Raster((((0, 0, 0),),))
                   if language.runtime.source_kind.value == 'raster' else '')
-        esolangs._read_source(name, source)
+        _read_source(name, source)
     assert not native_modules.intersection(sys.modules), 'source imported runner'
     with pytest.raises(ImportError, match='deferred import control'):
         importlib.import_module(next(iter(native_modules)))

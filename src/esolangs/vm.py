@@ -18,7 +18,7 @@ sub-protocol.  :func:`run_until_halt` proves nothing.
 
 from __future__ import annotations
 
-from collections.abc import Hashable
+from collections.abc import Callable, Hashable
 from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
@@ -88,6 +88,9 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
         else Completion.HALTED,
     )
     return vm.output
+
+
+io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO
 
 
 @runtime_checkable
@@ -220,7 +223,7 @@ class _DelegatingVM:
         seed: int | None = None,
     ) -> None:
         self.language = language
-        self._io = ScriptedIO(stdin)
+        self._io = io_factory(stdin)
         self._capabilities = LANGUAGES[language].runtime.capabilities
         module = interpreter_module(language)
         code, options = prepare_call(
@@ -444,7 +447,7 @@ def make_vm(
     and ``settings``. A seed overrides reproducible stepping's language default;
     the checked value is what reaches the interpreter.
     """
-    from esolangs import _check_program
+    from esolangs.operations.source import _check_program
 
     name = resolve(language)
     check_seed(seed)

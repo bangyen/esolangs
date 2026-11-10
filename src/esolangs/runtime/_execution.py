@@ -130,8 +130,6 @@ def run_prepared(
     timeout: float | None,
 ) -> ExecutionResult:
     """Execute prepared source and retain output, input usage and declared reports."""
-    import esolangs
-
     with interpreter_errors(
         f"the {name} interpreter recursed deeper than CPython's stack "
         "limit allows on this program; the program is well formed, and "
@@ -140,7 +138,7 @@ def run_prepared(
         io_obj,
         language=name,
     ):
-        value = esolangs._run(run_fn, program, io_obj, timeout)  # noqa: SLF001
+        value = run_guard(run_fn, program, io_obj, timeout)
         if not isinstance(value, CompletionReport):
             raise InterpreterLimitError(
                 "completion runner returned no completion report",
@@ -339,3 +337,15 @@ def interpreter_errors(
         if error is original:
             raise
         raise error from original
+
+
+def run_guard[T](
+    run_fn: Callable[..., T],
+    program: RunnerProgram,
+    io_obj: ScriptedIO,
+    timeout: float | None,
+) -> T:
+    """Return ``run_fn``'s result, applying the wall-clock guard when set."""
+    if timeout is None:
+        return run_fn(program, io_obj)
+    return run_under_alarm(run_fn, program, io_obj, timeout)

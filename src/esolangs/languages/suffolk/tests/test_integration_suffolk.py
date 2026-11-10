@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+import esolangs.operations.execution as _execution_operations
 from esolangs import run
 from esolangs.debugger import complete_vm
 from esolangs.runtime._lifecycle import POST_HALT_REPORT, Completion
@@ -129,7 +130,7 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     machine.step()
     assert machine.snapshot() == state
     assert not machine.halted
-    result = esolangs._run_result("Suffolk", "<")
+    result = _execution_operations._run_result("Suffolk", "<")
     assert result.completion.kind is Completion.PERIODIC
     assert result.completion.cycle.state == state
     assert (
@@ -138,9 +139,11 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
         result.completion.cycle.commands_per_pass,
     ) == (0, 1, 1)
     with guarded_worker():
-        assert esolangs._run_result("Suffolk", "<", isolated=True) == result
+        assert (
+            _execution_operations._run_result("Suffolk", "<", isolated=True) == result
+        )
 
-    ended = esolangs._run_result("Suffolk", ",")
+    ended = _execution_operations._run_result("Suffolk", ",")
     assert ended.completion.kind is Completion.HALTED
     assert ended.completion.cycle is None
     assert (ended.input_position, ended.input_reads, ended.input_past_end) == (0, 0, 1)

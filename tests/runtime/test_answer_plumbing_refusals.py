@@ -10,7 +10,8 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import _check_program, _run
+from esolangs.operations.source import _check_program
+from esolangs.runtime._execution import run_guard as _run
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import first, languages, one
 from tests.support.reference import REFERENCE
@@ -412,7 +413,7 @@ def test_default_caller_alarm_keeps_its_termination_behavior() -> None:
     code = """
 import signal
 import time
-from esolangs import _run
+from esolangs.runtime._execution import run_guard as _run
 from esolangs.runtime.io import ScriptedIO
 signal.signal(signal.SIGALRM, signal.SIG_DFL)
 signal.setitimer(signal.ITIMER_REAL, 0.02)

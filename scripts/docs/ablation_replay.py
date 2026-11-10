@@ -17,12 +17,12 @@ from pathlib import Path
 from typing import Any
 
 import esolangs
-from esolangs import _run
 from esolangs.artifacts import Artifact
 from esolangs.generation.helpers import grid_area
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
+from esolangs.runtime._execution import run_guard as _run
 from esolangs.runtime._source import text_source
 from esolangs.runtime._termination import _termination_result
 from esolangs.runtime.io import ScriptedIO

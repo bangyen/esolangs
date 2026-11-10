@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
+import esolangs.operations.execution as _execution_operations
 from esolangs.results import ExecutionResult
 from esolangs.runtime._isolated import _decode, _request_wire, _worker
 from esolangs.runtime._json import worker_dumps, worker_object
@@ -289,13 +290,15 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(
     import sys
 
     def dump(*_args, **_kwargs):
-        output = esolangs.ScriptedIO()
+        output = _execution_operations.io_factory()
         output.print_str("λ" * 10_000)
         return output.getvalue()
 
     payload = _request_wire(REFERENCE, "", "", max_output=8193)
-    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
-    monkeypatch.setattr(esolangs, "_run_result", dump)
+    monkeypatch.setattr(
+        _execution_operations, "io_factory", _execution_operations.io_factory
+    )
+    monkeypatch.setattr(_execution_operations, "_run_result", dump)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
     _worker()
     messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
@@ -488,7 +491,9 @@ def test_worker_executes_compact_raster_pixels(monkeypatch, capsys) -> None:
         settings=image.settings,
         scale=image.scale,
     )
-    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
+    monkeypatch.setattr(
+        _execution_operations, "io_factory", _execution_operations.io_factory
+    )
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
     _worker()
     messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
@@ -536,8 +541,10 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
         answer_mode="termination", boolean_generator=True, parameterized=False
     )
 
-    monkeypatch.setattr(vm, "ScriptedIO", vm.ScriptedIO)
-    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
+    monkeypatch.setattr(vm, "io_factory", vm.io_factory)
+    monkeypatch.setattr(
+        _execution_operations, "io_factory", _execution_operations.io_factory
+    )
     program = esolangs.generate(language, "00")
     request = _request_wire(
         language,
@@ -548,7 +555,7 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
         termination=True,
     )
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
-    original_io = esolangs.ScriptedIO, vm.ScriptedIO
+    original_io = _execution_operations.io_factory, vm.io_factory
     _worker()
-    assert (esolangs.ScriptedIO, vm.ScriptedIO) == original_io
+    assert (_execution_operations.io_factory, vm.io_factory) == original_io
     assert _decode(capsys.readouterr().out, expired=False).decision.halts is True

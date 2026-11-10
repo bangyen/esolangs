@@ -108,7 +108,7 @@ def dump_program(
         ProgramError: ``program`` cannot be read (base of the above).
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
-    from esolangs import _read_source
+    from esolangs.operations.source import _read_source
 
     name = resolve(language)
     settings = effective_settings(name, program, settings)
@@ -272,7 +272,7 @@ def load_program(language: str, document: str) -> Artifact:
             ``language``, including invalid settings.
         MissingDependencyError: A PNG source needs ``esolangs[image]``.
     """
-    from esolangs import _read_source
+    from esolangs.operations.source import _read_source
 
     name = resolve(language)
     if not isinstance(document, str):

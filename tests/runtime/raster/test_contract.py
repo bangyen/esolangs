@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import _check_program
+import esolangs.runtime._execution as _execution_runtime
+from esolangs.operations.source import _check_program
 from esolangs.raster import Raster, lazy_raster
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.support.dialect_support import integer_setting
@@ -305,7 +306,7 @@ def test_retained_scale_is_validated(scale) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 def test_explicit_scale_overrides_png_metadata(language, monkeypatch) -> None:
-    module = esolangs.interpreter_module(language)
+    module = _execution_runtime.interpreter_module(language)
     assert not hasattr(module, "supports_scale")
     monkeypatch.setattr(module, "supports_scale", False, raising=False)
     source = esolangs.generate(language, "01", scale=2)

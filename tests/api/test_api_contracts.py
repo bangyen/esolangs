@@ -13,7 +13,6 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import _check_program
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -23,6 +22,7 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
+from esolangs.operations.source import _check_program, _looks_like_a_path
 from esolangs.registry import LANGUAGES
 from tests.support.generator_support import CHECK, evaluate_generated
 from tests.support.pick import languages
@@ -429,7 +429,7 @@ class TestThePathGuardKnowsMoreThanTxt:
     @pytest.mark.parametrize("program", ["~~", "-", "a/b/c", "/", "./", "1.5"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
         """Adjacent commands ``~~`` were refused, and Befunge's ``/``."""
-        assert not esolangs._looks_like_a_path(program), program
+        assert not _looks_like_a_path(program), program
 
 
 class TestTheArgumentBoundaryRefusesCleanly:

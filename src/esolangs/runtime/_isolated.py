@@ -277,7 +277,7 @@ def run_isolated_result(
     notes and output; timeout kills and reaps the child.
     A blocked caller-owned stream read may finish in the background after timeout.
     """
-    import esolangs
+    from esolangs.operations.source import _check_program
 
     check_limits(max_output, max_memory, isolated=True)
     if max_steps is not None:
@@ -298,7 +298,7 @@ def run_isolated_result(
 
     def prepare() -> None:
         try:
-            source = esolangs._check_program(name, program, stdin)  # noqa: SLF001
+            source = _check_program(name, program, stdin)
             retained = (
                 settings if record else effective_settings(name, source, settings)
             )
@@ -597,16 +597,16 @@ def _exit_with_parent() -> None:
 
 
 def _worker() -> None:
-    """Serve one request, restoring patched IO classes for in-process callers."""
-    import esolangs
+    """Serve one request, restoring I/O factories for in-process callers."""
+    import esolangs.operations.execution as _execution_operations
     from esolangs import vm
 
-    native_io, vm_io = esolangs.ScriptedIO, vm.ScriptedIO  # type: ignore[attr-defined]
+    native_io, vm_io = _execution_operations.io_factory, vm.io_factory
     try:
         _serve_request()
     finally:
-        esolangs.ScriptedIO = native_io  # type: ignore[attr-defined]
-        vm.ScriptedIO = vm_io  # type: ignore[attr-defined]
+        _execution_operations.io_factory = native_io
+        vm.io_factory = vm_io
 
 
 def _read_request(stream: TextIO) -> dict[str, Any]:
@@ -691,7 +691,7 @@ def _check_raster_request(runs: Any) -> None:
 
 def _serve_request() -> None:
     """Stream live output and validated execution or termination metadata."""
-    import esolangs
+    import esolangs.operations.execution as _execution_operations
     from esolangs import vm
     from esolangs.runtime.io import ScriptedIO
 
@@ -722,10 +722,9 @@ def _serve_request() -> None:
                 )
 
     # The worker swaps the IO class process-wide so program output streams
-    # to the parent. ScriptedIO is deliberately absent from __all__; the
-    # ignore marks this patch as intentional, not a typo.
-    esolangs.ScriptedIO = StreamingIO  # type: ignore[attr-defined]
-    vm.ScriptedIO = StreamingIO  # type: ignore[attr-defined]
+    # to the parent; both execution routes use the same streaming policy.
+    _execution_operations.io_factory = StreamingIO
+    vm.io_factory = StreamingIO
     # Release a small reserve before reporting allocation failure under RLIMIT_AS.
     reserve = bytearray(65_536)
     try:
@@ -748,7 +747,7 @@ def _serve_request() -> None:
             }
         )
         # The parent already decoded and checked runnable source.
-        program = esolangs.ProgramArtifact(program, request["language"], settings)
+        program = ProgramArtifact(program, request["language"], settings)
         if request["termination"]:
             from esolangs.runtime._termination import _termination_result
 
@@ -761,7 +760,7 @@ def _serve_request() -> None:
             )
             result = proved.observation
         else:
-            result = esolangs._run_result(  # noqa: SLF001 - same result route as public run
+            result = _execution_operations._run_result(  # noqa: SLF001 - same result route as public run
                 request["language"],
                 program,
                 stdin=request["stdin"],

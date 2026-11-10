@@ -7,11 +7,12 @@ from pathlib import Path
 import pytest
 
 import esolangs
+import esolangs.operations.source as _source_operations
 from esolangs._cycles import _BranchingStepMachine, _FramedMachine, _TapeMachine
 from esolangs.compressed import CompressedText
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, canonical_id
+from esolangs.registry import LANGUAGES, canonical_id, resolve
 from esolangs.vm import (
     make_vm,
     run_until_halt,
@@ -82,7 +83,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
         # PNG compression differs across platforms; the pixels are the program.
         assert Raster.from_png(path.read_bytes()) == program, stale
     else:
-        ending = "\n" if LANGUAGES[esolangs.resolve(name)].runtime.file_newline else ""
+        ending = "\n" if LANGUAGES[resolve(name)].runtime.file_newline else ""
         expected = (program + ending).encode("utf-8")
         assert path.read_bytes() == expected, stale
 
@@ -214,7 +215,7 @@ def test_boolean_example(name: str) -> None:
     _module, _inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
     path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
     stdin = BOOLEAN_GENERATED[name].stdin
-    program = esolangs._read_source(name, path)
+    program = _source_operations._read_source(name, path)
     if isinstance(program, Raster):
         got = esolangs.run(name, program, stdin=stdin).output
     else:

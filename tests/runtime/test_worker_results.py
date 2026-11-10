@@ -7,6 +7,7 @@ from fractions import Fraction
 import pytest
 
 import esolangs
+import esolangs.operations.execution as _execution_operations
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
@@ -267,7 +268,9 @@ def test_worker_refuses_corrupt_counters_and_retains_output(counter, failure):
 @pytest.mark.parametrize("isolated", [False, True])
 def test_step_bound_retains_an_unfinished_observation(isolated):
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs._run_result(REFERENCE, "+[.]", max_steps=4, isolated=isolated)
+        _execution_operations._run_result(
+            REFERENCE, "+[.]", max_steps=4, isolated=isolated
+        )
     assert caught.value.execution == ExecutionResult("\x01", 0, 0, 0, steps=4)
     assert caught.value.partial_output == "\x01"
 
@@ -321,8 +324,8 @@ def test_seeded_worker_result_matches_native(language):
         esolangs.instantiate(language, template, [1]) if parameterized else template
     )
     stdin = "" if parameterized else esolangs.encode_inputs(language, [1])
-    native = esolangs._run_result(language, source, stdin=stdin, seed=7)
-    worker = esolangs._run_result(
+    native = _execution_operations._run_result(language, source, stdin=stdin, seed=7)
+    worker = _execution_operations._run_result(
         language,
         source,
         stdin=stdin,

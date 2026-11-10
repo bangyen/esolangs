@@ -6,6 +6,7 @@ from math import isqrt
 
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.registry import resolve
 from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
@@ -53,7 +54,7 @@ def assert_proved_resource_cap(name: str) -> None:
     from esolangs.registry import LANGUAGES
     from tests.proofs._roadmap import load
 
-    lang = LANGUAGES[esolangs.resolve(name)]
+    lang = LANGUAGES[resolve(name)]
     row = load().by_name().get(lang.name)
     assert row is not None
     assert row.totality == "Cap"
@@ -65,7 +66,7 @@ def probe_table(name: str, default: str = "0110") -> str:
     """Use a compact executable witness when a proved cap forbids the corpus."""
     from esolangs.registry import LANGUAGES
 
-    lang = LANGUAGES[esolangs.resolve(name)]
+    lang = LANGUAGES[resolve(name)]
     if load_certification(lang).benchmark_tables:
         assert_proved_resource_cap(name)
         return next(

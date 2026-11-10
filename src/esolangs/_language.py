@@ -5,6 +5,7 @@ from os import PathLike
 from pathlib import Path
 
 import esolangs
+import esolangs.operations.source as _source_operations
 from esolangs.artifacts import Artifact, ProgramArtifact
 from esolangs.registry import resolve
 from esolangs.registry._describe import LanguageInfo
@@ -64,7 +65,7 @@ class Language:
         dialect_options(self.name, settings)
         if not isinstance(path, (str, PathLike)):
             raise ArgumentError("path must be a string or Path")
-        source = esolangs._read_source(self.name, Path(path))  # noqa: SLF001 - API boundary
+        source = _source_operations._read_source(self.name, Path(path))  # noqa: SLF001 - API boundary
         return self.from_source(source, settings=settings)
 
     def generate(

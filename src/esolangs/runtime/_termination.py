@@ -3,7 +3,7 @@
 from functools import partial
 from typing import cast
 
-import esolangs
+import esolangs.runtime._execution as _execution_runtime
 from esolangs._cycles import _BranchingStepMachine, _halt_or_cycle_result, _unwrap
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import EsolangError, InterpreterLimitError
@@ -85,7 +85,7 @@ def _termination_result(
         if isinstance(source, (ProgramArtifact, TemplateArtifact))
         else source
     )
-    verdict = esolangs._run(_drive, argument, ScriptedIO(""), bound)  # noqa: SLF001
+    verdict = _execution_runtime.run_guard(_drive, argument, ScriptedIO(""), bound)
     try:
         return checked_termination(verdict)
     except ValueError as error:

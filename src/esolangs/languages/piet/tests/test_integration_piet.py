@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs import Raster, run
 from esolangs.exceptions import TemplateError
+from esolangs.operations.source import _looks_like_a_path
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.support.evaluation import _evaluate
 from tests.support.input_convention import assert_reads_tokens_on_one_line
@@ -35,7 +36,7 @@ def test_bound_raster_language_loads_and_evaluates_png(tmp_path) -> None:
 def test_a_raster_is_not_a_path() -> None:
     """``_looks_like_a_path`` is typed for text; a Raster must answer False."""
     program = esolangs.generate("Piet", "01")
-    assert not esolangs._looks_like_a_path(program.source)
+    assert not _looks_like_a_path(program.source)
 
 
 def test_raster_interpreter_owns_loading_and_scale_support(
