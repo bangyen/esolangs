@@ -67,7 +67,7 @@ from esolangs.languages.freestajlo.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -85,6 +85,7 @@ _EMPTY: _Stack = (0, None)
 type _Calls = tuple[int, _Calls] | None
 #: One compiled command: its kind, operand and source offset.
 type _Op = tuple[str, object, int]
+type _Program = tuple[tuple[_Op, ...], int]
 
 _LETTERS = ascii_uppercase + ascii_lowercase
 _DIGITS = "0123456789"
@@ -408,10 +409,12 @@ class _Machine:
     #: ``,`` and ``;`` push the spec's EOF values instead of raising.
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Program, io: IO) -> None:
         self.io = io
-        self.ops = _parse(code)
-        self.end = len(code)
+        if isinstance(code, str):
+            self.ops, self.end = _parse(code), len(code)
+        else:
+            self.ops, self.end = code
         self.state = tuple.__new__(
             _State, (0, _EMPTY, _EMPTY, None, (-1,) * len(_LETTERS))
         )
@@ -519,19 +522,22 @@ class _Machine:
             self.index = value
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain immutable instructions; each invocation owns its runtime state."""
     if not isinstance(source, str):
         raise TypeError("freestajlo machines require text source")
     if options:
         raise TypeError("freestajlo machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
+    program = (_parse(source), len(source))
 
-    return build
+    def build(io: IO) -> _Machine:
+        return _Machine(program, io)
+
+    def execute(io: IO) -> CompletionReport:
+        return drive(build(io), policy=CAPABILITIES.completion)
+
+    return RuntimePlan(build, execute)
 
 
 def _execute(code: str, io: IO) -> CompletionReport:

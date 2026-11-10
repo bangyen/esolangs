@@ -50,7 +50,7 @@ from esolangs.languages.creativescript_v2.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -74,9 +74,10 @@ _INTEGER = re.compile(r"[+-]?[0-9]+")
 type _Command = tuple[str, tuple[int, ...], str | int | None]
 #: Each variable's value by slot, ``None`` until set.
 type _State = tuple[int | None, ...]
+type _Program = tuple[tuple[_Command, ...], tuple[int, ...], int]
 
 
-def _parse(code: str) -> tuple[tuple[_Command, ...], tuple[int, ...], int]:
+def _parse(code: str) -> _Program:
     """Return the commands, each one's source offset, and the variable count."""
     program: list[_Command] = []
     offsets: list[int] = []
@@ -170,9 +171,11 @@ _WORKSPACE_MODEL = WorkspaceModel(
 class _Machine:
     """The variables and the next command."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Program, io: IO) -> None:
         self.io = io
-        self.program, self.offsets, count = _parse(code)
+        self.program, self.offsets, count = (
+            _parse(code) if isinstance(code, str) else code
+        )
         self.state: _State = (None,) * count
         self.cursor = 0
 
@@ -213,19 +216,22 @@ class _Machine:
         self.cursor += 1
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain immutable instructions; each invocation owns its runtime state."""
     if not isinstance(source, str):
         raise TypeError("creativescript_v2 machines require text source")
     if options:
         raise TypeError("creativescript_v2 machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
+    program = _parse(source)
 
-    return build
+    def build(io: IO) -> _Machine:
+        return _Machine(program, io)
+
+    def execute(io: IO) -> CompletionReport:
+        return drive(build(io), policy=CAPABILITIES.completion)
+
+    return RuntimePlan(build, execute)
 
 
 def _execute(code: str, io: IO) -> CompletionReport:

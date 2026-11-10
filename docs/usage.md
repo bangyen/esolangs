@@ -141,11 +141,16 @@ or `prepared.make_vm(stdin=...)` for fresh IO, machine state and randomness on
 each invocation. In-process deterministic runtime plans retain parsed data for
 native and stepped runs. Other hooks may still parse during machine construction.
 Isolated workers prepare their own source.
-These plans retain an immutable initial memory image:
+These language-owned plans retain parsed source:
 
-- Subleq.
-- Decleq.
-- S*bleq. It also binds `instantiate`; use package functions across languages.
+- Subleq: initial memory image.
+- Decleq: initial memory image.
+- S*bleq: initial memory image.
+- IEBEL: validated instructions and source lines.
+- CreativeScript v2: commands, source offsets and variable slots.
+- Freestajlo: resolved instructions and source end.
+
+`Language` also binds `instantiate`; use package functions across languages.
 
 `bf.execute(program, limits=ExecutionLimits(max_steps=10_000))` returns an
 `ExecutionOutcome`: `completed`, `rejected`, `input_exhausted`, `fault` or `limit`.

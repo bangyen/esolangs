@@ -44,10 +44,16 @@ def test_hello_world() -> None:
     assert io.getvalue() == "HELLO WORLD"
 
 
-def test_truth_machine_zero() -> None:
+def test_truth_machine_zero(monkeypatch) -> None:
     io = ScriptedIO("0")
     run(TRUTH, io)
     assert io.getvalue() == "0"
+    from esolangs.languages.iebel import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "IEBEL", "0 0 -3\n0 1 -2\n0 0 -1", interpreter, "_parse", monkeypatch
+    )
 
 
 def test_truth_machine_one_loops() -> None:

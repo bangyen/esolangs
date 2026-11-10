@@ -33,7 +33,7 @@ def test_the_pages_equality_program_needs_floor_division(
     assert output(EQUALS, f"{a}\n{b}\n") == expected
 
 
-def test_say_prints_the_rest_of_the_line_and_a_plus_b_adds() -> None:
+def test_say_prints_the_rest_of_the_line_and_a_plus_b_adds(monkeypatch) -> None:
     from esolangs.languages.creativescript_v2.tests.oracle_checks import (
         check_raw_creativescript_v2,
     )
@@ -41,6 +41,17 @@ def test_say_prints_the_rest_of_the_line_and_a_plus_b_adds() -> None:
     check_raw_creativescript_v2()
     assert output("say! Hello world!") == "Hello world!"
     assert output("in! a\nin! b\nadd! a b c\nout! c", "2\n40\n") == "42"
+    from esolangs.languages.creativescript_v2 import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "CreativeScript v2",
+        "in! a\nout! a",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("17\n", "17"), ("29\n", "29"), ("-3\n", "-3")),
+    )
 
 
 def test_division_and_modulo_floor() -> None:

@@ -45,7 +45,7 @@ from esolangs.languages.iebel.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -134,8 +134,8 @@ class _Machine:
 
     ip_shape = "line"
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.ops = _parse(code)
+    def __init__(self, code: str | tuple[_Op, ...], io: IO) -> None:
+        self.ops = _parse(code) if isinstance(code, str) else code
         self.io = io
         self.state: _State = (0, (0,) * 256)
 
@@ -172,19 +172,22 @@ class _Machine:
             self.io.print_char(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain immutable instructions; each invocation owns its runtime state."""
     if not isinstance(source, str):
         raise TypeError("iebel machines require text source")
     if options:
         raise TypeError("iebel machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
+    program = _parse(source)
 
-    return build
+    def build(io: IO) -> _Machine:
+        return _Machine(program, io)
+
+    def execute(io: IO) -> CompletionReport:
+        return drive(build(io), policy=CAPABILITIES.completion)
+
+    return RuntimePlan(build, execute)
 
 
 def _execute(code: str, io: IO) -> CompletionReport:

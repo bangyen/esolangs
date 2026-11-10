@@ -26,7 +26,13 @@ def test_arithmetic_and_stack_commands(code: str, expected: str) -> None:
     assert _out(code) == expected
 
 
-def test_signed_quotient_and_remainder() -> None:
+def test_signed_quotient_and_remainder(monkeypatch) -> None:
+    from esolangs.languages.freestajlo import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Freestajlo", "f{,.} 1!0! f [tail]", interpreter, "_parse", monkeypatch
+    )
     for dividend in [-(2**55 + 1), -13, -6, -1, 0, 1, 6, 13, 2**55 + 1]:
         for divisor in [-4, -3, 3, 4]:
             left = str(abs(dividend)) + "_" * (dividend < 0)
