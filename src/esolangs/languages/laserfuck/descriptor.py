@@ -6,7 +6,7 @@ from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.registry._operations import OperationRef
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
@@ -15,7 +15,7 @@ LANGUAGE = Language(
         "laserfuck",
         category="grid_based",
         random=True,
-        split=True,
+        source_policy=LineSourcePolicy(),
         # Seed 2 draws heading 0 (up), matching this language's examples.
         reproducible_seed=2,
         machine_preparation="prepare_machine",

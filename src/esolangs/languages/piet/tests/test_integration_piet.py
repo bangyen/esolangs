@@ -9,7 +9,7 @@ import esolangs
 from esolangs import Raster, run
 from esolangs.exceptions import TemplateError
 from esolangs.operations.source import _looks_like_a_path
-from esolangs.registry import LANGUAGES, SourceKind
+from esolangs.registry import LANGUAGES
 from tests.support.evaluation import _evaluate
 from tests.support.input_convention import assert_reads_tokens_on_one_line
 from tests.support.pick import languages
@@ -48,7 +48,6 @@ def test_raster_interpreter_owns_loading_and_scale_support(
         "Piet",
         replace(
             LANGUAGES["Piet"],
-            runtime=replace(LANGUAGES["Piet"].runtime, source_kind=SourceKind.TEXT),
             backend=None,
         ),
     )

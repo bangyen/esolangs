@@ -17,7 +17,7 @@ from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.registry._operations import OperationRef
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 from esolangs.runtime._program import Program
 
 
@@ -44,7 +44,7 @@ LANGUAGE = Language(
             },
             {"expression_syntax": "infix", "list_update": "in_place"},
         ),
-        split=True,
+        source_policy=LineSourcePolicy(),
         eof="it raises its own error before the read is reached",
         underfed_raises=True,
         empty_program="empty program",

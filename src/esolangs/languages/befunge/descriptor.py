@@ -5,7 +5,7 @@ from esolangs.languages.befunge.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._language import Example, Language
 from esolangs.registry._operations import OperationRef
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 from esolangs.runtime._program import Program
 
 MAX_INPUTS = 13
@@ -20,7 +20,7 @@ LANGUAGE = Language(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         random=True,
-        split=True,
+        source_policy=LineSourcePolicy(),
         empty_program="Befunge program cannot be empty",
     ),
     backend=BooleanBackend(

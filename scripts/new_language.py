@@ -263,7 +263,7 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
             f'runtime=RuntimeSpec("{slug}", ...)) with explicit '
             "machine_preparation, completion_entrypoint and capabilities; "
             "add a BooleanBackend with an OperationRef entrypoint for a generator, "
-            "split=True only when run() takes source lines, "
+            "source_policy=LineSourcePolicy() only when run() takes source lines, "
             "and the Boolean I/O contract; "
             "run `python scripts/docs/generate.py docs` to refresh documentation",
         )

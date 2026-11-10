@@ -6,7 +6,7 @@ from esolangs.registry._backend import BooleanBackend, Shape
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.registry._operations import OperationRef
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
@@ -14,7 +14,7 @@ LANGUAGE = Language(
     RuntimeSpec(
         "qoibl",
         category="register_based",
-        split=True,
+        source_policy=LineSourcePolicy(),
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,

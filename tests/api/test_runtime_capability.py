@@ -2,7 +2,7 @@
 
 import subprocess
 import sys
-from dataclasses import fields, replace
+from dataclasses import FrozenInstanceError, fields, replace
 from pathlib import Path
 
 import pytest
@@ -14,7 +14,43 @@ from esolangs.runtime._definition import RuntimeSpec
 
 
 def test_runtime_facts_are_owned_only_by_the_runtime_record():
+    from esolangs.runtime._definition import (
+        CompressedSourcePolicy,
+        LineSourcePolicy,
+        RasterSourcePolicy,
+        TextSourcePolicy,
+        VerbatimSourcePolicy,
+    )
+
+    policies = (
+        TextSourcePolicy(),
+        LineSourcePolicy(),
+        VerbatimSourcePolicy(),
+        CompressedSourcePolicy(),
+        RasterSourcePolicy(),
+    )
+    for policy in policies:
+        with pytest.raises((FrozenInstanceError, TypeError)):
+            policy.split = not policy.split
+        with pytest.raises(TypeError):
+            type(policy)(source_kind="raster")
+    assert LineSourcePolicy().split
+    assert not VerbatimSourcePolicy().file_newline
+    assert CompressedSourcePolicy().compressed
+    assert RasterSourcePolicy().kind == RasterSourcePolicy().loader == "raster"
+    with pytest.raises(ValueError, match="boolean"):
+        TextSourcePolicy(path_like=1)
     runtime_fields = {field.name for field in fields(RuntimeSpec)}
+    assert runtime_fields.isdisjoint(
+        {
+            "split",
+            "path_like_source",
+            "source_kind",
+            "compressed_source",
+            "source_loader",
+            "file_newline",
+        }
+    )
     assert runtime_fields.isdisjoint(field.name for field in fields(Language))
     for lang in LANGUAGES.values():
         assert isinstance(lang.runtime, RuntimeSpec)

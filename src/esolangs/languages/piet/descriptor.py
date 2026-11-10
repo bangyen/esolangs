@@ -6,19 +6,21 @@ from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
 from esolangs.registry._operations import OperationRef
-from esolangs.runtime._definition import RuntimeSpec, SourceKind, SourceLoader
+from esolangs.runtime._definition import (
+    RasterSourcePolicy,
+    RuntimeSpec,
+)
 from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
     "Piet",
     RuntimeSpec(
         "piet",
-        source_loader=SourceLoader.RASTER,
+        source_policy=RasterSourcePolicy(),
         category="stack_based",
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
-        source_kind=SourceKind.RASTER,
         eof="an exhausted input command is ignored, as the spec requires",
     ),
     backend=BooleanBackend(

@@ -7,7 +7,7 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._language import Language
 from esolangs.registry._operations import OperationRef
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._definition import RuntimeSpec, TextSourcePolicy
 from esolangs.runtime._program import Program
 
 LANGUAGE = Language(
@@ -18,7 +18,7 @@ LANGUAGE = Language(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         category="program_based",
-        path_like_source=True,
+        source_policy=TextSourcePolicy(path_like=True),
     ),
     id="slashes",
     aliases=("Slashalash",),

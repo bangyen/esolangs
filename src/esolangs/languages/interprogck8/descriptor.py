@@ -5,7 +5,7 @@ from esolangs.languages.interprogck8.lifecycle import CAPABILITIES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._language import Language
 from esolangs.registry._operations import OperationRef
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 from esolangs.runtime._program import Program
 
 MAX_INPUTS = 40
@@ -19,7 +19,7 @@ LANGUAGE = Language(
         machine_preparation="prepare_machine",
         capabilities=CAPABILITIES,
         category="register_based",
-        split=True,
+        source_policy=LineSourcePolicy(),
         random=True,
     ),
     backend=BooleanBackend(
