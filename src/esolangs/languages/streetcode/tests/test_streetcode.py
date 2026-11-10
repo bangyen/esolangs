@@ -285,6 +285,10 @@ def test_a_counting_ring_program_drives_its_whole_lap() -> None:
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Streetcode", "zzz", "exactly one C")
 
+    from .workspace_checks import check_complete_streetcode
+
+    check_complete_streetcode()
+
 
 class TestPureTransition:
     """``_advance`` runs one cell; ``step`` is only the read/write shell."""

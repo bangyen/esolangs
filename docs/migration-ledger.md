@@ -3966,3 +3966,27 @@ All 56 leaves were rerun, with 172.70s active time and unchanged 60s caps. Nativ
 and generator code are unchanged. Brainfuck's bounded accounting review is
 complete; arbitrary syntax, allocation and provider universality remain open.
 Accounting reviews pending: 5; completion joins remain separate.
+
+Streetcode retains all 511 original one-row cases, the existing junction and
+four constructor refusals, with caps 48/17 and three post-halt idles. The old
+fast oracle and medium owner body remain; five helpers add no nodes or bands.
+The bounded model covers these rows and junction, not arbitrary geometry.
+
+Sixty-four installed leaves pass on Python 3.12.11–final 3.15.0. Raw, prepared,
+VM and debugger each match 8,182 boundaries, 6,852 successful steps, 212 halts
+and 182 failures including four constructors. All six workspace components,
+full IO and retained captures are checked; the measured peak is 113 bits.
+Each version checks 516 bounded public calls and 398 finite ordinary calls;
+118 ordinary cases are explicitly inapplicable. Compiled graph and memo data
+remain readonly sidecars with changed-future controls.
+
+The packet checks 140 populated erasures, four honest stopped no-ops, four
+canonical positives, twenty physical fault histories and four repeated EOF
+histories. Two prepared siblings retain independent histories. Representative,
+cap and proof workers yield 124 children and 188 startup markers overall under
+the 952-file guard. The whole original hook constructs 518 machines; the whole
+medium owner constructs 526. Its repository run passes in 1.67 seconds.
+The strict saved reader, relocation and thirty corruption controls pass;
+stdout is changed alongside result mutations. All 64 leaves took 125.71 seconds
+with unchanged 60-second caps. Native and generator code are unchanged.
+Accounting reviews pending: 4; completion joins remain separate.
