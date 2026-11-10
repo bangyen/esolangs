@@ -4049,3 +4049,45 @@ neither supplies V3 outcome credit. Evidence: `notes/malbolge-accounting-final`.
 Finite corpus accounting is complete; arbitrary grammar, allocation and provider
 universality remain unclaimed. Accounting reviews pending: 2; completion
 reconciliation remains separate.
+
+Object disoriented retains all 376 original normal cases and five constructor
+sources, cap 512 and three post-halt idles. Forty-eight installed leaves pass
+on Python 3.12.11–final 3.15.0. Each native route matches 16,112 boundaries,
+14,662 successful steps and 27 active failures; the corpus peak is 199 bits.
+All six workspace components, IO, readonly compiler data, retained captures
+and complete raw keys are checked. A populated all-six witness costs 47 bits.
+
+Raw/prepared syntax checks attempt five constructors. VM/debugger and public
+APIs reject `dmain.orzzz` during path preflight, before IO or construction;
+the other four reach constructors. Worker receipts prove per-source child
+counts 1/1/0/1/1. This corrects V2's failed 26-child assumption without crediting
+a parent refusal as a constructor. Each version checks 381 bounded and 381
+ordinary public calls, 24 populated erasures, four readonly-future controls,
+four typed-IO controls, one typed-result control and sixteen physical histories.
+Two same-factory siblings retain complete independent state histories.
+
+All 16,112 raw snapshots round-trip per version. Twenty-one normal workers,
+four syntax workers and four cap/profile workers per version yield 116
+children and 164 startup markers overall under the 952-file guard. The exact
+old hook constructs 384 machines; all 23 complete medium-owner parameters run.
+The saved reader, relocation and 28 corruption controls pass; result edits
+also change saved stdout. All 48 leaves take 485.88 seconds at unchanged
+60-second caps. No nodes, bands, native or generator code change. Arbitrary
+syntax, allocation and providers remain unclaimed. Accounting reviews pending:
+1; completion joins remain separate.
+
+Packlang now compares every retained capture/key value and original hash at
+each later boundary. Genuine old-frame `cached_hash` corruptions, including
+0/False aliasing, pass the old hash-only check and fail the stronger check;
+canonical/restored positives and two same-factory histories pass. The existing
+medium owner constructs 1,140 machines, retaining its original body and all
+1,132 cases at cap 48. Expected-only plans reuse scalar shapes; every actual
+field/type is reread. V3–V5 Python 3.14 timing failures remain recorded; V6
+passes alone in 4.23 seconds against the unchanged five-second limit.
+
+All 48 fresh V6 installed leaves pass in 123.22 seconds. Their saved result
+payloads match V3 across all 48 leaves, excluding volatile guard PID inventories.
+The strict reader, two relocation positives and 34 negative controls pass.
+The 9,167 raw boundaries, 126-bit peak, 100 children and 148 startup markers
+remain unchanged. This strengthens the existing finite scalar scope; broader
+Packlang syntax and host behavior remain unclaimed.

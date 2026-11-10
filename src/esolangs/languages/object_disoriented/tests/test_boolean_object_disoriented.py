@@ -30,6 +30,10 @@ def test_every_row_prints_its_answer(table: str) -> None:
         "Object disoriented", table, program, run, sentinel="Q", token=True
     )
 
+    from .workspace_checks import check_accounting_object_disoriented
+
+    check_accounting_object_disoriented(table)
+
 
 def _check_native_constants() -> None:
     from esolangs.languages.object_disoriented.interpreter import _Machine

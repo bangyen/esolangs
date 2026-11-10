@@ -22,3 +22,6 @@ def check_accounting_packlang():
     )
     for case in full_oracle.cases():
         workspace_views.trace(case, "raw", context)
+
+    workspace_views.retained_controls(context)
+    workspace_views.prepared_siblings(context)
