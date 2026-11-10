@@ -25,6 +25,7 @@ Size:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from math import isqrt
 
@@ -202,7 +203,7 @@ class _Builder:
 
 
 def _b_tapemark_narrow(
-    table: str, depth: int, weights: list[int], swap_marker: str = "new"
+    table: str, depth: int, weights: Sequence[int], swap_marker: str = "new"
 ) -> str:
     """Narrow layout: copy on a staircase, compares vertical, indices horizontal.
 
@@ -290,7 +291,7 @@ def _b_tapemark_program(
     # stage crosses no ``|``: it still reads and still steps the pointer once,
     # so the climb and tail stay a stage per input.  A constant keeps all.
     weights, painted = input_weights(truth_table, depth)
-    full = [1 << (depth - 1 - i) for i in range(depth)]
+    full = tuple(1 << (depth - 1 - i) for i in range(depth))
     if not any(weights):
         painted, weights = truth_table, full
     size = len(painted)

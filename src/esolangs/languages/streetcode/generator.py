@@ -592,7 +592,7 @@ def _flat_inputs(truth_table: str, n: int) -> _FlatInputs:
     else:
         # A constant keeps one level to fork on, over two equal cells; the
         # other inputs are lone reads.
-        weights = [0] * (n - 1) + [1]
+        weights = (0,) * (n - 1) + (1,)
         table, n = table * 2, 1
     gaps, pending = [], 0
     for weight in weights:

@@ -389,10 +389,10 @@ class WeightedLookup(NamedTuple):
     """Index ``table`` by the sum of weights for set inputs, first input first.
 
     Zero-weight inputs still belong to the reader; projection never licenses
-    skipping their reads. Weights remain lists for existing emitter contracts.
+    skipping their reads.
     """
 
-    weights: list[int]
+    weights: tuple[int, ...]
     table: str
 
 
@@ -406,7 +406,7 @@ def input_weights(truth_table: str, n: int) -> WeightedLookup:
     weights = [0] * n
     for rank, i in enumerate(essential):
         weights[i] = 1 << (len(essential) - 1 - rank)
-    return WeightedLookup(weights, read_at(truth_table, essential, n))
+    return WeightedLookup(tuple(weights), read_at(truth_table, essential, n))
 
 
 def symmetric_weights(truth_table: str, n: int) -> WeightedLookup | None:
@@ -422,7 +422,7 @@ def symmetric_weights(truth_table: str, n: int) -> WeightedLookup | None:
     outputs = _symmetric_outputs(read_at(truth_table, essential, n), len(essential))
     if outputs is None:
         return None
-    weights = [int(i in essential) for i in range(n)]
+    weights = tuple(int(i in essential) for i in range(n))
     return WeightedLookup(weights, outputs)
 
 

@@ -36,6 +36,7 @@ Decisions:
     area 29-33% off at n=8 only, under 8% at n=10 and 0% at n=9, 11, 12.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from itertools import pairwise
 
@@ -150,7 +151,7 @@ def _back_parity(truth_table: str, n: int) -> str | None:
     return "\n".join([*rows, "*"])
 
 
-def _back_htree(table: str, weights: list[int], base: int = _FOLD_BASE) -> str:
+def _back_htree(table: str, weights: Sequence[int], base: int = _FOLD_BASE) -> str:
     r"""Fold the decision tree into an H-tree of combs, under a row of load.
 
     A subtree of at most ``base`` levels is the plain comb (``+\>``
@@ -298,7 +299,7 @@ def _back_pointer_walk(frm: int, to: int) -> list[str]:
 def _back_load(
     order: list[int],
     cells: list[int],
-    weights: list[int],
+    weights: Sequence[int],
     levels: int,
     n: int,
 ) -> list[str]:
@@ -461,7 +462,7 @@ def _back_ordered(
     truth_table: str,
     perm: tuple[int, ...],
     width: int | None = None,
-    weights: list[int] | None = None,
+    weights: Sequence[int] | None = None,
 ) -> str:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 

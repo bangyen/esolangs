@@ -24,6 +24,8 @@ Decisions:
     it must be a zero row ([ablations.eighth_input]).
 """
 
+from collections.abc import Sequence
+
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -36,7 +38,7 @@ from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
 
-def _bfstack_encoder(weights: list[int], start: int = 1) -> str:
+def _bfstack_encoder(weights: Sequence[int], start: int = 1) -> str:
     """BFStack code turning the inputs into ``start + sum(bit*weight)``.
 
     ``,`` reads, 48 ``-``s normalize, ``[<+w>]`` adds the weight; an ignored
@@ -106,7 +108,7 @@ def _bfstack_decoder(truth_table: str, start: int = 1) -> str:
 
 
 def _bfstack_small(
-    truth_table: str, n: int, build: tuple[list[int], str] | None = None
+    truth_table: str, n: int, build: tuple[Sequence[int], str] | None = None
 ) -> str:
     """Return a byte-indexed decoder over the essential inputs.
 

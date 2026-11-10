@@ -17,7 +17,7 @@ Decisions:
     A zero leaf may leave scratch at 2; the answer is still the second register.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from esolangs.generation.helpers import (
@@ -81,7 +81,7 @@ def _render(tokens: list[str], resolved: list[int]) -> str:
     return "".join(tokens) + "\n" + " ".join(map(str, resolved))
 
 
-def _cascade(weights: list[int], table: str) -> tuple[list[str], list[int]]:
+def _cascade(weights: Sequence[int], table: str) -> tuple[list[str], list[int]]:
     """Return the stages adding each input's weight, then the ``~`` cascade."""
     # Two shared leaves sit behind a line-1 ``~`` that jumps over them at
     # start: line 2 halts (a ``~`` targeting one past the end), lines 3-5
@@ -127,7 +127,7 @@ def _cascade(weights: list[int], table: str) -> tuple[list[str], list[int]]:
     return tokens, [end if t is None else t for t in targets]
 
 
-def _pair_cascade(weights: list[int], table: str) -> tuple[list[str], list[int]]:
+def _pair_cascade(weights: Sequence[int], table: str) -> tuple[list[str], list[int]]:
     """Hold the last essential input; trailing ignored runs preserve its bit."""
     held = max(i for i, weight in enumerate(weights) if weight)
     weights = [weight // 2 for weight in weights]

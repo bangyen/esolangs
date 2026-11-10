@@ -28,7 +28,7 @@ Decisions:
 
 import re
 from collections import Counter
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from itertools import count, islice
 from string import ascii_letters
 
@@ -130,7 +130,7 @@ def forbin(truth_table: str, width: int | None = None) -> str:
 
 
 def _build_projected(
-    weights: list[int], table: str, width: int | None, bits: int
+    weights: Sequence[int], table: str, width: int | None, bits: int
 ) -> str:
     """Build one register size, reusing the projection across the race."""
     if width is not None:
@@ -166,7 +166,7 @@ def _wrapped(program: str, width: int) -> str:
     return wrap_space_delimited(" ".join(tokens), width)
 
 
-def _reads(weights: list[int], names: _Names) -> str:
+def _reads(weights: Sequence[int], names: _Names) -> str:
     """Return the one assignment that reads every input's low bit.
 
     An input of weight 0 is ignored: its low bit goes to the scratch name.

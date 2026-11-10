@@ -38,6 +38,7 @@ Decisions:
     that rises with arity ([ablations.popcount_stream]).
 """
 
+from collections.abc import Sequence
 from typing import Literal
 
 from esolangs.generation.algebraic import affine_form
@@ -171,7 +172,7 @@ class _Emitter:
         self.move(cell)
         self.emit("[+]")
 
-    def read_inputs(self, weights: list[int]) -> None:
+    def read_inputs(self, weights: Sequence[int]) -> None:
         """Read one byte per weight, an ignored one entirely into scratch.
 
         An essential input's value bit goes to the next cell pair.

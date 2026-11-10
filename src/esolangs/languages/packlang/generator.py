@@ -28,6 +28,7 @@ Decisions:
 """
 
 import re
+from collections.abc import Sequence
 from itertools import product
 
 from esolangs.generation.helpers import (
@@ -212,7 +213,7 @@ def balance_packlang(_table: str, default: str) -> str:
 
 
 def _painted(
-    painted: str, weights: list[int], *, runs: bool, block: int, flip: bool = False
+    painted: str, weights: Sequence[int], *, runs: bool, block: int, flip: bool = False
 ) -> str:
     """Return a program painting ``painted``'s ones into an array.
 
@@ -293,7 +294,7 @@ def _paint_blocks(
     return remaps, painting, filled
 
 
-def _counter(first: str, second: str, weights: list[int]) -> tuple[list[str], str]:
+def _counter(first: str, second: str, weights: Sequence[int]) -> tuple[list[str], str]:
     """Read inputs into a value, and name the register holding it.
 
     Each step doubles the register read so far into its partner and adds

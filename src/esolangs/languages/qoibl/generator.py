@@ -19,6 +19,8 @@ Decisions:
     and the program is the same under either.
 """
 
+from collections.abc import Sequence
+
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -99,7 +101,7 @@ def _source(truth_table: str) -> str:
     )
 
 
-def _program(truth_table: str, weights: list[int], *, negated: bool) -> str:
+def _program(truth_table: str, weights: Sequence[int], *, negated: bool) -> str:
     """Return the unwrapped program; ``negated`` reads each input complemented.
 
     Complementing every input reverses the row order, so the negated build
@@ -139,7 +141,7 @@ def _fit(program: str, width: int | None) -> str:
 
 
 def _read_statements(
-    weights: list[int],
+    weights: Sequence[int],
     power: str,
     row: str,
     zero: str,

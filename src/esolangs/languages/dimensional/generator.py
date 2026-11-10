@@ -25,6 +25,7 @@ Decisions:
 """
 
 import re
+from collections.abc import Sequence
 from itertools import groupby, pairwise
 from math import isqrt
 
@@ -103,7 +104,7 @@ def _program(truth_table: str, width: int | None = None) -> str:
     return wrap_program(program, "dimensional", width)
 
 
-def _index_reads(weights: list[int]) -> str:
+def _index_reads(weights: Sequence[int]) -> str:
     """Read in order; the first essential bit needs no zero-index doubling."""
     first = next((i for i, weight in enumerate(weights) if weight), None)
     return "".join(
@@ -112,7 +113,7 @@ def _index_reads(weights: list[int]) -> str:
     )
 
 
-def _packed(truth_table: str, weights: list[int]) -> str | None:
+def _packed(truth_table: str, weights: Sequence[int]) -> str | None:
     """Pack two entries a cell; the last input is not read but decoded.
 
     The cell for a doubled index holds 0, 1, 2, 3 for (low, high) = (0,0),

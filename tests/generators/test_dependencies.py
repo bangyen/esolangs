@@ -53,7 +53,8 @@ def test_dependencies_exhaustive() -> None:
             lookup = helpers.input_weights(table, n)
             assert isinstance(lookup, helpers.WeightedLookup)
             assert (
-                binary_weights([i in dependencies for i in range(n)]) == lookup.weights
+                tuple(binary_weights([i in dependencies for i in range(n)]))
+                == lookup.weights
             )
             for row, bit in zip(product((0, 1), repeat=n), table, strict=True):
                 layered, reduced = layers.root, root
@@ -79,6 +80,7 @@ def test_dependencies_exhaustive() -> None:
             assert (symmetric is not None) == expected
             if symmetric is not None:
                 assert isinstance(symmetric, helpers.WeightedLookup)
+                assert isinstance(symmetric.weights, tuple)
                 for row, bit in zip(product((0, 1), repeat=n), table, strict=True):
                     index = sum(
                         w * b for w, b in zip(symmetric.weights, row, strict=True)

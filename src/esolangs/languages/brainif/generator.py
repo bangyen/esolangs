@@ -19,7 +19,7 @@ Decisions:
     node before one of its children (:func:`_chains`), dropping that goto.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from itertools import count, pairwise
 from typing import NamedTuple
 
@@ -468,7 +468,7 @@ class _Strip:
     bit instead, which is what stops that level's loop.
     """
 
-    def __init__(self, cells: str, weights: list[int]) -> None:
+    def __init__(self, cells: str, weights: Sequence[int]) -> None:
         """Place the markers and fix the alphabet; ``weights[i]`` is ``m_i``.
 
         An ignored input weighs 0 and only steps the pointer.  Levels ``i < j``
@@ -553,7 +553,7 @@ def _emit_strip_cells(out: _Lines, strip: _Strip, size: int) -> None:
 
 
 def _emit_linear_read(
-    out: _Lines, strip: _Strip, weights: list[int], size: int, i: int
+    out: _Lines, strip: _Strip, weights: Sequence[int], size: int, i: int
 ) -> None:
     """Emit input ``i``'s read and the walk its zero branch takes."""
     far, after = f"far_{i}", f"after_{i}"
@@ -597,7 +597,7 @@ def _emit_linear_output(out: _Lines, strip: _Strip) -> None:
     out.add("")
 
 
-def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
+def _brainif_linear(truth_table: str, weights: Sequence[int] | None = None) -> str:
     """Emit a linear spatial lookup for BrainIf.
 
     One cell an entry, carrying its bit *and* its parity -- ``{0, 1}`` even,

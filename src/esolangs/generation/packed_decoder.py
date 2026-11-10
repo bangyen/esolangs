@@ -1,5 +1,6 @@
 """Shared packed subtract-and-branch decoder with constant folding."""
 
+from collections.abc import Sequence
 from typing import NamedTuple
 
 from esolangs.generation.helpers import (
@@ -91,7 +92,7 @@ def packed_decoder(
     if any(weights):
         truth_table = projected
     else:
-        weights = [1] * total
+        weights = (1,) * total
     n = sum(map(bool, weights))
     chunks = [
         -int(truth_table[start : start + n][::-1], 2)
@@ -158,7 +159,7 @@ def _cell_values(n: int, *, direct: bool) -> dict[str, int]:
     return values
 
 
-def _emit_reads(asm: _Assembler, weights: list[int], *, direct: bool) -> None:
+def _emit_reads(asm: _Assembler, weights: Sequence[int], *, direct: bool) -> None:
     """Read every input, folding the essential ones into the binary row ``INDEX``."""
     if direct:
         for weight in weights:

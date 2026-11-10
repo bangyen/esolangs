@@ -23,6 +23,7 @@ Decisions:
 
 import math
 from collections import Counter
+from collections.abc import Sequence
 from functools import partial
 
 from esolangs.generation.helpers import (
@@ -294,7 +295,7 @@ def _leaf(answer: str, accumulator: int | None) -> list[str]:
     return tokens
 
 
-def _consumed(weights: list[int]) -> list[int]:
+def _consumed(weights: Sequence[int]) -> list[int]:
     """Return the stream reads made before each indexed level, then in all."""
     return (
         [0] + [at + 1 for at, weight in enumerate(weights) if weight] + [len(weights)]
@@ -302,7 +303,7 @@ def _consumed(weights: list[int]) -> list[int]:
 
 
 def _tree(
-    table: str, stream: _Stream | None = None, weights: list[int] | None = None
+    table: str, stream: _Stream | None = None, weights: Sequence[int] | None = None
 ) -> list[str]:
     """Build the command sequence for ``table``, reading at every node.
 
@@ -347,7 +348,7 @@ def _direct(
     truth_table: str,
     _perm: tuple[int, ...],
     offset: int | None = None,
-    weights: list[int] | None = None,
+    weights: Sequence[int] | None = None,
 ) -> str:
     """Spell the direct tree; ``offset``, the first syllable, turns sharing on."""
     stream = _Stream(truth_table, offset)
@@ -373,7 +374,7 @@ def cvnc(truth_table: str) -> str:
             [_READ] * n + [_NORMALIZE] + [_INCREMENT] * int(constant) + [_PRINT]
         )
     weights, table = input_weights(truth_table, n)
-    shapes = [(truth_table, [1] * n)]
+    shapes = [(truth_table, (1,) * n)]
     if 1 < len(table) < len(truth_table):
         shapes.append((table, weights))
     # Price the gadget from the unshared body plus slack. Segment cuts can

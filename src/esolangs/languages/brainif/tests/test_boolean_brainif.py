@@ -228,7 +228,7 @@ def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
         for r in range(1 << n)
     )
     weights = [16 if i == 0 else 1 << (11 - i) if i in kept else 0 for i in range(n)]
-    assert input_weights(table, n) == (weights, small)
+    assert input_weights(table, n) == (tuple(weights), small)
     assert _Strip(small + "0" * n, weights).levels == [0]
     # Contiguous inputs keep both loops; the ignored-input gap causes the collision.
     assert _Strip(small + "0" * 5, [16, 8, 4, 2, 1]).levels == [0, 1]

@@ -14,6 +14,7 @@ Decisions:
     by index has no subtrees to share.
 """
 
+from collections.abc import Sequence
 from itertools import pairwise
 
 from esolangs.generation.helpers import (
@@ -99,7 +100,7 @@ def circlefuck(truth_table: str) -> str:
     return min(plain, _counted(n, *symmetric), key=len)
 
 
-def _counted(n: int, weights: list[int], table: str) -> str:
+def _counted(n: int, weights: Sequence[int], table: str) -> str:
     """Count the essential bits into one digit and delete that many entries.
 
     A symmetric table has m + 1 count entries for m essential inputs

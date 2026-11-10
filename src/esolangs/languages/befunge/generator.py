@@ -19,6 +19,7 @@ Decisions:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from math import isqrt
 
 from esolangs.exceptions import GeneratorCapError
@@ -164,7 +165,7 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     return plain
 
 
-def _one_row_nibbles(table: str, weights: list[int]) -> str:
+def _one_row_nibbles(table: str, weights: Sequence[int]) -> str:
     """Read two divisor bits, then index one printable-nibble data row."""
     parts: list[str] = []
     rank = 0

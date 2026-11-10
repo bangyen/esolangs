@@ -17,7 +17,7 @@ Size:
     n=10 parity: 2,241 chars.
 """
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from itertools import count
 from math import isqrt
@@ -424,7 +424,7 @@ def _threshold_window_lines(
 def _threshold_counter_lines(
     gate: str,
     counter: str,
-    weights: list[int],
+    weights: Sequence[int],
     latches: list[str],
     n: int,
 ) -> list[str]:

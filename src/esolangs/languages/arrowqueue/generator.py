@@ -30,6 +30,7 @@ Decisions:
     loop, so no output flip either; no loop-less mirror exists.
 """
 
+from collections.abc import Sequence
 from math import isqrt
 
 from esolangs.generation.helpers import (
@@ -146,7 +147,7 @@ def _program(truth_table: str, width: int | None = None) -> str:
     return "\n".join(row.rstrip() for row in rows)
 
 
-def _four_column_cascade(table: str, weights: list[int]) -> str:
+def _four_column_cascade(table: str, weights: Sequence[int]) -> str:
     """Prepend a down marker to route the selector along column0."""
     # Shift input stages left; a clockwise detour lands down at column 1.
     stages = (row[1:] for w in weights for row in (_STAGE if w else _IGNORED_NARROW))

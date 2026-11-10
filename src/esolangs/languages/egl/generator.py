@@ -14,6 +14,8 @@ Decisions:
     An indexed row is a cell, with no subtrees to fold or share.
 """
 
+from collections.abc import Sequence
+
 from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
@@ -43,7 +45,7 @@ def egl(truth_table: str, width: int | None = None) -> str:
 
 
 def _grid(
-    weights: list[int], truth_table: str, width: int | None, *, folded: bool = False
+    weights: Sequence[int], truth_table: str, width: int | None, *, folded: bool = False
 ) -> str:
     """Paint three-row blocks, then walk by binary or population-count weights."""
     size = len(truth_table)

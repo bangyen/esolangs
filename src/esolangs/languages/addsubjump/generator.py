@@ -15,6 +15,8 @@ Decisions:
     them, so equal cells cannot share a word and a constant run costs a cell each.
 """
 
+from collections.abc import Sequence
+
 from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -139,7 +141,7 @@ class _PackedBuilder:
     function's locals.
     """
 
-    def __init__(self, truth_table: str, weights: list[int]) -> None:
+    def __init__(self, truth_table: str, weights: Sequence[int]) -> None:
         self.truth_table = truth_table
         self.weights = weights
         essential = sum(bool(weight) for weight in weights)
@@ -293,7 +295,7 @@ class _PackedBuilder:
         return " ".join(map(str, memory))
 
 
-def _packed_build(truth_table: str, weights: list[int]) -> str:
+def _packed_build(truth_table: str, weights: Sequence[int]) -> str:
     """Decode packed essential rows while consuming every original input."""
     return _PackedBuilder(truth_table, weights).build()
 

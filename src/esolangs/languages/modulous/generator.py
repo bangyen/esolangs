@@ -18,6 +18,7 @@ Decisions:
 """
 
 import re
+from collections.abc import Sequence
 from math import isqrt
 
 from esolangs.generation.helpers import (
@@ -90,7 +91,7 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     return _pair_lookup(*projected, width)
 
 
-def _pair_lookup(weights: list[int], table: str, width: int | None) -> str:
+def _pair_lookup(weights: Sequence[int], table: str, width: int | None) -> str:
     """Select a pair by high bits, then decode its last input without rereading."""
     # 00/11 are already ASCII answers; 01/10 encode as ASCII 2/3.
     codes = {"00": "0", "11": "1", "01": "2", "10": "3"}
@@ -110,7 +111,7 @@ def _pair_lookup(weights: list[int], table: str, width: int | None) -> str:
     return _fit(program + "[PRT STR][END]", packed, width)
 
 
-def _lookup(weights: list[int], truth_table: str, width: int | None) -> str:
+def _lookup(weights: Sequence[int], truth_table: str, width: int | None) -> str:
     """Return the literal push, the weighted reads and the discard walk."""
     # Local tails win through weight4. With at most four essential inputs,
     # unrolling8 also removes the counter/walk:37 chars saved;16 loses22.

@@ -32,6 +32,8 @@ Decisions:
     folds or is shared.
 """
 
+from collections.abc import Sequence
+
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -75,7 +77,7 @@ def _answers(out: list[str], bit: str, *, invert: bool) -> None:
         out.append("sPN")
 
 
-def _east(table: str, weights: list[int], *, invert: bool) -> str:
+def _east(table: str, weights: Sequence[int], *, invert: bool) -> str:
     """Corridor from index 0 east to the trailing run's first answer."""
     size = len(table.rstrip(table[-1])) + 1
     # Later passes start on the answer: ``E`` runs to the east end, and the
@@ -94,7 +96,7 @@ def _east(table: str, weights: list[int], *, invert: bool) -> str:
     return "".join(out)
 
 
-def _flipped(table: str, weights: list[int], *, invert: bool) -> str:
+def _flipped(table: str, weights: Sequence[int], *, invert: bool) -> str:
     """Corridor from the top index, a zero input walking the lane east.
 
     Complemented inputs make AND-like tables (a long leading run) as cheap as
@@ -118,7 +120,7 @@ def _flipped(table: str, weights: list[int], *, invert: bool) -> str:
     return "".join(out)
 
 
-def _westward_flipped(table: str, weights: list[int], *, invert: bool) -> str:
+def _westward_flipped(table: str, weights: Sequence[int], *, invert: bool) -> str:
     """Build from the wall westward, ending at the selector's origin."""
     run = len(table) - len(table.lstrip(table[0]))
     cells = table[run - 1 :]
