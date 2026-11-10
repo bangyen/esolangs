@@ -8,12 +8,15 @@ module keeps declarations independent of example generation.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec, SourceKind
+
+if TYPE_CHECKING:
+    from esolangs.registry._backend import BooleanBackend
 
 
 @dataclass(frozen=True)

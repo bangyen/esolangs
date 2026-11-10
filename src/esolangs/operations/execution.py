@@ -3,10 +3,13 @@
 from collections.abc import Callable
 
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionTimeoutError
+from esolangs.limits import ExecutionLimits
+from esolangs.outcomes import ExecutionOutcome, _observe_execution
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._controller import ExecutionController
 from esolangs.runtime._execution import (
+    check_seed_for,
     check_signal_timeout,
     interpreter_module,
 )
@@ -193,6 +196,7 @@ def _run_result(
     catalog: "Catalog | None" = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     prepared: PreparedProgram | None = None,
+    execution_timeout: float | None = None,
 ) -> ExecutionResult:
     """Execute through one route, retaining its result metadata."""
     from esolangs.registry._catalog import get_catalog
@@ -203,6 +207,7 @@ def _run_result(
     dialect_options(language, settings, catalog=catalog)  # validate before any route
     check_scale_for(language, scale, catalog=catalog)
     check_seed(seed)
+    check_seed_for(catalog.resolve(language), seed, catalog=catalog)
     check_timeout(timeout)
     check_flag(isolated, "isolated")
     check_limits(max_output, max_memory, isolated=isolated)
@@ -225,6 +230,7 @@ def _run_result(
             max_memory=max_memory,
             settings=settings,
             max_steps=max_steps,
+            execution_timeout=execution_timeout,
             catalog=catalog,
         )
     if max_steps is not None:
@@ -269,3 +275,58 @@ def _run_result(
     return prepared._run_native(  # noqa: SLF001
         stdin, timeout=timeout, seed=seed, io_factory=io_factory
     )
+
+
+def _execute_outcome(
+    language: str,
+    program: ProgramSource,
+    *,
+    stdin: InputSource = "",
+    limits: ExecutionLimits | None = None,
+    seed: int | None = None,
+    isolated: bool = False,
+    settings: DialectSettings | None = None,
+    scale: int | None = None,
+    catalog: Catalog | None = None,
+    prepared: PreparedProgram | None = None,
+) -> ExecutionOutcome:
+    """Apply explicit phase budgets and retain one outcome across all routes."""
+
+    def execute() -> ExecutionResult:
+        selected = ExecutionLimits() if limits is None else limits
+        if not isinstance(selected, ExecutionLimits):
+            raise ArgumentError("limits must be ExecutionLimits or None")
+        check_flag(isolated, "isolated")
+        use_worker = isolated or any(
+            value is not None
+            for value in (
+                selected.total_timeout,
+                selected.max_output,
+                selected.max_memory,
+            )
+        )
+        try:
+            return _run_result(
+                language,
+                program,
+                stdin=stdin,
+                timeout=selected.total_timeout
+                if use_worker
+                else selected.execution_timeout,
+                execution_timeout=selected.execution_timeout if use_worker else None,
+                seed=seed,
+                isolated=use_worker,
+                max_steps=selected.max_steps,
+                max_output=selected.max_output,
+                max_memory=selected.max_memory,
+                settings=settings,
+                scale=scale,
+                catalog=catalog,
+                prepared=prepared,
+            )
+        except ExecutionTimeoutError as error:
+            if error.bound == "timeout":
+                error.bound = "total_timeout" if use_worker else "execution_timeout"
+            raise
+
+    return _observe_execution(execute)

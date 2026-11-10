@@ -2,16 +2,17 @@
 
 from collections.abc import Callable, Mapping
 from itertools import pairwise
+from types import MappingProxyType
 from typing import NamedTuple
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 
 
 class DecisionLayers(NamedTuple):
-    """Root id and ordered child maps, retaining constants at each input layer."""
+    """Immutable child maps in physical input order, including constant layers."""
 
     root: int
-    children: list[dict[int, tuple[int, int]]]
+    children: tuple[Mapping[int, tuple[int, int]], ...]
 
 
 def decision_layers(truth_table: str) -> DecisionLayers:
@@ -19,6 +20,7 @@ def decision_layers(truth_table: str) -> DecisionLayers:
 
     Constants retain their layers: deciding which reads to omit or drain
     belongs to the emitter. Only the first copy of each parent is expanded.
+    Results are read-only; emitters own labels, reads and layout state.
     """
     ids = subtree_ids(truth_table)
     layers = []
@@ -31,9 +33,9 @@ def decision_layers(truth_table: str) -> DecisionLayers:
             if node not in layer:
                 layer[node] = (under[2 * block], under[2 * block + 1])
                 following.extend((2 * block, 2 * block + 1))
-        layers.append(layer)
+        layers.append(MappingProxyType(layer))
         frontier = following
-    return DecisionLayers(ids[0][0], layers)
+    return DecisionLayers(ids[0][0], tuple(layers))
 
 
 def fold_subtables[V](
@@ -67,7 +69,7 @@ class DecisionNode(NamedTuple):
     one: int
 
 
-def reduced_diagram(truth_table: str, n: int) -> tuple[list[DecisionNode], int]:
+def reduced_diagram(truth_table: str, n: int) -> tuple[tuple[DecisionNode, ...], int]:
     """Return a reduced Shannon DAG and root for a validated n-input table.
 
     Constants have ids 0/1; other nodes follow their children, level by level
@@ -90,7 +92,7 @@ def reduced_diagram(truth_table: str, n: int) -> tuple[list[DecisionNode], int]:
                 found = index[key] = len(nodes)
                 nodes.append(DecisionNode(*key))
             ids.append(found)
-    return nodes, ids[0]
+    return tuple(nodes), ids[0]
 
 
 type DecisionKey = tuple[int, int]
@@ -100,7 +102,7 @@ type DecisionRef = tuple[DecisionKey, bool]
 class ComplementedDiagram(NamedTuple):
     """Level/subtree keys and references carrying an output-complement bit."""
 
-    nodes: dict[DecisionKey, tuple[int, DecisionRef, DecisionRef]]
+    nodes: Mapping[DecisionKey, tuple[int, DecisionRef, DecisionRef]]
     root: DecisionRef
 
 
@@ -142,4 +144,4 @@ def complemented_diagram(truth_table: str) -> ComplementedDiagram:
                 refs[key] = (key, False)
                 made[depth, zero, one] = key
                 nodes[key] = (depth, zero, one)
-    return ComplementedDiagram(nodes, resolve((0, ids[0][0])))
+    return ComplementedDiagram(MappingProxyType(nodes), resolve((0, ids[0][0])))

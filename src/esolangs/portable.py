@@ -38,6 +38,7 @@ def save_program(
     path: str | PathLike[str],
     *,
     gzip: bool = False,
+    normalize: bool = True,
     catalog: Catalog | None = None,
 ) -> None:
     """Write a program as a native source file.
@@ -46,12 +47,13 @@ def save_program(
     and rasters are PNG. ``gzip=True`` compresses ordinary text exports too.
     Compression is explicit; a ``.gz`` suffix alone does not enable it.
     Gzip exports follow the same file-newline policy as plain exports.
+    ``normalize=False`` preserves decoded text exactly, including line endings.
     An existing file is replaced after encoding and
     writing succeed. Use :func:`dump_program` for a portable document that
     preserves dialect settings and template setters.
 
     Raises:
-        ArgumentError: ``gzip`` is not a Boolean flag.
+        ArgumentError: ``gzip`` or ``normalize`` is not a Boolean flag.
         ProgramError: The source cannot be encoded or the file cannot be written.
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
@@ -60,6 +62,8 @@ def save_program(
     catalog = get_catalog(catalog)
     if type(gzip) is not bool:
         raise ArgumentError("gzip must be a boolean")
+    if type(normalize) is not bool:
+        raise ArgumentError("normalize must be a boolean")
     try:
         record = (
             program
@@ -83,7 +87,8 @@ def save_program(
         elif isinstance(program, str):
             ending = (
                 "\n"
-                if origin is None or catalog.languages[origin].runtime.file_newline
+                if normalize
+                and (origin is None or catalog.languages[origin].runtime.file_newline)
                 else ""
             )
             source = (

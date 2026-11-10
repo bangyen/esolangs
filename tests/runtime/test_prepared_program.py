@@ -92,8 +92,74 @@ def _check_prepared_factory_owns_state_and_input():
 
 @pytest.mark.medium
 def test_prepared_invocations_own_source_state_and_randomness():
+    _check_uniform_outcomes_and_phase_limits()
     _check_prepared_factory_owns_state_and_input()
     _check_preparation_consumes_source_once_and_keeps_fresh_invocations()
     _check_prepared_isolation_preserves_the_same_observation()
     _check_prepared_failures_retain_partial_observations()
     _check_preparation_resets_seeded_randomness_for_each_invocation()
+
+
+def _check_uniform_outcomes_and_phase_limits():
+    api = esolangs.Language(REFERENCE)
+    for options in (
+        {},
+        {"limits": esolangs.ExecutionLimits(max_steps=10)},
+        {"isolated": True},
+    ):
+        completed = api.execute(",+.", stdin="A", **options)
+        assert completed.status == "completed"
+        assert completed.unwrap().output == "B"
+        assert completed.observation.input_position == 1
+        failed = api.execute(".,", **options)
+        assert failed.status == "input_exhausted"
+        assert failed.observation.output == "\x00"
+        assert failed.observation.input_past_end == 1
+        assert failed.observation.completion is None
+        with pytest.raises(esolangs.InputExhaustedError) as caught:
+            failed.unwrap()
+        assert caught.value is failed.error
+
+    class Unread:
+        def read(self):
+            raise AssertionError("rejected options consumed stdin")
+
+    for options in (
+        {},
+        {"limits": esolangs.ExecutionLimits(max_steps=10)},
+        {"isolated": True},
+    ):
+        rejected = api.execute(",.", stdin=Unread(), seed=0, **options)
+        assert rejected.status == "rejected"
+        assert rejected.observation.completion is None
+    prepared = api.prepare("+[]")
+    stopped = prepared.execute(limits=esolangs.ExecutionLimits(max_steps=3))
+    assert stopped.status == "limit"
+    assert stopped.bound == "max_steps"
+    assert stopped.observation.steps == 3
+    for isolated in (False, True):
+        stopped = prepared.execute(
+            isolated=isolated,
+            limits=esolangs.ExecutionLimits(
+                execution_timeout=0.01, total_timeout=3 if isolated else None
+            ),
+        )
+        assert stopped.status == "limit"
+        assert stopped.bound == "execution_timeout"
+        assert stopped.observation.completion is None
+    stopped = prepared.execute(limits=esolangs.ExecutionLimits(total_timeout=0.02))
+    assert stopped.status == "limit"
+    assert stopped.bound == "total_timeout"
+    rejected = api.execute("[")
+    assert rejected.status == "rejected"
+    assert rejected.observation.completion is None
+    for kwargs in (
+        {"max_steps": True},
+        {"max_output": -1},
+        {"max_memory": 0},
+        {"total_timeout": float("inf")},
+    ):
+        with pytest.raises(esolangs.ArgumentError):
+            esolangs.ExecutionLimits(**kwargs)
+    with pytest.raises(esolangs.ArgumentError, match="completion evidence"):
+        esolangs.ExecutionOutcome("completed", esolangs.ExecutionResult("", 0, 0, 0))

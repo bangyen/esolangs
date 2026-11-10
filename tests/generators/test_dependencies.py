@@ -5,6 +5,7 @@ from itertools import product
 
 from esolangs.generation import helpers
 from esolangs.generation.algebraic import AffineForm, affine_form, parity_bias
+from esolangs.generation.decision import decision_layers, reduced_diagram
 from esolangs.generation.lookup import binary_weights
 from tests.support.witness_tables import witnesses
 
@@ -46,12 +47,22 @@ def test_dependencies_exhaustive() -> None:
             assert parity_bias(table) == (
                 form.bias if form is not None and all(form.coefficients) else None
             )
+            layers = decision_layers(table)
+            nodes, root = reduced_diagram(table, n)
+            assert len(layers.children) == n
             lookup = helpers.input_weights(table, n)
             assert isinstance(lookup, helpers.WeightedLookup)
             assert (
                 binary_weights([i in dependencies for i in range(n)]) == lookup.weights
             )
             for row, bit in zip(product((0, 1), repeat=n), table, strict=True):
+                layered, reduced = layers.root, root
+                for level, selector in enumerate(row):
+                    layered = layers.children[level][layered][selector]
+                while reduced > 1:
+                    node = nodes[reduced]
+                    reduced = node.one if row[node.level] else node.zero
+                assert str(layered) == str(reduced) == bit
                 assert (
                     lookup.table[
                         sum(w * b for w, b in zip(lookup.weights, row, strict=True))

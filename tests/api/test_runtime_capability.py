@@ -57,7 +57,9 @@ def test_runtime_facts_are_owned_only_by_the_runtime_record():
         assert lang.runtime.interpreter is not None
 
 
+@pytest.mark.medium
 def test_backend_and_example_changes_preserve_the_runtime_definition():
+    _check_runtime_catalog_without_synthesis()
     for lang in LANGUAGES.values():
         changed = replace(lang, backend=None, example=Example())
         assert changed.runtime is lang.runtime
@@ -112,3 +114,32 @@ else:
     subprocess.run(
         [sys.executable, "-c", code, str(path), class_name], check=True, timeout=10
     )
+
+
+# This runs within the existing runtime declaration contract, rather than
+# adding another near-identical import smoke test.
+def _check_runtime_catalog_without_synthesis():
+    code = r"""
+import importlib.abc
+import sys
+class Block(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if (fullname.startswith('esolangs.generation')
+                or fullname == 'esolangs.registry._table'):
+            raise ImportError('runtime imported synthesis or installed catalog')
+sys.meta_path.insert(0, Block())
+import esolangs
+from esolangs.languages.deadfish.descriptor import LANGUAGE
+api = esolangs.Catalog([LANGUAGE]).bind(LANGUAGE.name)
+assert api.prepare('io').run().output == '1\n'
+assert api.execute('io').unwrap().output == '1\n'
+assert not any(name.startswith('esolangs.generation') for name in sys.modules)
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

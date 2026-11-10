@@ -20,6 +20,7 @@ Decisions:
     ``c`` first costs a line an input and saves nothing per node.
 """
 
+from collections.abc import Sequence
 from string import ascii_letters
 
 from esolangs.generation.decision import DecisionNode, reduced_diagram
@@ -31,7 +32,7 @@ from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
 
-def _layout(root: int, nodes: list[DecisionNode]) -> list[tuple[int, str]]:
+def _layout(root: int, nodes: Sequence[DecisionNode]) -> list[tuple[int, str]]:
     """Return the placement order as ``(node, mode)``, mode ``o``, ``z`` or ``b``.
 
     The mode names the child that follows the node (``b``: neither does).

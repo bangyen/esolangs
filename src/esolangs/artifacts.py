@@ -5,15 +5,15 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from esolangs.compressed import CompressedText
-from esolangs.exceptions import ArgumentError, ProgramError, TemplateError
-from esolangs.generation.helpers import (
+from esolangs._bindings import (
     TEMPLATE_CHAR,
     Setters,
     check_setters,
     fill_runs,
     runs,
 )
+from esolangs.compressed import CompressedText
+from esolangs.exceptions import ArgumentError, ProgramError, TemplateError
 from esolangs.raster import Raster
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_bits, check_scale

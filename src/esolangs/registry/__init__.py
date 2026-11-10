@@ -6,16 +6,14 @@ import re
 from collections.abc import Mapping
 from functools import cache
 from types import MappingProxyType
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
+from esolangs._bindings import Setters, mark_runs, unmark
 from esolangs.exceptions import TemplateError, UnknownLanguageError
-from esolangs.generation.helpers import Setters, mark_runs, unmark
-from esolangs.generation.wrap import wrap_program
-from esolangs.registry._backend import Generator, TemplateSpec
 from esolangs.registry._catalog import Catalog, get_catalog
 from esolangs.registry._language import Language
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
-from esolangs.registry._table import CATALOG, LANGUAGES
 from esolangs.runtime._definition import SourceKind
 
 __all__ = [
@@ -41,9 +39,41 @@ __all__ = [
 ]
 
 
-BY_BOOLEAN: Mapping[str, Language] = CATALOG.by_boolean
-RUNNERS: Mapping[str, tuple[str, bool]] = CATALOG.runners
-INTERPRETERS: Mapping[str, str] = CATALOG.interpreters
+if TYPE_CHECKING:
+    from esolangs.registry._backend import Generator as Generator
+    from esolangs.registry._backend import TemplateSpec
+    from esolangs.registry._table import CATALOG as CATALOG
+    from esolangs.registry._table import LANGUAGES as LANGUAGES
+
+    BY_BOOLEAN: Mapping[str, Language]
+    RUNNERS: Mapping[str, tuple[str, bool]]
+    INTERPRETERS: Mapping[str, str]
+
+
+def __getattr__(name: str) -> Any:
+    """Load installed declarations and compiler types only when requested."""
+    value: Any
+    if name == "Generator":
+        from esolangs.registry._backend import Generator
+
+        value = Generator
+    elif name in {"CATALOG", "LANGUAGES", "BY_BOOLEAN", "RUNNERS", "INTERPRETERS"}:
+        catalog = get_catalog()
+        value = {
+            "CATALOG": catalog,
+            "LANGUAGES": catalog.languages,
+            "BY_BOOLEAN": catalog.by_boolean,
+            "RUNNERS": catalog.runners,
+            "INTERPRETERS": catalog.interpreters,
+        }[name]
+    else:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(__all__)
 
 
 @cache
@@ -134,6 +164,8 @@ def render_template(
     setters = template_setters(language_id, slots, n, catalog=catalog)
     if width is None:
         return slots, char, setters
+    from esolangs.generation.wrap import wrap_program
+
     wrapped = wrap_program(
         mark_runs(slots, char, setters), language_id, width, catalog=catalog
     )

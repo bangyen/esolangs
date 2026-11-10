@@ -137,6 +137,7 @@ bounds name *args:
 [group('languages')]
 [no-exit-message]
 docs:
+    {{PYTHON}} scripts/docs/generate.py anchors
     {{PYTHON}} scripts/docs/generate.py docs
 
 # regenerate the committed example programs; pass a set name to limit it

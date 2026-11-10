@@ -18,7 +18,7 @@ Decisions:
 """
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from math import isqrt
 from typing import Any, NamedTuple
@@ -247,7 +247,7 @@ def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     return _program(n, assigned, exprs[root], width)
 
 
-def _interior(nodes: list[_Node]) -> list[_Node]:
+def _interior(nodes: Sequence[_Node]) -> Sequence[_Node]:
     """Return the nodes after the two constants (ids 0 and 1)."""
     return nodes[2:]
 
@@ -315,7 +315,7 @@ class _AliasCost(NamedTuple):
 
 
 def _aliases(
-    nodes: list[_Node], selectors: list[_Expr]
+    nodes: Sequence[_Node], selectors: list[_Expr]
 ) -> tuple[list[int | None], list[int | None]]:
     """Price inline, negation-only or mask-only local spellings.
 

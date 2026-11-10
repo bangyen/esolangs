@@ -55,7 +55,9 @@ def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
             esolangs.save_program(
                 esolangs.instantiate(name, restored, bits), path, gzip=gzip
             )
-            loaded = esolangs.Language(name).from_file(path, settings=program.settings)
+            loaded = esolangs.Language(name).from_file(
+                path, settings=program.settings, normalize=True
+            )
             assert answer(loaded, "", 30) == expected
         return
     esolangs.save_program(program, path, gzip=gzip)

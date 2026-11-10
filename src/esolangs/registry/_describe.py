@@ -3,7 +3,7 @@
 import json
 import pathlib
 import re
-from typing import TypedDict, cast, get_args
+from typing import cast, get_args
 
 from esolangs.exceptions import ProgramError
 from esolangs.registry import (
@@ -14,17 +14,15 @@ from esolangs.registry import (
 from esolangs.registry._backend import Shape
 from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import (
-    AnswerMode,
-    GeneratorShape,
     InputShape,
     ProofStatus,
-    SourceForm,
     StateModel,
     WidthEffect,
 )
+from esolangs.registry._info import LanguageInfo as LanguageInfo
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime._json import unique_object
-from esolangs.settings import DialectOption, dialect_choices
+from esolangs.settings import dialect_choices
 from esolangs.vm import machine_traits
 
 #: Generated from the language-owned proof ledger by ``just docs``.
@@ -60,45 +58,6 @@ INPUT_SHAPES: tuple[str, ...] = get_args(InputShape.__value__)
 WIDTH_EFFECTS: tuple[str, ...] = get_args(WidthEffect.__value__)
 #: A Sphinx role; ``~`` keeps only the last dotted component.
 _ROLE = re.compile(r":(?:class|func|meth|mod|attr|exc|data|obj):`(~?)([^`]+)`")
-
-
-class LanguageInfo(TypedDict):
-    """What :func:`describe` returns, as a type a caller can annotate with.
-
-    ``dict[str, object]`` cost a cast per field (five ``mypy --strict`` errors
-    in an ordinary consumer).  ``total=True``: every key is always present, and
-    a scalar field that does not apply is None, never ``""`` -- so a caller
-    tests ``is None`` and iterates the registry without branching.
-    """
-
-    name: str
-    spec: str
-    id: str
-    source_kind: SourceForm
-    state_model: StateModel
-    shape: GeneratorShape | None
-    generator_max_inputs: int | None
-    generator_restrictions: str | None
-    generator_scaling: str | None
-    proof_status: ProofStatus | None
-    boolean_generator: bool
-    parameterized: bool
-    reads_input: bool
-    width_effect: WidthEffect
-    input_encoding: tuple[str, str] | None
-    input_shape: InputShape | None
-    answer_mode: AnswerMode
-    answer_pattern: str | None
-    answer_encoding: tuple[str, str]
-    answer_convention: str | None
-    self_halts: bool
-    dumps_on_the_post_halt_step: bool
-    steppable_to_answer: bool
-    eof_is_a_value: bool
-    random: bool
-    examples: list[str]
-    wiki_url: str
-    dialect_settings: dict[str, DialectOption]
 
 
 def describe(language: str, *, catalog: "Catalog | None" = None) -> LanguageInfo:

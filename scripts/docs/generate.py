@@ -24,7 +24,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "target",
-        choices=("docs", "examples"),
+        choices=("docs", "examples", "anchors"),
         help="docs: the generated README and docs sections; examples: the "
         "committed example programs",
     )
@@ -32,6 +32,13 @@ def main() -> int:
         "args", nargs=argparse.REMAINDER, help="passed to examples (see its --help)"
     )
     args = parser.parse_args()
+    if args.target == "anchors":
+        from docs.evidence import update_source_anchors
+
+        if args.args:
+            parser.error("anchors takes no arguments")
+        update_source_anchors()
+        return 0
     if args.target == "docs":
         if args.args:
             parser.error("docs takes no arguments")

@@ -121,3 +121,71 @@ def source_anchors(language: str) -> tuple[SourceAnchor, ...]:
     path = PACKAGES / LANGUAGES[language].id / "language.toml"
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     return parse_anchors(language, data["evidence"])
+
+
+def render_source_anchors(source: str, anchors: tuple[SourceAnchor, ...]) -> str:
+    """Refresh only measured sizes in a module docstring from declared evidence.
+
+    Witness names, units and construction prose remain authored. Refuse absent,
+    duplicated or undeclared witnesses instead of manufacturing an anchor.
+    """
+    import ast
+    import re
+    import tokenize
+    from io import StringIO
+
+    parsed = ast.parse(source)
+    if not ast.get_docstring(parsed):
+        raise ValueError("source anchors require a module docstring")
+    token = next(
+        t
+        for t in tokenize.generate_tokens(StringIO(source).readline)
+        if t.type == tokenize.STRING
+    )
+    pattern = re.compile(
+        r"n=(\d+)\s+(parity|and|or|majority|zero|random\s+-?\d+):\s*"
+        r"([\d,]+)\s+(chars|codels|pixels)"
+    )
+    expected = {(a.witness.arity, a.witness.name, a.unit): a for a in anchors}
+    seen = set()
+
+    def replace(match: re.Match[str]) -> str:
+        key = int(match[1]), " ".join(match[2].split()), match[4]
+        if key not in expected or key in seen:
+            raise ValueError(f"undeclared or duplicate source anchor: {key}")
+        seen.add(key)
+        start, end = match.span(3)
+        return (
+            match[0][: start - match.start()]
+            + f"{expected[key].size:,}"
+            + match[0][end - match.start() :]
+        )
+
+    refreshed = pattern.sub(replace, token.string)
+    if seen != set(expected):
+        raise ValueError(f"missing source anchors: {set(expected) - seen}")
+    lines = source.splitlines(keepends=True)
+    start = sum(map(len, lines[: token.start[0] - 1])) + token.start[1]
+    end = sum(map(len, lines[: token.end[0] - 1])) + token.end[1]
+    return source[:start] + refreshed + source[end:]
+
+
+def update_source_anchors(*, root: Path = PACKAGES, check: bool = False) -> bool:
+    """Refresh docstring views; emitted size and execution checks stay independent."""
+    changes: list[tuple[Path, str]] = []
+    for language, declaration in LANGUAGES.items():
+        if declaration.backend is None:
+            continue
+        package = root / declaration.id
+        path = package / "generator.py"
+        if not path.is_file():
+            path = package / "generator" / "__init__.py"
+        source = path.read_text(encoding="utf-8")
+        rendered = render_source_anchors(source, source_anchors(language))
+        if source != rendered:
+            changes.append((path, rendered))
+    # Validate every view before changing any file.
+    if not check:
+        for path, rendered in changes:
+            path.write_text(rendered, encoding="utf-8")
+    return bool(changes)

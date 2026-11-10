@@ -200,7 +200,8 @@ REGENERATE = (
     "uv run python scripts/docs/generate.py docs",
     "uv run python scripts/docs/generate.py examples",
     "uv run python checks/check_generator_sizes.py --update  "
-    "(only if the size change is intended; a docstring Size: anchor is by hand)",
+    "(only if the size change is intended; refresh docstring anchors with "
+    "scripts/docs/generate.py anchors)",
 )
 
 

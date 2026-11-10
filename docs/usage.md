@@ -100,8 +100,10 @@ top-level `save_program` function.
 Use `dump_program` to preserve dialect settings and template bindings on disk.
 
 `Language.from_source(source)` declares runnable source explicitly, including
-text that resembles a filename. `Language.from_file(path)` reads native source
-with file newline handling and retains embedded dialect settings and scale.
+text that resembles a filename. `Language.from_file(path)` preserves decoded text
+exactly and retains embedded dialect settings and scale. Use `normalize=True`
+for native file newline handling, or `save_program(..., normalize=False)` for
+lossless text export. Direct `run(Path(...))` retains native normalization.
 Both return `ProgramArtifact`; parsing still happens when the program executes.
 
 `generate` and `load_program` return artifacts; `instantiate` returns a filled
@@ -138,6 +140,18 @@ info = bf.describe()
 or `prepared.make_vm(stdin=...)` for fresh IO, machine state and randomness on
 each invocation. Parsing remains language-owned and may happen during machine
 construction. It also binds `instantiate`; use package functions across languages.
+
+`bf.execute(program, limits=ExecutionLimits(max_steps=10_000))` returns an
+`ExecutionOutcome`: `completed`, `rejected`, `input_exhausted`, `fault` or `limit`.
+Its `.observation` retains output and input counters; `.unwrap()` returns the
+completed result or raises the original error. Prepared programs also expose
+`execute`. `run` retains its exception-raising convention.
+
+`ExecutionLimits.execution_timeout` excludes acquisition; `total_timeout`
+includes acquisition, worker startup and execution. A total deadline, output
+cap or memory cap selects isolation. Prepared-program acquisition happens before
+`execute`; cooperative deadlines cannot interrupt preparation or one command.
+An isolated call without an explicit total deadline retains the 30-second default.
 
 `Catalog` owns immutable declarations and lookup indexes. Construct one from
 `esolangs.registry.CATALOG.languages.values()`; `with_language(record)` returns
@@ -190,6 +204,8 @@ Types:
 - `esolangs.Catalog` -- own a frozen declaration set; derived indexes share the same scope
 - `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
 - `esolangs.DialectSettings` -- validated overrides bound to one language schema
+- `esolangs.ExecutionLimits` -- execution time excludes acquisition; total time includes worker startup
+- `esolangs.ExecutionOutcome` -- one completed result or failed observation, retaining its original error
 - `esolangs.ExecutionResult` -- output, stdin usage and explicit completion evidence
 - `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
 - `esolangs.Language` -- bind a canonical language name to one immutable catalog

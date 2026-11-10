@@ -139,7 +139,17 @@ def stale_generated() -> int:
     """Return nonzero when the committed generated sections were stale."""
     # Imported here: they load esolangs, which the links-only pre-commit
     # hook's bare python3 may lack.
+    from docs.evidence import update_source_anchors
+
     from docs import generate
+
+    if update_source_anchors(check=True):
+        print(
+            "generator size anchors are stale; run "
+            "python scripts/docs/generate.py anchors",
+            file=sys.stderr,
+        )
+        return 1
 
     before = {path: (ROOT / path).read_bytes() for path in GENERATED}
     with tempfile.TemporaryDirectory(prefix="generated-docs-") as directory:

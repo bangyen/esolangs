@@ -56,6 +56,22 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
 
+[[evidence.anchors]]
+arity = 10
+rule = "parity"
+size = 189
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
+
+[[evidence.anchors]]
+arity = 10
+rule = "and"
+size = 293
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.basicfuck.generator:basicfuck_request"
+
 [resource_evidence]
 version = 1
 

@@ -230,7 +230,7 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
         language.run(source)
     restored = language.load_program(language.dump_program(artifact))
     path = tmp_path / "source.txt"
-    esolangs.save_program(artifact, path)
+    esolangs.save_program(artifact, path, normalize=False)
     loaded = language.from_file(str(path))
     assert artifact == restored == loaded
     for program in (artifact, restored, loaded):

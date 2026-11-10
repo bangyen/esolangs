@@ -64,6 +64,7 @@ _REQUEST_FIELDS = frozenset(
         "max_steps",
         "integer_max_steps",
         "termination",
+        "execution_timeout",
     }
 )
 
@@ -146,7 +147,12 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
     error.partial_output = partial
     error.__notes__ = list(result["notes"])
     if isinstance(error, exceptions.ExecutionTimeoutError):
-        if result["bound"] not in ("timeout", "max_steps"):
+        if result["bound"] not in (
+            "timeout",
+            "max_steps",
+            "execution_timeout",
+            "total_timeout",
+        ):
             raise ValueError("invalid timeout bound")
         error.bound = result["bound"]
     if result["execution"] is not None:
@@ -294,6 +300,7 @@ def run_isolated_result(
     max_memory: int | None = None,
     settings: DialectSettings | None = None,
     max_steps: int | None = None,
+    execution_timeout: float | None = None,
     catalog: Catalog | None = None,
 ) -> ExecutionResult:
     """Return a result from a subprocess; the deadline includes loading and startup.
@@ -311,6 +318,7 @@ def run_isolated_result(
     if max_steps is not None:
         check_whole(max_steps, "max_steps")
     check_timeout(timeout)
+    check_timeout(execution_timeout)
     if timeout is None:
         raise with_hint(
             exceptions.ArgumentError("isolated execution requires a finite timeout"),
@@ -341,6 +349,7 @@ def run_isolated_result(
                         max_memory=max_memory,
                         max_output=max_output,
                         max_steps=max_steps,
+                        execution_timeout=execution_timeout,
                         catalog=catalog,
                     )
                 )
@@ -532,6 +541,7 @@ def _request_wire(
     max_output: int | None = None,
     max_steps: int | None = None,
     termination: bool = False,
+    execution_timeout: float | None = None,
     catalog: Catalog | None = None,
 ) -> dict[str, Any]:
     """Encode one complete worker request, including unavailable options."""
@@ -560,6 +570,7 @@ def _request_wire(
         "max_steps": hex(max_steps) if max_steps is not None else None,
         "integer_max_steps": max_steps is not None,
         "termination": termination,
+        "execution_timeout": execution_timeout,
     }
 
 
@@ -687,6 +698,7 @@ def _read_request(stream: TextIO) -> dict[str, Any]:
         value = request[key]
         if value is not None and (type(value) is not int or value < 1):
             raise ValueError("invalid worker size")
+    check_timeout(request["execution_timeout"])
     if request["raster"]:
         _check_raster_request(request["program"])
     elif not isinstance(request["program"], str):
@@ -797,7 +809,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                 request["language"],
                 program,
                 stdin=request["stdin"],
-                timeout=None,
+                timeout=request["execution_timeout"],
                 seed=int(request["seed"], 16)
                 if request["integer_seed"]
                 else request["seed"],
@@ -839,6 +851,12 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
         elif isinstance(error, exceptions.InputExhaustedError):
             args = (error.reads, error.supplied, error.unit)
         observation = getattr(error, "execution", None)
+        if (
+            isinstance(error, exceptions.ExecutionTimeoutError)
+            and error.bound == "timeout"
+            and request["execution_timeout"] is not None
+        ):
+            error.bound = "execution_timeout"
         send(
             {
                 "error": type(error).__name__,

@@ -6,9 +6,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from esolangs.artifacts import ProgramArtifact
+from esolangs.limits import ExecutionLimits
+from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry._catalog import Catalog, get_catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
@@ -22,11 +24,9 @@ from esolangs.runtime._input import InputSource
 from esolangs.runtime._machine import MachineFactory, MachinePreparation
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
+from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
-
-if TYPE_CHECKING:
-    from esolangs.vm import VM
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +92,28 @@ class PreparedProgram:
             io_factory(stdin),
             timeout,
             catalog=self.catalog,
+        )
+
+    def execute(
+        self,
+        *,
+        stdin: InputSource = "",
+        limits: ExecutionLimits | None = None,
+        seed: int | None = None,
+        isolated: bool = False,
+    ) -> ExecutionOutcome:
+        """Return a fresh invocation's outcome; preparation already happened."""
+        from esolangs.operations.execution import _execute_outcome
+
+        return _execute_outcome(
+            self.language,
+            self.artifact,
+            stdin=stdin,
+            limits=limits,
+            seed=seed,
+            isolated=isolated,
+            catalog=self.catalog,
+            prepared=self,
         )
 
     def run(

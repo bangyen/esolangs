@@ -49,7 +49,9 @@ class ExecutionTimeoutError(HaltError, TimeoutError):
     #: Which bound ended the run: ``"timeout"`` or ``"max_steps"``.  Both
     #: raise this class, so a caller passing both could tell them apart only
     #: by the message.
-    bound: Literal["timeout", "max_steps"] = "timeout"
+    bound: Literal["timeout", "max_steps", "execution_timeout", "total_timeout"] = (
+        "timeout"
+    )
 
     def __init__(self, *args: object) -> None:
         """Keep the timeout diagnostic and suggest checking termination first."""

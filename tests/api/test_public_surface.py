@@ -28,6 +28,8 @@ class TestPackageSurface:
             "CompressedText",
             "DialectSettings",
             "EsolangError",
+            "ExecutionLimits",
+            "ExecutionOutcome",
             "ExecutionResult",
             "ExecutionTimeoutError",
             "GeneratorCapError",
@@ -298,6 +300,9 @@ class TestProgramObjectsRefuseMisuse:
             esolangs.ProgramArtifact,
             esolangs.TemplateArtifact,
             esolangs.TemplateBindings,
+            esolangs.PreparedProgram,
+            esolangs.ExecutionLimits,
+            esolangs.ExecutionOutcome,
         ):
             typing.get_type_hints(cls)
             for member in vars(cls).values():

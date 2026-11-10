@@ -274,9 +274,10 @@ def test_isolated_seed_is_forwarded(monkeypatch) -> None:
         return ExecutionResult("result", 0, 0, 0)
 
     monkeypatch.setattr(_execution_operations, "_run_isolated_result", execute)
-    assert esolangs.run(REFERENCE, "+.", isolated=True, seed=7).output == "result"
+    name = next(name for name, lang in LANGUAGES.items() if lang.runtime.random)
+    assert esolangs.run(name, "+.", isolated=True, seed=7).output == "result"
     ((language, program, stdin, timeout, kwargs),) = seen
-    assert (language, program, stdin, timeout) == (REFERENCE, "+.", "", 30.0)
+    assert (language, program, stdin, timeout) == (name, "+.", "", 30.0)
     assert kwargs["seed"] == 7
 
 

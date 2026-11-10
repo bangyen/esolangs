@@ -7,7 +7,7 @@ signature line ``0 --tommyaweosme``, needing no variable. An identity
 node on the final input instead reads and prints ``x`` directly.
 
 Size:
-    O(T) lines; n=4 parity: 1222 chars
+    O(T) lines; n=4 parity: 1,222 chars
 
 Decisions:
     A halt ends the one arm, where two guarded loops each ended in a bump:

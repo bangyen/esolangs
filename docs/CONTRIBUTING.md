@@ -193,8 +193,8 @@ check these; public API Google `Raises:` sections are checked too.
 Generator docstrings use prose, then `Size:`, `Raises:`, `Decisions:`.
 `Size:` needs a measured anchor in the exact machine-read form
 `n=10 random 1847: 1,118 chars` or `n=16 and: 1,443,471 chars`.
-Tests regenerate anchors: update figures when size changes and preserve the
-syntax. List `GeneratorCapError` wherever generation may refuse a table,
+Store figures in `language.toml` evidence; `just docs` renders their docstring
+views. Tests independently regenerate emitted programs and check the figures. List `GeneratorCapError` wherever generation may refuse a table,
 with a `[[generator_triggers]]` case. Do not duplicate docstring figures
 elsewhere in the generator; helper-specific figures belong beside the helper.
 

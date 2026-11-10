@@ -6,7 +6,6 @@ from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import MissingDependencyError, ProgramError, TemplateError
 from esolangs.raster import Raster, png
-from esolangs.registry import template_char
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._program import Program
@@ -76,12 +75,10 @@ def _check_runnable(
             f"Read the file first, or pass pathlib.Path({program!r}); "
             f"source that only looks like one runs with a trailing newline"
         )
-    char = template_char(catalog.languages[name].id, catalog=catalog)
-    if char is not None and char in program:
-        backend = catalog.languages[name].backend
-        assert backend is not None
-        spec = backend.template
-        assert spec is not None  # template_char uses the same declaration
+    backend = catalog.languages[name].backend
+    spec = backend.template if backend is not None else None
+    if spec is not None and spec.char in program:
+        char = spec.char
         unfilled = spec.unfilled
         if unfilled is not None and not unfilled(program):
             return
@@ -150,6 +147,7 @@ def read_artifact(
     program: ProgramSource | _FileSource,
     *,
     catalog: "Catalog | None" = None,
+    normalize: bool = True,
 ) -> Artifact:
     """Acquire source once, retaining native metadata only in an explicit record."""
     from esolangs.registry._catalog import get_catalog
@@ -174,7 +172,7 @@ def read_artifact(
         source = source_for(name, record.source, catalog=catalog)
         return ProgramArtifact(source, name, record.settings, record.scale)
     snapshot: Program | bytes | _FileSource
-    if file:
+    if file and normalize:
         assert isinstance(value, bytes)
         snapshot = _FileSource(str(program), value)
     else:

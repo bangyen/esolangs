@@ -43,6 +43,8 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
+from esolangs.limits import ExecutionLimits
+from esolangs.outcomes import ExecutionOutcome
 from esolangs.raster import Raster
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
@@ -60,7 +62,7 @@ _LAZY = {
     "dump_program": "esolangs.portable",
     "load_program": "esolangs.portable",
     "save_program": "esolangs.portable",
-    "LanguageInfo": "esolangs.registry._describe",
+    "LanguageInfo": "esolangs.registry._info",
     "describe": "esolangs.registry._describe",
     "list_languages": "esolangs.registry._describe",
     "encode_inputs": "esolangs.runtime._answers",
@@ -77,9 +79,9 @@ if TYPE_CHECKING:
     from esolangs.portable import load_program as load_program
     from esolangs.portable import save_program as save_program
     from esolangs.registry._catalog import Catalog as Catalog
-    from esolangs.registry._describe import LanguageInfo as LanguageInfo
     from esolangs.registry._describe import describe as describe
     from esolangs.registry._describe import list_languages as list_languages
+    from esolangs.registry._info import LanguageInfo as LanguageInfo
     from esolangs.runtime._answers import encode_inputs as encode_inputs
     from esolangs.runtime._answers import read_answer as read_answer
     from esolangs.runtime._prepared import PreparedProgram as PreparedProgram
@@ -114,6 +116,8 @@ __all__ = [
     "CompressedText",
     "DialectSettings",
     "EsolangError",
+    "ExecutionLimits",
+    "ExecutionOutcome",
     "ExecutionResult",
     "ExecutionTimeoutError",
     "GeneratorCapError",

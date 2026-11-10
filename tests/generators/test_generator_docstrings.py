@@ -323,6 +323,20 @@ def test_the_named_tables_are_the_functions_they_name() -> None:
     assert anchors("A.\n\nSize:\n    n=2 parity: 4 pixels") == [
         (2, "parity", 4, "pixels")
     ]
+    from scripts.docs.evidence import SourceAnchor, TableWitness, render_source_anchors
+
+    anchor = SourceAnchor(TableWitness(2, "parity"), 9, "chars", "control")
+    source = '"""A.\n\nSize:\n    n=2 parity: 4 chars\n"""\nvalue = 4\n'
+    rendered = render_source_anchors(source, (anchor,))
+    assert rendered == source.replace("parity: 4 chars", "parity: 9 chars")
+    assert render_source_anchors(rendered, (anchor,)) == rendered
+    for broken in (
+        source.replace("n=2", "n=3"),
+        source.replace("4 chars", "4 chars; n=2 parity: 4 chars"),
+        "value = 4\n",
+    ):
+        with pytest.raises(ValueError, match="anchor"):
+            render_source_anchors(broken, (anchor,))
     from scripts.docs.evidence import parse_anchors
     from tests.support.reference import REFERENCE
 

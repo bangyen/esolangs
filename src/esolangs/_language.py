@@ -1,5 +1,7 @@
 """The public API with one language bound."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from os import PathLike
 from pathlib import Path
@@ -7,8 +9,10 @@ from pathlib import Path
 import esolangs
 import esolangs.operations.source as _source_operations
 from esolangs.artifacts import Artifact, ProgramArtifact
+from esolangs.limits import ExecutionLimits
+from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry import Catalog, get_catalog
-from esolangs.registry._describe import LanguageInfo
+from esolangs.registry._info import LanguageInfo
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._prepared import PreparedProgram, prepare_program
@@ -62,9 +66,15 @@ class Language:
         return ProgramArtifact(source, self.name, retained)
 
     def from_file(
-        self, path: str | PathLike[str], *, settings: DialectSettings | None = None
+        self,
+        path: str | PathLike[str],
+        *,
+        settings: DialectSettings | None = None,
+        normalize: bool = False,
     ) -> ProgramArtifact[Program]:
-        """Read native source with file newline handling and retained metadata.
+        """Read lossless source with retained metadata.
+
+        ``normalize=True`` applies the language's native file newline policy.
 
         Raises:
             ArgumentError: Settings or the path argument are invalid.
@@ -73,13 +83,15 @@ class Language:
             MissingDependencyError: PNG loading needs the image extra.
         """
         from esolangs.exceptions import ArgumentError
+        from esolangs.runtime._validate import check_flag
         from esolangs.settings import dialect_options
 
+        check_flag(normalize, "normalize")
         dialect_options(self.name, settings, catalog=self.catalog)
         if not isinstance(path, (str, PathLike)):
             raise ArgumentError("path must be a string or Path")
         artifact = _source_operations.read_artifact(
-            self.name, Path(path), catalog=self.catalog
+            self.name, Path(path), catalog=self.catalog, normalize=normalize
         )
         retained = effective_settings(
             self.name, artifact, settings, catalog=self.catalog
@@ -149,7 +161,7 @@ class Language:
         )
 
     def dump_program(
-        self, program: "Program | Artifact", *, settings: DialectSettings | None = None
+        self, program: Program | Artifact, *, settings: DialectSettings | None = None
     ) -> str:
         """Return portable JSON retaining source and dialect choices.
 
@@ -165,6 +177,37 @@ class Language:
         Arguments and errors: :func:`esolangs.load_program`.
         """
         return esolangs.load_program(self.name, document, catalog=self.catalog)
+
+    def execute(
+        self,
+        program: ProgramSource,
+        *,
+        stdin: InputSource = "",
+        limits: ExecutionLimits | None = None,
+        seed: int | None = None,
+        isolated: bool = False,
+        settings: DialectSettings | None = None,
+        scale: int | None = None,
+    ) -> ExecutionOutcome:
+        """Return completion, rejection, input exhaustion, fault or limit evidence.
+
+        Total deadlines and output/memory caps select isolation. Execution
+        deadlines exclude source acquisition; total deadlines include it.
+        Use outcome.unwrap() for the exception-raising result convention.
+        """
+        from esolangs.operations.execution import _execute_outcome
+
+        return _execute_outcome(
+            self.name,
+            program,
+            stdin=stdin,
+            limits=limits,
+            seed=seed,
+            isolated=isolated,
+            settings=settings,
+            scale=scale,
+            catalog=self.catalog,
+        )
 
     def run(
         self,
