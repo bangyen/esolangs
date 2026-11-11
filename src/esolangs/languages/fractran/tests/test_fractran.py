@@ -110,6 +110,15 @@ def test_indexed_removal_guards_match_independent_literal_runs() -> None:
 def test_removal_suffix_matches_literal_priority(source: str) -> None:
     index = fractran_index.compile_index(source)
     assert index is not None
+    from esolangs.languages.fractran.interpreter import prepare_machine
+
+    plan = prepare_machine(source, {})
+    first, second = plan(ScriptedIO()), plan(ScriptedIO())
+    assert first._index is second._index
+    assert first._cursor is not second._cursor
+    before = second.snapshot()
+    first.step()
+    assert second.snapshot() == before
     cursor = fractran_index.Cursor(index)
     value, fractions, _ = _parse(source)
     for _ in range(40):

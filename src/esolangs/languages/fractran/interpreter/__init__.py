@@ -48,7 +48,7 @@ from esolangs.languages.fractran.interpreter.index import (
 from esolangs.languages.fractran.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
@@ -165,11 +165,20 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = Index | tuple[int, tuple[_Fraction, ...], tuple[int, ...]]
+
+
+def _prepare_source(code: str) -> _Image:
+    index = compile_index(code)
+    return _parse(code) if index is None else index
+
+
 class _Machine:
     """The run state: one integer, against a fixed list of fractions."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        self._index = compile_index(code)
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        image = _prepare_source(code) if isinstance(code, str) else code
+        self._index = image if isinstance(image, Index) else None
         # Sparse rule/state ratios stay on scans; dense bases avoid tuple copying.
         self._cursor = (
             Cursor(self._index)
@@ -181,10 +190,10 @@ class _Machine:
         self._scan_factors = () if self._index is None else self._index.initial
         self._fractions: tuple[_Fraction, ...] | None = None
         self._integer = 1
-        if self._index is None:
-            self._integer, self._fractions, self.offsets = _parse(code)
+        if isinstance(image, Index):
+            self.offsets = image.offsets
         else:
-            self.offsets = self._index.offsets
+            self._integer, self._fractions, self.offsets = image
         self.inspections = 0
         self._selected_revision = -1
         self._selected_for: int | Factors | None = None
@@ -314,22 +323,18 @@ class _Machine:
             self.io.print_num(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the parsed rules and build fresh execution state."""
     if not isinstance(source, str):
         raise TypeError("FRACTRAN machines require text source")
     if options:
         raise TypeError("FRACTRAN machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a FRACTRAN program, printing the value it ends on."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

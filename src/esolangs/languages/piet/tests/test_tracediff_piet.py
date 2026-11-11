@@ -19,14 +19,19 @@ def test_trace_and_timing_keep_artifact_raster_scale(monkeypatch):
     )
     image = Raster.from_png(logical.upscaled(2).to_png())
     program = esolangs.ProgramArtifact(image, "Piet", scale=1)
+    prepare = interpreter._prepare_raster
     native, calls, outputs = interpreter._Machine, [], []
 
-    def machine(source, io, **options):
+    def prepare_raster(source, scale):
         assert source is image
-        calls.append(options.get("scale"))
-        outputs.append(io)
-        return native(source, io, **options)
+        calls.append(scale)
+        return prepare(source, scale)
 
+    def machine(source, io):
+        outputs.append(io)
+        return native(source, io)
+
+    monkeypatch.setattr(interpreter, "_prepare_raster", prepare_raster)
     monkeypatch.setattr(interpreter, "_Machine", machine)
     explicit = tracediff.trace(
         interpreter, (program, ""), frozenset(), runtime=LANGUAGES["Piet"].runtime

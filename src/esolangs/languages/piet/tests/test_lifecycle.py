@@ -25,6 +25,7 @@ def test_factory_shares_rows_with_private_stack_and_read_count():
     factory = interpreter.prepare_machine(_echo(), {})
     first, second = factory(ScriptedIO("A")), factory(ScriptedIO("B"))
     assert first.rows is second.rows
+    assert first._program_key is second._program_key
     before = second.snapshot()
     first.step()
     saved = first.workspace_snapshot()
@@ -45,6 +46,9 @@ def test_factory_shares_rows_with_private_stack_and_read_count():
     while not second.halted:
         second.step()
     assert second.io.getvalue() == "B"
+    native_io = ScriptedIO("D")
+    factory.run(native_io)
+    assert native_io.getvalue() == "D"
 
 
 @pytest.mark.medium

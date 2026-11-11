@@ -56,15 +56,15 @@ import operator
 import re
 from collections.abc import Callable, Mapping
 from contextlib import suppress
-from functools import partial
+from functools import cache
 from typing import Any
 
 from esolangs.languages.piet.lifecycle import CAPABILITIES
-from esolangs.raster import Raster
+from esolangs.raster import Raster, Rows
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import raster_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
@@ -238,6 +238,19 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[Rows, tuple[int, int, bytes]]
+
+
+def _prepare_raster(program: Raster, scale: int | None) -> _Image:
+    rows = program._normalized(scale)  # noqa: SLF001
+    key = (
+        len(rows[0]),
+        len(rows),
+        bytes(channel for row in rows for pixel in row for channel in pixel),
+    )
+    return rows, key
+
+
 class _Machine:
     """A Piet run: one immutable state rebound after each pure transition."""
 
@@ -284,12 +297,11 @@ class _Machine:
                 io.print_char(chr(value))
         return stack
 
-    def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
-        self.rows = program._normalized(scale)  # noqa: SLF001
-        self._program_key = (
-            len(self.rows[0]),
-            len(self.rows),
-            bytes(channel for row in self.rows for pixel in row for channel in pixel),
+    def __init__(
+        self, program: Raster | _Image, io: IO, *, scale: int | None = None
+    ) -> None:
+        self.rows, self._program_key = (
+            _prepare_raster(program, scale) if isinstance(program, Raster) else program
         )
         self.io = io
         self._input_reads = 0
@@ -358,18 +370,26 @@ class _Machine:
         self.state = (current, dp, cc, stack, halted)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind fresh run state over normalized raster rows and requested scale."""
     if not isinstance(source, Raster):
         raise TypeError("piet machines require raster source")
     if options.keys() - {"scale"}:
         raise TypeError("piet machines accept only the scale runtime option")
-    return partial(_Machine, source, scale=options.get("scale"))
+    scale = options.get("scale")
+
+    @cache
+    def image() -> _Image:
+        return _prepare_raster(source, scale)
+
+    return RuntimePlan(
+        lambda io: _Machine(image(), io), lambda io: _execute(image(), io)
+    )
 
 
-def _execute(program: Raster, io: IO, *, scale: int | None = None) -> CompletionReport:
+def _execute(
+    program: Raster | _Image, io: IO, *, scale: int | None = None
+) -> CompletionReport:
     """Execute a Piet image, detecting its codel scale."""
     machine = _Machine(program, io, scale=scale)
     return drive(machine, policy=CAPABILITIES.completion)

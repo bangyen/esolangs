@@ -8,10 +8,11 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from itertools import pairwise
 from math import prod
+from types import MappingProxyType
 
 type Factors = tuple[tuple[int, int], ...]
 type Rule = tuple[Factors, Factors]
-type _Groups = dict[int, tuple[tuple[int, int], ...]]
+type _Groups = Mapping[int, tuple[tuple[int, int], ...]]
 
 _POWER = re.compile(r"^(\d+)(?:\^(\d+))?$")
 #: A fraction or term: a run between whitespace and commas.
@@ -49,7 +50,7 @@ class Index:
     literal: tuple[tuple[Factors, Factors], ...]
     offsets: tuple[int, ...]
     groups: _Groups
-    keys: dict[int, tuple[int, ...] | None]
+    keys: Mapping[int, tuple[int, ...] | None]
     unconditional: int | None
 
     def choose(self, value: Factors) -> tuple[int | None, int]:
@@ -230,8 +231,8 @@ def compile_index(code: str) -> Index | None:
         tuple(rules),
         tuple(literal),
         tuple(offset for offset, _ in found),
-        groups,
-        keys,
+        MappingProxyType(groups),
+        MappingProxyType(keys),
         unconditional,
     )
 
