@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+indexed_decoder_leaf_arity_cutoff = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false, test = "test_boolean_dig.py::test_indexed_sharing_builds_four_classes_at_nine_inputs" }
 default_tree_to_alternating_race = { tables = [{ arity = 4, rule = "dense" }, { arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_dig.py::TestDig::test_alternating_layout_executes_every_row" }
 
 [curation]

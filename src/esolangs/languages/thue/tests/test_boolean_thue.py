@@ -18,9 +18,10 @@ from esolangs.languages.thue.interpreter import run as run_thue
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.reader_support import _TABLES
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import constant_programs
+from tests.support.generator_support import assert_saved_rows, constant_programs
 from tests.support.witness_tables import row_bits as _bits
 from tests.support.witness_tables import witnesses
 
@@ -52,6 +53,18 @@ def _execute(table: str, row: int, width: int | None) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("width", [1, 9, 10, 13])
 def test_narrow_sources_execute_every_three_input_table(width: int) -> None:
+    if width == 1:
+        language = esolangs.Language("Thue")
+        cases = construction_boundaries(language.name)[
+            "narrow_constant_layout_arity_cutoff"
+        ]
+        for witness in cases:
+            table = witness.table()
+            with patch.object(boolean, "_tables", wraps=boolean._tables) as layouts:
+                artifact = language.generate(table, width=1)
+            assert layouts.call_count == int(witness.arity == 3)
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
     for table in witnesses(3):
         floor = max(map(len, thue(table, 1).splitlines()))
         assert max(map(len, thue(table, width).splitlines())) <= max(width, floor)

@@ -28,6 +28,7 @@ from tests.generators.boolean_runners import _runner, assert_runner_rows
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_parity_at_most_doubles,
+    assert_saved_rows,
     measure_run,
     three_input_corpus_size,
 )
@@ -154,6 +155,17 @@ class TestCollatzMultiverse:
 
     def test_numbered_constants_narrow_complete_statements(self) -> None:
         """The narrow candidate changes source and actually reduces columns."""
+        language = esolangs.Language("Collatz Multiverse")
+        for witness in construction_boundaries(language.name)[
+            "width_rotation_order_cutoff"
+        ]:
+            n, table = witness.arity, witness.table()
+            with patch.object(boolean, "_cm_build", wraps=boolean._cm_build) as build:
+                artifact = language.generate(table, width=1)
+            orders = {tuple(call.args[2]) for call in build.call_args_list}
+            assert orders == ({(0, 1)} if n == 2 else {(0, 1, 2), (2, 0, 1)})
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
         plain = boolean.collatz_multiverse("01101001")
         narrow = boolean.collatz_multiverse("01101001", 1)
         assert "negativeOne" not in narrow

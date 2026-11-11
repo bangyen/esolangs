@@ -17,11 +17,13 @@ from esolangs.languages.forbin import generator as boolean
 from esolangs.languages.forbin.generator import _BLOCK_WIDTHS, _Names
 from esolangs.languages.forbin.tests.forbin_support import _build
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
+    assert_saved_rows,
     constant_programs,
     evaluate_generated,
     three_input_corpus_size,
@@ -269,6 +271,15 @@ def test_constants_read_whole_bytes_then_print_inline() -> None:
     from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Forbin")["workspace"].formula
+
+    language = esolangs.Language("Forbin")
+    for witness in construction_boundaries(language.name)[
+        "constant_byte_reader_helper_cutoff"
+    ]:
+        table = witness.table()
+        artifact = language.generate(table)
+        assert artifact.source.startswith("main{r{") == (witness.arity == 2)
+        assert_saved_rows(language, artifact, table, range(len(table)))
 
     for n, bit, options, program in constant_programs("Forbin", range(1, 13)):
         if not options:

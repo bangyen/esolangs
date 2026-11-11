@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+short_operator_arity_cutoff = { tables = [{ arity = 3, rule = "dense" }, { arity = 4, rule = "dense" }], benchmark = false, test = "test_boolean_algebraic_programming_language.py::test_apl_elementary_floor_and_corpus_size" }
+
 [curation]
 backlinks = 3
 admitted = 2026-09-02T10:34:05-04:00

@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+narrow_constant_layout_arity_cutoff = { tables = [{ arity = 3, rule = "zero" }, { arity = 4, rule = "zero" }], benchmark = false, test = "test_boolean_thue.py::test_narrow_sources_execute_every_three_input_table[1]" }
+
 [curation]
 backlinks = 158
 

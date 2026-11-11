@@ -2,6 +2,7 @@
 
 import random
 from itertools import pairwise
+from unittest.mock import patch
 
 import pytest
 
@@ -9,9 +10,10 @@ import esolangs
 from esolangs import run as execute
 from esolangs.exceptions import GeneratorCapError
 from esolangs.languages.interprogck8 import descriptor, generator
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import three_input_corpus_size
+from tests.support.generator_support import assert_saved_rows, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -72,6 +74,16 @@ def test_three_input_program_keeps_its_measured_length() -> None:
 
 def test_parity_windows_keep_measured_lengths() -> None:
     """Parity packs three levels into52-line bands, with138-line periods."""
+    language = esolangs.Language("Interprogck8")
+    for witness in construction_boundaries(language.name)["parity_wide_window_entry"]:
+        table = witness.table()
+        with patch.object(generator, "_Plan", wraps=generator._Plan) as plan:
+            artifact = language.generate(table)
+        plan.assert_called_once_with(
+            table, witness.arity, 40 if witness.arity == 2 else 52
+        )
+        assert_saved_rows(language, artifact, table, range(len(table)))
+
     sizes = {}
     for n in (8, 10, 12):
         parity = "".join(str(i.bit_count() % 2) for i in range(1 << n))
@@ -115,7 +127,17 @@ def test_the_input_cap_is_forty(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda *_: type("P", (), {"lay": lambda *_: None, "text": lambda _: "ok"})(),
     )
     assert generator.interprogck8("01") == "ok"
-    assert generator.interprogck8("0").splitlines().count("u") == 40
+    language = esolangs.Language("Interprogck8")
+    for bit in "01":
+        source = generator.interprogck8(bit)
+        assert source.splitlines().count("u") == 40
+        artifact = esolangs.ProgramArtifact(source, language.name, input_arity=40)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for bits in ([0] * 40, [0, 1] * 20, [1] * 40):
+            result = prepared.evaluate(bits)
+            assert result.bit == bit
+            assert result.observation.input_reads == 40
 
 
 def test_flight_columns_keep_the_stop_in_the_cursors_window() -> None:

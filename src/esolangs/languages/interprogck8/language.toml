@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+parity_wide_window_entry = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_interprogck8.py::test_parity_windows_keep_measured_lengths" }
+
 [deep_arities]
 # At n = 7 the fixed layout still shows (163 chars per dense entry, then
 # 150-159 at n = 8..14), so the odd rungs 7, 9, 11 read 4.43; 9, 11, 13

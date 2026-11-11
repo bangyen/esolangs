@@ -3,6 +3,7 @@
 import itertools
 import random
 import re
+from unittest.mock import patch
 
 import pytest
 
@@ -17,6 +18,7 @@ from esolangs.languages.algebraic_programming_language.generator import (
 )
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.analysis_support import assert_analysis_complement
@@ -24,6 +26,7 @@ from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_output,
     assert_parity_at_most_doubles,
+    assert_saved_rows,
     constant_programs,
     verify_generated,
 )
@@ -275,6 +278,18 @@ def test_apl_elementary_definitions_compute_every_small_table(width: int) -> Non
 
 
 def test_apl_elementary_floor_and_corpus_size() -> None:
+    language = esolangs.Language("Algebraic Programming Language")
+    for witness in construction_boundaries(language.name)[
+        "short_operator_arity_cutoff"
+    ]:
+        table = witness.table()
+        with patch.object(
+            boolean, "_apl_short_operators", wraps=boolean._apl_short_operators
+        ) as operators:
+            artifact = language.generate(table, width=1)
+        assert operators.call_count == int(witness.arity == 3)
+        assert_saved_rows(language, artifact, table, range(len(table)))
+
     assert (
         max(map(len, boolean.algebraic_programming_language("0110", 1).splitlines()))
         == 4

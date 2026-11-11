@@ -24,7 +24,9 @@ from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
+from scripts.docs.evidence import construction_boundaries
 from tests.support.generator_support import (
+    assert_saved_rows,
     assert_shared_program,
     measure_run,
     multiple_tables,
@@ -64,6 +66,15 @@ def test_source_growth_is_linear() -> None:
 
 def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
     """Pin the Davio source premium at small arities and execute its mixed term."""
+    language = esolangs.Language("Smallfuck")
+    for witness in construction_boundaries(language.name)[
+        "constant_one_off_walk_cell_cutoff"
+    ]:
+        table = witness.table()
+        artifact = language.generate(table)
+        assert artifact.source.startswith(">>*<<") == (witness.arity == 3)
+        assert_saved_rows(language, artifact, table, range(len(table)))
+
     assert len(smallfuck("0001")) == 79
     assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 30627
     for code in range(256):

@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+constant_byte_reader_helper_cutoff = { tables = [{ arity = 1, rule = "one" }, { arity = 2, rule = "one" }], benchmark = false, test = "test_boolean_forbin.py::test_constants_read_whole_bytes_then_print_inline" }
+
 [curation]
 backlinks = 5
 admitted = 2026-08-14T11:00:53-04:00

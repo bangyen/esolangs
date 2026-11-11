@@ -21,7 +21,11 @@ from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import assert_constant_output, constant_programs
+from tests.support.generator_support import (
+    assert_constant_output,
+    assert_saved_rows,
+    constant_programs,
+)
 from tests.support.witness_tables import row_bits
 
 run_dig = _runner("dig", lines=True, newline=True)
@@ -643,6 +647,20 @@ def test_indexed_sharing_admits_full_input_controls(
 
 
 def test_indexed_sharing_builds_four_classes_at_nine_inputs() -> None:
+    language = esolangs.Language("Dig")
+    for witness in construction_boundaries(language.name)[
+        "indexed_decoder_leaf_arity_cutoff"
+    ]:
+        table = witness.table()
+        with patch.object(
+            indexed, "_indexed_build", wraps=indexed._indexed_build
+        ) as build:
+            artifact = language.generate(table)
+        assert build.call_count == int(witness.arity == 7)
+        assert_saved_rows(
+            language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
+        )
+
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
     table = "".join(blocks[int(c)] for c in "01230123")
     assert indexed._dig_indexed_shared(table, 9) is not None
