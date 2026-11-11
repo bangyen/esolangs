@@ -17,7 +17,7 @@
   "Debugger.watch_stack": "(self, slot: 'int') -> 'list[object]'",
   "DialectSettings.__init__": "(self, schema: 'DialectSchema', **choices: 'Scalar') -> 'None'",
   "DialectSettings.options": "(self, language: 'str') -> 'dict[str, Scalar]'",
-  "ExecutionLimits.__init__": "(self, execution_timeout: float | None = None, total_timeout: float | None = None, max_steps: int | None = None, max_output: int | None = None, max_memory: int | None = None) -> None",
+  "ExecutionLimits.__init__": "(self, execution_timeout: float | None = None, total_timeout: float | None = None, max_steps: int | None = None, max_output: int | None = None, max_memory: int | None = None, preparation_timeout: float | None = None) -> None",
   "ExecutionOutcome.__init__": "(self, status: 'OutcomeStatus', observation: 'ExecutionResult', error: 'EsolangError | None' = None) -> None",
   "ExecutionOutcome.unwrap": "(self) -> 'ExecutionResult'",
   "Language.__init__": "(self, name: 'str', *, catalog: 'Catalog' = <factory>) -> None",

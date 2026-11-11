@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from tests.support import execution
 from tests.support.generator_support import evaluate_generated
 from tests.support.reference import REFERENCE
 from tests.support.samples import CIRCUIT_PRIME_TESTER, bits_of
@@ -59,7 +60,7 @@ class TestAFailedRowSaysWhichRow:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Failure forced at a chosen row, since a real one lands on row 0."""
-        real_run = esolangs.run
+        real_run = execution.run_observed
 
         def fail_on_the_sixth(
             language: str,
@@ -67,12 +68,12 @@ class TestAFailedRowSaysWhichRow:
             stdin: str = "",
             timeout: object = None,
             **options: object,
-        ) -> str:
+        ) -> esolangs.ExecutionResult:
             if stdin == "101":  # row 5 of an eight-row table
                 raise esolangs.ExecutionTimeoutError("execution exceeded the bound")
             return real_run(language, program, stdin=stdin, timeout=timeout, **options)
 
-        monkeypatch.setattr(esolangs, "run", fail_on_the_sixth)
+        monkeypatch.setattr(execution, "run_observed", fail_on_the_sixth)
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
             evaluate_generated(REFERENCE, "01101001", timeout=10)
         note = "\n".join(getattr(caught.value, "__notes__", []))

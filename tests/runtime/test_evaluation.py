@@ -205,6 +205,16 @@ def test_total_deadline_interrupts_source_acquisition(isolated) -> None:
 
 @pytest.mark.medium
 def test_deadline_includes_iterator_pauses(monkeypatch) -> None:
+    prepare = evaluator.prepare_program
+    preparations = []
+
+    def count_preparation(*args, **kwargs):
+        preparations.append(args[1])
+        return prepare(*args, **kwargs)
+
+    monkeypatch.setattr(evaluator, "prepare_program", count_preparation)
+    assert _evaluate(REFERENCE, ",.", inputs=1) == "01"
+    assert len(preparations) == 1
     clock = [0.0]
     monkeypatch.setattr(evaluator, "monotonic", lambda: clock[0])
     answers = _iter_evaluate(REFERENCE, ",.", inputs=1, total_timeout=5)
@@ -228,7 +238,7 @@ def test_deadline_clamps_each_row_and_expires_after_work(monkeypatch) -> None:
         clock[0] += 3
         return esolangs.ExecutionResult(stdin, None, None, None)
 
-    monkeypatch.setattr(esolangs, "run", run)
+    monkeypatch.setattr("tests.support.execution.run_observed", run)
     with pytest.raises(esolangs.ExecutionTimeoutError):
         _evaluate(REFERENCE, ",.", inputs=1, timeout=None, total_timeout=5)
     assert bounds == [5, 2]
@@ -281,6 +291,7 @@ def test_execution_failure_never_becomes_an_answer(
         raise error
 
     monkeypatch.setattr(esolangs, "run", fail)
+    monkeypatch.setattr("tests.support.execution.run_observed", fail)
     monkeypatch.setattr("esolangs.runtime._termination._halt_or_cycle_result", fail)
     with pytest.raises(error_type) as caught:
         _evaluate(name, program, inputs=1)

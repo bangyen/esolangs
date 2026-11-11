@@ -9,7 +9,7 @@ from collections.abc import Callable, Iterator
 from functools import partial
 from threading import Thread
 from time import monotonic
-from typing import cast
+from typing import Protocol, cast
 
 import esolangs
 import esolangs.operations.source as _source_operations
@@ -31,6 +31,7 @@ from esolangs.registry import LANGUAGES, resolve
 from esolangs.runtime._execution import check_signal_timeout
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._isolated import check_limits
+from esolangs.runtime._prepared import PreparedProgram, prepare_program
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, check_scale_for
 from esolangs.runtime._termination import _termination_result
@@ -206,6 +207,7 @@ def _iter_evaluate(
     instantiator = esolangs.instantiate
     if settings is not None:
         instantiator = partial(instantiator, settings=settings)
+    prepared: PreparedProgram | None = None
     for row in range(rows):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
 
@@ -220,7 +222,20 @@ def _iter_evaluate(
 
         try:
             source, stdin = _prepare(prepare_row, deadline, isolated=isolated)
-            answer = answer_row(source, stdin, _remaining(deadline, bound))
+            if prepared is None and not (isolated or parameterized):
+                prepared = _prepare(
+                    partial(
+                        prepare_program,
+                        name,
+                        source,
+                        settings=settings,
+                        scale=scale,
+                        bind_machine=True,
+                    ),
+                    deadline,
+                    isolated=False,
+                )
+            answer = answer_row(source, stdin, _remaining(deadline, bound), prepared)
             if deadline is not None and monotonic() >= deadline:
                 raise ExecutionTimeoutError("evaluation exceeded its total deadline")
         except EsolangError as exc:
@@ -269,6 +284,17 @@ def _row_timeout(
     return bound
 
 
+class _RowAnswerer(Protocol):
+    def __call__(
+        self,
+        source: Program | Artifact,
+        stdin: str,
+        bound: float | None,
+        prepared: PreparedProgram | None = None,
+        /,
+    ) -> str: ...
+
+
 def _row_answerer(
     name: str,
     *,
@@ -279,7 +305,7 @@ def _row_answerer(
     max_output: int | None,
     max_memory: int | None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
-) -> Callable[[Program | Artifact, str, float | None], str]:
+) -> _RowAnswerer:
     """Return the call that turns one row's source, stdin and bound into its bit."""
     if not terminating:
         from tests.support.execution import run_observed
@@ -289,26 +315,50 @@ def _row_answerer(
             if io_factory is ScriptedIO
             else partial(run_observed, io_factory=io_factory)
         )
-        return lambda source, stdin, bound: read_answer(
-            name,
-            run(
-                name,
-                source,
-                stdin=stdin,
-                timeout=bound,
-                isolated=isolated,
-                scale=scale,
-                max_output=max_output,
-                max_memory=max_memory,
-                settings=settings,
-            ).output,
-        )
+
+        def output_answer(
+            source: Program | Artifact,
+            stdin: str,
+            bound: float | None,
+            prepared: PreparedProgram | None = None,
+        ) -> str:
+            if prepared is None:
+                result = run(
+                    name,
+                    source,
+                    stdin=stdin,
+                    timeout=bound,
+                    isolated=isolated,
+                    scale=scale,
+                    max_output=max_output,
+                    max_memory=max_memory,
+                    settings=settings,
+                )
+            else:
+                result = run_observed(
+                    name,
+                    source,
+                    stdin=stdin,
+                    timeout=bound,
+                    prepared=prepared,
+                    io_factory=io_factory,
+                    max_output=max_output,
+                    max_memory=max_memory,
+                )
+            return read_answer(name, result.output)
+
+        return output_answer
     # Derive each bit from its declared halt/diverge order.
     values = LANGUAGES[name].contract.answer_values
     diverges_is = str(values.index("diverges"))
     halts_is = str(values.index("halts"))
 
-    def answer(source: Program | Artifact, stdin: str, bound: float | None) -> str:
+    def answer(
+        source: Program | Artifact,
+        stdin: str,
+        bound: float | None,
+        prepared: PreparedProgram | None = None,
+    ) -> str:
         if isolated:
             from esolangs.runtime._isolated import termination_result_isolated
 
@@ -323,7 +373,13 @@ def _row_answerer(
             )
         else:
             proof = _termination_result(
-                name, source, stdin, bound, settings=settings, io_factory=io_factory
+                name,
+                source,
+                stdin,
+                bound,
+                settings=settings,
+                io_factory=io_factory,
+                prepared=prepared,
             )
         return halts_is if proof.decision.halts else diverges_is
 

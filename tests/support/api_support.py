@@ -26,6 +26,7 @@ PUBLIC_MEMBERS = {
         "with_language",
     },
     esolangs.ExecutionLimits: {
+        "preparation_timeout",
         "execution_timeout",
         "total_timeout",
         "max_steps",

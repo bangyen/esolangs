@@ -108,6 +108,8 @@ def _check_prepared_factory_owns_state_and_input():
 @pytest.mark.medium
 def test_prepared_invocations_own_source_state_and_randomness(monkeypatch):
     _check_uniform_outcomes_and_phase_limits()
+    with monkeypatch.context() as patch:
+        _check_preparation_timeout(patch)
     _check_outcomes_are_the_internal_boundary(monkeypatch)
     _check_prepared_factory_owns_state_and_input()
     _check_preparation_consumes_source_once_and_keeps_fresh_invocations()
@@ -179,6 +181,57 @@ def _check_uniform_outcomes_and_phase_limits():
             esolangs.ExecutionLimits(**kwargs)
     with pytest.raises(esolangs.ArgumentError, match="completion evidence"):
         esolangs.ExecutionOutcome("completed", esolangs.ExecutionResult("", 0, 0, 0))
+
+
+def _check_preparation_timeout(monkeypatch):
+    from threading import Event
+
+    from esolangs.runtime import _isolated
+
+    api = esolangs.Language(REFERENCE)
+    phase_limits = esolangs.ExecutionLimits(preparation_timeout=1, total_timeout=4)
+    for steps in (None, 10):
+        limits = replace(phase_limits, max_steps=steps)
+        assert api.execute(",+.", stdin="A", limits=limits).unwrap().output == "B"
+    prepared = api.prepare(",+.")
+    tiny_budget = esolangs.ExecutionLimits(preparation_timeout=0.001)
+    assert prepared.execute(stdin="A", limits=tiny_budget).unwrap().output == "B"
+
+    release = Event()
+
+    class Blocked:
+        def read(self):
+            release.wait()
+            return "+."
+
+    try:
+        stopped = api.execute(Blocked(), limits=tiny_budget)
+    finally:
+        release.set()
+    assert stopped.bound == "preparation_timeout"
+    assert stopped.observation.steps is None
+
+    spawn = _isolated.subprocess.Popen
+    children = []
+
+    def slow_parser(argv, **options):
+        patch = (
+            "from time import sleep; "
+            "from esolangs.runtime import _prepared; "
+            "_prepared.prepare_program = lambda *a, **kw: sleep(10); "
+        )
+        child = spawn([*argv[:-1], patch + argv[-1]], **options)
+        children.append(child)
+        return child
+
+    monkeypatch.setattr(_isolated.subprocess, "Popen", slow_parser)
+    stopped = api.execute("+.", limits=phase_limits)
+    assert stopped.bound == "preparation_timeout"
+    assert stopped.observation.output == ""
+    assert len(children) == 1
+    assert children[0].poll() is not None
+    stopped = api.execute("+.", limits=replace(phase_limits, total_timeout=0.1))
+    assert stopped.bound == "total_timeout"
 
 
 def _check_outcomes_are_the_internal_boundary(monkeypatch):

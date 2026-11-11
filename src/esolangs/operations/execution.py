@@ -171,6 +171,7 @@ def _execute_invocation(
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     prepared: PreparedProgram | None = None,
     execution_timeout: float | None = None,
+    preparation_timeout: float | None = None,
 ) -> ExecutionOutcome:
     """Execute through one route, retaining its result metadata."""
     from esolangs.registry._catalog import get_catalog
@@ -205,6 +206,7 @@ def _execute_invocation(
             settings=settings,
             max_steps=max_steps,
             execution_timeout=execution_timeout,
+            preparation_timeout=preparation_timeout,
             catalog=catalog,
         )
     if max_steps is not None:
@@ -278,12 +280,17 @@ def _execute_outcome(
             selected.max_memory,
         )
     )
+    preparation_timeout = selected.preparation_timeout
+    if prepared is not None and not use_worker:
+        preparation_timeout = None
+    use_worker = use_worker or preparation_timeout is not None
     outcome = _execute_invocation(
         language,
         program,
         stdin=stdin,
         timeout=selected.total_timeout if use_worker else selected.execution_timeout,
         execution_timeout=selected.execution_timeout if use_worker else None,
+        preparation_timeout=preparation_timeout,
         seed=seed,
         isolated=use_worker,
         max_steps=selected.max_steps,

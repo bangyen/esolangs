@@ -11,6 +11,7 @@ from esolangs.exceptions import EsolangError, InterpreterLimitError
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
+from esolangs.runtime._prepared import PreparedProgram
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import (
     BranchProof,
@@ -65,6 +66,7 @@ def _termination_result(
     settings: DialectSettings | None = None,
     catalog: "Catalog | None" = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
+    prepared: PreparedProgram | None = None,
 ) -> TerminationResult:
     """Retain live IO and proof evidence without taking a post-halt dump step."""
     from esolangs.registry._catalog import get_catalog
@@ -76,7 +78,7 @@ def _termination_result(
         factory = partial(
             _make_vm, settings=settings, catalog=catalog, io_factory=io_factory
         )
-        machine = factory(name, source, stdin=stdin)
+        machine = factory(name, source, stdin=stdin, prepared=prepared)
         try:
             decision = _halt_or_cycle_result(machine)
             try:

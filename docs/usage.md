@@ -193,9 +193,12 @@ completed result or raises the original error. Prepared programs also expose
 outcome; `run` raises from it.
 
 `ExecutionLimits.execution_timeout` excludes acquisition; `total_timeout`
-includes acquisition, worker startup and execution. A total deadline, output
-cap or memory cap selects isolation. Prepared-program acquisition happens before
-`execute`; cooperative deadlines cannot interrupt preparation or one command.
+includes acquisition, worker startup and execution. Set `preparation_timeout`
+to bound acquisition, worker startup and the source preparation hook independently
+of execution. It selects isolation when source needs preparing. A total deadline,
+output cap or memory cap also selects isolation. In-process `PreparedProgram.execute`
+uses the existing preparation. An isolated call prepares again in its worker.
+Cooperative execution deadlines cannot interrupt a single command.
 An isolated call without an explicit total deadline retains the 30-second default.
 
 `Catalog` owns immutable declarations and lookup indexes. Construct one from
@@ -249,7 +252,7 @@ Types:
 - `esolangs.Catalog` -- own a frozen declaration set; derived indexes share the same scope
 - `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
 - `esolangs.DialectSettings` -- validated overrides bound to one language schema
-- `esolangs.ExecutionLimits` -- execution time excludes acquisition; total time includes worker startup
+- `esolangs.ExecutionLimits` -- preparation, execution and whole-invocation budgets
 - `esolangs.ExecutionOutcome` -- one completed result or failed observation, retaining its original error
 - `esolangs.ExecutionResult` -- output, stdin usage and explicit completion evidence
 - `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
