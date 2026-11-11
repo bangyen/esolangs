@@ -83,22 +83,24 @@ def test_binary_underflow_retains_consumed_pops(seed, command) -> None:
     assert machine.ind == 0
 
 
-def test_repeated_programs_keep_parser_state_private() -> None:
+def test_repeated_programs_share_immutable_parser_state() -> None:
     from esolangs.languages.taglate.interpreter import _Machine
 
     code = ["ABC", "gyeigz"]
     first = _Machine(code, ScriptedIO(""))
     second = _Machine(code, ScriptedIO(""))
-    first.tokens[0] = "i"
-    first.match.clear()
-    assert second.tokens == ["gy", "e", "i", "gz"]
+    with pytest.raises(TypeError):
+        first.tokens[0] = "i"
+    with pytest.raises(TypeError):
+        first.match[0] = 0
+    assert second.tokens == ("gy", "e", "i", "gz")
     assert second.match == {0: 3, 3: 0}
     third = _Machine(code, ScriptedIO(""))
-    assert third.tokens == second.tokens
-    assert third.match == second.match
+    assert third.tokens is second.tokens
+    assert third.match is second.match
     code[1] = "i"
     changed = _Machine(code, ScriptedIO(""))
-    assert changed.tokens == ["i"]
+    assert changed.tokens == ("i",)
     assert changed.match == {}
 
 

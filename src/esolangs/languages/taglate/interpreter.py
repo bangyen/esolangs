@@ -27,13 +27,15 @@ Decisions:
 """
 
 import re
-from collections.abc import Callable, Iterable, Mapping
-from functools import lru_cache, partial
-from typing import Any
+from collections.abc import Iterable, Mapping
+from functools import lru_cache
+from types import MappingProxyType
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
@@ -62,10 +64,10 @@ def _match(tokens: list[str]) -> dict[int, int]:
 
 
 @lru_cache(maxsize=8)
-def _program(commands: str) -> tuple[tuple[str, ...], tuple[tuple[int, int], ...]]:
-    """Return reusable tokens and loop pairs; machines own mutable copies."""
+def _program(commands: str) -> tuple[tuple[str, ...], Mapping[int, int]]:
+    """Return immutable tokens and loop partners for a command string."""
     tokens = _tokens(commands)
-    return tuple(tokens), tuple(_match(tokens).items())
+    return tuple(tokens), MappingProxyType(_match(tokens))
 
 
 _URL_SAFE = frozenset(
@@ -116,7 +118,7 @@ def _push(state: _State, value: int) -> _State:
 def _advance(
     state: _State,
     tok: str,
-    match: dict[int, int],
+    match: Mapping[int, int],
     byte: int | None = None,
 ) -> _State:
     """Return the state after executing ``tok``.
@@ -171,7 +173,7 @@ def _advance(
     return (state[0], state[1] + 1)
 
 
-def _partner(match: dict[int, int], ind: int, tok: str) -> int:
+def _partner(match: Mapping[int, int], ind: int, tok: str) -> int:
     """Return the token index ``ind`` jumps to, rejecting an unmatched one."""
     partner = match.get(ind)
     if partner is None:
@@ -201,22 +203,29 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _Image(NamedTuple):
+    queue: tuple[int, ...]
+    tokens: tuple[str, ...]
+    match: Mapping[int, int]
+
+
+def _prepare_source(code: list[str]) -> _Image:
+    queue = tuple(ord(c) % 65536 for c in code[0]) if code else ()
+    tokens, match = _program("".join(code[1:]))
+    return _Image(queue, tokens, match)
+
+
 class _Machine:
-    """Per-run Taglate state: the queue, the token list, and the cursor.
+    """The queue and cursor for one Taglate invocation.
 
     A loop whose head never zeroes is a finite-state cycle the hang
     detector can prove.
     """
 
-    def __init__(self, code: list[str], io: IO) -> None:
-        """Seed the queue from the first line and tokenize the rest."""
+    def __init__(self, code: list[str] | _Image, io: IO) -> None:
         self.io = io
-        self.queue: tuple[int, ...] = (
-            tuple(ord(c) % 65536 for c in code[0]) if code else ()
-        )
-        tokens, pairs = _program("".join(code[1:]))
-        self.tokens = list(tokens)
-        self.match = dict(pairs)
+        image = code if isinstance(code, _Image) else _prepare_source(code)
+        self.queue, self.tokens, self.match = image
         self.ind = 0
 
     @property
@@ -275,7 +284,7 @@ class _Machine:
             raise
 
 
-def _advance_bulk(state: _State, tokens: list[str]) -> _State | None:
+def _advance_bulk(state: _State, tokens: tuple[str, ...]) -> _State | None:
     """Return a batched rotation/pop successor, or None for another command."""
     queue, ind = state
     tok = tokens[ind]
@@ -291,20 +300,19 @@ def _advance_bulk(state: _State, tokens: list[str]) -> _State | None:
     return queue[consumed:], ind + consumed
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> Callable[[IO], _Machine]:
-    """Bind fresh queues and token copies while retaining the program cache."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain queue seed, tokens and loop partners across invocations."""
     if not isinstance(source, list):
         raise TypeError("taglate machines require split text source")
     if options:
         raise TypeError("taglate machines accept no runtime options")
-    return partial(_Machine, list(source))
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: list[str], io: IO) -> CompletionReport:
+def _execute(code: _Image, io: IO) -> CompletionReport:
     """Run Taglate, applying pure batched rotation/pop transitions."""
-    machine = prepare_machine(code, {})(io)
+    machine = _Machine(code, io)
     while not machine.halted:
         moved = _advance_bulk((machine.queue, machine.ind), machine.tokens)
         if moved is None:
@@ -316,7 +324,7 @@ def _execute(code: list[str], io: IO) -> CompletionReport:
 
 def run(code: list[str], io: IO) -> None:
     """Run Taglate, applying pure batched rotation/pop transitions."""
-    _execute(code, io)
+    prepare_machine(code, {}).run(io)
 
 
 if __name__ == "__main__":

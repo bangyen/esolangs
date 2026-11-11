@@ -35,7 +35,7 @@ Decisions:
 
 from collections.abc import Mapping
 from itertools import chain
-from typing import Any
+from typing import Any, NamedTuple
 
 from esolangs.languages.slow_acv_mammalian.dialect import ARRAYS as _ARRAYS
 from esolangs.languages.slow_acv_mammalian.dialect import (
@@ -46,7 +46,7 @@ from esolangs.languages.slow_acv_mammalian.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -225,21 +225,42 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _Image(NamedTuple):
+    moduli: MammalianModuli
+    tokens: tuple[str, ...]
+
+
+def _prepare_source(
+    code: str, *, cell_modulus: int, io_modulus: int, leapfrog_resume: str
+) -> _Image:
+    moduli = MammalianModuli(cell_modulus, io_modulus, leapfrog_resume)
+    return _Image(moduli, _tokens(code))
+
+
 class _Machine:
     """One SLOW ACV MAMMALIAN run: the 23 arrays, pointer, acc, and cursor."""
 
     def __init__(
         self,
-        code: str,
+        code: str | _Image,
         io: IO,
         *,
         cell_modulus: int = DEFAULT_MODULI.cell_modulus,
         io_modulus: int = DEFAULT_MODULI.io_modulus,
         leapfrog_resume: str = DEFAULT_MODULI.leapfrog_resume,
     ) -> None:
-        self.moduli = MammalianModuli(cell_modulus, io_modulus, leapfrog_resume)
+        image = (
+            _prepare_source(
+                code,
+                cell_modulus=cell_modulus,
+                io_modulus=io_modulus,
+                leapfrog_resume=leapfrog_resume,
+            )
+            if isinstance(code, str)
+            else code
+        )
+        self.moduli, self.tokens = image
         self.io = io
-        self.tokens = _tokens(code)
         self.lst: _Arrays = tuple((0,) for _ in range(_ARRAYS))
         self.ind = self.ptr = self.acc = 0
         self._halted_by_command = False
@@ -314,32 +335,23 @@ class _Machine:
         self._restore(_advance(self._state, n, byte, moduli=self.moduli))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain validated commands and dialect for each invocation."""
     if not isinstance(source, str):
         raise TypeError("slow_acv_mammalian machines require text source")
     if options.keys() - {"cell_modulus", "io_modulus", "leapfrog_resume"}:
         raise TypeError("Mammalian machines accept only declared dialect options")
-    cell_modulus = options.get("cell_modulus", DEFAULT_MODULI.cell_modulus)
-    io_modulus = options.get("io_modulus", DEFAULT_MODULI.io_modulus)
-    leapfrog_resume = options.get("leapfrog_resume", DEFAULT_MODULI.leapfrog_resume)
-
-    def build(io: IO) -> _Machine:
-        return _Machine(
-            source,
-            io,
-            cell_modulus=cell_modulus,
-            io_modulus=io_modulus,
-            leapfrog_resume=leapfrog_resume,
-        )
-
-    return build
+    image = _prepare_source(
+        source,
+        cell_modulus=options.get("cell_modulus", DEFAULT_MODULI.cell_modulus),
+        io_modulus=options.get("io_modulus", DEFAULT_MODULI.io_modulus),
+        leapfrog_resume=options.get("leapfrog_resume", DEFAULT_MODULI.leapfrog_resume),
+    )
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
 def _execute(
-    code: str,
+    code: str | _Image,
     io: IO,
     *,
     cell_modulus: int = DEFAULT_MODULI.cell_modulus,

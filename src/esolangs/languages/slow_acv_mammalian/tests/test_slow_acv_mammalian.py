@@ -80,6 +80,22 @@ class TestMammalian:
         assert machine.acc == 256
         assert machine.io.getvalue() == printed
 
+    def test_prepared_program_reuses_commands_and_io_modulus(self, monkeypatch) -> None:
+        import esolangs
+        from esolangs.languages.slow_acv_mammalian import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        settings = esolangs.Language("SLOW ACV MAMMALIAN").settings(io_modulus=256)
+        check_image_reuse(
+            "SLOW ACV MAMMALIAN",
+            "SEED ACCEPT\nDIGEST PRONOUNCE",
+            interpreter,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("ÿ", "\x00"), ("A", "B"), ("B", "C")),
+            settings=settings,
+        )
+
     def test_seed_wraps_its_register_at_a_byte(self) -> None:
         """``SEED``'s addition wraps too, at the same 256."""
         machine = _Machine("CONSUME ACCEPT SEED", ScriptedIO("\xff\n"))
