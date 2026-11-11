@@ -16,7 +16,8 @@ def test_rotfuck_rotation_reaches_every_execution_path(isolated) -> None:
     The generator follows the choice: it emits a forward program that answers
     the table when run forward.
     """
-    forward = esolangs.Language("Rotfuck").settings(rotation="forward")
+    api = esolangs.Language("Rotfuck")
+    forward = api.settings(rotation="forward")
     assert run("ROTfuck", ",[", stdin="x", isolated=isolated).output == "x"
     assert (
         run("ROTfuck", ",,", stdin="x", settings=forward, isolated=isolated).output
@@ -35,3 +36,11 @@ def test_rotfuck_rotation_reaches_every_execution_path(isolated) -> None:
         run("ROTfuck", generated, stdin="1", settings=forward, isolated=isolated).output
         == "1"
     )
+
+    prepared = api.prepare(",,", settings=forward)
+    left, right = prepared.make_vm(stdin="A"), prepared.make_vm(stdin="B")
+    before = right.snapshot()
+    assert complete_vm(left, 100) == "A"
+    assert right.snapshot() == before
+    assert complete_vm(right, 100) == "B"
+    assert prepared.run(stdin="C", isolated=isolated).output == "C"

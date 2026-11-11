@@ -39,7 +39,7 @@ from esolangs.languages.rotfuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -111,16 +111,19 @@ def _jump(chars: tuple[str, ...], rot: int, ind: int, cycle: str) -> int:
     return partner + 1
 
 
+type _Image = tuple[tuple[str, ...], str]
+
+
+def _prepare_source(code: str, rotation: str) -> _Image:
+    return tuple(code), ROTFUCK_CYCLES[validate_rotation(rotation)]
+
+
 class _Program:
     """A ROTfuck program with an implicit rotation count."""
 
-    def __init__(self, code: str, cycle: str) -> None:
-        """Store ``code`` with a zero rotation count."""
-        # The source never changes -- only the rotation count does -- so the
-        # tuple every caller wants is built once here rather than per
-        # lookup.  It was rebuilt on each ``at`` call, an O(len(code)) copy
-        # to read one character, which alone was 15% of a run.
-        self._chars = tuple(code)
+    def __init__(self, chars: tuple[str, ...], cycle: str) -> None:
+        """Bind immutable source to a zero rotation count."""
+        self._chars = chars
         self._rot = 0
         self.cycle = cycle
 
@@ -196,14 +199,19 @@ class _Machine:
     Rotation, tape and cursor determine the next command, so a revisit is a cycle.
     """
 
-    def __init__(self, code: str, io: IO, *, rotation: str = "backward") -> None:
+    def __init__(
+        self, code: str | _Image, io: IO, *, rotation: str = "backward"
+    ) -> None:
         """Start with an empty tape at the origin and a fresh program."""
         self.io = io
-        self.prog = _Program(code, ROTFUCK_CYCLES[validate_rotation(rotation)])
+        chars, cycle = (
+            _prepare_source(code, rotation) if isinstance(code, str) else code
+        )
+        self.prog = _Program(chars, cycle)
         self.tape: tuple[int, ...] = (0,)
         self.ptr = 0
         self.ind = 0
-        self._size = len(code)
+        self._size = len(chars)
 
     @property
     def halted(self) -> bool:
@@ -269,23 +277,19 @@ class _Machine:
         self._restore(_advance(self._state, self.prog.chars(), byte, self.prog.cycle))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the source characters and selected rotation cycle."""
     if not isinstance(source, str):
         raise TypeError("rotfuck machines require text source")
     if options.keys() - {"rotation"}:
         raise TypeError("rotfuck machines accept only the rotation runtime option")
-    rotation = options.get("rotation", "backward")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io, rotation=rotation)
-
-    return build
+    image = _prepare_source(source, options.get("rotation", "backward"))
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO, *, rotation: str = "backward") -> CompletionReport:
+def _execute(
+    code: str | _Image, io: IO, *, rotation: str = "backward"
+) -> CompletionReport:
     """Run a ROTfuck program through its pure transition."""
     return drive(_Machine(code, io, rotation=rotation), policy=CAPABILITIES.completion)
 
