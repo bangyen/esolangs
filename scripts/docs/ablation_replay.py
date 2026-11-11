@@ -17,11 +17,11 @@ from pathlib import Path
 from typing import Any
 
 import esolangs
-from esolangs._bindings import runs
 from esolangs.artifacts import Artifact
 from esolangs.generation.helpers import grid_area
+from esolangs.portable import decode_settings
 from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, template_char
 from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import run_guard as _run
 from esolangs.runtime._source import text_source
@@ -253,7 +253,10 @@ def _baseline(
     code = (
         "import esolangs,json,sys; r=json.load(sys.stdin); "
         "p=esolangs.generate(r['language'],r['table'],balance=r['balanced']); "
-        "print(esolangs.dump_program(r['language'],p))"
+        "d=json.loads(esolangs.dump_program(r['language'],p)); "
+        "fields=('format','version','language','settings',"
+        "'kind','source','char','setters'); "
+        "print(json.dumps({k:d[k] for k in fields} if d['kind']=='template' else d))"
     )
     import os
 
@@ -269,10 +272,47 @@ def _baseline(
     )
     document = json.loads(generated.stdout)
     if document["kind"] == "template":
-        document["spans"] = runs(
-            document["source"], document["char"], document["setters"]
+        fields = {
+            "format",
+            "version",
+            "language",
+            "settings",
+            "kind",
+            "source",
+            "char",
+            "setters",
+        }
+        pairs = document["setters"]
+        if (
+            set(document) != fields
+            or document["format"] != "esolangs.program"
+            or type(document["version"]) is not int
+            or document["version"] != 1
+            or document["language"] != language
+            or document["char"] != template_char(LANGUAGES[language].id)
+            or not isinstance(pairs, list)
+            or any(
+                not isinstance(pair, list)
+                or len(pair) != 2
+                or any(not isinstance(item, str) for item in pair)
+                for pair in pairs
+            )
+        ):
+            raise AuditError("invalid baseline template")
+        try:
+            json.dumps(document, ensure_ascii=False).encode("utf-8")
+        except UnicodeEncodeError as error:
+            raise AuditError("baseline template is not UTF-8") from error
+        bindings = esolangs.TemplateBindings(
+            document["char"], tuple(tuple(pair) for pair in pairs)
         )
-    return esolangs.load_program(language, json.dumps(document))
+        return esolangs.TemplateArtifact(
+            document["source"],
+            language,
+            bindings,
+            decode_settings(document["settings"], language),
+        )
+    return esolangs.load_program(language, generated.stdout)
 
 
 def _source_size(artifact: Artifact, unit: str) -> int:

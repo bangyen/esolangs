@@ -8,7 +8,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
-from esolangs.cli import HELP
+from esolangs.cli.help import help_text
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
@@ -167,7 +167,7 @@ class TestASeedMakesARunRepeat:
         assert drawing
         with pytest.raises(esolangs.ArgumentError) as caught:
             run(REFERENCE, "+++.", stdin="", timeout=5, seed=1)
-        seed_help = " ".join(HELP["run"].split("\n  --seed N", 1)[1].split())
+        seed_help = " ".join(help_text("run").split("\n  --seed N", 1)[1].split())
         for name in drawing:
             assert name in str(caught.value)
             assert esolangs.describe(name)["random"], name
@@ -188,10 +188,10 @@ class TestASeedMakesARunRepeat:
             if esolangs.describe(name)["answer_mode"] == "termination"
         ]
         assert halting
-        text = " ".join(HELP["read-answer"].split())
+        text = " ".join(help_text("read-answer").split())
         for name in halting:
             assert name in text, f"read-answer --help omits {name}"
-        assert not any(name in HELP["run"] for name in halting)
+        assert not any(name in help_text("run") for name in halting)
 
     def test_the_cli_takes_one(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
@@ -217,7 +217,7 @@ class TestASeedMakesARunRepeat:
 
     def test_the_help_mentions_it(self) -> None:
         """A flag nobody can find is a flag nobody has."""
-        assert "--seed" in HELP["run"]
+        assert "--seed" in help_text("run")
 
 
 def test_width_floor_matches_its_source_and_overrun_count() -> None:

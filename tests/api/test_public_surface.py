@@ -133,7 +133,7 @@ class TestPackageSurface:
         Collected from the source: literal ``sys.exit``/``_fail`` codes,
         ``*_EXIT`` constants, and ``_exit_code``'s returns.
         """
-        from esolangs.cli import HELP, USAGE
+        from esolangs.cli.help import USAGE, help_text
 
         raised: set[int] = set()
         for path in (ROOT / "src" / "esolangs" / "cli").glob("*.py"):
@@ -173,14 +173,14 @@ class TestPackageSurface:
             return {int(code) for code in re.findall(r"\b(\d+) ", paragraph)}
 
         assert documented(USAGE) == raised
-        assert documented(HELP["run"]) == raised
+        assert documented(help_text("run")) == raised
         usage = (ROOT / "docs" / "usage.md").read_text(encoding="utf-8")
         policy = usage[usage.index("## Compatibility") :]
         assert documented(policy.replace("exit statuses:", "exit codes:")) == raised
 
     def test_every_option_is_indexed_in_usage(self) -> None:
         """Most flags were in ``--help`` only (2.0 audit), and they freeze too."""
-        from esolangs.cli import HELP
+        from esolangs.cli.help import COMMANDS, help_text
 
         usage = (ROOT / "docs" / "usage.md").read_text(encoding="utf-8")
         table = usage[usage.index("| Option | Commands | Does |") :].split("\n\n")[0]
@@ -191,8 +191,8 @@ class TestPackageSurface:
             for flag in re.findall(r"--[a-z-]+", cells[1])
             for commands in [{c.strip() for c in cells[2].split(",")}]
         }
-        for command, text in HELP.items():
-            synopsis = text.split("\n\n")[0]
+        for command in COMMANDS:
+            synopsis = help_text(command).split("\n\n")[0]
             for flag in re.findall(r"--[a-z-]+", synopsis):
                 assert command in rows.get(flag, set()), (command, flag)
 

@@ -16,7 +16,7 @@ import pytest
 
 import esolangs
 from esolangs import encode_inputs, generate
-from esolangs.cli import HELP, USAGE
+from esolangs.cli.help import COMMANDS, USAGE, help_text
 from esolangs.registry import LANGUAGES
 
 ROOT = pathlib.Path(__file__).parents[2]
@@ -30,8 +30,8 @@ _LANGUAGES = {name.lower(): name for name in LANGUAGES}
 def _documents() -> dict[str, str]:
     """Return every document that can contain a command."""
     found = {"README.md": (ROOT / "README.md").read_text(), "usage": USAGE}
-    for name, text in HELP.items():
-        found[f"{name} --help"] = text
+    for name in COMMANDS:
+        found[f"{name} --help"] = help_text(name)
     # Recursive: a doc moved into a subfolder must not silently leave this
     # sweep.  The key is the path relative to ROOT, not the bare name, so two
     # files sharing a name in different folders cannot collide into one entry.
@@ -154,7 +154,7 @@ def test_the_documents_really_do_contain_commands() -> None:
 def test_the_usage_guide_names_every_command() -> None:
     """A command reachable only from ``--help`` is one a reader does not find."""
     text = (ROOT / "docs" / "usage.md").read_text()
-    missing = [command for command in HELP if f"`{command}`" not in text]
+    missing = [command for command in COMMANDS if f"`{command}`" not in text]
     assert not missing, f"docs/usage.md never names: {', '.join(sorted(missing))}"
 
 

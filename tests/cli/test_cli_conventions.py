@@ -8,8 +8,9 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import cli
 from esolangs._dialect import DialectSchema
-from esolangs.cli import HELP, USAGE
+from esolangs.cli.help import COMMANDS, USAGE, help_text
 from esolangs.registry import wiki_url
 from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
@@ -178,7 +179,8 @@ class TestTheTopLevelUsageKeepsUp:
 
     def test_every_command_is_listed(self) -> None:
         """A command absent from the summary is a command nobody finds."""
-        for command in HELP:
+        assert not hasattr(cli, "HELP")
+        for command in COMMANDS:
             assert self._entry(command)
 
     def test_commands_are_grouped_by_who_supplies_the_program(self) -> None:
@@ -196,10 +198,10 @@ class TestTheTopLevelUsageKeepsUp:
         assert catalog < USAGE.index("describe ")
         assert "Boolean measurement" not in USAGE
 
-    @pytest.mark.parametrize("command", sorted(HELP))
+    @pytest.mark.parametrize("command", sorted(COMMANDS))
     def test_every_documented_flag_is_summarised(self, command: str) -> None:
         """Read off each subcommand's own usage line, so it cannot drift."""
-        head = HELP[command].split("\n\n")[0]
+        head = help_text(command).split("\n\n")[0]
         if "[options]" in head:
             return
         flags = sorted(set(re.findall(r"--[a-z-]+", head)))

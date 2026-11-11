@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import cli
-from esolangs.cli import HELP
+from esolangs.cli.help import help_text
 from tests.support.cli_support import _LOOPS, _program, _refused, call_both, call_main
 from tests.support.generator_support import evaluate_generated
 from tests.support.pick import languages
@@ -149,7 +149,7 @@ class TestTheDocumentedExitCodesAreTheRealOnes:
 
     def test_the_help_lists_them(self) -> None:
         """The claim has to be in the text a reader is pointed at."""
-        text = HELP["run"]
+        text = help_text("run")
         for code in ("0 ran", "124", "130"):
             assert code in text
         assert "distinct from a program error's 1" not in text

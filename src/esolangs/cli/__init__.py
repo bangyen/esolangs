@@ -89,13 +89,6 @@ def describe(language: str) -> LanguageInfo:
     return describe_language(language)
 
 
-def __getattr__(name: str) -> dict[str, str]:
-    """Expose rendered help to callers that request it."""
-    if name == "HELP":
-        return {command: help_text(command) for command in COMMANDS}
-    raise AttributeError(name)
-
-
 def _encode(rest: list[str]) -> None:
     """Print the stdin that feeds a language its input bits."""
     rest = _split_positional(rest, set())
