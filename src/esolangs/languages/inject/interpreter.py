@@ -44,14 +44,14 @@ Decisions:
 import re
 from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Any
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.inject.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -63,7 +63,7 @@ from esolangs.runtime.source_hints import syntax_error
 _LABEL = re.compile(r"(\w+);")
 
 
-def _spans(lines: list[str]) -> dict[str, tuple[int, int]]:
+def _spans(lines: tuple[str, ...]) -> dict[str, tuple[int, int]]:
     """Return each label's ``(begin, end)`` delimiter line numbers.
 
     A third occurrence, or a block left open, is a syntax error.
@@ -94,6 +94,18 @@ def _spans(lines: list[str]) -> dict[str, tuple[int, int]]:
 
 #: A label's two delimiter line numbers, by name.
 type _Spans = Mapping[str, tuple[int, int]]
+
+
+class _Image(NamedTuple):
+    lines: tuple[str, ...]
+    spans: _Spans
+
+
+def _parse(code: str | list[str]) -> _Image:
+    """Retain the initial text and validated label spans."""
+    lines = tuple(code.split("\n")) if isinstance(code, str) else tuple(code)
+    return _Image(lines, MappingProxyType(_spans(lines)))
+
 
 #: One instant of a run: ``(lines, spans, ind, done)`` -- the program text,
 #: the label spans over it, the line cursor, and whether ``skip``'s third
@@ -299,9 +311,10 @@ class _Machine:
 
     eof_is_a_value = True
 
-    def __init__(self, code: str | list[str], io: IO) -> None:
-        self.lines = code.split("\n") if isinstance(code, str) else list(code)
-        self.spans = _spans(self.lines)
+    def __init__(self, code: str | list[str] | _Image, io: IO) -> None:
+        image = code if isinstance(code, _Image) else _parse(code)
+        self.lines = list(image.lines)
+        self.spans = dict(image.spans)
         self.io = io
         self._input_reads = 0
         self.ind = 0
@@ -398,23 +411,22 @@ class _Machine:
             self.io.print_str(text)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Share parsed source across independently self-modifying runs."""
     if not isinstance(source, (str, list)):
         raise TypeError("inject machines require text or split text source")
-    code = tuple(source) if isinstance(source, list) else source
     if options:
         raise TypeError("inject machines accept no runtime options")
 
+    image = _parse(source)
+
     def build(io: IO) -> _Machine:
-        return _Machine(list(code) if isinstance(code, tuple) else code, io)
+        return _Machine(image, io)
 
-    return build
+    return RuntimePlan(build, lambda io: _execute(image, io))
 
 
-def _execute(code: str | list[str], io: IO) -> CompletionReport:
+def _execute(code: str | list[str] | _Image, io: IO) -> CompletionReport:
     """Run an Inject program to completion."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

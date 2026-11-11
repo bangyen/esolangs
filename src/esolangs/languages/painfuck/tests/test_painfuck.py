@@ -448,6 +448,15 @@ def test_branching_search_leaves_input_and_wide_coin_paths_undecided() -> None:
         )
 
 
+def test_prepared_runs_reuse_translation_with_fresh_randomness(monkeypatch) -> None:
+    from esolangs.languages.painfuck import interpreter
+    from tests.support.prepared_support import check_random_plan_reuse
+
+    check_random_plan_reuse(
+        "Painfuck", _encode("cypoe"), interpreter, "_translate", monkeypatch
+    )
+
+
 def test_stepping_through_the_random_instruction_is_reproducible() -> None:
     """Its random instruction steps the same way twice under one seed."""
     assert_random_steps_reproduce("Painfuck", "y")

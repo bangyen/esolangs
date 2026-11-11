@@ -73,14 +73,14 @@ Decisions:
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.painfuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -108,6 +108,10 @@ def _translate(code: str) -> str:
                 k += 1
                 break
     return "".join(prog)
+
+
+class _Image(NamedTuple):
+    program: str
 
 
 #: ``(tape, loop, ptr, ind, rep, origin)``: cells, loop-entry stack,
@@ -624,8 +628,10 @@ class _Machine:
     exclude it.
     """
 
-    def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
-        """Translate ``code`` and start at the first command.
+    def __init__(
+        self, code: str | _Image, io: IO, rng: Randomness | None = None
+    ) -> None:
+        """Start at the first command of the translated program.
 
         ``rng`` overrides ``y``'s coin flip; ``None`` draws for real.
         """
@@ -633,7 +639,7 @@ class _Machine:
         self._input_reads = 0
         self._random_draws = 0
         self._rng = rng
-        self.prog = _translate(code)
+        self.prog = _translate(code) if isinstance(code, str) else code.program
         self.n = len(self.prog)
         self.tape: tuple[int, ...] = (0,)
         self.loop: tuple[int, ...] = ()
@@ -801,23 +807,26 @@ class _Machine:
         self.io.print_str(piece * effect.count)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind text and caller-owned RNG; construct state only when IO is supplied."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Translate source once and bind randomness for each invocation."""
     if not isinstance(source, str):
         raise TypeError("painfuck machines require text source")
     if options.keys() - {"rng"}:
         raise TypeError("painfuck machines accept only the rng runtime option")
-    rng = options.get("rng")
+    image = _Image(_translate(source))
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io, rng)
+    def build(io: IO, rng: Randomness | None) -> _Machine:
+        return _Machine(image, io, rng)
 
-    return build
+    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+        return _execute(image, io, rng)
+
+    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
 
 
-def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:
+def _execute(
+    code: str | _Image, io: IO, rng: Randomness | None = None
+) -> CompletionReport:
     """Run a Painfuck program, flipping ``y``'s coin with ``rng``.
 
     ``None`` draws for real.  Same signature as the other random-drawing runs.

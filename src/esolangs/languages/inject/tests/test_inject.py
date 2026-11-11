@@ -72,6 +72,20 @@ def _machine(program: Any) -> _Machine:
     return _Machine(program, ScriptedIO("0\n"))
 
 
+def test_prepared_runs_reuse_the_initial_blocks(monkeypatch) -> None:
+    from esolangs.languages.inject import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Inject",
+        "readto data\nsend data\nskip\ndata;\nold\ndata;",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("A\n", "A\n"), ("Z\n", "Z\n"), ("Q\n", "Q\n")),
+    )
+
+
 class TestWikiExamples:
     def test_hello_world(self) -> None:
         """The block is sent, then skipped over rather than executed."""
