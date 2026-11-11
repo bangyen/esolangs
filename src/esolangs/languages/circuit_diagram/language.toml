@@ -122,6 +122,22 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
 
+[[evidence.anchors]]
+arity = 8
+rule = "dense"
+size = 52057
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
+
+[[evidence.anchors]]
+arity = 9
+rule = "dense"
+size = 106751
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
+
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"

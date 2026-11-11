@@ -8,5 +8,4 @@ CERTIFICATION = CertificationSpec(
     # reason, and its area recurrence is checked with the construction
     # invariants.
     scaling_rungs=(8, 9),
-    documented_sizes=(52_057, 106_751, 2.05),
 )

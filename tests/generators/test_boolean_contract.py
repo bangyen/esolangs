@@ -239,22 +239,6 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
     assert len(essential_inputs(table, _ONE_MINTERM_ARITY)) == _ONE_MINTERM_ARITY
 
 
-#: What ``docs/limitations.md`` says the expensive generators cost, as
-#: ``(n=8 size, n=9 size, growth per input)``.  Sizes are exact because a
-#: program's length is deterministic for a fixed generator and table; the
-#: ratio carries a band because it drifts a little with arity.
-#:
-#: Timings are deliberately absent.  The document states a few and calls
-#: them approximate, and asserting one here would fail whenever the machine
-#: is busy -- which, on a suite that runs four workers, is always.
-#: Each language holds its row in ``certification.documented_sizes``.
-_DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    name: load_certification(lang).documented_sizes
-    for name, lang in LANGUAGES.items()
-    if load_certification(lang).documented_sizes is not None
-}
-
-
 #: Every generator is held to linear source growth but the ones the ledger
 #: bounds below by the language itself (its ``lower bound`` scaling rows).
 _LANGUAGE_SUPERLINEAR_SCALING = {
@@ -304,29 +288,15 @@ def test_generators_scale_linearly(name: str) -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("name", sorted(_DOCUMENTED_SIZES))
-def test_the_expensive_generators_grow_as_documented(name: str) -> None:
-    """``docs/limitations.md`` tells a reader whether n=11 is affordable."""
-    at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
-    sizes = (len(esolangs.generate(name, dense(n)).source) for n in (8, 9))
-    assert tuple(sizes) == (at_eight, at_nine), (
-        f"{name}'s dense n=8 and n=9 sizes moved; update its "
-        "documented_sizes= in its CertificationSpec"
-    )
-    assert at_nine / at_eight == pytest.approx(ratio, abs=0.35)
-
-
-@pytest.mark.slow
-def test_nothing_else_is_anywhere_near_that_big() -> None:
-    """The document's "every other generator is under 600KB at n=9"."""
+def test_dense_source_stays_under_the_catalog_ceiling() -> None:
+    """Check the catalog text ceiling on dense nine-input tables."""
     for lang in LANGUAGES.values():
         if load_certification(lang).benchmark_tables:
             assert_proved_resource_cap(lang.name)
     biggest = max(
         (len(esolangs.generate(name, dense(9)).source), name)
         for name in esolangs.list_languages()
-        if name not in _DOCUMENTED_SIZES
-        and LANGUAGES[name].backend is not None
+        if LANGUAGES[name].backend is not None
         and not load_certification(LANGUAGES[name]).benchmark_tables
         and esolangs.describe(name)["source_kind"] == "text"
     )
@@ -337,8 +307,4 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
     # lowering.  The leader is not pinned: a new language may take the lead
     # without breaking the claim, which is only the ceiling.
     size, name = biggest
-    assert size < 600_000, (
-        f"{name} emits {size} characters for a dense n=9 table; shrink its "
-        "generator, or document it and set documented_sizes= in its CertificationSpec "
-        "with its n=8 and n=9 sizes"
-    )
+    assert size < 600_000, f"{name} emits {size} characters for a dense n=9 table"

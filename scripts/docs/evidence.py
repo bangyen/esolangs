@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import random
+import re
 import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -12,8 +14,28 @@ from typing import Any
 from esolangs.registry import LANGUAGES
 
 PACKAGES = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
-_RULES = frozenset({"parity", "and", "or", "majority", "zero", "random"})
+_RULES = frozenset({"parity", "and", "or", "majority", "zero", "random", "dense"})
+SOURCE_ANCHOR = re.compile(
+    r"n=(\d+)\s+(parity|and|or|majority|zero|dense|random\s+-?\d+):\s*"
+    r"([\d,]+)\s+(chars|codels|pixels)"
+)
 _UNITS = frozenset({"chars", "codels", "pixels"})
+
+
+def dense(n: int, key: bytes | None = None) -> str:
+    """A deterministic pseudo-random table, the worst case to fold.
+
+    With ``key`` every arity extends the one below it; without, each
+    arity draws its own bits.
+    """
+    digest = hashlib.sha256(key or f"dense:{n}".encode()).digest()
+    bits: list[str] = []
+    block = 0
+    while len(bits) < 1 << n:
+        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+        bits.extend(str(byte & 1) for byte in digest)
+        block += 1
+    return "".join(bits[: 1 << n])
 
 
 @dataclass(frozen=True)
@@ -43,6 +65,8 @@ class TableWitness:
     def table(self) -> str:
         """Return the witness in MSB-first row order."""
         n = self.arity
+        if self.rule == "dense":
+            return dense(n)
         if self.rule == "random":
             return format(random.Random(self.seed).getrandbits(1 << n), f"0{1 << n}b")
         rules: dict[str, Callable[[int], int]] = {
@@ -155,7 +179,6 @@ def render_source_anchors(source: str, anchors: tuple[SourceAnchor, ...]) -> str
     duplicated or undeclared witnesses instead of manufacturing an anchor.
     """
     import ast
-    import re
     import tokenize
     from io import StringIO
 
@@ -166,10 +189,6 @@ def render_source_anchors(source: str, anchors: tuple[SourceAnchor, ...]) -> str
         t
         for t in tokenize.generate_tokens(StringIO(source).readline)
         if t.type == tokenize.STRING
-    )
-    pattern = re.compile(
-        r"n=(\d+)\s+(parity|and|or|majority|zero|random\s+-?\d+):\s*"
-        r"([\d,]+)\s+(chars|codels|pixels)"
     )
     expected = {(a.witness.arity, a.witness.name, a.unit): a for a in anchors}
     seen = set()
@@ -186,7 +205,7 @@ def render_source_anchors(source: str, anchors: tuple[SourceAnchor, ...]) -> str
             + match[0][end - match.start() :]
         )
 
-    refreshed = pattern.sub(replace, token.string)
+    refreshed = SOURCE_ANCHOR.sub(replace, token.string)
     if seen != set(expected):
         raise ValueError(f"missing source anchors: {set(expected) - seen}")
     lines = source.splitlines(keepends=True)

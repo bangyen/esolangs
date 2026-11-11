@@ -36,6 +36,7 @@ with the root gate negated (``A``, ``O``); physical ports retain read order.
 Size:
     One pass over the table, fewer than three gates per entry; n=8 and:
     1,207 chars, n=10 parity: 211 chars, n=10 random 1847: 300,724 chars.
+    Dense witnesses are n=8 dense: 52,057 chars and n=9 dense: 106,751 chars.
     Constants use 3(n+1) cells and 2n+3 chars; n=8 zero: 19 chars.
 
 Decisions:

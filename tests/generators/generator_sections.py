@@ -5,7 +5,7 @@ The shape is the ``_GENERATOR`` stub in ``scripts/new_language.py``.
 
 import re
 
-from scripts.docs.evidence import TableWitness
+from scripts.docs.evidence import SOURCE_ANCHOR, TableWitness
 from tests.interpreters.spec_sections import section
 
 #: The sections, in the order a docstring gives them; ``Size:`` is required.
@@ -13,11 +13,6 @@ SECTIONS = ("Size", "Raises", "Decisions")
 
 #: What ``esolangs.generate`` raises beyond the shared table check.
 PUBLIC_ERRORS = frozenset({"GeneratorCapError", "ArgumentError"})
-
-#: ``n=8 parity: 1,186 chars`` -- a size ``esolangs.generate`` must reproduce.
-ANCHOR = re.compile(
-    r"n=(\d+) (parity|and|or|majority|zero|random \d+): ([\d,]+) (chars|codels|pixels)"
-)
 
 #: Short integers such as n=10 are parameters, not measured figures.
 FIGURE = re.compile(r"\d+(?:\.\d+)?%|\d+\.\d+|\d{1,3}(?:,\d{3})+|\d{3,}")
@@ -39,7 +34,7 @@ def measured(doc: str) -> set[str]:
     told = " ".join(
         line.strip() for name in ("Size", "Decisions") for line in section(doc, name)
     )
-    return figures(ANCHOR.sub("", told)) - {"10%"}
+    return figures(SOURCE_ANCHOR.sub("", told)) - {"10%"}
 
 
 def named_table(n: int, name: str) -> str:
@@ -51,8 +46,8 @@ def named_table(n: int, name: str) -> str:
 def anchors(doc: str) -> list[tuple[int, str, int, str]]:
     """Return ``(n, table name, size, unit)`` for each anchor ``Size:`` gives."""
     return [
-        (int(m[1]), m[2], int(m[3].replace(",", "")), m[4])
-        for m in ANCHOR.finditer(
+        (int(m[1]), " ".join(m[2].split()), int(m[3].replace(",", "")), m[4])
+        for m in SOURCE_ANCHOR.finditer(
             " ".join(line.strip() for line in section(doc, "Size"))
         )
     ]

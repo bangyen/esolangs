@@ -1,7 +1,8 @@
 """Named truth tables that stand in for every table of an arity."""
 
-import hashlib
 import random
+
+from scripts.docs.evidence import dense as dense
 
 
 def witnesses(n: int) -> list[str]:
@@ -26,22 +27,6 @@ def row_bits(row: int, n: int) -> list[int]:
 def parity(n: int) -> str:
     """The ``n``-input parity table: every input matters at every row."""
     return "".join(str(row.bit_count() & 1) for row in range(1 << n))
-
-
-def dense(n: int, key: bytes | None = None) -> str:
-    """A deterministic pseudo-random table, the worst case to fold.
-
-    With ``key`` every arity extends the one below it; without, each
-    arity draws its own bits.
-    """
-    digest = hashlib.sha256(key or f"dense:{n}".encode()).digest()
-    bits: list[str] = []
-    block = 0
-    while len(bits) < 1 << n:
-        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
-        bits.extend(str(byte & 1) for byte in digest)
-        block += 1
-    return "".join(bits[: 1 << n])
 
 
 def nested_dense(n: int) -> str:

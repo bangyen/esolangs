@@ -19,7 +19,6 @@ class CertificationSpec:
 
     #: Why a generator cap remains internal to certification.
     internal_cap: str = ""
-    documented_sizes: tuple[int, int, float] | None = None
     scaling_rungs: tuple[int, ...] = (8, 10, 12)
     size_bound: Callable[[int], int] | None = None
     #: Admitted controls when a generic corpus exceeds a proved cap.
