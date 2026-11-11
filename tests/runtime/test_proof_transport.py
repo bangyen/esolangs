@@ -186,13 +186,15 @@ def test_actual_branch_workers_retain_the_complete_graph():
 
 @pytest.mark.medium
 def test_proof_deadlines_keep_output_without_claiming_divergence():
-    source = "+.[>+]"
+    source = ",.+[>+]"
     with pytest.raises(esolangs.ExecutionTimeoutError) as native:
-        _termination_result(REFERENCE, source, "", 0.01)
-    assert native.value.partial_output == "\x01"
+        _termination_result(REFERENCE, source, "A", 0.01)
+    assert native.value.partial_output == "A"
+    assert native.value.execution == ExecutionResult("A", 1, 1, 0)
     with pytest.raises(esolangs.ExecutionTimeoutError) as worker:
-        termination_result_isolated(REFERENCE, source, "", 1, max_output=1)
-    assert worker.value.partial_output == "\x01"
+        termination_result_isolated(REFERENCE, source, "A", 1, max_output=1)
+    assert worker.value.partial_output == "A"
+    assert worker.value.execution is None
 
 
 def test_wire_decisions_require_proof_and_matching_counts():

@@ -112,6 +112,23 @@ def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle() -> None:
     """A port with no cursor reports position 0; the snapshot counts reads."""
     with pytest.raises(EOFError):
         run_until_halt_or_cycle(_Machine("1[,]", PositionlessIO("\n" * 10)), limit=100)
+    _check_proof_read_failure()
+
+
+def _check_proof_read_failure() -> None:
+    from esolangs.exceptions import InputExhaustedError
+    from esolangs.results import ExecutionResult
+    from esolangs.runtime._isolated import termination_result_isolated
+    from esolangs.runtime._termination import _termination_result
+
+    with pytest.raises(InputExhaustedError) as local:
+        _termination_result("Forþ", ",.,", "A", 5)
+    with pytest.raises(InputExhaustedError) as worker:
+        termination_result_isolated("Forþ", ",.,", "A", 5)
+    assert local.value.partial_output == worker.value.partial_output == "A"
+    assert (
+        local.value.execution == worker.value.execution == ExecutionResult("A", 1, 1, 1)
+    )
 
 
 class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):

@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
+from esolangs.results import ExecutionResult
 from esolangs.runtime import _termination
 from esolangs.runtime.io import ScriptedIO
 from tests.support.reference import REFERENCE
@@ -55,9 +56,18 @@ def test_an_expired_call_does_not_return_a_false_verdict():
 
 @pytest.mark.parametrize("verdict", [None, False, True])
 def test_termination_returns_without_evidence_abort(monkeypatch, verdict):
-    monkeypatch.setattr(_termination, "_halt_or_cycle_result", lambda _vm: verdict)
-    with pytest.raises(esolangs.InterpreterLimitError, match="no decision evidence"):
-        _termination._termination_result(REFERENCE, "", "", None)
+    def stop_without_proof(vm):
+        vm.step()
+        vm.step()
+        return verdict
+
+    monkeypatch.setattr(_termination, "_halt_or_cycle_result", stop_without_proof)
+    with pytest.raises(
+        esolangs.InterpreterLimitError, match="no decision evidence"
+    ) as caught:
+        _termination._termination_result(REFERENCE, ",.", "A", None)
+    assert caught.value.partial_output == "A"
+    assert caught.value.execution == ExecutionResult("A", 1, 1, 0)
 
 
 def test_a_driver_that_never_ran_does_not_prove_divergence(monkeypatch):
