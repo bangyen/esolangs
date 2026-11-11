@@ -26,18 +26,18 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from functools import lru_cache, partial
+from functools import lru_cache
 from typing import Any
 
 from esolangs.languages.malbolge.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
-from esolangs.runtime.persistent import CHUNK, chunked
+from esolangs.runtime.persistent import CHUNK, Chunked, chunked
 from esolangs.runtime.source_hints import syntax_error
 
 #: Instruction decipherment: ``(cell - 33 + c) % 94`` indexes this.
@@ -187,20 +187,29 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[tuple[int, ...], Chunked[int]]
+
+
+def _prepare_source(code: str) -> _Image:
+    memory = _initial_memory(code)
+    return memory, chunked(memory)
+
+
 class _Machine:
     """Protocol shell holding the registers and the mutable word store."""
 
     #: EOF is a value here, so an underfed program answers a different row.
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.memory = list(_initial_memory(code))
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        memory, chunks = _prepare_source(code) if isinstance(code, str) else code
+        self.memory = list(memory)
         self.io = io
         self.state: _State = (0, 0, 0, False)
         # ``snapshot``'s memory as fixed chunks, rebuilt only where a step
         # wrote: an untouched chunk stays the same object between snapshots,
         # so a per-step snapshot costs the writes, not all 59049 words.
-        self._chunks = list(chunked(self.memory))
+        self._chunks = list(chunks)
         self._dirty: set[int] = set()
         self._workspace_pages: list[tuple[int, ...]] | None = None
         self._workspace_dirty: set[int] = set()
@@ -266,18 +275,17 @@ class _Machine:
             self.io.print_char(chr(effect))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh mutable memory from the cached immutable initial image."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the immutable initial image and bind fresh memory per run."""
     if not isinstance(source, str):
         raise TypeError("malbolge machines require text source")
     if options:
         raise TypeError("malbolge machines accept no runtime options")
-    return partial(_Machine, source)
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Execute a Malbolge program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

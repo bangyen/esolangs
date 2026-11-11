@@ -11,9 +11,10 @@ def test_factory_reuses_image_with_private_memory_and_chunks():
     factory = interpreter.prepare_machine("ubO", {})
     first, second = factory(ScriptedIO()), factory(ScriptedIO("A"))
     assert interpreter._initial_memory.cache_info().misses == 1
-    assert interpreter._initial_memory.cache_info().hits == 1
+    assert interpreter._initial_memory.cache_info().hits == 0
     assert first.memory is not second.memory
     assert first._chunks is not second._chunks
+    assert first._chunks[0] is second._chunks[0]
     assert first._dirty is not second._dirty
     before = second.snapshot()
     saved = first.workspace_snapshot()
@@ -42,7 +43,12 @@ def test_factory_reuses_image_with_private_memory_and_chunks():
     first.snapshot()
     assert not first._dirty
     assert second.snapshot() == before
+    interpreter._initial_memory.cache_clear()
     third = factory(ScriptedIO("Z"))
+    native_io = ScriptedIO("Z")
+    factory.run(native_io)
+    assert native_io.getvalue() == "Z"
+    assert interpreter._initial_memory.cache_info().misses == 0
     assert third.snapshot() == before
     assert third.memory[0] == ord("u")
     for machine in (first, second):
