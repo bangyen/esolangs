@@ -106,12 +106,14 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}: byte grid, coordinates, halt latch and derived transient maxima; equality at n=5", formula = "W" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.dig.tests.formulas:_cells"
+# Every two inputs map each side s to 2s+1, from 35 by 27 at n=7
+# and 55 by 35 at n=8. The indexed decoder is smaller at n=7..9.
+expression = "((56-20(n-2⌊n/2⌋))·2^⌊(n-7)/2⌋-1)((36-8(n-2⌊n/2⌋))·2^⌊(n-7)/2⌋-1)"
 exact = [10]
 arities = [7, 8, 10]
 first = 7
 unit = "cells"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the dense table", formula = "A" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the dense table" }
 
 [semantic_evidence]
 version = 1

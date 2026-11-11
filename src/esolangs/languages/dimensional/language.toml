@@ -101,12 +101,13 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: zero runs of nine loop" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.dimensional.proof_formulas:workspace"
+# Summing bl(k) through T gives (n-1)T+n+2.
+expression = "(n+4)T+n(n-1)/2+5n+13+bl(2T+20n+40)+bl(2n-1)"
 exact = true
 arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
-description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit}", formula = "Σ_{k≤T} bl(k) + 5T + n(n-1)/2 + 4n + 11 + bl(2T+20n+40) + bl(2n-1)" }
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "2T + 20n + 42"

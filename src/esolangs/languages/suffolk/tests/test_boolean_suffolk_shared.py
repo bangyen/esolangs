@@ -26,8 +26,9 @@ def test_nor_cancels_the_targets_old_value(target, left, right) -> None:
 
 def _execute(table, program, rows):
     n = len(table).bit_length() - 1
-    from esolangs.languages.suffolk.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
 
+    workspace = resource_bounds("Suffolk")["workspace"].formula
     cap = workspace(n, program)
     peak = 0
     for row in rows:

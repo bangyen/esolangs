@@ -112,12 +112,16 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: tape and cursors", formula = "B + bl(L-1) + bl(h) + bl(n) + 1" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.circlefuck.tests.formulas:_chars"
+# Each index cell after the first adds a deleter. The batch uses ceil(n/7) cells.
+cases = [
+    { through = 2, expression = "T+52n+10" },
+    { expression = "T+34n+27+(⌈n/7⌉-1)(149(⌈n/7⌉-2)+4(n-7⌈n/7⌉+79))/2" },
+]
 exact = true
 arities = [1, 2, 3, 5, 8, 9]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the table, batched clamped reads, digit-cell walks", formula = "N" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: table, clamped reads, digit-cell walks" }
 
 [semantic_evidence]
 version = 1

@@ -118,12 +118,23 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}", formula = "bl(L-1) + max(12, bl(2n-3)+11) + n + Σ_{i<n} bl(i) + bl(2n) + bl(n)" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.boolfuck.tests.formulas:_chars"
+# The finite three-input maximum, then the inherited upper envelopes.
+#
+# Zero-child pruning lowers the exhaustive n=3 maximum to 162, reached by
+# parity with row 6 flipped. Larger arities retain their old nonexact caps;
+# the unchanged normalized gate route supplies the envelope from n=9.
+cases = [
+    { through = 2, expression = "35T/2+2n²+12n-23" },
+    { through = 3, expression = "162" },
+    { through = 7, expression = "35T/2+2n²+12n-23" },
+    { through = 8, expression = "35T/2+2n²+12n-11" },
+    { expression = "85T/8+2n²+10n+39" },
+]
 exact = [3]
 arities = [3, 4, 5, 6, 7, 8]
 first = 3
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} at n = 3, then at most C", formula = "C" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} (n=3 attained)" }
 
 [semantic_evidence]
 version = 1

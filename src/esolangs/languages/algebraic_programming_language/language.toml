@@ -101,12 +101,21 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: frame/global state", formula = "179n+400+V+W if K=0, else A(198+8d+3b)+Q(b+114)+65n+d+bl(2n-1)" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.algebraic_programming_language.tests.formulas:scaling"
+# F: the reduced diagram's worst, 10T + 4n + 6, for n = 2..14.
+#
+# A node costs 18 and its halves; the worst class pairs with its own twin,
+# one ``!`` more.  Past 14 a per-level count exceeds it, so the inline
+# tree's 21T/2 + 4n + 6 stands; n = 1 reaches 31.
+cases = [
+    { through = 1, expression = "21T/2+4n+6" },
+    { through = 14, expression = "10T+4n+6" },
+    { expression = "21T/2+4n+6" },
+]
 exact = false
 arities = [2, 3, 4, 5, 6, 8]
 first = 2
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: 10T + 4n + 6, n = 2..14", formula = "F" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1

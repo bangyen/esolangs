@@ -106,12 +106,13 @@ unit = "bits"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} from n = 3: index, stack, cursor", formula = "bl(L) + max(bl(a)+bl(a+2)+n+2, bl((c+2T-2)(c+2T-1))) + bl(2n-1)" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.ascenic.tests.formulas:_chars"
+# Flipping the first alternating pair keeps every input and loses one change point.
+expression = "2T²+(16n+44+4(n-2⌊n/2⌋))T+floor((48n²+(203+24(n-2⌊n/2⌋))n-98+39(n-2⌊n/2⌋))/2)"
 exact = [2, 3, 4, 5, 6, 7]
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "characters"
-description = { growth = "lower bound", claim = "worst", template = "{claim} {formula} {unit} from n = 2: generated Θ(T**2), N the size of the alternating table with its first pair flipped ([summary](#ascenic-bound))", formula = "N" }
+description = { growth = "lower bound", claim = "worst", template = "{claim} {formula} {unit} from n = 2: generated Θ(T**2) on the alternating table with its first pair flipped ([summary](#ascenic-bound))" }
 
 [semantic_evidence]
 version = 1

@@ -523,8 +523,9 @@ def test_coalescing_preserves_the_single_pointer_schedule() -> None:
 
 
 def _check_constants() -> None:
-    from esolangs.languages.thisthat.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
 
+    workspace = resource_bounds("thisthat")["workspace"].formula
     for n, bit, options, program in constant_programs("thisthat", range(1, 13)):
         if not options or "width" in options:
             assert (

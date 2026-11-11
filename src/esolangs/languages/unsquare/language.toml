@@ -8,7 +8,6 @@ admitted = 2021-05-25T18:40:26-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the first (n-3)//2 essential reads branch on a half of the table, each branch pushes one O/I per row, reversed, and the remaining reads pop their bit's weight in cells off the top of it"
-definitions = ["d = max(0,⌊(n-3)/2⌋) for the bound; the construction uses essential arity m in place of n"]
 
 [catalogue]
 folding_constant = "a constant run is one counted Horner loop (_run), log-sized; a constant table is one run"
@@ -80,28 +79,32 @@ version = 2
 construction = "esolangs.languages.unsquare.generator:unsquare_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.unsquare.tests.formulas:_commands"
+# A leaf of S cells pushes in at most 3S commands and pops in S.
+# Equality needs S=12a+14b; S=16 and S=32 only reach 3S-2.
+# Each row pays 79 commands per pop read, 82 per branch read and 27
+# for the tail. The generator uses essential arity for its branch depth.
+expression = "4T/2^max(0,⌊(n-3)/2⌋)+79n+3max(0,⌊(n-3)/2⌋)+26"
 exact = true
 arities = [8, 9]
 first = 8
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: 12- or 14-cell loops, one half pushed and popped", formula = "4T/2^d + 79n + 3d + 26" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: 12- or 14-cell loops, one half pushed and popped" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.unsquare.tests.formulas:_bits"
+expression = "T/2^max(0,⌊(n-3)/2⌋)+12+(max(0,⌊(n-3)/2⌋)+1)bl(L)+bl(max(0,L-33))+2bl(n)"
 exact = false
 arities = [1, 2, 3, 6, 7]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one half's cells on the stack", formula = "T/2^d + 12 + (d+1)bl(L) + bl(max(0,L-33)) + 2bl(n)" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one half's cells on the stack" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.unsquare.tests.formulas:_chars"
+expression = "T+T/2^max(0,⌊(n-3)/2⌋)+16·2^max(0,⌊(n-3)/2⌋)+10(n-max(0,⌊(n-3)/2⌋))+10"
 exact = [2, 3, 4, 5, 6, 7, 8, 9]
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}", formula = "T + T/2^d + 16·2^d + 10(n-d) + 10" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]
 version = 1

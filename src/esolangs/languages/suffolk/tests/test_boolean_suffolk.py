@@ -93,8 +93,9 @@ class TestSuffolk:
 
 def _check_stored_input_records() -> None:
     from esolangs.languages.suffolk.interpreter import _Machine
-    from esolangs.languages.suffolk.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
 
+    workspace = resource_bounds("Suffolk")["workspace"].formula
     for n in (2, 6, 8):
         for ignored in (False, True):
             table = "".join(

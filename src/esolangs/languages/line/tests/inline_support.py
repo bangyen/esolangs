@@ -4,7 +4,6 @@ import random
 
 from esolangs.languages.line.generator import balance, line
 from esolangs.languages.line.interpreter import _Machine
-from esolangs.languages.line.proof_formulas import workspace
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
 from scripts.docs.resource_evidence import resource_bounds
@@ -28,6 +27,7 @@ def _native(table: str, *, balanced: bool) -> int:
         image = balance(table, image)
     image = Raster.from_png(image.to_png())
     machine = _Machine(image, _ReadFirstIO("0" * n))
+    workspace = resource_bounds("Line")["workspace"].formula
     maximum = 0
     cap = (
         5 * n

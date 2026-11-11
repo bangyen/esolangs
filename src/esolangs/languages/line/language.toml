@@ -107,12 +107,13 @@ unit = "commands"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} by default, with balanced layouts retaining the first bound" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.line.proof_formulas:workspace"
+# The tape widths sum to n·bl(n-1)-2^bl(n-1)+2: zero costs one bit.
+expression = "2n+1+bl(3n-2)+bl(n-1)+bl(2n-1)+(n·bl(n-1)-2^bl(n-1)+2)"
 exact = true
 arities = [5]
 first = 5
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} from n=5", formula = "n + 1 + bl(3n-2) + bl(n-1) + bl(2n-1) + Σ_{c<n} (max(1,bl(c)) + 1)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} from n=5" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.line.tests.formulas:_pixels"

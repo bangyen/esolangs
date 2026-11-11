@@ -8,7 +8,6 @@ admitted = 2020-07-13T01:25:59-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "workspace-limited NOR cofactors share computed values; fallback stores inputs through n=10 and uses the original countdown beyond"
-definitions = ["W = bl(L-1)+max(6,n-1)+max(19,4n-1)+bl(n)+4, plus 3+max(0,n-6)+bl(max(7,n+1)) through n=10"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 548, "1" = 548, "2" = 548, "3" = 548, "4" = 548, "5" = 548, "6" = 548, "7" = 548 }, source_units = 489 }
@@ -92,20 +91,46 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, R the prefix through the first read: one pass, then EOF", formula = "L + R" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.suffolk.proof_formulas:workspace"
+# Old sweep envelope plus binary storage and its pointer growth.
+cases = [
+    { through = 10, expression = "bl(L-1)+max(6,n-1)+max(19,4n-1)+bl(n)+7+max(0,n-6)+bl(max(7,n+1))" },
+    { expression = "bl(L-1)+max(6,n-1)+max(19,4n-1)+bl(n)+4" },
+]
 exact = false
 arities = [3, 5, 6]
 first = 3
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} from n=3: input storage and countdown", formula = "W" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula}: input storage and countdown" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.suffolk.tests.formulas:_chars"
+# L* - [n >= 7] for n <= 12, L* - 9 from n = 13 (L* below).
+#
+# The old L* = (17T + 316n + 482)/2 gains the prefix delta below.
+# Storage changes no table-step costs, DAG nodes or ledger admissions;
+# the same witnesses and exclusions apply (their admitted DAGs still win).
+# From physical n=11 the original reader returns with mandatory resets,
+# so delta is 38.
+# The sweep is a constant plus a cost per half
+# that depends only on the half's skipped rounds j (rounds without a step):
+# floor(j/2) * (9 or 13) + (j odd), strictly rising in the steps, and two
+# fully alternating halves are equal (the top input ignored), so no table
+# exceeds L*.  Tables with j <= 2 in all have at most j(n - 2) + 3 DAG
+# nodes: L* (one skip) and L* - 1 (one in each half) lose to the DAG from
+# n = 7 and n = 13 (the node limit passes 2n - 1), and so does j0 = 2 at
+# L* - 8.  The next sweeps (two skips in the first half, one in the second,
+# or three in the first) have 3n - 5 nodes against a limit under 3n - 8 -
+# bl(n), so they ship L* - 9, the worst.
+cases = [
+    { through = 6, expression = "9T+52n+289+(2n²-max(2,n)(max(2,n)+1))/2" },
+    { through = 10, expression = "289T/32+n²+56n+241" },
+    { through = 12, expression = "(17T+316n+482)/2+37" },
+    { expression = "(17T+316n+482)/2+29" },
+]
 exact = true
 arities = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 4
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n >= 4", formula = "F" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1

@@ -92,20 +92,25 @@ unit = "commands"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula}", formula = "32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.thisthat.proof_formulas:workspace"
+# The tape widths sum to n·bl(n-1)-2^bl(n-1)+2: zero costs one bit.
+expression = "4n+89+2bl(n)+(n·bl(n-1)-2^bl(n-1)+2)"
 exact = false
 arities = [3, 5]
 first = 3
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}", formula = "4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c))" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.thisthat.tests.formulas:_cells"
+# N = W x H: sides 16(2^k - 1) + 1 and + 3, with 2^k the n-even / n-odd split.
+#
+# Levels pitch 8 * 2^((n - l - 1) // 2) (span + 2 router steps); even l span
+# the width, odd l the height (+ 2 for the loader row).
+expression = "(16(2^⌈n/2⌉-1)+1)(16(2^⌊n/2⌋-1)+3)"
 exact = false
 arities = [3, 4, 5, 6, 7, 8]
 first = 3
 unit = "cells"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: H-tree `O(sqrt(T))` sides", formula = "N" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: H-tree `O(sqrt(T))` sides" }
 
 [semantic_evidence]
 version = 1
