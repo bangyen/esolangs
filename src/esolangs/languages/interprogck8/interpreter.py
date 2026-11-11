@@ -62,7 +62,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import cache, lru_cache, partial
+from functools import cache, lru_cache
 from typing import Any, cast
 
 from esolangs.exceptions import HaltError
@@ -70,7 +70,7 @@ from esolangs.languages.interprogck8.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -578,8 +578,11 @@ def _outcomes(state: _State, limit: int) -> tuple[_State, ...] | None:
     return (_advance(state, _Pinned(0), instr=instr)[0],)
 
 
+type _Image = tuple[tuple[str, ...], tuple[_Instr, ...]]
+
+
 @lru_cache(maxsize=4)
-def _load_program(code: str) -> tuple[tuple[str, ...], tuple[_Instr, ...]]:
+def _load_program(code: str) -> _Image:
     """Split and compile a program text: its lines and their compiled forms.
 
     Cached per text because the harness rebuilds a machine per input row
@@ -587,6 +590,13 @@ def _load_program(code: str) -> tuple[tuple[str, ...], tuple[_Instr, ...]]:
     every program a long session ever loaded.
     """
     lines = tuple(code.splitlines())
+    return lines, tuple(map(_compile, lines))
+
+
+def _prepare_source(code: str | list[str]) -> _Image:
+    if isinstance(code, str):
+        return _load_program(code)
+    lines = tuple(code)
     return lines, tuple(map(_compile, lines))
 
 
@@ -610,17 +620,14 @@ class _Machine:
     ip_shape = "line"
 
     def __init__(
-        self, code: str | list[str], io: IO, rng: Randomness | None = None
+        self, code: str | list[str] | _Image, io: IO, rng: Randomness | None = None
     ) -> None:
         self.io = io
         self.rng = rng
-        if isinstance(code, str):
-            lines, self._program = _load_program(code)
-            self._loaded = lines
-            self.state = _State(lines)
-        else:
-            self.state = _State(tuple(code))
-            self._load(self.state.lines)
+        self._loaded, self._program = (
+            _prepare_source(code) if isinstance(code, (str, list)) else code
+        )
+        self.state = _State(self._loaded)
 
     def _load(self, lines: tuple[str, ...]) -> None:
         """Compile the program once, before running: the load phase.
@@ -732,20 +739,21 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh program state and the caller's random source without drawing."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain initial compiled lines and bind randomness for each run."""
     if not isinstance(source, (str, list)):
         raise TypeError("interprogck8 machines require text or split text source")
     if options.keys() - {"rng"}:
         raise TypeError("interprogck8 machines accept only the rng runtime option")
-    code = source if isinstance(source, str) else list(source)
-    return partial(_Machine, code, rng=options.get("rng"))
+    image = _prepare_source(source)
+    return RandomRuntimePlan(
+        lambda io, rng: _Machine(image, io, rng),
+        lambda io, rng: _execute_program(image, io, rng),
+    ).bind(options.get("rng"))
 
 
 def _execute_program(
-    code: str | list[str], io: IO, rng: Randomness | None = None
+    code: str | list[str] | _Image, io: IO, rng: Randomness | None = None
 ) -> CompletionReport:
     """Run ``code`` to its halt; ``rng`` pins ``[a b]`` and ``~``."""
     return drive(_Machine(code, io, rng), policy=CAPABILITIES.completion)

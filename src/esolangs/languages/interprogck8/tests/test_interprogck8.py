@@ -93,6 +93,14 @@ TRUTH_FIXED = f"u\n{{values/=/=/={native._dice(49)}}}\n<\ndiv\nEXE\n>\nIFQ\ndiv"
 DICE = "[. :::]\n$ay"
 
 
+def test_prepared_dice_retains_compiled_lines(monkeypatch) -> None:
+    from tests.support.prepared_support import check_random_plan_reuse
+
+    check_random_plan_reuse(
+        "Interprogck8", DICE, native, "_prepare_source", monkeypatch
+    )
+
+
 def go(code: str, stdin: str = "") -> str:
     io = ScriptedIO(stdin)
     native.run(code, io, Seeded(0))

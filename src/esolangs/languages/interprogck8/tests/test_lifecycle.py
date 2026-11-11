@@ -14,7 +14,7 @@ def test_factory_reuses_compilation_with_private_call_state():
     factory = interpreter.prepare_machine(source, {})
     first, second = factory(ScriptedIO()), factory(ScriptedIO())
     assert interpreter._load_program.cache_info().misses == 1
-    assert interpreter._load_program.cache_info().hits == 1
+    assert interpreter._load_program.cache_info().hits == 0
     assert first._program is second._program
     before = second.snapshot()
     for _ in range(3):
@@ -26,7 +26,11 @@ def test_factory_reuses_compilation_with_private_call_state():
     assert first.io.getvalue() == "B"
     assert second.memory == [0]
     assert second.stack == []
-    assert factory(ScriptedIO()).snapshot() == before
+    interpreter._load_program.cache_clear()
+    third = factory(ScriptedIO())
+    assert third._program is second._program
+    assert third.snapshot() == before
+    assert interpreter._load_program.cache_info().misses == 0
 
 
 def test_split_factory_binds_source_and_reloads_only_its_own_program():
