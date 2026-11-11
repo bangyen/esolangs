@@ -19,7 +19,7 @@ Errors:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import partial
+from types import MappingProxyType
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -27,7 +27,7 @@ from esolangs.languages.bfstack.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -80,7 +80,7 @@ def _forward_table(code: str) -> dict[int, int | None]:
 # lets the shell reject an empty-stack step first, and :func:`_forward_table` maps an
 # unmatched ``[`` to ``None`` for the shell to raise on.
 def _advance(
-    state: _State, code: str, jumps: dict[int, int | None], byte: int | None = None
+    state: _State, code: str, jumps: Mapping[int, int | None], byte: int | None = None
 ) -> _State:
     """Return the state after executing the command at the cursor.
 
@@ -117,17 +117,25 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[str, Mapping[int, int | None]]
+
+
+def _prepare_source(code: str) -> _Image:
+    return code, MappingProxyType(_forward_table(code))
+
+
 class _Machine:
     """A BFStack run: one immutable ``_State``, rebound per step."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         """Start with an empty data stack and loop stack."""
         self.io = io
-        self.code = code
+        self.code, self._jumps = (
+            _prepare_source(code) if isinstance(code, str) else code
+        )
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
-        self.size = len(code)
-        self._jumps = _forward_table(code)
+        self.size = len(self.code)
         self.state = _State(0, (), ())
 
     # The language's own names.  They are views on the current state rather
@@ -217,18 +225,17 @@ class _Machine:
         self.state = _advance(self.state, self.code, self._jumps, byte)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines; bfstack has no runtime options."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the forward jumps and bind fresh stacks per run."""
     if not isinstance(source, str):
         raise TypeError("bfstack machines require text source")
     if options:
         raise TypeError("bfstack machines accept no runtime options")
-    return partial(_Machine, source)
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a BFStack program, halting on an invalid empty-stack operation."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

@@ -66,9 +66,16 @@ class TestBFStack:
         with pytest.raises(ExecutionTimeoutError):
             run_public("BFStack", "\ud800\udfff>", isolated=True, max_steps=2)
 
-    def test_input_adds_a_cell_rather_than_overwriting_one(self) -> None:
+    def test_input_adds_a_cell_rather_than_overwriting_one(self, monkeypatch) -> None:
         """``,`` pushes, so what was on top before is still underneath."""
         assert run_and_capture(">+,<.", inputs=["Z"]) == "\x01"
+
+        from esolangs.languages.bfstack import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "BFStack", ">[+],.", interpreter, "_prepare_source", monkeypatch
+        )
 
     def test_loop_skip_unmatched(self) -> None:
         """A skipped [ with no closing ] is a malformed program."""
