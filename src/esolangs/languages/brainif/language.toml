@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+tree_to_width_lookup = { tables = [{ arity = 4, rule = "dense" }, { arity = 5, rule = "dense" }], benchmark = false }
+
 [curation]
 backlinks = 5
 admitted = 2021-05-19T16:13:54-04:00

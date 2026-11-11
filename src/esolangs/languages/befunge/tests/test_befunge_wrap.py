@@ -75,8 +75,18 @@ def test_native_data_row_limit_switches_to_six_bit_packing() -> None:
 
 @pytest.mark.parametrize("width", [None, 1])
 def test_befunge_refuses_a_table_larger_than_the_torus(width: int | None) -> None:
-    with pytest.raises(ValueError, match="at most thirteen inputs"):
-        befunge("01" * 8192, width)
+    language = esolangs.Language("Befunge")
+    admitted, refused = construction_boundaries("Befunge")["torus_input_cap"]
+    table = admitted.table()
+    artifact = language.generate(table, width=width)
+    restored = language.load_program(language.dump_program(artifact))
+    prepared = language.prepare(restored)
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        result = prepared.evaluate(row_bits(row, admitted.arity))
+        assert result.bit == table[row]
+        assert result.observation.input_reads == admitted.arity
+    with pytest.raises(esolangs.GeneratorCapError, match="at most thirteen inputs"):
+        language.generate(refused.table(), width=width)
 
 
 def test_single_digit_bound_reclaims_a_column() -> None:

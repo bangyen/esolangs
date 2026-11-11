@@ -1,6 +1,10 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+unrestricted_digit_cap = { tables = [{ arity = 16, rule = "dense" }, { arity = 17, rule = "dense" }], benchmark = false }
+conditional_seventeen_input_cap = { tables = [{ arity = 17, rule = "parity" }, { arity = 18, rule = "dense" }], benchmark = false }
+
 [curation]
 backlinks = 130
 

@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+endpoint_chunk_width = { tables = [{ arity = 6, rule = "and" }, { arity = 7, rule = "and" }], benchmark = false }
+
 [curation]
 backlinks = 2
 admitted = 2026-08-13T21:46:33-04:00

@@ -13,6 +13,7 @@ from esolangs.languages.brainif import generator as boolean
 from esolangs.languages.brainif.generator import _brainif_tree, _Strip
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
@@ -194,6 +195,22 @@ def test_brainif_zero_landing_public_and_larger_samples(width: int) -> None:
 
 
 def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:
+    language = esolangs.Language("BrainIf")
+    witnesses = construction_boundaries("BrainIf")["tree_to_width_lookup"]
+    for witness in witnesses:
+        n, table = witness.arity, witness.table()
+        with patch.object(
+            boolean, "_brainif_linear", wraps=boolean._brainif_linear
+        ) as lookup:
+            artifact = language.generate(table, width=80)
+        assert lookup.call_count == int(n == 5)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row in (0, 1, len(table) // 2, len(table) - 1):
+            result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
+            assert result.bit == table[row]
+            assert result.observation.input_reads == n
+
     table = "".join(str(row.bit_count() % 2) for row in range(32))
     program = _brainif_tree(table, 1, prune=False)
     for row in [0, 1, 7, 13, 31]:

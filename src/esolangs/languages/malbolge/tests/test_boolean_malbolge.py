@@ -17,6 +17,7 @@ from esolangs.languages.malbolge.generator.isa import _first_free, _g
 from esolangs.languages.malbolge.interpreter import _XLAT1, _initial_memory, run
 from esolangs.languages.malbolge.tests.navigation_checks import check_navigation
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.witness_tables import dense, row_bits
 
 
@@ -182,10 +183,14 @@ def test_digit_builds_sampled(n: int) -> None:
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
-def test_past_sixteen_inputs_is_refused() -> None:
-    """Seventeen would need 65,536 answer cells in a 59,049-cell store."""
-    with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
-        boolean.malbolge(dense(17))
+def test_unrestricted_digit_cap_executes_sixteen_inputs() -> None:
+    """Seventeen dense inputs need 65,536 answer cells in a 59,049-cell store."""
+    admitted, refused = construction_boundaries("Malbolge")["unrestricted_digit_cap"]
+    table = admitted.table()
+    rows = (0, 1, len(table) // 2, len(table) - 1)
+    assert _rows(table, rows) == [table[row] for row in rows]
+    with pytest.raises(GeneratorCapError, match="does neither"):
+        boolean.malbolge(refused.table())
 
 
 @pytest.mark.medium
@@ -208,10 +213,15 @@ def test_seventeen_weight_constant_builds_and_executes() -> None:
     and the two alternating rows, covering every folded input and the stub's.
     """
     classes = "010111111000001011"
+    admitted, refused = construction_boundaries("Malbolge")[
+        "conditional_seventeen_input_cap"
+    ]
     tables = (
-        "".join(str(row.bit_count() % 2) for row in range(1 << 17)),
-        "".join(classes[row.bit_count()] for row in range(1 << 17)),
+        admitted.table(),
+        "".join(classes[row.bit_count()] for row in range(1 << admitted.arity)),
     )
+    with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
+        boolean.malbolge(refused.table())
     rows = sorted(
         {0, 1, 2, (1 << 16) - 1, 1 << 16, 2**17 - 2, 2**17 - 1}
         | {1 << j for j in range(17)}
@@ -242,14 +252,6 @@ def test_analysis_fault_changes_output(
         table = "".join(str(row.bit_count() % 2) for row in range(1 << 17))
         monkeypatch.setattr(_symmetric, "symmetric_outputs", lambda *_: "1" * 18)
     assert _rows(table, [0]) != [table[0]]
-
-
-def test_seventeen_in_neither_family_and_eighteen_are_refused() -> None:
-    """Seventeen is built only for the two restricted families."""
-    with pytest.raises(GeneratorCapError, match="does neither"):
-        boolean.malbolge(dense(17))
-    with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
-        boolean.malbolge(dense(18))
 
 
 def test_a_value_meaning_needs_sixteen_characters() -> None:

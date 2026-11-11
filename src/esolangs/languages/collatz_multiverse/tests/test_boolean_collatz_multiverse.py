@@ -2,6 +2,7 @@
 
 import random
 from collections import Counter
+from unittest.mock import patch
 
 import pytest
 
@@ -22,6 +23,7 @@ from esolangs.languages.collatz_multiverse.generator import (
     collatz_multiverse,
 )
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner, assert_runner_rows
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
@@ -320,6 +322,9 @@ def test_layout_sizes(table: str, width: int | None, size: int) -> None:
 @pytest.mark.parametrize("family", ["and", "or", "parity"])
 @pytest.mark.parametrize("invert", [False, True])
 def test_named_routes_improve_the_four_row_lookup(family: str, *, invert: bool) -> None:
+    if family == "and" and not invert:
+        _check_endpoint_chunk_cutoff()
+
     n = 7
     table = "".join(
         str(
@@ -342,6 +347,24 @@ def test_named_routes_improve_the_four_row_lookup(family: str, *, invert: bool) 
     assert len(program) < 0.9 * len(unfolded)
     for row in (0, 1, 42, 85, 126, 127):
         assert run_collatz_multiverse(program, row_bits(row, n)) == table[row]
+
+
+def _check_endpoint_chunk_cutoff() -> None:
+    language = esolangs.Language("Collatz Multiverse")
+    witnesses = construction_boundaries(language.name)["endpoint_chunk_width"]
+    for witness in witnesses:
+        n, table = witness.arity, witness.table()
+        with patch.object(boolean, "_cm_build", wraps=boolean._cm_build) as build:
+            artifact = language.generate(table)
+        assert {call.kwargs["chunk"] for call in build.call_args_list} == {
+            4 if n == 6 else 8
+        }
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row in (0, 1, len(table) // 2, len(table) - 1):
+            result = prepared.evaluate(row_bits(row, n))
+            assert result.bit == table[row]
+            assert result.observation.input_reads == n
 
 
 @pytest.mark.parametrize("n", [1, 3, 4, 5, 6, 8, 12])
