@@ -85,12 +85,13 @@ version = 2
 construction = "esolangs.languages.algebraic_programming_language.generator:algebraic_programming_language_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.algebraic_programming_language.tests.formulas:execution"
+expression = "C*(4n+3+4J) + (1-C)*(max(21,ceil(65n/2)-21)+K+2min(K,3n+1))"
+source_terms = { names = ["C", "J", "K"], provider = "esolangs.languages.algebraic_programming_language.tests.formulas:execution_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 8]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: definitions initialize once and execute at most once", formula = "max(21,ceil(65n/2)-21)+K+2min(K,3n+1)" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: constant C, negation J, K definitions" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.algebraic_programming_language.tests.formulas:workspace"

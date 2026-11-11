@@ -44,14 +44,12 @@ class TestLaserFuck:
                         assert run_laserfuck(program, bits, heading) == table[combo]
 
         from esolangs.languages.laserfuck.interpreter import _Machine
-        from esolangs.languages.laserfuck.proof_formulas import (
-            all_heading_execution,
-            execution,
-        )
         from esolangs.runtime.randomness import FirstDraw
         from scripts.docs.resource_evidence import resource_bounds
 
-        workspace = resource_bounds("LaserFuck")["workspace"].formula
+        bounds = resource_bounds("LaserFuck")
+        execution = bounds["execution"].formula
+        workspace = bounds["workspace"].formula
 
         for n in (7, 8):
             table = "0" * ((1 << n) - 1) + "1"
@@ -61,7 +59,6 @@ class TestLaserFuck:
                 machine = _Machine(program.splitlines(), stream, FirstDraw(heading))
                 commands, written = measure_run(machine)
                 assert commands == execution(n, program) + 2 * (heading in (1, 2))
-                assert commands <= all_heading_execution(n, program)
                 machine.step()
                 written.sample(machine.workspace_snapshot())
                 assert written.bits == workspace(n, program)

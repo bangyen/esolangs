@@ -8,7 +8,6 @@ admitted = 2026-10-21T23:43:42-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "inputs buffer in stream order; shared residual cases branch on character codes, equal children skip, and constant residuals share printing leaves"
-definitions = ["B = Σ_{0<=i<n}(8len(x_i)+6)"]
 
 [ablations]
 archive_refs = [
@@ -83,20 +82,25 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: define buffers, read all inputs, at most n binary branches, print" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.switchcase.proof_formulas:workspace"
+# Each buffer uses six value bits plus its name. The default arm
+# adds the branch key, cursor and case index. Ignored reads need
+# no buffer, leaving room for their longer discard cursor.
+expression = "14n+8digits_sum(n)+27+bl(n+residuals(n))+bl(n)"
 exact = [1, 2, 3, 5]
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n=1,2,3,5: buffers and branch", formula = "B+27+bl(n+diagram_cap(n))+bl(n)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n=1,2,3,5: buffers and branch" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.switchcase.tests.formulas:_chars"
+# The longest name is x plus the decimal index n-1. The maximum
+# case address is bounded by the buffered inputs and residual count.
+expression = "34+n(12+2digits(n-1))+residuals(n)(11+digits(n-1)+2digits(n+residuals(n)+4))+digits(n+residuals(n)+4)"
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 8, 9, 10, 12]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: O(T/log T) shared residuals, O(log T) address digits", formula = "N" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: O(T/log T) shared residuals, O(log T) address digits" }
 
 [semantic_evidence]
 version = 1

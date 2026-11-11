@@ -9,18 +9,18 @@
 # setup ring's ``U``) runs a fixed setup, 294 steps an input, then drives
 # only east or south from row 2 past the setup's 4n + 16 columns, short of
 # the bottom and east walls, and halts in place.
-def execution(n: int, program: str) -> int:
-    """The stated execution bound, evaluated for n and the program."""
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Extract the route, constant fill and tree dimensions."""
     rows = program.splitlines()
-    if len(rows) == 4 and rows[2].startswith("|C" + "I" * n + "="):
-        return n + 52 + rows[2].count("^") - 48
-    if "U" in program:
-        rows = program.splitlines()
-        setup, west = (724, 21) if n == 1 else (294 * n + 333, 4 * n + 16)
-        return setup + len(rows) + max(map(len, rows)) - west - 5
-    if n < 8:
-        return 5 * (1 << n - 1) + 110 * n + 108
-    return 7 * (1 << n - 1) + 14 * n + 652
+    constant = len(rows) == 4 and rows[2].startswith("|C" + "I" * n + "=")
+    tree = not constant and "U" in program
+    return {
+        "C": int(constant),
+        "Q": rows[2].count("^") if constant else 0,
+        "U": int(tree),
+        "H": len(rows) if tree else 0,
+        "W": max(map(len, rows)) if tree else 0,
+    }
 
 
 def workspace(n: int, program: str) -> int:

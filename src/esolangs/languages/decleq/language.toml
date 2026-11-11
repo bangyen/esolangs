@@ -8,7 +8,7 @@ admitted = 2026-08-14T08:52:07-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "zero edges enter fixed print gadgets directly; admitted symmetric thresholds use fall-through chains"
-definitions = ["B = _chars in the language-owned tests/formulas.py: header, reads, pass loop and distinct-subtree bound", "M = bits of the program's cells", "C = cell count"]
+definitions = ["M = bits of the program's cells", "C = cell count"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 241, "1" = 241, "2" = 241, "3" = 241, "4" = 242, "5" = 242, "6" = 243, "7" = 244 }, source_units = 149 }
@@ -84,12 +84,14 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: memory, pointer and input cursor", formula = "M + 5n + bl(C) + bl(n) + 5" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.decleq.tests.formulas:_chars"
+# The code header rounds up to a multiple of three. The cells
+# include two three-cell read passes and six cells per subtree.
+expression = "2(3⌈(n+18)/3⌉)+17n+12residuals_without_constants(n)+16+digits(3⌈(n+18)/3⌉)+2digits(n+17)+(2residuals_without_constants(n)+5)max(2,digits(3⌈(n+18)/3⌉+6n+6residuals_without_constants(n)+9))"
 exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: six cells per distinct subtree", formula = "B" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: six cells per distinct subtree" }
 
 [semantic_evidence]
 version = 1

@@ -8,7 +8,6 @@ admitted = 2026-10-15T12:56:28-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "shared nodes append non-bit ASCII names; a bit-name substring test deletes the last unread bit; frequency buckets assign short names to frequent references"
-definitions = ["C = Σ_{d<n} min(2^d, 2^2^(n-d) - 2), the most non-constant nodes; digits counts decimal digits"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 2, "1" = 3, "2" = 2, "3" = 4, "4" = 2, "5" = 3, "6" = 2, "7" = 4 }, source_units = 134 }
@@ -83,20 +82,23 @@ unit = "steps"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: three a level, two at the last" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.codesick.proof_formulas:workspace"
+# Base-88 markers skip three keywords and fit digits(C+1) bytes,
+# where C caps distinct nonconstant subtables across internal levels.
+expression = "16n+8+8digits(residuals_without_constants(n)+1)+bl(3residuals_without_constants(n)+1)"
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: the input as key, the unread bits, the ip", formula = "16n + 8 + 8·digits(C+1) + bl(3C+1)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: the input as key, the unread bits, the ip" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.codesick.tests.formulas:_chars"
+# Each node and up to two forwarders use at most ten label occurrences.
+expression = "(68+10digits(residuals_without_constants(n)+1))residuals_without_constants(n)+43"
 exact = false
 arities = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 2
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} for n>=2: bounded label widths", formula = "(68+10digits(C+1))C+43" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} for n>=2: bounded label widths" }
 
 [semantic_evidence]
 version = 1

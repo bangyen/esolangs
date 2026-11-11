@@ -13,12 +13,12 @@ from esolangs.languages.algebraic_programming_language.generator import (
 )
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
 from esolangs.languages.algebraic_programming_language.tests.formulas import (
-    execution,
     workspace,
 )
 from esolangs.operations.boolean_io import read_answer
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.resource_evidence import resource_bounds
 
 NAME = "Algebraic Programming Language"
 
@@ -33,6 +33,7 @@ def test_shared_expressions_obey_bounds_for_every_small_table(
 ) -> None:
     from esolangs.languages.algebraic_programming_language import interpreter as apl
 
+    execution = resource_bounds(NAME)["execution"].formula
     positive = 0
     calls: list[str] = []
     original = apl._step_call

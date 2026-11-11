@@ -50,10 +50,11 @@ def test_constant_reads_precede_output_and_preserve_the_next_character() -> None
 def _check_shared_residuals() -> None:
     """Every small table preserves IO; parity reaches the command bound."""
     from esolangs.languages.switchcase.interpreter import _Machine
-    from esolangs.languages.switchcase.proof_formulas import workspace
     from scripts.docs.resource_evidence import resource_bounds
 
-    execution = resource_bounds("SwitchCase")["execution"].formula
+    bounds = resource_bounds("SwitchCase")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     summed = 0
     for value in range(256):

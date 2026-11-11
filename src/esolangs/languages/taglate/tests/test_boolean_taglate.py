@@ -21,7 +21,9 @@ def run_taglate(program: str, inputs: list[str]) -> str:
 
 
 def test_execution_bound_is_one_form() -> None:
-    from esolangs.languages.taglate.proof_formulas import execution
+    from scripts.docs.resource_evidence import resource_bounds
+
+    execution = resource_bounds("Taglate")["execution"].formula
 
     assert execution(4, "") == 329
     assert execution(5, "") == 484
@@ -209,8 +211,11 @@ def _check_constants() -> None:
 
 def _check_packed_leaves() -> None:
     from esolangs.languages.taglate.interpreter import _Machine, run
-    from esolangs.languages.taglate.proof_formulas import execution, workspace
+    from esolangs.languages.taglate.proof_formulas import workspace
     from esolangs.languages.taglate.tests.ablations import ablate
+    from scripts.docs.resource_evidence import resource_bounds
+
+    execution = resource_bounds("Taglate")["execution"].formula
 
     totals = [0, 0]
     for value in range(256):
@@ -247,8 +252,11 @@ def _check_packed_leaves() -> None:
 
 def _check_resource_layouts() -> None:
     from esolangs.languages.taglate.interpreter import _Machine
-    from esolangs.languages.taglate.proof_formulas import execution, workspace
+    from esolangs.languages.taglate.proof_formulas import workspace
     from esolangs.languages.taglate.tests.formulas import resource_witness
+    from scripts.docs.resource_evidence import resource_bounds
+
+    execution = resource_bounds("Taglate")["execution"].formula
 
     for n in (1, 2, 3, 4, 5):
         table = resource_witness(n)

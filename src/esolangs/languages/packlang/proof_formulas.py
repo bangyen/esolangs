@@ -1,13 +1,9 @@
 """Executed command and snapshot-bit bounds."""
 
 
-def execution(n: int, program: str) -> int:
-    """The previous painting ceiling minus its removed final VALUE command."""
-    if program.startswith("Package : IO {\n  Char c;\n"):
-        return n + 2
-    if n <= 7:
-        return 19 * (1 << n) // 2 - n - 5
-    return 3 * (1 << n) // 64 + 1205 - n
+def execution_terms(_: int, program: str) -> dict[str, int]:
+    """Identify the direct constant program."""
+    return {"C": int(program.startswith("Package : IO {\n  Char c;\n"))}
 
 
 def workspace(n: int, p: str) -> int:

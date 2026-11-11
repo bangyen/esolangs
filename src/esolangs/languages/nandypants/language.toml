@@ -73,12 +73,13 @@ unit = "commands"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.nandypants.proof_formulas:workspace"
+expression = "bl(R-1) + bl(n) + 16 - C"
+source_terms = { names = ["R", "C"], provider = "esolangs.languages.nandypants.proof_formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}", formula = "bl(L-1) + bl(n) + 16" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: R tokens, C marks the constant prefix" }
 
 [resource_evidence.scaling]
 qualitative = { growth = "linear", text = "Θ(T / log T) blocks of O(log T) digits" }

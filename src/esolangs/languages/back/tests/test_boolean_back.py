@@ -552,15 +552,16 @@ def _check_exact_preload_bounds() -> None:
     from esolangs.generation.helpers import grid_area
     from esolangs.languages.back.proof_formulas import execution, workspace
     from esolangs.languages.back.tests.formulas import (
-        _cells,
         execution_witness,
         witness,
     )
+    from scripts.docs.resource_evidence import resource_bounds
 
+    scaling = resource_bounds("Back")["scaling"].formula
     for n in (1, 2, 3, 4, 5, 6, 7, 8, 9):
         area_table = witness(n)
         template = esolangs.generate("Back", area_table)
-        assert grid_area(template.source) == _cells(n, template.source)
+        assert grid_area(template.source) == scaling(n, template.source)
         table = execution_witness(n)
         template = esolangs.generate("Back", table)
         source = esolangs.instantiate("Back", template, [1] * n)

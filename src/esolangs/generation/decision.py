@@ -8,6 +8,24 @@ from typing import NamedTuple
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 
 
+def residual_count_bound(n: int, *, include_constants: bool = True) -> int:
+    """Sum distinct subtable caps over internal levels, before reduction."""
+    if n <= 1:
+        return n
+
+    # A level with h inputs left saturates when it has at least 2^(2^h)
+    # positions, equivalently h+2^h <= n. Excluding the two constant
+    # subtables moves only the h=1, n=2 tie, where the count is unchanged.
+    saturated = n.bit_length() - 1
+    saturated -= n < saturated + (1 << saturated)
+
+    # Shallower levels use their position caps. Only build the small
+    # towers at the saturated end, where their exponents are at most n.
+    prefix = (1 << (n - saturated)) - 1
+    tail = sum(1 << (1 << h) for h in range(1, saturated + 1))
+    return prefix + tail - (0 if include_constants else 2 * saturated)
+
+
 class DecisionLayers(NamedTuple):
     """Immutable child maps in physical input order, including constant layers."""
 

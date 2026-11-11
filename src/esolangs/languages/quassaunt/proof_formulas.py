@@ -1,9 +1,11 @@
 """Executed-word and snapshot-bit bounds for the shared store loop."""
 
+from esolangs.generation.decision import residual_count_bound
+
 
 def node_cap(n: int) -> int:
     """The most distinct residuals, including constants at each input depth."""
-    return sum(1 << (1 << h) if 1 << h <= n - h else 1 << (n - h) for h in range(n + 1))
+    return residual_count_bound(n) + (1 << min(1, n))
 
 
 def execution(n: int, program: str) -> int:

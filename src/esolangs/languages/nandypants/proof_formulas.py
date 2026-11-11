@@ -5,12 +5,10 @@ import re
 _TOKEN = re.compile(r"\d+|[{}<>^v\\/]")
 
 
-def workspace(n: int, p: str) -> int:
-    """The stated workspace bound, evaluated for n and the program."""
-    bl = int.bit_length
-    source = "".join(p.split())
-    return (
-        bl(len(_TOKEN.findall(p)) - 1)
-        + bl(n)
-        + (15 if source.startswith("/" * (8 * n)) else 16)
-    )
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Count tokens and identify the constant-prefix workspace."""
+    source = "".join(program.split())
+    return {
+        "R": len(_TOKEN.findall(program)),
+        "C": int(source.startswith("/" * (8 * n))),
+    }

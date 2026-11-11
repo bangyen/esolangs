@@ -65,7 +65,10 @@ def test_constants_consume_the_queue_then_print_once() -> None:
 def _check_single_accumulator_boundaries() -> None:
     from esolangs.languages.nor_machine.generator import _low_from_singleton, _Queue
     from esolangs.languages.nor_machine.interpreter import _Machine
-    from esolangs.languages.nor_machine.proof_formulas import execution, workspace
+    from esolangs.languages.nor_machine.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    execution = resource_bounds("NOR machine")["execution"].formula
 
     q = _Queue(0)
     q.names = ["v"]

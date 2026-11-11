@@ -1,19 +1,5 @@
 """Pair-comb/fold area bounds and derived witnesses; legacy corpus retained."""
 
-
-def _comb(n: int) -> int:
-    """Preloaded comb: at most T/2 pair rows, a six-n loader and 3n+5 columns."""
-    return (3 * n + 5) * max(6 * n + 1, 1 << (n - 1))
-
-
-def _fold(n: int) -> int:
-    """Pair-leaf fold: five tested levels, width20/height32 at physical n=6."""
-    width, height, entry = 20, 32, 0
-    for _ in range(7, n + 1):
-        width, height, entry = 3 + height, 2 * width + 2, width + 1
-    return (1 + width) * (max(0, 4 * n - entry) + height)
-
-
 #: Legacy searched regression corpus, retained unchanged, not production data.
 #: n=6 blocks:0-5 had48-49 comb rows,6-8 full-fold45-47.
 _BLOCKS = (
@@ -103,7 +89,10 @@ def execution_witness(n: int) -> str:
     if n in (8, 9):
         block = 1 << 5  # pair slots in a five-level comb base
         quarter = block // 4
-        deficit = (1 << (n - 1)) - _fold(n) // (3 * n + 5)
+        from scripts.docs.resource_evidence import resource_bounds
+
+        area = resource_bounds("Back")["scaling"].formula(n, "")
+        deficit = (1 << (n - 1)) - area // (3 * n + 5)
         if n == 8:
             assert deficit == 2 * (quarter - 1)
             # Blocks0/3 keep both required heights; block2 keeps root width.
@@ -115,10 +104,3 @@ def execution_witness(n: int) -> str:
         for start, length, bit in cuts:
             table[2 * start : 2 * (start + length)] = bit * (2 * length)
     return "".join(table)
-
-
-def _cells(n: int, _: str) -> int:
-    """Exact pair-comb/fold envelope; the folded limit is15.625T."""
-    if n < 3:
-        return 30 if n == 1 else 143
-    return _comb(n) if n <= 7 else _fold(n)

@@ -10,11 +10,9 @@ def _constant(n: int, program: str) -> bool:
     return program in ("V" * (n - 1) + "AAVVV", "V" * (n - 1) + "AAVVAVLAVV")
 
 
-def execution(n: int, program: str) -> int:
-    """Constant commands execute once; other tables keep the mux bound."""
-    if _constant(n, program):
-        return len(program)
-    return 15 * (1 << n) + 12 * n * n + 93 * n - 20
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Identify the direct constant program."""
+    return {"C": int(_constant(n, program))}
 
 
 def workspace(n: int, program: str) -> int:

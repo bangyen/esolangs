@@ -76,12 +76,14 @@ version = 2
 construction = "esolangs.languages.hot.generator:hot_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.hot.proof_formulas:execution"
+# [ablations.majority_pair_rule] uses fewer rewrites; other witnesses attain the tree bound.
+expression = "35n+45 - C*(31n+42)"
+source_terms = { names = ["C"], provider = "esolangs.languages.hot.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "rewrites"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: a pair a level, then the answer stage", formula = "35n + 45" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: C marks the constant spine" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.hot.proof_formulas:workspace"

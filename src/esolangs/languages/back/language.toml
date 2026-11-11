@@ -8,7 +8,7 @@ admitted = 2020-07-10T04:13:12-04:00
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "last tested bit held in cell n; equal halves pass; pair finishers compute the answer"
-definitions = ["A = 3T/4+1", "F = 30/143 at n=1/2; then (3n+5)max(6n+1,T/2) through7; thereafter (W+1)H, starting (W,H)=(20,32) at6, next (3+H,2W+2); limit15.625T", "E = 13/27 at n=1/2; then max(6n+1,T/2)+T/2+3n+6 through7; E(8)=258; E(9)=469"]
+definitions = ["A = 3T/4+1", "E = 13/27 at n=1/2; then max(6n+1,T/2)+T/2+3n+6 through7; E(8)=258; E(9)=469"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 24, "1" = 27, "2" = 24, "3" = 28, "4" = 25, "5" = 28, "6" = 25, "7" = 28 }, source_units = 170 }
@@ -98,12 +98,20 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n = 1,2,3,6", formula = "n+7+bl(max(6n-2,T-1))+bl(3n+4)+bl(n)" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.back.tests.formulas:_cells"
+# The pair fold starts at width 20 and height 32 for n=6. Each two
+# levels map width to 2W+5 and height to 2H+8. From n=8 the entry
+# column exceeds the 4n loader width, so the loader adds no rows.
+cases = [
+    { through = 1, expression = "30" },
+    { through = 2, expression = "143" },
+    { through = 7, expression = "(3n+5)max(6n+1,T/2)" },
+    { expression = "((25+15(n-2⌊n/2⌋))·2^⌊(n-6)/2⌋-4)((40+10(n-2⌊n/2⌋))·2^⌊(n-6)/2⌋-8)" },
+]
 exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 first = 8
 unit = "cells"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: pair comb through n=7, folded pair tree from n=8", formula = "F" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: pair comb through n=7" }
 
 [semantic_evidence]
 version = 1

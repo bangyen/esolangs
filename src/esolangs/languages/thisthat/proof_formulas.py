@@ -1,10 +1,11 @@
 """Uncontracted command bounds."""
 
 
-def execution(n: int, p: str) -> int:
-    """The stated execution bound, evaluated for n and the program."""
-    if "◧" not in p and p.count("□") + p.count("■") == 1 and p.count("◇") == n + 1:
-        return 2 * n + 5
-    if n % 2 == 0:
-        return 32 * (1 << (n // 2)) - 29
-    return 48 * (1 << ((n - 1) // 2)) - 29
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Mark the constant glyph layout."""
+    constant = (
+        "◧" not in program
+        and program.count("□") + program.count("■") == 1
+        and program.count("◇") == n + 1
+    )
+    return {"C": int(constant)}

@@ -69,6 +69,7 @@ def test_every_formula_cell_is_checked() -> None:
     _check_arity_cases(data)
     _check_rational_arithmetic()
     _check_decimal_digits()
+    _check_residual_counts()
     _check_source_term_schema()
 
 
@@ -154,5 +155,28 @@ def _check_decimal_digits() -> None:
         "digits_sum(-1)",
         "digits_sum(1/2)",
     ):
+        with pytest.raises(ValueError, match="non-negative integer"):
+            expression_formula(expression)(1, "")
+
+
+def _check_residual_counts() -> None:
+    from esolangs.generation.decision import residual_count_bound
+
+    for n in range(13):
+        for constants, name in (
+            (True, "residuals"),
+            (False, "residuals_without_constants"),
+        ):
+            cap = sum(
+                min(1 << depth, (1 << (1 << (n - depth))) - (0 if constants else 2))
+                for depth in range(n)
+            )
+            assert expression_formula(f"{name}(n)")(n, "") == cap
+    # An unconditional first-level tower cannot be built at this arity.
+    assert (
+        residual_count_bound(1024) - residual_count_bound(1024, include_constants=False)
+        == 18
+    )
+    for expression in ("residuals(-1)", "residuals_without_constants(1/2)"):
         with pytest.raises(ValueError, match="non-negative integer"):
             expression_formula(expression)(1, "")

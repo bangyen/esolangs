@@ -8,11 +8,24 @@ import re
 from collections.abc import Callable, Mapping
 from decimal import Decimal
 from fractions import Fraction
+from functools import partial
+
+from esolangs.generation.decision import residual_count_bound
 
 Formula = Callable[[int, str], int | Fraction]
 TermProvider = Callable[[int, str], Mapping[str, int | Fraction]]
 type ArityCases = tuple[tuple[int | None, str], ...]
-_FUNCTIONS = {"bl", "digits", "digits_sum", "max", "min", "ceil", "floor"}
+_FUNCTIONS = {
+    "bl",
+    "digits",
+    "digits_sum",
+    "max",
+    "min",
+    "ceil",
+    "floor",
+    "residuals",
+    "residuals_without_constants",
+}
 _NAMES = {"n", "T", "L"} | _FUNCTIONS
 
 
@@ -39,6 +52,14 @@ def _digits_sum(value: int | Fraction) -> int:
     # Start with the widest term's width, then subtract each shorter band.
     width = _digits(count - 1)
     return count * width - (int(10**width) - 10) // 9
+
+
+def _residuals(value: int | Fraction, *, include_constants: bool = True) -> int:
+    """Count the maximum distinct subtables across the internal levels."""
+    arity = int(value)
+    if arity < 0 or arity != value:
+        raise ValueError("resource residual count requires a non-negative integer")
+    return residual_count_bound(arity, include_constants=include_constants)
 
 
 def _parse_expression(
@@ -139,6 +160,8 @@ def expression_formula(
             "bl": bl,
             "digits": _digits,
             "digits_sum": _digits_sum,
+            "residuals": _residuals,
+            "residuals_without_constants": partial(_residuals, include_constants=False),
             "max": max,
             "min": min,
             "ceil": math.ceil,

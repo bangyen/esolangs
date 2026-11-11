@@ -101,12 +101,13 @@ unit = "commands"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: each expanded token runs once, plus 2 per executed shared-name reference" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.fargo.proof_formulas:workspace"
+expression = "18D + (1-D)*(16(L-3)+bl(L)+11)"
+source_terms = { names = ["D"], provider = "esolangs.languages.fargo.proof_formulas:workspace_terms" }
 exact = false
 arities = [6]
 first = 6
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: one frame's tokens, pending calls; lone $ bounded by 18 bits", formula = "max(16(L-3)+bl(L)+11, 18)" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: D marks the false literal" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.fargo.tests.formulas:_chars"

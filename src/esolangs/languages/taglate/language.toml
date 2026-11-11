@@ -89,12 +89,14 @@ version = 2
 construction = "esolangs.languages.taglate.generator:taglate_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.taglate.proof_formulas:execution"
+# Nibble 15 at offset zero adds fourteen parity turns.
+expression = "5T/2+12n^2+7n+69-4max(0,3-n)-75max(0,2-n)+B"
+source_terms = { names = ["B"], provider = "esolangs.languages.taglate.proof_formulas:execution_terms" }
 exact = true
 arities = [3, 4, 5]
 first = 3
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: literal seed; bootstrap at most B+C+56", formula = "C+56" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, with B bootstrap commands before the halt marker" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.taglate.proof_formulas:workspace"

@@ -102,8 +102,9 @@ def test_every_kept_level_is_tested_at_every_node(monkeypatch) -> None:
 
 
 def _check_literal_leaf_outputs() -> None:
-    from esolangs.languages.thisthat.proof_formulas import execution
+    from scripts.docs.resource_evidence import resource_bounds
 
+    execution = resource_bounds("thisthat")["execution"].formula
     for table in ("01", "10", "01010101", "10101010", "11110000"):
         n = len(table).bit_length() - 1
         source = thisthat(table)

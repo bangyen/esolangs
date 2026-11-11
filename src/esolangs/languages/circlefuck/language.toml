@@ -12,7 +12,7 @@ bf_derivative = true
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer"
-definitions = ["E = (2n+13)T+68n+232+2C from n=3, otherwise (2n+13)T+94n+89+2S; C=source[n+1], S=sum(source[1:n+1]); source=parsed bytes", "B = sum of initial tape-byte bit widths; h = halt @ offset"]
+definitions = ["U = parsed byte n+1 from n=3, otherwise the sum of parsed bytes 1 through n", "B = sum of initial tape-byte bit widths; h = halt @ offset"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 572, "1" = 592, "2" = 590, "3" = 610, "4" = 588, "5" = 608, "6" = 606, "7" = 626 }, source_units = 129 }
@@ -96,12 +96,13 @@ version = 2
 construction = "esolangs.languages.circlefuck.generator:circlefuck_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.circlefuck.proof_formulas:execution"
+expression = "(2n+13)T + 68n + 232 + 2U + min(1,max(0,3-n))*(26n-143)"
+source_terms = { names = ["U"], provider = "esolangs.languages.circlefuck.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} to n=7: indexed deletion and clamped reads", formula = "E" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} to n=7, with U the reader tally" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.circlefuck.proof_formulas:workspace"

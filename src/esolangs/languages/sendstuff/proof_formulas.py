@@ -26,11 +26,11 @@ def workspace(n: int, program: str) -> int:
     return bl(n) + 12 + sum(bl(1 + sum(ws[d + 1 :]) + ws[d] - 4) + 10 for d in range(n))
 
 
-def execution(n: int, program: str) -> int:
-    """Readers add zero, one or two unary sends; other tables branch."""
+def execution_terms(_: int, program: str) -> dict[str, int]:
+    """Identify unary readers and count the sends beyond the plain reader."""
     text = "".join(program.split())
-    if text.startswith(">(Input>"):
-        if "Constant" in text:
-            return n + 2
-        return n + 3 if "Divide48" in text else n + 1
-    return 4 * n + 2
+    if not text.startswith(">(Input>"):
+        return {"U": 0, "R": 0}
+    if "Constant" in text:
+        return {"U": 1, "R": 1}
+    return {"U": 1, "R": 2 * int("Divide48" in text)}

@@ -78,12 +78,13 @@ version = 2
 construction = "esolangs.languages.sendstuff.generator:sendstuff_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.sendstuff.proof_formulas:execution"
+expression = "U*(n+1+R) + (1-U)*(4n+2)"
+source_terms = { names = ["U", "R"], provider = "esolangs.languages.sendstuff.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "steps"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n=1, 4 at n=1; unary readers n+1/n+3, constants n+2", formula = "4n+2" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: unary U adds R sends" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.sendstuff.proof_formulas:workspace"

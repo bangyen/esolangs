@@ -71,20 +71,22 @@ version = 2
 construction = "esolangs.languages.pointless.generator:pointless_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.pointless.proof_formulas:execution"
+expression = "C*L + (1-C)*(26n+309)"
+source_terms = { names = ["C"], provider = "esolangs.languages.pointless.proof_formulas:source_terms" }
 exact = true
 arities = [3, 6]
 first = 3
 unit = "steps"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: setup 6n + 305, 16 a level", formula = "26n + 309" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: C marks a straight-line constant" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.pointless.proof_formulas:workspace"
+expression = "C*(408+bl(L)+bl(n)) + (1-C)*((n+1)*(2bl(L)+4)+16n+430)"
+source_terms = { names = ["C"], provider = "esolangs.languages.pointless.proof_formulas:source_terms" }
 exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: a frame a level, the tape", formula = "(n+1)(2bl(L)+4) + 16n + 430" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: C marks a straight-line constant" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.pointless.tests.formulas:_chars"

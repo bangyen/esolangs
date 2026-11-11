@@ -7,7 +7,6 @@ backlinks = 91
 [proof_status]
 labels = ["finite lookup"]
 qualification = "the inputs form a Horner index and g fetches its table bit; six-bit packing is used only while float coordinates remain exact"
-definitions = ["c = 3 to n = 45, then 2bl(s)-1: column-literal length", "S = 4n+37+2c; E = max(S,6n+9) to n=55, then 9n+9", "s = 15⌈(4n+43)/15⌉ to n = 45, then the two-pass column"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27 }, source_units = 32 }
@@ -78,28 +77,49 @@ version = 2
 construction = "esolangs.languages.fish.generator:fish_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.fish.tests.formulas:_execution"
+# Beyond n=45 the packed prefix grows, but the symmetric reader
+# already dominates it. Past n=55 only the integer reader remains.
+cases = [
+    { through = 2, expression = "9n+9" },
+    { through = 55, expression = "max(6n+9,4n+43)" },
+    { expression = "9n+9" },
+]
 exact = true
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} for n = 2, then E: packed literals have c cells", formula = "9n+9" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.fish.tests.formulas:_workspace"
+# The packed stack peaks at two raw indices or a bit, float,
+# column and power selector. Keep the packed model past the precision stop.
+cases = [
+    { through = 2, expression = "bl(9n+8)+n+13+bl(n)" },
+    { through = 45, expression = "bl(4n+42)+bl(n)+1+max(2max(7,n)+3,bl(15⌈(4n+43)/15⌉)+71)" },
+    { expression = "bl(4n+38+4bl(4n+39+4bl(4n+43)))+bl(n)+1+max(2max(7,n)+3,bl(4n+39+4bl(4n+43))+72)" },
+]
 exact = true
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} for n = 2, then bl(S-1)+bl(n)+1+max(2max(7,n)+3,bl(s)+71)", formula = "bl(9n+8)+n+13+bl(n)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula}" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.fish.tests.formulas:_scaling"
+# The packed prefix first fits in multiples of 15, with a three-cell
+# literal. Above n=45 the first power-of-two column needs a longer
+# literal. Its revised minimum 4n+39+4bl(4n+43) is odd, so it cannot
+# sit exactly at a power-of-two boundary.
+cases = [
+    { through = 2, expression = "18n+18" },
+    { through = 45, expression = "15⌈(4n+43)/15⌉+6+⌈T/6⌉" },
+    { through = 55, expression = "2^bl(4n+39+4bl(4n+43))+6+⌈T/6⌉" },
+    { expression = "2T" },
+]
 exact = true
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "cells"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} from n=2: exact-address packing or plain", formula = "F" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1

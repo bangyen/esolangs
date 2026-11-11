@@ -1,22 +1,20 @@
 """Bounds for inline expressions and shared, ordered expression frames."""
 
-from math import ceil
-
 from esolangs.languages.algebraic_programming_language.generator import (
     _NOT_TIGHT,
     _reads,
 )
 
 
-def execution(n: int, program: str) -> int:
-    """Initialize K definitions; a selected level enters at most three split frames."""
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Classify constant reads and count the initialized definitions."""
     prefix = _reads(n, "&")
-    if program in (prefix, prefix + "|1"):
-        return 4 * n + 3 + 4 * program.endswith("|1")
-    definitions = program.count("=") - program.startswith(_NOT_TIGHT)
-    return (
-        max(21, ceil(65 * n / 2) - 21) + definitions + 2 * min(definitions, 3 * n + 1)
-    )
+    constant = program in (prefix, prefix + "|1")
+    return {
+        "C": int(constant),
+        "J": int(program.endswith("|1")),
+        "K": program.count("=") - program.startswith(_NOT_TIGHT),
+    }
 
 
 def workspace(n: int, program: str) -> int:

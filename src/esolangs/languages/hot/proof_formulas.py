@@ -1,13 +1,9 @@
 """Constant paths and Church-pair envelopes, also bounding majority identities."""
 
 
-def execution(n: int, program: str) -> int:
-    """Four rewrites per input for constants; otherwise the pair-tree bound."""
-    if program.startswith("A0"):
-        return 4 * n + 3
-    # [ablations.majority_pair_rule]: each replacement takes fewer rewrites.
-    # The unchanged non-majority witnesses still attain the envelope.
-    return 35 * n + 45
+def execution_terms(_: int, program: str) -> dict[str, int]:
+    """Mark the constant spine; the majority replacement stays below the tree bound."""
+    return {"C": int(program.startswith("A0"))}
 
 
 def workspace(n: int, program: str) -> int:

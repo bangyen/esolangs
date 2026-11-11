@@ -84,12 +84,13 @@ version = 2
 construction = "esolangs.languages.thisthat.generator:thisthat_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.thisthat.proof_formulas:execution"
+expression = "C*(2n+5) + (1-C)*((32+16*(n-2floor(n/2)))*2^floor(n/2)-29)"
+source_terms = { names = ["C"], provider = "esolangs.languages.thisthat.proof_formulas:execution_terms" }
 exact = false
 arities = [3, 4]
 first = 3
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula}", formula = "32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: C marks the constant layout" }
 
 [resource_evidence.workspace]
 # The tape widths sum to n·bl(n-1)-2^bl(n-1)+2: zero costs one bit.

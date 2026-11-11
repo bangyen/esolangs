@@ -15,8 +15,6 @@ def workspace(n: int, _: str) -> int:
     return heap + control + kont + bl(2 * n) + bl(n)
 
 
-def execution(n: int, program: str) -> int:
-    """Validation adds six transitions per read, seven for a one bit."""
-    if "main:={" in program:
-        return 12 * n + 6
-    return 17 * n + 5
+def execution_terms(_: int, program: str) -> dict[str, int]:
+    """Mark the statement-read construction."""
+    return {"C": int("main:={" in program)}

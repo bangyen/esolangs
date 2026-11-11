@@ -23,8 +23,9 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.nandypants.interpreter import _Machine
-    from esolangs.languages.nandypants.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
 
+    workspace = resource_bounds("Nandypants")["workspace"].formula
     for n in range(1, 13):
         for bit in "01":
             commands = 8 * n + 11 + 2 * int(bit)

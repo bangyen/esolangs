@@ -50,6 +50,6 @@ def _constant(program: str) -> bool:
     return program.startswith(("readto a\nreadto a\n", "readto a\nsend z\n"))
 
 
-def execution(n: int, program: str) -> int:
-    """Native constants have n reads and seven literal-tail steps."""
-    return n + 7 if _constant(program) else 9 * n + 10
+def execution_terms(_: int, program: str) -> dict[str, int]:
+    """Mark the literal-tail construction."""
+    return {"C": int(_constant(program))}

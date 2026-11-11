@@ -100,12 +100,20 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: a tape of 2T cells" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.six_five.tests.formulas:_chars"
+# Through five inputs the shared tree has one root, all prefix nodes
+# before the final level, and at most min(T/2,2n-2) final-level names.
+# From six inputs, at most 35 shared nodes compete with the walk.
+cases = [
+    { through = 1, expression = "19" },
+    { through = 5, expression = "min(11T+6n-9,6n+18+(n+4)T/2+(n+6)min(T/2,2n-2))" },
+    { through = 35, expression = "max(6T+17n+3,41n+459)" },
+    { expression = "7T+4n+11" },
+]
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear, time n log", claim = "at most", template = "{claim} {formula} {unit}: two raced orders over canonical subtree IDs", formula = "N" }
+description = { growth = "linear, time n log", claim = "at most", template = "{claim} {formula}: raced layouts" }
 
 [semantic_evidence]
 version = 1

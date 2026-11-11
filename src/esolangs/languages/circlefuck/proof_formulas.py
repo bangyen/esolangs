@@ -3,13 +3,10 @@
 from esolangs.languages.circlefuck.interpreter import parse
 
 
-def execution(n: int, p: str) -> int:
-    """The indexed path, plus the reader's worst row (every bit one)."""
-    cells = parse(p)
-    if n < 3:
-        return (2 * n + 13) * (1 << n) + 94 * n + 89 + 2 * sum(cells[1 : n + 1])
-    # Old reader: 98n+2S; batch: 72n+143+2C. The backend is unchanged.
-    return (2 * n + 13) * (1 << n) + 68 * n + 232 + 2 * cells[n + 1]
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Read the individual or batched reader tally from the initial tape."""
+    cells = parse(program)
+    return {"U": sum(cells[1 : n + 1]) if n < 3 else cells[n + 1]}
 
 
 def workspace(n: int, p: str) -> int:

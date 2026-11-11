@@ -125,12 +125,14 @@ version = 2
 construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.laserfuck.proof_formulas:execution"
+# The constant ring takes ten steps a pass and skips its final reflection.
+expression = "C*(n+491+X) + (1-C)*(T+296n+682 + min(1,max(0,n-6))*(10T-240n-680))"
+source_terms = { names = ["C", "X"], provider = "esolangs.languages.laserfuck.proof_formulas:execution_terms" }
 exact = true
 arities = [5, 6, 7]
 first = 5
 unit = "steps"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 5, 6, then 11T+56n+2 at seed 2; other headings add at most 2", formula = "T+296n+682" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} seed 2. C constant, X +x. Other headings add at most 2" }
 
 [resource_evidence.workspace]
 # Tree to n=6; then last-onehot/all-ones attains the 3T-cell peak.

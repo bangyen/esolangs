@@ -83,12 +83,13 @@ version = 2
 construction = "esolangs.languages.suffolk.generator:suffolk_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.suffolk.proof_formulas:execution"
+expression = "L + R"
+source_terms = { names = ["R"], provider = "esolangs.languages.suffolk.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, R the prefix through the first read: one pass, then EOF", formula = "L + R" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: R is the prefix through the first read: one pass, then EOF" }
 
 [resource_evidence.workspace]
 # Old sweep envelope plus binary storage and its pointer growth.

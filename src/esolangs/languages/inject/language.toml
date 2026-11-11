@@ -89,12 +89,13 @@ version = 2
 construction = "esolangs.languages.inject.generator:inject_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.inject.proof_formulas:execution"
+expression = "9n+10 - C*(8n+3)"
+source_terms = { names = ["C"], provider = "esolangs.languages.inject.proof_formulas:execution_terms" }
 exact = true
 arities = [5, 6]
 first = 5
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, halving per level", formula = "9n + 10" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: C marks the literal tail" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.inject.proof_formulas:workspace"
