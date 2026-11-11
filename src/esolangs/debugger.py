@@ -1,6 +1,6 @@
 """A debugger on top of the step-and-inspect VM.
 
-:class:`Debugger` wraps a :class:`esolangs.vm.VM` with breakpoints (stop
+:class:`Debugger` wraps a :class:`esolangs.debugger.VM` with breakpoints (stop
 before the step that would change the condition) and watches (a per-step
 history of a cell or stack slot).  Breakpoints are checked *before* each
 step, so ``break_at`` on the initial position fires without executing it.
@@ -14,18 +14,15 @@ from typing import cast, get_args
 
 from esolangs.exceptions import ArgumentError
 from esolangs.registry._catalog import Catalog
+from esolangs.runtime._capabilities import IpShape
 from esolangs.runtime._controller import ExecutionController as _ExecutionController
 from esolangs.runtime._controller import StopReason as StopReason
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._validate import _argument_repr, check_whole
+from esolangs.runtime._vm_protocol import VM
 from esolangs.settings import DialectSettings
-from esolangs.vm import (
-    VM,
-    IpShape,
-    SnapshotVM,
-    make_vm,
-)
+from esolangs.vm import SnapshotVM, make_vm
 
 __all__ = [
     "STOP_REASONS",
@@ -77,7 +74,7 @@ class Debugger(_ExecutionController):
         """The wrapped VM's current position.
 
         An ``int``, a tuple, or ``None``, not stable in kind or arity within a
-        run; :attr:`~esolangs.vm.VM.ip` has the rules :meth:`break_at` depends on.
+        run; :attr:`~esolangs.debugger.VM.ip` has the rules :meth:`break_at` depends on.
         """
         return self.vm.ip
 
@@ -125,7 +122,7 @@ class Debugger(_ExecutionController):
         An ``int``, or a tuple for a coordinate ``ip``; anything else, or the
         wrong kind for this language, is refused rather than stored as a
         breakpoint that never fires.  Kind only, not arity (not constant within
-        a run; see :attr:`~esolangs.vm.VM.ip`).  ``None`` is refused although
+        a run; see :attr:`~esolangs.debugger.VM.ip`).  ``None`` is refused although
         some languages reach it (``///`` from its first step): use
         ``break_when(lambda vm: vm.ip is None)``.
         A position never reached is accepted (the protocol has no ``len``).

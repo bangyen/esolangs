@@ -268,7 +268,7 @@ def _baseline(
         timeout=_remaining(deadline),
     )
     document = json.loads(generated.stdout)
-    if document["kind"] == "template":
+    if document["kind"] == "template" and "spans" not in document:
         document["spans"] = runs(
             document["source"], document["char"], document["setters"]
         )

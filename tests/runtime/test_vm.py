@@ -4,7 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.vm import VM
+from esolangs.runtime._vm_protocol import VM
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import _run_all

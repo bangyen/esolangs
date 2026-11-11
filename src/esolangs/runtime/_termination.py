@@ -23,9 +23,10 @@ from esolangs.runtime._proof import (
     checked_decision,
     checked_termination,
 )
+from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options
-from esolangs.vm import VM, _capture_observation, _make_vm
+from esolangs.vm import _capture_observation, _make_vm
 
 
 def _observe_branch_path(machine: VM, proof: BranchProof) -> None:

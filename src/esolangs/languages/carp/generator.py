@@ -28,7 +28,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.requests import GenerationRequest
-from esolangs.languages.carp.descriptor import MAX_INPUTS as MAX_INPUTS
+from esolangs.languages.carp.descriptor import MAX_INPUTS as _MAX_INPUTS
 from esolangs.runtime._program import Program
 from esolangs.runtime.source_hints import with_hint
 
@@ -38,7 +38,7 @@ _K = 15  # register held at 15: ``INC r15 L`` is a jump to L
 def carp(truth_table: str) -> str:
     """Build a CARP program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
-    if n > MAX_INPUTS:
+    if n > _MAX_INPUTS:
         raise with_hint(
             GeneratorCapError("CARP has 15 registers: at most fourteen inputs"),
             "r15 holds the jump constant; inputs take r1..r14",

@@ -12,6 +12,12 @@ below inventories known retirement families; the final tree-wide audit must
 also catch aliases introduced during migration. Target removal release: 2.0.
 Owners are workstreams, not individual contributors.
 
+The 2026-11-11 v2 cutover additionally retires Between's definition facade,
+binding and VM type forwarding imports, and the old Unlambda pickle layout.
+Portable template spans and gzip limits are now required; the older incomplete
+version-1 records are retired. Historical replay converts pinned output for the
+current loader. The older statements below describe their dated snapshots.
+
 | Retirement | Owner | Consumers to migrate | Canonical replacement |
 | --- | --- | --- | --- |
 | Source-returning `generate` / `instantiate` defaults | Artifact API | Retired; all ordinary repository callers retain artifacts; public surface and signature pins | Program/template artifacts and explicit `.source` |
@@ -51,7 +57,7 @@ Owners are workstreams, not individual contributors.
 | Normalized worker hex spellings and duplicate snapshot-set members | Results | Retired; request, result and parent-decoder refusals retain signed huge integers, byte snapshots and partial output | Encoder spellings and distinct immutable members |
 | Malformed PNG metadata version downgrade | Persistence | Retired; missing, mistyped and nonpositive versions fail with live controls in `tests/runtime/raster/test_png.py` | Plain PNG, valid v1 provenance and future positive-integer versions |
 | Absent gzip member accepted as an empty program | Persistence | Retired; constructor, portable and worker refusals retain actual empty members and explicit unavailable execution | Valid UTF-8 gzip members, including empty and concatenated streams |
-| Superseded serialization decoders/converters | Persistence | Not applicable: no persisted format was superseded; version-1 JSON/PNG and unlabelled native files remain supported | Retain canonical decoders; convert only after a format cutover |
+| Incomplete version-1 template/gzip records | Persistence | Retired; missing spans or limits are rejected | Explicit spans and limits |
 
 For each family, locate consumers before changing it; close the row only after
 those consumers migrate, the implementation disappears and a regression check
@@ -62,7 +68,7 @@ The 2.0 defaults are artifacts and execution results. Public API, CLI, scripts,
 documentation and tests retain records through binding and execution. Native
 measurements read explicit source; portable JSON retains template bindings.
 Plain source cannot be instantiated. Native source exports retain their file
-conventions; no serialized format was superseded by this cutover.
+conventions; portable template and gzip records require their current fields.
 
 The source facade, string wrappers, inferred binding recovery and duplicate
 artifact aliases are deleted. PNG persistence encodes record metadata directly;

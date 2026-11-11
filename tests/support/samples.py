@@ -88,7 +88,7 @@ def bits_of(value: int) -> str:
 #
 # This is a fact about the language, so a caller does not have to come here
 # to learn it: each declares its completion behavior on ``_Machine``, and
-# :attr:`esolangs.vm.VM.dumps_on_the_post_halt_step` reports it.
+# :attr:`esolangs.debugger.VM.dumps_on_the_post_halt_step` reports it.
 #
 # **Do not derive this set from that flag.**  Importing every ``_Machine``
 # and reading the attribute reproduces these names exactly, which is the
@@ -127,7 +127,7 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
 # to, so these are carried for the checks that do not need one.
 #
 # Each of the two declares ``self_halts = False`` on its ``_Machine``, and
-# :attr:`esolangs.vm.VM.self_halts` reports it, so a caller writing the
+# :attr:`esolangs.debugger.VM.self_halts` reports it, so a caller writing the
 # obvious ``while not vm.halted: vm.step()`` can ask instead of hanging.
 # How each one is stopped from outside is recorded next to the trait, which
 # is where the machine that does it lives.  The set stays for the same two

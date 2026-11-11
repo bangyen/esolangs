@@ -18,7 +18,7 @@ from esolangs.registry._contracts import (
     StateModel,
     WidthEffect,
 )
-from esolangs.registry._info import LanguageInfo as LanguageInfo
+from esolangs.registry._info import LanguageInfo as _LanguageInfo
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime._json import unique_object
 from esolangs.settings import dialect_choices
@@ -58,11 +58,11 @@ WIDTH_EFFECTS: tuple[str, ...] = get_args(WidthEffect.__value__)
 _ROLE = re.compile(r":(?:class|func|meth|mod|attr|exc|data|obj):`(~?)([^`]+)`")
 
 
-def describe(language: str, *, catalog: "Catalog | None" = None) -> LanguageInfo:
+def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInfo:
     """Return a structured description of ``language``.
 
     Returns:
-        A :class:`LanguageInfo` dict with these keys:
+        A :class:`~esolangs.registry._info.LanguageInfo` dict with these keys:
 
         - Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the
           registry's category), ``wiki_url``, ``spec`` (the interpreter

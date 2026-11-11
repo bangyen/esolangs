@@ -32,14 +32,14 @@ from esolangs.generation.template import (
     layout_tokens,
 )
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.languages.ram0.descriptor import PAIR as PAIR
+from esolangs.languages.ram0.descriptor import PAIR as _PAIR
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.
 #: RAM0 has no input command, so each input run is a fixed-length ``Z``,
 #: ``Z``/``A`` unit independent of the incoming register (``Z`` resets
 #: absolutely); a variable-length setter would shift the absolute ``goto``
 #: operands.
-_RAM0_INPUT = InputSlot(len(PAIR[0]))
+_RAM0_INPUT = InputSlot(len(_PAIR[0]))
 
 
 def ram0(truth_table: str, width: int | None = None) -> str:

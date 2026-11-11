@@ -14,7 +14,8 @@ from esolangs._cycles import _climbs_forever
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.registry import INTERPRETERS
 from esolangs.runtime._lifecycle import Completion
-from esolangs.vm import VM, complete_vm, make_vm, run_until_halt
+from esolangs.runtime._vm_protocol import VM
+from esolangs.vm import complete_vm, make_vm, run_until_halt
 from tests.support.generator_support import CHECK
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE

@@ -12,7 +12,7 @@ from esolangs.runtime._validate import check_whole
 from esolangs.runtime.source_hints import with_hint
 
 if TYPE_CHECKING:
-    from esolangs.vm import VM
+    from esolangs.runtime._vm_protocol import VM
 
 
 @runtime_checkable

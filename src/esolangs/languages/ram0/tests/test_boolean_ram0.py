@@ -10,7 +10,7 @@ import esolangs
 from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.generation.template import layout_tokens
 from esolangs.languages.ram0 import generator as boolean
-from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR
+from esolangs.languages.ram0.descriptor import PAIR as RAM0_PAIR
 from esolangs.languages.ram0.generator import _ram0_ordered
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -47,6 +47,7 @@ class TestParameterizedRam0:
         """The template has one run per input, not hardcoded bits."""
         from esolangs.languages.ram0 import generator as generators
 
+        assert not hasattr(generators, "PAIR")
         template = generators.ram0("0110")
         assert "{X" not in template
         assert len(runs(template, TEMPLATE_CHAR, (RAM0_PAIR,) * 2)) == 2
@@ -139,7 +140,7 @@ def test_parity_source_at_most_doubles_per_input() -> None:
 @pytest.mark.medium
 def test_constants_execute_every_fixed_width_setter() -> None:
     import esolangs
-    from esolangs.languages.ram0.generator import PAIR
+    from esolangs.languages.ram0.descriptor import PAIR
     from esolangs.languages.ram0.interpreter import _Machine
     from scripts.docs.resource_evidence import resource_bounds
 

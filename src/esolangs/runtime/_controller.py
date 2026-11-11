@@ -9,8 +9,8 @@ from esolangs.exceptions import ArgumentError, EsolangError, ExecutionTimeoutErr
 from esolangs.outcomes import ExecutionOutcome, _failed_outcome
 from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime._validate import _argument_repr, check_timeout, check_whole
+from esolangs.runtime._vm_protocol import VM
 from esolangs.vm import (
-    VM,
     _capture_observation,
     _capture_result,
     _DelegatingVM,
@@ -79,7 +79,7 @@ class ExecutionController:
     def self_halts(self) -> bool:
         """Whether a program in this language can reach a halt of its own.
 
-        See :attr:`~esolangs.vm.VM.self_halts`; a pointer, since copies drifted once.
+        See :attr:`~esolangs.debugger.VM.self_halts`; copies drifted once.
         """
         return self.vm.self_halts
 
@@ -97,7 +97,7 @@ class ExecutionController:
     def steppable_to_answer(self) -> bool:
         """Whether stepping this language ever reaches the answer.
 
-        See :attr:`~esolangs.vm.VM.steppable_to_answer`.
+        See :attr:`~esolangs.debugger.VM.steppable_to_answer`.
         """
         return self.vm.steppable_to_answer
 
@@ -105,7 +105,7 @@ class ExecutionController:
     def eof_is_a_value(self) -> bool:
         """Whether a read past the end of the input yields a value here.
 
-        See :attr:`~esolangs.vm.VM.eof_is_a_value`.
+        See :attr:`~esolangs.debugger.VM.eof_is_a_value`.
         """
         return self.vm.eof_is_a_value
 

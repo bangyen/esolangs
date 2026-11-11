@@ -7,7 +7,7 @@ import sys
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.vm import VM
+from esolangs.runtime._vm_protocol import VM
 from tests.support.reference import REFERENCE
 
 

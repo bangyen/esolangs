@@ -55,6 +55,9 @@ def _check_constants() -> None:
 
 
 def _check_register_cap() -> None:
+    from esolangs.languages.carp import generator
+
+    assert not hasattr(generator, "MAX_INPUTS")
     language = esolangs.Language("CARP")
     admitted, refused = construction_boundaries("CARP")["register_input_cap"]
     table = admitted.table()

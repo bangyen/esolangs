@@ -491,12 +491,13 @@ def test_the_closed_string_sets_match_their_sources() -> None:
 
     from esolangs.registry import _contracts, _describe
     from esolangs.registry._backend import Shape
+    from esolangs.runtime._capabilities import IpShape
     from esolangs.runtime._definition import SourceKind
-    from esolangs.vm import IpShape
 
     def labels(alias: object) -> set[str]:
         return set(get_args(alias.__value__))  # type: ignore[attr-defined]
 
+    assert not hasattr(_describe, "LanguageInfo")
     assert labels(_contracts.StateModel) == set(_describe._STATE_MODELS.values())
     assert labels(_contracts.SourceForm) == {kind.value for kind in SourceKind}
     assert labels(_contracts.GeneratorShape) == {shape.value for shape in Shape}

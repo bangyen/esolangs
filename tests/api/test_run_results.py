@@ -220,8 +220,12 @@ def test_public_record_is_immutable_and_the_old_import_is_retired():
         with pytest.raises(ModuleNotFoundError) as missing:
             import_module(retired)
         assert missing.value.name == retired
-    from esolangs import _cycles, vm
+    from esolangs import _cycles, debugger, vm
+    from esolangs.runtime import _vm_protocol
 
+    assert debugger.VM is _vm_protocol.VM
+    assert not hasattr(vm, "VM")
+    assert not hasattr(vm, "IpShape")
     for retired in (
         "_AffineMachine",
         "_branch_search",

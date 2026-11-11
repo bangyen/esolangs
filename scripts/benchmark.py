@@ -49,12 +49,12 @@ from esolangs.artifacts import Artifact
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._certification import load as load_certification
-from esolangs.registry._describe import LanguageInfo
+from esolangs.registry._info import LanguageInfo
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._validate import check_timeout
+from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
-    VM,
     SnapshotVM,
     _capture_workspace,
     complete_vm,

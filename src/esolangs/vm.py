@@ -1,7 +1,8 @@
 """A step-and-inspect interface for the interpreter suite.
 
-:func:`make_vm` wraps a registered interpreter in a :class:`VM` exposing the
-run state between commands; ``ip``/``memory``/``stack`` are language-shaped.
+:func:`make_vm` wraps a registered interpreter in a
+:class:`~esolangs.runtime._vm_protocol.VM` exposing the run state;
+``ip``/``memory``/``stack`` are language-shaped.
 
 Three conventions defeat ``while not vm.halted: vm.step()``, so the VM
 reports them: ``self_halts`` (``halted`` never becomes true),
@@ -11,8 +12,9 @@ and ``steppable_to_answer`` (use :func:`esolangs.run` where it is false).
 The five hang detectors -- :func:`run_until_halt_or_cycle`,
 :func:`run_until_halt_or_all_branches_cycle`,
 :func:`run_until_halt_or_ancestor`, :func:`run_until_halt_or_growth`,
-:func:`run_until_halt_or_value_growth` -- take a :class:`VM` or the state
-it wraps, and raise :class:`TypeError` for a language lacking their
+:func:`run_until_halt_or_value_growth` -- take a
+:class:`~esolangs.runtime._vm_protocol.VM` or the state it wraps, and raise
+:class:`TypeError` for a language lacking their
 sub-protocol.  :func:`run_until_halt` proves nothing.
 """
 
@@ -45,7 +47,7 @@ from esolangs.exceptions import ArgumentError, InterpreterLimitError
 from esolangs.exceptions import EsolangError as _EsolangError
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
-from esolangs.runtime._capabilities import IpShape as IpShape
+from esolangs.runtime._capabilities import IpShape as _IpShape
 from esolangs.runtime._drive import PeriodicMachine, drive_periodic, finalize
 from esolangs.runtime._execution import (
     check_seed_for,
@@ -59,13 +61,13 @@ from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._state import WorkspaceSnapshot
 from esolangs.runtime._traits import trait, traits
 from esolangs.runtime._validate import check_seed, check_whole
-from esolangs.runtime._vm_protocol import VM as VM
+from esolangs.runtime._vm_protocol import VM as _VM
 from esolangs.runtime._vm_views import machine_views
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings
 
 
-def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
+def complete_vm(vm: _VM, max_steps: int | None = 100_000) -> str:
     """Return finalized raw output after a proved halt, including a final dump.
 
     Raises on exhausted steps or an active machine that never self-halts. Repeated
@@ -243,7 +245,7 @@ class _DelegatingVM:
         return trait(self._capabilities, "self_halts")
 
     @property
-    def ip_shape(self) -> IpShape:
+    def ip_shape(self) -> _IpShape:
         debug = self._capabilities.debug
         return debug.ip_shape if debug is not None else "offset"
 
@@ -265,7 +267,7 @@ class _DelegatingVM:
         return trait(self._capabilities, "eof_is_a_value")
 
 
-def _capture_result(vm: VM) -> ExecutionResult:
+def _capture_result(vm: _VM) -> ExecutionResult:
     """Capture a finalized, halted VM without taking another step."""
     if not vm.halted:
         raise ArgumentError("execution result requires a halted VM")
@@ -276,7 +278,7 @@ def _capture_result(vm: VM) -> ExecutionResult:
 
 
 def _capture_observation(
-    vm: VM, report: CompletionReport | None = None
+    vm: _VM, report: CompletionReport | None = None
 ) -> ExecutionResult:
     """Capture live IO without stepping or claiming output finalization."""
     if isinstance(vm, _DelegatingVM):
@@ -285,7 +287,7 @@ def _capture_observation(
     return ExecutionResult(vm.output, None, None, None, report)
 
 
-def _capture_workspace(vm: VM) -> WorkspaceSnapshot:
+def _capture_workspace(vm: _VM) -> WorkspaceSnapshot:
     """Require a registered interpreter's declared semantic accounting model."""
     if not isinstance(vm, _DelegatingVM):
         raise TypeError("workspace accounting requires a registered VM")
@@ -310,8 +312,8 @@ def machine_traits(language: str, *, catalog: Catalog | None = None) -> dict[str
 
 
 @runtime_checkable
-class SnapshotVM(VM, Protocol):
-    """A :class:`VM` with the state cycle detection compares; internal.
+class SnapshotVM(_VM, Protocol):
+    """A VM with the state cycle detection compares; internal.
 
     Out of the public protocol (2.0): users reach it as
     :meth:`~esolangs.debugger.Debugger.snapshot`.
@@ -341,7 +343,7 @@ def _make_vm(
     catalog: Catalog | None = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     prepared: PreparedProgram | None = None,
-) -> VM:
+) -> _VM:
     """Prepare a scoped VM with an invocation-owned input/output factory."""
     from esolangs.registry._catalog import get_catalog
 
@@ -385,7 +387,7 @@ def make_vm(
     settings: DialectSettings | None = None,
     seed: int | None = None,
     catalog: Catalog | None = None,
-) -> VM:
+) -> _VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
     ``stdin`` is consumed verbatim using the language's input unit. The name
