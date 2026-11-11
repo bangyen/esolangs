@@ -14,6 +14,7 @@ labels = ["linear lookup"]
 qualification = "the street writes one cell per entry, then each essential input's mouth forks on its bit (an ignored one is a lone read) and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry"
 
 [construction_boundaries]
+balanced_stacked_fold_cutoff = { tables = [{ arity = 5, rule = "dense" }, { arity = 6, rule = "dense" }], benchmark = false, test = "test_boolean_streetcode_gen.py::test_balance_fold_target_uses_the_western_margin" }
 tree_to_shared_kerb = { tables = [{ arity = 3, rule = "parity" }, { arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = false, test = "test_boolean_streetcode_gen.py::test_tree_yields_to_shared_kerb" }
 shared_kerb_controls = { tables = [{ arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = true }
 

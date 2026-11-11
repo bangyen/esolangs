@@ -3,6 +3,7 @@
 import hashlib
 import importlib
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -14,10 +15,11 @@ from esolangs.languages.circuit_diagram.generator.hlayout import _LATTICE, _h_si
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import three_input_corpus_size
-from tests.support.witness_tables import witnesses
+from tests.support.witness_tables import row_bits, witnesses
 
 
 # 6.2s over 99 tests: builds and runs banded drawings.
@@ -750,6 +752,44 @@ def test_h_side_closed_form() -> None:
         assert _h_size(2 * k + 1) ** 2 < 144 * _LATTICE**2 * 2 ** (2 * k + 1)
 
 
+def _check_layout_admission() -> None:
+    from esolangs.languages.circuit_diagram.generator import balance
+
+    language = esolangs.Language("Circuit Diagram")
+    cases = construction_boundaries(language.name)
+    for witness in cases["default_model_race_cutoff"]:
+        table = witness.table()
+        with patch.object(
+            boolean, "_competing_model_circuit", wraps=boolean._competing_model_circuit
+        ) as race:
+            artifact = language.generate(table)
+        assert race.call_count == int(witness.arity == 4)
+        _check_saved_layout(language, artifact, table)
+
+    for witness in cases["balanced_h_and_pool_admission"]:
+        table = witness.table()
+        with (
+            patch.object(balance, "_h_term_layout", wraps=balance._h_term_layout) as h,
+            patch.object(
+                balance, "_compact_pool_layout", wraps=balance._compact_pool_layout
+            ) as pool,
+        ):
+            artifact = language.generate(table, balance=True)
+        assert h.call_count == int(witness.arity >= 8)
+        assert pool.call_count == int(witness.arity == 9)
+        _check_saved_layout(language, artifact, table)
+
+
+def _check_saved_layout(language, artifact, table: str) -> None:
+    restored = language.load_program(language.dump_program(artifact))
+    prepared = language.prepare(restored)
+    n = len(table).bit_length() - 1
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        result = prepared.evaluate(row_bits(row, n))
+        assert result.bit == table[row]
+        assert result.observation.input_reads == n
+
+
 def test_balance_matches_the_every_width_sweep() -> None:
     """Per table, 2..4 inputs: no width in 1..flat span beats the balanced drawing.
 
@@ -759,6 +799,7 @@ def test_balance_matches_the_every_width_sweep() -> None:
     from esolangs.generation.helpers import grid_width
     from esolangs.languages.circuit_diagram.generator.balance import _drawn_at
 
+    _check_layout_admission()
     rng = random.Random(2)
     for n in (2, 3, 4):
         for _ in range(8):

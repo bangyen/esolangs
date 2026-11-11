@@ -4,6 +4,7 @@ import itertools
 import random
 from importlib import import_module
 from itertools import pairwise
+from unittest.mock import patch
 
 import pytest
 
@@ -240,6 +241,25 @@ def test_balance_folds_the_lookup_into_strips(row: int) -> None:
 
 def test_balance_fold_target_uses_the_western_margin() -> None:
     """The fold's target squares the span east of the first used column."""
+
+    language = esolangs.Language("Streetcode")
+    for witness in construction_boundaries(language.name)[
+        "balanced_stacked_fold_cutoff"
+    ]:
+        n, table = witness.arity, witness.table()
+        with patch.object(
+            boolean, "_streetcode_folded", wraps=boolean._streetcode_folded
+        ) as fold:
+            artifact = language.generate(table, balance=True)
+        assert [call.kwargs.get("tall", False) for call in fold.call_args_list] == (
+            [False] if n == 5 else [False, True]
+        )
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row in (0, 1, len(table) // 2, len(table) - 1):
+            result = prepared.evaluate(row_bits(row, n))
+            assert result.bit == table[row]
+            assert result.observation.input_reads == n
 
     parity = "".join(str(index.bit_count() & 1) for index in range(64))
     program = str(esolangs.generate("Streetcode", parity, balance=True).source)

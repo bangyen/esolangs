@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+packed_decoder_race_cutoff = { tables = [{ arity = 4, rule = "dense" }, { arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_s_bleq.py::test_parity_still_runs_the_race_and_ships_the_tree" }
+
 [curation]
 backlinks = 4
 admitted = 2026-08-12T17:01:43-04:00

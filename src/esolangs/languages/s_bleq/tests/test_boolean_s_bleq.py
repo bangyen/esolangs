@@ -12,6 +12,7 @@ from esolangs.languages.s_bleq import generator as boolean
 from esolangs.languages.s_bleq.generator import _compact_tree, _tree_min_chars
 from esolangs.languages.s_bleq.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.proofs._witness_builders import _sbleq_worst
 from tests.proofs.execution import tables as _tables
@@ -96,6 +97,19 @@ def test_the_scaling_witness_skips_the_tree() -> None:
 
 def test_parity_still_runs_the_race_and_ships_the_tree() -> None:
     """Parity's bound stays low: the race runs and the tree wins it."""
+    language = esolangs.Language("S*bleq")
+    for witness in construction_boundaries(language.name)["packed_decoder_race_cutoff"]:
+        n, table = witness.arity, witness.table()
+        with patch.object(boolean, "packed_decoder", wraps=packed_decoder) as packed:
+            artifact = language.generate(table)
+        assert packed.call_count == int(n == 5)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row, expected in enumerate(table):
+            result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
+            assert result.bit == expected
+            assert result.observation.input_reads == n
+
     n = 12
     table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
     assert _tree_min_chars(table, n) <= len(packed_decoder(table))

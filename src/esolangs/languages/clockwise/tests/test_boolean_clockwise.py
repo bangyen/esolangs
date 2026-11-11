@@ -1,6 +1,7 @@
 """Covers :mod:`esolangs.languages.clockwise.generator`."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -15,6 +16,7 @@ from esolangs.languages.clockwise.generator import (
     clockwise,
 )
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import parity, row_bits, witnesses
 
@@ -174,6 +176,24 @@ def test_rotated_lookup_size_is_linear() -> None:
 @pytest.mark.medium
 def test_entry_digit_prefix_executes_every_small_table() -> None:
     """The shared six bits precede lookup without carrying an index into it."""
+    language = esolangs.Language("Clockwise")
+    witnesses_at_cutoff = construction_boundaries(language.name)[
+        "two_column_fallback_arity_cutoff"
+    ]
+    for witness in witnesses_at_cutoff:
+        n, table = witness.arity, witness.table()
+        with patch.object(
+            boolean, "_clockwise_two_columns", wraps=boolean._clockwise_two_columns
+        ) as narrow:
+            artifact = language.generate(table, width=1)
+        assert narrow.call_count == int(n == 2)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row, expected in enumerate(table):
+            result = prepared.evaluate(row_bits(row, n))
+            assert result.bit == expected
+            assert result.observation.input_position == n
+
     assert max(map(len, boolean.clockwise("0110", 1).splitlines())) == 2
     for n in range(1, 4):
         for table in witnesses(n):

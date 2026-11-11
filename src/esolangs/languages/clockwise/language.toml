@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+two_column_fallback_arity_cutoff = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_clockwise.py::test_entry_digit_prefix_executes_every_small_table" }
+
 [curation]
 backlinks = 4
 admitted = 2021-05-25T19:49:44-04:00
