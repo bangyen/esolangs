@@ -82,6 +82,7 @@ construction = "esolangs.languages.unary.generator:unary_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.unary.generator:unary_request"
+corpus = "esolangs.languages.unary.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.execution]
 expression = "max(n, min(n + 4, 8))"

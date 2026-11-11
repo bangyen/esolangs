@@ -80,6 +80,7 @@ construction = "esolangs.languages.rubic.generator:rubic_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.rubic.generator:rubic_request"
+witnesses = "esolangs.languages.rubic.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "16n + 5"

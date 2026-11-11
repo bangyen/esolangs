@@ -88,6 +88,7 @@ construction = "esolangs.languages.dig.generator:dig_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.dig.generator:dig_request"
+witnesses = "esolangs.languages.dig.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "C*(48R-48+P)+(1-C)*max(125+(74+18(n-2floor(n/2)))*2^(floor(n/2)-3),I)"

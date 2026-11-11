@@ -76,6 +76,7 @@ construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.freestajlo.generator:freestajlo_request"
+witnesses = "esolangs.languages.freestajlo.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # 4n plain to n = 4; the packed literal's decode adds 17 from n = 5.

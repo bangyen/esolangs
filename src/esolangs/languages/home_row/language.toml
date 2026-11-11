@@ -84,6 +84,7 @@ construction = "esolangs.languages.home_row.generator:home_row_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.home_row.generator:home_row_request"
+witnesses = "esolangs.languages.home_row.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "9T/2 + 10n + 284"

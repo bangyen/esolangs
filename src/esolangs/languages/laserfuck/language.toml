@@ -123,6 +123,8 @@ construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.laserfuck.generator:laserfuck_request"
+witnesses = "esolangs.languages.laserfuck.tests.resource_witnesses:resource_tables"
+corpus = "esolangs.languages.laserfuck.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.execution]
 # The constant ring takes ten steps a pass and skips its final reflection.

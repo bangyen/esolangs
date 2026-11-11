@@ -125,6 +125,7 @@ construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_req
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.circuit_diagram.generator:circuit_diagram_request"
+corpus = "esolangs.languages.circuit_diagram.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.execution]
 expression = "2n + 1"

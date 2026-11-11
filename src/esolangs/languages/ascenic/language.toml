@@ -87,6 +87,7 @@ construction = "esolangs.languages.ascenic.generator:ascenic_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.ascenic.generator:ascenic_request"
+witnesses = "esolangs.languages.ascenic.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "2T + 7n + 1 - 2⌊n/2⌋"

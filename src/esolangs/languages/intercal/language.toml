@@ -77,6 +77,7 @@ construction = "esolangs.languages.intercal.generator:intercal_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.intercal.generator:intercal_request"
+witnesses = "esolangs.languages.intercal.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "S"

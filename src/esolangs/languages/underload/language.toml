@@ -78,6 +78,7 @@ construction = "esolangs.languages.underload.generator:underload_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.underload.generator:underload_request"
+witnesses = "esolangs.languages.underload.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "10n + 3 + 2⌊(n-1)/2⌋"

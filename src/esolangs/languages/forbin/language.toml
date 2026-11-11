@@ -83,6 +83,7 @@ construction = "esolangs.languages.forbin.generator:forbin_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.forbin.generator:forbin_request"
+witnesses = "esolangs.languages.forbin.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "2 max(n - 3, 0) + 2"

@@ -77,6 +77,15 @@ construction = "esolangs.languages.malbolge.generator:malbolge_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.malbolge.generator:malbolge_request"
+corpus = "esolangs.languages.malbolge.tests.resource_witnesses:resource_corpus"
+
+[resource_evidence.sparse]
+# The two n=17 witnesses step 407,729 commands across 71 named rows.
+# Generation plus stepping took ~1.9s standalone.
+provider = "esolangs.languages.malbolge.tests.resource_witnesses:sparse_rows"
+arities = [17]
+columns = []
+bands = { "17" = "medium" }
 
 [resource_evidence.execution]
 expression = "E+J"

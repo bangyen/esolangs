@@ -104,6 +104,7 @@ construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiver
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse_request"
+witnesses = "esolangs.languages.collatz_multiverse.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # Every unhosted line runs once. The decoder has up to 16 distinct four-row cells.

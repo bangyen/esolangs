@@ -84,6 +84,7 @@ construction = "esolangs.languages.piet.generator:piet_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.piet.generator:piet_request"
+witnesses = "esolangs.languages.piet.tests.formulas:resource_tables"
 
 [resource_evidence.execution]
 # Triple commands dominate the checked projections at n=4..6. From n=7

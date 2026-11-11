@@ -79,6 +79,7 @@ construction = "esolangs.languages.subleq.generator:subleq_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.subleq.generator:subleq_request"
+witnesses = "esolangs.languages.subleq.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "8T+(7n+5)(⌊T/n⌋-1)+23n-8"

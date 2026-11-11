@@ -72,6 +72,7 @@ construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag_request"
+witnesses = "esolangs.languages.cyclic_tag.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # AND's extra continuation wins from three inputs.

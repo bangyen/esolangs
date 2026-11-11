@@ -65,6 +65,7 @@ construction = "esolangs.languages.decleq.generator:decleq_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.decleq.generator:decleq_request"
+witnesses = "esolangs.languages.decleq.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "50n + 95"

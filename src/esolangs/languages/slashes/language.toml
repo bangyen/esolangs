@@ -76,6 +76,7 @@ construction = "esolangs.languages.slashes.generator:slashes_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.slashes.generator:slashes_request"
+witnesses = "esolangs.languages.slashes.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 #

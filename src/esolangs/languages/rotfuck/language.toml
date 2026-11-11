@@ -83,6 +83,7 @@ construction = "esolangs.languages.rotfuck.generator:rotfuck_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.rotfuck.generator:rotfuck_request"
+witnesses = "esolangs.languages.rotfuck.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.rotfuck.proof_formulas:execution"

@@ -76,6 +76,7 @@ construction = "esolangs.languages.sendstuff.generator:sendstuff_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.sendstuff.generator:sendstuff_request"
+witnesses = "esolangs.languages.sendstuff.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "U*(n+1+R) + (1-U)*(4n+2)"

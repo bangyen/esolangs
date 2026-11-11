@@ -70,6 +70,7 @@ construction = "esolangs.languages.kiss.generator:kiss_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.kiss.generator:kiss_request"
+witnesses = "esolangs.languages.kiss.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "4n - 1"

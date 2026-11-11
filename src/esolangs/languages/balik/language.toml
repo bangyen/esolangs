@@ -63,6 +63,7 @@ construction = "esolangs.languages.balik.generator:balik_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.balik.generator:balik_request"
+witnesses = "esolangs.languages.balik.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # Even n, else odd n past 1; the 3n - 2 command prefix reads the inputs.

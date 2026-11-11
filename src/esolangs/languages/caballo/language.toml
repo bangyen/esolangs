@@ -76,6 +76,7 @@ construction = "esolangs.languages.caballo.generator:caballo_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.caballo.generator:caballo_request"
+witnesses = "esolangs.languages.caballo.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "n^2 + 12n + 6"

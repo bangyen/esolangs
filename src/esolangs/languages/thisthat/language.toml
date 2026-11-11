@@ -82,6 +82,7 @@ construction = "esolangs.languages.thisthat.generator:thisthat_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.thisthat.generator:thisthat_request"
+witnesses = "esolangs.languages.thisthat.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "C*(2n+5) + (1-C)*((32+16*(n-2floor(n/2)))*2^floor(n/2)-29)"

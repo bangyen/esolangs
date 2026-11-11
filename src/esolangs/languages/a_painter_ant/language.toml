@@ -78,6 +78,7 @@ construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant_request
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant_request"
+witnesses = "esolangs.languages.a_painter_ant.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "2S"

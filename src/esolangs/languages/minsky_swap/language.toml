@@ -93,6 +93,7 @@ construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.minsky_swap.generator:minsky_swap_request"
+witnesses = "esolangs.languages.minsky_swap.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # The maximal native commands before the post-halt dump.

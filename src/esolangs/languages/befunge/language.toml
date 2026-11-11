@@ -95,6 +95,8 @@ construction = "esolangs.languages.befunge.generator:befunge_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.befunge.generator:befunge_request"
+witnesses = "esolangs.languages.befunge.tests.resource_witnesses:resource_tables"
+corpus = "esolangs.languages.befunge.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.execution]
 # Natural projections or one-row nibbles through eight, then six-bit decode.

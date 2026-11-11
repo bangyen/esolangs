@@ -71,6 +71,7 @@ construction = "esolangs.languages.switchcase.generator:switchcase_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.switchcase.generator:switchcase_request"
+witnesses = "esolangs.languages.switchcase.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # Every read, at most n dispatches, and a printing leaf; parity attains it.

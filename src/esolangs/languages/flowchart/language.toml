@@ -83,6 +83,7 @@ construction = "esolangs.languages.flowchart.generator:flowchart_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.flowchart.generator:flowchart_request"
+witnesses = "esolangs.languages.flowchart.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "2T+2·2^⌊n/2⌋+2^⌈n/2⌉+9n+1"

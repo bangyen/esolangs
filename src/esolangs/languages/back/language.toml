@@ -79,6 +79,7 @@ construction = "esolangs.languages.back.generator:back_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.back.generator:back_request"
+witnesses = "esolangs.languages.back.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # Folded-area selection restricts n=8/9 combs to 114/218 rows.

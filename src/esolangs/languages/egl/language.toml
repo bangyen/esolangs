@@ -87,6 +87,7 @@ construction = "esolangs.languages.egl.generator:egl_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.egl.generator:egl_request"
+witnesses = "esolangs.languages.egl.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # The worst row paints T-1 ones and takes every guard.

@@ -78,6 +78,7 @@ construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.bit_tilde.generator:bit_tilde_request"
+witnesses = "esolangs.languages.bit_tilde.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "19T/4+18n+123"

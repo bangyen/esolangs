@@ -328,3 +328,11 @@ def resource_witness(n: int, kind: str) -> str:
     z = {"area": zeros, "steps": walk_zeros, "bits": bit_zeros}[kind](n)
     ones = {0, width - 1, *[*middle, *rest][: width - z - 2]}
     return "".join("1" if r in ones else "0" for r in range(width))
+
+
+def resource_tables(n: int) -> tuple[str, ...]:
+    """Return distinct witnesses for native area, command and workspace bounds."""
+    if n < 2:
+        return ()
+    kinds = ("area", "steps", "bits") if n <= 7 else ("area",)
+    return tuple(dict.fromkeys(resource_witness(n, kind) for kind in kinds))

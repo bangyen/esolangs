@@ -81,6 +81,7 @@ construction = "esolangs.languages.suffolk.generator:suffolk_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.suffolk.generator:suffolk_request"
+witnesses = "esolangs.languages.suffolk.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "L + R"

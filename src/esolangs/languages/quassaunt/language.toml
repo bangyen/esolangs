@@ -72,6 +72,7 @@ construction = "esolangs.languages.quassaunt.generator:quassaunt_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.quassaunt.generator:quassaunt_request"
+witnesses = "esolangs.languages.quassaunt.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # The full diagram attains the store-path ceiling without any seven-word chain savings.

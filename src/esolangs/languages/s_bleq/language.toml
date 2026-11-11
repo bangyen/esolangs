@@ -88,6 +88,15 @@ construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
+witnesses = "esolangs.languages.s_bleq.tests.resource_witnesses:resource_tables"
+
+[resource_evidence.sparse]
+# n=21 spends ~37M commands. The remaining arities recheck the same packed
+# route and take 28–108s standalone, up to ~2.4× under load.
+provider = "esolangs.languages.s_bleq.tests.resource_witnesses:sparse_rows"
+arities = [21, 22, 23, 24, 25, 26]
+columns = []
+bands = { "21" = "slow", "22" = "weekly", "23" = "weekly", "24" = "weekly", "25" = "weekly", "26" = "weekly" }
 
 [resource_evidence.execution]
 # Tree: an entry jump, n reads and at most n tests and n-1 relays, then print and halt.

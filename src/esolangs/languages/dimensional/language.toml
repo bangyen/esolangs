@@ -91,6 +91,7 @@ construction = "esolangs.languages.dimensional.generator:dimensional_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.dimensional.generator:dimensional_request"
+witnesses = "esolangs.languages.dimensional.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "11T + ⌊(2T+1)/5⌋ - 4n + 43"

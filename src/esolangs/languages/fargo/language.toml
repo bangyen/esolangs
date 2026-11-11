@@ -85,6 +85,7 @@ construction = "esolangs.languages.fargo.generator:fargo_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.fargo.generator:fargo_request"
+witnesses = "esolangs.languages.fargo.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # The stated execution bound, evaluated for n and the program.

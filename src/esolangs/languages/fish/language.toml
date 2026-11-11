@@ -75,6 +75,7 @@ construction = "esolangs.languages.fish.generator:fish_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.fish.generator:fish_request"
+witnesses = "esolangs.languages.fish.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # Beyond n=45 the packed prefix grows, but the symmetric reader

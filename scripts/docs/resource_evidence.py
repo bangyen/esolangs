@@ -13,6 +13,7 @@ from typing import Any, cast
 
 from esolangs.registry import LANGUAGES
 
+from .fragments import section
 from .resource_description import formula_record, parse_descriptions, source_terms
 from .resource_formula import (
     TermProvider,
@@ -166,6 +167,36 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
     if not {"execution", "workspace"} <= found.keys():
         raise ValueError("resource evidence requires execution and workspace bounds")
     return found
+
+
+def resource_corpus(language: str, arity: int) -> tuple[str, ...] | None:
+    """Return a declared replacement for the generic resource corpus, if any."""
+    return _resource_cases(language, arity, "corpus")
+
+
+def resource_witnesses(language: str, arity: int) -> tuple[str, ...]:
+    """Build additional formula witnesses declared by the owning language."""
+    return _resource_cases(language, arity, "witnesses") or ()
+
+
+def _resource_cases(language: str, arity: int, field: str) -> tuple[str, ...] | None:
+    path = PACKAGES / LANGUAGES[language].id / "language.toml"
+    data = section(path, "resource_evidence") or {}
+    reference = data.get(field)
+    if reference is None:
+        return None
+    provider = cast(
+        Callable[[int], tuple[str, ...] | None], _provider(language, reference)
+    )
+    tables = provider(arity)
+    if tables is None and field == "corpus":
+        return None
+    if not isinstance(tables, tuple) or any(
+        not isinstance(table, str) or len(table) != 1 << arity or table.strip("01")
+        for table in tables
+    ):
+        raise ValueError(f"{language}: invalid resource witness at arity {arity}")
+    return tables
 
 
 def resource_bounds(language: str) -> dict[str, ResourceBound]:

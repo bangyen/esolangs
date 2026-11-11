@@ -71,6 +71,7 @@ construction = "esolangs.languages.fractran.generator:fractran_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.fractran.generator:fractran_request"
+witnesses = "esolangs.languages.fractran.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # The stated execution bound, evaluated for n and the program.

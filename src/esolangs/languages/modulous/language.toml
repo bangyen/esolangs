@@ -80,6 +80,7 @@ construction = "esolangs.languages.modulous.generator:modulous_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.modulous.generator:modulous_request"
+witnesses = "esolangs.languages.modulous.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "4D+7J+P*(2n+3)+(1-D-J-P)*(T+3n+2+min(1,max(0,n-4))*(4-T/2)+min(1,max(0,n-5))*(2T+2n-37)+min(1,n-1)*max(0,S-1))"

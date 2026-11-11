@@ -75,6 +75,7 @@ construction = "esolangs.languages.bleh.generator:bleh_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.bleh.generator:bleh_request"
+witnesses = "esolangs.languages.bleh.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # Validation adds six transitions per read, seven for a one bit.

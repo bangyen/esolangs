@@ -83,6 +83,7 @@ construction = "esolangs.languages.smu.generator:smu_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.smu.generator:smu_request"
+witnesses = "esolangs.languages.smu.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "55n + 5"

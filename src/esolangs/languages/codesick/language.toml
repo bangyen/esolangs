@@ -72,6 +72,7 @@ construction = "esolangs.languages.codesick.generator:codesick_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.codesick.generator:codesick_request"
+witnesses = "esolangs.languages.codesick.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "3n - 1"

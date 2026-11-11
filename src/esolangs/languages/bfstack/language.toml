@@ -85,6 +85,8 @@ construction = "esolangs.languages.bfstack.generator:bfstack_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.bfstack.generator:bfstack_request"
+witnesses = "esolangs.languages.bfstack.tests.resource_witnesses:resource_tables"
+corpus = "esolangs.languages.bfstack.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.execution]
 # The stated execution bound, evaluated for n and the program.

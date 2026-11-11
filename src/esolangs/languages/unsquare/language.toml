@@ -77,6 +77,7 @@ construction = "esolangs.languages.unsquare.generator:unsquare_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.unsquare.generator:unsquare_request"
+witnesses = "esolangs.languages.unsquare.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # A leaf of S cells pushes in at most 3S commands and pops in S.

@@ -75,6 +75,7 @@ construction = "esolangs.languages.false.generator:false_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.false.generator:false_request"
+witnesses = "esolangs.languages.false.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "9T/2 + 5n - 7"

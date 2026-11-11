@@ -1,13 +1,5 @@
-"""Worst-case witness tables for the execution/workspace formula tests.
+"""Shared witness builders and scheduling for resource formula tests."""
 
-``_WITNESSES`` maps a generator to the named tables its exact cells need;
-``execution.tables`` appends them to the generic corpus.
-``_SPARSE_ROWS`` maps a generator to the named rows of one witness table
-that ``test_sparse_rows`` steps where the all-row suites cannot afford to,
-and ``_SPARSE_BAND`` carries those cases' duration bands.
-"""
-
-import importlib
 import random
 from collections.abc import Callable
 from typing import NamedTuple
@@ -15,27 +7,10 @@ from typing import NamedTuple
 import pytest
 
 from esolangs.generation.helpers import permute_truth_table, reflected_table
+from esolangs.registry import LANGUAGES
 from esolangs.runtime._digits import digit_limit_for
-from tests.proofs._witness_builders import (
-    _back_worst,
-    _befunge_worst,
-    _bfs_chars,
-    _brainif_worst,
-    _codesick_chars_worst,
-    _collatz_chars_worst,
-    _diagram_witness,
-    _false_tiled,
-    _forbin_worst,
-    _row_one,
-    _sbleq_worst,
-    _smu_worst,
-    _suffolk_deep,
-    _suffolk_worst,
-    _switchcase_worst,
-)
-from tests.proofs._witness_builders import (
-    _malbolge_stub as _malbolge_stub,  # re-exported for the formula suites
-)
+from scripts.docs.fragments import section
+from scripts.docs.resource_evidence import PACKAGES, _provider
 from tests.support.witness_tables import parity as _parity
 
 
@@ -411,25 +386,6 @@ def _sendstuff_worst(n: int) -> str:
     return "".join(out) + order[0] + order[-1]
 
 
-# language-owners: ["Crement"]
-def _crement_worst(n: int) -> str:
-    """Ordered unequal leaf pairs (x, x + d), d from V/2: every level distinct."""
-    if n <= 10:
-        values = sorted(range(16), key=lambda v: v >> 2 == v & 3)
-        cells = []
-        for i in range(1 << (n - 3)):
-            cells += [values[i % 16], values[(i + 8 + i // 16) % 16]]
-        return "".join(f"{v:04b}" for v in cells)
-    width = 8 if n <= 19 else 16
-    size = 1 << width
-    out = []
-    for j in range(1 << (n - 4 if width == 8 else n - 5)):
-        x, t = j % size, j // size
-        d = (t + size // 2 - 1) % (size - 1) + 1
-        out += [x, (x + d) % size]
-    return "".join(f"{v:0{width}b}" for v in out)
-
-
 # language-owners: ["Pointless"]
 def _pointless_worst(n: int) -> str:
     """Each level's node called twice and the zero leaf thrice: all declared."""
@@ -469,15 +425,6 @@ def _underload_worst(n: int) -> str:
         zeros, inner = "0" * 2 ** (n - 3), _underload_odd(n - 3)
         tree = 2 * zeros + 2 * inner + 3 * zeros + inner
     return reflected_table(tree, n)
-
-
-def _home_row_worst(n: int) -> tuple[str, ...]:
-    """The all-leaf table, and (n >= 3) it with its first pairs set to ``00``."""
-    base = "0110" * ((1 << n) // 4 - 1) + "0111" if n > 1 else "0111"
-    if n < 3:
-        return (base,)
-    head = 2 * min(4, n - 1)
-    return (base, "0" * head + base[head:])
 
 
 def _low_one(n: int) -> str:
@@ -771,420 +718,49 @@ class SparseRows(NamedTuple):
     ws_witness: int | None = None
 
 
-# language-owners: ["What!?"]
-def _what_sparse(n: int) -> SparseRows:
-    """Alternating answers: row 0 attains E, the last row W (past 15 inputs).
+class SparseRegistration(NamedTuple):
+    """Language-owned sparse witnesses, formula columns and run bands."""
 
-    Row 0 satisfies every change point's test; each block's first row ties
-    it, the middle and last rows cost less (measured at n = 16, 17).
-    """
-    width = 1 << n
-    rows = (0, 1 << 15, width // 2, width - 1)
-    return SparseRows(
-        "10" * (width // 2), tuple(dict.fromkeys(rows)), 0, ws_witness=width - 1
-    )
+    build: Callable[[int], SparseRows | tuple[SparseRows, ...]]
+    arities: tuple[int, ...]
+    columns: frozenset[str]
+    bands: dict[int, str]
 
 
-# language-owners: ["Interprogck8"]
-def _interprogck8_sparse(n: int) -> SparseRows:
-    """The steps witness; the all-ones row attains E, the rest stay under.
-
-    n = 11: measured over all 2,048 rows, rows 2045-2047 reach the maximum
-    37,997 = E.  n = 12: rows 4093-4095 reach 76,011 (of 4032-4095 measured).
-    """
-    owner = importlib.import_module("esolangs.languages.interprogck8.tests.formulas")
-    width = 1 << n
-    witness = width - 1
-    rows = (0, 1, width // 2 - 1, width - 32, width // 2 - 16, width - 16, witness)
-    return SparseRows(owner.steps_witness(n), tuple(dict.fromkeys(rows)), witness)
-
-
-# language-owners: ["S*bleq"]
-def _sbleq_sparse(n: int) -> SparseRows:
-    """The packed witness's rows, as many as the band affords.
-
-    A row's price is its chunk scan, and the scan's prices are
-    chunk-value-driven, not positional (measured per row in the
-    landing notes; a case's steps run at ~0.5M/s on a quiet box,
-    degrading to ~0.2M/s under a memory-bound co-tenant — the
-    sets are budgeted at the degraded rate, against the slow
-    band's 600 s hard stop).
-    {0, width/2, last} totals 37M steps at n = 21 and stays; at
-    22 the middle row alone costs 44M, so {0, last} (34M) stands;
-    at 23 every row past chunk 0 costs 60M or more, so chunk 0's
-    last bit joins row 0 (12M together).  From n = 24 the chunks
-    are 8-digit decimals and row 0 alone costs 40M steps; every
-    second row measured there (57M and up) prices its pair past
-    the band, so row 0 stands alone.  The dearer rows are
-    recorded in the landing notes, unregistered.
-    """
-    width = 1 << n
-    if n == 21:
-        rows = (0, width // 2, width - 1)
-    elif n == 22:
-        rows = (0, width - 1)
-    elif n == 23:
-        rows = (0, n - 1)
-    else:
-        rows = (0,)
-    return SparseRows(_sbleq_worst(n), rows, rows[-1])
-
-
-# language-owners: ["Malbolge"]
-def _malbolge_symmetric(n: int) -> SparseRows:
-    """One weight-class witness at seventeen: named rows, answers only.
-
-    The table is constant on Hamming-weight classes, with the class
-    vector drawn from ``Random(17018)`` (eighteen choices, both
-    answers attained).  The named rows -- row 0, every single-bit
-    row, the first row of every weight and the last two rows --
-    probe every folded input and the stub's, attain every weight and
-    both answers.  The evidence is about this one weight-class
-    witness only: it supports no scaling or execution claim, nothing
-    about non-symmetric seventeen-input tables, and it does not
-    soften "seventeen is open" -- below seventeen the suites execute
-    every row of every corpus table, here only these named rows run.
-    The witness field names the last row; no formula column is
-    claimed for Malbolge, so it attains nothing.
-    """
-    rng = random.Random(17018)
-    classes = "".join(rng.choice("01") for _ in range(n + 1))
-    table = "".join(classes[row.bit_count()] for row in range(1 << n))
-    rows = [0]
-    for row in (
-        *(1 << j for j in range(n)),
-        *((1 << w) - 1 for w in range(n + 1)),
-        (1 << n) - 2,
-        (1 << n) - 1,
-    ):
-        if row not in rows:
-            rows.append(row)
-    return SparseRows(table, tuple(rows), rows[-1])
-
-
-# language-owners: ["Malbolge"]
-def _malbolge_sparse(n: int) -> tuple[SparseRows, ...]:
-    """The two seventeen-input witnesses: projection and weight-class.
-
-    The projection witness follows; the weight-class witness is
-    :func:`_malbolge_symmetric`.  Both are answers-only.
-    """
-    return _malbolge_projection(n), _malbolge_symmetric(n)
-
-
-# language-owners: ["Malbolge"]
-def _malbolge_projection(n: int) -> SparseRows:
-    """One projection witness at seventeen: 36 named rows, answers only.
-
-    The witness is the sparse pricing's measured table (M7): a seeded
-    sixteen-input table (``Random(17017)``; the pricing script drew two
-    tables from the seed before it, so those draws are consumed here)
-    lifted to seventeen by ignoring the last input, each answer then
-    appearing under both values of that input.  The eighteen projected
-    rows -- row 0, every single-bit row, the half-width row (already a
-    single bit) and the last row -- probe every folded input, attain
-    both answers and include the step worst (projected row 16, 5,686
-    steps, the formula's pinned worst at sixteen); measured on the
-    sixteen build they total 100,484 steps, so the lifted 36 rows
-    total 200,968, about 0.9 s of stepping.  The evidence is about
-    this one projection witness only: it supports no scaling or
-    execution claim, nothing about non-projection seventeen-input
-    tables, and it does not soften "seventeen is open" -- below
-    seventeen the suites execute every row of every corpus table,
-    here only these named rows run.
-    """
-    rng = random.Random(17017)
-    for _ in range((1 << (n - 1)) + (1 << n)):
-        rng.choice("01")
-    base = "".join(rng.choice("01") for _ in range(1 << (n - 1)))
-    table = "".join(bit * 2 for bit in base)
-    projected = (0, *(1 << j for j in range(n - 1)), (1 << (n - 1)) - 1)
-    rows = tuple(2 * row + bit for row in projected for bit in (0, 1))
-    return SparseRows(table, rows, 2 * 16)
-
-
-#: Sparse-row registrations: a witness builder (returning one witness
-#: or a tuple of them), the arities to step, and the formula columns
-#: (``"execution"``, ``"workspace"``) whose formulas the witness row
-#: must attain.  A registration naming no column checks its rows'
-#: answers only — the shape a route with no step bound yet (S*bleq's
-#: packed route) plugs into.
-_SPARSE_ROWS: dict[
-    str,
-    tuple[
-        Callable[[int], SparseRows | tuple[SparseRows, ...]],
-        tuple[int, ...],
-        frozenset[str],
-    ],
-] = {
-    "What!?": (_what_sparse, (16, 17), frozenset({"execution", "workspace"})),
-    "S*bleq": (_sbleq_sparse, (21, 22, 23, 24, 25, 26), frozenset()),
-    "Malbolge": (_malbolge_sparse, (17,), frozenset()),
-    "Interprogck8": (_interprogck8_sparse, (11, 12), frozenset({"execution"})),
-}
-
-#: Sparse-case bands, from standalone runs: a case pays one parse a row
-#: stepped, so its cost is its row count times the parse at that arity,
-#: plus the stepping (the sampler roughly doubles a row's stepping).
-#: What!? parses in ~0.8 s at n = 16, ~1.8 s at 17; whole cases measure
-#: 4.2 s / 3.9 s at 16 (execution / workspace) and 11.5 s / 5.7 s at 17.
-#: No case at 22 (77 s / 86 s): it reaches no line or branch 16 and 17
-#: miss, and past 15 inputs E and W have no case split for it to check;
-#: 17 only backs the ledger range, so it runs weekly.
-#: S*bleq parses in well under a
-#: second even at n = 26; its cases are priced by stepping alone
-#: (12M-40M steps a case, plus 1-31 s of generation): whole cases
-#: measure 28-108 s standalone (n = 23 the cheapest, 26 the dearest),
-#: and up to ~2.4x that under a memory-bound co-tenant.  Past n = 21
-#: they run weekly: each re-checks the one packed route at a wider table.  Malbolge
-#: parses in about a millisecond at seventeen (the source is the
-#: fixed store); its case is generation plus both witnesses' rows
-#: (36 projection rows, 35 weight-class rows, 407,729 steps in all),
-#: about 1.9 s standalone.
-_SPARSE_BAND = {
-    ("What!?", "execution", 16): "medium",
-    ("What!?", "execution", 17): "weekly",
-    ("What!?", "workspace", 16): "medium",
-    ("What!?", "workspace", 17): "weekly",
-    ("S*bleq", "execution", 21): "slow",
-    ("S*bleq", "execution", 22): "weekly",
-    ("S*bleq", "execution", 23): "weekly",
-    ("S*bleq", "execution", 24): "weekly",
-    ("S*bleq", "execution", 25): "weekly",
-    ("S*bleq", "execution", 26): "weekly",
-    ("Malbolge", "execution", 17): "medium",
-    ("Interprogck8", "execution", 11): "medium",
-    ("Interprogck8", "execution", 12): "weekly",
-}
-
-#: Worst-case witnesses of exact (``worst``) cells the generic corpus misses.
-_WITNESSES: dict[str, Callable[[int], tuple[str, ...]]] = {
-    "brainfuck": lambda n: ("0" + "1" * ((1 << n) - 1),) if n >= 3 else (),
-    "///": lambda n: (
-        "10" if n == 1 else "10" * (2 ** (n - 1) - 1) + "11",
-        "10111011" if n == 3 else "0" * (1 << n),
-    ),
-    "Minsky Swap": lambda n: (
-        *_diagram_witness("minsky_swap", n, bottom=1),
-        *_diagram_witness("minsky_swap", n, 5, "source_witness", bottom=1),
-    ),
-    "Rubic": lambda n: ("1000",) if n == 2 else _diagram_witness("rubic", n),
-    "AddSubJump": lambda n: (_asj_packed_worst(n),) if n >= 6 else (),
-    "Dig": lambda n: (_dig_indexed_worst(n),) if 8 <= n <= 12 else (),
-    "Back": _back_worst,
-    # One-cell runs at both ends: neither corridor direction shortens it (size);
-    # a leading run of two and one zero at the end (workspace).
-    "A Painter Ant": lambda n: (
-        (
-            "0" + "1" * ((1 << n) - 2) + "0",
-            "110" + "1" * ((1 << n) - 4) + "0",
+def sparse_registrations() -> dict[str, SparseRegistration]:
+    """Load and validate sparse witness declarations for the proof suites."""
+    found = {}
+    for name, language in LANGUAGES.items():
+        path = PACKAGES / language.id / "language.toml"
+        row = (section(path, "resource_evidence") or {}).get("sparse")
+        if row is None:
+            continue
+        if not isinstance(row, dict) or set(row) != {
+            "provider",
+            "arities",
+            "columns",
+            "bands",
+        }:
+            raise ValueError(f"{path}: invalid sparse witness declaration")
+        arities = row["arities"]
+        columns = row["columns"]
+        bands = row["bands"]
+        if (
+            not isinstance(arities, list)
+            or not arities
+            or any(type(arity) is not int or arity < 1 for arity in arities)
+            or len(arities) != len(set(arities))
+            or not isinstance(columns, list)
+            or any(column not in ("execution", "workspace") for column in columns)
+            or not isinstance(bands, dict)
+            or set(bands) != {str(arity) for arity in arities}
+            or any(band not in ("medium", "slow", "weekly") for band in bands.values())
+        ):
+            raise ValueError(f"{path}: invalid sparse witness scope")
+        found[name] = SparseRegistration(
+            _provider(name, row["provider"]),
+            tuple(arities),
+            frozenset(columns),
+            {int(arity): band for arity, band in bands.items()},
         )
-        if n >= 3
-        else ()
-    ),
-    # The last input ignored: n - 1 essential inputs can outrun all n.
-    "B-tapemark": lambda n: (_parity(n - 1) * 2,) if n >= 3 else (),
-    "1 + i": lambda n: (
-        (
-            _morse("1000", "0010", n),
-            _one_i_swapped(n),
-            *_diagram_witness("one_i", n, top=27, bottom=2),
-            *_diagram_witness("one_i", n, top=27, name="workspace_witness", bottom=2),
-        )
-        if n >= 2
-        else ()
-    ),
-    "ArrowQueue": lambda n: (_low_one(n),),
-    # The two-stack build's worst: a run of ones per pair in the upper half.
-    "Eval": lambda n: (_eval_alternating_upper(n),) if n >= 4 else (),
-    # Pairs 01, 10 alternating but for a last 11: every input essential, no two
-    # adjacent pairs agree, so each is a leaf (size, steps).  Workspace: the
-    # first pairs 00, so the reversed twin is shorter yet as long as the worst.
-    "Home Row": _home_row_worst,
-    # Size and steps: the alternating table ignores all but its last input, so
-    # the worst keeps every input and flips the first pair.  Workspace: the
-    # mirrored scan is chosen for a constant prefix then alternating (prefix 2
-    # at n = 6, 7; T/8, and T/4 where T/8 stays forward: n = 4).
-    "Ascenic": lambda n: (
-        ("11" if n % 2 == 0 else "10") + "01" * ((1 << n - 1) - 1),
-        # AND takes the mirror at every n, whose wider Horner value is the bound.
-        "0" * ((1 << n) - 1) + "1",
-        *(
-            "0" * p + ("01" * (1 << n))[: (1 << n) - p]
-            for p in (2, *((1 << n - 3, 1 << n - 2) if n >= 3 else ()))
-        ),
-    ),
-    # An 8-row cluster whose root block hops 15 lines (a 33-character body, held
-    # by the slot and the calling frame), under equal-half reads.
-    "Interprogck8": lambda n: (
-        (
-            "01100000" * (1 << n - 3),
-            "1" + "".join(str(row.bit_count() % 2) for row in range(1, 1 << n)),
-            *_diagram_witness("interprogck8", n, 10),
-            *_diagram_witness("interprogck8", n, 8, "steps_witness"),
-        )
-        if n >= 3
-        else ()
-    ),
-    "BrainIf": lambda n: (_brainif_worst(n) if n >= 2 else "11",),
-    "BFStack": lambda n: (_bfs_chars(n), *_diagram_witness("bfstack", n, 5)),
-    "thisthat": lambda n: (_thisthat_worst(n),) if n >= 3 else (),
-    "Object disoriented": lambda n: (_od_worst(n),) if n >= 2 else (),
-    # Below five its generic families miss the area worst by a column.
-    "LaserFuck": lambda n: _laserfuck_worst(n) if n < 5 else (),
-    "Bitdeque": lambda n: (_bitdeque_worst(n), _bitdeque_tokens(n)) if n >= 3 else (),
-    # Parity with row 0 flipped: a symmetric count table, one flip short.
-    "Boolfuck": lambda n: (
-        *(("01101011",) if n == 3 else ()),
-        "1" + _parity(n)[1:],
-        *(("0000000010010110",) if n == 4 else ()),
-        *((_boolfuck_flip(n),) if n >= 3 else ()),
-    ),
-    # Half the rows set, so table and complement tie: T/2 + 1 ones under a
-    # clear top bit (n even), or T/2 ones under a "10" top digit (n odd).
-    "Blindfolded Arithmetic": lambda n: (
-        "1" + _parity(n)[1:],
-        "1" * (2 ** (n - 1) + 1) + "0" * (2 ** (n - 1) - 1),
-        "1" * (2 ** (n - 1) - 1) + "0" * 2 ** (n - 1) + "1",
-    ),
-    # Every pair differs and half the pairs start with a one: all the planted
-    # cells the minority rule leaves, in a table that is not affine.
-    "bit~": lambda n: (
-        "".join(
-            f"{e}{1 - e}"
-            for e in (
-                [1] * (2 ** (n - 2) - 1) + [0, 1] + [0] * (2 ** (n - 2) - 1)
-                if n >= 2
-                else [1]
-            )
-        ),
-    ),
-    "Circlefuck": lambda n: (_row_one(n),),
-    # Parity is the size worst; the chain is the execution worst.
-    "Caballo": lambda n: (
-        (_morse("0110", "1001", n), _caballo_chain(n)) if n >= 2 else ()
-    ),
-    "Codesick": lambda n: (
-        (_codesick_worst(n), _codesick_chars_worst(n)) if n >= 2 else ()
-    ),
-    "Collatz Multiverse": lambda n: (
-        (_collatz_worst(n), _collatz_chars_worst(n)) if n >= 3 else ()
-    ),
-    # A single interior one retains the full positional source maximum.
-    "Cyclic tag": lambda n: ("01" + "0" * ((1 << n) - 2),) if n >= 2 else (),
-    # Implication attains the two-input source maximum; an isolated row1
-    # keeps the full generic halting path after named tester presets.
-    "Crement": lambda n: (
-        (
-            _crement_worst(n) if n >= 3 else "1101",
-            "01" + "0" * ((1 << n) - 2),
-        )
-        if n >= 2
-        else ()
-    ),
-    # A one closing each block of 2^k: n - 2 copy jumps in a row.
-    "Decleq": lambda n: (
-        "".join("0" * (2**k - 1) + "1" for k in range(n - 1, 0, -1)) + "00",
-    ),
-    "Dimensional": lambda n: (_dimensional_worst(n),) if n >= 4 else (),
-    "Fackward": lambda n: (_morse("1000", "0010", n),) if n >= 2 else (),
-    "Forbin": lambda n: (_forbin_worst(n),),
-    # Six random subtables tiled by 4 random top inputs: the diagram wins and
-    # stores the full 26 lambdas, the variables' peak.
-    "FALSE": lambda n: (_false_tiled(n),) if n >= 9 else (),
-    # T - 1 runs: alternating but one equal pair.
-    "Flowchart": lambda n: ("10" * (2 ** (n - 1) - 1) + "01",),
-    "EGL": lambda n: ("10" + "1" * ((1 << n) - 2),),
-    "FRACTRAN": lambda n: (_unequal_first(n),) if n >= 2 else (),
-    "Befunge": lambda n: (_befunge_worst(n),),
-    "Fish": lambda n: (_low_one(n),),
-    "Freestajlo": lambda n: (_freestajlo_worst(n), _low_one(n)),
-    "Grapheme": lambda n: _grapheme_worst(n) if n >= 2 else (),
-    "Balik": lambda n: _diagram_witness("balik", n, 8, "execution_witness", bottom=1),
-    "Hot": lambda n: (_morse("1000", "1011", n),) if n >= 2 else (),
-    "INTERCAL": lambda n: (
-        (_intercal_worst(n), *((_intercal_chars_worst(n),) if n <= 23 else ()))
-        if 3 <= n <= 25
-        else ()
-    ),
-    # Equal halves under parity: the root skip doubles a 3T/2 - 1 term.
-    "Kiss": lambda n: (_parity(n - 1) * 2,) if n >= 2 else (),
-    # 1 xor parity, the last input ignored at even n: the longest loop sums.
-    "Painfuck": lambda n: (
-        *(("11101001",) if n == 3 else ()),
-        "".join(str((1 + (r >> 1 - n % 2).bit_count()) % 2) for r in range(1 << n)),
-    ),
-    "Pointless": lambda n: (_pointless_worst(n),) if n >= 2 else (),
-    "Bleh": lambda n: (
-        *_diagram_witness("bleh", n, 23),
-        *_diagram_witness("bleh", n, 7, "workspace_witness", bottom=1),
-    ),
-    "Taglate": lambda n: _diagram_witness(
-        "taglate", n, 5, "resource_witness", bottom=3
-    ),
-    "Quassaunt": lambda n: (
-        _quassaunt_worst(n),
-        *((_quassaunt_stack(n),) if n >= 3 else ()),
-        *_diagram_witness("quassaunt", n, 21),
-    ),
-    "S*bleq": lambda n: (_sbleq_worst(n),) if n >= 11 else (),
-    "SendStuff": lambda n: (_sendstuff_worst(n),) if n >= 3 else (),
-    "Sonata": lambda n: (_low_one(n),),
-    "Stisp": lambda n: (
-        *((_unequal_first(n), *_diagram_witness("stisp", n, 20)) if n >= 2 else ()),
-        *_diagram_witness("stisp", n, 7, "workspace_witness", bottom=1),
-    ),
-    # From n = 7 the sweep's worst shares; swapped, it ships one shorter.
-    "Suffolk": lambda n: (
-        (_suffolk_deep(n),)
-        if n >= 13
-        else (_suffolk_worst(n), *(("10" + _suffolk_worst(n)[2:],) if n >= 7 else ()))
-        if n >= 3
-        else ()
-    ),
-    "SwitchCase": lambda n: (
-        _switchcase_worst(n),
-        *_diagram_witness("switchcase", n, 5, "workspace_witness", bottom=1),
-    ),
-    "Smu": lambda n: (_smu_worst(n),),
-    "Modulous": lambda n: (
-        _row_one(n),
-        *_diagram_witness("modulous", n, 8, "resource_witness", bottom=2),
-    ),
-    "Piet": lambda n: (
-        tuple(
-            dict.fromkeys(
-                tuple(_piet_worst(n, kind) for kind in ("area", "steps", "bits"))
-                if n <= 7
-                else (_piet_worst(n, "area"),)
-            )
-        )
-        if n >= 2
-        else ()
-    ),
-    # n = 9..14: the hashed table ships the packed decoder at its widest.
-    "Subleq": lambda n: (
-        *((_subleq_worst(n),) if n >= 3 else ()),
-        *((_subleq_packed_worst(n),) if n >= 9 else ()),
-    ),
-    "Underload": lambda n: (_underload_worst(n),) if n >= 3 else (),
-}
-
-
-# language-owners: ["Piet"]
-def _piet_worst(n: int, kind: str) -> str:
-    """Keep Piet's named witnesses in its owned module."""
-    from esolangs.languages.piet.tests.formulas import resource_witness
-
-    return resource_witness(n, kind)
-
-
-def _streetcode_worst(n: int) -> str:
-    """Streetcode's largest shipped area and steps: the flat street's longest fill.
-
-    From five inputs, T/2 + 1 ones (the zeros marked, T/2 - 1 of them) is the
-    longest fill the flat street writes, and no tree beats it; below, parity.
-    """
-    if n < 5:
-        return _parity(n)
-    return "1" + _parity(n)[1:]
+    return found

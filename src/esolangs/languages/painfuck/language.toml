@@ -76,6 +76,7 @@ construction = "esolangs.languages.painfuck.generator:painfuck_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.painfuck.generator:painfuck_request"
+witnesses = "esolangs.languages.painfuck.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # The exhaustive three-input maximum, then the three proved form bounds.

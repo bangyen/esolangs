@@ -76,6 +76,7 @@ construction = "esolangs.languages.eval.generator:eval_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.eval.generator:eval_request"
+witnesses = "esolangs.languages.eval.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "L+1"

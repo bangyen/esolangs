@@ -13,7 +13,7 @@ from esolangs.languages.s_bleq.generator import _compact_tree, _tree_min_chars
 from esolangs.languages.s_bleq.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
-from tests.proofs._witnesses import _sbleq_worst
+from tests.proofs._witness_builders import _sbleq_worst
 from tests.proofs.execution import tables as _tables
 from tests.support import event_io
 from tests.support.analysis_support import assert_analysis_complement

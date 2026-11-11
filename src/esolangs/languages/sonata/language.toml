@@ -79,6 +79,7 @@ construction = "esolangs.languages.sonata.generator:sonata_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.sonata.generator:sonata_request"
+witnesses = "esolangs.languages.sonata.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "T + n + 3 - min(1,(n-2)^2)"

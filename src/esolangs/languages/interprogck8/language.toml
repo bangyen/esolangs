@@ -98,6 +98,13 @@ construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
+witnesses = "esolangs.languages.interprogck8.tests.resource_witnesses:resource_tables"
+
+[resource_evidence.sparse]
+provider = "esolangs.languages.interprogck8.tests.resource_witnesses:sparse_rows"
+arities = [11, 12]
+columns = ["execution"]
+bands = { "11" = "medium", "12" = "weekly" }
 
 [resource_evidence.execution]
 provider = "esolangs.languages.interprogck8.tests.formulas:_steps"

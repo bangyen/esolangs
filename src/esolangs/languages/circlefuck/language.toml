@@ -94,6 +94,7 @@ construction = "esolangs.languages.circlefuck.generator:circlefuck_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.circlefuck.generator:circlefuck_request"
+witnesses = "esolangs.languages.circlefuck.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "(2n+13)T + 68n + 232 + 2U + min(1,max(0,3-n))*(26n-143)"

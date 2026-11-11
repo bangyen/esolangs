@@ -69,6 +69,7 @@ construction = "esolangs.languages.pointless.generator:pointless_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.pointless.generator:pointless_request"
+witnesses = "esolangs.languages.pointless.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "C*L + (1-C)*(26n+309)"

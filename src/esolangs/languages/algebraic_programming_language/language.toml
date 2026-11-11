@@ -83,6 +83,7 @@ construction = "esolangs.languages.algebraic_programming_language.generator:alge
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.algebraic_programming_language.generator:algebraic_programming_language_request"
+corpus = "esolangs.languages.algebraic_programming_language.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.execution]
 expression = "C*(4n+3+4J) + (1-C)*(max(21,ceil(65n/2)-21)+K+2min(K,3n+1))"

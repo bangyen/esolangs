@@ -74,6 +74,14 @@ construction = "esolangs.languages.what.generator:what_request"
 version = 2
 construction = "esolangs.languages.what.generator:what_request"
 
+[resource_evidence.sparse]
+# Parsing alone takes ~0.8s at n=16 and ~1.8s at n=17 per row.
+# The n=17 cases took 11.5s execution and 5.7s workspace.
+provider = "esolangs.languages.what.tests.resource_witnesses:sparse_rows"
+arities = [16, 17]
+columns = ["execution", "workspace"]
+bands = { "16" = "medium", "17" = "weekly" }
+
 [resource_evidence.execution]
 # Alternating answers, row 0: every test true, 5 a row; other blocks 1.
 cases = [

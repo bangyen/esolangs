@@ -91,6 +91,7 @@ construction = "esolangs.languages.brainfuck.generator:brainfuck_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.brainfuck.generator:brainfuck_request"
+witnesses = "esolangs.languages.brainfuck.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "75n + 49"

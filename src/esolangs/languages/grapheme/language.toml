@@ -75,6 +75,7 @@ construction = "esolangs.languages.grapheme.generator:grapheme_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.grapheme.generator:grapheme_request"
+witnesses = "esolangs.languages.grapheme.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # The largest lift needs at most one more digit than 2^T. A modulus

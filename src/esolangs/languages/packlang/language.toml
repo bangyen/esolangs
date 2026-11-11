@@ -87,6 +87,7 @@ construction = "esolangs.languages.packlang.generator:packlang_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.packlang.generator:packlang_request"
+witnesses = "esolangs.languages.packlang.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "C*(n+2) + (1-C)*(19T/2-n-5 + min(1,max(0,n-7))*(1210-605T/64))"

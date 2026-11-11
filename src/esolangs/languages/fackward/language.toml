@@ -76,6 +76,7 @@ construction = "esolangs.languages.fackward.generator:fackward_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.fackward.generator:fackward_request"
+witnesses = "esolangs.languages.fackward.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "38n - 26"

@@ -72,6 +72,7 @@ construction = "esolangs.languages.stisp.generator:stisp_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.stisp.generator:stisp_request"
+witnesses = "esolangs.languages.stisp.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "n"

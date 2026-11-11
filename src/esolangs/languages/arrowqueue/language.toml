@@ -67,6 +67,7 @@ construction = "esolangs.languages.arrowqueue.generator:arrowqueue_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.arrowqueue.generator:arrowqueue_request"
+witnesses = "esolangs.languages.arrowqueue.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "11T + 32n + 92"

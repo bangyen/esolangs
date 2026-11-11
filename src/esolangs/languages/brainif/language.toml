@@ -92,6 +92,7 @@ construction = "esolangs.languages.brainif.generator:brainif_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.brainif.generator:brainif_request"
+witnesses = "esolangs.languages.brainif.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "4n + 50"

@@ -114,6 +114,7 @@ construction = "esolangs.languages.streetcode.generator:streetcode_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.streetcode.generator:streetcode_request"
+corpus = "esolangs.languages.streetcode.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.execution]
 expression = "C*(n+4+Q)+U*(290n+312+H+W+96max(0,2-n))+(1-C-U)*(5T/2+110n+108+min(1,max(0,n-7))*(T-96n+544))"

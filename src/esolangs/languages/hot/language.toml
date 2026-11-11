@@ -74,6 +74,7 @@ construction = "esolangs.languages.hot.generator:hot_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.hot.generator:hot_request"
+witnesses = "esolangs.languages.hot.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # [ablations.majority_pair_rule] uses fewer rewrites; other witnesses attain the tree bound.

@@ -86,6 +86,7 @@ construction = "esolangs.languages.taglate.generator:taglate_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.taglate.generator:taglate_request"
+witnesses = "esolangs.languages.taglate.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # Nibble 15 at offset zero adds fourteen parity turns.

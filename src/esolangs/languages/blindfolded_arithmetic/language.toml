@@ -74,6 +74,7 @@ construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.blindfolded_arithmetic.generator:blindfolded_arithmetic_request"
+witnesses = "esolangs.languages.blindfolded_arithmetic.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "⌊T/2⌋ + ⌈T/3⌉ + 8n + 8"

@@ -85,6 +85,7 @@ construction = "esolangs.languages.b_tapemark.generator:b_tapemark_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.b_tapemark.generator:b_tapemark_request"
+witnesses = "esolangs.languages.b_tapemark.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 provider = "esolangs.languages.b_tapemark.tests.formulas:_steps"

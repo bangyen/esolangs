@@ -71,3 +71,8 @@ def split_residuals(n: int) -> int:
     return sum(
         min(2**d, 2 ** (2 ** (n - d)) - 2 ** (2 ** (n - d - 1))) for d in range(n)
     )
+
+
+def second_last_zero(n: int) -> str:
+    """Return the table whose only zero is the penultimate row."""
+    return "1" * ((1 << n) - 2) + "01"

@@ -80,6 +80,7 @@ construction = "esolangs.languages.bitdeque.generator:bitdeque_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.bitdeque.generator:bitdeque_request"
+witnesses = "esolangs.languages.bitdeque.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "7n + 8"

@@ -107,7 +107,8 @@ languages; stalled rows remain open on the [roadmap](roadmap.md).
 | `snapshot.json` | collection dates and slow-test durations |
 
 Each package's `language.toml` owns its data. Aggregators read only their
-section and skip absent files or sections.
+section and skip absent files or sections. Resource evidence can name an owned
+`witnesses` provider, a replacement `corpus`, or bounded `sparse` row cases.
 
 Optional `certification.py` owns its `CERTIFICATION = CertificationSpec(...)`
 verification policy. Checks load it separately; runtime descriptors and
