@@ -7,8 +7,6 @@ backlinks = 58
 [proof_status]
 labels = ["linear lookup"]
 qualification = "inputs build 2**index; dividing one packed literal exposes its answer bit"
-definitions = ["S = 65 at n=1; otherwise T+4n+70"]
-
 [catalogue]
 folding_constant = "a constant table prints its bit; any other is one literal, with no subtable to fold"
 
@@ -80,28 +78,48 @@ version = 2
 construction = "esolangs.languages.whitespace.generator:whitespace_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.whitespace.proof_formulas:execution"
+# One inline step, or n calls each executing mark, nine steps and return.
+cases = [
+    { through = 1, expression = "16" },
+    { expression = "12n+7" },
+]
 exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: calls never nest", formula = "16 at n=1, otherwise 12n+7" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}, calls never nest" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.whitespace.proof_formulas:workspace"
+# The full-essential, top-bit-one table and all-one row attain the bound.
+# U=2**m: stack peaks at 3U-2, heap at 2U-2, plus one halt bit.
+# PC peaks at n+17, the return address at n+2, IO at 2n.
+# q ignored reads add at most two heap bits and q to each code cursor.
+# 5*(2**n-U) >= 2q+2 dominates that cost. One essential input instead
+# needs <=10+bl(2n+14)+bl(2n) bits; constants also stay below this.
+cases = [
+    { through = 1, expression = "15" },
+    { expression = "5T-3+bl(n+17)+bl(n+2)+bl(2n)" },
+]
 exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: stack, sparse heap and cursors", formula = "15 at n=1, otherwise 5T-3+bl(n+17)+bl(n+2)+bl(2n)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}, stack, heap and cursors" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.whitespace.tests.formulas:_chars"
+# AND attains: one inline step at n=1, otherwise the shared step.
+# With m>=2 essential inputs, L <= 2**m-4m+8n+70; convexity puts
+# the maximum at m=2 or n, and 2**n-4n+4 >= 0 for n>=2.
+# One essential bit costs 8n+57; constants cost at most 7n+12.
+cases = [
+    { through = 1, expression = "65" },
+    { expression = "T+4n+70" },
+]
 exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one literal and shared step", formula = "S" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}, one literal and shared step" }
 
 [semantic_evidence]
 version = 1

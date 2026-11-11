@@ -4,9 +4,10 @@ import random
 
 from esolangs.languages.line.generator import balance, line
 from esolangs.languages.line.interpreter import _Machine
-from esolangs.languages.line.proof_formulas import execution, workspace
+from esolangs.languages.line.proof_formulas import workspace
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.resource_evidence import resource_bounds
 from tests.support.generator_support import measure_run
 
 
@@ -28,7 +29,11 @@ def _native(table: str, *, balanced: bool) -> int:
     image = Raster.from_png(image.to_png())
     machine = _Machine(image, _ReadFirstIO("0" * n))
     maximum = 0
-    cap = 5 * n if balanced else execution(n, table)
+    cap = (
+        5 * n
+        if balanced
+        else int(resource_bounds("Line")["execution"].formula(n, table))
+    )
     for row, expected in enumerate(table):
         machine.state = (0, 0, 0, ())
         machine.io = _ReadFirstIO(f"{row:0{n}b}")

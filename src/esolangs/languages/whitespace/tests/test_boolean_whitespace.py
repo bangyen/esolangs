@@ -55,7 +55,11 @@ def _check_constants() -> None:
 def _check_power_steps() -> None:
     from esolangs.languages.whitespace.generator import whitespace
     from esolangs.languages.whitespace.interpreter import _Machine
-    from esolangs.languages.whitespace.proof_formulas import execution, workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bounds = resource_bounds("Whitespace")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     for n in (1, 2, 3, 5, 8):
         size = 1 << n

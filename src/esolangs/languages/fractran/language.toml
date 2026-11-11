@@ -73,12 +73,13 @@ version = 2
 construction = "esolangs.languages.fractran.generator:fractran_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.fractran.proof_formulas:execution"
+# The stated execution bound, evaluated for n and the program.
+expression = "n+1"
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula}", formula = "n + 1: a step a level or unread set bit, then the halt" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, one per level or unread set bit plus the halt" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.fractran.proof_formulas:workspace"

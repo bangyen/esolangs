@@ -8,8 +8,6 @@ admitted = 2020-07-10T17:59:42-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "fixed reversed stack order selects the indexed row"
-definitions = ["S = 2T+7n at n=4,5; 7T/4+9n+1 from n=6 (unwrapped)", "W = 8L+T+2n+1+bl(L), minus n when T<8n+4"]
-
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 35, "1" = 36, "2" = 36, "3" = 37, "4" = 36, "5" = 37, "6" = 37, "7" = 38 }, source_units = 37 }
 "00001100" = { commands_by_row = { "0" = 26, "1" = 26, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 28, "7" = 28 }, source_units = 27 }
@@ -85,23 +83,35 @@ exact = true
 arities = [4, 6]
 first = 4
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: unwrapped L<=S; all-one setters skip nothing" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}, unwrapped source with all-one setters" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.eval.tests.formulas:_workspace"
+# Full parity attains the frame, Boolean stacks and active-stack bit.
+# One-stack lookup peaks at R+n staged cells; dual at R+2n, R<=T.
+# Dual requires R>=8n+4, so it cannot occur when T<8n+4.
+# Constants need at most n+1 cells and never change the active stack.
+# For positive n, T < 8n+4 through n=5 and T >= 8n+4 from n=6.
+cases = [
+    { through = 5, expression = "8L+T+n+1+bl(L)" },
+    { expression = "8L+T+2n+1+bl(L)" },
+]
 exact = true
 arities = [4, 6]
 first = 4
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: one frame and staged Boolean cells", formula = "W" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}, frame and staged Boolean cells" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.eval.tests.formulas:_chars"
+# One-stack through five; the two-stack literal's maximum one-run count.
+cases = [
+    { through = 5, expression = "2T+7n" },
+    { expression = "7T/4+9n+1" },
+]
 exact = true
 arities = [4, 6]
 first = 4
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: Gray-indexed table halves", formula = "S" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}, unwrapped" }
 
 [semantic_evidence]
 version = 1

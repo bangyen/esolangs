@@ -7,8 +7,6 @@ backlinks = 54
 [proof_status]
 labels = ["linear lookup"]
 qualification = "parity sums retained inputs modulo two; otherwise the table is one number packed by Horner's rule; each input multiplies a running power of two by 1 + bit * (2^w - 1), and the answer is the number divided by that power, mod 2"
-definitions = ["K = ceil(T/64), E = 6 for n=1, otherwise 2n+K+6"]
-
 [catalogue]
 folding_constant = "a constant table reads its inputs and prints its bit"
 
@@ -67,12 +65,16 @@ version = 2
 construction = "esolangs.languages.shakespeare.generator:shakespeare_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.shakespeare.tests.formulas:_steps"
+# Packing uses at most ceil(T/64) assignments, plus reads and multiplies.
+cases = [
+    { through = 1, expression = "6" },
+    { expression = "2n+⌈T/64⌉+6" },
+]
 exact = true
 arities = [1, 2, 3, 5, 7, 8, 10]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: n reads, at most n multiplies, K packing assignments", formula = "E" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}, reads, multiplies and packing assignments" }
 
 [resource_evidence.workspace]
 expression = "2T + bl(2n+ceil(T/64)+6) + bl(2n-1) + 4"

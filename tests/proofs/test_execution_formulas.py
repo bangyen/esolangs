@@ -80,7 +80,7 @@ def _check_arity_cases(data: dict) -> None:
     row["description"]["template"] = "{claim} {formula}"
     formula = parse_bounds(REFERENCE, data)["execution"].formula
     assert [formula(n, "") for n in (1, 2, 3)] == [29, 71, 117]
-    assert "29 commands for n=1, 46n - 21 commands for n≥2" in (
+    assert "29 (n=1), 46n - 21 (n≥2) commands" in (
         parse_descriptions(data).execution.clause
     )
     data["execution"]["first"] = 2

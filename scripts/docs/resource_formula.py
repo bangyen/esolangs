@@ -121,8 +121,8 @@ def describe_cases(cases: ArityCases, first: int, unit: str) -> str:
         else:
             scope = f"n={first}" if first == through else f"n={first}..{through}"
             first = through + 1
-        parts.append(f"{expression} {unit} for {scope}")
-    return ", ".join(parts)
+        parts.append(f"{expression} ({scope})")
+    return ", ".join(parts) + f" {unit}"
 
 
 def case_formula(cases: ArityCases) -> Formula:

@@ -20,16 +20,18 @@ from tests.support.witness_tables import witnesses
 @pytest.mark.parametrize("n", [1, 2, 3, 4])
 def test_source_length_is_the_documented_formula(n: int) -> None:
     """Alternating run boundaries maximize the compressed sweep count."""
-    from esolangs.languages.slashes.tests.formulas import _scaling
+    from scripts.docs.resource_evidence import resource_bounds
+
+    scaling = resource_bounds("///")["scaling"].formula
 
     if n == 1:
         _check_run_macros()
     for table in witnesses(n):
-        assert len(esolangs.generate("///", table).source) <= _scaling(n, ""), table
+        assert len(esolangs.generate("///", table).source) <= scaling(n, ""), table
     table = (
         "10" if n == 1 else "10111011" if n == 3 else "10" * (2 ** (n - 1) - 1) + "11"
     )
-    assert len(esolangs.generate("///", table).source) == _scaling(n, "")
+    assert len(esolangs.generate("///", table).source) == scaling(n, "")
 
 
 @pytest.mark.medium

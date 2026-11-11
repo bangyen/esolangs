@@ -7,7 +7,7 @@ backlinks = 86
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "binary-to-unary substitutions form the row index; fixed macros expand run sweeps before decoding one answer"
-definitions = ["E = 28 at n=1, else 9T/2+n+21", "W = exact per-template peak from proof_formulas.workspace"]
+definitions = ["W = exact per-template peak from proof_formulas.workspace"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 35, "1" = 36, "2" = 37, "3" = 38, "4" = 39, "5" = 40, "6" = 41, "7" = 42 }, source_units = 90 }
@@ -78,12 +78,17 @@ version = 2
 construction = "esolangs.languages.slashes.generator:slashes_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.slashes.tests.formulas:_execution"
+#
+# One sweep at n=1 is shorter without the macro; otherwise c<=T/2.
+cases = [
+    { through = 1, expression = "28" },
+    { expression = "9T/2+n+21" },
+]
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "steps"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: 9T/2+n+21 past n = 1; 28 at n = 1", formula = "E" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.slashes.proof_formulas:workspace"
@@ -94,12 +99,19 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: expanded source and separate pattern/replacement peaks", formula = "W" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.slashes.tests.formulas:_scaling"
+#
+# At n=3 a one-ignored-input four-entry table costs one extra character.
+cases = [
+    { through = 1, expression = "76" },
+    { through = 2, expression = "95" },
+    { through = 3, expression = "107" },
+    { expression = "5T/2+n+83" },
+]
 exact = true
 arities = [1, 2, 3, 5]
-first = 4
+first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: 5T/2+n+83 from n=4; 76/95/107 below", formula = "F" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1

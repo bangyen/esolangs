@@ -95,12 +95,16 @@ version = 2
 construction = "esolangs.languages.line.generator:line_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.line.proof_formulas:execution"
+# Keep small trees within 5n; inline trees and folds within 3n+4.
+cases = [
+    { through = 5, expression = "5n" },
+    { expression = "3n+4" },
+]
 exact = [3, 5]
 arities = [1, 2, 3, 5, 6, 8]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} through n = 5, 3n + 4 beyond; balanced layouts retain 5n", formula = "5n default" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} by default, with balanced layouts retaining the first bound" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.line.proof_formulas:workspace"
