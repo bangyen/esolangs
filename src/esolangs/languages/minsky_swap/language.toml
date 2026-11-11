@@ -8,7 +8,7 @@ admitted = 2020-07-25T21:13:52-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "uniform ++/** runs; weighted stages index higher essential inputs while the last essential input stays in scratch through bounded ignored-tail macros, and a cascade routes row pairs to four fixed leaves; symmetric tables count set inputs"
-definitions = ["N = 40n+11 through n=5; global ceiling beyond", "W = n+4+bl(max(T+6n+12,16n+4)), minus 1 from n=3"]
+definitions = ["N = 40n+11 through n=5; global ceiling beyond"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 13, "1" = 18, "2" = 18, "3" = 23, "4" = 18, "5" = 23, "6" = 23, "7" = 30 }, source_units = 65 }
@@ -105,12 +105,20 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: unary index or ignored-tail macros; dump follows" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.minsky_swap.proof_formulas:workspace"
+# Bound registers, pointer, full code cursor and post-halt dump latch.
+# Held scratch uses two bits, the index at most m-1. A tail macro uses
+# three scratch bits but has m<=n-1; zero index still costs one bit.
+# Thus registers plus pointer need n+2 bits from n=3, n+3 below it.
+# The symmetric path needs <=3+bl(n), and constants need less.
+cases = [
+    { through = 2, expression = "n+4+bl(max(T+6n+12,16n+4))" },
+    { expression = "n+3+bl(max(T+6n+12,16n+4))" },
+]
 exact = [1, 2, 3, 6]
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n=1,2,3,6: registers, pointer, cursor and dump latch", formula = "W" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula}; equality at n=1,2,3,6: registers, pointer, cursor and dump latch" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.minsky_swap.tests.formulas:_chars"

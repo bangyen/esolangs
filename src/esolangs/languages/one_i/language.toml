@@ -8,7 +8,6 @@ admitted = 2026-10-15T13:25:54-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node pushes its two child functions and B? invokes one; essential-input projection interleaves ignored B$ reads; two-bit tails derive arithmetic, parity uses an exact sum/power, and constants drain remaining inputs"
-definitions = ["E = 7 at n=1, 4n+4 from n=2", "W = 24/64/112 at n=2/3/4; 2n^2+34n-61+bl(2n-1) from n=5"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 11, "1" = 11, "2" = 11, "3" = 11, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 17 }
@@ -80,20 +79,36 @@ version = 2
 construction = "esolangs.languages.one_i.generator:one_i_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.one_i.proof_formulas:execution"
+# Four commands per branch level, then a twelve-command arithmetic tail.
+cases = [
+    { through = 1, expression = "7" },
+    { expression = "4n+4" },
+]
 exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "steps"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: four a branch level, twelve in an arithmetic tail", formula = "E" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}: four a branch level, twelve in an arithmetic tail" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.one_i.proof_formulas:workspace"
+# Two retained functions per level, a 17-bit constant tail, and one frame.
+#
+# A maximal mixed OR/XOR tree has length 9T/2-6. Its rightmost offsets
+# need n+2 bits through the third branch, n+3 after that. The root's zero
+# offset costs one bit; each function's tag costs sixteen. The terminal
+# constant frame needs three command bits; its stack is two bits larger
+# than the four-command-bit arithmetic tail. Small offset boundaries are explicit.
+cases = [
+    { through = 2, expression = "24" },
+    { through = 3, expression = "64" },
+    { through = 4, expression = "112" },
+    { expression = "2n²+34n-61+bl(2n-1)" },
+]
 exact = true
 arities = [2, 3, 4, 5, 6, 7, 8, 9]
 first = 2
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: default frame, stack and input position", formula = "W" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}: default frame, stack and input position" }
 
 [resource_evidence.scaling]
 expression = "9T/2 - 6"

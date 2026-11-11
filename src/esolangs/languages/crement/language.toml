@@ -8,7 +8,7 @@ admitted = 2026-09-13T11:40:58-04:00
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, a folded subtree targets the shared self-jump or the line past the end, and a subtree already emitted at its level is targeted, not repeated; parity and thresholds reuse initial tester targets without revisiting a level"
-definitions = ["P = Σ_{k<n} min(2^k, 4^s - 2^s), s = 2^(n-k-1), the shared nodes per level", "N = 5 at n=1, 13 at n=2, otherwise 3P+2n+3", "E = 4 at n=1, otherwise 5n+2"]
+definitions = ["P = Σ_{k<n} min(2^k, 4^s - 2^s), s = 2^(n-k-1), the shared nodes per level", "N = 5 at n=1, 13 at n=2, otherwise 3P+2n+3"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 5, "5" = 5, "6" = 6 }, commands_by_row_nulls = [7], source_units = 62 }
@@ -74,12 +74,16 @@ version = 2
 construction = "esolangs.languages.crement.generator:crement_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.crement.proof_formulas:execution"
+# Worst halting path; all larger witnesses retain the generic emitter.
+cases = [
+    { through = 1, expression = "4" },
+    { expression = "5n+2" },
+]
 exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} over halting rows, shared self-patching testers", formula = "E" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} over halting rows, shared self-patching testers" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.crement.proof_formulas:workspace"

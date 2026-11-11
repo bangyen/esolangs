@@ -8,11 +8,6 @@ def lines(n: int) -> int:
     return 3 * _nodes(n) + 2 * n + 3
 
 
-def execution(n: int, _: str) -> int:
-    """Worst halting path; all larger witnesses retain the generic emitter."""
-    return 4 if n == 1 else 5 * n + 2
-
-
 def _nodes(n: int) -> int:
     return sum(
         min(1 << k, (1 << (2 * (1 << (n - k - 1)))) - (1 << (1 << (n - k - 1))))

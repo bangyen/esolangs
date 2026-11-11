@@ -171,7 +171,9 @@ def _check_constants() -> None:
 
 def _check_zero_fold_and_chain() -> None:
     from esolangs.languages.painfuck.interpreter import _Machine, _translate
-    from esolangs.languages.painfuck.tests.formulas import _execution
+    from scripts.docs.resource_evidence import resource_bounds
+
+    execution = resource_bounds("Painfuck")["execution"].formula
 
     program, _ = _painfuck_shared("00000001", (0, 1, 2), ())
     # The empty zero child has no flag protocol; only the result adds one.
@@ -188,7 +190,7 @@ def _check_zero_fold_and_chain() -> None:
                     machine.step()
                     steps += 1
                 assert io.getvalue() == table[row]
-                assert steps <= _execution(n, program)
+                assert steps <= execution(n, program)
                 assert io.reads == n
                 assert io.input_num() == 7
     table = "11101001"  # The 62-step maximum remains after canonical pruning.
@@ -199,4 +201,4 @@ def _check_zero_fold_and_chain() -> None:
         machine.step()
         steps += 1
     assert machine.io.getvalue() == "1"
-    assert steps == _execution(3, program) == 62
+    assert steps == execution(3, program) == 62

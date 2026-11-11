@@ -9,9 +9,9 @@ import esolangs
 from esolangs.generation.algebraic import parity_bias
 from esolangs.languages.one_i import generator
 from esolangs.languages.one_i import interpreter as native
-from esolangs.languages.one_i.proof_formulas import execution, workspace
 from esolangs.languages.one_i.tests.formulas import workspace_witness
 from scripts.benchmark import WrittenState
+from scripts.docs.resource_evidence import resource_bounds
 from tests.support import generator_support as checks
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -50,6 +50,9 @@ def _check_arithmetic_tails() -> None:
         assert checks.evaluate_generated("1 + i", "01101001") == "10010110"
         assert corrupted.called
 
+    bounds = resource_bounds("1 + i")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
     tables = [f"{v:04b}" for v in range(16)]
     tables += [
         "".join(str(row.bit_count() % 2) for row in range(1 << n)) for n in (3, 7, 8)

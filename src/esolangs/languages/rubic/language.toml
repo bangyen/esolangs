@@ -90,12 +90,16 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: the negated last bit costs 19, earlier differing nodes add 16" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.rubic.tests.formulas:workspace"
+# n frames; one root start is a bit narrower from n=3.
+cases = [
+    { through = 2, expression = "3n²+15n+118+bl(n)" },
+    { expression = "3n²+15n+117+bl(n)" },
+]
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: I=1 for n<3, else 0; n frames, n+4-bit positions", formula = "3n²+15n+117+bl(n)+I" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}: n frames, n+4-bit positions" }
 
 [resource_evidence.scaling]
 expression = "max(63,47T-44)"

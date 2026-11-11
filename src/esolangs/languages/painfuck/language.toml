@@ -10,8 +10,6 @@ bf_derivative = true
 labels = ["tree"]
 qualification = "native numeric reads feed a flag-dispatched tree; known-zero children omit their dead flag, and one result cell is printed"
 
-definitions = ["P = 4n^2+8n+5-6⌊n/2⌋: affine loops", "B = ⌊(3n^2+3)/4⌋+20n+4: shared-form admission"]
-
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 20, "5" = 20, "6" = 26, "7" = 33 }, source_units = 33 }
 "00001100" = { commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 39, "5" = 39, "6" = 35, "7" = 35 }, source_units = 45 }
@@ -80,12 +78,18 @@ version = 2
 construction = "esolangs.languages.painfuck.generator:painfuck_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.painfuck.tests.formulas:_execution"
+# The exhaustive three-input maximum, then the three proved form bounds.
+cases = [
+    { through = 1, expression = "25" },
+    { through = 2, expression = "47" },
+    { through = 3, expression = "62" },
+    { expression = "max(22n,4n²+8n+5-6⌊n/2⌋,⌊(3n²+3)/4⌋+20n+4)" },
+]
 exact = true
 arities = [3, 6]
 first = 3
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} at n=3, then max(P,B,22n): affine, admitted banks or inline", formula = "62" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula}: affine, admitted banks or inline" }
 
 [resource_evidence.workspace]
 expression = "2n + 5 + 3bl(n) + (n+1)bl(L)"

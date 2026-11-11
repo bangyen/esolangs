@@ -18,10 +18,3 @@ def _characters(n: int, _: str) -> int:
     if h == 0:
         return block + 7 * n + 1
     return (1 << h) * (block + 13 + 10 + h) + 164 + 3 * h
-
-
-def _commands(n: int, _: str) -> int:
-    """Alternating answers, row 0: every test true, 5 a row; other blocks 1."""
-    if n <= 15:
-        return 5 * (1 << n) + 6 * n - 5
-    return (1 << n) + (1 << 17) + n + (1 << (n - 15)) + 143

@@ -8,7 +8,6 @@ admitted = 2026-10-15T16:41:19-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "Horner's rule reads each bit with `??` and doubles by `*`; `[b>` holds exactly when the row is below change point `b`, so writes run from the last change point down and each row keeps the nearest one above it; past 15 inputs `???` puts the high bits in the index slot's string, and a guard per `2^15`-row block reloads the index"
-definitions = ["k = min(n,15); wide = 5 through n=15, otherwise 29", "E = 5T+6n-5 through n=15, otherwise T+2^17+2^(n-15)+n+143", "tokens = E through n=15, otherwise 5T+10·2^(n-15)+n+134"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 19 }, source_units = 30 }
@@ -76,20 +75,31 @@ version = 2
 construction = "esolangs.languages.what.generator:what_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.what.tests.formulas:_commands"
+# Alternating answers, row 0: every test true, 5 a row; other blocks 1.
+cases = [
+    { through = 15, expression = "5T+6n-5" },
+    { expression = "T+2^17+2^(n-15)+n+143" },
+]
 exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: alternating answers, every conditional true, the first row", formula = "E" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: alternating answers, every conditional true, the first row" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.what.proof_formulas:workspace"
+# Tape, row-independent string and counters; k = min(n, 15) low inputs.
+# Horner's retained prefixes add n(n-1) bits over the zero tape;
+# the neighbouring ASCII answer adds five. No index copy remains.
+# Above n=15, the fixed cost is 256 + 15·14 + 29 + bl(31) = 500.
+cases = [
+    { through = 15, expression = "261+n(n-1)+bl(5T+6n-5)+2bl(2n-1)" },
+    { expression = "500+8(n-15)+bl(5T+10·2^(n-15)+n+134)+bl(2n-1)" },
+]
 exact = true
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: tape and cursors", formula = "256 + k(k-1) + wide + 8(n-k) + bl(tokens) + bl(2k-1+2[n>15]) + bl(2n-1)" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}: tape and cursors" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.what.tests.formulas:_characters"

@@ -7,7 +7,6 @@ backlinks = 91
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it; AND/NOR use a two-bit marker and a single one continuation"
-definitions = ["E = T+n+2 below n=3, otherwise T+n+3", "W = 8T+9+bl(T+n) at n=1, otherwise 8T+17+bl(T+n)"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 6, "1" = 7, "2" = 8, "3" = 9, "4" = 10, "5" = 11, "6" = 12, "7" = 14 }, source_units = 28 }
@@ -75,20 +74,28 @@ version = 2
 construction = "esolangs.languages.cyclic_tag.generator:cyclic_tag_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.cyclic_tag.proof_formulas:execution"
+# AND's extra continuation wins from three inputs.
+cases = [
+    { through = 2, expression = "T+n+2" },
+    { expression = "T+n+3" },
+]
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "steps"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: indexed marker and at most one named continuation", formula = "E" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: indexed marker and at most one named continuation" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.cyclic_tag.proof_formulas:workspace"
+# The queue peaks at T+1 bits; a marker10 adds one from two inputs.
+cases = [
+    { through = 1, expression = "8T+9+bl(T+n)" },
+    { expression = "8T+17+bl(T+n)" },
+]
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: queue, production pointer and output latch", formula = "W" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: queue, production pointer and output latch" }
 
 [resource_evidence.scaling]
 expression = "3T + 2n + 1"
