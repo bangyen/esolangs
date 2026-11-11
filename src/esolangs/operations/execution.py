@@ -273,19 +273,13 @@ def _execute_outcome(
     if not isinstance(selected, ExecutionLimits):
         raise ArgumentError("limits must be ExecutionLimits or None")
     check_flag(isolated, "isolated")
-    hard_execution_deadline = (
-        selected.execution_timeout is not None and selected.max_steps is None
-    )
-    use_worker = (
-        isolated
-        or hard_execution_deadline
-        or any(
-            value is not None
-            for value in (
-                selected.total_timeout,
-                selected.max_output,
-                selected.max_memory,
-            )
+    use_worker = isolated or any(
+        value is not None
+        for value in (
+            selected.execution_timeout,
+            selected.total_timeout,
+            selected.max_output,
+            selected.max_memory,
         )
     )
     preparation_timeout = selected.preparation_timeout
@@ -296,8 +290,8 @@ def _execute_outcome(
         language,
         program,
         stdin=stdin,
-        timeout=selected.total_timeout if use_worker else selected.execution_timeout,
-        execution_timeout=selected.execution_timeout if use_worker else None,
+        timeout=selected.total_timeout,
+        execution_timeout=selected.execution_timeout,
         preparation_timeout=preparation_timeout,
         seed=seed,
         isolated=use_worker,
@@ -310,5 +304,5 @@ def _execute_outcome(
         prepared=prepared,
     )
     if isinstance(outcome.error, ExecutionTimeoutError) and outcome.bound == "timeout":
-        outcome.error.bound = "total_timeout" if use_worker else "execution_timeout"
+        outcome.error.bound = "total_timeout"
     return outcome

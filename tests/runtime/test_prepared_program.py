@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from io import BytesIO
 from types import ModuleType
+from unittest.mock import patch
 
 import pytest
 
@@ -217,6 +218,26 @@ def _check_uniform_outcomes_and_phase_limits():
         assert stopped.status == "limit"
         assert stopped.bound == "execution_timeout"
         assert stopped.observation.completion is None
+    from esolangs.operations import execution
+
+    with patch.object(
+        execution, "_execute_isolated", wraps=execution._execute_isolated
+    ) as worker:
+        stopped = prepared.execute(
+            limits=esolangs.ExecutionLimits(max_steps=3, execution_timeout=3),
+        )
+    assert worker.call_args is not None
+    assert worker.call_args.kwargs["execution_timeout"] == 3
+    assert worker.call_args.kwargs["max_steps"] == 3
+    assert stopped.status == "limit"
+    assert stopped.bound == "max_steps"
+    assert stopped.observation.steps == 3
+    stopped = prepared.execute(
+        limits=esolangs.ExecutionLimits(max_steps=10**9, execution_timeout=0.01),
+    )
+    assert stopped.status == "limit"
+    assert stopped.bound == "execution_timeout"
+    assert stopped.observation.completion is None
     with ThreadPoolExecutor(max_workers=1) as threads:
         stopped = threads.submit(
             prepared.execute,

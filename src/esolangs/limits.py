@@ -12,9 +12,9 @@ class ExecutionLimits:
 
     A preparation deadline covers acquisition, worker startup and the source
     preparation hook. It selects isolation when source needs preparing.
-    Total, output and memory limits also select isolation. Memory limits require
-    Linux. An isolated invocation without total_timeout retains the 30s default.
-    Cooperative execution time cannot interrupt preparation or one command.
+    Execution deadlines select isolation even with a step limit. Total, output
+    and memory limits also select isolation. Memory limits require Linux. An
+    isolated invocation without total_timeout retains the 30s default.
     """
 
     execution_timeout: float | None = None
