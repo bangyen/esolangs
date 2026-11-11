@@ -825,3 +825,18 @@ def test_output_before_a_draw_is_flushed() -> None:
     assert second.memory == second.stack == []
     assert second.snapshot() == initial
     reject_rng_options(prepare_machine, [], "text source", "")
+
+
+def test_prepared_program_reuses_linked_source_with_fresh_randomness(
+    monkeypatch,
+) -> None:
+
+    from esolangs.languages.intercal import interpreter
+    from tests.support.prepared_support import check_random_plan_reuse
+
+    assignment = "%1 .1 <- #7\n"
+    source = ("PLEASE " + assignment + ("DO " + assignment) * 3) * 2
+    source += "DO READ OUT .1\nDO GIVE UP"
+    check_random_plan_reuse(
+        "INTERCAL", source, interpreter, "_prepare_source", monkeypatch
+    )

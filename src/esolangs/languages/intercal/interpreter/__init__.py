@@ -92,6 +92,7 @@ from esolangs.languages.intercal.interpreter._semantics import (
     _link,
     _NeedDraw,
     _NeedInput,
+    _Program,
     _snapshot,
     _State,
     _thaw,
@@ -100,7 +101,7 @@ from esolangs.languages.intercal.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -123,6 +124,35 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _Image(NamedTuple):
+    lines: tuple[str, ...]
+    program: _Program
+    abstained: tuple[int, ...]
+
+
+def _prepare_source(code: str) -> _Image:
+    lines = tuple(_statements(code))
+    # The parse trees are acyclic, but the collector rescans the growing
+    # heap again and again: a 33,062-statement load took 3.3 s, 1.7 s without it.
+    collecting = gc.isenabled()
+    gc.disable()
+    try:
+        statements = tuple(_load(line) for line in lines)
+    finally:
+        if collecting:
+            gc.enable()
+    polite = sum(statement.polite for statement in statements)
+    if not lines or polite * 5 < len(lines) or polite * 3 > len(lines):
+        raise _fail(
+            "E079" if polite * 5 < len(lines) else "E099",
+            "INTERCAL program is insufficiently or excessively polite",
+            hint="use PLEASE on one fifth to one third of the statements",
+        )
+    program = _link(statements)
+    abstained = tuple(int(statement.abstained) for statement in statements)
+    return _Image(lines, program, abstained)
+
+
 class _Machine:
     """Parsed INTERCAL statements and the immutable run state.
 
@@ -130,38 +160,20 @@ class _Machine:
     asks and writes what it returns.
     """
 
-    def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
+    def __init__(
+        self, code: str | _Image, io: IO, rng: Randomness | None = None
+    ) -> None:
         self.io = io
         self._rng = rng
-        self.lines = _statements(code)
-        # The parse trees are acyclic, but the collector rescans the growing
-        # heap again and again: a 33,062-statement load took 3.3 s, 1.7 s without it.
-        collecting = gc.isenabled()
-        gc.disable()
-        try:
-            statements = tuple(_load(line) for line in self.lines)
-        finally:
-            if collecting:
-                gc.enable()
-        polite = sum(statement.polite for statement in statements)
-        if (
-            not self.lines
-            or polite * 5 < len(self.lines)
-            or polite * 3 > len(self.lines)
-        ):
-            raise _fail(
-                "E079" if polite * 5 < len(self.lines) else "E099",
-                "INTERCAL program is insufficiently or excessively polite",
-                hint="use PLEASE on one fifth to one third of the statements",
-            )
-        self._program = _link(statements)
+        image = _prepare_source(code) if isinstance(code, str) else code
+        self.lines, self._program, abstained = image
         self.state = _State(
             0,
             _PMap(),
             _PMap(),
             frozenset(),
             _PMap(),
-            tuple(int(statement.abstained) for statement in statements),
+            abstained,
             (),
             0,
             0,
@@ -350,23 +362,26 @@ class _Machine:
         return len(effects)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind text and caller-owned RNG; construct state only when IO is supplied."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain linked statements and bind independent invocation state."""
     if not isinstance(source, str):
         raise TypeError("intercal machines require text source")
     if options.keys() - {"rng"}:
         raise TypeError("intercal machines accept only the rng runtime option")
-    rng = options.get("rng")
+    image = _prepare_source(source)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io, rng)
+    def build(io: IO, rng: Randomness | None) -> _Machine:
+        return _Machine(image, io, rng)
 
-    return build
+    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+        return _execute(image, io, rng)
+
+    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
 
 
-def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:
+def _execute(
+    code: str | _Image, io: IO, rng: Randomness | None = None
+) -> CompletionReport:
     """Execute an INTERCAL program."""
     machine = _Machine(code, io, rng)
     return drive(machine, policy=CAPABILITIES.completion)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from types import MappingProxyType
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -134,10 +135,12 @@ def _link(statements: tuple[_Statement, ...]) -> _Program:
             raise _fail("E993", "TRY AGAIN must be the last statement")
     return _Program(
         statements,
-        labels,
-        {kind: tuple(indexes) for kind, indexes in by_kind.items()},
-        {label: tuple(indexes) for label, indexes in come_label.items()},
-        {kind: tuple(indexes) for kind, indexes in come_kind.items()},
+        MappingProxyType(labels),
+        MappingProxyType({kind: tuple(indexes) for kind, indexes in by_kind.items()}),
+        MappingProxyType(
+            {label: tuple(indexes) for label, indexes in come_label.items()}
+        ),
+        MappingProxyType({kind: tuple(indexes) for kind, indexes in come_kind.items()}),
         tuple(come_computed),
         sucks,
     )
