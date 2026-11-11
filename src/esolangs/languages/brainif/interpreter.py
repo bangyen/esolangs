@@ -25,14 +25,15 @@ Decisions:
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from functools import cache
 from typing import Any
 
 from esolangs.languages.brainif.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -170,10 +171,17 @@ class _Machine:
     A ``goto`` loop whose cell never leaves the tested value is a provable cycle.
     """
 
-    def __init__(self, code: list[str], io: IO) -> None:
+    def __init__(
+        self,
+        code: list[str] | tuple[str, ...],
+        io: IO,
+        *,
+        parse_line: Callable[[str], _Line] = _parse,
+    ) -> None:
         """Start with a single zero cell at the origin."""
         self.io = io
         self.code = code
+        self._parse_line = parse_line
         # ``halted`` is read twice per line -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
@@ -254,7 +262,7 @@ class _Machine:
         """
         if self.halted:
             return
-        parsed = _parse(self.code[self.state[0]])
+        parsed = self._parse_line(self.code[self.state[0]])
         byte = None
         if parsed is not None:
             _ind, ptr, cells = self.state
@@ -267,20 +275,21 @@ class _Machine:
         self.state = _advance(self.state, parsed, byte)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source while giving each run a private line list and state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Share source lines and parse each reached line on demand."""
     if not isinstance(source, list):
         raise TypeError("brainif machines require split text source")
     if options:
         raise TypeError("brainif machines accept no runtime options")
     code = tuple(source)
+    parse_line = cache(_parse)
 
     def build(io: IO) -> _Machine:
-        return _Machine(list(code), io)
+        return _Machine(code, io, parse_line=parse_line)
 
-    return build
+    return RuntimePlan(
+        build, lambda io: drive(build(io), policy=CAPABILITIES.completion)
+    )
 
 
 def _execute(code: list[str], io: IO) -> CompletionReport:
