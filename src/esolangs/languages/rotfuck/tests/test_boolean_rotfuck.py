@@ -290,7 +290,9 @@ def test_rotation_is_checked() -> None:
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
     from esolangs import generate
-    from esolangs.languages.rotfuck.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("ROTfuck")["workspace"].formula
 
     _check_native_constants(bit)
     table = bit * 256
@@ -371,7 +373,10 @@ def _search_pad_until(builder: object, done: Callable[[int], bool]) -> int | Non
 
 def _check_native_constants(bit: str) -> None:
     from esolangs.languages.rotfuck.interpreter import _Machine
-    from esolangs.languages.rotfuck.proof_formulas import execution, workspace
+    from esolangs.languages.rotfuck.proof_formulas import execution
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("ROTfuck")["workspace"].formula
 
     for n in range(1, 13):
         for rotation in ("backward", "forward"):
@@ -402,7 +407,9 @@ def _check_native_constants(bit: str) -> None:
 def _check_symmetric_multipliers() -> None:
     from esolangs.languages.rotfuck import generator as g
     from esolangs.languages.rotfuck.interpreter import _Machine
-    from esolangs.languages.rotfuck.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("ROTfuck")["workspace"].formula
 
     for rotation, cycle in g.ROTFUCK_CYCLES.items():
         for delta in (-80, 128):

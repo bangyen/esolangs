@@ -167,7 +167,9 @@ def test_bitdeque_filled_template_is_one_width() -> None:
 def test_constant_native_and_short_loads_keep_all_slots() -> None:
     from esolangs.languages.bitdeque.generator import bitdeque_setters
     from esolangs.languages.bitdeque.interpreter import _Machine
-    from esolangs.languages.bitdeque.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("Bitdeque")["workspace"].formula
 
     for n in range(1, 13):
         for bit in "01":

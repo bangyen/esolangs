@@ -90,20 +90,22 @@ version = 2
 construction = "esolangs.languages.dig.generator:dig_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.dig.proof_formulas:execution"
+expression = "C*(48R-48+P)+(1-C)*max(125+(74+18(n-2floor(n/2)))*2^(floor(n/2)-3),I)"
+source_terms = { names = ["C", "R", "P", "I"], provider = "esolangs.languages.dig.proof_formulas:execution_terms" }
 exact = false
 arities = [7, 8, 9, 10, 11, 12]
 first = 7
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}; H includes the indexed caps", formula = "max(H,48n-48)" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}. C parity, R core, P discards, I indexed" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.dig.proof_formulas:workspace"
+expression = "8R*W+bl(R-1)+bl(X)+bl(2n-1)+bl(n)+M"
+source_terms = { names = ["R", "W", "X", "M"], provider = "esolangs.languages.dig.proof_formulas:workspace_terms" }
 exact = true
 arities = [5]
 first = 5
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}: byte grid, coordinates, halt latch and derived transient maxima; equality at n=5", formula = "W" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n={previous}. R×W grid, X column, M auxiliary bits" }
 
 [resource_evidence.scaling]
 # Every two inputs map each side s to 2s+1, from 35 by 27 at n=7

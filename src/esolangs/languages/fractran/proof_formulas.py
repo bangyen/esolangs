@@ -30,14 +30,19 @@ def _primes(count: int) -> list[int]:
     return out
 
 
-def workspace(n: int, p: str) -> int:
-    """The stated workspace bound, evaluated for n and the program."""
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Measure the prime-factor storage for the constant or state layout."""
     bl = int.bit_length
-    if (bit := _constant_answer(p)) is not None:
-        return sum(map(bl, _primes(n + bit)[bit:])) + n + 1 + 3 * bit
-    return (
-        bl(_primes(n + 1 + _diagram_cap(n))[-1])
-        + n
-        + 2
-        + sum(map(bl, _primes(n + 1)[1:]))
-    )
+    if (value := _constant_answer(program)) is not None:
+        return {
+            "C": 1,
+            "V": value,
+            "B": sum(map(bl, _primes(n + value)[value:])),
+            "P": 0,
+        }
+    return {
+        "C": 0,
+        "V": 0,
+        "B": sum(map(bl, _primes(n + 1)[1:])),
+        "P": bl(_primes(n + 1 + _diagram_cap(n))[-1]),
+    }

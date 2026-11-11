@@ -63,7 +63,7 @@ def _tree(n: int, _: str) -> int:
     )  # fmt: skip
 
 
-def _chars(n: int, p: str) -> int:
+def scaling_terms(n: int, p: str) -> dict[str, int]:
     """The shorter build is at most either one; at n = 9 a hashed table ships P.
 
     Witness (`_subleq_packed_worst` in test_execution_formulas): every chunk's top
@@ -72,4 +72,4 @@ def _chars(n: int, p: str) -> int:
     hash, so the tree loses to P: n = 9..14 measured 1666, 2092, 2688, 3712,
     5538, 10042 = P.
     """
-    return min(_packed(n, p), _tree(n, p))
+    return {"A": _packed(n, p), "H": _tree(n, p)}

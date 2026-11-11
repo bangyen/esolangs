@@ -92,12 +92,13 @@ unit = "bits"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. C marks direct constants. Exact through n=7" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.stisp.tests.formulas:_hybrid_chars"
+expression = "F+28"
+source_terms = { names = ["F"], provider = "esolangs.languages.stisp.tests.formulas:scaling_terms" }
 exact = false
 arities = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 first = 3
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: named-diagram ceiling plus selectors", formula = "F+28" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: named-diagram ceiling plus selectors" }
 
 [semantic_evidence]
 version = 1

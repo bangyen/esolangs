@@ -109,12 +109,13 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}. C marks direct constants and A counts their initial nonzero cells and addresses in bits" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.addsubjump.tests.formulas:_chars"
+expression = "min(P,R)"
+source_terms = { names = ["P", "R"], provider = "esolangs.languages.addsubjump.tests.formulas:scaling_terms" }
 exact = [6, 7, 8, 9]
 arities = [2, 3, 4, 5, 6, 7, 8, 9]
 first = 6
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, at most min(P, R) below", formula = "P" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. P packed, R shared tree, exact n=6..9" }
 
 [semantic_evidence]
 version = 1

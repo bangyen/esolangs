@@ -133,7 +133,9 @@ def test_balanced_side_is_square_at_n8() -> None:
 def _check_run_macros() -> None:
     from esolangs.languages.slashes.generator import _SWEEP_DEF
     from esolangs.languages.slashes.interpreter import _Machine
-    from esolangs.languages.slashes.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("///")["workspace"].formula
 
     io = ScriptedIO("Q")
     machine = _Machine(_SWEEP_DEF + "SS", io)

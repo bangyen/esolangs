@@ -86,12 +86,14 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} over halting rows, shared self-patching testers" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.crement.proof_formulas:workspace"
+# The constant zero leaves the grouped program and cursor untouched.
+expression = "C*O*(11n+10+2bl(n+1))+(1-C)*(2bl(N)+32+bl(2n+3)+2n(10+bl(N-1))+P*(28+3bl(2n+2)+2bl(N-2)))"
+source_terms = { names = ["C", "O", "N", "P"], provider = "esolangs.languages.crement.proof_formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: whole program state", formula = "2bl(N) + 32 + bl(2n+3) + 2n(10+bl(N-1)) + P(28+3bl(2n+2)+2bl(N-2))" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}. C selects native constants, O their output" }
 
 [resource_evidence.scaling]
 # Named presets take five and thirteen lines. Past them, each

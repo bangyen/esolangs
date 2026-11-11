@@ -27,24 +27,9 @@ def scaling_terms(n: int, _: str) -> dict[str, int]:
     return {"P": _nodes(n)}
 
 
-def _crement(n: int, _: str) -> int:
-    """The whole program; P bounds the shared nodes, N the instructions."""
-    bl = int.bit_length
-    p = _nodes(n)
-    m = lines(n)
-    return (
-        2 * bl(m)
-        + 32
-        + bl(2 * n + 3)
-        + 2 * n * (10 + bl(m - 1))
-        + p * (28 + 3 * bl(2 * n + 2) + 2 * bl(m - 2))
-    )
-
-
-def workspace(n: int, p: str) -> int:
-    """The stated workspace bound, evaluated for n and the program."""
-    tokens = p.replace("$" * 6, "+J 0 0").replace("$", "0").split()
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Identify the native constant or use the shared residual and line caps."""
+    tokens = program.replace("$" * 6, "+J 0 0").replace("$", "0").split()
     if len(tokens) == 3 * (n + 1):
-        # The snapshot groups the untouched program with its changed cursor.
-        return 0 if tokens[1] == "0" else 11 * n + 10 + 2 * (n + 1).bit_length()
-    return _crement(n, p)
+        return {"C": 1, "O": int(tokens[1] != "0"), "N": 0, "P": 0}
+    return {"C": 0, "O": 0, "N": lines(n), "P": _nodes(n)}

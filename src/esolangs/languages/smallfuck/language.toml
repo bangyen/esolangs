@@ -8,6 +8,8 @@ bf_derivative = true
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "a five-level banded prefix writes four Davio coefficients; three spare cells hold the suffix weights, then two destructive input loops update the answer; deferred definitions advance in depth"
+definitions = ["P = band-five prefix ceiling over continuation cells"]
+
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 38, "1" = 45, "2" = 50, "3" = 57, "4" = 57, "5" = 64, "6" = 74, "7" = 94 }, source_units = 109 }
@@ -100,12 +102,19 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one tape bit per source character and one native output-phase bit" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.smallfuck.tests.formulas:_chars"
+# The band-five prefix prices every continuation cell. The ordered
+# suffix crosses the tape twice. Its 27 non-move commands give at most
+# 15n+30 from n=4; the larger bound also covers the n=2/3 flag kernels.
+cases = [
+    { through = 1, expression = "P" },
+    { expression = "P+20n+100" },
+]
+source_terms = { names = ["P"], provider = "esolangs.languages.smallfuck.tests.formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: coefficient recurrence plus a 20n+100 tail", formula = "Q" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}: coefficient prefix and Davio tail" }
 
 [semantic_evidence]
 version = 1

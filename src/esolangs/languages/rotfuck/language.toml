@@ -12,7 +12,7 @@ bf_derivative = true
 [proof_status]
 labels = ["finite lookup"]
 qualification = "every loop's cycle is 0 (mod 8), so its exit rotation is the same whatever its trip count"
-definitions = ["E = 8T²+43T+15n-5, default normalized digits", "R = sum of raw five-bit Horner and triangular-walk costs in proof_formulas._raw_execution, default from n=7; forward has its own upper", "W = 2T + n + 8 + bl(2T+6) + bl(L) + bl(E) + bl(n), E the execution worst", "V = 2T + 5n + 35 + bl(2080L) + bl(2T+6) + bl(L) + bl(n)"]
+definitions = ["E = selected rotation and layout command bound, including raw digit walks and comment or constant loop allowances"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 267, "1" = 307, "2" = 307, "3" = 363, "4" = 291, "5" = 347, "6" = 347, "7" = 419 }, source_units = 243 }
@@ -90,15 +90,17 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} at n=1; E for n=2..6, R after: penultimate lone zero", formula = "183" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for the selected rotation and layout, including comments and constant loops", formula = "E" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.rotfuck.proof_formulas:workspace"
+# The strip and its two scratch cells peak at 2T+2. Forward constants wrap one extra bit.
+cases = [{ through = 6, expression = "C*(16+F+bl(S+80))+(1-C)*(2T+n+8+bl(2T+6)+bl(X))+bl(L)+bl(n)" }, { expression = "C*(16+F+bl(S+80))+(1-C)*(2T+5n+35+bl(2080L)+bl(2T+6))+bl(L)+bl(n)" }]
+source_terms = { names = ["C", "F", "S", "X"], provider = "esolangs.languages.rotfuck.proof_formulas:workspace_terms" }
 exact = true
 arities = [2, 3, 4, 5]
 first = 2
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..6, at most V after: 2T + 7 cells", formula = "W" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}. C selects constants, F selects forward, S counts commands, X bounds lookup execution" }
 
 [resource_evidence.scaling]
 # The cooked prefix uses one phase through n=6. The raw prefix uses

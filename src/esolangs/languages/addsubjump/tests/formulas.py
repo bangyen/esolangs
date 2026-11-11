@@ -64,6 +64,6 @@ def _shared(n: int, _: str) -> int:
 
 # Past n = 5 the packed decoder is the worst; below, min(P, _shared) is only a
 # upper bound; exactness below n=6 is not claimed.
-def _chars(n: int, p: str) -> int:
+def scaling_terms(n: int, p: str) -> dict[str, int]:
     """The shorter build is at most either one; from n = 6 R exceeds P."""
-    return min(_packed(n, p), _shared(n, p))
+    return {"P": _packed(n, p), "R": _shared(n, p)}

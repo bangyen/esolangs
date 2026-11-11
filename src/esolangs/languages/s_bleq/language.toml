@@ -8,7 +8,7 @@ admitted = 2026-08-12T17:01:43-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "packed chunks decoded after the hoisted read block, against a hoisted tree that lays out each distinct subtable once and jumps to it"
-definitions = ["B = the program cells' bits, a sign one more", "C = the program's cell count", "A = extra decimal address widths of the packed decoder"]
+definitions = ["B = the program cells' bits, a sign one more", "A = extra decimal address widths of the packed decoder"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 122 }
@@ -101,12 +101,14 @@ unit = "instructions"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} through n=9, at most beyond. Packed route K costs E" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.s_bleq.tests.formulas:_workspace"
+# A zero input cell becomes signed 48 or 49, adding six bits.
+expression = "B+6n+bl(3R)+bl(n)+1"
+source_terms = { names = ["B", "R"], provider = "esolangs.languages.s_bleq.tests.formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the self-modified program, decimal cells", formula = "B + 6n + bl(3C) + bl(n) + 1" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}. B counts signed memory bits and R counts cells" }
 
 [resource_evidence.scaling]
 # The packed route adds two separators and the decimal literal

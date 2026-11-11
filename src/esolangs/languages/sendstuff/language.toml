@@ -8,7 +8,7 @@ admitted = 2026-10-15T12:02:36-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "distinct subtables share named nodes, with an anonymous single-use root; an Input node sends a 1 through `Subtract 49` and a 0 through `Divide 48`, `Subtract 1`; equal halves and constant chains read their bits unbranched; last-input identity/negation share the constant reader with a unary tail"
-definitions = ["N_d = 1 + Σ_{j>d} V_j + V_d - 4, the node index of the last depth-d Input", "V_j = 4b + min(2^j - b, 2^(s/2)), b = min(2^j, 2^s - 2^(s/2)), s = 2^(n-j)"]
+definitions = ["H = largest residual label id", "A = definition characters by layer", "J = reference characters by layer"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 11, "5" = 11, "6" = 14, "7" = 14 }, source_units = 182 }
@@ -87,20 +87,26 @@ unit = "steps"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: unary U adds R sends" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.sendstuff.proof_formulas:workspace"
+# Anonymous roots preserve parser order, so include every other snapshot index.
+expression = "U*(10+bl(n+R))+(1-U)*(10n+12+W)+bl(n)"
+source_terms = { names = ["U", "R", "W"], provider = "esolangs.languages.sendstuff.proof_formulas:workspace_terms" }
 exact = true
 arities = [3, 4, 5, 6, 7]
 first = 3
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, N_d by V_j: pending frames", formula = "10n + 12 + bl(n) + Σ_{d<n} bl(N_d)" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. U marks unary readers, R counts their extra sends and W sums frame index widths" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.sendstuff.tests.formulas:_chars"
+# The fixed macros and leaves cost 113 plus two read-index widths.
+# The root label uses the widest residual id. Definitions and the
+# references they carry are priced independently by depth.
+expression = "113+2digits(n)+digits(H)+A+J"
+source_terms = { names = ["A", "H", "J"], provider = "esolangs.languages.sendstuff.tests.formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one definition a distinct subtable, longest ids", formula = "C" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: distinct subtables and references" }
 
 [semantic_evidence]
 version = 1

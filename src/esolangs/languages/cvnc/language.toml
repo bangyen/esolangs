@@ -81,12 +81,13 @@ version = 2
 construction = "esolangs.languages.cvnc.generator:cvnc_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.cvnc.proof_formulas:execution"
+# Step counts are integral. Floor the whole nonnegative square-root term.
+expression = "17+4n+3(n-1)+isqrt(2L*(n-1)^2)"
 exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula}", formula = "17 + 4n + (n-1)(3 + sqrt(2L)) tokens: the path plus shared-subtree climbs" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: path and shared-subtree climbs" }
 
 [resource_evidence.workspace]
 # The stated workspace bound, evaluated for n and the program.

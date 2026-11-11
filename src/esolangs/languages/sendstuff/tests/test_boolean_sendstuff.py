@@ -32,7 +32,9 @@ def test_equal_subtables_share_one_node() -> None:
 @pytest.mark.medium
 def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
     from esolangs.languages.sendstuff.interpreter import _Machine
-    from esolangs.languages.sendstuff.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("SendStuff")["workspace"].formula
 
     for n in range(1, 13):
         for table in (

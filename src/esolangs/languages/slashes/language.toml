@@ -7,7 +7,7 @@ backlinks = 86
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "binary-to-unary substitutions form the row index; fixed macros expand run sweeps before decoding one answer"
-definitions = ["W = exact per-template peak from proof_formulas.workspace"]
+definitions = ["D = decoder flag", "S = table size", "P = ignore preamble", "X = ignored inputs", "M = macro flag", "K = macro sweep count"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 35, "1" = 36, "2" = 37, "3" = 38, "4" = 39, "5" = 40, "6" = 41, "7" = 42 }, source_units = 90 }
@@ -91,12 +91,14 @@ unit = "steps"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.slashes.proof_formulas:workspace"
+# The last row reaches the longest unary string and every macro expansion.
+expression = "(1-D)*(16n+32)+D*(8(L+max(0,S-15-P-2X,M*(S-bl(S)-P-2X+17K-48)))+56+120M)"
+source_terms = { names = ["D", "S", "P", "X", "M", "K"], provider = "esolangs.languages.slashes.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: expanded source and separate pattern/replacement peaks", formula = "W" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 #

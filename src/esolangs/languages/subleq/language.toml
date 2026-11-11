@@ -7,7 +7,7 @@ backlinks = 82
 [proof_status]
 labels = ["finite lookup"]
 qualification = "shared direct-jump residual DAG or packed-table decoder; unused byte-I/O targets are zero"
-definitions = ["I = the program's cell bits: bl(|v|) plus one per zero or negative cell", "R = 6n + 5 on a tree, 4 on a constant; packed, its worst read, advance or halving row", "P = the pc: bl(Q-3) on a tree, bl(Q) on a constant, bl(D-3) packed; Q cells, D decoder cells"]
+definitions = ["B = program image bits", "P = cursor ceiling", "G = tree flag", "C = constant flag", "M = essential inputs", "I = ignored last read flag", "D = chunk-pointer growth", "A = offset-copy width in workspace, packed cells in scaling"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 13, "1" = 13, "2" = 13, "3" = 13, "4" = 15, "5" = 15, "6" = 16, "7" = 15 }, source_units = 150 }
@@ -89,20 +89,23 @@ unit = "steps"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the packed decoder" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.subleq.proof_formulas:workspace"
+# The packed peak is the largest of the read, chunk advance and first halving.
+expression = "B+bl(P)+bl(n)+G*(6n+5)+4C+(1-G-C)*max(2M-2,M+4,1+5I+min(1,max(0,M-1))*(bl(2^M-1-M)+2bl(M)-3),5I+min(1,max(0,M-1))*(3M-7-bl(M)+A+D))"
+source_terms = { names = ["B", "P", "G", "C", "M", "I", "A", "D"], provider = "esolangs.languages.subleq.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 5, 9]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: image, rewritten cells, pc, cursor", formula = "I + R + P + bl(n)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.subleq.tests.formulas:_chars"
+expression = "min(A,H)"
+source_terms = { names = ["A", "H"], provider = "esolangs.languages.subleq.tests.formulas:scaling_terms" }
 exact = [9, 10, 11, 12, 13, 14]
 arities = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 9
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} at n = 9..14, at most elsewhere", formula = "min(P, H)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. A packed, H shared tree, exact n=9..14" }
 
 [semantic_evidence]
 version = 1

@@ -22,54 +22,31 @@ def _parity_chain(n: int, program: str) -> tuple[int, int] | None:
     return (core, len(expected)) if lines[:-12] == list(expected) else None
 
 
-def execution(n: int, program: str) -> int:
-    """The stated execution bound, evaluated for n and the program.
-
-    An unshared tree walks at most 128 + 46*2^((n-6)/2) (even n) or
-    128 + 64*2^((n-7)/2) (odd).  A shared leaf adds one travel along an
-    axis of the grid, 28*2^((n-6)/2) - 3 or 28*2^((n-7)/2) - 3 cells.
-    """
-    if chain := _parity_chain(n, program):
-        core, prefix = chain
-        return 48 * core - 48 + prefix
-    even = n % 2 == 0
-    up = (46 if even else 64) + 28
-    lane = 128 - 3 + up * 2 ** ((n - 6) // 2 if even else (n - 7) // 2)
-    worst: int = max(lane, _INDEXED.get(n, 0))
-    return worst
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Identify parity chains and the indexed decoder's finite price."""
+    chain = _parity_chain(n, program)
+    core, prefix = chain or (0, 0)
+    return {
+        "C": int(chain is not None),
+        "R": core,
+        "P": prefix,
+        "I": _INDEXED.get(n, 0),
+    }
 
 
-def _dig(n: int, p: str) -> int:
-    """Byte grid, coordinates, two counters and the halt latch."""
-    bl = int.bit_length
-    lines = p.split("\n")
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Measure the byte grid, visited columns and auxiliary state."""
+    lines = program.split("\n")
     rows, cols = len(lines), max(map(len, lines))
-    return 8 * rows * cols + bl(rows - 1) + bl(cols - 1) + bl(2 * n - 1) + bl(n) + 11
-
-
-def workspace(n: int, p: str) -> int:
-    """The v2 bound, including its one-bit native halt latch."""
-    if chain := _parity_chain(n, p):
+    if chain := _parity_chain(n, program):
         core, _ = chain
         # The off-path XNOR operand adds a column, never a visited coordinate.
-        lines = p.split("\n")
-        area = len(lines) * max(map(len, lines))
-        bl = int.bit_length
-        mole = 2 if core == 2 and max(map(len, lines)) == 5 else 3
+        mole = 2 if core == 2 and cols == 5 else 3
         lead = n - core
         if lead:
             mole = max(mole, (9 if lead >= 8 else lead + 2).bit_length())
-        return (
-            8 * area
-            + bl(len(lines) - 1)
-            + bl(4 * core - 5)
-            + bl(2 * n - 1)
-            + bl(n)
-            + 7
-            + mole
-        )
-    # This capture opcode occurs only in indexed bodies. Class<=9, stride<=8:
-    # stored offset<=72, row count<=81. Both num and mole need at most7 bits,
-    # versus four in primitive leaves; every stored cell still fits one byte.
-    indexed = any(";*$2" in line for line in p.split("\n"))
-    return _dig(n, p) + (6 if indexed else 0)
+        return {"R": rows, "W": cols, "X": 4 * core - 5, "M": 7 + mole}
+    # Indexed capture stores offsets <=72 and counts <=81, costing three
+    # extra bits per register. The stored cell still fits one byte.
+    indexed = any(";*$2" in line for line in lines)
+    return {"R": rows, "W": cols, "X": cols - 1, "M": 11 + 6 * indexed}

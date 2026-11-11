@@ -178,7 +178,9 @@ def test_fractran_parity_two_balances_and_executes() -> None:
 
 
 def _check_native_constants() -> None:
-    from esolangs.languages.fractran.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("FRACTRAN")["workspace"].formula
 
     for n, bit, _options, template in constant_artifacts("FRACTRAN", range(1, 13)):
         assert len(runs(template.source, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n)) == n

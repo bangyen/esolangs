@@ -8,7 +8,7 @@ admitted = 2020-07-13T15:19:36-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "head/tail discards leave the indexed entry in the deque"
-definitions = ["U = 4n + 25 + Σ_{d<n-1} (2c_d + 2min(c_d, 2c_d - c_{d+1})), c_d = min(2^d, 2^(2^(n-d)) - 2)", "S = (U-4n-25)/2, node and zero-pointer units"]
+definitions = ["S = nodes and repeated zero-edge pointers before the final level"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 23, "5" = 23, "6" = 21, "7" = 19 }, source_units = 164 }
@@ -90,12 +90,14 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: prelude, load 2n, four a level, leaf n + 6" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.bitdeque.proof_formulas:workspace"
+# The post-halt dump and register add two bits to the deque and token cursor.
+expression = "n+2+bl(C*(3n+2+I)+(1-C)*(4n+25+2S))"
+source_terms = { names = ["C", "I", "S"], provider = "esolangs.languages.bitdeque.proof_formulas:workspace_terms" }
 exact = true
 arities = [3, 4, 5, 6]
 first = 3
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: n deque bits, register and dump bits, the cursor", formula = "n + 2 + bl(U)" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. C marks constants, I marks their inversion and S is the shared tree count" }
 
 [resource_evidence.scaling]
 # S counts the general nodes and repeated zero-edge pointers.

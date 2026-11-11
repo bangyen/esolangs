@@ -103,11 +103,9 @@ def _worst(n: int, _: str = "") -> int:
     return _profile(n)[0]
 
 
-def _chars(n: int, text: str) -> int:
-    """min(plain bound 24T + 56, shared bound); both hold for every table."""
-    if 2 <= n <= 8:
-        return _worst(n)
-    return min(24 * 2**n + 56, _shared(n, text))
+def scaling_terms(n: int, text: str) -> dict[str, int]:
+    """Price the exact low-arity profile or the shared upper envelope."""
+    return {"H": _worst(n) if 2 <= n <= 8 else _shared(n, text)}
 
 
 def workspace_terms(_: int, text: str) -> dict[str, int]:

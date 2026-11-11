@@ -975,7 +975,9 @@ def test_constant_print_array_is_independent_of_every_input(cell, io, bit) -> No
 @pytest.mark.parametrize("io", [255, 256])
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_print_array_still_consumes_the_whole_stream(cell, io, bit) -> None:
-    from esolangs.languages.slow_acv_mammalian.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("SLOW ACV MAMMALIAN")["workspace"].formula
 
     settings = esolangs.Language("SLOW ACV MAMMALIAN").settings(
         cell_modulus=cell, io_modulus=io

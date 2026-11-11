@@ -150,6 +150,6 @@ def workspace_witness(n: int) -> str:
     return (majority + parity) * 8
 
 
-def _hybrid_chars(n: int, program: str) -> int:
-    """Each local inline choice saves text; the selectors add 28 characters."""
-    return _chars(n, program) + 28
+def scaling_terms(n: int, program: str) -> dict[str, int]:
+    """Price the named diagram before adding the hybrid's selectors."""
+    return {"F": _chars(n, program)}

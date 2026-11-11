@@ -14,7 +14,7 @@ admitted = 2026-08-14T22:09:07-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; up to four pooled weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf"
-definitions = ["E = first jump, prologue, per-level prefix, node and arm, tail: each list at its residue maximum", "B = 8 bits a cell on arrays 0 and 16, pool zeros, heads, counters"]
+definitions = ["C = constant layout flag", "S = constant seeds", "K = seed head widths", "J = first jump commands", "P = prologue commands", "V = sum of worst level paths", "N = token bound", "A = banked sum"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 2698, "1" = 2703, "2" = 2703, "3" = 2708, "4" = 2702, "5" = 2707, "6" = 2707, "7" = 2713 }, source_units = 24713 }
@@ -89,20 +89,23 @@ version = 2
 construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:execution"
+expression = "C*(n+3+S)+(1-C)*(J+P+V+192)"
+source_terms = { names = ["C", "S", "J", "P", "V"], provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:execution_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "E" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:workspace"
+# Price arrays 0 and 16 at their final growth, with zero cells in the pools.
+expression = "C*(6n+K+9+bl(n+S+3))+(1-C)*(246+48n+8floor(N/254)+8floor(A/238)+16(2^min(n,5)+min(n,5)-3)+bl(N)+bl(N+256))+bl(n)"
+source_terms = { names = ["C", "S", "K", "N", "A"], provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "B" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 # W is the first window, P the prologue and Q the level token count.

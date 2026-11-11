@@ -137,7 +137,9 @@ class TestCrementTree:
 
     def test_constant_tables_fold_to_the_gadget_alone(self) -> None:
         """One control instruction precedes all fixed-width, unreachable slots."""
-        from esolangs.languages.crement.proof_formulas import workspace
+        from scripts.docs.resource_evidence import resource_bounds
+
+        workspace = resource_bounds("Crement")["workspace"].formula
 
         for n, bit, _options, template in constant_artifacts("Crement", range(1, 13)):
             for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

@@ -8,7 +8,7 @@ admitted = 2026-09-02T10:34:05-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "bounded shared frames and arithmetic complement twins; base-26 names are unbounded"
-definitions = ["K = shared uppercase definitions, excluding NOT", "A = 4n+3, active split and NOT frames", "Q = 6n+5, pending nodes across frames", "b = bl(2L+2), serial widths for AST nodes and functions", "d = bl(L), bounding function-name length and the line cursor", "V = Σ_{1≤j≤n-2} (bl(s) + bl(s+1) + bl(s+5)), s = 2n+8+7j, three serials per level", "W = bl(2n-1) + bl(2n+3) + bl(2n+13) + bl(F) + 2bl(F+1) + bl(F+2) + bl(F+4), F = 2n+7"]
+definitions = ["K = shared uppercase definitions, excluding NOT"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 21, "5" = 21, "6" = 25, "7" = 27 }, source_units = 13 }
@@ -94,12 +94,15 @@ unit = "commands"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: constant C, negation J, K definitions" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.algebraic_programming_language.tests.formulas:workspace"
+# Frames store a function key, statement, value, return flag and optional x.
+# Shared pending nodes keep a serial and up to two tagged operands.
+expression = "C*(179n+400+bit_stride(2n+15,7,max(0,n-2))+bit_stride(2n+16,7,max(0,n-2))+bit_stride(2n+20,7,max(0,n-2))+bl(2n-1)+bl(2n+3)+bl(2n+13)+bl(2n+7)+2bl(2n+8)+bl(2n+9)+bl(2n+11))+(1-C)*((4n+3)*(198+8bl(L)+3bl(2L+2))+(6n+5)*(bl(2L+2)+114)+65n+bl(L)+bl(2n-1))"
+source_terms = { names = ["C"], provider = "esolangs.languages.algebraic_programming_language.tests.formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 8]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: frame/global state", formula = "179n+400+V+W if K=0, else A(198+8d+3b)+Q(b+114)+65n+d+bl(2n-1)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}. C marks expressions without shared definitions" }
 
 [resource_evidence.scaling]
 # F: the reduced diagram's worst, 10T + 4n + 6, for n = 2..14.

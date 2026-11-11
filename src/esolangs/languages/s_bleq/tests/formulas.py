@@ -72,12 +72,8 @@ def scaling_terms(n: int, _: str) -> dict[str, int]:
     return {"A": _extra(n) if n >= 5 else 0, "Q": tree_chars(n) if n <= 10 else 0}
 
 
-def _cell_bits(program: str) -> int:
-    """B: the program's cells, a magnitude's bits (one for 0) and one per sign."""
-    return sum((abs(v).bit_length() or 1) + (v < 0) for v in map(int, program.split()))
-
-
-def _workspace(n: int, program: str) -> int:
-    """B, 6 a read: an input cell 0 becomes -48 or -49 (7 bits), no other widens."""
-    bl = int.bit_length
-    return _cell_bits(program) + 6 * n + bl(3 * len(program.split())) + bl(n) + 1
+def workspace_terms(_: int, program: str) -> dict[str, int]:
+    """Measure signed initial memory and its cell count."""
+    cells = [int(word) for word in program.split()]
+    bits = sum(max(1, value.bit_length()) + (value < 0) for value in cells)
+    return {"B": bits, "R": len(cells)}

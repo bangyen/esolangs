@@ -94,12 +94,6 @@ def _plain(n: int, band: int) -> int:
     return 4 * n + max(node(0, 3 * n).values())
 
 
-def _chars(n: int, _: str) -> int:
-    """Band-five prefix plus the two-bit Davio tail (at most 20n + 100).
-
-    A coefficient leaf flips any subset of its result and three spare cells.
-    The ordered suffix and weights are adjacent; only two answer transfers
-    cross the tape. Its 27 non-move commands give at most 15n + 30 for n>=4;
-    20n + 100 also covers the flag-backed n=2/3 kernels.
-    """
-    return _plain(n, 5) + (20 * n + 100 if n >= 2 else 0)
+def scaling_terms(n: int, _: str) -> dict[str, int]:
+    """Price the coefficient prefix for its most expensive continuation."""
+    return {"P": _plain(n, 5)}

@@ -121,7 +121,7 @@ exact = false
 arities = [6, 7]
 first = 6
 unit = "pixels"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=6: projected tree envelope", formula = "F" }
+description = { growth = "linear", claim = "at most", template = "{claim} {unit} from n={first}: {formula}", formula = "Pareto boxes over projected input sets" }
 
 [semantic_evidence]
 version = 1

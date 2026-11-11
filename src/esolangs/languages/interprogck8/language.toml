@@ -105,7 +105,7 @@ exact = true
 arities = [3, 4, 5, 6, 7, 8, 9, 10]
 first = 3
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 3..12; at most F to n = 34: max of generic and parity walks", formula = "F" }
+description = { growth = "linear", claim = "worst", template = "{claim} {unit}, n=3..12; ceiling to n=34: {formula}", formula = "maximum of the generic layout walk and parity walk" }
 
 [resource_evidence.workspace]
 # The slot and caller frame each hold up to 33 characters, plus a four-bit index.
@@ -123,7 +123,7 @@ exact = true
 arities = [3, 4, 5, 6, 7, 8, 9, 10]
 first = 3
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 3..10; at most beyond", formula = "F" }
+description = { growth = "linear", claim = "worst", template = "{claim} {unit}, n=3..10; ceiling beyond: {formula}", formula = "cluster and flight layout costs" }
 
 [semantic_evidence]
 version = 1

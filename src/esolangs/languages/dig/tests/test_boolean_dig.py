@@ -51,11 +51,12 @@ def _check_rows(
 class TestDig:
     def test_four_input_parity_keeps_the_compact_layout(self) -> None:
         """Polynomial complements retain exact command and workspace accounting."""
-        from esolangs.languages.dig.proof_formulas import (
-            _parity_chain,
-            execution,
-            workspace,
-        )
+        from esolangs.languages.dig.proof_formulas import _parity_chain
+        from scripts.docs.resource_evidence import resource_bounds
+
+        bounds = resource_bounds("Dig")
+        execution = bounds["execution"].formula
+        workspace = bounds["workspace"].formula
 
         assert not hasattr(boolean, "_dig_parity_bias")
         assert not hasattr(indexed, "_leaf_weights")
@@ -666,7 +667,9 @@ def test_indexed_six_bit_decoder_runs_four_classes() -> None:
     worst = _check_rows(rows, table, 417)
     assert worst == 417
 
-    from esolangs.languages.dig.proof_formulas import execution
+    from scripts.docs.resource_evidence import resource_bounds
+
+    execution = resource_bounds("Dig")["execution"].formula
 
     # Six prefix bits, one ignored input, then the six-input AND/OR body.
     table = "".join(

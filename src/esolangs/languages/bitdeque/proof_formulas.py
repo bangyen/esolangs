@@ -23,9 +23,8 @@ def scaling_terms(n: int, _: str) -> dict[str, int]:
     return {"S": _tree_units(n)}
 
 
-def workspace(n: int, program: str) -> int:
-    """N deque bits, register and dump bits, and the cursor width of token cap U."""
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Identify a constant reader or use the shared tree count."""
     if not program.startswith("GOTO "):
-        bit = program.split()[-2] == "INVERT"
-        return n + 2 + (3 * n + 2 + bit).bit_length()
-    return n + 2 + (4 * n + 25 + 2 * _tree_units(n)).bit_length()
+        return {"C": 1, "I": int(program.split()[-2] == "INVERT"), "S": 0}
+    return {"C": 0, "I": 0, "S": _tree_units(n)}

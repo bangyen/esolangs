@@ -141,20 +141,18 @@ def _plan(n: int) -> _Plan:
     return _Plan(table, window, jump, prologue, base, levels, weights)
 
 
-def execution(n: int, program: str) -> int:
-    """E: first jump, prologue, per-level lists on the all-ones path, tail."""
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Measure the literal seed or the all-essential plan's component paths."""
     if "LEAPFROG" not in program and program:
-        return n + 3 + program.split().count("SEED")
+        return {"C": 1, "S": program.split().count("SEED"), "J": 0, "P": 0, "V": 0}
     plan = _plan(n)
-    levels = sum(r["lvl"] for r in plan.levels)
-    return plan.jump + plan.prologue + levels + _ROUTE_OUT + _DISPATCH + 9
-
-
-def _tokens(n: int) -> int:
-    """Program tokens: the first window, prologue, levels and tail."""
-    plan = _plan(n)
-    levels = sum(r["len"] for r in plan.levels)
-    return plan.window + plan.prologue + levels + _ROUTE_OUT + _DISPATCH + 2
+    return {
+        "C": 0,
+        "S": 0,
+        "J": plan.jump,
+        "P": plan.prologue,
+        "V": sum(r["lvl"] for r in plan.levels),
+    }
 
 
 def scaling_terms(n: int, _: str) -> dict[str, int]:
@@ -173,21 +171,18 @@ def scaling_terms(n: int, _: str) -> dict[str, int]:
     }
 
 
-def workspace(n: int, program: str) -> int:
-    """B: 8 bits a cell on arrays 0 and 16, the pools' zeros, heads, counters.
-
-    Array 0 ends holding its sum over 254 plus four small cells a level (the
-    plant, the input bit, the launder, the tuning byte) and one more; array 16
-    its sum over 238 plus two a level and four; both only grow.
-    """
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Measure constant seed heads or the generic plan's token and bank widths."""
     if "LEAPFROG" not in program and program:
         seeds = program.split().count("SEED")
-        heads = sum((k * seeds).bit_length() for k in range(1, 24))
-        return 6 * n + heads + 9 + (n + seeds + 3).bit_length() + n.bit_length()
+        return {
+            "C": 1,
+            "S": seeds,
+            "K": sum((k * seeds).bit_length() for k in range(1, 24)),
+            "N": 0,
+            "A": 0,
+        }
     plan = _plan(n)
-    length = _tokens(n)
-    banked = plan.base + sum(plan.weights)
-    cells = length // 254 + 4 * n + 1 + banked // 238 + 2 * n + 4
-    pools = sum(2 * (8 << k) + 16 for k in range(1, min(n, 5)))
-    bl = int.bit_length
-    return 8 * 23 + 8 * cells + pools + 16 + bl(length) + bl(length + 256) + 6 + bl(n)
+    levels = sum(r["len"] for r in plan.levels)
+    length = plan.window + plan.prologue + levels + _ROUTE_OUT + _DISPATCH + 2
+    return {"C": 0, "S": 0, "K": 0, "N": length, "A": plan.base + sum(plan.weights)}

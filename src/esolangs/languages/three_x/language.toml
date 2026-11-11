@@ -8,7 +8,7 @@ admitted = 2026-08-13T16:00:01-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "—"
-definitions = ["K(i) = bits of the ith key's value, exact", "G = the program's ( count", "N = 1 + n + min(G, ⌊T/24⌋)"]
+definitions = ["K(i) = bits of the ith key's value, exact", "G = the program's ( count"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 108, "1" = 108, "2" = 108, "3" = 108, "4" = 118, "5" = 118, "6" = 132, "7" = 132 }, source_units = 132 }
@@ -98,12 +98,14 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the all-ones row enters every guard, no loop repeats" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.three_x.tests.formulas:_three_x"
+# One guard leaves a three-bit item. Shared blocks admit at most floor(T/24) flag names.
+expression = "n*bl(L)+bl(2n-1)+3G+2n+2K+6bl(n+min(G,floor(T/24)))+9+S+3(1+n+min(G,floor(T/24)))"
+source_terms = { names = ["G", "K", "S"], provider = "esolangs.languages.three_x.tests.formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "n·bl(L) + bl(2n-1) + 3G + 2n + 2K(N) + 6bl(N-1) + 9 + Σ_{i≤N}(K(i)+3)" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}. G counts guards, K is the last key width and S sums the admitted key widths" }
 
 [resource_evidence.scaling]
 # A split costs more than a leaf under the fixed assignment. The
