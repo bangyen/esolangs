@@ -55,13 +55,14 @@ Decisions:
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, cast, overload
 
 from esolangs.languages.dimensional.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
@@ -474,6 +475,13 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _SourceImage = tuple[str, Mapping[int, int]]
+
+
+def _prepare_source(code: str) -> _SourceImage:
+    return code, MappingProxyType(_matches(code))
+
+
 class _Machine:
     """One Dimensional run: the code position, comment mode, and tape.
 
@@ -483,10 +491,9 @@ class _Machine:
     runs on is :class:`_Tape`.
     """
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.code = code
+    def __init__(self, code: str | _SourceImage, io: IO) -> None:
+        self.code, self.m = _prepare_source(code) if isinstance(code, str) else code
         self.io = io
-        self.m = _matches(code)
         self.tape = _Tape()
         self.ind = 0
         self.comment = False
@@ -603,22 +610,18 @@ class _Machine:
             self._apply(effect)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain source and jump targets with fresh invocation state."""
     if not isinstance(source, str):
         raise TypeError("dimensional machines require text source")
     if options:
         raise TypeError("dimensional machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _SourceImage, io: IO) -> CompletionReport:
     """Run a Dimensional v3.0 program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

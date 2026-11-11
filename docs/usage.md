@@ -180,6 +180,8 @@ These language-owned plans retain parsed source:
 - Super SNUSP, thisthat and LaserFuck: grid and entry points.
 - Clockwise: padded source and input detection.
 - A Painter Ant: normalized instructions for periodic execution.
+- Aprknia, Qrain, Smallfuck, Unsquare, Dimensional, FALSE and Home Row: source and jump targets.
+- EGL: validated dimensions, commands and loop targets.
 
 `Language` also binds `instantiate`; use package functions across languages.
 

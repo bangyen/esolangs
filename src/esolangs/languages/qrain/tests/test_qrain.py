@@ -3,8 +3,10 @@
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.qrain import interpreter as native
 from esolangs.languages.qrain.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.prepared_support import check_image_reuse
 
 _run = native_runner(run)
 
@@ -38,9 +40,17 @@ def test_semantics(code: str, stdin: str, expected: str) -> None:
     assert _run(code, stdin) == expected
 
 
-def test_dequeue_of_empty_queue_raises() -> None:
+def test_dequeue_of_empty_queue_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     from esolangs.languages.qrain.tests.oracle_checks import check_raw_qrain
 
     check_raw_qrain()
+    check_image_reuse(
+        "Qrain",
+        ",[-]>,.",
+        native,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("AB", "B"), ("AZ", "Z"), ("AQ", "Q")),
+    )
     with pytest.raises(HaltError):
         _run("<-")

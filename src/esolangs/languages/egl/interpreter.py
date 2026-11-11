@@ -34,13 +34,14 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.languages.egl.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import match_brackets
@@ -63,7 +64,7 @@ def _render_grid(grid: tuple[int, ...], width: int) -> str:
 def _advance(
     state: _State,
     code: str,
-    pairs: dict[int, int],
+    pairs: Mapping[int, int],
     width: int,
     height: int,
     value: int | None = None,
@@ -132,29 +133,39 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _SourceImage = tuple[int, int, str, Mapping[int, int]]
+
+
+def _prepare_source(code: str) -> _SourceImage:
+    match = re.fullmatch(r"(\d+),(\d+):(.*)", code, re.DOTALL)
+    if match is None:
+        raise syntax_error(
+            "EGL program must begin with 'width,height:'",
+            "start with positive grid dimensions, for example 2,3:+=",
+        )
+    width, height = map(parse_integer, match.group(1, 2))
+    if width < 1 or height < 1:
+        raise syntax_error(
+            "EGL grid dimensions must be positive",
+            "use dimensions of at least 1, for example 1,1:",
+        )
+    code = match.group(3)
+    try:
+        pairs = match_brackets(code, "(", ")")
+    except ValueError as error:
+        raise syntax_error(
+            "unmatched parenthesis in EGL program", "pair every ( with a closing )"
+        ) from error
+    return width, height, code, MappingProxyType(pairs)
+
+
 class _Machine:
     """EGL grid and instruction pointer exposed through the VM protocol."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        match = re.fullmatch(r"(\d+),(\d+):(.*)", code, re.DOTALL)
-        if match is None:
-            raise syntax_error(
-                "EGL program must begin with 'width,height:'",
-                "start with positive grid dimensions, for example 2,3:+=",
-            )
-        self.width, self.height = map(parse_integer, match.group(1, 2))
-        if self.width < 1 or self.height < 1:
-            raise syntax_error(
-                "EGL grid dimensions must be positive",
-                "use dimensions of at least 1, for example 1,1:",
-            )
-        self.code = match.group(3)
-        try:
-            self.pairs = match_brackets(self.code, "(", ")")
-        except ValueError as error:
-            raise syntax_error(
-                "unmatched parenthesis in EGL program", "pair every ( with a closing )"
-            ) from error
+    def __init__(self, code: str | _SourceImage, io: IO) -> None:
+        self.width, self.height, self.code, self.pairs = (
+            _prepare_source(code) if isinstance(code, str) else code
+        )
         self.io = io
         self._input_reads = 0
         self.state: _State = (
@@ -211,22 +222,18 @@ class _Machine:
             self.io.print_str(format_integer(output))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain source and jump targets with fresh invocation state."""
     if not isinstance(source, str):
         raise TypeError("egl machines require text source")
     if options:
         raise TypeError("egl machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _SourceImage, io: IO) -> CompletionReport:
     """Run an EGL program to the end of its source."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

@@ -7,6 +7,7 @@ from operator import add, and_, eq, gt, mul, or_, sub
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.false import interpreter as native
 from esolangs.languages.false.interpreter import (
     _advance,
     _Machine,
@@ -14,6 +15,7 @@ from esolangs.languages.false.interpreter import (
 )
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
+from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 
@@ -76,8 +78,16 @@ def test_comparison_is_minus_one_for_true() -> None:
         assert run_program(run, source) == str(signed(quotient)), source
 
 
-def test_a_lambda_runs_on_demand() -> None:
+def test_a_lambda_runs_on_demand(monkeypatch: pytest.MonkeyPatch) -> None:
     assert run_program(run, "[1+]f:3f;!.") == "4"
+    check_image_reuse(
+        "FALSE",
+        "[1+]f:3f;!.",
+        native,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("", "4"),) * 3,
+    )
     assert run_program(run, '1["yes"]?0["no"]?') == "yes"
 
 

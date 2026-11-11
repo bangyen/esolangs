@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
+from esolangs.languages.unsquare import interpreter as native
 from esolangs.languages.unsquare.interpreter import _Machine, run
 from esolangs.languages.unsquare.tests.oracle_checks import check_raw_unsquare
 from esolangs.runtime._execution import interpreter_module
@@ -19,6 +20,7 @@ from tests.interpreters.contract import (
     reader_factory,
 )
 from tests.interpreters.cursorless_io import PositionlessIO
+from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import raises_message
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
@@ -82,11 +84,21 @@ class TestUnsquare:
         assert run_program("I>I<") == ""
         assert run_program("OIA>A<Po") == "\x01"
 
-    def test_skipped_loop_counts_nested_brackets(self) -> None:
+    def test_skipped_loop_counts_nested_brackets(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # the accumulator starts at 0, so the leading > skips its body; the
         # nested >< inside must be counted so the skip stops at the
         # *matching* <, leaving the trailing Io to push and print
         assert run_program(">I><I<Io") == "\x01"
+        check_image_reuse(
+            "Unsquare",
+            ">I><I<Io",
+            native,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("", "\x01"),) * 3,
+        )
 
     def test_error_empty_stack(self) -> None:
         """Each refusal says which one it is."""

@@ -14,14 +14,14 @@ Errors:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import partial
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.languages.smallfuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import match_brackets
@@ -31,7 +31,7 @@ type _State = tuple[int, int, tuple[int, ...], bool]
 
 
 def _advance(
-    state: _State, code: str, brackets: dict[int, int]
+    state: _State, code: str, brackets: Mapping[int, int]
 ) -> tuple[_State, str | None]:
     """Return the next immutable state and any final tape output."""
     ind, ptr, tape, dumped = state
@@ -61,16 +61,24 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _SourceImage = tuple[str, Mapping[int, int]]
+
+
+def _prepare_source(code: str) -> _SourceImage:
+    return code, MappingProxyType(match_brackets(code))
+
+
 class _Machine:
     """A fixed binary tape and instruction pointer."""
 
     completion = CAPABILITIES.completion
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.code = code
+    def __init__(self, code: str | _SourceImage, io: IO) -> None:
+        self.code, self.brackets = (
+            _prepare_source(code) if isinstance(code, str) else code
+        )
         self.io = io
-        self.brackets = match_brackets(code)
-        self.size = len(code)
+        self.size = len(self.code)
         self.state: _State = (0, 0, (0,) * self.size, False)
 
     @property
@@ -112,18 +120,18 @@ class _Machine:
             self.io.print_str(output)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines after shared source and option preparation."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain source and jump targets with fresh invocation state."""
     if not isinstance(source, str):
         raise TypeError("smallfuck machines require text source")
     if options:
         raise TypeError("smallfuck machines accept no runtime options")
-    return partial(_Machine, source, **options)
+
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _SourceImage, io: IO) -> CompletionReport:
     """Execute ``code`` and print final cell 2."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

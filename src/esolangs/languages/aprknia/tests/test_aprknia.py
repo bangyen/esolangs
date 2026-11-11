@@ -2,8 +2,10 @@
 
 import pytest
 
+from esolangs.languages.aprknia import interpreter as native
 from esolangs.languages.aprknia.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.prepared_support import check_image_reuse
 
 #: Pushes 7 then 3, b and a for the page's snippets.
 _SEVEN_THREE = "11*!!!!" + "1*!!!!" * 5 + "11*!!!!1*!!!!"
@@ -44,10 +46,18 @@ def test_reads_and_prints_a_byte() -> None:
     assert _out("11*!!!~!,1,", "A") == "A"
 
 
-def test_loop_runs_while_positive() -> None:
+def test_loop_runs_while_positive(monkeypatch: pytest.MonkeyPatch) -> None:
     # 3 counts down to 0, printing each step's value.
     three = "11*!!!!1*!!!!"
     assert _out(three + "[" + _PRINT[:-1] + "1*!!!~!]") == "321"
+    check_image_reuse(
+        "Aprknia",
+        three + "[" + _PRINT[:-1] + "1*!!!~!]",
+        native,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("", "321"),) * 3,
+    )
 
 
 @pytest.mark.parametrize("code", ["[", "]"])

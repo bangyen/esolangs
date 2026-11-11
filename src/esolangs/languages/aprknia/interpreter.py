@@ -36,6 +36,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -43,7 +44,7 @@ from esolangs.languages.aprknia.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -86,7 +87,7 @@ def _quot(b: int, a: int) -> int:
 
 
 def _advance(
-    state: _State, code: str, jumps: dict[int, int], byte: int | None = None
+    state: _State, code: str, jumps: Mapping[int, int], byte: int | None = None
 ) -> tuple[_State, str | None]:
     """Return the state after the command at the cursor, and its output.
 
@@ -123,13 +124,19 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _SourceImage = tuple[str, Mapping[int, int]]
+
+
+def _prepare_source(code: str) -> _SourceImage:
+    return code, MappingProxyType(_brackets(code))
+
+
 class _Machine:
     """An Aprknia run: one immutable ``_State``, rebound per step."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.code = code
+    def __init__(self, code: str | _SourceImage, io: IO) -> None:
+        self.code, self.jumps = _prepare_source(code) if isinstance(code, str) else code
         self.io = io
-        self.jumps = _brackets(code)
         self.state = _State(0, ())
 
     @property
@@ -186,22 +193,18 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain source and jump targets with fresh invocation state."""
     if not isinstance(source, str):
         raise TypeError("aprknia machines require text source")
     if options:
         raise TypeError("aprknia machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _SourceImage, io: IO) -> CompletionReport:
     """Run an Aprknia program until the cursor passes the end."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

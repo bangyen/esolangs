@@ -46,6 +46,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from operator import add, and_, mul, or_, sub
 from string import ascii_lowercase
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -53,7 +54,7 @@ from esolangs.languages.false.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -265,7 +266,7 @@ class _Dispatch:
     """Everything one command handler needs: the finalized state, split."""
 
     code: str
-    closers: dict[int, int]
+    closers: Mapping[int, int]
     frame: _Frame
     frames: tuple[_Frame, ...]
     stack: tuple[_Value, ...]
@@ -440,7 +441,7 @@ _STEP_HANDLERS = (_literal_step, _stack_step, _operator_step, _control_step)
 
 
 def _advance(
-    state: _State, code: str, closers: dict[int, int], char_input: int | None = None
+    state: _State, code: str, closers: Mapping[int, int], char_input: int | None = None
 ) -> tuple[_State, _Effect]:
     """Return the state after one command, and what to write.
 
@@ -464,6 +465,13 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _SourceImage = tuple[str, Mapping[int, int]]
+
+
+def _prepare_source(code: str) -> _SourceImage:
+    return code, MappingProxyType(_closers(code))
+
+
 class _Machine:
     """The run state: the stack, the variables, and the frame stack."""
 
@@ -472,11 +480,12 @@ class _Machine:
     #: reports it: a caller has to know its short stdin was not refused.
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.code = code
+    def __init__(self, code: str | _SourceImage, io: IO) -> None:
+        self.code, self.closers = (
+            _prepare_source(code) if isinstance(code, str) else code
+        )
         self.io = io
-        self.closers = _closers(code)
-        self.state: _State = ((), (None,) * _VARS, (_Frame(0, len(code)),))
+        self.state: _State = ((), (None,) * _VARS, (_Frame(0, len(self.code)),))
 
     @property
     def halted(self) -> bool:
@@ -557,22 +566,18 @@ class _Machine:
             self.io.print_str(str(value))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain source and jump targets with fresh invocation state."""
     if not isinstance(source, str):
         raise TypeError("false machines require text source")
     if options:
         raise TypeError("false machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _SourceImage, io: IO) -> CompletionReport:
     """Run a FALSE program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

@@ -21,14 +21,14 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import partial
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.languages.home_row.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
@@ -69,7 +69,7 @@ def _matches(code: str) -> dict[int, int]:
 def _advance(
     state: _State,
     code: str,
-    match: dict[int, int],
+    match: Mapping[int, int],
 ) -> _State:
     """Return the state after executing the command at the cursor.
 
@@ -104,19 +104,26 @@ def _advance(
     return (ind + 1, ptr, grid)
 
 
+type _SourceImage = tuple[str, Mapping[int, int]]
+
+
+def _prepare_source(code: str) -> _SourceImage:
+    # Only the eight commands are instructions, so ``j`` ("Jump over the
+    # next instruction") skips the next command, not a space before it.
+    code = "".join(filter("asdfjkl;".__contains__, code))
+    return code, MappingProxyType(_matches(code))
+
+
 class _Machine:
     """Per-run Home Row state: the grid, pointer, and code cursor."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _SourceImage, io: IO) -> None:
         """Match ``code``'s loop pairs and start the grid at all zeros."""
         self.io = io
-        # Only the eight commands are instructions, so ``j`` ("Jump over the
-        # next instruction") skips the next command, not a space before it.
-        code = self.code = "".join(filter("asdfjkl;".__contains__, code))
-        self.match = _matches(code)
+        self.code, self.match = _prepare_source(code) if isinstance(code, str) else code
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
-        self.size = len(code)
+        self.size = len(self.code)
         self.state: _State = (0, 0, (0,) * 25)
 
     # The language's own names.  They are views on the current state rather
@@ -178,18 +185,18 @@ class _Machine:
         self.state = _advance(self.state, self.code, self.match)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines; home_row has no runtime options."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain source and jump targets with fresh invocation state."""
     if not isinstance(source, str):
         raise TypeError("home_row machines require text source")
     if options:
         raise TypeError("home_row machines accept no runtime options")
-    return partial(_Machine, source)
+
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _SourceImage, io: IO) -> CompletionReport:
     """Run a Home Row program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

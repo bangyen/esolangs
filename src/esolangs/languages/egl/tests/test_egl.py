@@ -5,10 +5,12 @@ from functools import partial
 
 import pytest
 
+from esolangs.languages.egl import interpreter as native
 from esolangs.languages.egl.interpreter import _advance, _Machine, run
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.cursorless_io import CursorlessIO
 from tests.interpreters.runner import run_program
+from tests.support.prepared_support import check_image_reuse
 
 execute = partial(run_program, run, suppress_eof=False)
 
@@ -29,13 +31,21 @@ def test_output(code: str, expected: str) -> None:
     assert execute(code) == expected
 
 
-def test_character_input() -> None:
+def test_character_input(monkeypatch: pytest.MonkeyPatch) -> None:
     from esolangs.languages.egl.tests.oracle_checks import (
         check_raw_egl,
     )
 
     check_raw_egl()
     assert execute("1,1:x=", "42\n") == "52"
+    check_image_reuse(
+        "EGL",
+        "10,1:++(>+++++<-)>=",
+        native,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("", "10"),) * 3,
+    )
 
 
 def test_a_cursorless_read_loop_is_not_a_cycle() -> None:

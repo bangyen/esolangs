@@ -5,12 +5,14 @@ import importlib
 import pytest
 
 import esolangs.debugger as debugger_api
+from esolangs.languages.dimensional import interpreter as native
 from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.languages.dimensional.interpreter import _Machine as Dimensional
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract, machine_factory
 from tests.interpreters.runner import run_lines
+from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import assert_rejected_with_hint, raises_message
 
 dim = importlib.import_module("esolangs.languages.dimensional.interpreter")
@@ -99,7 +101,9 @@ class TestDimensional:
         assert run_and_capture("*[[[*+.") == "\x01"
         assert run_and_capture("*}{*+.") == "\x01"
 
-    def test_a_bracket_after_a_comment_is_still_matched(self) -> None:
+    def test_a_bracket_after_a_comment_is_still_matched(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """The *bracket scan* has to leave comment mode too, not just the run."""
         with pytest.raises(ValueError, match="unmatched"):
             dim.run("*xyz*]", IO())
@@ -107,6 +111,14 @@ class TestDimensional:
             dim.run("*xyz*[", IO())
         # and a balanced pair past the comment still loops
         assert run_and_capture("*xyz*=03[.-]") == "\x03\x02\x01"
+        check_image_reuse(
+            "Dimensional",
+            "*xyz*=03[.-]",
+            native,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("", "\x03\x02\x01"),) * 3,
+        )
 
     def test_coordinate_read_clear(self) -> None:
         assert run_and_capture(">0>0?0.") == "\x02"

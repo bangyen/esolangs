@@ -5,11 +5,13 @@ import random
 
 import pytest
 
+from esolangs.languages.smallfuck import interpreter as native
 from esolangs.languages.smallfuck.interpreter import _advance, _Machine, run
 from esolangs.languages.smallfuck.tests.oracle_checks import _WORKSPACE, check, oracle
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
 from tests.interpreters.semantic_oracles import STDINS, agrees
+from tests.support.prepared_support import check_image_reuse
 from tests.support.workspace_oracle import charged_bits, check_erasures
 
 _run = native_runner(run)
@@ -30,7 +32,7 @@ def test_crossing_a_tape_end_halts(source: str) -> None:
     assert _run(source) == "0"
 
 
-def test_halted_step_dumps_once() -> None:
+def test_halted_step_dumps_once(monkeypatch: pytest.MonkeyPatch) -> None:
     io = ScriptedIO("")
     machine = _Machine(">>*", io)
     machine.step()
@@ -42,6 +44,14 @@ def test_halted_step_dumps_once() -> None:
     assert machine.workspace_snapshot().parts == (*before[1].parts[:3], True)
     assert before[1].parts[-1] is False
     assert io.getvalue() == "1"
+    check_image_reuse(
+        "Smallfuck",
+        ">>*[*]",
+        native,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("", "0"),) * 3,
+    )
     machine.step()
     assert io.getvalue() == "1"
 

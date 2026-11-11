@@ -28,6 +28,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -35,7 +36,7 @@ from esolangs.languages.unsquare.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -132,17 +133,25 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _SourceImage = tuple[str, Mapping[int, int | None]]
+
+
+def _prepare_source(code: str) -> _SourceImage:
+    return code, MappingProxyType(_partners(code))
+
+
 class _Machine:
     """Per-run Unsquare state: the stack, jump stack, accumulator, cursor."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _SourceImage, io: IO) -> None:
         """Start with empty stacks, a zero accumulator, at the first token."""
         self.io = io
-        self.code = code
-        self._partners = _partners(code)
+        self.code, self._partners = (
+            _prepare_source(code) if isinstance(code, str) else code
+        )
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
-        self.size = len(code)
+        self.size = len(self.code)
         self.state: _State = (0, 0, (), ())
         self._input_reads = 0
 
@@ -262,22 +271,18 @@ class _Machine:
         self.state = _advance(self.state, self.code, byte, target)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain source and jump targets with fresh invocation state."""
     if not isinstance(source, str):
         raise TypeError("unsquare machines require text source")
     if options:
         raise TypeError("unsquare machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _SourceImage, io: IO) -> CompletionReport:
     """Run an Unsquare program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

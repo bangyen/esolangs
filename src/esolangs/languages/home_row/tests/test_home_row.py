@@ -4,6 +4,7 @@ from functools import partial
 
 import pytest
 
+from esolangs.languages.home_row import interpreter as native
 from esolangs.languages.home_row.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters import runner
@@ -13,6 +14,7 @@ from tests.interpreters.contract import (
     StateViewContract,
     machine_factory,
 )
+from tests.support.prepared_support import check_image_reuse
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
 
@@ -49,11 +51,21 @@ def test_output(code, expected) -> None:
 
 
 class TestPointer:
-    def test_wraps_within_a_row_and_by_rows(self) -> None:
+    def test_wraps_within_a_row_and_by_rows(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """``f`` wraps at the row edge; ``d`` moves a whole row forward."""
         from esolangs.languages.home_row.tests.oracle_checks import check_raw_home_row
 
         check_raw_home_row()
+        check_image_reuse(
+            "Home Row",
+            "aa l slk;",
+            native,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("", "\x00"),) * 3,
+        )
         for code, ptr in (("d", 5), ("f", 1)):
             machine = _Machine(code, ScriptedIO())
             machine.step()
