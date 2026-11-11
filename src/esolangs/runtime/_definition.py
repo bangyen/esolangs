@@ -97,6 +97,8 @@ class RuntimeSpec:
     #: What an exhausted read does instead of raising EOFError.
     eof: str = ""
     underfed_raises: bool = False
+    #: Whether programs can read stdin. Used for CLI input diagnostics.
+    reads_stdin: bool = field(default=True, kw_only=True)
     #: Error raised when the specification rejects an empty program.
     empty_program: str = ""
     category: str = "other"

@@ -17,7 +17,6 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from itertools import islice
 from pathlib import Path
-from typing import cast
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -105,14 +104,14 @@ def _refuses_timeout() -> None:
 
 @cache
 def _evaluator() -> Callable[..., str]:
-    """Load the development harness without exposing checkout source to imports."""
-    path = ROOT / "tests/support/evaluation.py"
-    spec = importlib.util.spec_from_file_location("release_evaluation", path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return cast("Callable[..., str]", module._evaluate)  # noqa: SLF001
+    """Load the checkout's test helpers while importing the installed package."""
+    # Isolated Python omits the checkout. Add its root for tests.support,
+    # leaving src off the import path.
+    if str(ROOT) not in sys.path:
+        sys.path.append(str(ROOT))
+    from tests.support.evaluation import _evaluate
+
+    return _evaluate
 
 
 def _generator(name: str, *, image_extra: bool) -> None:

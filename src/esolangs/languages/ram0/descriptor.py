@@ -46,6 +46,7 @@ LANGUAGE = Language(
     RuntimeSpec(
         "ram0",
         category="register_based",
+        reads_stdin=False,
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,

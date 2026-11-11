@@ -88,7 +88,7 @@ class TestStdinCannotHangTheCommandForever:
             ["run", "--timeout", "2", "RAM0", str(path)], 20
         )
         assert code == 124
-        assert "read no stdin" in err
+        assert "RAM0 reads no stdin" in err
 
 
 @pytest.mark.medium

@@ -14,7 +14,7 @@ from scripts.ci import release as smoke
 
 
 def test_generator_batch_executes_all_rows() -> None:
-    smoke._generator("Brainfuck", image_extra=True)
+    smoke._generator_process("Brainfuck", image_extra=True)
 
 
 def test_generator_batch_rejects_a_wrong_table(monkeypatch) -> None:

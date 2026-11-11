@@ -128,7 +128,7 @@ def _decode_note(exc: UnicodeDecodeError) -> str:
 
 def _stdin_hint(language: Language) -> str:
     """Suggest how to finish waiting for caller-supplied input."""
-    if not language.has_backend:
+    if not language.runtime.reads_stdin or not language.has_backend:
         return f"; {language.name} reads no stdin -- close it"
     return "; send the input this program needs, or close stdin"
 
