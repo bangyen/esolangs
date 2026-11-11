@@ -450,7 +450,7 @@ _METADATA_LIMIT = 16_384
 
 
 def read_metadata(data: bytes) -> dict[str, Any] | None:
-    """Read bounded version-one source metadata; ignore future versions."""
+    """Read bounded version-one source metadata."""
     found: dict[str, Any] | None = None
     for kind, body in _chunks(data):
         if kind != _METADATA_CHUNK:
@@ -466,7 +466,9 @@ def read_metadata(data: bytes) -> dict[str, Any] | None:
     version = found.get("version")
     if type(version) is not int or version < 1:
         raise ValueError("invalid esolangs PNG metadata version")
-    return found if version == 1 else None
+    if version != 1:
+        raise ValueError("unsupported esolangs PNG metadata version")
+    return found
 
 
 def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:

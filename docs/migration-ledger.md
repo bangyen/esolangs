@@ -15,8 +15,9 @@ Owners are workstreams, not individual contributors.
 The 2026-11-11 v2 cutover additionally retires Between's definition facade,
 binding and VM type forwarding imports, and the old Unlambda pickle layout.
 Portable template spans and gzip limits are now required; the older incomplete
-version-1 records are retired. Historical replay converts pinned output for the
-current loader. The older statements below describe their dated snapshots.
+version-1 records are retired. Unknown PNG metadata versions are rejected.
+Historical replay derives template slots for reference execution. The older
+statements below describe their dated snapshots.
 
 | Retirement | Owner | Consumers to migrate | Canonical replacement |
 | --- | --- | --- | --- |
@@ -55,7 +56,7 @@ current loader. The older statements below describe their dated snapshots.
 | Legacy worker-field defaults | Results | Retired; complete typed requests and explicit success/error observations; omission, flag, integer-tag and raster-run controls in `tests/runtime/test_worker_results.py` | Explicit canonical fields, including unavailable observations |
 | Permissive worker envelopes and nested proof fields | Results | Retired; missing/extra fields, unknown error kinds, duplicate terminals, inconsistent output-limit markers and contradictory output fail with retained prefixes | Exact canonical stream, result and evidence schemas |
 | Normalized worker hex spellings and duplicate snapshot-set members | Results | Retired; request, result and parent-decoder refusals retain signed huge integers, byte snapshots and partial output | Encoder spellings and distinct immutable members |
-| Malformed PNG metadata version downgrade | Persistence | Retired; missing, mistyped and nonpositive versions fail with live controls in `tests/runtime/raster/test_png.py` | Plain PNG, valid v1 provenance and future positive-integer versions |
+| Malformed PNG metadata version downgrade | Persistence | Retired; missing, mistyped and nonpositive versions fail with live controls in `tests/runtime/raster/test_png.py` | Plain PNG and valid v1 provenance; unknown versions fail |
 | Absent gzip member accepted as an empty program | Persistence | Retired; constructor, portable and worker refusals retain actual empty members and explicit unavailable execution | Valid UTF-8 gzip members, including empty and concatenated streams |
 | Incomplete version-1 template/gzip records | Persistence | Retired; missing spans or limits are rejected | Explicit spans and limits |
 

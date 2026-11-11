@@ -546,14 +546,17 @@ def test_bad_source_metadata_is_a_program_error(fields) -> None:
         read_png_artifact(one(source_kind="raster")[0], data)
 
 
-def test_future_metadata_versions_leave_pixels_readable() -> None:
+def test_unsupported_metadata_versions_are_rejected() -> None:
     from esolangs import ProgramError
 
     data = png.write_rgb((((1, 2, 3),),))
     tagged = png.write_metadata(data, {"version": 2, "language": True})
-    restored = read_png_artifact(one(source_kind="raster")[0], tagged)
+    language = one(source_kind="raster")[0]
+    with pytest.raises(ProgramError, match="unsupported esolangs PNG metadata version"):
+        read_png_artifact(language, tagged)
+    restored = read_png_artifact(language, data)
     assert restored.source.rows == (((1, 2, 3),),)
-    assert restored.language == one(source_kind="raster")[0]
+    assert restored.language == language
     assert not hasattr(restored.source, "language")
     versions = (None, True, False, 0, -1, 1.0, 2.0, "1", [], {})
     for fields in ({}, *({"version": v} for v in versions)):

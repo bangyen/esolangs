@@ -572,7 +572,7 @@ Version 2.0 changes the default return types: `generate` and `load_program`
 return `ProgramArtifact | TemplateArtifact`, `instantiate` returns a runnable
 `ProgramArtifact`, and `run` returns `ExecutionResult`. `Language` methods use
 these same defaults. Portable template records require `spans`, and gzip records
-require `limits` (which may be null). CLI source/output formats remain compatible.
+require `limits` (which may be null). Unknown PNG metadata versions are rejected.
 
 The 1.x source facade is removed. Retain artifacts through generation, filling
 and execution; use `.source` for native measurements and portable JSON to
