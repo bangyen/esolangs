@@ -246,7 +246,7 @@ class TestQoiblIncompleteTokens:
 
         check_raw_qoibl()
         state = _Machine("w", ScriptedIO(""))
-        assert state.code == ([],)
+        assert state.code == ((),)
         state.step()
         assert state.halted
 

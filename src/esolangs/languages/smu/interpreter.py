@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -56,7 +57,7 @@ from esolangs.languages.smu.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
@@ -161,15 +162,24 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[str, Mapping[int, int]]
+
+
+def _prepare_source(source: str) -> _Image:
+    code = preprocess(source)
+    return code, MappingProxyType(literals(code))
+
+
 class _Machine:
     """One run's program and counter, the shared stack and variables, bit buffers."""
 
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
-        self.code = preprocess(code)
-        self.closes = literals(self.code)
+        self.code, self.closes = (
+            _prepare_source(code) if isinstance(code, str) else code
+        )
         self.pc = 0
         self.fresh = True  # the run's input bit is not pushed yet
         self.done = False
@@ -281,22 +291,18 @@ class _Machine:
             self._end_run()
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain expanded source and literal boundaries for the initial run."""
     if not isinstance(source, str):
         raise TypeError("Smu machines require text source")
     if options:
         raise TypeError("Smu machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Execute a Smu program, one input bit per run."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

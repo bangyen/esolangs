@@ -27,11 +27,23 @@ def test_wiki_cat_copies_every_byte() -> None:
     assert _run(CAT) == ""
 
 
-def test_wiki_expanded_form_is_the_cat_less_one_equals() -> None:
+def test_wiki_expanded_form_is_the_cat_less_one_equals(monkeypatch) -> None:
     """The compact source fixes the repair; the printed form forces a 1 first."""
     assert preprocess(CAT) == REPAIRED
     assert _run(PRINTED, "\x00") == "\x01"
     assert _run(PRINTED, "\x02") == "\x03"
+
+    from esolangs.languages.smu import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Smu",
+        "m()|m & a comment\nm",
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("A", "\x01"), ("B", "\x00"), ("C", "\x01")),
+    )
 
 
 @pytest.mark.parametrize(

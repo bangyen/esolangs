@@ -39,7 +39,7 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -308,7 +308,7 @@ class _NeedInput(Exception):  # noqa: N818 - an internal resumption signal
 
 
 def _eval(
-    expr: list[str],
+    expr: Sequence[str],
     var: _Vars,
     inputs: Sequence[int],
     pos: int,
@@ -358,7 +358,7 @@ def _eval(
 
 
 def _operands(
-    expr: list[str],
+    expr: Sequence[str],
     marker: str,
     var: _Vars,
     inputs: Sequence[int],
@@ -399,7 +399,7 @@ _ARITHMETIC: dict[str, Callable[[int, int], int]] = {
 
 
 def _compare(
-    expr: list[str], var: _Vars, inputs: Sequence[int], pos: int, out: list[str]
+    expr: Sequence[str], var: _Vars, inputs: Sequence[int], pos: int, out: list[str]
 ) -> tuple[int, _Vars, int]:
     """Evaluate a ``yr``-marked comparison."""
     num, x, y, var, pos = _operands(expr, "yr", var, inputs, pos, out)
@@ -411,7 +411,7 @@ def _compare(
 
 
 def _arithmetic(
-    expr: list[str], var: _Vars, inputs: Sequence[int], pos: int, out: list[str]
+    expr: Sequence[str], var: _Vars, inputs: Sequence[int], pos: int, out: list[str]
 ) -> tuple[int, _Vars, int]:
     """Evaluate a ``ry``-marked arithmetic expression."""
     num, x, y, var, pos = _operands(expr, "ry", var, inputs, pos, out)
@@ -443,7 +443,7 @@ def _arithmetic(
 # transition is deterministic, so the retry lands on the same state; the shell is the
 # only place that touches ``io``.
 def _advance(
-    state: _State, code: Sequence[list[str]], inputs: Sequence[int] = ()
+    state: _State, code: Sequence[Sequence[str]], inputs: Sequence[int] = ()
 ) -> tuple[_State, _Effects]:
     """Return the state after one statement, and the characters to print.
 
@@ -477,35 +477,37 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[tuple[str, ...], ...]
+
+
+def _prepare_source(code: str | list[str]) -> _Image:
+    statements = _tokenized(code if isinstance(code, str) else "\n".join(code))
+    for statement in statements:
+        if statement and not _Reading(statement).at(0, len(statement)):
+            kind = (
+                "comparison operator"
+                if "yr" in statement
+                else "arithmetic operator"
+                if "ry" in statement
+                else "expression"
+            )
+            raise syntax_error(
+                f"malformed Qoibl {kind}",
+                (
+                    "complete each expression and pair its delimiters; "
+                    "comparison and arithmetic use ee/ey/ye/yy operators"
+                ),
+            )
+    return statements
+
+
 class _Machine:
     """Per-run state for a Qoibl interpreter: variables and the code cursor."""
 
-    var: _Vars
-    io: IO
-    code: tuple[list[str], ...]
-    ind: int
-
-    def __init__(self, code: str | list[str], io: IO) -> None:
-        """Build a state for ``code``, tokenized."""
-        self.var = MappingProxyType({})
+    def __init__(self, code: str | list[str] | _Image, io: IO) -> None:
+        self.var: _Vars = MappingProxyType({})
         self.io = io
-        self.code = tuple(tokenize(code if isinstance(code, str) else "\n".join(code)))
-        for statement in self.code:
-            if statement and not _Reading(statement).at(0, len(statement)):
-                kind = (
-                    "comparison operator"
-                    if "yr" in statement
-                    else "arithmetic operator"
-                    if "ry" in statement
-                    else "expression"
-                )
-                raise syntax_error(
-                    f"malformed Qoibl {kind}",
-                    (
-                        "complete each expression and pair its delimiters; "
-                        "comparison and arithmetic use ee/ey/ye/yy operators"
-                    ),
-                )
+        self.code = code if isinstance(code, tuple) else _prepare_source(code)
         self.ind = 0
 
     @property
@@ -578,19 +580,17 @@ class _Machine:
         self._flush(effects, flushed)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh variables and statements over the shared parser cache."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain validated statements and bind fresh variables per run."""
     if not isinstance(source, (str, list)):
         raise TypeError("qoibl machines require text or split text source")
     if options:
         raise TypeError("qoibl machines accept no runtime options")
-    code = source if isinstance(source, str) else list(source)
-    return functools.partial(_Machine, code)
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: list[str] | str, io: IO) -> CompletionReport:
+def _execute(code: list[str] | str | _Image, io: IO) -> CompletionReport:
     """Execute Qoibl program code.
 
     Lines or one string; the program is one character stream.
