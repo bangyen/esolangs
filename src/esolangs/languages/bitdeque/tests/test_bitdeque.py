@@ -23,8 +23,20 @@ run_and_capture = partial(run_printing, run)
 
 
 class TestBitdeque:
-    def test_invert_then_push(self) -> None:
+    def test_invert_then_push(self, monkeypatch) -> None:
         assert run_and_capture("INVERT PUSH PUSH") == "1 1"
+
+        from esolangs.languages.bitdeque import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "Bitdeque",
+            "INVERT PUSH PUSH",
+            interpreter,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("", "1 1"),) * 3,
+        )
 
     def test_goto_is_conditional_and_counts_from_one(self) -> None:
         """GOTO jumps only on a nonzero register, and counts from one."""

@@ -86,7 +86,7 @@ class TestSixFive:
         """A trailing ``8`` has no operand, so its target count is zero."""
         assert run_and_capture("4A8") == "\x00"
 
-    def test_the_marker_index_is_the_scan_taken_once(self) -> None:
+    def test_the_marker_index_is_the_scan_taken_once(self, monkeypatch) -> None:
         """``8n`` lands where a scan for the n-th ``4`` would, from the index."""
         machine = sixfive._Machine("4A82A40", ScriptedIO(""))
         assert machine.markers == (0, 4)
@@ -96,6 +96,17 @@ class TestSixFive:
         assert jumped[0] == 5
         assert sixfive._marker(machine.markers, 3) is None
         assert sixfive._marker(machine.markers, 0) is None
+
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "6-5",
+            "4A82A40",
+            sixfive,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("", "\x00"),) * 3,
+        )
 
     def test_a_conditional_skip_with_no_operand_does_nothing(self) -> None:
         """The same for a trailing ``7``: no operand, so nothing to read."""

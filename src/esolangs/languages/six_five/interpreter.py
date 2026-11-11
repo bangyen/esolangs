@@ -28,7 +28,7 @@ Decisions:
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -36,7 +36,7 @@ from esolangs.languages.six_five.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -98,7 +98,7 @@ def _written(tape: tuple[int, ...], cell: int, value: int) -> tuple[int, ...]:
     return (*tape[:cell], value, *tape[cell + 1 :])
 
 
-def _markers(toks: list[str]) -> tuple[int, ...]:
+def _markers(toks: Sequence[str]) -> tuple[int, ...]:
     """Return the index of every ``4`` marker, in program order."""
     return tuple(j for j, tok in enumerate(toks) if tok == "4")
 
@@ -112,7 +112,7 @@ def _marker(markers: tuple[int, ...], nth: int) -> int | None:
 
 def _advance(
     state: _State,
-    toks: list[str],
+    toks: Sequence[str],
     byte: int | None = None,
     markers: tuple[int, ...] | None = None,
 ) -> _State:
@@ -161,17 +161,26 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[tuple[str, ...], tuple[int, ...]]
+
+
+def _prepare_source(code: str) -> _Image:
+    tokens = tuple(_tokens(code))
+    return tokens, _markers(tokens)
+
+
 class _Machine:
     """Per-run 6-5 state: the tokens, cell, tape, and cursor."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         """Tokenize ``code`` and reset the cell, tape, and cursor."""
         self.io = io
-        self.toks = _tokens(code)
+        self.toks, self.markers = (
+            _prepare_source(code) if isinstance(code, str) else code
+        )
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.toks)
-        self.markers = _markers(self.toks)
         self.state: _State = (0, 0, (0,))
 
     # The language's own names.  They are views on the current state rather
@@ -266,22 +275,17 @@ class _Machine:
         self.state = _advance(self.state, self.toks, byte, self.markers)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed source and give each invocation fresh state."""
     if not isinstance(source, str):
         raise TypeError("six_five machines require text source")
     if options:
         raise TypeError("six_five machines accept no runtime options")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a 6-5 program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

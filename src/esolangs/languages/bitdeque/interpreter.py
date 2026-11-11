@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from functools import partial
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -30,7 +29,7 @@ from esolangs.languages.bitdeque.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -110,6 +109,14 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[str, ...]
+
+
+def _prepare_source(code: str) -> _Image:
+    _reject_stray_text(code)
+    return tuple(_TOKEN.findall(code))
+
+
 class _Machine:
     """Per-run Bitdeque state: the token cursor, register, and deque."""
 
@@ -120,11 +127,10 @@ class _Machine:
     #: its output.
     completion = CAPABILITIES.completion
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
         self.io = io
-        _reject_stray_text(code)
-        self.tokens = _TOKEN.findall(code)
+        self.tokens = _prepare_source(code) if isinstance(code, str) else code
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
@@ -184,7 +190,7 @@ class _Machine:
         # the same order.  ``rendered`` stays out: the detector compares
         # states of a running machine.
         ind, reg, deq, _rendered = self.state
-        return (tuple(self.tokens), ind, reg, deq, self.io.progress())
+        return (self.tokens, ind, reg, deq, self.io.progress())
 
     def step(self) -> None:
         """Execute one token, printing the deque once the cursor ends.
@@ -204,18 +210,17 @@ class _Machine:
         self.io.print_str(" ".join(map(str, self.state.deq)))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines after shared source and option preparation."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed source and give each invocation fresh state."""
     if not isinstance(source, str):
         raise TypeError("bitdeque machines require text source")
     if options:
         raise TypeError("bitdeque machines accept no runtime options")
-    return partial(_Machine, source, **options)
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Bitdeque program and print the deque at the end."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)
