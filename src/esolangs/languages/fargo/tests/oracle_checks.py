@@ -4,6 +4,7 @@
 
 from dataclasses import fields, is_dataclass
 from io import StringIO
+from types import MappingProxyType
 
 import esolangs
 from esolangs.debugger import make_debugger
@@ -343,9 +344,9 @@ def check_case(
             assert type(inner.state) is _State
             assert type(inner.state.frames) is tuple
             assert type(inner.frames) is list
-            assert type(inner.defs) is dict
+            assert type(inner.defs) is MappingProxyType
             assert all(type(value) is _Def for value in inner.defs.values())
-            assert type(inner.calls) is list
+            assert type(inner.calls) is tuple
             assert_exact(tuple(inner.calls), calls)
             assert_exact(
                 tuple(

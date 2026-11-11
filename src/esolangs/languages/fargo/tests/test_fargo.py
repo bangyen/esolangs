@@ -76,11 +76,23 @@ class TestBuiltins:
         assert run_program("% 0 | 0 % 1 1\n$") == "2"
         assert run_program("% 0 | 0 $\n$") == "00"
 
-    def test_input_bits_are_lsb_first(self) -> None:
+    def test_input_bits_are_lsb_first(self, monkeypatch) -> None:
         # 6 is 0b110: bit 0 is 0, bits 1 and 2 are 1.
         assert run_program("% 0 @ 0\n$", "6\n") == "0"
         assert run_program("% 0 @ 1\n$", "6\n") == "1"
         assert run_program("% 0 @ 10\n$", "6\n") == "1"
+
+        from esolangs.languages.fargo import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "Fargo",
+            "bit x @ x\n% 0 bit 0\n$",
+            interpreter,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("6", "0"), ("7", "1"), ("8", "0")),
+        )
 
     def test_literals_are_binary(self) -> None:
         # 101 is 5, so bit 0 of the output becomes bit 0 of the input 5.

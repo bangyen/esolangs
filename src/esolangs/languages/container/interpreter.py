@@ -26,7 +26,7 @@ from esolangs.languages.container.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -120,6 +120,40 @@ class Con:
         return max(res, 0)
 
 
+type _Image = tuple[tuple[tuple[str, tuple[tuple[int, str], ...]], ...], _Vars]
+
+
+def _parse(code: list[str]) -> tuple[list[Con], _Vars]:
+    containers: list[Con] = []
+    start: dict[str, int] = {}
+
+    for raw in code:
+        line = raw.strip()
+        if ":" in line:
+            line = line[:-1]
+            if "=" in line:
+                x, y = line.split("=")
+                start[x] = parse_integer(y)
+                if start[x] < 0:
+                    raise ValueError("initial container value must be nonnegative")
+                containers.append(Con(x))
+            else:
+                start[line] = 0
+                containers.append(Con(line))
+        elif line:
+            if not containers:
+                raise syntax_error(
+                    "rule line before any container declaration",
+                    (
+                        "declare a container ending in a colon before its "
+                        "rules, for example name:"
+                    ),
+                )
+            containers[-1].add(line)
+
+    return containers, tuple(sorted(start.items()))
+
+
 _WORKSPACE_MODEL = WorkspaceModel(
     "container-v1", ("variables", "exit_code", "input_cursor", "input_reads")
 )
@@ -130,37 +164,19 @@ class _Machine:
 
     eof_is_a_value = True
 
-    def __init__(self, code: list[str], io: IO) -> None:
+    def __init__(self, code: list[str] | _Image, io: IO) -> None:
         """Parse ``code`` into containers and start every value at rest."""
         self.io = io
-        self.obj: list[Con] = []
-        start: dict[str, int] = {}
-
-        for raw in code:
-            line = raw.strip()
-            if ":" in line:
-                line = line[:-1]
-                if "=" in line:
-                    x, y = line.split("=")
-                    start[x] = parse_integer(y)
-                    if start[x] < 0:
-                        raise ValueError("initial container value must be nonnegative")
-                    self.obj.append(Con(x))
-                else:
-                    start[line] = 0
-                    self.obj.append(Con(line))
-            elif line:
-                if not self.obj:
-                    raise syntax_error(
-                        "rule line before any container declaration",
-                        (
-                            "declare a container ending in a colon before its "
-                            "rules, for example name:"
-                        ),
-                    )
-                self.obj[-1].add(line)
-
-        self.state: _State = (tuple(sorted(start.items())), None, 0, 0)
+        if isinstance(code, list):
+            self.obj, start = _parse(code)
+        else:
+            rules, start = code
+            self.obj = []
+            for name, entries in rules:
+                container = Con(name)
+                container.rules.extend(entries)
+                self.obj.append(container)
+        self.state: _State = (start, None, 0, 0)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -288,23 +304,21 @@ def _advance(
     return (new, exit_code, count + 1, reads + int(read_success))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source while giving each run a private line list and state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed rules and give each invocation private containers."""
     if not isinstance(source, list):
         raise TypeError("container machines require split text source")
     if options:
         raise TypeError("container machines accept no runtime options")
-    code = tuple(source)
+    containers, start = _parse(source)
+    image = (
+        tuple((container.name, tuple(container.rules)) for container in containers),
+        start,
+    )
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
-    def build(io: IO) -> _Machine:
-        return _Machine(list(code), io)
 
-    return build
-
-
-def _execute(code: list[str], io: IO) -> CompletionReport:
+def _execute(code: list[str] | _Image, io: IO) -> CompletionReport:
     """Return completion after the native machine halts."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

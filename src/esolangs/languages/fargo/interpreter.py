@@ -48,6 +48,7 @@ from __future__ import annotations
 from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass, fields, replace
 from reprlib import recursive_repr
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -55,7 +56,7 @@ from esolangs.languages.fargo.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
@@ -139,7 +140,7 @@ def _value_repr(value: object) -> str:
     return repr(value)
 
 
-@dataclass
+@dataclass(frozen=True)
 class _Def:
     """One user-defined function: its parameters and its code tokens."""
 
@@ -227,7 +228,7 @@ def _parse_program(code: str) -> tuple[dict[str, _Def], list[tuple[str, ...]]]:
 def _parse_definition(
     name: str,
     rest: tuple[str, ...],
-    defs: dict[str, _Def],
+    defs: Mapping[str, _Def],
 ) -> _Def:
     """Split a definition's tokens into its parameters and its code.
 
@@ -291,6 +292,16 @@ def _workspace_value(value: _Value, frozen: dict[int, Hashable]) -> Hashable:
     return frozen[id(value)]
 
 
+type _Image = tuple[Mapping[str, _Def], tuple[tuple[str, ...], ...]]
+
+
+def _prepare_source(code: str) -> _Image:
+    definitions, calls = _parse_program(code)
+    for definition in definitions.values():
+        _check_outer_call(definition, definitions)
+    return MappingProxyType(definitions), tuple(calls)
+
+
 class _Machine:
     """One Fargo run: the definitions, the two numbers, and the call stack.
 
@@ -316,11 +327,9 @@ class _Machine:
     #: out which.
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
-        self.defs, self.calls = _parse_program(code)
-        for definition in self.defs.values():
-            _check_outer_call(definition, self.defs)
+        self.defs, self.calls = _prepare_source(code) if isinstance(code, str) else code
         self.state = _State(self._read_input(), 0, 0, ())
 
     @property
@@ -459,7 +468,7 @@ def _retop(frames: tuple[_Frame, ...], frame: _Frame) -> tuple[_Frame, ...]:
     return (*frames[:-1], frame)
 
 
-def _lookup(name: str, frame: _Frame | None, defs: dict[str, _Def]) -> _Func:
+def _lookup(name: str, frame: _Frame | None, defs: Mapping[str, _Def]) -> _Func:
     """Resolve ``name`` to a callable in ``frame``'s scope."""
     if frame is not None and (bound := frame.bound(name)) is not None:
         if isinstance(bound, _Func):
@@ -478,7 +487,7 @@ def _lookup(name: str, frame: _Frame | None, defs: dict[str, _Def]) -> _Func:
     )
 
 
-def _defined(name: str, defs: dict[str, _Def]) -> _Func:
+def _defined(name: str, defs: Mapping[str, _Def]) -> _Func:
     """Return a definition's arity and unevaluated argument positions."""
     definition = defs[name]
     raw = tuple(
@@ -490,7 +499,7 @@ def _defined(name: str, defs: dict[str, _Def]) -> _Func:
 
 
 def _check_outer_call(
-    definition: _Def, defs: dict[str, _Def], binds: dict[str, _Value] | None = None
+    definition: _Def, defs: Mapping[str, _Def], binds: dict[str, _Value] | None = None
 ) -> None:
     """Require one expression; bound functions supply their arity at invocation."""
     parameters = {_bare_name(parameter) for parameter in definition.params}
@@ -569,7 +578,7 @@ def _wants_raw(frame: _Frame) -> bool:
 # ``step`` is the shell that performs that one write.  The input number is
 # read once before the run, so no read reaches the transition.
 def _advance(
-    state: _State, defs: dict[str, _Def], calls: list[tuple[str, ...]]
+    state: _State, defs: Mapping[str, _Def], calls: Sequence[tuple[str, ...]]
 ) -> tuple[_State, int | None]:
     """Return the state after one command, and the number to print, if any.
 
@@ -596,7 +605,7 @@ def _consume(
     token: str,
     number: int,
     output: int,
-    defs: dict[str, _Def],
+    defs: Mapping[str, _Def],
 ) -> _Outcome:
     """Handle one token: a literal, a raw function, or a call."""
     if _is_literal(token):
@@ -626,7 +635,7 @@ def _supply(
     value: _Value,
     number: int,
     output: int,
-    defs: dict[str, _Def],
+    defs: Mapping[str, _Def],
 ) -> _Outcome:
     """Deliver ``value`` to whichever call is waiting for it.
 
@@ -660,7 +669,7 @@ def _invoke(
     args: list[_Value] | tuple[_Value, ...],
     number: int,
     output: int,
-    defs: dict[str, _Def],
+    defs: Mapping[str, _Def],
 ) -> _Outcome:
     """Apply ``fn`` to ``args``, pushing a frame for a user function."""
     if fn.name in _BUILTINS and fn.name not in defs:
@@ -688,7 +697,7 @@ def _invoke(
 
 
 def _finish(
-    frames: tuple[_Frame, ...], number: int, output: int, defs: dict[str, _Def]
+    frames: tuple[_Frame, ...], number: int, output: int, defs: Mapping[str, _Def]
 ) -> _Outcome:
     """Pop a finished frame, delivering its value to its caller.
 
@@ -736,7 +745,7 @@ def _builtin(
     args: list[_Value] | tuple[_Value, ...],
     number: int,
     output: int,
-    defs: dict[str, _Def],
+    defs: Mapping[str, _Def],
 ) -> tuple[_Value | _Pending, tuple[_Frame, ...], int, int | None]:
     """Apply one builtin to its finished arguments."""
     name = fn.name
@@ -792,7 +801,7 @@ def _conditional(
     args: list[_Value] | tuple[_Value, ...],
     number: int,
     output: int,
-    defs: dict[str, _Def],
+    defs: Mapping[str, _Def],
 ) -> tuple[_Value | _Pending, tuple[_Frame, ...], int, int | None]:
     """``: x y`` -- do ``y`` iff ``x`` is nonzero.
 
@@ -817,22 +826,18 @@ def _conditional(
     return _PENDING, frames, output, effect
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain validated source and read startup input per invocation."""
     if not isinstance(source, str):
         raise TypeError("Fargo machines require text source")
     if options:
         raise TypeError("Fargo machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Fargo program, reading its input number before it begins."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

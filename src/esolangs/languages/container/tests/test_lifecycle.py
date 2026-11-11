@@ -6,9 +6,13 @@ from esolangs.languages.container import interpreter
 from esolangs.runtime.io import ScriptedIO
 
 
-def test_factory_binds_source_with_private_rules_and_tick_state():
+def test_factory_binds_source_with_private_rules_and_tick_state(monkeypatch):
     source = [":", "+1 EXIT>=0", "EXIT:", "+7 EXIT<=0"]
     factory = interpreter.prepare_machine(source, {})
+
+    def unexpected_parse(_source):
+        pytest.fail("prepared execution reparsed the source")
+
     first, second = factory(ScriptedIO("A")), factory(ScriptedIO())
     source.clear()
     assert first.obj is not second.obj
@@ -23,7 +27,10 @@ def test_factory_binds_source_with_private_rules_and_tick_state():
     assert second.snapshot() == before
     assert second.tick == 0
     first.obj[0].rules.clear()
-    third = factory(ScriptedIO())
+    with monkeypatch.context() as patch:
+        patch.setattr(interpreter, "_parse", unexpected_parse)
+        third = factory(ScriptedIO())
+        factory.run(ScriptedIO())
     assert third.obj[0].rules == second.obj[0].rules
     assert third.snapshot() == before
     second.step()
