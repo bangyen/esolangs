@@ -56,6 +56,31 @@ class TableWitness:
         return "".join(str(int(rule(row.bit_count()))) for row in range(1 << n))
 
 
+def construction_boundaries(language: str) -> dict[str, tuple[TableWitness, ...]]:
+    """Read named witnesses for construction boundaries from their owner."""
+    path = PACKAGES / LANGUAGES[language].id / "language.toml"
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    records = data.get("construction_boundaries", {})
+    if not isinstance(records, dict):
+        raise ValueError(f"{path}: construction boundaries must be named")
+    found = {}
+    seen: set[TableWitness] = set()
+    for label, rows in records.items():
+        if not label.isidentifier() or not isinstance(rows, list) or not rows:
+            raise ValueError(f"{path}: invalid construction boundary {label!r}")
+        witnesses = []
+        for row in rows:
+            if not isinstance(row, dict) or set(row) - {"seed"} != {"arity", "rule"}:
+                raise ValueError(f"{path}: invalid boundary witness for {label}")
+            witness = TableWitness(row["arity"], row["rule"], row.get("seed"))
+            if witness in seen:
+                raise ValueError(f"{path}: repeated boundary witness {witness}")
+            seen.add(witness)
+            witnesses.append(witness)
+        found[label] = tuple(witnesses)
+    return found
+
+
 @dataclass(frozen=True)
 class SourceAnchor:
     """An emitted size at scale one, tied to its backend construction."""

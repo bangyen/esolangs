@@ -421,6 +421,8 @@ def test_every_runtime_declares_preparation_and_capabilities():
         RuntimeSpec("undeclared")
     for language in LANGUAGES.values():
         runtime = language.runtime
+        source, _ = SAMPLES[language.name]
+        assert esolangs.Language(language.name).prepare(source)._plan is not None
         assert runtime.machine_preparation
         assert runtime.completion_entrypoint
         assert runtime.capabilities is not None

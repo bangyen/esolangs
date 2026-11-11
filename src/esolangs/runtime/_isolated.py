@@ -310,10 +310,56 @@ def execute_isolated(
     notes and output; timeout kills and reaps the child.
     A blocked caller-owned stream read may finish in the background after timeout.
     """
+    result = _invoke_worker(
+        language,
+        program,
+        stdin,
+        timeout,
+        seed=seed,
+        scale=scale,
+        max_output=max_output,
+        max_memory=max_memory,
+        settings=settings,
+        max_steps=max_steps,
+        execution_timeout=execution_timeout,
+        preparation_timeout=preparation_timeout,
+        catalog=catalog,
+    )
+    if isinstance(result, ExecutionOutcome):
+        return result
+    error = exceptions.InterpreterLimitError(
+        "isolated worker omitted execution metadata"
+    )
+    error.partial_output = (
+        result.output
+        if isinstance(result, ExecutionResult)
+        else result.observation.output
+    )
+    return _failed_outcome(error)
+
+
+def _invoke_worker(
+    language: str,
+    program: ProgramSource,
+    stdin: InputSource,
+    timeout: float,
+    *,
+    seed: int | None = None,
+    scale: int | None = None,
+    max_output: int | None = None,
+    max_memory: int | None = None,
+    settings: DialectSettings | None = None,
+    max_steps: int | None = None,
+    execution_timeout: float | None = None,
+    preparation_timeout: float | None = None,
+    catalog: Catalog | None = None,
+    termination: bool = False,
+) -> _WorkerResponse:
+    """Acquire source and enforce phase budgets for execution or proof."""
+    from esolangs.operations.source import _check_program
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    from esolangs.operations.source import _check_program
 
     check_limits(max_output, max_memory, isolated=True)
     if max_steps is not None:
@@ -364,6 +410,7 @@ def execute_isolated(
                             preparation_deadline is not None
                             or execution_timeout is not None
                         ),
+                        termination=termination,
                         catalog=catalog,
                     )
                 )
@@ -397,22 +444,13 @@ def execute_isolated(
                 preparation_deadline=preparation_deadline,
                 execution_timeout=execution_timeout,
             )
-    if isinstance(result, ExecutionOutcome):
-        if (
-            isinstance(result.error, exceptions.ExecutionTimeoutError)
-            and result.bound == "timeout"
-        ):
-            result.error.args = (f"execution exceeded the {timeout}-second timeout",)
-        return result
-    error = exceptions.InterpreterLimitError(
-        "isolated worker omitted execution metadata"
-    )
-    error.partial_output = (
-        result.output
-        if isinstance(result, ExecutionResult)
-        else result.observation.output
-    )
-    return _failed_outcome(error)
+    if (
+        isinstance(result, ExecutionOutcome)
+        and isinstance(result.error, exceptions.ExecutionTimeoutError)
+        and result.bound == "timeout"
+    ):
+        result.error.args = (f"execution exceeded the {timeout}-second timeout",)
+    return result
 
 
 @contextmanager
@@ -694,59 +732,21 @@ def termination_result_isolated(
     catalog: Catalog | None = None,
 ) -> TerminationResult:
     """Retain worker IO and exact proof evidence; a deadline remains undecided."""
-    from esolangs.operations.source import _check_program
-    from esolangs.registry._catalog import get_catalog
-
-    started = monotonic()
-    catalog = get_catalog(catalog)
-    name = catalog.resolve(name)
-    _check_worker_runtime(name, catalog)
-    check_limits(max_output, max_memory, isolated=True)
-    retained = effective_settings(name, source, settings, catalog=catalog)
-    artifact = _check_program(name, source, stdin, catalog=catalog)
-    request = worker_dumps(
-        _request_wire(
-            name,
-            artifact.source,
-            stdin,
-            settings=retained,
-            scale=artifact.scale,
-            max_output=max_output,
-            max_memory=max_memory,
-            max_steps=max_steps,
-            report_prepared=preparation_timeout is not None
-            or execution_timeout is not None,
-            termination=True,
-            catalog=catalog,
-        )
+    response = _invoke_worker(
+        name,
+        source,
+        stdin,
+        timeout,
+        settings=settings,
+        max_output=max_output,
+        max_memory=max_memory,
+        max_steps=max_steps,
+        execution_timeout=execution_timeout,
+        preparation_timeout=preparation_timeout,
+        catalog=catalog,
+        termination=True,
     )
-    with _timeout_named(timeout):
-        remaining = timeout - (monotonic() - started)
-        preparation_deadline = (
-            None if preparation_timeout is None else started + preparation_timeout
-        )
-        if (
-            preparation_deadline is not None
-            and preparation_deadline < started + timeout
-        ) and monotonic() >= preparation_deadline:
-            raise _preparation_expired()
-        if remaining <= 0:
-            raise exceptions.ExecutionTimeoutError(
-                "execution timed out while loading input"
-            )
-        if preparation_timeout is None and execution_timeout is None:
-            response = _launch(request, remaining, max_output=max_output)
-        else:
-            response = _launch(
-                request,
-                remaining,
-                max_output=max_output,
-                preparation_deadline=preparation_deadline,
-                execution_timeout=execution_timeout,
-            )
-        result = (
-            response.unwrap() if isinstance(response, ExecutionOutcome) else response
-        )
+    result = response.unwrap() if isinstance(response, ExecutionOutcome) else response
     if not isinstance(result, TerminationResult):
         error = exceptions.InterpreterLimitError(
             "termination worker omitted decision evidence"

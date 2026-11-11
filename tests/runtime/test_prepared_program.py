@@ -32,6 +32,14 @@ def _check_preparation_consumes_source_once_and_keeps_fresh_invocations():
     assert bounded.steps == 3
     assert prepared.run(stdin="A").output == "B"
 
+    generated = esolangs.Language(REFERENCE).prepare(
+        esolangs.generate(REFERENCE, "0110")
+    )
+    with pytest.raises(esolangs.ArgumentError, match="expects 2 bits"):
+        generated.evaluate([0])
+    assert generated.evaluate([0, 1]).bit == "1"
+    assert generated.evaluate([1, 1]).bit == "0"
+
 
 def _check_prepared_isolation_preserves_the_same_observation():
     prepared = esolangs.Language(REFERENCE).prepare(",+.")

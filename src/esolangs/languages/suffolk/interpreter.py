@@ -36,7 +36,7 @@ from esolangs.runtime._lifecycle import (
     Completion,
     CompletionReport,
 )
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -216,15 +216,13 @@ class _Machine:
         self.state = _advance(self.state, self.code, byte)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind fresh machines; suffolk has no runtime options."""
     if not isinstance(source, str):
         raise TypeError("suffolk machines require text source")
     if options:
         raise TypeError("suffolk machines accept no runtime options")
-    return partial(_Machine, source)
+    return RuntimePlan(partial(_Machine, source), partial(_execute, source))
 
 
 def _execute(code: str, io: IO) -> CompletionReport:

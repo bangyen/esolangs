@@ -8,7 +8,7 @@ from functools import partial
 from types import ModuleType
 from typing import Any, cast
 
-from esolangs.artifacts import ProgramArtifact
+from esolangs.artifacts import BooleanEvaluation, ProgramArtifact
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry._catalog import Catalog, get_catalog
@@ -164,6 +164,19 @@ class PreparedProgram:
             prepared=self,
         )
 
+    def evaluate(
+        self,
+        bits: list[int] | tuple[int, ...],
+        *,
+        limits: ExecutionLimits | None = None,
+    ) -> BooleanEvaluation:
+        """Evaluate a generated stdin row against the retained preparation."""
+        from esolangs.operations.evaluation import evaluate
+
+        return evaluate(
+            self.artifact, bits, limits=limits, catalog=self.catalog, prepared=self
+        )
+
     def run(
         self,
         *,
@@ -235,7 +248,9 @@ def prepare_program(
     ):
         module = module_loader(name, catalog=catalog)
     prepared = PreparedProgram(
-        ProgramArtifact(artifact.source, name, settings, scale), catalog, module
+        ProgramArtifact(artifact.source, name, settings, scale, artifact.input_arity),
+        catalog,
+        module,
     )
     if bind_machine:
         with interpreter_errors(

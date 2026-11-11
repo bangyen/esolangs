@@ -198,6 +198,7 @@ to bound acquisition, worker startup and the source preparation hook independent
 of execution. It selects isolation when source needs preparing. A total deadline,
 output cap or memory cap also selects isolation. In-process `PreparedProgram.execute`
 uses the existing preparation. An isolated call prepares again in its worker.
+`PreparedProgram.evaluate(bits)` can reuse a generated stdin program across rows.
 An execution deadline with a step budget is cooperative when running in-process.
 A deadline without a step budget selects isolation. Cooperative deadlines are
 checked between commands.
@@ -251,6 +252,7 @@ Functions:
 Types:
 
 - `esolangs.Artifact` -- `ProgramArtifact[Program] | TemplateArtifact`
+- `esolangs.BooleanEvaluation` -- answer with the observed IO and, for termination answers, a proof
 - `esolangs.Catalog` -- own a frozen declaration set; derived indexes share the same scope
 - `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
 - `esolangs.DialectSettings` -- validated overrides bound to one language schema

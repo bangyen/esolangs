@@ -14,6 +14,10 @@ generation_time = "Linear"
 output_size = "Linear"
 evidence = "docs/proofs/index.md#exceptions-and-walls"
 
+[construction_boundaries]
+nibble_index_controls = [{ arity = 2, rule = "parity" }, { arity = 7, rule = "parity" }]
+nibble_to_packed_index = [{ arity = 8, rule = "parity" }, { arity = 9, rule = "parity" }]
+
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 25 }
 "00001100" = { commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 24, "5" = 24, "6" = 24, "7" = 24 }, source_units = 26 }

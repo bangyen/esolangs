@@ -8,6 +8,7 @@ from esolangs.limits import ExecutionLimits
 from esolangs.operations.boolean_io import encode_inputs, read_answer
 from esolangs.operations.execution import _execute_outcome
 from esolangs.registry._catalog import Catalog
+from esolangs.runtime._prepared import PreparedProgram
 from esolangs.runtime._validate import check_bits
 
 
@@ -17,6 +18,7 @@ def evaluate(
     *,
     limits: ExecutionLimits | None = None,
     catalog: Catalog | None = None,
+    prepared: PreparedProgram | None = None,
 ) -> BooleanEvaluation:
     """Bind or encode one row, then decode the answer using its contract."""
     from esolangs.registry._catalog import get_catalog
@@ -44,31 +46,55 @@ def evaluate(
             stdin=stdin,
             limits=limits,
             catalog=catalog,
+            prepared=prepared,
         ).unwrap()
         return BooleanEvaluation(
             read_answer(name, result.output, catalog=catalog), result
         )
 
-    from esolangs.runtime._isolated import termination_result_isolated
-
     selected = ExecutionLimits() if limits is None else limits
-    try:
-        proof = termination_result_isolated(
+    bounded_locally = selected.max_steps is not None and all(
+        limit is None
+        for limit in (
+            selected.preparation_timeout,
+            selected.execution_timeout,
+            selected.total_timeout,
+            selected.max_memory,
+            selected.max_output,
+        )
+    )
+    if bounded_locally:
+        from esolangs.runtime._termination import _termination_result
+
+        proof = _termination_result(
             name,
             program,
             stdin,
-            30.0 if selected.total_timeout is None else selected.total_timeout,
+            None,
             max_steps=selected.max_steps,
-            max_output=selected.max_output,
-            max_memory=selected.max_memory,
-            execution_timeout=selected.execution_timeout,
-            preparation_timeout=selected.preparation_timeout,
             catalog=catalog,
+            prepared=prepared,
         )
-    except ExecutionTimeoutError as error:
-        if error.bound == "timeout":
-            error.bound = "total_timeout"
-        raise
+    else:
+        from esolangs.runtime._isolated import termination_result_isolated
+
+        try:
+            proof = termination_result_isolated(
+                name,
+                program,
+                stdin,
+                30.0 if selected.total_timeout is None else selected.total_timeout,
+                max_steps=selected.max_steps,
+                max_output=selected.max_output,
+                max_memory=selected.max_memory,
+                execution_timeout=selected.execution_timeout,
+                preparation_timeout=selected.preparation_timeout,
+                catalog=catalog,
+            )
+        except ExecutionTimeoutError as error:
+            if error.bound == "timeout":
+                error.bound = "total_timeout"
+            raise
     answer = "halts" if proof.decision.halts else "diverges"
     return BooleanEvaluation(
         str(contract.answer_values.index(answer)), proof.observation, proof.decision

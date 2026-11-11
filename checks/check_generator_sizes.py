@@ -38,6 +38,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.append(str(REPO_ROOT))  # for the sibling checks.generator_sizes
 
 from benchmark import evidence_session, measure  # noqa: E402
+from docs.evidence import construction_boundaries  # noqa: E402
 
 import esolangs  # noqa: E402
 from checks import generator_sizes  # noqa: E402
@@ -68,19 +69,18 @@ STEP_CAP = 200_000
 
 SCHEMA = 4
 
-# Dense parity reaches each language's layout switch without folding inputs.
+# Each named construction owns its witnesses alongside the measured pins.
 BOUNDARIES = {
-    name: load_certification(lang).layout_switch
-    for name, lang in LANGUAGES.items()
-    if load_certification(lang).layout_switch
+    name: cases for name in LANGUAGES if (cases := construction_boundaries(name))
 }
 
 
 def boundary_tables(name: str) -> tuple[str, ...]:
-    """Return parity cases on both sides of each named layout switch."""
+    """Return the tables owned by the language's named construction boundaries."""
     return tuple(
-        "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
-        for inputs in BOUNDARIES.get(name, ())
+        witness.table()
+        for witnesses in BOUNDARIES.get(name, {}).values()
+        for witness in witnesses
     )
 
 

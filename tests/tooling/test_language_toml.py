@@ -10,6 +10,7 @@ KNOWN = {
     "audits",  # scripts/docs/audits.py
     "balance_growth",  # tests/generators/test_balance_growth.py
     "catalogue",  # scripts/docs/catalogue.py
+    "construction_boundaries",  # scripts/docs/evidence.py
     "curation",  # scripts/docs/curation.py
     "deep_arities",  # tests/proofs/deep
     "evidence",  # scripts/docs/evidence.py

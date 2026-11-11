@@ -24,6 +24,7 @@ class TestPackageSurface:
         assert sorted(esolangs.__all__) == [
             "ArgumentError",
             "Artifact",
+            "BooleanEvaluation",
             "Catalog",
             "CompressedText",
             "DialectSettings",

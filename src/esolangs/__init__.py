@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 
 from esolangs.artifacts import (
     Artifact,
+    BooleanEvaluation,
     ProgramArtifact,
     TemplateArtifact,
     TemplateBindings,
@@ -113,6 +114,7 @@ else:
 __all__ = [
     "ArgumentError",
     "Artifact",
+    "BooleanEvaluation",
     "Catalog",
     "CompressedText",
     "DialectSettings",

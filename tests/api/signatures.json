@@ -36,6 +36,7 @@
   "Language.run": "(self, program: 'ProgramSource', *, stdin: 'InputSource' = '', timeout: 'float | None' = None, seed: 'int | None' = None, isolated: 'bool' = False, max_steps: 'int | None' = None, max_output: 'int | None' = None, max_memory: 'int | None' = None, settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> 'ExecutionResult'",
   "Language.settings": "(self, **choices: 'int | str') -> 'DialectSettings'",
   "PreparedProgram.__init__": "(self, artifact: 'ProgramArtifact[Program]', catalog: 'Catalog', _module: 'ModuleType') -> None",
+  "PreparedProgram.evaluate": "(self, bits: 'list[int] | tuple[int, ...]', *, limits: 'ExecutionLimits | None' = None) -> 'BooleanEvaluation'",
   "PreparedProgram.execute": "(self, *, stdin: 'InputSource' = '', limits: 'ExecutionLimits | None' = None, seed: 'int | None' = None, isolated: 'bool' = False) -> 'ExecutionOutcome'",
   "PreparedProgram.make_vm": "(self, *, stdin: 'InputSource' = '', seed: 'int | None' = None) -> 'VM'",
   "PreparedProgram.run": "(self, *, stdin: 'InputSource' = '', timeout: 'float | None' = None, seed: 'int | None' = None, isolated: 'bool' = False, max_steps: 'int | None' = None, max_output: 'int | None' = None, max_memory: 'int | None' = None) -> 'ExecutionResult'",

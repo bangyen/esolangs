@@ -2,14 +2,23 @@
 
 import pytest
 
-from checks.check_generator_sizes import BOUNDARIES, STEP_CAP, boundary_tables
+from checks.check_generator_sizes import BOUNDARIES, STEP_CAP
 from scripts.benchmark import measure
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
     ("language", "table"),
-    [(name, table) for name in BOUNDARIES for table in boundary_tables(name)],
+    [
+        pytest.param(
+            name,
+            witness.table(),
+            id=f"{name}-{label}-n{witness.arity}-{witness.name}",
+        )
+        for name, cases in BOUNDARIES.items()
+        for label, witnesses in cases.items()
+        for witness in witnesses
+    ],
 )
 def test_boundary_program_answers_every_row(language, table) -> None:
     record = measure(

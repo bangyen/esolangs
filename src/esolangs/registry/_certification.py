@@ -22,7 +22,6 @@ class CertificationSpec:
     documented_sizes: tuple[int, int, float] | None = None
     scaling_rungs: tuple[int, ...] = (8, 10, 12)
     size_bound: Callable[[int], int] | None = None
-    layout_switch: tuple[int, ...] = ()
     #: Admitted controls when a generic corpus exceeds a proved cap.
     benchmark_tables: tuple[str, ...] = ()
     slow_scaling: bool = False

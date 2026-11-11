@@ -13,7 +13,7 @@ from esolangs.languages.nope.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -57,20 +57,22 @@ class _Machine:
             self.io.print_str(output)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind fresh machines; nope has no runtime options."""
     if not isinstance(source, str):
         raise TypeError("nope machines require text source")
     if options:
         raise TypeError("nope machines accept no runtime options")
-    return partial(_Machine, source)
+    return _PLAN
 
 
 def _execute(code: str, io: IO) -> CompletionReport:
     """Print the constant answer once."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
+
+
+# Source is ignored, so every preparation can reuse the same factories.
+_PLAN = RuntimePlan(partial(_Machine, ""), partial(_execute, ""))
 
 
 def run(code: str, io: IO) -> None:

@@ -45,6 +45,7 @@ PUBLIC_MEMBERS = {
         "index",
     },
     esolangs.PreparedProgram: {
+        "evaluate",
         "artifact",
         "catalog",
         "language",

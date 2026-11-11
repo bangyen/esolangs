@@ -25,6 +25,9 @@ labels = ["tree"]
 qualification = "complete residual folds with counted atomic definitions or the primitive pool cap"
 evidence = "docs/proofs/circuit-diagram-sharing.md"
 
+[construction_boundaries]
+h_layout_boundary = [{ arity = 7, rule = "parity" }, { arity = 8, rule = "parity" }]
+
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4 }, source_units = 127 }
 "00001100" = { commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4 }, source_units = 120 }

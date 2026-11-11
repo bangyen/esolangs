@@ -115,7 +115,7 @@ ordinary execution do not import certification modules.
 
 | Kind | Sections | Meaning |
 | --- | --- | --- |
-| Gates | `proof_status`, `evidence`, `resource_evidence`, `generator_sizes`, `catalogue`, `schemes`, `deep_arities` | claims consumed by checks; wrong data fails |
+| Gates | `proof_status`, `evidence`, `resource_evidence`, `generator_sizes`, `construction_boundaries`, `catalogue`, `schemes`, `deep_arities` | claims consumed by checks; wrong data fails |
 | Reference | `curation` | census facts; no gate |
 | Record | `ablations`, `interpreter_ablations` | pinned historical records or measured replays; source cites `[ablations.<key>]` rather than duplicating figures (tested) |
 
