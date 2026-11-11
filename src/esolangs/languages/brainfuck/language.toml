@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+literal_counter_arity_cutoff = { tables = [{ arity = 1, rule = "and" }, { arity = 2, rule = "and" }], benchmark = false, test = "test_boolean_brainfuck.py::test_literal_counter_consumes_inputs_within_revised_bounds[2]" }
+
 [curation]
 backlinks = 2031
 

@@ -1,9 +1,12 @@
 """Tests for the Hot Boolean generator."""
 
+from unittest.mock import patch as mock_patch
+
 import pytest
 
 import esolangs
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import assert_every_row, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -91,7 +94,25 @@ def test_three_input_corpus_size(monkeypatch) -> None:
 
 
 def _check_majority() -> None:
+    from esolangs.languages.hot import generator
     from esolangs.languages.hot.interpreter import _Machine
+
+    language = esolangs.Language("Hot")
+    for witness in construction_boundaries(language.name)["majority_pair_admission"]:
+        n, table = witness.arity, witness.table()
+        with mock_patch.object(generator, "_tree", wraps=generator._tree) as tree:
+            artifact = language.generate(table)
+        assert tree.call_count == 1
+        assert tree.call_args.kwargs["majority"] == (witness.rule == "majority")
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row, expected in enumerate(table):
+            bits = [int(bit) for bit in f"{row:0{n}b}"]
+            result = prepared.evaluate(bits)
+            assert result.bit == expected
+            assert result.observation.input_position == len(
+                language.encode_inputs(bits)
+            )
 
     for n, size in ((2, 253), (3, 353), (7, 1313), (8, 1999)):
         table = "".join(str(int(2 * row.bit_count() > n)) for row in range(1 << n))

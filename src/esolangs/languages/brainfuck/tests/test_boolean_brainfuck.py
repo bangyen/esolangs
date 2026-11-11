@@ -1,11 +1,14 @@
 """brainfuck generator tests."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
@@ -119,6 +122,9 @@ def test_multiple_residuals_reduce_guarded_parity_within_ledger() -> None:
 def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
     from esolangs.languages.brainfuck.generator import brainfuck
 
+    if n == 2:
+        _check_literal_counter_cutoff()
+
     size = 1 << n
     for exceptional in (0, size // 3, size - 1):
         product = "0" * exceptional + "1" + "0" * (size - exceptional - 1)
@@ -137,6 +143,26 @@ def test_literal_counter_consumes_inputs_within_revised_bounds(n: int) -> None:
                     + n.bit_length()
                     + len(source).bit_length()
                 )
+
+
+def _check_literal_counter_cutoff() -> None:
+    from esolangs.languages.brainfuck import generator
+
+    language = esolangs.Language(REFERENCE)
+    witnesses = construction_boundaries(language.name)["literal_counter_arity_cutoff"]
+    for witness in witnesses:
+        n, table = witness.arity, witness.table()
+        with patch.object(
+            generator, "_counter_reads", wraps=generator._counter_reads
+        ) as counter:
+            artifact = language.generate(table)
+        assert counter.call_count == 2 * int(n == 2)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row, expected in enumerate(table):
+            result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
+            assert result.bit == expected
+            assert result.observation.input_reads == n
 
 
 def _check_constants() -> None:

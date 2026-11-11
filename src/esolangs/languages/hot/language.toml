@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+majority_pair_admission = { tables = [{ arity = 3, rule = "majority" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_hot.py::test_three_input_corpus_size" }
+
 [curation]
 backlinks = 11
 admitted = 2026-10-16T17:25:38-04:00

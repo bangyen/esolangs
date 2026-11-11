@@ -2,6 +2,7 @@
 
 import random
 import re
+from unittest.mock import patch
 
 import pytest
 
@@ -13,6 +14,7 @@ from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR
 from esolangs.languages.ram0.generator import _ram0_ordered
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.event_io import count_steps
 from tests.support.generator_support import assert_parity_at_most_doubles
 from tests.support.witness_tables import row_bits
@@ -102,6 +104,24 @@ class TestParameterizedRam0:
     def test_shared_tree_executes_wide_rows(self) -> None:
         """A seeded seven-input table, every row, through the shared tree."""
         from esolangs.languages.ram0 import generator as generators
+
+        language = esolangs.Language("RAM0")
+        for witness in construction_boundaries(language.name)[
+            "width_one_nand_arity_cutoff"
+        ]:
+            n, table = witness.arity, witness.table()
+            with patch.object(
+                generators, "_ram0_nand", wraps=generators._ram0_nand
+            ) as nand:
+                artifact = language.generate(table, width=1)
+            assert nand.call_count == int(n == 3)
+            restored = language.load_program(language.dump_program(artifact))
+            assert restored.spans == artifact.spans
+            for row, expected in enumerate(table):
+                result = language.evaluate(restored, row_bits(row, n))
+                assert result.bit == expected
+                assert result.observation.input_position == 0
+                assert result.observation.input_reads == 0
 
         n = 7
         table = format(random.Random(7).getrandbits(2**n), f"0{2**n}b")
