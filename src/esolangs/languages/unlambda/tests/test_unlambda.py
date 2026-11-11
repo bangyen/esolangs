@@ -264,9 +264,21 @@ def test_e_ends_the_run_before_a_pending_print() -> None:
     assert run_program(native.run, "`.A`ei") == ""
 
 
-def test_a_comment_runs_to_the_end_of_the_line_or_the_source() -> None:
+def test_a_comment_runs_to_the_end_of_the_line_or_the_source(monkeypatch) -> None:
     assert run_program(native.run, "`.A# ignored `.B\ni") == "A"
     assert run_program(native.run, "`.Ai# tail") == "A"
+
+    from esolangs.languages.unlambda import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Unlambda",
+        "`.Ai# tail",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("", "A"),) * 3,
+    )
 
 
 def test_advancing_a_finished_state_is_answered_not_stepped() -> None:

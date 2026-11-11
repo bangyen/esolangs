@@ -21,14 +21,14 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from functools import partial
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.languages.minsky_swap.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -57,7 +57,7 @@ type _State = tuple[int, int, tuple[int, int], bool]
 # :func:`_advance` is a pure transition over an immutable ``_State`` with no ``io``
 # argument; :class:`_Machine` is the mutable shell that rebinds one state per ``step()``
 # and does the one dump on the halting step.
-def _advance(state: _State, prog: str, targets: dict[int, int]) -> _State:
+def _advance(state: _State, prog: str, targets: Mapping[int, int]) -> _State:
     """Return the state after executing one command.
 
     ``~`` decrements a nonzero register, else jumps to ``target - 2`` so the
@@ -115,6 +115,23 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+_Image = tuple[str, Mapping[int, int]]
+
+
+def _prepare_source(code: str) -> _Image:
+    program, nums = _parse(code)
+
+    # The Nth tilde jumps to the Nth number on the jump line; targets
+    # are 1-based (so a jump to N runs the (N-1)th command).
+    tildes = [i for i, ch in enumerate(program) if ch == "~"]
+    if len(tildes) > len(nums):
+        raise syntax_error(
+            "unmatched '~' with no jump target",
+            "supply one 1-based jump target on the second line for each ~",
+        )
+    return program, MappingProxyType(dict(zip(tildes, nums, strict=False)))
+
+
 class _Machine:
     """Per-run Minsky Swap state: the program, both registers, and the cursor."""
 
@@ -125,20 +142,12 @@ class _Machine:
     #: its output.
     completion = CAPABILITIES.completion
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         """Parse ``code`` and start both registers at zero."""
         self.io = io
-        self.prog, nums = _parse(code)
-
-        # The Nth tilde jumps to the Nth number on the jump line; targets
-        # are 1-based (so a jump to N runs the (N-1)th command).
-        tildes = [i for i, ch in enumerate(self.prog) if ch == "~"]
-        if len(tildes) > len(nums):
-            raise syntax_error(
-                "unmatched '~' with no jump target",
-                "supply one 1-based jump target on the second line for each ~",
-            )
-        self.targets: dict[int, int] = dict(zip(tildes, nums, strict=False))
+        self.prog, self.targets = (
+            _prepare_source(code) if isinstance(code, str) else code
+        )
 
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
@@ -213,18 +222,17 @@ class _Machine:
         self.state = _advance(self.state, self.prog, self.targets)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines after shared source and option preparation."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("minsky_swap machines require text source")
     if options:
         raise TypeError("minsky_swap machines accept no runtime options")
-    return partial(_Machine, source, **options)
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Execute a Minsky Swap program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

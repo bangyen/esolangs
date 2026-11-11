@@ -64,7 +64,7 @@ from esolangs.languages.one_i.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
@@ -99,26 +99,27 @@ class _Code:
 
     def __init__(self, code: str) -> None:
         #: Source offset of each text index; ``None`` while no whitespace.
-        self.origin: array[int] | None = None
+        self._origin: memoryview | None = None
         self.text = text = code
         if _SPACE.search(code):
             self.text = text = "".join(code.split())
-            self.origin = array("q", (i for i, c in enumerate(code) if not c.isspace()))
+            origin = array("q", (i for i, c in enumerate(code) if not c.isspace()))
+            self._origin = memoryview(origin.tobytes()).cast("q")
         #: Each ``[``'s text index, ascending, and its ``]``'s: ~2 bytes a
         #: character where an array over the whole text cost 4.
-        self.opens = array("q")
-        self.closes = array("q")
+        opens: array[int] = array("q")
+        closes: array[int] = array("q")
         bad = _BAD.search(text)
         limit = bad.start() if bad else len(text)
         open_ks: list[int] = []
         for found in _BRACKET.finditer(text, 0, limit):
             at = found.start()
             if found.group() == "[":
-                open_ks.append(len(self.opens))
-                self.opens.append(at)
-                self.closes.append(0)
+                open_ks.append(len(opens))
+                opens.append(at)
+                closes.append(0)
             elif open_ks:
-                self.closes[open_ks.pop()] = at
+                closes[open_ks.pop()] = at
             else:
                 raise ValueError(f"1 + i: unmatched ']' at {self.offset(at)}")
         if bad:
@@ -127,16 +128,18 @@ class _Code:
             )
         if open_ks:
             raise ValueError(
-                f"1 + i: unmatched '[' at {self.offset(self.opens[open_ks[-1]])}"
+                f"1 + i: unmatched '[' at {self.offset(opens[open_ks[-1]])}"
             )
+        self._opens = memoryview(opens.tobytes()).cast("q")
+        self._closes = memoryview(closes.tobytes()).cast("q")
 
     def close(self, at: int) -> int:
         """The text index of the ``]`` closing the ``[`` at ``at``."""
-        return self.closes[bisect_left(self.opens, at)]
+        return int(self._closes[bisect_left(self._opens, at)])
 
     def offset(self, at: int) -> int:
         """The source offset of text index ``at``."""
-        return at if self.origin is None else self.origin[at]
+        return at if self._origin is None else int(self._origin[at])
 
 
 @dataclass(frozen=True, eq=False)
@@ -381,13 +384,19 @@ def _inexact(value: complex) -> bytes:
     return pack("!dd", value.real, value.imag)
 
 
+_Image = tuple[int, _Fn]
+
+
+def _prepare_source(code: str) -> _Image:
+    return len(code), _parse(code)
+
+
 class _Machine:
     """The shell around :func:`_advance`: the stack, input and output."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
-        self.end = len(code)
-        program = _parse(code)
+        self.end, program = _prepare_source(code) if isinstance(code, str) else code
         self.frames: _Frames = ((program, 0, 0), None) if program.end else None
         #: The stack, top at the right.
         self.values: deque[_Value] = deque()
@@ -482,22 +491,17 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("one_i machines require text source")
     if options:
         raise TypeError("one_i machines accept no runtime options")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a 1 + i program."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

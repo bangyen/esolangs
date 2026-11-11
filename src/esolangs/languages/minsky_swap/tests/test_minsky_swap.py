@@ -36,13 +36,25 @@ class TestMinskySwapBasicCommands:
         assert _capture(code) == expected
         assert _capture(code2) == expected2
 
-    def test_jump_targets_and_padding(self) -> None:
+    def test_jump_targets_and_padding(self, monkeypatch) -> None:
         from esolangs.languages.minsky_swap.tests.oracle_checks import check_raw_minsky
 
         check_raw_minsky()
         assert _capture("~+~\n2 1") == "0 0"
         # Padding is removed, rather than replaced with something inert.
         assert _capture(" ~++\n3") == "1 0"
+
+        from esolangs.languages.minsky_swap import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "Minsky Swap",
+            " ~++\n3",
+            interpreter,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("", "1 0"),) * 3,
+        )
 
 
 class TestMinskySwapReadableNotation:

@@ -170,7 +170,7 @@ def test_output(program: str, stdin: str, expected: str) -> None:
     assert run_program(program, stdin) == expected
 
 
-def test_sparse_register_and_array_lookups_return_zero() -> None:
+def test_sparse_register_and_array_lookups_return_zero(monkeypatch) -> None:
     """Absent names and cells are semantic zeroes, not stored entries."""
     from esolangs.languages.collatz_multiverse.interpreter import (
         _arr_get,
@@ -183,6 +183,18 @@ def test_sparse_register_and_array_lookups_return_zero() -> None:
     assert _arr_get(arrays, "a", 2) == 0
     assert _arr_get(arrays, "missing", 0) == 0
     assert _arr_get(arrays, "before", 0) == 1
+
+    from esolangs.languages.collatz_multiverse import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Collatz Multiverse",
+        "a = negativeOne x + lineNumber, DO PRINT.",
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("", "\x01"),) * 3,
+    )
 
 
 def test_input_cannot_be_assigned() -> None:

@@ -52,14 +52,13 @@ Decisions:
 
 from collections import deque
 from collections.abc import Mapping
-from functools import partial
 from typing import Any, NamedTuple
 
 from esolangs.languages.abcdirection.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.bits import put_bit, take_bit
@@ -198,10 +197,10 @@ class _Machine:
     #: Input supplies zero bits once it runs out.
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | tuple[str, ...], io: IO) -> None:
         """Parse ``code`` and start at the top-left cell, headed down."""
         self.io = io
-        self.grid = _parse(code)
+        self.grid = _parse(code) if isinstance(code, str) else code
         self.state = _State(0, 0, DOWN, 0)
         self.ones: set[int] = set()
         self._view: tuple[int, tuple[int, ...]] | None = None
@@ -344,18 +343,17 @@ class _Machine:
             self.length += 1
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines; abcdirection has no runtime options."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("abcdirection machines require text source")
     if options:
         raise TypeError("abcdirection machines accept no runtime options")
-    return partial(_Machine, source)
+    image = _parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[str, ...], io: IO) -> CompletionReport:
     """Run an ABCDirection program until it provably repeats in silence."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

@@ -64,9 +64,9 @@ Decisions:
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping
-from functools import partial
+from collections.abc import Callable, Mapping, Sequence
 from operator import floordiv, mod
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.exceptions import ArgumentError, HaltError, ProgramError
@@ -74,7 +74,7 @@ from esolangs.languages.whitespace.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
@@ -241,7 +241,7 @@ def _rearrange(kind: str, depth: int, stack: tuple[int, ...]) -> tuple[int, ...]
 def _flow(
     kind: str,
     label: str,
-    labels: dict[str, int],
+    labels: Mapping[str, int],
     frame: tuple[int, tuple[int, ...], tuple[int, ...]],
 ) -> tuple[tuple[int, ...], tuple[int, ...], int]:
     """Return the stack, call stack and next pc after a labelled jump."""
@@ -260,8 +260,8 @@ def _flow(
 
 def _advance(
     state: _State,
-    instructions: list[_Instruction],
-    labels: dict[str, int],
+    instructions: Sequence[_Instruction],
+    labels: Mapping[str, int],
     char_input: int | None = None,
     number_input: int | None = None,
 ) -> tuple[_State, _Effect]:
@@ -332,18 +332,28 @@ def _parse_number(line: str) -> int:
     return parse_integer(line)
 
 
+_Image = tuple[tuple[_Instruction, ...], tuple[int, ...], Mapping[str, int]]
+
+
+def _prepare_source(code: str) -> _Image:
+    instructions, offsets = _parse(code)
+    if not instructions:
+        raise ProgramError("Whitespace program is empty")
+    labels: dict[str, int] = {}
+    for index, (kind, argument) in enumerate(instructions):
+        if kind == "mark":
+            labels.setdefault(str(argument), index)
+    return tuple(instructions), tuple(offsets), MappingProxyType(labels)
+
+
 class _Machine:
     """Protocol shell holding one immutable Whitespace state value."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.instructions, self.offsets = _parse(code)
-        if not self.instructions:
-            raise ProgramError("Whitespace program is empty")
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        self.instructions, self.offsets, self.labels = (
+            _prepare_source(code) if isinstance(code, str) else code
+        )
         self.io = io
-        self.labels: dict[str, int] = {}
-        for index, (kind, argument) in enumerate(self.instructions):
-            if kind == "mark":
-                self.labels.setdefault(str(argument), index)
         self.state: _State = (0, (), (), (), False)
 
     @property
@@ -397,18 +407,17 @@ class _Machine:
                 self.io.print_num(value)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh source-step machines; Whitespace has no runtime options."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("Whitespace machines require text source")
     if options:
         raise TypeError("Whitespace machines accept no runtime options")
-    return partial(_Machine, source)
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Execute a Whitespace program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

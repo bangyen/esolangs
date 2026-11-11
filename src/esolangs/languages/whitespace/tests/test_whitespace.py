@@ -134,7 +134,7 @@ def test_signed_division_and_remainder_match_reference() -> None:
             )
 
 
-def test_first_duplicate_label_wins() -> None:
+def test_first_duplicate_label_wins(monkeypatch) -> None:
     mark = L + S + S + T + L
     for transfer, stop, expected in (
         (jump(T), END, "1"),
@@ -143,6 +143,18 @@ def test_first_duplicate_label_wins() -> None:
         first = mark + push(1) + OUT_NUM + stop
         second = mark + push(2) + OUT_NUM + stop
         assert wrun(transfer + push(9) + OUT_NUM + END + first + second) == expected
+
+    from esolangs.languages.whitespace import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Whitespace",
+        jump(T) + mark + push(1) + OUT_NUM + END + mark + push(2) + OUT_NUM + END,
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("", "1"),) * 3,
+    )
 
 
 def test_untaken_branches_skip_missing_label_lookup() -> None:

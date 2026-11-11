@@ -37,10 +37,22 @@ _QUINE = (
 _run = partial(run_program, run, suppress_eof=False)
 
 
-def test_wiki_hello_cat_and_a_plus_b() -> None:
+def test_wiki_hello_cat_and_a_plus_b(monkeypatch) -> None:
     assert _run("(Hello, world!)") == "Hello, world!"
     assert _run("($)", "abc 12\n") == "abc 12"
     assert _run("([+|$|$])", "2\n3\n") == "5"
+
+    from esolangs.languages.parenthesys import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Parenthesys",
+        "($)",
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("A\n", "A"), ("Z\n", "Z"), ("Q\n", "Q")),
+    )
 
 
 def test_wiki_truth_machine() -> None:

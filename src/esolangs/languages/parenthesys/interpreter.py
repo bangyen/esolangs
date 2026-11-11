@@ -53,7 +53,7 @@ Decisions:
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import (
     MAX_EMAX,
@@ -72,7 +72,7 @@ from esolangs.languages.parenthesys.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -424,7 +424,7 @@ def _advance_loop(op: _Op, stack: _Stack, nxt: int) -> tuple[_Stack, int]:
 
 def _advance(
     state: _State,
-    ops: list[_Op],
+    ops: Sequence[_Op],
     line: str | None = None,
     value: _Value | None = None,
     function: _Function | None = None,
@@ -489,13 +489,19 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+_Image = tuple[int, tuple[_Op, ...]]
+
+
+def _prepare_source(code: str) -> _Image:
+    return len(code), tuple(compile_ops(code))
+
+
 class _Machine:
     """The shell around :func:`_advance`: variables, functions, I/O."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        self.ops = compile_ops(code)
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        self.end, self.ops = _prepare_source(code) if isinstance(code, str) else code
         self.io = io
-        self.end = len(code)
         self.state: _State = (0, None, None)
         self.globals: dict[str, _Value] = {}
         self.functions: dict[str, _Function] = {}
@@ -601,22 +607,17 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("parenthesys machines require text source")
     if options:
         raise TypeError("parenthesys machines accept no runtime options")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Parenthesys program."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

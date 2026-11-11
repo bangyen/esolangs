@@ -80,9 +80,21 @@ def test_lines_after_the_terminator_are_a_comment() -> None:
     assert output(ZERO_BYTE + "\nanything, even DDDDDD again") == "\x00"
 
 
-def test_a_column_of_outputs_prints_a_byte_then_halts_in_silence() -> None:
+def test_a_column_of_outputs_prints_a_byte_then_halts_in_silence(monkeypatch) -> None:
     assert output(ZERO_BYTE) == "\x00"
     assert output("\n".join(["CBBBBB"] * 16 + ["DDDDDD"])) == "\x00\x00"
+
+    from esolangs.languages.abcdirection import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "ABCDirection",
+        ZERO_BYTE,
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("", "\x00"),) * 3,
+    )
 
 
 def test_reads_past_eof_supply_zeros() -> None:

@@ -42,7 +42,7 @@ def test_the_page_pattern_table(pattern: str, args: str, expected: str) -> None:
     assert _out(code) == expected
 
 
-def test_a_forced_argument_is_read_once() -> None:
+def test_a_forced_argument_is_read_once(monkeypatch) -> None:
     """Call by need: ``x`` is forced by the literal and reused, not reread."""
     code = '^:std::io; main := f(io::next()); f : "a" = 1 : x = io::print(x, x);'
 
@@ -89,3 +89,15 @@ def test_a_forced_argument_is_read_once() -> None:
     for char, sentinel in product(("b", "é", "😀"), ("z", "!")):
         assert _out(code, char + sentinel) == char * 2
         check(code, char * 2, char + sentinel, 1)
+
+    from esolangs.languages.bleh import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Bleh",
+        code,
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("bz", "bb"), ("cz", "cc"), ("dz", "dd")),
+    )

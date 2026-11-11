@@ -65,12 +65,19 @@ def test_wiki_parts_roots_and_modulus() -> None:
     assert _run("Dici*:+/^p", "16\n") == "4"
 
 
-def test_wiki_examples() -> None:
+def test_wiki_examples(monkeypatch) -> None:
     assert _run("ici*i+p") == "1 + i"
     assert _run("DD+p", "1 + 2i\n3 - i\n") == "4 + i"
     assert _run("ii+:c*p") == "4"
     assert _run("[][(oA:)ic+?]A:)ic+?", "hi!") == "hi!"
     assert _run(TRUTH, "0\n") == "0"
+
+    from esolangs.languages.one_i import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "1 + i", "[][(oA:)ic+?]A:)ic+?", interpreter, "_prepare_source", monkeypatch
+    )
 
 
 def test_wiki_truth_machine_loops_on_one() -> None:

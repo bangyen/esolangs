@@ -43,7 +43,7 @@ from esolangs.languages.collatz_multiverse.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -123,38 +123,44 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+def _prepare_source(code: str) -> tuple[_Line, ...]:
+    parsed: list[_Line] = []
+    for ln in code.splitlines():
+        if not ln.strip():
+            continue
+        m = _LINE.fullmatch(ln)
+        if not m:
+            raise syntax_error(
+                f"malformed line: {ln!r}",
+                (
+                    "write each line as name = coefficient x + constant, DO "
+                    "PRINT. or NOT PRINT."
+                ),
+            )
+        # Redefining ``input`` is malformed, and malformedness is a
+        # property of the program text -- so it is rejected here with
+        # the other two malformed cases rather than when the line
+        # happens to run.  Checking it in ``step()`` made an
+        # unreachable ``input =`` line (one a ``lineNumber`` jump skips)
+        # legal, and made acceptance depend on stdin, since a jump
+        # target can be read from input.
+        if m.group(1) == "input":
+            raise syntax_error(
+                "input cannot be redefined",
+                "assign to a writable register; input is read-only",
+            )
+        parsed.append(cast("_Line", m.groups()))
+    return tuple(parsed)
+
+
 class _Machine:
     """Per-run Collatz Multiverse state: registers, arrays, and the pointer."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | tuple[_Line, ...], io: IO) -> None:
         """Parse ``code`` into lines and start at line 1."""
         self.io = io
-        lines = [ln for ln in code.splitlines() if ln.strip()]
-        self.n = len(lines)
-        self.parsed: list[_Line] = []
-        for ln in lines:
-            m = _LINE.fullmatch(ln)
-            if not m:
-                raise syntax_error(
-                    f"malformed line: {ln!r}",
-                    (
-                        "write each line as name = coefficient x + constant, DO "
-                        "PRINT. or NOT PRINT."
-                    ),
-                )
-            # Redefining ``input`` is malformed, and malformedness is a
-            # property of the program text -- so it is rejected here with
-            # the other two malformed cases rather than when the line
-            # happens to run.  Checking it in ``step()`` made an
-            # unreachable ``input =`` line (one a ``lineNumber`` jump skips)
-            # legal, and made acceptance depend on stdin, since a jump
-            # target can be read from input.
-            if m.group(1) == "input":
-                raise syntax_error(
-                    "input cannot be redefined",
-                    "assign to a writable register; input is read-only",
-                )
-            self.parsed.append(cast("_Line", m.groups()))
+        self.parsed = _prepare_source(code) if isinstance(code, str) else code
+        self.n = len(self.parsed)
         # ``negativeOne`` starts at -1; every other name starts at 0.
         self.state: _State = (1, (("negativeOne", -1),), ())
 
@@ -314,22 +320,17 @@ def _advance(
     return value, (next_ip, regs, arrays)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("collatz_multiverse machines require text source")
     if options:
         raise TypeError("collatz_multiverse machines accept no runtime options")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[_Line, ...], io: IO) -> CompletionReport:
     """Run a Collatz Multiverse program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)
