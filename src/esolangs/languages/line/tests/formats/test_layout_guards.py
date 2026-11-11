@@ -83,7 +83,7 @@ def test_empty_graph_is_refused() -> None:
     assert (cursor.y, cursor.x) == (0, 0)
     cursor.advance((1, 0), 1)
     assert (cursor.y, cursor.x) == (1, 0)
-    dag = _Dag(1, {}, {0: None}, [[], [0]])
+    dag = _Dag(1, {}, {0: None}, ((), (0,)))
     plan = _Layout({}, {(1, 0): (0, 0)}, {}, {})
     router = _Router(dag, plan, [], {})
     with pytest.raises(ValueError, match="terminal residual is not constant"):

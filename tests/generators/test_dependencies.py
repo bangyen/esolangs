@@ -2,6 +2,7 @@
 
 import random
 from itertools import product
+from types import MappingProxyType
 
 from esolangs.generation import helpers
 from esolangs.generation.algebraic import AffineForm, affine_form, parity_bias
@@ -118,6 +119,12 @@ def test_dependencies_late_witnesses_and_ignored_inputs() -> None:
 
 def test_dependency_fallback_has_positive_control(monkeypatch) -> None:
     original = helpers._residual_ids
+    diagram = original("1010", 2)
+    assert diagram.levels == ((3,), (2,), (1, 0))
+    assert isinstance(diagram.children, MappingProxyType)
+    assert diagram.children == {2: (1, 0), 3: (2, 2)}
+    assert isinstance(diagram.constants, MappingProxyType)
+    assert diagram.constants == {0: 0, 1: 1, 2: None, 3: None}
     calls = []
 
     def record(table, n):

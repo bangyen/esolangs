@@ -2,6 +2,7 @@
 
 import random
 from collections.abc import Iterator
+from types import MappingProxyType
 
 import pytest
 
@@ -113,14 +114,14 @@ class TestAddSubJump:
         analyze = boolean._residual_ids
 
         def flipped_constants(table: str, n: int):
-            levels, children, constants = analyze(table, n)
-            return (
-                levels,
-                children,
-                {
-                    key: None if value is None else 1 - value
-                    for key, value in constants.items()
-                },
+            diagram = analyze(table, n)
+            return diagram._replace(
+                constants=MappingProxyType(
+                    {
+                        key: None if value is None else 1 - value
+                        for key, value in diagram.constants.items()
+                    }
+                )
             )
 
         monkeypatch.setattr(boolean, "_residual_ids", flipped_constants)

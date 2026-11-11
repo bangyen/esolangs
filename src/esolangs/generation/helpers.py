@@ -282,13 +282,19 @@ def permute_truth_table(truth_table: str, perm: tuple[int, ...]) -> str:
     return read_at(truth_table, perm, len(perm))
 
 
-def _residual_ids(
-    truth_table: str, n: int
-) -> tuple[list[list[int]], dict[int, tuple[int, int]], dict[int, int | None]]:
+class ResidualDiagram(NamedTuple):
+    """Ordered node IDs per depth, their children and their constant values."""
+
+    levels: tuple[tuple[int, ...], ...]
+    children: Mapping[int, tuple[int, int]]
+    constants: Mapping[int, int | None]
+
+
+def _residual_ids(truth_table: str, n: int) -> ResidualDiagram:
     """Canonical residual IDs, children and constant values in O(T) RAM work."""
-    levels: list[list[int]] = [[] for _ in range(n + 1)]
+    levels: list[tuple[int, ...]] = [()] * (n + 1)
     ids = [1 if bit == "1" else 0 for bit in truth_table]
-    levels[n] = list(dict.fromkeys(ids))
+    levels[n] = tuple(dict.fromkeys(ids))
     children: dict[int, tuple[int, int]] = {}
     constants: dict[int, int | None] = {0: 0, 1: 1}
     serial = 2
@@ -305,9 +311,11 @@ def _residual_ids(
                 )
                 serial += 1
             parents.append(names[pair])
-        levels[k] = list(names.values())
+        levels[k] = tuple(names.values())
         ids = parents
-    return levels, children, constants
+    return ResidualDiagram(
+        tuple(levels), MappingProxyType(children), MappingProxyType(constants)
+    )
 
 
 def essential_inputs(truth_table: str, n: int) -> list[int]:

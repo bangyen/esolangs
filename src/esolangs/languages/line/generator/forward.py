@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from esolangs.generation.helpers import _residual_ids, _validate_truth_table
@@ -90,9 +91,9 @@ class _Dag:
     """Residual DAG over the inputs, interned per depth."""
 
     n: int
-    children: dict[int, tuple[int, int]]
-    constants: dict[int, int | None]
-    levels: list[list[int]]
+    children: Mapping[int, tuple[int, int]]
+    constants: Mapping[int, int | None]
+    levels: tuple[tuple[int, ...], ...]
 
     def reads_at(self, depth: int) -> str:
         # One read per level; the terminal state reads nothing itself.
