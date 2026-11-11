@@ -22,10 +22,22 @@ def test_the_page_binds_the_shortest_substrings() -> None:
     assert _step("_Aa_Bb->_A,_B", "aabb") == ",ab"
 
 
-def test_one_trailing_newline_leaves_the_input() -> None:
+def test_one_trailing_newline_leaves_the_input(monkeypatch) -> None:
     io = ScriptedIO("ab\n")
     run("ab->ok", io)
     assert io.getvalue() == "ok"
+
+    from esolangs.languages.sonata import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Sonata",
+        "ab->ok",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("ab\n", "ok"), ("Z\n", "Z"), ("Q\n", "Q")),
+    )
 
 
 def test_a_later_arrow_is_literal() -> None:

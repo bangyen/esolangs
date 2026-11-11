@@ -45,7 +45,7 @@ from esolangs.languages.sonata.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -145,9 +145,9 @@ class _Machine:
     #: The state is a string; ``ip`` is its length.
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | tuple[_Rule, ...], io: IO) -> None:
         self.io = io
-        self.rules = _parse(code)
+        self.rules = _parse(code) if isinstance(code, str) else code
         text = io.input_all()
         self.text = text.removesuffix("\n")
         self.halted = False
@@ -181,22 +181,17 @@ class _Machine:
             self.rendered = True
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("sonata machines require text source")
     if options:
         raise TypeError("sonata machines accept no runtime options")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[_Rule, ...], io: IO) -> CompletionReport:
     """Run a Sonata program on its input and print the final string."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

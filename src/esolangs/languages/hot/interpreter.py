@@ -42,7 +42,7 @@ from esolangs.languages.hot.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.combinators import Args as _Args
@@ -122,6 +122,18 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+def _prepare_source(code: str) -> _State:
+    return _settle(
+        parse(
+            code,
+            "".join(ARITY),
+            "Hot",
+            "use K S F A B C D 0 1, parentheses and whitespace",
+        ),
+        None,
+    )
+
+
 class _Machine:
     """The expression, the input stream's position, and the output parity."""
 
@@ -130,17 +142,9 @@ class _Machine:
     #: The term tree is rebuilt as it runs; ``ip`` is the argument count.
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _State, io: IO) -> None:
         self.io = io
-        self.state = _settle(
-            parse(
-                code,
-                "".join(ARITY),
-                "Hot",
-                "use K S F A B C D 0 1, parentheses and whitespace",
-            ),
-            None,
-        )
+        self.state: _State = _prepare_source(code) if isinstance(code, str) else code
         #: The bit owed after a marker 1, or ``None``.
         self.pending: int | None = None
         self.ended = False
@@ -224,22 +228,17 @@ class _Machine:
         self.odd = not self.odd
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("Hot machines require text source")
     if options:
         raise TypeError("Hot machines accept no runtime options")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _State, io: IO) -> CompletionReport:
     """Run a Hot program on the binary string read from ``io``."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

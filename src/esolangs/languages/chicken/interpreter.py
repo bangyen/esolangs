@@ -71,7 +71,7 @@ from esolangs.languages.chicken.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime._validate import check_address
@@ -247,6 +247,10 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+def _prepare_source(code: str) -> tuple[int, ...]:
+    return tuple(_parse(code))
+
+
 class _Machine:
     """The array, the instruction pointer, and the printed answer."""
 
@@ -254,8 +258,8 @@ class _Machine:
     #: The input is one string read whole, so a short one is a shorter string.
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
-        counts = _parse(code)
+    def __init__(self, code: str | tuple[int, ...], io: IO) -> None:
+        counts = _prepare_source(code) if isinstance(code, str) else code
         self.io = io
         self.cells: list[_Value] = [SELF, io.input_all(), *counts, 0]
         self.pointer = 2
@@ -382,22 +386,17 @@ def _unescape(match: re.Match[str]) -> str:
     return chr(code)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("chicken machines require text source")
     if options:
         raise TypeError("chicken machines accept no runtime options")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[int, ...], io: IO) -> CompletionReport:
     """Run Chicken: read the lines, execute from cell 2, print at exit."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

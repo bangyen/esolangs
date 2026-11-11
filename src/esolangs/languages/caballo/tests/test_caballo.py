@@ -77,7 +77,7 @@ def test_zero_empties_the_mapping() -> None:
     assert _run("0i", "3") == ""
 
 
-def test_the_output_is_drawn_by_weight() -> None:
+def test_the_output_is_drawn_by_weight(monkeypatch) -> None:
     # Weights 1 and 2: a seeded draw is reproducible, and both stacks occur.
     draws = {_run("(1+qi+qi)", "", seed) for seed in range(20)}
     assert draws == {"[]", "[1]"}
@@ -102,6 +102,11 @@ def test_the_output_is_drawn_by_weight() -> None:
     assert second_io.getvalue() == ""
     assert second.stack == ["seq"]
     reject_rng_options(prepare_machine, [], "text source", "")
+
+    from esolangs.languages.caballo import interpreter
+    from tests.support.prepared_support import check_random_plan_reuse
+
+    check_random_plan_reuse("Caballo", "(1+qi+qi)", interpreter, "parse", monkeypatch)
 
 
 class _Fixed:

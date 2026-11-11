@@ -138,7 +138,7 @@ def test_store_overwrites_a_cell_and_grows_the_array() -> None:
     assert _go((15, 10 + 20, 7, 10 + 19, 6, 0)) == "undefined"
 
 
-def test_input_is_the_whole_stdin() -> None:
+def test_input_is_the_whole_stdin(monkeypatch) -> None:
     assert _go((12, 6, 1, 12, 6, 1, 2), "a\nbcd\n") == "bb"
     policy = sys.get_int_max_str_digits()
     for digits in ("65", "0" * 5000 + "65"):
@@ -171,6 +171,18 @@ def test_input_is_the_whole_stdin() -> None:
         assert io.getvalue() == "65"
         assert (io.position(), io.reads, io.past_end) == (len(stdin), 1, 0)
     assert sys.get_int_max_str_digits() == policy
+
+    from esolangs.languages.chicken import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Chicken",
+        _lines(11, 6, 1),
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("xA", "A"), ("yZ", "Z"), ("zQ", "Q")),
+    )
 
 
 def test_bad_words_are_rejected_with_a_repair_hint() -> None:

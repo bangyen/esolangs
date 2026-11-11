@@ -14,10 +14,22 @@ def test_k_exits_zero_and_s_exits_nonzero() -> None:
     check_raw_kiss()
 
 
-def test_the_cat_exits_zero_after_echoing() -> None:
+def test_the_cat_exits_zero_after_echoing(monkeypatch) -> None:
     io = ScriptedIO("1")
     assert run("S (K K) (S K)", io) == 0
     assert io.getvalue() == "1"
+
+    from esolangs.languages.kiss import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Kiss",
+        "S (K K) (S K)",
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("1", "1"), ("0", "0"), ("1", "1")),
+    )
 
 
 def test_only_the_head_is_rewritten() -> None:

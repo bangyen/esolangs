@@ -29,8 +29,20 @@ def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
                 assert_every_row("Hot", table)
 
 
-def test_the_bits_are_one_unseparated_string() -> None:
+def test_the_bits_are_one_unseparated_string(monkeypatch) -> None:
     assert esolangs.encode_inputs("Hot", [1, 0]) == "10"
+
+    from esolangs.languages.hot import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Hot",
+        esolangs.generate("Hot", "01").source,
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("1", "1"), ("0", "0"), ("1", "1")),
+    )
 
 
 def test_an_ignored_input_folds_its_subtree() -> None:

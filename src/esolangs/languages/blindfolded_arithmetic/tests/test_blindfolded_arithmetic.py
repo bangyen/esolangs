@@ -17,7 +17,7 @@ def test_division_truncates_toward_zero(
     assert trunc_div(dividend, divisor) == quotient
 
 
-def test_constructor_and_output_failures_preserve_native_phase() -> None:
+def test_constructor_and_output_failures_preserve_native_phase(monkeypatch) -> None:
     """Constructor and output failures retain their input and halt boundaries."""
     io = ScriptedIO("")
     with pytest.raises(ValueError, match="at least one instruction"):
@@ -51,6 +51,18 @@ def test_constructor_and_output_failures_preserve_native_phase() -> None:
     assert machine.workspace_snapshot() == captured
     assert io.input_char() == ord(" ")
     assert io.input_num() == 7
+
+    from esolangs.languages.blindfolded_arithmetic import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Blindfolded Arithmetic",
+        "i=i/a",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("1", "1"), ("2", "2"), ("7", "7")),
+    )
 
 
 def test_ip_is_the_next_instructions_source_offset() -> None:
