@@ -432,6 +432,12 @@ def test_modulous_forks_every_value_rnd_could_draw(monkeypatch) -> None:
             ).observation.output
             == ""
         )
+    from esolangs.languages.modulous import interpreter
+    from tests.support.prepared_support import check_random_plan_reuse
+
+    check_random_plan_reuse(
+        "Modulous", "[RND 2][PRT INT][END]", interpreter, "_parse_tokens", monkeypatch
+    )
 
 
 def test_modulous_non_command_tokens_advance_one_branch() -> None:

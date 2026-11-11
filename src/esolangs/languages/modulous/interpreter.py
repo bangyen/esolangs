@@ -55,7 +55,7 @@ from esolangs.languages.modulous.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -213,7 +213,9 @@ class _Machine:
     # reproducible; ``None`` draws for real.
     rng: Randomness | None
 
-    def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
+    def __init__(
+        self, code: str | tuple[str, ...], io: IO, rng: Randomness | None = None
+    ) -> None:
         """Build a state for ``code`` with its variables and parsed tokens."""
         self.stk = ()
         self.var: Mapping[str, int] = MappingProxyType(
@@ -221,7 +223,8 @@ class _Machine:
         )
         self.ind = 0
         self.io = io
-        self.tokens = _parse_tokens(code)
+        image = _parse_tokens(code) if isinstance(code, str) else code
+        self.tokens = image
         self._halted = False
         self.rng = rng
         self._input_reads = 0
@@ -626,23 +629,26 @@ _DISPATCH: dict[str, _Handler] = {
 }
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind text and caller-owned RNG; construct state only when IO is supplied."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("modulous machines require text source")
     if options.keys() - {"rng"}:
         raise TypeError("modulous machines accept only the rng runtime option")
-    rng = options.get("rng")
+    image = _parse_tokens(source)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io, rng)
+    def build(io: IO, rng: Randomness | None) -> _Machine:
+        return _Machine(image, io, rng)
 
-    return build
+    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+        return _execute(image, io, rng)
+
+    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
 
 
-def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:
+def _execute(
+    code: str | tuple[str, ...], io: IO, rng: Randomness | None = None
+) -> CompletionReport:
     """Run a Modulous program, drawing ``RND`` from ``rng``.
 
     ``rng`` is the source ``RND`` draws from; ``None`` draws for real,

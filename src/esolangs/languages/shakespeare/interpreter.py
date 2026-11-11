@@ -67,7 +67,7 @@ from esolangs.languages.shakespeare.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -272,13 +272,22 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+_Image = tuple[int, tuple[Op, ...]]
+
+
+def _prepare_source(code: str) -> _Image:
+    size, ops = parse(code)
+    return size, tuple(ops)
+
+
 class _Machine:
     """The operation list and the state."""
 
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
-        size, self.ops = parse(code)
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        image = _prepare_source(code) if isinstance(code, str) else code
+        size, self.ops = image
         self.io = io
         self.state = _State(0, (0,) * size, (None,) * size, (), flag=False)
 
@@ -327,22 +336,17 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("Shakespeare machines require text source")
     if options:
         raise TypeError("Shakespeare machines accept no runtime options")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Shakespeare play to its last operation."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

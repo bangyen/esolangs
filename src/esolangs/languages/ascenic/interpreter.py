@@ -56,7 +56,7 @@ from esolangs.languages.ascenic.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -164,10 +164,13 @@ class _Machine:
 
     ip_shape = "line"
 
-    def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
+    def __init__(
+        self, code: str | tuple[_Op, ...], io: IO, rng: Randomness | None = None
+    ) -> None:
         self.io = io
         self._rng = rng
-        self.ops = parse(code)
+        image = parse(code) if isinstance(code, str) else code
+        self.ops = image
         self.state: _State = (0, None)
 
     @property
@@ -247,23 +250,26 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind text and caller-owned RNG; construct state only when IO is supplied."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("ascenic machines require text source")
     if options.keys() - {"rng"}:
         raise TypeError("ascenic machines accept only the rng runtime option")
-    rng = options.get("rng")
+    image = parse(source)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io, rng)
+    def build(io: IO, rng: Randomness | None) -> _Machine:
+        return _Machine(image, io, rng)
 
-    return build
+    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+        return _execute(image, io, rng)
+
+    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
 
 
-def _execute(code: str, io: IO, rng: Randomness | None = None) -> CompletionReport:
+def _execute(
+    code: str | tuple[_Op, ...], io: IO, rng: Randomness | None = None
+) -> CompletionReport:
     """Run an Ascenic program."""
     return drive(_Machine(code, io, rng), policy=CAPABILITIES.completion)
 

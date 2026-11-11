@@ -157,9 +157,19 @@ def test_stacks_remember_onto_the_listener_and_recall_into_it() -> None:
     check_workspace_shakespeare()
 
 
-def test_character_input_stores_the_code_and_number_input_a_token() -> None:
+def test_character_input_stores_the_code_and_number_input_a_token(monkeypatch) -> None:
     assert _run("Open your mind. Open your heart. Speak your mind.", "A") == "65A"
     assert _run("Listen to your heart. Open your heart.", "  -7 8") == "-7"
+    from esolangs.languages.shakespeare import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Shakespeare",
+        _play("Open your mind. Speak your mind."),
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+    )
 
 
 def test_a_third_character_on_stage_halts() -> None:

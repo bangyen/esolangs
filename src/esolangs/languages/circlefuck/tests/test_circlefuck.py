@@ -182,7 +182,7 @@ def test_a_decimal_escape_takes_ascii_digits_only() -> None:
         parse("\\\u0661\u0662\u0663@")
 
 
-def test_halting_on_at_changes_the_snapshot() -> None:
+def test_halting_on_at_changes_the_snapshot(monkeypatch) -> None:
     from .oracle_checks import check_raw_circlefuck
 
     check_raw_circlefuck()
@@ -192,6 +192,10 @@ def test_halting_on_at_changes_the_snapshot() -> None:
     machine.step()
     assert machine.halted
     assert machine.snapshot() != before
+    from esolangs.languages.circlefuck import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse("Circlefuck", ",.@", interpreter, "_prepare_source", monkeypatch)
 
 
 @pytest.mark.medium

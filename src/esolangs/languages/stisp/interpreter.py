@@ -45,7 +45,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import partial
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -53,7 +53,7 @@ from esolangs.languages.stisp.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -270,7 +270,7 @@ def _key(expr: _Expr) -> str | None:
     return "(.)" if expr else "()"
 
 
-def _index(equations: list[_Equation]) -> dict[tuple[str, int], _Bucket]:
+def _index(equations: list[_Equation]) -> Mapping[tuple[str, int], _Bucket]:
     """Group equations by block and arity, then by their head's constructor.
 
     First-match order survives: each head's list merges in the equations
@@ -283,16 +283,18 @@ def _index(equations: list[_Equation]) -> dict[tuple[str, int], _Bucket]:
     for group, eqs in groups.items():
         keys = {_key(eq.head) for eq in eqs} - {None}
         by_key = {
-            key: [eq for eq in eqs if _key(eq.head) in (key, None)] for key in keys
+            key: tuple(eq for eq in eqs if _key(eq.head) in (key, None)) for key in keys
         }
-        index[group] = _Bucket(by_key, [eq for eq in eqs if _key(eq.head) is None])
-    return index
+        index[group] = _Bucket(
+            MappingProxyType(by_key), tuple(eq for eq in eqs if _key(eq.head) is None)
+        )
+    return MappingProxyType(index)
 
 
 @dataclass(frozen=True, slots=True)
 class _Bucket:
-    by_key: dict[str | None, list[_Equation]]
-    default: list[_Equation]
+    by_key: Mapping[str | None, tuple[_Equation, ...]]
+    default: tuple[_Equation, ...]
 
 
 def _match(
@@ -359,13 +361,13 @@ def _render(expr: _Expr) -> str:
 
 
 def _advance(
-    index: dict[tuple[str, int], _Bucket], head: _Expr, frames: _Frames
+    index: Mapping[tuple[str, int], _Bucket], head: _Expr, frames: _Frames
 ) -> tuple[_Expr, _Frames]:
     """Return the head and frames after rewriting the head and first frame."""
     assert frames is not None
     (block, args), rest = frames
     bucket = index.get((block, len(args)))
-    candidates = [] if bucket is None else bucket.by_key.get(_key(head), bucket.default)
+    candidates = () if bucket is None else bucket.by_key.get(_key(head), bucket.default)
     for eq in candidates:
         bound = _match((eq.head, *eq.args), (head, *args))
         if bound is not None:
@@ -380,6 +382,17 @@ def _advance(
 _WORKSPACE_MODEL = WorkspaceModel("stisp-v1", ("expression", "frames", "rendered"))
 
 
+_Image = tuple[Mapping[tuple[str, int], _Bucket], _Expr, _Frames]
+
+
+def _prepare_source(code: str) -> _Image:
+    equations, head, frames = _parse(code)
+    stack: _Frames = None
+    for frame in reversed(frames):
+        stack = (frame, stack)
+    return _index(equations), head, stack
+
+
 class _Machine:
     """The equations, the head, and the frames left."""
 
@@ -387,15 +400,10 @@ class _Machine:
     #: The state is an expression and a frame stack; ``ip`` is the depth.
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
-        equations, head, frames = _parse(code)
-        self.index = _index(equations)
-        stack: _Frames = None
-        for frame in reversed(frames):
-            stack = (frame, stack)
-        self.head: _Expr = head
-        self.frames = stack
+        image = _prepare_source(code) if isinstance(code, str) else code
+        self.index, self.head, self.frames = image
         self.rendered = False
 
     @property
@@ -443,18 +451,17 @@ class _Machine:
             self.rendered = True
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines after shared source and option preparation."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("stisp machines require text source")
     if options:
         raise TypeError("stisp machines accept no runtime options")
-    return partial(_Machine, source, **options)
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Stisp program and print its result."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

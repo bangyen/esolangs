@@ -30,7 +30,7 @@ from esolangs.languages.circlefuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -229,6 +229,16 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+def _prepare_source(code: str) -> tuple[int, ...]:
+    cells = parse(code)
+    if not cells:
+        raise syntax_error(
+            "Circlefuck program cannot be empty",
+            "provide at least one program cell; @ halts immediately",
+        )
+    return tuple(cells)
+
+
 class _Machine:
     """Per-run Circlefuck state: the tape (which is the program), and pointers.
 
@@ -238,19 +248,14 @@ class _Machine:
 
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | tuple[int, ...], io: IO) -> None:
         """Parse ``code``; an empty program is malformed."""
         self.io = io
-        cells = parse(code)
-        if not cells:
-            raise syntax_error(
-                "Circlefuck program cannot be empty",
-                "provide at least one program cell; @ halts immediately",
-            )
         # The shell owns the tape as a mutable list: a write is one
         # assignment rather than a rebuilt tuple.  Every observer below
         # copies it, so nothing outside this class can reach the list.
-        self._cells = cells
+        image = _prepare_source(code) if isinstance(code, str) else code
+        self._cells = list(image)
         self._ind = 0
         self._ptr = 0
         self._done = False
@@ -349,22 +354,17 @@ class _Machine:
                 del cells[at]
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("circlefuck machines require text source")
     if options:
         raise TypeError("circlefuck machines accept no runtime options")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[int, ...], io: IO) -> CompletionReport:
     """Run a Circlefuck program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

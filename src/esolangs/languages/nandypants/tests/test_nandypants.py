@@ -22,11 +22,22 @@ def test_the_pages_cat_copies_input_until_eof() -> None:
     assert _run(CAT, "Hi!") == ("Hi!", True)
 
 
-def test_input_is_reduced_modulo_256() -> None:
+def test_input_is_reduced_modulo_256(monkeypatch) -> None:
     from .oracle_checks import check_raw_nandypants
 
     check_raw_nandypants()
     assert _run(CAT, "Ł") == ("A", True)
+    from esolangs.languages.nandypants import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Nandypants",
+        r"v^/^\ ",
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("\x00", "\x01"), ("\x01", "\x00"), ("\x00", "\x01")),
+    )
 
 
 @pytest.mark.parametrize(

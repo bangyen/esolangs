@@ -32,8 +32,19 @@ def test_both_negative_is_a_quiet_command() -> None:
     assert out("0=5\nmove -1 -1\nmove -2 -3\nmove 0 -1") == ""
 
 
-def test_42_as_key_reads_before_the_value() -> None:
+def test_42_as_key_reads_before_the_value(monkeypatch) -> None:
     assert out("42=42\nmove 5 -1\nmove 0 0", "5\n7\n") == "7"
+    from esolangs.languages.movesum import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Movesum",
+        "42=42\nmove 5 -1\nmove 0 0",
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("5\n7\n", "7"), ("5\n8\n", "8"), ("5\n9\n", "9")),
+    )
 
 
 def test_eof_reads_zero() -> None:

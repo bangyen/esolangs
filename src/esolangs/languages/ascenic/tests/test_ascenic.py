@@ -92,7 +92,7 @@ def test_io_follows_the_argument_parity() -> None:
         _run(_program((5, 1), (1, 2)))
 
 
-def test_rnd_draws_zero_and_one() -> None:
+def test_rnd_draws_zero_and_one(monkeypatch) -> None:
     code = _program((15, 1), (1, 3))
     seen = set()
     for seed in range(20):
@@ -132,6 +132,12 @@ def test_rnd_draws_zero_and_one() -> None:
     assert second_io.getvalue() == ""
     assert second.stack == []
     reject_rng_options(prepare_machine, [], "text source", "")
+    from esolangs.languages.ascenic import interpreter
+    from tests.support.prepared_support import check_random_plan_reuse
+
+    check_random_plan_reuse(
+        "Ascenic", _program((15, 1), (1, 3)), interpreter, "parse", monkeypatch
+    )
 
 
 @pytest.mark.parametrize(

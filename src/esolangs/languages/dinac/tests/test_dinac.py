@@ -139,8 +139,12 @@ def test_cat_as_written_drops_its_first_character_and_ends_on_nul() -> None:
     assert out(CAT, "Hi!") == "i!\0"
 
 
-def test_repaired_cat_echoes_its_input() -> None:
+def test_repaired_cat_echoes_its_input(monkeypatch) -> None:
     assert out(CAT_REPAIRED, "Hi!\nok") == "Hi!\nok"
+    from esolangs.languages.dinac import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse("DINAC", CAT_REPAIRED, interpreter, "_parse", monkeypatch)
 
 
 def test_plus_or_minus_one_character_at_a_time() -> None:

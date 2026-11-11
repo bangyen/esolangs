@@ -13,9 +13,20 @@ def _result(code: str) -> str:
     return io.getvalue()
 
 
-def test_the_first_matching_equation_wins() -> None:
+def test_the_first_matching_equation_wins(monkeypatch) -> None:
     check_raw_stisp()
     assert _result("x -> f[] = FIRST; A -> f[] = SECOND; A -> f[]") == "FIRST"
+    from esolangs.languages.stisp import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Stisp",
+        "x -> f[] = FIRST; A -> f[] = SECOND; A -> f[]",
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("", "FIRST"),) * 3,
+    )
 
 
 def test_a_frame_rewrites_to_several_frames_in_order() -> None:

@@ -71,6 +71,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, Literal, NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -78,7 +79,7 @@ from esolangs.languages.dinac.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -147,7 +148,7 @@ class _Program:
     """Parsed program: function 0 is the top level; blocks are ids."""
 
     fns: tuple[_Fn, ...]
-    overloads: dict[tuple[str, tuple[_Kind, ...]], int]
+    overloads: Mapping[tuple[str, tuple[_Kind, ...]], int]
     bodies: tuple[tuple[_Stmt, ...], ...]
 
 
@@ -446,7 +447,9 @@ class _Parser:
                     f"{min(clash)!r} names both a function and a variable",
                     "give the variable another name",
                 )
-        return _Program(tuple(self.fns), self.overloads, tuple(self.bodies))
+        return _Program(
+            tuple(self.fns), MappingProxyType(self.overloads), tuple(self.bodies)
+        )
 
     def _block(self, level: int, owner: str) -> int:
         """Parse the statements one level below ``level``; return the block id."""
@@ -802,9 +805,9 @@ class _Machine:
     #: The page gives running out no value; \0 / 00 lets its cat end.
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Program, io: IO) -> None:
         self.io = io
-        self.prog = _parse(code)
+        self.prog = _parse(code) if isinstance(code, str) else code
         top = self.prog.fns[0]
         self.state: _State = (
             _Frame(0, (None,) * len(top.names), ((top.body, 0),)),
@@ -894,22 +897,17 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse source once and build fresh state for each run."""
     if not isinstance(source, str):
         raise TypeError("dinac machines require text source")
     if options:
         raise TypeError("dinac machines accept no runtime options")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _parse(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Program, io: IO) -> CompletionReport:
     """Run a DINAC program until its top level ends."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
