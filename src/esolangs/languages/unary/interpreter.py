@@ -17,7 +17,6 @@ Errors:
 """
 
 from collections.abc import Mapping
-from functools import partial
 from typing import Any
 
 from esolangs.compressed import CompressedText
@@ -28,9 +27,10 @@ from esolangs.languages.unary.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import ProgramSource, compressed_text_source
+from esolangs.runtime.brackets import BracketProgram
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -75,8 +75,8 @@ class _Machine(_BFMachine):
     #: census missed it because a termination answer has no output to read.
     eof_is_a_value = True
 
-    def __init__(self, code: str | CompressedText, io: IO) -> None:
-        super().__init__(decode(code), io)
+    def __init__(self, code: str | CompressedText | BracketProgram, io: IO) -> None:
+        super().__init__(code if isinstance(code, BracketProgram) else decode(code), io)
 
     def step(self) -> None:
         try:
@@ -86,22 +86,23 @@ class _Machine(_BFMachine):
             self.state = _at_eof(self.state)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh Unary machines without expanding compressed source."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain decoded commands and loop partners without expanding source."""
     if not isinstance(source, (str, CompressedText)):
         raise TypeError("unary machines require text or compressed source")
     if options:
         raise TypeError("unary machines accept no runtime options")
-    return partial(_Machine, source)
+    program = BracketProgram.parse(decode(source))
+    return RuntimePlan(lambda io: _Machine(program, io), lambda io: _drive(program, io))
+
+
+def _drive(code: str | CompressedText | BracketProgram, io: IO) -> CompletionReport:
+    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
 
 def _execute(code: str | CompressedText | ProgramSource, io: IO) -> CompletionReport:
     """Decode Unary and run its Brainfuck program."""
-    return drive(
-        _Machine(compressed_text_source(code), io), policy=CAPABILITIES.completion
-    )
+    return _drive(compressed_text_source(code), io)
 
 
 def run(code: str | CompressedText | ProgramSource, io: IO) -> None:

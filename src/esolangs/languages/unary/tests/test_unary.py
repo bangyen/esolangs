@@ -19,6 +19,20 @@ def test_wiki_echo_and_command_order() -> None:
     assert run_program(run, "0" * 92) == "ÿ"
 
 
+def test_prepared_compressed_source_is_decoded_once(monkeypatch) -> None:
+    from esolangs.compressed import CompressedText
+    from esolangs.languages.unary import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Unary",
+        CompressedText.from_chunks(("0" * 108,)),
+        interpreter,
+        "decode",
+        monkeypatch,
+    )
+
+
 @pytest.mark.parametrize("code", ["", "0", " \n\t"])
 def test_empty_decoded_program(code: str) -> None:
     assert run_program(run, code) == ""
