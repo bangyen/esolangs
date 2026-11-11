@@ -102,7 +102,7 @@ from esolangs.languages.algebraic_programming_language.interpreter._workspace im
 from esolangs.languages.algebraic_programming_language.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -195,9 +195,9 @@ class _Machine:
     #: so a long program of short lines is not cut off.
     _WORK_LIMIT = 1 << 20
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | tuple[str, ...], io: IO) -> None:
         self.io = io
-        self.lines = tuple(_blocks(code))
+        self.lines = tuple(_blocks(code)) if isinstance(code, str) else code
         self.state = _State(MappingProxyType({}), MappingProxyType({}), (), 0)
         # Identity -> (serial, object): holding the object keeps its id
         # from being reused, so a serial names one object for the run.
@@ -745,10 +745,8 @@ def _raw_arith(op: str, left: _Number, right: _Number) -> _Number:
     return left**right
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain logical lines and parse statements against each run's definitions."""
     if not isinstance(source, str):
         raise TypeError("Algebraic Programming Language machines require text source")
     if options:
@@ -756,13 +754,11 @@ def prepare_machine(
             "Algebraic Programming Language machines accept no runtime options"
         )
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    lines = tuple(_blocks(source))
+    return RuntimePlan(lambda io: _Machine(lines, io), lambda io: _execute(lines, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[str, ...], io: IO) -> CompletionReport:
     """Run an APL program, printing the result of every executed line."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)
