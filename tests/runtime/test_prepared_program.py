@@ -1,5 +1,6 @@
 """Reusable preparation must isolate source acquisition, state and randomness."""
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from io import BytesIO
 from types import ModuleType
@@ -32,9 +33,10 @@ def _check_preparation_consumes_source_once_and_keeps_fresh_invocations():
     assert bounded.steps == 3
     assert prepared.run(stdin="A").output == "B"
 
-    generated = esolangs.Language(REFERENCE).prepare(
-        esolangs.generate(REFERENCE, "0110")
-    )
+    language = esolangs.Language(REFERENCE)
+    with pytest.raises(esolangs.ProgramError, match="program or template artifact"):
+        language.evaluate(",.", [0])
+    generated = language.prepare(esolangs.generate(REFERENCE, "0110"))
     with pytest.raises(esolangs.ArgumentError, match="expects 2 bits"):
         generated.evaluate([0])
     assert generated.evaluate([0, 1]).bit == "1"
@@ -215,6 +217,14 @@ def _check_uniform_outcomes_and_phase_limits():
         assert stopped.status == "limit"
         assert stopped.bound == "execution_timeout"
         assert stopped.observation.completion is None
+    with ThreadPoolExecutor(max_workers=1) as threads:
+        stopped = threads.submit(
+            prepared.execute,
+            limits=esolangs.ExecutionLimits(execution_timeout=0.01, total_timeout=3),
+        ).result(timeout=5)
+    assert stopped.status == "limit"
+    assert stopped.bound == "execution_timeout"
+    assert stopped.observation.completion is None
     stopped = prepared.execute(limits=esolangs.ExecutionLimits(total_timeout=0.02))
     assert stopped.status == "limit"
     assert stopped.bound == "total_timeout"

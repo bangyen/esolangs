@@ -8,7 +8,12 @@ from pathlib import Path
 
 import esolangs
 import esolangs.operations.source as _source_operations
-from esolangs.artifacts import Artifact, BooleanEvaluation, ProgramArtifact
+from esolangs.artifacts import (
+    Artifact,
+    BooleanEvaluation,
+    ProgramArtifact,
+    TemplateArtifact,
+)
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry import Catalog, get_catalog
@@ -153,6 +158,8 @@ class Language:
         from esolangs.exceptions import ProgramError
         from esolangs.operations.evaluation import evaluate
 
+        if not isinstance(artifact, (ProgramArtifact, TemplateArtifact)):
+            raise ProgramError("evaluation requires a program or template artifact")
         if self.catalog.resolve(artifact.language) != self.name:
             raise ProgramError(
                 f"artifact belongs to {artifact.language}, not {self.name}"
