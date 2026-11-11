@@ -16,7 +16,7 @@ from time import monotonic, sleep
 from typing import Any, TextIO, cast
 
 from esolangs import exceptions
-from esolangs.artifacts import ProgramArtifact
+from esolangs.artifacts import Artifact, ProgramArtifact
 from esolangs.compressed import CompressedText
 from esolangs.outcomes import ExecutionOutcome, _capture_outcome, _failed_outcome
 from esolangs.raster import Pixel, Raster, Rows
@@ -271,9 +271,7 @@ def _limit_memory(max_memory: int) -> None:
     resource.setrlimit(resource.RLIMIT_AS, (ceiling, hard))
 
 
-def _check_worker_runtime(
-    name: str, catalog: Catalog, *, termination: bool = False
-) -> None:
+def _check_worker_runtime(name: str, catalog: Catalog) -> None:
     """Refuse scoped declarations that the fresh worker cannot reproduce."""
     from esolangs.registry._catalog import get_catalog
 
@@ -283,7 +281,6 @@ def _check_worker_runtime(
         default is None
         or selected.id != default.id
         or selected.runtime != default.runtime
-        or (termination and selected.contract != default.contract)
     ):
         raise exceptions.ArgumentError(
             "isolated execution requires a runtime declared in the installed catalog"
@@ -584,7 +581,7 @@ def _request_wire(
 
 def termination_result_isolated(
     name: str,
-    source: Program,
+    source: Program | Artifact,
     stdin: str,
     timeout: float,
     *,
@@ -594,18 +591,22 @@ def termination_result_isolated(
     catalog: Catalog | None = None,
 ) -> TerminationResult:
     """Retain worker IO and exact proof evidence; a deadline remains undecided."""
+    from esolangs.operations.source import _check_program
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(name)
-    _check_worker_runtime(name, catalog, termination=True)
+    _check_worker_runtime(name, catalog)
     check_memory(max_memory, isolated=True)
+    retained = effective_settings(name, source, settings, catalog=catalog)
+    artifact = _check_program(name, source, stdin, catalog=catalog)
     request = worker_dumps(
         _request_wire(
             name,
-            source,
+            artifact.source,
             stdin,
-            settings=settings,
+            settings=retained,
+            scale=artifact.scale,
             max_output=max_output,
             max_memory=max_memory,
             termination=True,
@@ -853,7 +854,12 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
             catalog=catalog,
         )
         # The parent already decoded and checked runnable source.
-        program = ProgramArtifact(program, request["language"], settings)
+        program = ProgramArtifact(
+            program,
+            request["language"],
+            settings,
+            request["scale"] if request["termination"] else None,
+        )
         if request["termination"]:
             from esolangs.runtime._termination import _termination_result
 

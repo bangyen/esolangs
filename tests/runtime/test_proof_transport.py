@@ -137,14 +137,18 @@ def test_actual_termination_workers_retain_every_halt_and_cycle():
 
     def check_worker(case):
         name, source, stdin, native = case
-        worker = termination_result_isolated(
-            name, source.source, stdin, 5, settings=source.settings
-        )
+        worker = termination_result_isolated(name, source, stdin, 5)
         assert worker == native, (name, source, stdin)
         return worker
 
     with guarded_worker(expected=len(cases)), ThreadPoolExecutor(max_workers=4) as pool:
         assert len(list(pool.map(check_worker, cases))) == len(cases)
+
+    template = esolangs.TemplateArtifact(
+        "$", REFERENCE, esolangs.TemplateBindings(setters=((">", "<"),))
+    )
+    with pytest.raises(esolangs.TemplateError, match="fill the template"):
+        termination_result_isolated(REFERENCE, template, "", 5)
 
 
 @pytest.mark.medium

@@ -89,6 +89,34 @@ def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
     assert run("Piet", image).output == "2"
     assert run("Piet", image, scale=1).output == "8"
     assert run("Piet", image, scale=2, isolated=True).output == "2"
+    _check_worker_proof_scale(image)
+
+
+def _check_worker_proof_scale(image: Raster) -> None:
+    from esolangs.debugger import make_debugger
+    from esolangs.runtime._isolated import termination_result_isolated
+    from esolangs.runtime._termination import _termination_result
+    from esolangs.vm import _capture_observation
+    from tests.support.certification_barrier import guarded_worker
+    from tests.support.reference import REFERENCE
+
+    explicit = esolangs.ProgramArtifact(image, "Piet", scale=1)
+    default = _termination_result("Piet", image, "", 5)
+    scaled = _termination_result("Piet", explicit, "", 5)
+    assert (default.observation.output, scaled.observation.output) == ("2", "8")
+    with guarded_worker(expected=2):
+        assert termination_result_isolated("Piet", image, "", 5) == default
+        assert termination_result_isolated("Piet", explicit, "", 5) == scaled
+    debugger = make_debugger("Piet", explicit)
+    assert scaled.decision.commands is not None
+    for _ in range(scaled.decision.commands):
+        assert not debugger.halted
+        debugger.step()
+    assert debugger.halted
+    assert debugger.result.steps == scaled.decision.commands
+    assert _capture_observation(debugger.vm) == scaled.observation
+    with pytest.raises(esolangs.ProgramError, match="generated for Piet"):
+        termination_result_isolated(REFERENCE, explicit, "", 5)
 
 
 def test_empty_piet_operation_path_halts() -> None:

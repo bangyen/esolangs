@@ -182,6 +182,13 @@ for steps in (None, 20):
     limits = esolangs.ExecutionLimits(max_steps=steps)
     assert scoped.execute('$io', isolated=True, limits=limits).unwrap().output == '1\n'
 
+contract = replace(LANGUAGE.contract, note='local')
+record = replace(LANGUAGE, backend=None, contract=contract)
+catalog = esolangs.Catalog([record])
+assert _termination_result(record.name, '$io', '', 5, catalog=catalog) == (
+    termination_result_isolated(record.name, '$io', '', 5, catalog=catalog)
+)
+
 piet = esolangs.Language('Piet')
 loop = Raster((((255, 192, 192), (255, 0, 0)),))
 black = Raster((((0, 0, 0), (255, 0, 0)),))
