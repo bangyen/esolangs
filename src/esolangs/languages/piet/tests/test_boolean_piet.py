@@ -3,6 +3,7 @@
 import random
 from dataclasses import replace
 from itertools import pairwise, product
+from unittest.mock import patch
 
 import pytest
 
@@ -15,6 +16,7 @@ from esolangs.languages.piet.tests.test_boolean_piet_raster_balance import TABLE
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import constant_runs
@@ -375,10 +377,27 @@ def _check_constants() -> None:
 
 def _check_triples() -> None:
     """Exercise the command-admitted strip, polarity and ignored-input layouts."""
+    from esolangs.languages.piet import generator as boolean
     from esolangs.languages.piet.generator import _INITIAL, _chunks, _next_colour, strip
     from esolangs.languages.piet.interpreter import _Machine
     from esolangs.languages.piet.tests.formulas import _projected_steps
     from scripts.docs.resource_evidence import resource_bounds
+
+    language = esolangs.Language("Piet")
+    for witness in construction_boundaries("Piet")[
+        "triple_strip_essential_arity_cutoff"
+    ]:
+        n, table = witness.arity, witness.table()
+        boolean._default.cache_clear()
+        with patch.object(boolean, "_chunks", wraps=boolean._chunks) as chunks:
+            artifact = language.generate(table)
+        assert chunks.call_count == (2 if n == 4 else 0)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row, expected in enumerate(table):
+            result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
+            assert result.bit == expected
+            assert result.observation.input_reads == n
 
     bounds = resource_bounds("Piet")
     bound_area = bounds["scaling"].formula

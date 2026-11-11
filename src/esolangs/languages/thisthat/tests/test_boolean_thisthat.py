@@ -2,6 +2,7 @@
 
 import random
 from itertools import pairwise
+from unittest.mock import patch
 
 import pytest
 
@@ -11,6 +12,7 @@ from esolangs.languages.thisthat.generator import _Builder, _tree, thisthat
 from esolangs.languages.thisthat.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
@@ -263,6 +265,24 @@ def test_larger_narrow_layout_retains_linear_area_construction(n: int) -> None:
 
 
 def test_narrow_strip_counts_kept_inputs() -> None:
+    from esolangs.languages.thisthat import generator as boolean
+
+    language = esolangs.Language("thisthat")
+    witnesses = construction_boundaries(language.name)[
+        "narrow_strip_essential_arity_cutoff"
+    ]
+    for witness in witnesses:
+        n, table = witness.arity, witness.table()
+        with patch.object(boolean, "_strip_tree", wraps=boolean._strip_tree) as strip:
+            artifact = language.generate(table, width=1)
+        assert strip.call_count == int(n == 3)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row, expected in enumerate(table):
+            result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
+            assert result.bit == expected
+            assert result.observation.input_reads == n
+
     table = "01101001" * 2  # four inputs, the first ignored
     source = esolangs.generate("thisthat", table, width=1).source
     assert max(map(len, source.splitlines())) <= 9

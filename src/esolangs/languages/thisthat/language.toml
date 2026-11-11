@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+narrow_strip_essential_arity_cutoff = { tables = [{ arity = 3, rule = "dense" }, { arity = 4, rule = "dense" }], benchmark = false, test = "test_boolean_thisthat.py::test_narrow_strip_counts_kept_inputs" }
+
 [curation]
 backlinks = 6
 admitted = 2026-09-27T20:34:26-04:00

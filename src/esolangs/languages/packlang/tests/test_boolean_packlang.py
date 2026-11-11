@@ -1,6 +1,7 @@
 """packlang generator tests."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -15,6 +16,7 @@ from esolangs.languages.packlang.interpreter import _Machine
 from esolangs.languages.packlang.interpreter import run as packlang_run
 from esolangs.languages.packlang.wrapping import _packlang
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import three_input_corpus_size
@@ -164,6 +166,22 @@ def test_binary_digits_small_tables_run(table) -> None:
 
 def test_binary_digits_block_bounds_cost_their_binary_digits() -> None:
     """Four blocks of 16 rows declare their counters as ``Integer(0,11,...)``."""
+    language = esolangs.Language("PackLang")
+    witnesses = construction_boundaries(language.name)[
+        "aligned_block_scan_past_four_inputs"
+    ]
+    for witness in witnesses:
+        n, table = witness.arity, witness.table()
+        with patch.object(boolean, "subtree_ids", wraps=boolean.subtree_ids) as blocks:
+            artifact = language.generate(table)
+        assert blocks.call_count == int(n == 5)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row, expected in enumerate(table):
+            result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
+            assert result.bit == expected
+            assert result.observation.input_reads == n
+
     table = _bits("655d655d0791655d", 6)
     assert len(boolean.packlang(table, literal_policy="binary_digits")) == 817
 
