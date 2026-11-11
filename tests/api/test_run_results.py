@@ -213,6 +213,7 @@ def test_public_record_is_immutable_and_the_old_import_is_retired():
     for retired in (
         "esolangs.runtime._result",
         "esolangs.compat",
+        "esolangs.languages.between.definition",
         "esolangs.tagged",
         "esolangs.generation.raster_lookup",
     ):

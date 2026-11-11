@@ -201,18 +201,17 @@ class _Kont(_ValueBase):
 
     __hash__ = _ValueBase.__hash__
 
-    def __getstate__(self) -> tuple[None, dict[str, object]]:
-        """Preserve the old native slots while omitting the derived hash."""
-        return None, {"depth": self.depth, "frame": self.frame, "rest": self.rest}
+    def __getstate__(self) -> tuple[_Frame, _Kont | None]:
+        """Omit the derived depth and process-specific hash."""
+        return self.frame, self.rest
 
-    def __setstate__(self, state: tuple[None, dict[str, Any]]) -> None:
-        """Restore the legacy continuation state; hashing rebuilds its cache."""
-        dictionary, values = state
-        if dictionary is not None or values.keys() != {"depth", "frame", "rest"}:
-            raise TypeError("invalid continuation pickle state")
-        self.depth = values["depth"]
-        self.frame = values["frame"]
-        self.rest = values["rest"]
+    def __setstate__(self, state: tuple[_Frame, _Kont | None]) -> None:
+        """Restore a continuation without retaining a cached hash."""
+        frame, rest = state
+        if rest is not None and not isinstance(rest, _Kont):
+            raise TypeError("invalid continuation state")
+        self.frame, self.rest = frame, rest
+        self.depth = 1 + (rest.depth if rest is not None else 0)
         if hasattr(self, "_hash"):
             object.__delattr__(self, "_hash")
 

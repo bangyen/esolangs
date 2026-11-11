@@ -309,9 +309,7 @@ def test_deep_snapshots_preserve_identity_execution_and_cycle_boundaries() -> No
     assert isinstance(captured[0].a, _Cont)
     assert captured[0].a.kont is captured[1]
     assert isinstance(captured[1], native._Kont)
-    dictionary, slots = captured[1].__getstate__()
-    assert dictionary is None
-    assert slots.keys() == {"depth", "frame", "rest"}
+    assert captured[1].__getstate__() == (captured[1].frame, captured[1].rest)
     for restored in (loads(dumps(captured, protocol=5)), deepcopy(captured)):
         assert isinstance(restored, tuple)
         assert isinstance(restored[0], native._Apply)
@@ -320,6 +318,8 @@ def test_deep_snapshots_preserve_identity_execution_and_cycle_boundaries() -> No
         assert restored == captured
         assert hash(restored) == hash(captured)
         assert restored[0].a.kont is restored[1]
+    with pytest.raises(TypeError, match="invalid continuation state"):
+        captured[1].__setstate__((None, {"depth": 1, "frame": None, "rest": None}))
     reused = native._Kont(_Arg(_Cmd("v")), None)
     assert reused != captured[1]
     reused.__setstate__(captured[1].__getstate__())

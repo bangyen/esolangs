@@ -37,6 +37,10 @@ def test_default_settings_distinction(choices) -> None:
     restored = esolangs.load_program(REFERENCE, document)
     assert restored == empty
     assert esolangs.run(REFERENCE, restored).output == ""
+    missing_limits = json.loads(document)
+    del missing_limits["limits"]
+    with pytest.raises(esolangs.ProgramError, match="missing fields"):
+        esolangs.load_program(REFERENCE, json.dumps(missing_limits))
     damaged = json.loads(document)
     damaged["source"] = ""
     with pytest.raises(esolangs.ProgramError, match="no gzip member"):
@@ -96,6 +100,6 @@ def test_document_argument_and_invalid_settings() -> None:
 
 def test_template_kind_requires_parameterized_language() -> None:
     document = json.loads(esolangs.dump_program("Brainfuck", "+."))
-    document.update(kind="template", char="$", setters=[])
+    document.update(kind="template", char="$", setters=[], spans=[])
     with pytest.raises(esolangs.ProgramError, match="template char does not match"):
         esolangs.load_program("Brainfuck", json.dumps(document))

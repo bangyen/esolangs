@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import esolangs
+from esolangs._bindings import runs
 from esolangs.artifacts import Artifact
 from esolangs.generation.helpers import grid_area
 from esolangs.raster import Raster
@@ -266,7 +267,12 @@ def _baseline(
         check=True,
         timeout=_remaining(deadline),
     )
-    return esolangs.load_program(language, generated.stdout)
+    document = json.loads(generated.stdout)
+    if document["kind"] == "template":
+        document["spans"] = runs(
+            document["source"], document["char"], document["setters"]
+        )
+    return esolangs.load_program(language, json.dumps(document))
 
 
 def _source_size(artifact: Artifact, unit: str) -> int:

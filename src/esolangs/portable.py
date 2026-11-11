@@ -264,7 +264,7 @@ def _load_gzip(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    limits = value.get("limits")
+    limits = value["limits"]
     if limits is not None:
         if not isinstance(limits, dict) or set(limits) != {
             "plain_chars",
@@ -317,17 +317,15 @@ def _load_template(
         for pair in pairs
     ):
         raise ValueError("setters must be pairs of strings")
-    spans = None
-    if "spans" in value:
-        raw = value["spans"]
-        if not isinstance(raw, list) or any(
-            not isinstance(span, list)
-            or len(span) != 2
-            or any(type(offset) is not int for offset in span)
-            for span in raw
-        ):
-            raise ValueError("template spans must be pairs of offsets")
-        spans = tuple((start, end) for start, end in raw)
+    raw = value["spans"]
+    if not isinstance(raw, list) or any(
+        not isinstance(span, list)
+        or len(span) != 2
+        or any(type(offset) is not int for offset in span)
+        for span in raw
+    ):
+        raise ValueError("template spans must be pairs of offsets")
+    spans = tuple((start, end) for start, end in raw)
     return TemplateArtifact(
         value["source"],
         name,
@@ -383,12 +381,10 @@ def load_program(
             raise ValueError("document must be an object")
         fields = {"format", "version", "language", "settings", "kind", "source"}
         kind = value.get("kind")
-        if kind == "gzip" and "limits" in value:
+        if kind == "gzip":
             fields.add("limits")
         if kind == "template":
-            fields |= {"char", "setters"}
-            if "spans" in value:
-                fields.add("spans")
+            fields |= {"char", "setters", "spans"}
         elif "input_arity" in value:
             fields.add("input_arity")
         if set(value) != fields:

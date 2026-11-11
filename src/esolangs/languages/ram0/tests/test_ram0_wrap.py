@@ -40,7 +40,8 @@ def test_saved_templates_preserve_exact_provenance(
     assert balanced.spans is not None
     legacy = json.loads(document)
     del legacy["spans"]
-    assert esolangs.load_program("RAM0", json.dumps(legacy)) == template
+    with pytest.raises(esolangs.ProgramError, match="missing fields"):
+        esolangs.load_program("RAM0", json.dumps(legacy))
     damaged = json.loads(document)
     damaged["spans"][0][0] += 1
     with pytest.raises(esolangs.ProgramError, match="invalid template span"):

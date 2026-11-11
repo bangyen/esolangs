@@ -10,6 +10,8 @@ Releases before 0.10.0 are described on the
 - **Breaking:** `generate`, `instantiate` and `load_program` return explicit
   program/template artifacts. Use `.source` for native code; retain the artifact
   when binding inputs or executing to preserve provenance and dialect settings.
+- **Breaking:** Portable template records require `spans`; gzip records require
+  `limits` (which may be null).
 - **Breaking:** `run` returns `ExecutionResult`; use `.output` for printed text.
 - **Breaking:** Unfilled templates require explicit bindings and cannot execute.
   Tagged-string wrappers, inferred bindings and temporary compatibility aliases
@@ -39,7 +41,8 @@ Releases before 0.10.0 are described on the
 - Declare interpreter lifecycle, source-loading, dialect and accounting
   capabilities independently of generator implementations.
 - Tighten worker, snapshot and persistence validation. Supported version-1
-  JSON/PNG formats and ordinary native source files remain readable.
+  JSON/PNG formats with these required fields and ordinary native source files
+  remain readable.
 - Correct missing native completion-phase accounting in affected languages.
 - Complete bounded lifecycle and workspace-accounting acceptance for all 117
   languages on Python 3.12–3.15.
