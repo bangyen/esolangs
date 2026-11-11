@@ -49,43 +49,48 @@ class PreparedProgram:
     artifact: ProgramArtifact[Program]
     catalog: Catalog = field(repr=False)
     _module: ModuleType = field(repr=False, compare=False)
+    _code: Program | tuple[str, ...] = field(init=False, repr=False, compare=False)
+    _source_options: tuple[tuple[str, Any], ...] = field(
+        init=False, repr=False, compare=False
+    )
     _plan: RuntimePlan | RandomRuntimePlan | None = field(
         default=None, init=False, repr=False, compare=False
     )
+
+    def __post_init__(self) -> None:
+        """Retain validated dialect options and immutable shaped source."""
+        code, options = prepare_call(
+            self.language,
+            self.artifact.source,
+            ExecutionContext(
+                scale=self.artifact.scale, settings=self.artifact.settings
+            ),
+            catalog=self.catalog,
+        )
+        object.__setattr__(
+            self, "_code", tuple(code) if isinstance(code, list) else code
+        )
+        object.__setattr__(self, "_source_options", tuple(options.items()))
 
     @property
     def language(self) -> str:
         """The canonical language owning this program."""
         return self.artifact.language
 
-    def _context(
-        self, *, seed: int | None = None, reproducible: bool = False
-    ) -> ExecutionContext:
-        return ExecutionContext(
-            scale=self.artifact.scale,
-            settings=self.artifact.settings,
-            seed=seed,
-            reproducible=reproducible,
-        )
-
     def _options(
         self, *, seed: int | None = None, reproducible: bool = False
     ) -> dict[str, Any]:
-        return execution_options(
+        return dict(self._source_options) | execution_options(
             self.language,
-            self._context(seed=seed, reproducible=reproducible),
+            ExecutionContext(seed=seed, reproducible=reproducible),
             catalog=self.catalog,
         )
 
     def _call(
         self, *, seed: int | None = None, reproducible: bool = False
     ) -> tuple[RunnerProgram, dict[str, Any]]:
-        return prepare_call(
-            self.language,
-            self.artifact.source,
-            self._context(seed=seed, reproducible=reproducible),
-            catalog=self.catalog,
-        )
+        code = list(self._code) if isinstance(self._code, tuple) else self._code
+        return code, self._options(seed=seed, reproducible=reproducible)
 
     def _factory(self, *, seed: int | None = None) -> MachineFactory:
         runtime = self.catalog.languages[self.language].runtime

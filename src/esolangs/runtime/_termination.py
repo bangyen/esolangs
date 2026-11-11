@@ -72,7 +72,8 @@ def _termination_result(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    dialect_options(name, settings, catalog=catalog)
+    if prepared is None:
+        dialect_options(name, settings, catalog=catalog)
 
     def _drive(*_args: object) -> TerminationResult:
         factory = partial(

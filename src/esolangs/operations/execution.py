@@ -177,10 +177,11 @@ def _execute_invocation(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    settings = effective_settings(language, program, settings, catalog=catalog)
-    scale = effective_scale(language, program, scale, catalog=catalog)
-    dialect_options(language, settings, catalog=catalog)  # validate before any route
-    check_scale_for(language, scale, catalog=catalog)
+    if prepared is None or isolated:
+        settings = effective_settings(language, program, settings, catalog=catalog)
+        scale = effective_scale(language, program, scale, catalog=catalog)
+        dialect_options(language, settings, catalog=catalog)
+        check_scale_for(language, scale, catalog=catalog)
     check_seed(seed)
     check_seed_for(catalog.resolve(language), seed, catalog=catalog)
     check_timeout(timeout)

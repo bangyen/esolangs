@@ -105,6 +105,47 @@ def _check_prepared_factory_owns_state_and_input():
     assert second_io.getvalue() == "["
 
 
+def _check_prepared_source_options_and_lines_are_reused():
+    from esolangs._dialect import DialectSchema
+    from esolangs.runtime._definition import LineSourcePolicy
+
+    declaration = LANGUAGES[REFERENCE]
+    schema = DialectSchema(declaration.name, {"increment": (1, 2)}, {"increment": 1})
+    validated = []
+
+    def validate(increment=1):
+        validated.append(increment)
+
+    runtime = replace(
+        declaration.runtime,
+        source_policy=LineSourcePolicy(),
+        dialect=validate,
+        dialect_schema=schema,
+    )
+    catalog = esolangs.Catalog([replace(declaration, runtime=runtime)])
+    module = ModuleType("prepared_source_control")
+
+    def execute(lines, io, increment):
+        assert lines.pop() == "last"
+        io.print_str(lines.pop() * increment)
+        return HALTED_REPORT
+
+    setattr(module, runtime.completion_entrypoint, execute)
+    api = esolangs.Language(REFERENCE, catalog=catalog)
+    prepared = prepare_program(
+        REFERENCE,
+        "first\r\nlast\r\n",
+        settings=api.settings(increment=2),
+        catalog=catalog,
+        module_loader=lambda *_args, **_kwargs: module,
+    )
+    assert validated
+    validated.clear()
+    assert prepared.run().output == "firstfirst"
+    assert prepared.run().output == "firstfirst"
+    assert validated == []
+
+
 @pytest.mark.medium
 def test_prepared_invocations_own_source_state_and_randomness(monkeypatch):
     _check_uniform_outcomes_and_phase_limits()
@@ -112,6 +153,7 @@ def test_prepared_invocations_own_source_state_and_randomness(monkeypatch):
         _check_preparation_timeout(patch)
     _check_outcomes_are_the_internal_boundary(monkeypatch)
     _check_prepared_factory_owns_state_and_input()
+    _check_prepared_source_options_and_lines_are_reused()
     _check_preparation_consumes_source_once_and_keeps_fresh_invocations()
     _check_prepared_isolation_preserves_the_same_observation()
     _check_prepared_failures_retain_partial_observations()
