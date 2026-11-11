@@ -31,6 +31,7 @@ class _WitnessRun:
         }
         self._retained: dict[int, _WitnessKey] = {}
         self._active = ""
+        self._observed: set[_WitnessKey] = set()
         self.seen: set[_WitnessKey] = set()
         self._read = evidence.construction_boundaries
 
@@ -48,15 +49,20 @@ class _WitnessRun:
         if key is not None and key in self.declared:
             node = self.declared[key]
             if self._active == node or self._active.startswith(node + "["):
-                self.seen.add(key)
+                self._observed.add(key)
 
     @pytest.hookimpl(wrapper=True)
     def pytest_runtest_call(self, item: pytest.Item) -> Generator[None, object, object]:
+        self._observed.clear()
         self._active = item.nodeid
         try:
             return (yield)
         finally:
             self._active = ""
+
+    def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
+        if report.when == "call" and report.passed and not hasattr(report, "wasxfail"):
+            self.seen.update(self._observed)
 
 
 def main() -> int:

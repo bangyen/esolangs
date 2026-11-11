@@ -2,6 +2,7 @@
 
 import itertools
 import random
+from dataclasses import replace
 from math import isqrt
 from unittest.mock import patch
 
@@ -342,6 +343,8 @@ def test_width_requests_keep_their_exact_size(
 @pytest.mark.medium
 def test_an_exactly_repeated_block_builds_below_the_block_alone() -> None:
     """Four copies of a 2^10-row block at n=12 build near the block's own lookup."""
+    _check_shared_lookup_execution_budget()
+
     rng = random.Random(7)
     block = "".join(rng.choice("01") for _ in range(1 << 10))
     table = block * 4
@@ -351,6 +354,24 @@ def test_an_exactly_repeated_block_builds_below_the_block_alone() -> None:
         io = ScriptedIO("".join(f"{bit}\n" for bit in _bits(row, 12)))
         run_thue(program, io, Seeded(0))
         assert io.getvalue() == table[row], row
+
+
+def _check_shared_lookup_execution_budget() -> None:
+    language = esolangs.Language("Thue")
+    records = construction_boundaries(language.name)
+    for witness in records["shared_lookup_execution_budget"]:
+        parity = witness.table()
+        assert boolean._shared_layout(parity, None, (), witness.arity) is None
+        table = parity * 2  # One ignored leading input funds the expansion sweep.
+        rounds = "K" * witness.arity + "S"
+        shared = boolean._shared_layout(parity, rounds, (), witness.arity + 1)
+        assert shared is not None
+        rejected = language.generate(parity)
+        assert_saved_rows(language, rejected, parity, (0, 1, len(parity) - 1))
+        admitted = language.generate(table)
+        rows = (0, 1, len(parity), len(table) - 1)
+        assert_saved_rows(language, admitted, table, rows)
+        assert_saved_rows(language, replace(admitted, source=shared), table, rows)
 
 
 @pytest.mark.medium

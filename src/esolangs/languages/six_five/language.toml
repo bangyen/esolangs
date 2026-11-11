@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+walk_to_guarded_at_scaled_label_cap = { tables = [{ arity = 4, rule = "dense" }, { arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_six_five.py::test_internal_route_budget_is_not_a_generator_restriction" }
+
 [curation]
 backlinks = 2
 admitted = 2026-08-14T00:27:50-04:00

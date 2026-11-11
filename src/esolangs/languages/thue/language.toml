@@ -3,6 +3,7 @@
 
 [construction_boundaries]
 narrow_constant_chunk_cutoff = { tables = [{ arity = 6, rule = "zero" }, { arity = 7, rule = "zero" }], benchmark = false, test = "test_boolean_thue.py::test_narrow_sources_execute_every_three_input_table[1]" }
+shared_lookup_execution_budget = { tables = [{ arity = 8, rule = "parity" }], benchmark = false, test = "test_boolean_thue.py::test_an_exactly_repeated_block_builds_below_the_block_alone" }
 narrow_constant_layout_arity_cutoff = { tables = [{ arity = 3, rule = "zero" }, { arity = 4, rule = "zero" }], benchmark = false, test = "test_boolean_thue.py::test_narrow_sources_execute_every_three_input_table[1]" }
 
 [curation]

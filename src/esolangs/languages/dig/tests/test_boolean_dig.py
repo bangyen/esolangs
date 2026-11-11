@@ -3,6 +3,7 @@
 import importlib
 import random
 from collections.abc import Iterable
+from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
@@ -648,9 +649,8 @@ def test_indexed_sharing_admits_full_input_controls(
 
 def test_indexed_sharing_builds_four_classes_at_nine_inputs() -> None:
     language = esolangs.Language("Dig")
-    for witness in construction_boundaries(language.name)[
-        "indexed_decoder_leaf_arity_cutoff"
-    ]:
+    records = construction_boundaries(language.name)
+    for witness in records["indexed_decoder_leaf_arity_cutoff"]:
         table = witness.table()
         with patch.object(
             indexed, "_indexed_build", wraps=indexed._indexed_build
@@ -660,6 +660,20 @@ def test_indexed_sharing_builds_four_classes_at_nine_inputs() -> None:
         assert_saved_rows(
             language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
         )
+
+    for witness in records["indexed_decoder_class_label_cap"]:
+        dense = witness.table()
+        for classes in (10, 11):
+            blocks = [dense[i : i + 64] for i in range(0, 64 * classes, 64)]
+            assert len(set(blocks)) == classes
+            table = "".join(blocks[i % classes] for i in range(len(dense) // 64))
+            artifact = language.generate(table)
+            indexed_source = indexed._dig_indexed_shared(table, witness.arity)
+            assert (indexed_source is not None) == (classes == 10)
+            rows = (i + offset for i in range(0, len(table), 64) for offset in (0, 63))
+            if indexed_source is not None:
+                artifact = replace(artifact, source=indexed_source)
+            assert_saved_rows(language, artifact, table, rows)
 
     blocks = ("01" * 32, "0011" * 16, "00001111" * 8, "0" * 64)
     table = "".join(blocks[int(c)] for c in "01230123")

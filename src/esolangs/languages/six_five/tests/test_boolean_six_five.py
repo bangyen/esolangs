@@ -2,7 +2,9 @@
 
 import importlib
 from collections.abc import Iterator
+from dataclasses import replace
 from itertools import permutations
+from unittest.mock import patch
 
 import pytest
 
@@ -24,10 +26,15 @@ from esolangs.languages.six_five.generator import (
     _six_five_walk,
 )
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _run_from, _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_constant_output, constant_programs
+from tests.support.generator_support import (
+    assert_constant_output,
+    assert_saved_rows,
+    constant_programs,
+)
 from tests.support.witness_tables import dense as _dense
 from tests.support.witness_tables import row_bits, witnesses
 
@@ -494,6 +501,24 @@ def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
 def test_internal_route_budget_is_not_a_generator_restriction() -> None:
     assert esolangs.describe("6-5")["generator_restrictions"] is None
     assert esolangs.describe("6-5")["generator_max_inputs"] is None
+
+    language = esolangs.Language("6-5")
+    records = construction_boundaries(language.name)
+    for witness in records["walk_to_guarded_at_scaled_label_cap"]:
+        table = witness.table()
+        artifact = language.generate(table)
+        # Scale the 35-label guard down so both branches have executable tables.
+        with (
+            patch.object(boolean, "_SIX_FIVE_MAX_LABEL", 4),
+            patch.object(
+                boolean, "_six_five_guarded", wraps=_six_five_guarded
+            ) as guarded,
+        ):
+            program = _six_five_walk(table)
+        assert guarded.called == (witness.arity == 5)
+        assert_saved_rows(
+            language, replace(artifact, source=program), table, range(len(table))
+        )
 
 
 def _check_constants() -> None:
