@@ -1,6 +1,6 @@
 """Lay out literal source tokens and ordered Boolean input slots."""
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 
 from esolangs._bindings import TEMPLATE_CHAR
@@ -36,6 +36,24 @@ class TemplateLayout:
             yield InputSlot(end - start)
             position = end
         yield from self.source[position:].split()
+
+
+def layout_fragments(
+    parts: Iterable[TemplateToken], *, char: str = TEMPLATE_CHAR
+) -> TemplateLayout:
+    """Render literal fragments and record the positions of their input slots."""
+    fragments: list[str] = []
+    spans: list[tuple[int, int]] = []
+    offset = 0
+    for part in parts:
+        end = offset + len(part)
+        if isinstance(part, InputSlot):
+            spans.append((offset, end))
+            fragments.append(char * len(part))
+        else:
+            fragments.append(part)
+        offset = end
+    return TemplateLayout("".join(fragments), tuple(spans))
 
 
 def layout_tokens(

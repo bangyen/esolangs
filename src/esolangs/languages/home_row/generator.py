@@ -24,15 +24,21 @@ Decisions:
 from itertools import groupby
 
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
 from esolangs.generation.requests import GenerationRequest
-from esolangs.runtime._program import Program
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_fragments,
+)
 
 __all__ = ["home_row"]
+
+_INPUT = InputSlot(1)
 
 
 _CONSTANT_SETUP = "aaaaaalsfaaaaaaaaffffl"
@@ -55,24 +61,29 @@ _FLAGS = {
 
 def home_row(truth_table: str) -> str:
     """Return the shorter template: the table, or its reverse negated."""
-    return min(
-        _program(truth_table), _program(truth_table[::-1], negated=True), key=len
+    return _layout(truth_table).source
+
+
+def _layout(truth_table: str) -> TemplateLayout:
+    parts = min(
+        _program(truth_table),
+        _program(truth_table[::-1], negated=True),
+        key=lambda candidate: sum(map(len, candidate)),
     )
+    return layout_fragments(parts)
 
 
-def _program(truth_table: str, *, negated: bool = False) -> str:
+def _program(truth_table: str, *, negated: bool = False) -> list[TemplateToken]:
     """Build a lookup (``negated``: weights on ``s``, cell -1) or a literal."""
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         # On zero, s/a decrements then restores; j/a skips the increment.
         # Every setter thus leaves the scratch cell zero, without an index gate.
-        return (
-            _CONSTANT_SETUP
-            + (TEMPLATE_CHAR + "a") * n
-            + "f"
-            + "a" * int(truth_table[0])
-            + "k"
-        )
+        return [
+            _CONSTANT_SETUP,
+            *(_INPUT, "a") * n,
+            "f" + "a" * int(truth_table[0]) + "k",
+        ]
     # The leaf chain is up to 2**(n-1) leaves, so dropping an ignored input
     # halves the program; its gate stays with weight zero, so nothing moves
     # and no setter changes width.
@@ -84,13 +95,11 @@ def _program(truth_table: str, *, negated: bool = False) -> str:
     last = used[-1]
     weights = {i: 2 ** (len(used) - 2 - slot) for slot, i in enumerate(used[:-1])}
 
-    lead = "a" + TEMPLATE_CHAR + ("sla" if negated else "ls")
-    gates = "".join(
-        lead
-        + ("fafffsf" if i == last else "fff" + "a" * weights.get(i, 0) + "ff")
-        + "l"
-        for i in range(n)
-    )
+    gate = "sla" if negated else "ls"
+    parts: list[TemplateToken] = [_SETUP]
+    for i in range(n):
+        body = "fafffsf" if i == last else "fff" + "a" * weights.get(i, 0) + "ff"
+        parts.extend(("a", _INPUT, gate + body + "l"))
     pairs = [table[i : i + 2] for i in range(0, len(table), 2)]
     runs = [(pair, len(list(group))) for pair, group in groupby(pairs)]
     # A run of equal pairs is one leaf behind ``js`` clamped decrements: ``j``
@@ -106,9 +115,10 @@ def _program(truth_table: str, *, negated: bool = False) -> str:
         + "s" * (at < len(runs) - 1)
         for at, (pair, length) in enumerate(runs[:-1], 1)
     ]
-    return _SETUP + gates + "fff" + "".join(leaves) + _FLAGS[runs[-1][0]][2] + "k"
+    parts.extend(("fff", *leaves, _FLAGS[runs[-1][0]][2] + "k"))
+    return parts
 
 
-def home_row_request(request: GenerationRequest) -> Program:
+def home_row_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return home_row(request.table)
+    return _layout(request.table)

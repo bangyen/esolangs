@@ -20,6 +20,7 @@ from math import isqrt
 from typing import TYPE_CHECKING
 
 from esolangs.generation.helpers import MARK, MOST_INPUTS, mark
+from esolangs.generation.template import TemplateLayout
 from esolangs.generation.token_balance import (
     CELL_ASPECT,
     balanced_token_width,
@@ -145,6 +146,23 @@ def wrap_chars(program: str, width: int) -> str:
     if not _MARK_PATTERN.search(program):
         return "\n".join(program[i : i + width] for i in range(0, len(program), width))
     return _join_tokens(_tokens(program, r"[\s\S]"), width, separator="")
+
+
+def wrap_character_slots(layout: TemplateLayout, width: int) -> TemplateLayout:
+    """Fold a single line with one-character slots and translate their offsets."""
+    spans = tuple(
+        (offset, offset + 1)
+        for start, _ in layout.spans
+        for offset in (start + start // width,)
+    )
+    return TemplateLayout(wrap_chars(layout.source, width), spans)
+
+
+def balance_character_slots(layout: TemplateLayout) -> TemplateLayout:
+    """Balance one-character slots using the same whole-token fit as text."""
+    width = balanced_token_width(list(layout.source))
+    fitted = wrap_character_slots(layout, width)
+    return min(layout, fitted, key=lambda candidate: balance_score(candidate.source))
 
 
 def _join_tokens(tokens: list[str], width: int, separator: str) -> str:

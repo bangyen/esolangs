@@ -35,68 +35,78 @@ Decisions:
 from collections.abc import Sequence
 
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
 )
 from esolangs.generation.lookup import near_unanimity
 from esolangs.generation.requests import GenerationRequest
-from esolangs.runtime._program import Program
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_fragments,
+)
 
 __all__ = ["a_painter_ant"]
+
+_INPUT = InputSlot(1)
 
 
 def a_painter_ant(truth_table: str) -> str:
     """Build an A Painter Ant template: one run per input, weight in the ``E`` walk."""
-    return _program(truth_table)
+    return _program(truth_table).source
 
 
-def _program(truth_table: str) -> str:
+def _program(truth_table: str) -> TemplateLayout:
     """Build the indexed corridor or a constant origin with input resets."""
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         # n enters black north; N stays put. S returns to the white origin
         # in both cases, so the next setter sees the same two neighbours.
-        return "P" + (TEMPLATE_CHAR + "S") * n + ("p" if truth_table[0] == "0" else "")
+        end = "p" if truth_table[0] == "0" else ""
+        return layout_fragments(("P", *((_INPUT, "S") * n), end))
     # An ignored input walks no ``E``: the corridor is the essential inputs'.
     weights, table = input_weights(truth_table, n)
     mirror = _westward_flipped if near_unanimity(truth_table, n) else _flipped
-    return min(
+    parts = min(
         (
             f(table, weights, invert=inv)
             for f in (_east, mirror)
             for inv in (False, True)
         ),
-        key=len,
+        key=lambda candidate: sum(map(len, candidate)),
     )
+    return layout_fragments(parts)
 
 
-def _answers(out: list[str], bit: str, *, invert: bool) -> None:
+def _answers(out: list[TemplateToken], bit: str, *, invert: bool) -> None:
     """Paint the answer cell under the ant on pass 1; harmless later."""
     if (bit == "1") != invert:
         out.append("sPN")
 
 
-def _east(table: str, weights: Sequence[int], *, invert: bool) -> str:
+def _east(table: str, weights: Sequence[int], *, invert: bool) -> list[TemplateToken]:
     """Corridor from index 0 east to the trailing run's first answer."""
     size = len(table.rstrip(table[-1])) + 1
     # Later passes start on the answer: ``E`` runs to the east end, and the
     # build walks west back to the origin, so no return walk is needed.
     cells = table[:size][::-1]
-    out = ["SN"[not invert], "E" * (size - 1), "P"]
+    out: list[TemplateToken] = ["SN"[not invert], "E" * (size - 1), "P"]
     _answers(out, cells[0], invert=invert)
     for bit in cells[1:]:
         out.append("wPW")
         _answers(out, bit, invert=invert)
     for weight in weights:
-        out.append(TEMPLATE_CHAR)
+        out.append(_INPUT)
         out.append("E" * weight + "SN")
     # ``s`` steps onto a black answer; a white one leaves the ant on white.
     out.append("s" + "nN" * invert)
-    return "".join(out)
+    return out
 
 
-def _flipped(table: str, weights: Sequence[int], *, invert: bool) -> str:
+def _flipped(
+    table: str, weights: Sequence[int], *, invert: bool
+) -> list[TemplateToken]:
     """Corridor from the top index, a zero input walking the lane east.
 
     Complemented inputs make AND-like tables (a long leading run) as cheap as
@@ -106,7 +116,7 @@ def _flipped(table: str, weights: Sequence[int], *, invert: bool) -> str:
     """
     run = len(table) - len(table.lstrip(table[0]))
     cells = table[run - 1 :][::-1]
-    out = ["SN"[not invert], "W" * (len(cells) - 1), "P"]
+    out: list[TemplateToken] = ["SN"[not invert], "W" * (len(cells) - 1), "P"]
     _answers(out, cells[0], invert=invert)
     for bit in cells[1:]:
         out.append("ePE")
@@ -114,29 +124,31 @@ def _flipped(table: str, weights: Sequence[int], *, invert: bool) -> str:
     # Wall cell, then its lane stopper; ``S`` returns on pass 1 only.
     out.append("ePEnPS" + "W" * len(cells))
     for weight in weights:
-        out.append(TEMPLATE_CHAR)
+        out.append(_INPUT)
         out.append("e" * weight + "SN")
     out.append("s" + "nN" * invert)
-    return "".join(out)
+    return out
 
 
-def _westward_flipped(table: str, weights: Sequence[int], *, invert: bool) -> str:
+def _westward_flipped(
+    table: str, weights: Sequence[int], *, invert: bool
+) -> list[TemplateToken]:
     """Build from the wall westward, ending at the selector's origin."""
     run = len(table) - len(table.lstrip(table[0]))
     cells = table[run - 1 :]
     # Each later pass reaches the wall, then takes exactly len(cells) west
     # steps. PnPS plants the wall and lane stopper only on the first pass.
-    out = ["SN"[not invert], "E" * len(cells), "PnPS"]
+    out: list[TemplateToken] = ["SN"[not invert], "E" * len(cells), "PnPS"]
     for bit in cells:
         out.append("wPW")
         _answers(out, bit, invert=invert)
     for weight in weights:
-        out.append(TEMPLATE_CHAR)
+        out.append(_INPUT)
         out.append("e" * weight + "SN")
     out.append("s" + "nN" * invert)
-    return "".join(out)
+    return out
 
 
-def a_painter_ant_request(request: GenerationRequest) -> Program:
+def a_painter_ant_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return a_painter_ant(request.table)
+    return _program(request.table)

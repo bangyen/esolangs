@@ -10,13 +10,13 @@ PAIR = ("\\", "*")
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
+    from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import wrap_chars
     from esolangs.registry._backend import BooleanBackend, TemplateSpec
     from esolangs.registry._operations import OperationRef
-    from esolangs.runtime._program import Program
 
     return BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
+        entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.retrograde.generator", "retrograde_request"
         ),
         layout_width=False,

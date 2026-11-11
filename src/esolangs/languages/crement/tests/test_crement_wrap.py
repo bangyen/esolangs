@@ -39,11 +39,18 @@ def test_crement_width_narrows_the_widest_instruction() -> None:
     assert diverges("Crement", source, "") is (table[0] == "1")
 
 
-def test_crement_data_only_setters_survive_saved_template() -> None:
+def test_crement_data_only_setters_survive_saved_template(monkeypatch) -> None:
+    def unexpected_scan(*_args):
+        raise AssertionError("structured layout rediscovered its slots")
+
+    monkeypatch.setattr("esolangs.artifacts.runs", unexpected_scan)
     template = esolangs.generate("Crement", "0110", width=1)
     template = esolangs.load_program(
         "Crement", esolangs.dump_program("Crement", template)
     )
+    balanced = esolangs.generate("Crement", "00110110", balance=True)
+    assert balanced.spans is not None
+    assert all(end - start == 6 for start, end in balanced.spans)
     assert max(map(len, template.source.splitlines())) == 2
     for row, expected in enumerate("0110"):
         source = esolangs.instantiate(

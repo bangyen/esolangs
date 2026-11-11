@@ -20,14 +20,17 @@ Size:
 from __future__ import annotations
 
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
 )
 from esolangs.generation.requests import GenerationRequest
-from esolangs.runtime._program import Program
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    layout_fragments,
+)
 
-#: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
+_INPUT = InputSlot(1)
 
 #: The constant bit held behind the inputs, read after every walk zero.
 _SENTINEL = "1"
@@ -42,18 +45,22 @@ def _read(weight: int) -> str:
 
 def bitwise_cyclic_tag(truth_table: str) -> str:
     """Return the BCT template computing ``truth_table``."""
+    return _layout(truth_table).source
+
+
+def _layout(truth_table: str) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        return "0," + TEMPLATE_CHAR * n + truth_table[0]
+        return layout_fragments(("0,", *(_INPUT,) * n, truth_table[0]))
     # An ignored input appends nothing either way: its command is a bare ``0``.
     weights, table = input_weights(truth_table, n)
     reads = "".join(_read(weight) for weight in weights)
     rows = "".join(
         "1" + table[i] + "0" + table[i + 1] + "100" for i in range(0, len(table), 2)
     )
-    return f"{reads}1{_SENTINEL}0{rows},{TEMPLATE_CHAR * n}{_SENTINEL}"
+    return layout_fragments((f"{reads}1{_SENTINEL}0{rows},", *(_INPUT,) * n, _SENTINEL))
 
 
-def bitwise_cyclic_tag_request(request: GenerationRequest) -> Program:
+def bitwise_cyclic_tag_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return bitwise_cyclic_tag(request.table)
+    return _layout(request.table)

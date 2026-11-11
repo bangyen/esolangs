@@ -36,7 +36,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     grid_width,
-    in_input_order,
     layout_width,
     same_tokens,
     same_up_to_wrapping,
@@ -44,8 +43,14 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
-from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.runtime._program import Program
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_fragments,
+    layout_tokens,
+)
+from esolangs.generation.wrap import balance_score
 
 __all__ = ["crement"]
 
@@ -63,6 +68,12 @@ _HALT, _LOOP = 0, 1
 PAIR = ("+J 0 0", "+J 0 1")
 
 
+type _Instruction = tuple[str, str, TemplateToken]
+type _Line = _Instruction | InputSlot
+_FULL_TESTER = InputSlot(len(PAIR[0]))
+_DATA_TESTER = InputSlot(1)
+
+
 def crement_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Return data-only setters for field-wrapped testers."""
     return (("0", "1") if TEMPLATE_CHAR in template.split() else PAIR,) * n
@@ -75,35 +86,58 @@ def crement(truth_table: str, width: int | None = None) -> str:
     input order. Preset testers fill only data; below six columns, other
     templates use that field form too.
     """
+    return _layout(truth_table, width).source
+
+
+def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
+    lines: list[_Line]
     if (constant := constant_output(truth_table)) is not None:
         target = 0 if constant == "1" else n + 1
-        template = "\n".join([f"+J {target} 1", *[TEMPLATE_CHAR * len(PAIR[0])] * n])
+        lines = [("+J", str(target), "1"), *[_FULL_TESTER] * n]
+    elif _preset_family(truth_table, n):
+        lines = _preset_template(truth_table, n)
     else:
-        template = in_input_order(truth_table, _crement_shared)
-    if width is None or grid_width(template) <= width:
-        return template
-    return _narrow(template, width)
-
-
-def _narrow(template: str, width: int) -> str:
-    """Respell over-wide instructions with their shortest operands, then wrap."""
-    lines = []
-    for here, line in enumerate(template.splitlines()):
-        if line.startswith(TEMPLATE_CHAR):
-            lines.append(line)
-            continue
-        operator, address, data = line.split()
-        operand = data if data == TEMPLATE_CHAR else _short_operand(data, here)
-        lines.append(f"{operator} {_short_operand(address, here)} {operand}")
-    narrowed = "\n".join(lines)
-    if width < 6:
-        narrowed = narrowed.replace(
-            TEMPLATE_CHAR * len(PAIR[0]), f"+J 0 {TEMPLATE_CHAR}"
+        lines = _shared_template(truth_table, n)
+    layout = _render_lines(lines)
+    if width is None or grid_width(layout.source) <= width:
+        return layout
+    lines = [_short_line(line, here, width) for here, line in enumerate(lines)]
+    layout = _render_lines(lines)
+    if grid_width(layout.source) > width:
+        return layout_tokens(
+            [
+                token
+                for line in lines
+                for token in ((line,) if isinstance(line, InputSlot) else line)
+            ],
+            width,
         )
-    if grid_width(narrowed) > width:
-        return wrap_space_delimited(narrowed, width)
-    return narrowed
+    return layout
+
+
+def _render_lines(lines: list[_Line]) -> TemplateLayout:
+    def parts() -> Iterator[TemplateToken]:
+        for i, line in enumerate(lines):
+            if i:
+                yield "\n"
+            if isinstance(line, InputSlot):
+                yield line
+            else:
+                operator, address, data = line
+                yield f"{operator} {address} "
+                yield data
+
+    return layout_fragments(parts())
+
+
+def _short_line(line: _Line, here: int, width: int) -> _Line:
+    """Shorten operands and use a data-only slot when a tester cannot fit."""
+    if isinstance(line, InputSlot):
+        return ("+J", "0", _DATA_TESTER) if width < len(line) else line
+    operator, address, data = line
+    operand = _short_operand(data, here) if isinstance(data, str) else data
+    return operator, _short_operand(address, here), operand
 
 
 def _rel(offset: int) -> str:
@@ -118,13 +152,6 @@ def _short_operand(source: str, here: int) -> str:
     return min((source, str(value), _rel(offset)), key=len)
 
 
-def _crement_shared(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return one order's shared template."""
-    if _preset_family(truth_table, len(perm)):
-        return _preset_template(truth_table, perm)
-    return _shared_template(truth_table, perm)
-
-
 def _preset_family(table: str, n: int) -> bool:
     """Recognize parity and thresholds over the inputs the table retains."""
     if len(essential_inputs(table, n)) == 1:
@@ -136,9 +163,8 @@ def _preset_family(table: str, n: int) -> bool:
     return all(changes) or sum(changes) == 1
 
 
-def _preset_template(table: str, perm: tuple[int, ...]) -> str:
+def _preset_template(table: str, n: int) -> list[_Line]:
     """Initialize each level's tester to its first native branch state."""
-    n = len(perm)
     nodes, root = reduced_diagram(table, n)
     order: dict[int, None] = {}
     defaults: dict[int, tuple[int, int]] = {}
@@ -160,7 +186,7 @@ def _preset_template(table: str, perm: tuple[int, ...]) -> str:
         level, zero, one = nodes[ref]
         z0, o0 = defaults[level]
         if (zero, one) == (z0, o0):
-            position[ref] = _HEADER_LINES + 2 * perm[level]
+            position[ref] = _HEADER_LINES + 2 * level
         else:
             position[ref] = end
             end += 1 + (zero != z0) + (one != o0)
@@ -168,34 +194,37 @@ def _preset_template(table: str, perm: tuple[int, ...]) -> str:
     def address(ref: int) -> int:
         return (_LOOP + 1 if ref else _HALT + 1) if ref < 2 else position[ref]
 
-    body = []
+    body: list[_Line] = []
     for ref in order:
         level, zero, one = nodes[ref]
         z0, o0 = defaults[level]
         if (zero, one) == (z0, o0):
             continue
-        cell = _HEADER_LINES + 2 * perm[level]
+        cell = _HEADER_LINES + 2 * level
         if one != o0:
-            body.append(f"+A {cell} {address(one) - 1}")
+            body.append(("+A", str(cell), str(address(one) - 1)))
         if zero != z0:
-            body.append(f"+A {cell + 1} {address(zero) - 1}")
-        body.append(f"+J {cell} 1")
-    testers = []
+            body.append(("+A", str(cell + 1), str(address(zero) - 1)))
+        body.append(("+J", str(cell), "1"))
+    testers: list[_Line] = []
     for name in range(n):
-        state = defaults.get(perm.index(name))
+        state = defaults.get(name)
         zero, one = (address(state[0]), address(state[1])) if state else (0, 0)
-        testers.extend([f"+J {one} {TEMPLATE_CHAR}", f"+J {zero} 1"])
-    return "\n".join(
-        [f"+J {address(root)} 1", f"+J {end} 1", "+J @ 1", *testers, *body]
-    )
+        testers.extend((("+J", str(one), _DATA_TESTER), ("+J", str(zero), "1")))
+    return [
+        ("+J", str(address(root)), "1"),
+        ("+J", str(end), "1"),
+        ("+J", "@", "1"),
+        *testers,
+        *body,
+    ]
 
 
-def _shared_template(table: str, perm: tuple[int, ...]) -> str:
+def _shared_template(table: str, n: int) -> list[_Line]:
     """Emit each reduced node once, with native child patches and calls."""
-    n = len(perm)
     nodes, root = reduced_diagram(table, n)
     first = _HEADER_LINES + 2 * n
-    lines: list[str] = []
+    lines: list[_Instruction] = []
     placed: dict[int, int] = {}
 
     def emit(ref: int) -> int:
@@ -205,20 +234,25 @@ def _shared_template(table: str, perm: tuple[int, ...]) -> str:
             return placed[ref]
         level, zero, one = nodes[ref]
         at = placed[ref] = first + len(lines)
-        lines.extend([""] * _NODE_LINES)
+        lines.extend([("", "", "")] * _NODE_LINES)
         zero, one = emit(zero), emit(one)
-        cell = _HEADER_LINES + 2 * perm[level]
+        cell = _HEADER_LINES + 2 * level
         lines[at - first : at - first + 3] = [
-            f"+A {cell} {one - 1}",
-            f"+A {cell + 1} {zero - 1}",
-            f"+J {cell} 1",
+            ("+A", str(cell), str(one - 1)),
+            ("+A", str(cell + 1), str(zero - 1)),
+            ("+J", str(cell), "1"),
         ]
         return at
 
     start = emit(root)
-    header = [f"+J {start} 1", f"+J {first + len(lines)} 1", "+J @ 1"]
-    testers = [TEMPLATE_CHAR * len(PAIR[0]), "+J 0 1"] * n
-    return "\n".join(header + testers + lines)
+    testers: list[_Line] = [_FULL_TESTER, ("+J", "0", "1")]
+    return [
+        ("+J", str(start), "1"),
+        ("+J", str(first + len(lines)), "1"),
+        ("+J", "@", "1"),
+        *(testers * n),
+        *lines,
+    ]
 
 
 def _balance(_table: str, default: str) -> str:
@@ -249,13 +283,15 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
     )
 
 
-def crement_request(request: GenerationRequest) -> Program:
+def crement_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return crement(request.table, request.width)
-    return crement(request.table)
+    return _layout(request.table, request.width)
 
 
-def crement_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+def crement_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Pack instructions without moving their source offsets."""
+    if not isinstance(request.source, TemplateLayout):
+        raise TypeError("Crement balancing needs a rendered template with slots")
+    return TemplateLayout(
+        _balance(request.table, request.source.source), request.source.spans
+    )

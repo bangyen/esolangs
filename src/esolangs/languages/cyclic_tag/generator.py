@@ -20,21 +20,28 @@ Size:
 """
 
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
 )
 from esolangs.generation.requests import GenerationRequest
-from esolangs.runtime._program import Program
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    layout_fragments,
+)
 
-#: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
+_INPUT = InputSlot(1)
 
 
 def cyclic_tag(truth_table: str) -> str:
     """Return an ordered queue embed with final-deletion output."""
+    return _layout(truth_table).source
+
+
+def _layout(truth_table: str) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        return "," + TEMPLATE_CHAR * n + truth_table[0]
+        return layout_fragments((",", *(_INPUT,) * n, truth_table[0]))
     # An ignored input's rule is empty: its symbol is deleted unread.
     weights, table = input_weights(truth_table, n)
     rules = ["0" * weight for weight in weights]
@@ -51,14 +58,14 @@ def cyclic_tag(truth_table: str) -> str:
         rules.append("10")
         rules.extend("1" if answer == "1" else "" for answer in table)
         rules.extend([""] * guards)
-        return ";".join(rules) + "," + TEMPLATE_CHAR * n + "1"
+        return layout_fragments((";".join(rules) + ",", *(_INPUT,) * n, "1"))
     rules.append("1")
     # The marker is the last bit deleted when its row's rule is empty (a 1);
     # a 0 appends one 0 that is deleted last.
     rules.extend("" if answer == "1" else "0" for answer in table)
-    return ";".join(rules) + "," + TEMPLATE_CHAR * n + "1"
+    return layout_fragments((";".join(rules) + ",", *(_INPUT,) * n, "1"))
 
 
-def cyclic_tag_request(request: GenerationRequest) -> Program:
+def cyclic_tag_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return cyclic_tag(request.table)
+    return _layout(request.table)

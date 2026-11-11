@@ -13,11 +13,12 @@ Size:
 """
 
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     subtree_ids,
 )
 from esolangs.generation.requests import GenerationRequest
-from esolangs.runtime._program import Program
+from esolangs.generation.template import InputSlot, TemplateLayout, layout_fragments
+
+_INPUT = InputSlot(1)
 
 
 def _moves(source: str) -> str:
@@ -34,11 +35,15 @@ def _moves(source: str) -> str:
 
 def retrograde(truth_table: str) -> str:
     """Return a template whose final current cell is the requested answer."""
+    return _layout(truth_table).source
+
+
+def _layout(truth_table: str) -> TemplateLayout:
     ids = subtree_ids(truth_table)
     n = len(ids) - 1
-    prefix = (TEMPLATE_CHAR + ">") * n
+    prefix = (*(_INPUT, ">") * (n - 1), _INPUT)
     if ids[0][0] < 2:
-        return prefix + ("*" if ids[0][0] else "")
+        return layout_fragments((*prefix, ">*" if ids[0][0] else ">"))
     backs = [list(level) for level in ids]
     kinds = [[""] * len(level) for level in ids]
     fresh = max(map(max, ids)) + 1
@@ -76,7 +81,7 @@ def retrograde(truth_table: str) -> str:
                 fresh += 1
             backs[depth][k] = rank[key]
     # [ablations.trick_prototype_20261102_bidirectional_sibling]
-    chunks = [prefix, "<" * n]
+    chunks = [">", "<" * n]
     stack: list[str | tuple[int, int]] = [(0, 0)]
     while stack:
         task = stack.pop()
@@ -113,9 +118,9 @@ def retrograde(truth_table: str) -> str:
             parts += ["}}"]
         stack.extend(reversed(parts))
     chunks.append(">" * n)
-    return _moves("".join(chunks))
+    return layout_fragments((*prefix, _moves("".join(chunks))))
 
 
-def retrograde_request(request: GenerationRequest) -> Program:
+def retrograde_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return retrograde(request.table)
+    return _layout(request.table)

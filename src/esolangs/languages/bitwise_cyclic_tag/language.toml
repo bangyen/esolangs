@@ -19,7 +19,7 @@ qualification = "the table is the program, one seven-bit cell per two rows; each
 "11111110" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 26, "3" = 26, "4" = 31, "5" = 31, "6" = 34, "7" = 43 }, source_units = 61 }
 
 [catalogue]
-folding_constant_local = "bitwise_cyclic_tag"  # delete inputs and a literal bit
+folding_constant_local = "_layout"  # delete inputs and a literal bit
 
 [schemes]
 folds_without_tree = true

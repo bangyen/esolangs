@@ -28,7 +28,13 @@ from esolangs.generation.requests import (
 )
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.token_balance import CELL_ASPECT
-from esolangs.generation.wrap import balance_program, wrap_program
+from esolangs.generation.wrap import (
+    balance_character_slots,
+    balance_program,
+    wrap_character_slots,
+    wrap_chars,
+    wrap_program,
+)
 from esolangs.raster import Raster
 from esolangs.registry import (
     SourceKind,
@@ -153,6 +159,10 @@ def generate(
         raise ArgumentError(str(error)) from error
     inputs = len(truth_table).bit_length() - 1
     if isinstance(generated, TemplateLayout):
+        if width is not None and not laid_out and backend.wrap is not None:
+            if backend.wrap is not wrap_chars or not _character_slots(generated):
+                raise ProgramError(f"{resolved} requires a slot-aware wrapper")
+            generated = wrap_character_slots(generated, width)
         return _structured_template(
             generated,
             lang.id,
@@ -278,20 +288,48 @@ def _generate_balanced(
             return TemplateArtifact(text, name, TemplateBindings(char, pairs), settings)
         return ProgramArtifact(text, name, settings, input_arity=inputs)
     if isinstance(default, TemplateArtifact):
-        bindings = default.bindings
-        marked = mark_runs(default.source, bindings.char, bindings.setters)
-        text = unmark(
-            balance_program(marked, lang.id, catalog=catalog),
-            bindings.char,
-            bindings.inputs,
+        return _balance_template(
+            default,
+            lang.id,
+            catalog,
+            character_wrap=backend.wrap is wrap_chars and backend.wrap_balance is None,
         )
-        return TemplateArtifact(text, name, bindings, settings)
     return ProgramArtifact(
         balance_program(source, lang.id, catalog=catalog),
         name,
         settings,
         input_arity=inputs,
     )
+
+
+def _character_slots(layout: TemplateLayout) -> bool:
+    """Whether character folding can preserve every input slot."""
+    return "\n" not in layout.source and all(
+        end == start + 1 for start, end in layout.spans
+    )
+
+
+def _balance_template(
+    template: TemplateArtifact,
+    language_id: str,
+    catalog: Catalog,
+    *,
+    character_wrap: bool,
+) -> TemplateArtifact:
+    """Balance source using positional slots when the wrapper supports them."""
+    bindings = template.bindings
+    if character_wrap and template.spans:
+        layout = TemplateLayout(template.source, template.spans)
+        if _character_slots(layout):
+            balanced = balance_character_slots(layout)
+            return replace(template, source=balanced.source, spans=balanced.spans)
+    marked = mark_runs(template.source, bindings.char, bindings.setters)
+    text = unmark(
+        balance_program(marked, language_id, catalog=catalog),
+        bindings.char,
+        bindings.inputs,
+    )
+    return replace(template, source=text, spans=None)
 
 
 def _is_template_for(
