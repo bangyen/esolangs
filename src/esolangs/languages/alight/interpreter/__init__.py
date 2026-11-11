@@ -12,40 +12,35 @@ Errors:
 from collections.abc import Mapping
 from typing import Any
 
-from esolangs.languages.alight.interpreter._machine import _Machine
+from esolangs.languages.alight.interpreter._machine import (
+    _Image,
+    _Machine,
+    _prepare_source,
+)
 from esolangs.languages.alight.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind dialect options and fresh walkers without consuming input."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the padded grid and entry for fresh walkers."""
     if not isinstance(source, (str, list)):
         raise TypeError("alight machines require text or split text source")
     if options.keys() - {"expression_syntax", "list_update"}:
         raise TypeError("alight machines accept only expression_syntax and list_update")
-    code = source if isinstance(source, str) else tuple(source)
-    syntax = options.get("expression_syntax", "infix")
-    update = options.get("list_update", "in_place")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(
-            code if isinstance(code, str) else list(code),
-            io,
-            expression_syntax=syntax,
-            list_update=update,
-        )
-
-    return build
+    image = _prepare_source(
+        source,
+        options.get("expression_syntax", "infix"),
+        options.get("list_update", "in_place"),
+    )
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
 def _execute(
-    code: list[str] | str,
+    code: list[str] | str | _Image,
     io: IO,
     *,
     expression_syntax: str = "infix",

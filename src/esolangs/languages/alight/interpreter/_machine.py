@@ -1,5 +1,6 @@
 """Alight walkers, the pure step and the VM shell around it."""
 
+from dataclasses import dataclass
 from fractions import Fraction
 from typing import assert_never
 
@@ -51,6 +52,7 @@ from esolangs.languages.alight.interpreter._walk import (
     _find,
     _find_func,
     _grid,
+    _Heading,
     _scan,
     _turned,
 )
@@ -517,7 +519,7 @@ class _Core:
 
     def __init__(
         self,
-        grid: list[str],
+        grid: tuple[str, ...],
         expression_syntax: str,
         list_update: str,
         walkers: list[_Walker],
@@ -646,6 +648,38 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+@dataclass(frozen=True, slots=True)
+class _Image:
+    grid: tuple[str, ...]
+    expression_syntax: str
+    list_update: str
+    row: int
+    col: int
+    heading: _Heading
+
+
+def _prepare_source(
+    code: list[str] | str, expression_syntax: str, list_update: str
+) -> _Image:
+    grid = _grid(code.splitlines() if isinstance(code, str) else code)
+    if not grid or not grid[0]:
+        raise Hint.PROGRAM.error("empty program")
+    start = _find(grid, "begin")
+    if start is None:
+        raise Hint.ENTRY.error("program has no 'begin'")
+    row, col, heading = start
+    drow, dcol = heading
+    # The scanner starts on the semicolon after the entry word.
+    return _Image(
+        grid,
+        validate_expression_syntax(expression_syntax),
+        validate_list_update(list_update),
+        row + 5 * drow,
+        col + 5 * dcol,
+        heading,
+    )
+
+
 class _Machine:
     """Per-run Alight shell around the pure :func:`_advance`.
 
@@ -673,7 +707,7 @@ class _Machine:
 
     def __init__(
         self,
-        code: list[str] | str,
+        code: list[str] | str | _Image,
         io: IO,
         *,
         expression_syntax: str = "infix",
@@ -681,21 +715,16 @@ class _Machine:
     ) -> None:
         self.io = io
         self._input_reads = 0
-        grid = _grid(code.splitlines() if isinstance(code, str) else list(code))
-        if not grid or not grid[0]:
-            raise Hint.PROGRAM.error("empty program")
-        start = _find(grid, "begin")
-        if start is None:
-            raise Hint.ENTRY.error("program has no 'begin'")
-        row, col, heading = start
-        drow, dcol = heading
-        # The walk resumes from just past ``begin``'s last character; the
-        # ``;`` that terminates it is the first thing ``_scan`` will see.
+        image = (
+            code
+            if isinstance(code, _Image)
+            else _prepare_source(code, expression_syntax, list_update)
+        )
         self.core = _Core(
-            grid,
-            validate_expression_syntax(expression_syntax),
-            validate_list_update(list_update),
-            [_Walker(row + 5 * drow, col + 5 * dcol, heading, {})],
+            image.grid,
+            image.expression_syntax,
+            image.list_update,
+            [_Walker(image.row, image.col, image.heading, {})],
         )
 
     @property

@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from esolangs.languages.alight.interpreter._hints import Hint
 from esolangs.languages.alight.interpreter._parse import _Parser, _valid_name
 
 
-def _grid(code: list[str]) -> list[str]:
+def _grid(code: Sequence[str]) -> tuple[str, ...]:
     """Pad ragged source to a rectangle for in-bounds indexing."""
     width = max((len(line) for line in code), default=0)
-    return [line.ljust(width) for line in code]
+    return tuple(line.ljust(width) for line in code)
 
 
 #: Headings as ``(drow, dcol)`` in screen coordinates -- row grows downward,
@@ -35,7 +37,7 @@ _SOUTH: _Heading = (1, 0)
 _CLOCKWISE: tuple[_Heading, ...] = (_NORTH, _EAST, _SOUTH, _WEST)
 
 
-def _find(grid: list[str], word: str) -> tuple[int, int, _Heading] | None:
+def _find(grid: Sequence[str], word: str) -> tuple[int, int, _Heading] | None:
     """Return where ``word`` is spelled on the grid, and the heading it runs in.
 
     Row-major over start cells, and for each cell the four headings in a
@@ -51,7 +53,7 @@ def _find(grid: list[str], word: str) -> tuple[int, int, _Heading] | None:
     return None
 
 
-def _read_word(grid: list[str], row: int, col: int, heading: _Heading) -> str:
+def _read_word(grid: Sequence[str], row: int, col: int, heading: _Heading) -> str:
     """Return ``len(word)`` characters from ``(row, col)`` along ``heading``.
 
     Returns ``""`` when the run would leave the grid, so a word cannot be
@@ -69,7 +71,7 @@ def _read_word(grid: list[str], row: int, col: int, heading: _Heading) -> str:
 
 
 def _scan(
-    grid: list[str], row: int, col: int, heading: _Heading
+    grid: Sequence[str], row: int, col: int, heading: _Heading
 ) -> tuple[str, int, int]:
     """Read one command from ``(row, col)`` along ``heading``.
 
@@ -113,7 +115,7 @@ def _scan(
 
 
 def _find_func(
-    grid: list[str], name: str
+    grid: Sequence[str], name: str
 ) -> tuple[int, int, _Heading, list[str]] | None:
     """Locate ``func <name>{...}`` on the grid; return its entry and parameters.
 
