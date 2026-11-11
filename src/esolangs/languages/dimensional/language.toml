@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+painted_to_packed_lookup = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false }
+
 [deep_arities]
 workspace = 7
 

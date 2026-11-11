@@ -26,10 +26,11 @@ from esolangs.languages.slow_acv_mammalian.wrapping import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import measure_run
-from tests.support.witness_tables import witnesses
+from tests.support.witness_tables import row_bits, witnesses
 
 
 def _check_table(source: str, table: str, **settings: object) -> None:
@@ -528,6 +529,20 @@ def test_coprime_chain_generates_asymmetric_tables(n: int, io_modulus: int) -> N
     table = "".join(str(rng.getrandbits(1)) for _ in range(1 << n))
     source = compact_chain(table, n, modulus=256, io_modulus=io_modulus)
     _check_table(source, table, cell_modulus=256, io_modulus=io_modulus)
+
+    language = esolangs.Language("SLOW ACV MAMMALIAN")
+    settings = language.settings(cell_modulus=255, io_modulus=io_modulus)
+    for witness in construction_boundaries(language.name)["mod255_tree_to_chain"]:
+        n, table = witness.arity, witness.table()
+        artifact = language.generate(table, settings=settings)
+        chain = compact_chain(table, n, modulus=255, io_modulus=io_modulus)
+        assert (artifact.source == chain) == (n == 3)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row in range(len(table)):
+            result = prepared.evaluate(row_bits(row, n))
+            assert result.bit == table[row]
+            assert result.observation.input_position == n
 
 
 def test_coprime_chain_rejects_backward_targets() -> None:

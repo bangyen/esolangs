@@ -3,6 +3,7 @@
 from collections.abc import Callable, Iterable
 from functools import cache
 from itertools import product
+from unittest.mock import patch
 
 import pytest
 
@@ -19,6 +20,7 @@ from esolangs.languages.rotfuck.generator import (
 )
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.interpreters.runner import run_program
 from tests.support.analysis_support import assert_analysis_complement
@@ -207,6 +209,18 @@ class TestRotfuck:
 
     def test_raw_digits_shed_the_bias_once_per_digit_from_n_7(self) -> None:
         """Raw parity and zero-carrier multipliers keep native input/output."""
+        language = esolangs.Language("ROTfuck")
+        for witness in construction_boundaries("ROTfuck")["biased_to_raw_index_digits"]:
+            n, table = witness.arity, witness.table()
+            with patch.object(boolean, "_select", wraps=boolean._select) as select:
+                artifact = language.generate(table)
+            assert select.call_args.kwargs["raw"] == (n == 7)
+            restored = language.load_program(language.dump_program(artifact))
+            prepared = language.prepare(restored)
+            for row in (0, 1, len(table) // 2, len(table) - 1):
+                result = prepared.evaluate(row_bits(row, n))
+                assert result.bit == table[row]
+                assert result.observation.input_position == n
         _check_symmetric_multipliers()
         _check_raw_five_digits()
         table = "".join(str((row).bit_count() & 1) for row in range(128))

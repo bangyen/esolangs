@@ -1,6 +1,7 @@
 """Alight generator tests."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -18,9 +19,11 @@ from esolangs.languages.alight.interpreter import _Machine
 from esolangs.languages.alight.interpreter import run as alight_run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import assert_an_ignored_input_costs
+from tests.support.witness_tables import row_bits
 
 
 @pytest.mark.medium
@@ -305,3 +308,20 @@ def _check_native_constants(syntax: str, update: str, bit: str) -> None:
         sum(len(esolangs.generate("Alight", f"{v:08b}").source) for v in range(256))
         == 24154
     )
+
+
+def test_flat_lookup_packs_pairs_at_six_essential_inputs() -> None:
+    language = esolangs.Language("Alight")
+    for witness in construction_boundaries("Alight")["flat_lookup_pair_packing"]:
+        n, table = witness.arity, witness.table()
+        with patch.object(
+            boolean, "_packed_lookup", wraps=boolean._packed_lookup
+        ) as pack:
+            artifact = language.generate(table)
+        assert pack.call_count == int(n == 6)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row in (0, 1, len(table) // 2, len(table) - 1):
+            result = prepared.evaluate(row_bits(row, n))
+            assert result.bit == table[row]
+            assert result.observation.input_position == n

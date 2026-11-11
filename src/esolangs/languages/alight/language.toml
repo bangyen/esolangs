@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+flat_lookup_pair_packing = { tables = [{ arity = 5, rule = "dense" }, { arity = 6, rule = "dense" }], benchmark = false }
+
 [curation]
 backlinks = 6
 admitted = 2026-09-08T20:09:04-04:00

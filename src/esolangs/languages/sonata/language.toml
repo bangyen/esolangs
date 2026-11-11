@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+doubling_to_paired_lookup = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false }
+
 [curation]
 backlinks = 2
 admitted = 2026-10-21T23:43:42-04:00

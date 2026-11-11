@@ -16,11 +16,12 @@ from esolangs.languages.dimensional.generator import _packed, dimensional
 from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import constant_programs, evaluate_generated
-from tests.support.witness_tables import witnesses
+from tests.support.witness_tables import row_bits, witnesses
 
 run_dimensional = _runner("dimensional", newline=True)
 
@@ -131,16 +132,19 @@ class TestDimensional:
 
     def test_a_pair_of_entries_shares_a_cell_from_n7(self) -> None:
         """Random tables pack two entries a cell and execute; or keeps its loop."""
-        rng = random.Random(7)
-        table = "".join(rng.choice("01") for _ in range(128))
-        program = esolangs.generate("Dimensional", table).source
-        assert "[->4+<4[->5+<5[->4-<4]]]" in program
-        for row in range(0, 128, 5):
-            stdin = "\n".join(format(row, "07b"))
-            assert (
-                run("Dimensional", program, stdin=stdin, max_steps=100_000).output
-                == table[row]
-            )
+        language = esolangs.Language("Dimensional")
+        for witness in construction_boundaries("Dimensional")[
+            "painted_to_packed_lookup"
+        ]:
+            n, table = witness.arity, witness.table()
+            artifact = language.generate(table)
+            assert ("[->4+<4[->5+<5[->4-<4]]]" in artifact.source) == (n == 7)
+            restored = language.load_program(language.dump_program(artifact))
+            prepared = language.prepare(restored)
+            for row in range(0, len(table), 5):
+                result = prepared.evaluate(row_bits(row, n))
+                assert result.bit == table[row]
+                assert result.observation.input_position == 2 * n - 1
         either = "0" + "1" * 127
         assert "[->4+<4[->5" not in esolangs.generate("Dimensional", either).source
 

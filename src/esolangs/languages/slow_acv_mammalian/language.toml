@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+mod255_tree_to_chain = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false }
+
 [deep_arities]
 # SLOW ACV MAMMALIAN's increments track per-level residues, not T: a
 # command adds at most one cell, so its arrays hold 23 + S bytes for S
