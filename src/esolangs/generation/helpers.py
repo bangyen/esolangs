@@ -4,7 +4,7 @@ A valid table has ``2**n`` entries, so ``n`` is recovered from the length
 and the generators take no ``n`` parameter.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from itertools import pairwise
 from types import MappingProxyType
@@ -76,8 +76,8 @@ def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
     return constant
 
 
-def subtree_ids(truth_table: str) -> list[list[int]]:
-    """Return an id for every subtable, equal ones at a level sharing one.
+def subtree_ids(truth_table: str) -> tuple[tuple[int, ...], ...]:
+    """Return immutable subtable ids, equal ones at a level sharing one.
 
     ``ids[d][k]`` names the ``k``-th subtable of ``2**(n - d)`` rows:
     ``ids[0]`` is the whole table, ``ids[n]`` its rows.  A constant subtable
@@ -87,13 +87,15 @@ def subtree_ids(truth_table: str) -> list[list[int]]:
     quasi-reduced decision diagram, interned rather than searched), in O(T).
     """
     n = _validate_truth_table(truth_table)
-    level = [1 if bit == "1" else 0 for bit in truth_table]
+    # The list comprehension avoids resuming a generator for each leaf.
+    level = tuple([1 if bit == "1" else 0 for bit in truth_table])
     ids = [level]
     fresh = 2
     for _ in range(n):
         seen: dict[tuple[int, int], int] = {}
         above: list[int] = []
-        for zero, one in zip(level[::2], level[1::2], strict=True):
+        children = iter(level)
+        for zero, one in zip(children, children, strict=True):
             if zero == one and zero < 2:  # two equal constants stay one
                 above.append(zero)
                 continue
@@ -101,14 +103,14 @@ def subtree_ids(truth_table: str) -> list[list[int]]:
                 seen[zero, one] = fresh
                 fresh += 1
             above.append(seen[zero, one])
-        level = above
+        level = tuple(above)
         ids.append(level)
     ids.reverse()
-    return ids
+    return tuple(ids)
 
 
 def subtree_slot(
-    ids: list[list[int]], level: int, block: int, *, skip: bool
+    ids: Sequence[Sequence[int]], level: int, block: int, *, skip: bool
 ) -> tuple[int, int, tuple[int, int]]:
     """Name the subtree at ``block`` of ``level`` for a shared tree's lookup.
 

@@ -17,6 +17,7 @@ Decisions:
 """
 
 from collections import defaultdict
+from collections.abc import Sequence
 from itertools import pairwise
 from math import isqrt
 from typing import Literal, NamedTuple
@@ -203,7 +204,7 @@ class _StreamTree(_TreeEmitter):
     _trunk = "◇"
 
     def __init__(
-        self, builder: _Builder, table: str, ids: list[list[int]], depth: int
+        self, builder: _Builder, table: str, ids: Sequence[Sequence[int]], depth: int
     ) -> None:
         super().__init__(builder, table)
         self._ids = ids
@@ -293,7 +294,7 @@ class _LayoutTree(_TreeEmitter):
         self,
         builder: _Builder,
         table: str,
-        ids: list[list[int]],
+        ids: Sequence[Sequence[int]],
         depth: int,
         *,
         prune: bool = True,

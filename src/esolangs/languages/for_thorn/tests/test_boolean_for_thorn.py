@@ -120,13 +120,18 @@ class TestForth:
         """Equal subtables at a level share an id; constants are 0 and 1."""
         from esolangs.generation.helpers import subtree_ids
 
-        assert subtree_ids("01101001") == [
-            [6],
-            [4, 5],
-            [2, 3, 3, 2],
-            [0, 1, 1, 0, 1, 0, 0, 1],
-        ]
-        assert subtree_ids("00001111") == [[2], [0, 1], [0, 0, 1, 1], [0] * 4 + [1] * 4]
+        assert subtree_ids("01101001") == (
+            (6,),
+            (4, 5),
+            (2, 3, 3, 2),
+            (0, 1, 1, 0, 1, 0, 0, 1),
+        )
+        assert subtree_ids("00001111") == (
+            (2,),
+            (0, 1),
+            (0, 0, 1, 1),
+            (0,) * 4 + (1,) * 4,
+        )
 
     @pytest.mark.medium
     def test_sharing_executes_at_four_to_six(self) -> None:

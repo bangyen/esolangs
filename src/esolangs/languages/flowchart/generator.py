@@ -498,7 +498,11 @@ def _flowchart_render(cells: dict[tuple[int, int], str]) -> str:
 
 
 def _shareable(
-    ids: list[list[int]], counts: list[Counter[int]], depth: int, lo: int, hi: int
+    ids: Sequence[Sequence[int]],
+    counts: list[Counter[int]],
+    depth: int,
+    lo: int,
+    hi: int,
 ) -> int | None:
     """Return the subtree id if the span is drawn once and shared, else None.
 
@@ -512,7 +516,7 @@ def _shareable(
     return sid if sid >= 2 and counts[depth][sid] > 1 else None
 
 
-def _occurrences(ids: list[list[int]]) -> Counter[int]:
+def _occurrences(ids: Sequence[Sequence[int]]) -> Counter[int]:
     """Count repeated drawings, one-branch first.
 
     Stop at each shared root: a path may jump only once.

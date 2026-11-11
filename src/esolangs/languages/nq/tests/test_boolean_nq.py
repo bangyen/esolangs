@@ -85,7 +85,7 @@ def test_language_contract(monkeypatch, capsys: pytest.CaptureFixture[str]) -> N
     canonical = generator.subtree_ids
 
     def wrong_children(table):
-        ids = canonical(table)
+        ids = [list(row) for row in canonical(table)]
         ids[1][1] = ids[1][0]
         return ids
 

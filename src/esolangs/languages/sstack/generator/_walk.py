@@ -13,7 +13,7 @@ no separate span scan.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -44,7 +44,9 @@ class _Hooks[C]:
 class _TreeWalk[C]:
     """Emit the folded tree over ``ids``, pricing nodes through ``hooks``."""
 
-    def __init__(self, ids: list[list[int]], emit: _Emit, hooks: _Hooks[C]) -> None:
+    def __init__(
+        self, ids: Sequence[Sequence[int]], emit: _Emit, hooks: _Hooks[C]
+    ) -> None:
         self._ids = ids
         self._emit = emit
         self._hooks = hooks

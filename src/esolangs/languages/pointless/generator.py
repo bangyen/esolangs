@@ -22,6 +22,7 @@ Size:
 """
 
 import re
+from collections.abc import Sequence
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.requests import GenerationRequest
@@ -55,7 +56,7 @@ def _setup(n: int) -> str:
 class _Functions:
     """The body of every distinct subtable, children named before parents."""
 
-    def __init__(self, ids: list[list[int]], n: int) -> None:
+    def __init__(self, ids: Sequence[Sequence[int]], n: int) -> None:
         self._ids = ids
         self._n = n
         self.bodies: dict[str, str] = {}

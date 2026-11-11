@@ -19,7 +19,7 @@ Decisions:
 """
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from functools import partial
 from itertools import pairwise
 from typing import Any
@@ -256,7 +256,7 @@ class _Tree:
         truth_table: str,
         perm: tuple[int, ...],
         constant: Callable[[int, int], bool],
-        ids: list[list[int]],
+        ids: Sequence[Sequence[int]],
         builder: _Builder,
         pending_levels: tuple[int, ...],
         selected: dict[tuple[int, int], int],

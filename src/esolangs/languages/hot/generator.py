@@ -25,6 +25,7 @@ Decisions:
     fold, n=10 parity is 14,640 chars against 15,696.
 """
 
+from collections.abc import Sequence
 from math import comb
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
@@ -41,7 +42,7 @@ _ANSWER = (
 )
 
 
-def _tree(table: str, ids: list[list[int]], *, majority: bool = False) -> str:
+def _tree(table: str, ids: Sequence[Sequence[int]], *, majority: bool = False) -> str:
     """Return the pair tree, emitting each character once from canonical IDs."""
     n = len(ids) - 1
     pieces: list[str] = []

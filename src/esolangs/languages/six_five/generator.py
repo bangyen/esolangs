@@ -20,7 +20,7 @@ Decisions:
 """
 
 import string
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import NamedTuple
 
 from esolangs.generation.helpers import (
@@ -66,7 +66,7 @@ def _six_five_label(value: int) -> str:
     return str(value) if value < 10 else chr(value + ord("A") - 10)
 
 
-def _six_five_markers(ids: list[list[int]]) -> int:
+def _six_five_markers(ids: Sequence[Sequence[int]]) -> int:
     """Count label-bearing nodes before sharing or ignored-input skips.
 
     Constant IDs fold. Count both identical nonconstant halves: this gate
@@ -326,7 +326,7 @@ class _Layout:
         text = tree(final)
         return text if final.marker <= _SIX_FIVE_MAX_LABEL else ""
 
-    def agrees(self, ids: list[list[int]], level: int, lo: int) -> bool:
+    def agrees(self, ids: Sequence[Sequence[int]], level: int, lo: int) -> bool:
         """Whether a shared layout passes over this test: its halves agree."""
         if not self.share:
             return False
@@ -335,7 +335,7 @@ class _Layout:
 
     def name(
         self,
-        ids: list[list[int]],
+        ids: Sequence[Sequence[int]],
         level: int,
         lo: int,
         entry: int,
@@ -396,7 +396,7 @@ class _Layout:
 
 
 def _six_five_node_kind(
-    ids: list[list[int]],
+    ids: Sequence[Sequence[int]],
     perm: tuple[int, ...],
     cells: set[int] | dict[int, int],
     level: int,
@@ -421,7 +421,7 @@ def _six_five_node_kind(
 
 
 def _six_five_use_counts(
-    ids: list[list[int]], perm: tuple[int, ...], stored: set[int]
+    ids: Sequence[Sequence[int]], perm: tuple[int, ...], stored: set[int]
 ) -> dict[int, int]:
     """Count the tree paths that test each stored input, to find the lazy ones.
 
@@ -466,7 +466,7 @@ class _Tree(NamedTuple):
     truth_table: str
     perm: tuple[int, ...]
     cell_of: dict[int, int]
-    ids: list[list[int]]
+    ids: Sequence[Sequence[int]]
     lazy: set[int]
     scratch: int
 

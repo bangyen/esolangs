@@ -24,7 +24,7 @@ Decisions:
     class code from being mistaken for a path by the API.
 """
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from itertools import count, product
 from string import ascii_letters, digits
 
@@ -64,7 +64,7 @@ def object_disoriented(truth_table: str) -> str:
 
 
 def _body(
-    ids: list[list[int]],
+    ids: Sequence[Sequence[int]],
     n: int,
     depth: int,
     k: int,
@@ -76,7 +76,9 @@ def _body(
     return "cflB.atft" + obj(depth + 1, 2 * k + 1) + "fa" + obj(depth + 1, 2 * k)
 
 
-def _program(ids: list[list[int]], n: int, names: dict[tuple[int, int], str]) -> str:
+def _program(
+    ids: Sequence[Sequence[int]], n: int, names: dict[tuple[int, int], str]
+) -> str:
     """The tree, each branch in ``names`` a class written once and used by name."""
     first: list[dict[int, int]] = [{} for _ in ids]
     for depth, level in enumerate(ids):
@@ -97,7 +99,7 @@ def _program(ids: list[list[int]], n: int, names: dict[tuple[int, int], str]) ->
     return "".join(out) + " "
 
 
-def _shared_names(ids: list[list[int]], n: int) -> dict[tuple[int, int], str]:
+def _shared_names(ids: Sequence[Sequence[int]], n: int) -> dict[tuple[int, int], str]:
     """Name each branch written as an object at least twice, when shorter.
 
     Top-down, so a use counts once per text the parent's body is written in;

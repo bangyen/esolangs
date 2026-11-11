@@ -17,6 +17,8 @@ Size:
     n=10 parity: 557 chars; constants: 4n+1+2b chars, 2n+2+b commands.
 """
 
+from collections.abc import Sequence
+
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -186,7 +188,9 @@ class _TreeEmitter:
     address of its first token.
     """
 
-    def __init__(self, n: int, ids: list[list[int]], *, share: bool, pos: int) -> None:
+    def __init__(
+        self, n: int, ids: Sequence[Sequence[int]], *, share: bool, pos: int
+    ) -> None:
         self.n = n
         self.ids = ids
         self.share = share

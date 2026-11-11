@@ -6,7 +6,7 @@ the complete word before its body, so parent guards fail when it returns.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from esolangs.generation.helpers import subtree_ids
@@ -32,7 +32,7 @@ class _Plan:
     metric: _Metric
 
 
-def _inline_metrics(ids: list[list[int]]) -> list[dict[int, _Metric]]:
+def _inline_metrics(ids: Sequence[Sequence[int]]) -> list[dict[int, _Metric]]:
     n = len(ids) - 1
     result: list[dict[int, _Metric]] = [{} for _ in ids]
     for depth in range(n, -1, -1):
@@ -147,7 +147,7 @@ def _prefix_hooks(
 
 
 def _prefix_metric(
-    ids: list[list[int]],
+    ids: Sequence[Sequence[int]],
     metrics: list[dict[int, _Metric]],
     selected: dict[tuple[int, int], int],
     width: int,
@@ -161,7 +161,7 @@ def _prefix_metric(
 
 
 def _bank(
-    ids: list[list[int]],
+    ids: Sequence[Sequence[int]],
     metrics: list[dict[int, _Metric]],
     depth: int,
     rows: tuple[int, ...],
@@ -174,7 +174,7 @@ def _bank(
 
 
 def _emit_prefix(
-    ids: list[list[int]],
+    ids: Sequence[Sequence[int]],
     metrics: list[dict[int, _Metric]],
     depth: int,
     rows: tuple[int, ...],
@@ -188,7 +188,7 @@ def _emit_prefix(
 
 
 def _price(
-    ids: list[list[int]],
+    ids: Sequence[Sequence[int]],
     metrics: list[dict[int, _Metric]],
     depth: int,
     rows: tuple[int, ...],
@@ -202,7 +202,7 @@ def _price(
 
 
 def _render(
-    table: str, ids: list[list[int]], plan: _Plan, build: _Builder
+    table: str, ids: Sequence[Sequence[int]], plan: _Plan, build: _Builder
 ) -> tuple[str, int]:
     n = len(ids) - 1
     depth, rows = plan.depth, plan.rows

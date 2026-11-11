@@ -39,7 +39,7 @@ def retrograde(truth_table: str) -> str:
     prefix = (TEMPLATE_CHAR + ">") * n
     if ids[0][0] < 2:
         return prefix + ("*" if ids[0][0] else "")
-    backs = [level.copy() for level in ids]
+    backs = [list(level) for level in ids]
     kinds = [[""] * len(level) for level in ids]
     fresh = max(map(max, ids)) + 1
     # Intern the backward functions of chosen blocks from child ids.

@@ -344,7 +344,7 @@ class _BackContext:
     n: int
     vertical: bool = False
     shared: set[_Node] = field(default_factory=set)
-    ids: list[list[int]] = field(default_factory=list)
+    ids: Sequence[Sequence[int]] = field(default_factory=list)
     grid: _Grid = field(default_factory=dict)
     where: dict[_Node, tuple[int, int]] = field(default_factory=dict)
     next_row: int = 1

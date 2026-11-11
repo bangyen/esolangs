@@ -20,7 +20,7 @@ def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
         canonical = generator.subtree_ids
 
         def wrong_children(table):
-            ids = canonical(table)
+            ids = [list(row) for row in canonical(table)]
             ids[1][1] = ids[1][0]
             return ids
 
