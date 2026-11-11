@@ -16,20 +16,6 @@ def execute(source: str, stdin: str = "") -> str:
     return io.getvalue()
 
 
-@pytest.mark.parametrize(("dialect", "ip"), [("new", (1, 0)), ("old", (0, 0))])
-def test_prepared_runs_reuse_initial_grids(monkeypatch, dialect, ip) -> None:
-    import esolangs
-    from tests.support.prepared_support import check_image_reuse
-
-    api = esolangs.Language("B-tapemark")
-    settings = api.settings(swap_marker=dialect)
-    check_image_reuse(api.name, ">-+!", native, "_load", monkeypatch, settings=settings)
-    machine = api.prepare(">?", settings=settings).make_vm()
-    machine.step()
-    machine.step()
-    assert machine.ip == ip
-
-
 def test_documented_cat() -> None:
     io = ScriptedIO("A\nB\n")
     with pytest.raises(EOFError):
@@ -42,19 +28,32 @@ def test_copy_and_character_input() -> None:
     assert execute(">-+!", "Z\n") == "Z"
 
 
-def test_the_swap_marker_dialect_names_the_marker_that_moves() -> None:
+def test_the_swap_marker_dialect_names_the_marker_that_moves(monkeypatch) -> None:
+    """A swap moves the marker named by the dialect on each execution route."""
+    import esolangs
+    from tests.support.prepared_support import check_image_reuse
+
     from .oracle_checks import check_raw_b_tapemark
 
     check_raw_b_tapemark()
-    """After a swap, ``new`` steps the new grid's marker, ``old`` the old one's."""
-    for reading, expected in (
+    for dialect, positions in (
         ("new", ((1, 0), (1, 0))),
         ("old", ((2, 0), (0, 0))),
     ):
-        state = native._load(">?", reading)
+        state = native._load(">?", dialect)
         state = native._advance(native._advance(state)[0])[0]
         assert state.program == 1
-        assert state.positions == expected
+        assert state.positions == positions
+
+        api = esolangs.Language("B-tapemark")
+        settings = api.settings(swap_marker=dialect)
+        check_image_reuse(
+            api.name, ">-+!", native, "_load", monkeypatch, settings=settings
+        )
+        machine = api.prepare(">?", settings=settings).make_vm()
+        machine.step()
+        machine.step()
+        assert machine.ip == positions[1]
 
 
 def test_quoted_text_is_blank() -> None:

@@ -31,19 +31,6 @@ def _finish(code: str, stdin: str = "") -> _Machine:
     return machine
 
 
-def test_prepared_runs_reuse_the_source_image(monkeypatch) -> None:
-    from esolangs.languages.pointless import interpreter
-    from tests.support.prepared_support import check_image_reuse
-
-    check_image_reuse(
-        "Pointless",
-        '"echo"{[+],.}"echo"',
-        interpreter,
-        "_parse",
-        monkeypatch,
-    )
-
-
 def test_wiki_hello_world() -> None:
     # The heading says "Hello, World!", but no cell the program builds is 44.
     assert _run(HELLO) == "Hello World!"
@@ -130,9 +117,20 @@ def test_functions_are_hoisted_and_global() -> None:
     assert _run('"o"{"i"{,.}}"i"', "z") == "z"
 
 
-def test_name_then_comment_then_brace_declares() -> None:
+def test_name_then_comment_then_brace_declares(monkeypatch) -> None:
     assert _run('"f" hi there {,.} "f"', "q") == "q"
     assert _run(',"f" then . "f"{.}', "A") == "AA"
+
+    from esolangs.languages.pointless import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Pointless",
+        '"echo"{[+],.}"echo"',
+        interpreter,
+        "_parse",
+        monkeypatch,
+    )
 
 
 def test_input_is_taken_modulo_256() -> None:

@@ -35,20 +35,6 @@ IF = "IF(x, c) = x & c()"
 run_and_capture = partial(run_program, run)
 
 
-def test_prepared_source_reuses_logical_lines(monkeypatch) -> None:
-    from esolangs.languages.algebraic_programming_language import interpreter
-    from tests.support.prepared_support import check_image_reuse
-
-    check_image_reuse(
-        "Algebraic Programming Language",
-        "x + 1",
-        interpreter,
-        "_blocks",
-        monkeypatch,
-        cases=(("2\n", "3\n"), ("5\n", "6\n"), ("8\n", "9\n")),
-    )
-
-
 def machine(program: str, stdin: str = "") -> _Machine:
     """Build a machine for the stepping and cycle contracts."""
     return _Machine(program, ScriptedIO(stdin))
@@ -584,7 +570,7 @@ def test_a_recursion_whose_bindings_differ_each_lap_is_undecided() -> None:
 class TestPureTransition:
     """``_advance`` is a function of its arguments, and only of them."""
 
-    def test_same_state_and_inputs_give_the_same_result(self) -> None:
+    def test_same_state_and_inputs_give_the_same_result(self, monkeypatch) -> None:
         state = _State({}, {}, (), 0)
         lines = ("1 + 1",)
         first, first_out = _advance(state, lines)
@@ -595,6 +581,18 @@ class TestPureTransition:
         assert len(first.frames) == len(second.frames)
         assert first.frames[0].work == second.frames[0].work
         assert first.frames[0].value == second.frames[0].value
+
+        from esolangs.languages.algebraic_programming_language import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "Algebraic Programming Language",
+            "x + 1",
+            interpreter,
+            "_blocks",
+            monkeypatch,
+            cases=(("2\n", "3\n"), ("5\n", "6\n"), ("8\n", "9\n")),
+        )
 
     def test_the_transition_leaves_its_arguments_unchanged(self) -> None:
         globals_: dict[str, object] = {}

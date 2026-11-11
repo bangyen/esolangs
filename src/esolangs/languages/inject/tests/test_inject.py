@@ -72,20 +72,6 @@ def _machine(program: Any) -> _Machine:
     return _Machine(program, ScriptedIO("0\n"))
 
 
-def test_prepared_runs_reuse_the_initial_blocks(monkeypatch) -> None:
-    from esolangs.languages.inject import interpreter
-    from tests.support.prepared_support import check_image_reuse
-
-    check_image_reuse(
-        "Inject",
-        "readto data\nsend data\nskip\ndata;\nold\ndata;",
-        interpreter,
-        "_parse",
-        monkeypatch,
-        cases=(("A\n", "A\n"), ("Z\n", "Z\n"), ("Q\n", "Q\n")),
-    )
-
-
 class TestWikiExamples:
     def test_hello_world(self) -> None:
         """The block is sent, then skipped over rather than executed."""
@@ -362,7 +348,7 @@ def test_a_rewrite_cannot_move_the_pointer_before_the_program() -> None:
         run(program, ScriptedIO(""))
 
 
-def test_rewrite_transition_keeps_old_lines_and_spans_immutable() -> None:
+def test_rewrite_transition_keeps_old_lines_and_spans_immutable(monkeypatch) -> None:
     from esolangs.languages.inject.interpreter import _advance
 
     machine = _Machine(["readto data", "data;", "old", "data;"], ScriptedIO(""))
@@ -376,6 +362,18 @@ def test_rewrite_transition_keeps_old_lines_and_spans_immutable() -> None:
     with pytest.raises(TypeError):
         moved[1]["data"] = (0, 1)
     assert _advance(before, "new") == (moved, output)
+
+    from esolangs.languages.inject import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Inject",
+        "readto data\nsend data\nskip\ndata;\nold\ndata;",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("A\n", "A\n"), ("Z\n", "Z\n"), ("Q\n", "Q\n")),
+    )
 
 
 def test_memory_is_each_block_s_interior_line_count() -> None:

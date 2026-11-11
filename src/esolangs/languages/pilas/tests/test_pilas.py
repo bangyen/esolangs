@@ -8,19 +8,6 @@ from tests.interpreters.runner import native_runner
 _out = native_runner(run)
 
 
-def test_prepared_runs_reuse_the_source_image(monkeypatch) -> None:
-    from esolangs.languages.pilas import interpreter
-    from tests.support.prepared_support import check_image_reuse
-
-    check_image_reuse(
-        "Pilas",
-        ",.1{x}xx\nxxxxxxxxx",
-        interpreter,
-        "_parse",
-        monkeypatch,
-    )
-
-
 def test_arithmetic_pops_a_then_b() -> None:
     from esolangs.languages.pilas.tests.oracle_checks import check_raw_pilas
 
@@ -49,7 +36,7 @@ def test_wiki_while_zero_translation() -> None:
     assert _out(code) == "1"
 
 
-def test_reads_bytes(tmp_path) -> None:
+def test_reads_bytes(tmp_path, monkeypatch) -> None:
     import esolangs
 
     source = ",.\n  "
@@ -70,6 +57,17 @@ def test_reads_bytes(tmp_path) -> None:
     assert api.run(path, stdin="A").output == "A"
     esolangs.save_program(api.from_source(source), path, normalize=True)
     assert path.read_bytes() == (source + "\n").encode()
+
+    from esolangs.languages.pilas import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Pilas",
+        ",.1{x}xx\nxxxxxxxxx",
+        interpreter,
+        "_parse",
+        monkeypatch,
+    )
 
 
 @pytest.mark.parametrize(

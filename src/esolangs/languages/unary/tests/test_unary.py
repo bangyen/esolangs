@@ -9,7 +9,7 @@ from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
 
 
-def test_wiki_echo_and_command_order() -> None:
+def test_wiki_echo_and_command_order(monkeypatch) -> None:
     from esolangs.languages.unary.tests.oracle_checks import check_raw_unary
 
     check_raw_unary()
@@ -18,8 +18,6 @@ def test_wiki_echo_and_command_order() -> None:
     assert run_program(run, "0" * 84) == "\x01"
     assert run_program(run, "0" * 92) == "ÿ"
 
-
-def test_prepared_compressed_source_is_decoded_once(monkeypatch) -> None:
     from esolangs.compressed import CompressedText
     from esolangs.languages.unary import interpreter
     from tests.support.prepared_support import check_image_reuse

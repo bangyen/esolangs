@@ -9,20 +9,6 @@ from tests.interpreters.runner import native_runner
 _out = native_runner(run)
 
 
-def test_prepared_runs_reuse_the_source_image(monkeypatch) -> None:
-    from esolangs.languages.nor_machine import interpreter
-    from tests.support.prepared_support import check_image_reuse
-
-    check_image_reuse(
-        "NOR machine",
-        " L V ",
-        interpreter,
-        "_parse",
-        monkeypatch,
-        cases=(("1", "2"), ("3", "6"), ("-1", "-2")),
-    )
-
-
 def test_lone_nor_prints_the_value_itself() -> None:
     assert _out("V", "5") == "5"
 
@@ -65,9 +51,21 @@ def test_program_repeats_until_a_lone_nor() -> None:
     assert not machine.halted
 
 
-def test_whitespace_is_skipped_and_bad_source_is_rejected() -> None:
+def test_whitespace_is_skipped_and_bad_source_is_rejected(monkeypatch) -> None:
     assert _out(" L\n V ", "3") == "6"
     with pytest.raises(ValueError, match="unknown command"):
         _out("Lx", "1")
     with pytest.raises(ValueError, match="no command"):
         _out(" ")
+
+    from esolangs.languages.nor_machine import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "NOR machine",
+        " L V ",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("1", "2"), ("3", "6"), ("-1", "-2")),
+    )

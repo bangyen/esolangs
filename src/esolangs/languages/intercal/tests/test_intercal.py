@@ -798,7 +798,7 @@ def _step_until_stopped(machine: _Machine) -> None:
         machine.step()
 
 
-def test_output_before_a_draw_is_flushed() -> None:
+def test_output_before_a_draw_is_flushed(monkeypatch) -> None:
     """The shell writes the READ OUT text before it services the draw."""
     source = (
         "PLEASE ,1 <- #1\nDO STASH ,1 + .1\nDO %30 COME FROM (2)\n(2) DO READ OUT #1"
@@ -825,11 +825,6 @@ def test_output_before_a_draw_is_flushed() -> None:
     assert second.memory == second.stack == []
     assert second.snapshot() == initial
     reject_rng_options(prepare_machine, [], "text source", "")
-
-
-def test_prepared_program_reuses_linked_source_with_fresh_randomness(
-    monkeypatch,
-) -> None:
 
     from esolangs.languages.intercal import interpreter
     from tests.support.prepared_support import check_random_plan_reuse

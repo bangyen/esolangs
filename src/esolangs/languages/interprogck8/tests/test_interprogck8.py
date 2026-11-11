@@ -93,14 +93,6 @@ TRUTH_FIXED = f"u\n{{values/=/=/={native._dice(49)}}}\n<\ndiv\nEXE\n>\nIFQ\ndiv"
 DICE = "[. :::]\n$ay"
 
 
-def test_prepared_dice_retains_compiled_lines(monkeypatch) -> None:
-    from tests.support.prepared_support import check_random_plan_reuse
-
-    check_random_plan_reuse(
-        "Interprogck8", DICE, native, "_prepare_source", monkeypatch
-    )
-
-
 def go(code: str, stdin: str = "") -> str:
     io = ScriptedIO(stdin)
     native.run(code, io, Seeded(0))
@@ -152,12 +144,18 @@ class TestWikiExamples:
         assert stepped.halted is halts
         assert set(printed.getvalue()) == {output}
 
-    def test_dice_roll_stays_in_range(self) -> None:
+    def test_dice_roll_stays_in_range(self, monkeypatch) -> None:
         """``[. :::]`` rolls 1-6, and ``$ay`` writes a readable literal."""
         for seed in range(20):
             io = ScriptedIO("")
             native.run(DICE, io, Seeded(seed))
             assert 1 <= native._pips(io.getvalue()) <= 6
+
+        from tests.support.prepared_support import check_random_plan_reuse
+
+        check_random_plan_reuse(
+            "Interprogck8", DICE, native, "_prepare_source", monkeypatch
+        )
 
     def test_each_dice_face_prints_its_pips(self) -> None:
         for source in (DICE, "[::: .]\n$ay"):

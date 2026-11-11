@@ -80,7 +80,13 @@ class TestMammalian:
         assert machine.acc == 256
         assert machine.io.getvalue() == printed
 
-    def test_prepared_program_reuses_commands_and_io_modulus(self, monkeypatch) -> None:
+    def test_seed_wraps_its_register_at_a_byte(self, monkeypatch) -> None:
+        """``SEED``'s addition wraps too, at the same 256."""
+        machine = _Machine("CONSUME ACCEPT SEED", ScriptedIO("\xff\n"))
+        while not machine.halted:
+            machine.step()
+        assert machine.lst[0] == (0,)
+
         import esolangs
         from esolangs.languages.slow_acv_mammalian import interpreter
         from tests.support.prepared_support import check_image_reuse
@@ -95,13 +101,6 @@ class TestMammalian:
             cases=(("ÿ", "\x00"), ("A", "B"), ("B", "C")),
             settings=settings,
         )
-
-    def test_seed_wraps_its_register_at_a_byte(self) -> None:
-        """``SEED``'s addition wraps too, at the same 256."""
-        machine = _Machine("CONSUME ACCEPT SEED", ScriptedIO("\xff\n"))
-        while not machine.halted:
-            machine.step()
-        assert machine.lst[0] == (0,)
 
     def test_sprint_needs_a_position_inside_the_array(self) -> None:
         """``SPRINT`` is a NOP unless the accumulator indexes a real cell."""

@@ -95,21 +95,16 @@ class Test3x:
         with pytest.raises(ValueError, match="integer or a fraction"):
             run_program("?", "1/0\n")
 
-    def test_skipped_loop_counts_nested_brackets(self) -> None:
+    def test_skipped_loop_counts_nested_brackets(self, monkeypatch) -> None:
         # 333x leaves 0 on top, so the outer ( skips its body; the nested
         # () inside must be counted so the skip stops at the *matching* ),
         # not the inner one, leaving the trailing 3 to be printed
         assert run_program("333x(3()3)3!") == "3"
         assert run_program("333x(())3!") == "3"
-
-    def test_a_skipped_loop_does_not_count_brackets_in_a_literal(self) -> None:
-        # ``[(]`` prints "(" when run, so skipping over it is no nesting
+        # Parentheses inside a literal do not change the nesting.
         assert run_program("333x([(]3!)3!") == "3"
         assert run_program("333x([)]3!)3!") == "3"
 
-    def test_prepared_program_reuses_loop_and_literal_offsets(
-        self, monkeypatch
-    ) -> None:
         from esolangs.languages.three_x import interpreter
         from tests.support.prepared_support import check_image_reuse
 

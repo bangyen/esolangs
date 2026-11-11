@@ -50,15 +50,6 @@ def test_unknown_settings_key_suggests_the_fix(capsys) -> None:
     assert "known settings: expression_syntax" in error
 
 
-def test_prepared_grid_reused(monkeypatch) -> None:
-    from esolangs.languages.alight.interpreter import _machine
-    from tests.support.prepared_support import check_image_reuse
-
-    check_image_reuse(
-        "Alight", "begin;var c;inp c;out c;end;", _machine, "_grid", monkeypatch
-    )
-
-
 @pytest.mark.parametrize("inputs", [1, 6])
 def test_balanced_postfix_chunks_execute(inputs) -> None:
     table = "01" * (1 << (inputs - 1))
@@ -166,6 +157,13 @@ def test_alight_refuses_instead_of_warning() -> None:
         _step_to_halt(dbg)
 
 
-def test_its_one_row_program_moves_along_the_columns() -> None:
+def test_its_one_row_program_moves_along_the_columns(monkeypatch) -> None:
     """The row component of ``VM.ip`` stays put on a one-row program."""
     assert_one_row_moves_along_it("Alight")
+
+    from esolangs.languages.alight.interpreter import _machine
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Alight", "begin;var c;inp c;out c;end;", _machine, "_grid", monkeypatch
+    )

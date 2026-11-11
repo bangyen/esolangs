@@ -24,19 +24,6 @@ def _run(code, stdin=""):
     return run_program(run, code, stdin=stdin)
 
 
-def test_prepared_runs_reuse_initial_memory(monkeypatch) -> None:
-    from esolangs.languages.addsubjump import interpreter
-    from tests.support.prepared_support import check_image_reuse
-
-    check_image_reuse(
-        "AddSubJump",
-        "ASJ byte IO emit @0\nemit: IO byte -1\nbyte: .data 0",
-        interpreter,
-        "_parse",
-        monkeypatch,
-    )
-
-
 class TestAssembly:
     def test_labels_offsets_and_question_mark(self) -> None:
         code = """
@@ -322,13 +309,24 @@ class TestHaltAndErrors:
 
 
 class TestStepMachine:
-    def test_transition_keeps_its_input_memory(self) -> None:
+    def test_transition_keeps_its_input_memory(self, monkeypatch) -> None:
         state = (_pack([8, -1, -1, -1, 0, 0, 0, 0, 7]), 0, 0, 0, 0)
         value, after = _advance(state, (1, 3))
         assert value == 4
         assert state[0][0][8] == 7
         assert after[0][0][8] == 4
         assert after[1] == -1
+
+        from esolangs.languages.addsubjump import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "AddSubJump",
+            "ASJ byte IO emit @0\nemit: IO byte -1\nbyte: .data 0",
+            interpreter,
+            "_parse",
+            monkeypatch,
+        )
 
     def test_flag_views_report_the_mode_and_flags(self) -> None:
         """After 0 - 1 with the mode on, only ``NF`` and ``FUM`` read 1."""
