@@ -197,8 +197,8 @@ def test_generation_keeps_the_final_record(language, table, options, monkeypatch
 def test_template_record_reuses_validated_runs_and_retains_provenance(
     language, monkeypatch
 ):
+    import esolangs._bindings as bindings
     import esolangs.artifacts as artifacts
-    import esolangs.generation.helpers as helpers
 
     choices = esolangs.Language(language).settings()
     artifact = esolangs.generate(language, "0110", settings=choices)
@@ -210,7 +210,7 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
     def refuse_rescan(*_args):
         raise AssertionError("rescanned a validated template")
 
-    monkeypatch.setattr(helpers, "runs", refuse_rescan)
+    monkeypatch.setattr(bindings, "runs", refuse_rescan)
     monkeypatch.setattr(artifacts, "runs", refuse_rescan)
     for bits, answer in [([0, 0], "0"), ([0, 1], "1"), ([1, 0], "1"), ([1, 1], "0")]:
         filled = artifact.fill(bits)

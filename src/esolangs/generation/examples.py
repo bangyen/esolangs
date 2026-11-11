@@ -18,13 +18,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import Any
 
+from esolangs._bindings import TEMPLATE_CHAR, Setters, fill_runs
 from esolangs.artifacts import ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
-from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
-    Setters,
-    fill_runs,
-)
 from esolangs.generation.requests import GenerationRequest, Options
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import DEFAULT_WIDTH, wrap_program

@@ -3,8 +3,8 @@
 import pytest
 
 import esolangs
+from esolangs._bindings import mark
 from esolangs.exceptions import ArgumentError
-from esolangs.generation.helpers import mark
 from esolangs.generation.wrap import (
     balance_program,
     balance_score,

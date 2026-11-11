@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 
-from esolangs.generation.helpers import TEMPLATE_CHAR, Setters, check_setters
+from esolangs._bindings import TEMPLATE_CHAR, Setters, check_setters
 from esolangs.generation.requests import (
     BalanceRequest,
     GeneratedProgram,

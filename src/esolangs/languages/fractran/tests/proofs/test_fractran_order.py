@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs._bindings import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.fractran.descriptor import PAIR
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.fractran.interpreter import _Machine

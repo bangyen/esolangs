@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import TEMPLATE_CHAR, runs
+from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.generation.template import layout_tokens
 from esolangs.languages.ram0 import generator as boolean
 from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR

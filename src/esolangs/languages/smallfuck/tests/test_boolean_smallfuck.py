@@ -8,9 +8,10 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs._bindings import TEMPLATE_CHAR, fill_runs
 from esolangs.debugger import make_vm
 from esolangs.generation.anf import anf_coefficients
-from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, in_input_order
+from esolangs.generation.helpers import in_input_order
 from esolangs.generation.lookup import constant_output
 from esolangs.languages.smallfuck import generator as boolean
 from esolangs.languages.smallfuck.generator import (

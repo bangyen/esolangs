@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.exceptions import TruthTableError
-from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.crement import generator as boolean
 from esolangs.languages.crement.generator import (

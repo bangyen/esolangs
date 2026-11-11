@@ -30,9 +30,9 @@ from itertools import pairwise
 from math import isqrt
 from typing import Any
 
+from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     essential_inputs,
     grid_width,

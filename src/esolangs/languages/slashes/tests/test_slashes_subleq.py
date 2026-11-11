@@ -5,8 +5,8 @@ import random
 import pytest
 
 import esolangs
+from esolangs._bindings import TEMPLATE_CHAR, fill_runs
 from esolangs.exceptions import TemplateError
-from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.slashes import interpreter as native
 from esolangs.languages.slashes.generator import (
     _DECODE,

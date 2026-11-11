@@ -6,7 +6,7 @@ from itertools import pairwise
 from math import isqrt
 
 import esolangs
-from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs._bindings import TEMPLATE_CHAR, fill_runs
 from esolangs.registry import resolve
 from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO

@@ -178,7 +178,7 @@ def _language_of(fn: Builder) -> str | None:
 
 def check_embedding(fn: Builder, max_n: int = 4) -> str:
     """Each input embeds exactly once, at a width independent of the bit."""
-    from esolangs.generation.helpers import runs
+    from esolangs._bindings import runs
     from esolangs.registry import LANGUAGES, parameterized_ids
 
     name = _language_of(fn)

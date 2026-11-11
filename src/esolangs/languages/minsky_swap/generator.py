@@ -20,8 +20,8 @@ Decisions:
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     grid_width,
     input_weights,

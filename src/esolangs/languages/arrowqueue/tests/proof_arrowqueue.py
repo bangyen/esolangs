@@ -7,7 +7,7 @@ import argparse
 import random
 import sys
 
-from esolangs.generation.helpers import TEMPLATE_CHAR
+from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.languages.arrowqueue.generator import _DRAINED_RING, _STAGE, arrowqueue
 from esolangs.languages.arrowqueue.interpreter import _advance, _Machine
 from esolangs.languages.arrowqueue.tests.test_boolean_arrowqueue import (

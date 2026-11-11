@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, runs
+from esolangs._bindings import TEMPLATE_CHAR, fill_runs, runs
 from esolangs.languages.minsky_swap import generator as boolean
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState

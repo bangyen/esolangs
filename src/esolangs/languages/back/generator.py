@@ -40,9 +40,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from itertools import pairwise
 
+from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     grid_rank,
     grid_width,

@@ -5,7 +5,7 @@ import re
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import runs
+from esolangs._bindings import runs
 from esolangs.registry import LANGUAGES, resolve
 from tests.support.generator_support import generator_for
 from tests.support.pick import languages

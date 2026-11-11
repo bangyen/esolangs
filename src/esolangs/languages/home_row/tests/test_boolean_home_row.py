@@ -85,7 +85,7 @@ class TestParameterizedHomeRow:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
-        from esolangs.generation.helpers import runs
+        from esolangs._bindings import runs
         from esolangs.languages.home_row import generator as generators
         from esolangs.languages.home_row.descriptor import HOME_ROW_PAIR
 

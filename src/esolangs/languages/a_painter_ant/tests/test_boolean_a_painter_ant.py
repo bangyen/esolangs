@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import TEMPLATE_CHAR, runs
+from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.languages.a_painter_ant import generator as boolean
 from esolangs.languages.a_painter_ant.descriptor import PAIR
 from esolangs.languages.a_painter_ant.generator import a_painter_ant

@@ -3,8 +3,8 @@
 from functools import cache
 from typing import Literal
 
+from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     SubtreeDiagram,
     _validate_truth_table,
     reflected_table,

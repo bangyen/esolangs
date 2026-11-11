@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs._bindings import TEMPLATE_CHAR, fill_runs
 from esolangs.languages.bitwise_cyclic_tag import generator as boolean
 from esolangs.languages.bitwise_cyclic_tag.descriptor import PAIR as BCT_PAIR
 from esolangs.languages.bitwise_cyclic_tag.interpreter import _Machine

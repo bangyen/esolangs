@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
-from esolangs.generation.helpers import TEMPLATE_CHAR, runs
+from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.proofs.conventions import _embedding, _tables

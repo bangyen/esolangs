@@ -8,8 +8,9 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.debugger import make_vm
-from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table, runs
+from esolangs.generation.helpers import permute_truth_table
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.back.generator import _back_ordered
 from esolangs.runtime.io import ScriptedIO

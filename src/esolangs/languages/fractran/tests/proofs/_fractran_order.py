@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from functools import cache
 
-from esolangs.generation.helpers import TEMPLATE_CHAR
+from esolangs._bindings import TEMPLATE_CHAR
 
 
 class _Assembler:

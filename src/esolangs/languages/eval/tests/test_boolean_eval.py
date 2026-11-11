@@ -5,7 +5,8 @@ from math import factorial
 from unittest.mock import patch
 
 import esolangs
-from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table
+from esolangs._bindings import TEMPLATE_CHAR
+from esolangs.generation.helpers import permute_truth_table
 from esolangs.languages.eval import generator as boolean
 from esolangs.languages.eval.generator import PAIR, eval_setters
 from esolangs.languages.eval.tests.eval_support import (

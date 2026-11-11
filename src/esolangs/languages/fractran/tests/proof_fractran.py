@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import random
 
-from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
-    constant_span_test,
-    fill_runs,
-)
+from esolangs._bindings import TEMPLATE_CHAR, fill_runs
+from esolangs.generation.helpers import constant_span_test
 from esolangs.languages.fractran.descriptor import PAIR
 from esolangs.languages.fractran.generator import _primes, _tree, fractran
 from esolangs.languages.fractran.interpreter import _choose, _parse

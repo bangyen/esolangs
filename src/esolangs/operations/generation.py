@@ -6,6 +6,7 @@ from functools import cache
 from math import isqrt
 from typing import cast
 
+from esolangs._bindings import mark_runs, unmark
 from esolangs._dialect import Scalar
 from esolangs.artifacts import (
     Artifact,
@@ -15,12 +16,7 @@ from esolangs.artifacts import (
 )
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError, TemplateError
-from esolangs.generation.helpers import (
-    check_table_text,
-    mark_runs,
-    same_up_to_wrapping,
-    unmark,
-)
+from esolangs.generation.helpers import check_table_text, same_up_to_wrapping
 from esolangs.generation.requests import (
     BalanceRequest,
     GeneratedProgram,

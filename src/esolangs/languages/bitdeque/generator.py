@@ -28,13 +28,9 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
+from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.generation.decision import DecisionLayers, decision_layers
-from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
-    _validate_truth_table,
-    runs,
-    same_tokens,
-)
+from esolangs.generation.helpers import _validate_truth_table, same_tokens
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import (
     InputSlot,

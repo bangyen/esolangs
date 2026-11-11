@@ -5,8 +5,8 @@ import random
 import pytest
 
 import esolangs
+from esolangs._bindings import mark_runs, unmark
 from esolangs.generation import wrap as _wrap
-from esolangs.generation.helpers import mark_runs, unmark
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_chars, wrap_program
 from esolangs.registry import LANGUAGES, SourceKind

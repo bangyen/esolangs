@@ -14,6 +14,7 @@ from typing import Protocol, cast
 import esolangs
 import esolangs.operations.source as _source_operations
 import esolangs.runtime._execution as _execution_runtime
+from esolangs._bindings import MOST_INPUTS
 from esolangs.artifacts import Artifact, TemplateArtifact
 from esolangs.exceptions import (
     ArgumentError,
@@ -22,7 +23,6 @@ from esolangs.exceptions import (
     InterpreterLimitError,
     TemplateError,
 )
-from esolangs.generation.helpers import MOST_INPUTS
 from esolangs.operations.boolean_io import (
     encode_inputs,
     read_answer,

@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import run
-from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, runs
+from esolangs._bindings import TEMPLATE_CHAR, fill_runs, runs
 from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.languages.fractran import generator as boolean
 from esolangs.languages.fractran.descriptor import PAIR as FRACTRAN_PAIR

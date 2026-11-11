@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from math import isqrt
 from typing import TYPE_CHECKING
 
-from esolangs.generation.helpers import MARK, MOST_INPUTS, mark
+from esolangs._bindings import MARK, MOST_INPUTS, mark
 from esolangs.generation.template import (
     InputSlot,
     TemplateLayout,
@@ -118,7 +118,7 @@ def _span(length: int, cell: int) -> int:
     return max(1, cells)
 
 
-#: One input's mark run (:func:`~esolangs.generation.helpers.mark`), one token:
+#: One input's mark run (:func:`~esolangs._bindings.mark`), one token:
 #: a break inside would land inside the setter.  Adjacent runs are two tokens.
 _RUN = "|".join(f"{re.escape(mark(i))}+" for i in range(MOST_INPUTS))
 

@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import TEMPLATE_CHAR, runs
+from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.languages.arrowqueue import generator
 from esolangs.languages.arrowqueue.descriptor import PAIR
 from esolangs.runtime.io import ScriptedIO

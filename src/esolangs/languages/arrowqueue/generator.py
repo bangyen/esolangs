@@ -34,8 +34,8 @@ from collections.abc import Iterable, Iterator, Sequence
 from math import isqrt
 from typing import cast
 
+from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     grid_rank,
     input_weights,
