@@ -110,16 +110,16 @@ def readonly(raw, case, context, expected_plan=None):
     assert set(vars(raw)) == {"io", "program", "_input_reads", "_program_key", "frames"}
     assert type(raw.program) is native._Program
     program = raw.program
-    assert type(program.functions) is dict
-    assert type(program.dependencies) is dict
-    assert type(program.globals) is dict
+    assert type(program.functions) is MappingProxyType
+    assert type(program.dependencies) is MappingProxyType
+    assert type(program.globals) is MappingProxyType
     exact(list(program.functions), [("scope", "main")])
     exact(list(program.globals), [("scope", "cell")])
-    exact(program.dependencies, {"scope": frozenset({"IO"})})
+    exact(dict(program.dependencies), {"scope": frozenset({"IO"})})
     function = program.functions[("scope", "main")]
     assert type(function) is native._Function
     assert program.entry is function
-    assert type(function.locals) is dict
+    assert type(function.locals) is MappingProxyType
     assert function.locals == {}
     assert value_matches(
         (

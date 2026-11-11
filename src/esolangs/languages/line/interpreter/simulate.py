@@ -331,12 +331,12 @@ def run_compiled(program: _Compiled, io: IO | None = None) -> dict[int, int]:
     return dict(_drive(_freeze_program(program), IO() if io is None else io))
 
 
-def run_node(root: Node, io: IO) -> None:
-    """Execute generated graph code through the same pure transition core."""
+def _freeze_node(root: Node) -> tuple[_Frame, ...]:
+    """Index generated graph instructions without extracting the raster."""
     nodes, indices = _index_graph(
         root, lambda node: (node.zero, node.nonzero, node.next, node.goto)
     )
-    frames = tuple(
+    return tuple(
         _Frame(
             ((node.op, 1),) if node.op in {"+", "-", ">", "<", "i", "o"} else (),
             ((0, 0),),
@@ -347,7 +347,11 @@ def run_node(root: Node, io: IO) -> None:
         )
         for node in nodes
     )
-    _drive(frames, io)
+
+
+def run_node(root: Node, io: IO) -> None:
+    """Execute generated graph code through the same pure transition core."""
+    _drive(_freeze_node(root), io)
 
 
 def run(

@@ -26,12 +26,12 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import lru_cache, partial
+from functools import cache, lru_cache
 from typing import TYPE_CHECKING, Any, cast
 
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -41,6 +41,8 @@ from .mask import from_grey
 from .simulate import IO as _LINE_IO
 from .simulate import (
     _advance,
+    _drive,
+    _freeze_node,
     _freeze_program,
     _needs_input,
     _State,
@@ -52,7 +54,7 @@ from .simulate import run_node as _run_node
 if TYPE_CHECKING:
     from esolangs.languages.line.generator.layout import Node
 
-    from .simulate import _Compiled
+    from .simulate import _Compiled, _Frame
 
 __all__ = ["run"]
 
@@ -130,8 +132,14 @@ class _Machine:
 
     ip_shape = "grid"
 
-    def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
-        self.program = _freeze_program(_compiled(program, scale))
+    def __init__(
+        self, program: Raster | tuple[_Frame, ...], io: IO, *, scale: int | None = None
+    ) -> None:
+        self.program = (
+            _freeze_program(_compiled(program, scale))
+            if isinstance(program, Raster)
+            else program
+        )
         self.state: _State = (0, 0, 0, ())
         self.io = io
 
@@ -180,19 +188,37 @@ class _Machine:
             self.io.print_num(output)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh state over cached raster geometry and the requested scale."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the instructions for each requested execution view."""
     if not isinstance(source, Raster):
         raise TypeError("line machines require raster source")
     if options.keys() - {"scale"}:
         raise TypeError("line machines accept only the scale runtime option")
-    return partial(_Machine, source, scale=options.get("scale"))
+    scale = options.get("scale")
+
+    @cache
+    def raster_program() -> tuple[_Frame, ...]:
+        return _freeze_program(_compiled(source, scale))
+
+    @cache
+    def native_program() -> tuple[_Frame, ...]:
+        if source._payload is not None and scale is None:  # noqa: SLF001 - language-owned payload
+            return _freeze_node(cast("Node", source._payload))  # noqa: SLF001
+        return raster_program()
+
+    return RuntimePlan(
+        lambda io: _Machine(raster_program(), io),
+        lambda io: _execute(native_program(), io),
+    )
 
 
-def _execute(program: Raster, io: IO, *, scale: int | None = None) -> CompletionReport:
-    """Execute a Line raster, writing decimal outputs through ``io``."""
+def _execute(
+    program: Raster | tuple[_Frame, ...], io: IO, *, scale: int | None = None
+) -> CompletionReport:
+    """Execute Line, writing decimal outputs through ``io``."""
+    if not isinstance(program, Raster):
+        _drive(program, _LINE_IO(read=io.input_num, write=io.print_num))
+        return HALTED_REPORT
     if program._payload is not None and scale is None:  # noqa: SLF001 - language-owned payload
         _Machine.run_node(cast("Node", program._payload), io)  # noqa: SLF001
         return HALTED_REPORT

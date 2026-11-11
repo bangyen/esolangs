@@ -106,7 +106,7 @@ from esolangs.languages.packlang.interpreter._workspace import _WORKSPACE_MODEL,
 from esolangs.languages.packlang.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
@@ -534,6 +534,14 @@ def _program_key(program: _Program) -> tuple[tuple[object, ...], ...]:
 # immutable state.  The variable store is a tuple of ``(name, value)`` pairs, so
 # :meth:`_Machine.snapshot` is hashable as it stands and a repeated state proves a loop.
 # :func:`_visible` enforces dependency visibility.
+_Image = tuple[_Program, tuple[tuple[object, ...], ...]]
+
+
+def _prepare_source(code: str, literal_policy: str) -> _Image:
+    program = _parse(code, literal_policy)
+    return program, _program_key(program)
+
+
 class _Machine:
     """The run state: a stack of call frames and the parsed program.
 
@@ -547,14 +555,15 @@ class _Machine:
 
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO, *, literal_policy: str = "decimal") -> None:
+    def __init__(
+        self, code: str | _Image, io: IO, *, literal_policy: str = "decimal"
+    ) -> None:
         self.io = io
-        self.program = _parse(code, literal_policy)
+        self.program, self._program_key = (
+            _prepare_source(code, literal_policy) if isinstance(code, str) else code
+        )
         self._input_reads = 0
-        self._program_key = _program_key(self.program)
         entry = self.program.entry
-        # _parse raises when a program has no entry, so this cannot be None.
-        assert entry is not None
         self.frames: _State = (_Frame(entry, _initial_store(entry, self.program)),)
 
     @property
@@ -670,23 +679,21 @@ class _Machine:
             self.io.print_char(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Parse once under the selected literal policy."""
     if not isinstance(source, str):
         raise TypeError("Packlang machines require text source")
     if options.keys() - {"literal_policy"}:
         raise TypeError("Packlang machines accept only literal_policy")
-    literal_policy = options.get("literal_policy", "decimal")
-
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io, literal_policy=literal_policy)
-
-    return build
+    image = _prepare_source(
+        source, literal_policy=options.get("literal_policy", "decimal")
+    )
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO, *, literal_policy: str = "decimal") -> CompletionReport:
+def _execute(
+    code: str | _Image, io: IO, *, literal_policy: str = "decimal"
+) -> CompletionReport:
     """Run a Packlang program to completion."""
     machine = _Machine(code, io, literal_policy=literal_policy)
     return drive(machine, policy=CAPABILITIES.completion)

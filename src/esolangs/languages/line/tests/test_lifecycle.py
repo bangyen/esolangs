@@ -10,14 +10,14 @@ from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
 
 
-def test_factory_keeps_cached_geometry_and_fresh_tape_and_input():
+def test_factory_keeps_cached_geometry_and_fresh_tape_and_input(monkeypatch):
     source = Raster.from_png(line("01").to_png())
     interpreter._compiled.cache_clear()
     factory = interpreter.prepare_machine(source, {})
     first, second = factory(ScriptedIO("0")), factory(ScriptedIO("1"))
     assert interpreter._compiled.cache_info().misses == 1
-    assert interpreter._compiled.cache_info().hits == 1
-    assert first.program == second.program
+    assert interpreter._compiled.cache_info().hits == 0
+    assert first.program is second.program
     before = second.snapshot()
     while not first.halted:
         first.step()
@@ -31,6 +31,32 @@ def test_factory_keeps_cached_geometry_and_fresh_tape_and_input():
         second.step()
     assert second.io.getvalue() == "1"
     assert third.snapshot() == before
+    native_io = ScriptedIO("1")
+    factory.run(native_io)
+    assert native_io.getvalue() == "1"
+    assert interpreter._compiled.cache_info().hits == 0
+
+    generated = line("01")
+    with monkeypatch.context() as patch:
+
+        def unexpected_compile(*_args, **_kwargs):
+            pytest.fail("generated native execution extracted raster geometry")
+
+        freeze_node = interpreter._freeze_node
+        frozen = []
+
+        def counted(node):
+            frames = freeze_node(node)
+            frozen.append(frames)
+            return frames
+
+        patch.setattr(interpreter, "_compiled", unexpected_compile)
+        patch.setattr(interpreter, "_freeze_node", counted)
+        prepared = esolangs.Language("Line").prepare(generated)
+        assert frozen == []
+        assert prepared.run(stdin="1").output == "1"
+        assert prepared.run(stdin="0").output == "0"
+        assert len(frozen) == 1
 
 
 @pytest.mark.medium

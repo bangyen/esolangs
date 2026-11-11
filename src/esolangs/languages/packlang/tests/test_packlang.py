@@ -9,6 +9,7 @@ from typing import Any, ClassVar
 
 import pytest
 
+import esolangs
 from esolangs import run as execute
 from esolangs.exceptions import HaltError
 from esolangs.languages.packlang.generator import packlang
@@ -534,11 +535,24 @@ def test_internal_tree_errors_and_explicit_aborts_have_no_repair_hint() -> None:
 
 
 @pytest.mark.medium
-def test_dependency_readings_under_each_literal_policy() -> None:
+def test_dependency_readings_under_each_literal_policy(monkeypatch) -> None:
+    from esolangs.languages.packlang import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    api = esolangs.Language("Packlang")
     for policy, expected in (("decimal", "°±±°"), ("binary_digits", "0110")):
         io = ScriptedIO("")
         run(DEPENDENCY, io, literal_policy=policy)
         assert io.getvalue() == expected
+        check_image_reuse(
+            "Packlang",
+            DEPENDENCY,
+            interpreter,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("", expected),) * 3,
+            settings=api.settings(literal_policy=policy),
+        )
 
     from .workspace_checks import check_accounting_packlang
 

@@ -1,6 +1,9 @@
 """Packlang parsing: packages and functions into flat statement lists."""
 
 import re
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
+from types import MappingProxyType
 
 from esolangs.languages.packlang.dialect import PacklangLiterals
 from esolangs.languages.packlang.interpreter._lex import _strip_comments, _tokenize
@@ -19,6 +22,7 @@ _JUMP = "jmp"  # While back-edge
 _VALUE = "val"  # a bare expression statement: the function's return value
 
 
+@dataclass(frozen=True, slots=True, eq=False, repr=False, init=False)
 class _Type:
     """A declared type's bounds and the values it wraps to.
 
@@ -26,7 +30,11 @@ class _Type:
     object describes both and ``INIT`` can build either from it.
     """
 
-    __slots__ = ("high", "length", "low", "over", "under")
+    low: int
+    high: int
+    under: int
+    over: int
+    length: int | None
 
     def __init__(
         self,
@@ -36,13 +44,13 @@ class _Type:
         over: int | None = None,
         length: int | None = None,
     ) -> None:
-        self.low = low
-        self.high = high
+        object.__setattr__(self, "low", low)
+        object.__setattr__(self, "high", high)
         # Default wrapping is modular, which is what ``charPut``'s byte
         # output implies for a plain Integer and a Char.
-        self.under = high if under is None else under
-        self.over = low if over is None else over
-        self.length = length
+        object.__setattr__(self, "under", high if under is None else under)
+        object.__setattr__(self, "over", low if over is None else over)
+        object.__setattr__(self, "length", length)
 
     def clamp(self, value: int) -> int:
         """Return ``value`` folded into the type's range."""
@@ -61,6 +69,7 @@ class _Type:
         return (self.low,) * self.length if self.length is not None else self.low
 
 
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Function:
     """One function: its parameters, its statement list, and its owner.
 
@@ -72,23 +81,12 @@ class _Function:
     entry point.
     """
 
-    __slots__ = ("body", "locals", "name", "package", "params", "uses")
-
-    def __init__(
-        self,
-        name: str,
-        params: tuple[str, ...],
-        body: tuple[tuple[object, ...], ...],
-        package: str,
-        local_types: dict[str, _Type],
-        uses: tuple[str, ...] = (),
-    ) -> None:
-        self.name = name
-        self.params = params
-        self.body = body
-        self.package = package
-        self.locals = local_types
-        self.uses = uses
+    name: str
+    params: tuple[str, ...]
+    body: tuple[tuple[object, ...], ...]
+    package: str
+    locals: Mapping[str, _Type]
+    uses: tuple[str, ...] = ()
 
 
 _DATATYPES = frozenset({"Integer", "Char", "String", "Array", "Pointer"})
@@ -373,16 +371,14 @@ class _Parser:
             self.pos = save
 
 
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Program:
     """A parsed program: its functions, globals, and dependency graph."""
 
-    __slots__ = ("dependencies", "entry", "functions", "globals")
-
-    def __init__(self) -> None:
-        self.functions: dict[tuple[str, str], _Function] = {}
-        self.globals: dict[tuple[str, str], _Type] = {}
-        self.dependencies: dict[str, frozenset[str]] = {}
-        self.entry: _Function | None = None
+    functions: Mapping[tuple[str, str], _Function]
+    globals: Mapping[tuple[str, str], _Type]
+    dependencies: Mapping[str, frozenset[str]]
+    entry: _Function
 
 
 def _parse(code: str, literal_policy: str = "decimal") -> _Program:
@@ -398,7 +394,9 @@ def _parse_packages(parser: _Parser) -> _Program:
             "empty program",
             "provide a Package containing a parameterless entry function",
         )
-    program = _Program()
+    functions: dict[tuple[str, str], _Function] = {}
+    globals_: dict[tuple[str, str], _Type] = {}
+    dependencies: dict[str, frozenset[str]] = {}
     order: list[str] = []
     while parser.peek() is not None:
         parser.package_kind()
@@ -422,19 +420,20 @@ def _parse_packages(parser: _Parser) -> _Program:
         parser.next_token()
         package = parser.identifier()
         parser.expect(";")
-        program.dependencies[package] = frozenset(deps)
-        program.globals.update(
-            ((package, name), kind) for name, kind in globals_here.items()
-        )
+        dependencies[package] = frozenset(deps)
+        globals_.update(((package, name), kind) for name, kind in globals_here.items())
         for name, func in members:
-            func.package = package
             key = (package, name)
-            if key in program.functions:
+            if key in functions:
                 raise ValueError(f"duplicate function {name!r} in {package!r}")
-            program.functions[key] = func
+            functions[key] = replace(func, package=package)
         order.append(package)
-    program.entry = _entry(program, order)
-    return program
+    return _Program(
+        MappingProxyType(functions),
+        MappingProxyType(globals_),
+        MappingProxyType(dependencies),
+        _entry(functions, order),
+    )
 
 
 def _member(
@@ -479,14 +478,16 @@ def _member(
                 tuple(params),
                 tuple(tuple(stmt) for stmt in body),
                 "",
-                local_types,
+                MappingProxyType(local_types),
                 tuple(uses),
             ),
         )
     )
 
 
-def _entry(program: _Program, order: list[str]) -> _Function:
+def _entry(
+    functions: Mapping[tuple[str, str], _Function], order: list[str]
+) -> _Function:
     """Return the function a run starts at; see :mod:`.packlang`.
 
     ``main`` wins when it exists, else the last package's sole
@@ -494,9 +495,7 @@ def _entry(program: _Program, order: list[str]) -> _Function:
     every example but PlusOrMinus calls its function ``main``.
     """
     mains = [
-        func
-        for func in program.functions.values()
-        if func.name == "main" and not func.params
+        func for func in functions.values() if func.name == "main" and not func.params
     ]
     if len(mains) > 1:
         raise ValueError("program has multiple parameterless main functions")
@@ -504,9 +503,7 @@ def _entry(program: _Program, order: list[str]) -> _Function:
         return mains[0]
     for package in reversed(order):
         candidates = [
-            f
-            for f in program.functions.values()
-            if f.package == package and not f.params
+            f for f in functions.values() if f.package == package and not f.params
         ]
         if len(candidates) == 1:
             return candidates[0]
