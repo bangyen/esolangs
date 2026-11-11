@@ -37,14 +37,15 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from types import MappingProxyType
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.pointless.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -55,13 +56,19 @@ _COMMANDS = frozenset('<>:!=+-[].,"{}')
 #: prefixed by ``"``.
 type _Op = tuple[int, str]
 #: ``(ops, matching bracket by op index)`` for one body.
-type _Body = tuple[tuple[_Op, ...], dict[int, int]]
+type _Body = tuple[tuple[_Op, ...], Mapping[int, int]]
 #: ``(body, next op)`` frames, innermost first.
 type _Frames = tuple[tuple[int, int], _Frames] | None
 
 
-def _load(code: str) -> tuple[list[_Body], dict[str, int]]:
-    """Return every body (the main program first) and each name's body."""
+class _Image(NamedTuple):
+    end: int
+    bodies: tuple[_Body, ...]
+    names: Mapping[str, int]
+
+
+def _parse(code: str) -> _Image:
+    """Retain the source extent, parsed bodies and name lookup."""
     raw: list[list[_Op]] = [[]]
     open_bodies = [0]
     names: dict[str, int] = {}
@@ -114,14 +121,14 @@ def _load(code: str) -> tuple[list[_Body], dict[str, int]]:
                 raise ValueError(f"Pointless: {op[1:]!r} is never declared")
         if opens:
             raise ValueError(f"Pointless: unmatched '[' at {ops[opens[-1]][0]}")
-        bodies.append((tuple(ops), jumps))
-    return bodies, names
+        bodies.append((tuple(ops), MappingProxyType(jumps)))
+    return _Image(len(code), tuple(bodies), MappingProxyType(names))
 
 
 def _advance(
     frames: _Frames,
-    bodies: list[_Body],
-    names: dict[str, int],
+    bodies: tuple[_Body, ...],
+    names: Mapping[str, int],
     pointer: int,
     cell: int,
     target: int,
@@ -185,10 +192,10 @@ _WORKSPACE_MODEL = WorkspaceModel(
 class _Machine:
     """The shell around :func:`_advance`: the tape, input and output."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
-        self.end = len(code)
-        self.bodies, self.names = _load(code)
+        image = _parse(code) if isinstance(code, str) else code
+        self.end, self.bodies, self.names = image
         self.frames: _Frames = ((0, 0), None) if self.bodies[0][0] else None
         self.tape = bytearray(1)
         self.pointer = 0
@@ -266,22 +273,22 @@ class _Machine:
             self.io.print_str(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Share parsed source across runs with fresh machine state."""
     if not isinstance(source, str):
         raise TypeError("pointless machines require text source")
     if options:
         raise TypeError("pointless machines accept no runtime options")
 
+    image = _parse(source)
+
     def build(io: IO) -> _Machine:
-        return _Machine(source, io)
+        return _Machine(image, io)
 
-    return build
+    return RuntimePlan(build, lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Pointless program."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

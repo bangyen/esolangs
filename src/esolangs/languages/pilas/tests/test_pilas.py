@@ -8,6 +8,19 @@ from tests.interpreters.runner import native_runner
 _out = native_runner(run)
 
 
+def test_prepared_runs_reuse_the_source_image(monkeypatch) -> None:
+    from esolangs.languages.pilas import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Pilas",
+        ",.1{x}xx\nxxxxxxxxx",
+        interpreter,
+        "_parse",
+        monkeypatch,
+    )
+
+
 def test_arithmetic_pops_a_then_b() -> None:
     from esolangs.languages.pilas.tests.oracle_checks import check_raw_pilas
 

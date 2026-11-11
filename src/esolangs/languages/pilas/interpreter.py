@@ -41,6 +41,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -48,7 +49,7 @@ from esolangs.languages.pilas.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -66,7 +67,15 @@ class _State(NamedTuple):
     turn: int
 
 
-def _braces(line: str) -> dict[int, int]:
+type _Jumps = tuple[Mapping[int, int], Mapping[int, int]]
+
+
+class _Image(NamedTuple):
+    lines: tuple[str, str]
+    jumps: _Jumps
+
+
+def _braces(line: str) -> Mapping[int, int]:
     """Map each brace to its partner, both ways, rejecting a stray one."""
     table: dict[int, int] = {}
     open_: list[int] = []
@@ -80,13 +89,25 @@ def _braces(line: str) -> dict[int, int]:
             table[start], table[ind] = ind, start
     if open_:
         raise syntax_error("unmatched '{'", "close the loop with }")
-    return table
+    return MappingProxyType(table)
+
+
+def _parse(code: str) -> _Image:
+    """Retain both source lines and their matched braces."""
+    lines = code.split("\n")
+    if len(lines) > 2:
+        raise syntax_error(
+            f"{len(lines)} lines; Pilas programs have two",
+            "join the extra lines into the two stack lines",
+        )
+    first, second = (*lines, "")[:2]
+    return _Image((first, second), (_braces(first), _braces(second)))
 
 
 def _advance(
     state: _State,
     lines: tuple[str, str],
-    jumps: tuple[dict[int, int], dict[int, int]],
+    jumps: _Jumps,
     byte: int | None = None,
 ) -> tuple[_State, str | None]:
     """Return the state after the current line's command, and its output.
@@ -135,16 +156,9 @@ class _Machine:
     # ``ip`` is one pointer per line, not a single place in the source.
     ip_shape = "opaque"
 
-    def __init__(self, code: str, io: IO) -> None:
-        lines = code.split("\n")
-        if len(lines) > 2:
-            raise syntax_error(
-                f"{len(lines)} lines; Pilas programs have two",
-                "join the extra lines into the two stack lines",
-            )
-        first, second = (*lines, "")[:2]
-        self.lines = (first, second)
-        self.jumps = (_braces(first), _braces(second))
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        image = _parse(code) if isinstance(code, str) else code
+        self.lines, self.jumps = image
         self.io = io
         self.state = tuple.__new__(_State, ((0, 0), ((), ()), 0))
 
@@ -195,22 +209,22 @@ class _Machine:
             self.io.print_char(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Share parsed source across runs with fresh machine state."""
     if not isinstance(source, str):
         raise TypeError("pilas machines require text source")
     if options:
         raise TypeError("pilas machines accept no runtime options")
 
+    image = _parse(source)
+
     def build(io: IO) -> _Machine:
-        return _Machine(source, io)
+        return _Machine(image, io)
 
-    return build
+    return RuntimePlan(build, lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Pilas program until either line's pointer runs off its end."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

@@ -43,14 +43,14 @@ from __future__ import annotations
 import re
 from collections import deque
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.nor_machine.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -94,6 +94,27 @@ def _parse_inputs(text: str) -> deque[int]:
     return queue
 
 
+class _Image(NamedTuple):
+    commands: str
+
+
+def _parse(code: str) -> _Image:
+    """Validate the nonempty stream of commands."""
+    commands = "".join(code.split())
+    for c in commands:
+        if c not in _POPS:
+            raise syntax_error(
+                f"unknown command {c!r}",
+                "use the letters I A X V L R; whitespace is ignored",
+            )
+    if not commands:
+        raise syntax_error(
+            "a program with no command loops forever",
+            "end the program with V to print the last value",
+        )
+    return _Image(commands)
+
+
 _WORKSPACE_MODEL = WorkspaceModel(
     "nor-machine-v1", ("instruction", "queue", "stopped", "input_cursor")
 )
@@ -108,20 +129,9 @@ class _Machine:
     #: A short input is a shorter queue, never a failed read.
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
-        commands = "".join(code.split())
-        for c in commands:
-            if c not in _POPS:
-                raise syntax_error(
-                    f"unknown command {c!r}",
-                    "use the letters I A X V L R; whitespace is ignored",
-                )
-        if not commands:
-            raise syntax_error(
-                "a program with no command loops forever",
-                "end the program with V to print the last value",
-            )
-        self.commands = commands
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        image = _parse(code) if isinstance(code, str) else code
+        self.commands = image.commands
         self.io = io
         self.ind = 0
         self.queue: deque[int] | None = None
@@ -168,22 +178,22 @@ class _Machine:
         self.ind = (self.ind + 1) % len(self.commands)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Share parsed source across runs with fresh machine state."""
     if not isinstance(source, str):
         raise TypeError("nor_machine machines require text source")
     if options:
         raise TypeError("nor_machine machines accept no runtime options")
 
+    image = _parse(source)
+
     def build(io: IO) -> _Machine:
-        return _Machine(source, io)
+        return _Machine(image, io)
 
-    return build
+    return RuntimePlan(build, lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a NOR machine program until a lone ``V`` prints."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 

@@ -9,6 +9,20 @@ from tests.interpreters.runner import native_runner
 _out = native_runner(run)
 
 
+def test_prepared_runs_reuse_the_source_image(monkeypatch) -> None:
+    from esolangs.languages.nor_machine import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "NOR machine",
+        " L V ",
+        interpreter,
+        "_parse",
+        monkeypatch,
+        cases=(("1", "2"), ("3", "6"), ("-1", "-2")),
+    )
+
+
 def test_lone_nor_prints_the_value_itself() -> None:
     assert _out("V", "5") == "5"
 

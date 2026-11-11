@@ -31,6 +31,19 @@ def _finish(code: str, stdin: str = "") -> _Machine:
     return machine
 
 
+def test_prepared_runs_reuse_the_source_image(monkeypatch) -> None:
+    from esolangs.languages.pointless import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Pointless",
+        '"echo"{[+],.}"echo"',
+        interpreter,
+        "_parse",
+        monkeypatch,
+    )
+
+
 def test_wiki_hello_world() -> None:
     # The heading says "Hello, World!", but no cell the program builds is 44.
     assert _run(HELLO) == "Hello World!"
