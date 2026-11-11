@@ -1,13 +1,18 @@
 """Native input-order reads, constant drains, and shared streaming joins."""
 
+from unittest.mock import patch
+
 import pytest
 
+import esolangs
+from esolangs.languages.line import generator as boolean
 from esolangs.languages.line.generator import line
 from esolangs.languages.line.generator.forward import streaming_canvas
 from esolangs.languages.line.tests import test_boolean_line_forward as controls
 from esolangs.languages.line.tests.test_boolean_line_forward import _check
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
-from tests.support.witness_tables import dense, parity
+from tests.support.witness_tables import dense, parity, row_bits
 
 
 @pytest.fixture
@@ -85,9 +90,27 @@ def test_scaled_streaming_crossings(streaming_check, tmp_path) -> None:
     streaming_check(parity(7), tmp_path, scale=2)
 
 
-def test_constant_and_single_input_tables_keep_existing_layout() -> None:
+@pytest.mark.medium
+def test_default_reader_layout_boundaries() -> None:
     for table in ("00000000", "11111111", "01", "10"):
         assert streaming_canvas(table, 10**9) is None
+
+    language = esolangs.Language("Line")
+    witnesses = construction_boundaries("Line")["loaded_tree_to_inline_fallback"]
+    for witness in witnesses:
+        n, table = witness.arity, witness.table()
+        with patch.object(
+            boolean, "_inline_boolean", wraps=boolean._inline_boolean
+        ) as inline:
+            artifact = language.generate(table)
+        assert inline.call_count == int(n == 6)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row in (0, 1, len(table) // 2, len(table) - 1):
+            result = prepared.evaluate(row_bits(row, n))
+            assert result.bit == table[row]
+            assert result.observation.input_reads == n
+            assert result.observation.input_past_end == 0
 
 
 @pytest.mark.medium

@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+loaded_tree_to_inline_fallback = { tables = [{ arity = 5, rule = "dense" }, { arity = 6, rule = "dense" }], benchmark = false }
+
 [deep_arities]
 # Line uses the default twelve for linearity: the six-input cap mixed
 # small-tree and tree layouts.

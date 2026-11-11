@@ -3,6 +3,7 @@
 import importlib
 import random
 from collections.abc import Iterable
+from unittest.mock import patch
 
 import pytest
 
@@ -16,6 +17,7 @@ from esolangs.languages.dig.generator import _shared as indexed
 from esolangs.languages.dig.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
@@ -85,6 +87,16 @@ class TestDig:
     @pytest.mark.medium
     def test_alternating_layout_executes_every_row(self) -> None:
         """The alternating-axis tree computes two dense wide tables."""
+        language = esolangs.Language("Dig")
+        for witness in construction_boundaries("Dig")[
+            "default_tree_to_alternating_race"
+        ]:
+            table = witness.table()
+            with patch.object(boolean, "_dig_grid", wraps=boolean._dig_grid) as grid:
+                artifact = language.generate(table)
+            assert grid.call_count == int(witness.arity == 4)
+            restored = language.load_program(language.dump_program(artifact))
+            _check_rows(restored.source.splitlines(), table, 220)
         for n in (5, 6):
             size = 1 << n
             tables = (
