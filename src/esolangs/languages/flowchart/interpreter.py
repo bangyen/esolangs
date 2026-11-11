@@ -116,7 +116,7 @@ from esolangs.languages.flowchart.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -344,44 +344,20 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
-class _Machine:
-    r"""Per-run Flowchart shell: the grid, its pointers, and the deques.
+type _Exit = tuple[int, int, tuple[int, int]]
+type _Image = tuple[
+    tuple[str, ...],
+    int,
+    Mapping[tuple[int, int], tuple[_Spelling, int]],
+    tuple[int, int],
+    tuple[_Exit, ...],
+]
 
-    ``step()`` reads the input bits its ``/ /`` nodes need and writes the
-    bytes its ``\\ \\`` nodes gather; the pure :func:`_advance` owns the
-    pointers and deques and returns the next run plus the bytes to write.
-    ``halted`` is true once each pointer has stopped on an ``(( ))``.  The
-    run is deterministic and its :meth:`snapshot` is bounded whenever the
-    deques are, so ``esolangs.vm.run_until_halt_or_cycle`` can prove a hang
-    on it; a program that grows a deque without bound is as undetectable as
-    an ever-growing brainfuck tape.
-    """
 
-    #: Whether a read past the end of the input yields a *value* here
-    #: rather than raising.  A few languages do; the rest raise
-    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
-    #: package norm and what :func:`esolangs.run` documents; this one does
-    #: not, so an underfed program answers a different row of its table
-    #: instead of refusing, and a caller has no way to tell from the output
-    #: that it happened.
-    #:
-    #: Declared rather than changed.  The zero-beyond-input convention was
-    #: audited against every wiki page and settled deliberately
-    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
-    #: would be a decision about what these languages *mean*, not a fix.
-    #: What was wrong was that nothing said so, so the promise ``run`` made
-    #: was false for seven languages and a generic caller could not find
-    #: out which.
-    eof_is_a_value = True
+class _Diagram:
+    """Build and validate the grid before binding an execution port."""
 
-    def __init__(self, code: list[str], io: IO) -> None:
-        """Parse ``code``'s nodes and start on the first ``( )``."""
-        self.io = io
-        self._input_reads = 0
-        # The input byte's unread bits and how many remain.  The machine
-        # owns these because reading is the shell's job; the output byte a
-        # partial write gathers is part of the pure run.
-        self._incoming = self._remaining = 0
+    def __init__(self, code: list[str]) -> None:
         rows = [line.rstrip("\n") for line in code]
         self.width = max((len(r) for r in rows), default=0)
         self.grid = tuple(r.ljust(self.width) for r in rows)
@@ -391,19 +367,6 @@ class _Machine:
         # column of the box executes it.
         self.nodes: dict[tuple[int, int], tuple[_Spelling, int]] = {}
         self._parse()
-
-        start = self._start()
-        self.state = _Run(self._initial_pointers(start), MappingProxyType({}))
-
-    @property
-    def pointers(self) -> tuple[_Pointer, ...]:
-        """The live pointers, as the transition last returned them."""
-        return self.state.pointers
-
-    @property
-    def deques(self) -> Mapping[int, tuple[int | None, ...]]:
-        """The shared deques, as the transition last returned them."""
-        return self.state.deques
 
     def _parse(self) -> None:
         """Record every node on the grid, longest spelling first."""
@@ -475,7 +438,7 @@ class _Machine:
                             "connect a vertical path at the middle column of the node",
                         )
 
-    def _start(self) -> tuple[int, int]:
+    def start(self) -> tuple[int, int]:
         """Return the left-most, then top-most, ``( )`` node's first cell.
 
         The spec starts on "the left-most top-most node" -- column first,
@@ -492,6 +455,90 @@ class _Machine:
             "Flowchart program has no '( )' start node",
             "add a ( ) start node and connect its exit",
         )
+
+    def initial_exits(self, start: tuple[int, int]) -> tuple[_Exit, ...]:
+        """Return the start node's attached paths.
+
+        The start ``( )`` forks like any other, but there is no arriving
+        heading to exclude, so every attached path gets a pointer, the
+        pointer's own first.
+        """
+        exits = _forward_first(
+            _exits_from_node(self.grid, self.nodes, self.width, *start, None),
+            _RIGHT,
+        )
+        if not exits:
+            raise syntax_error(
+                "start node has no exit path", "connect a path leaving the start node"
+            )
+        return tuple(exits)
+
+
+def _prepare_source(code: list[str]) -> _Image:
+    diagram = _Diagram(code)
+    start = diagram.start()
+    return (
+        diagram.grid,
+        diagram.width,
+        MappingProxyType(diagram.nodes),
+        start,
+        diagram.initial_exits(start),
+    )
+
+
+class _Machine:
+    r"""Per-run Flowchart shell: the grid, its pointers, and the deques.
+
+    ``step()`` reads the input bits its ``/ /`` nodes need and writes the
+    bytes its ``\\ \\`` nodes gather; the pure :func:`_advance` owns the
+    pointers and deques and returns the next run plus the bytes to write.
+    ``halted`` is true once each pointer has stopped on an ``(( ))``.  The
+    run is deterministic and its :meth:`snapshot` is bounded whenever the
+    deques are, so ``esolangs.vm.run_until_halt_or_cycle`` can prove a hang
+    on it; a program that grows a deque without bound is as undetectable as
+    an ever-growing brainfuck tape.
+    """
+
+    #: Whether a read past the end of the input yields a *value* here
+    #: rather than raising.  A few languages do; the rest raise
+    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
+    #: package norm and what :func:`esolangs.run` documents; this one does
+    #: not, so an underfed program answers a different row of its table
+    #: instead of refusing, and a caller has no way to tell from the output
+    #: that it happened.
+    #:
+    #: Declared rather than changed.  The zero-beyond-input convention was
+    #: audited against every wiki page and settled deliberately
+    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
+    #: would be a decision about what these languages *mean*, not a fix.
+    #: What was wrong was that nothing said so, so the promise ``run`` made
+    #: was false for seven languages and a generic caller could not find
+    #: out which.
+    eof_is_a_value = True
+
+    def __init__(self, code: list[str] | _Image, io: IO) -> None:
+        """Parse ``code``'s nodes and start on the first ``( )``."""
+        self.io = io
+        self._input_reads = 0
+        # The input byte's unread bits and how many remain.  The machine
+        # owns these because reading is the shell's job; the output byte a
+        # partial write gathers is part of the pure run.
+        self._incoming = self._remaining = 0
+        image = _prepare_source(code) if isinstance(code, list) else code
+        self.grid, self.width, nodes, start, exits = image
+        self.nodes = dict(nodes)
+        pointers = tuple(_Pointer(row, col, d, prev=start) for row, col, d in exits)
+        self.state = _Run(pointers, MappingProxyType({}))
+
+    @property
+    def pointers(self) -> tuple[_Pointer, ...]:
+        """The live pointers, as the transition last returned them."""
+        return self.state.pointers
+
+    @property
+    def deques(self) -> Mapping[int, tuple[int | None, ...]]:
+        """The shared deques, as the transition last returned them."""
+        return self.state.deques
 
     @property
     def halted(self) -> bool:
@@ -615,23 +662,6 @@ class _Machine:
         for code in delta:
             self.io.print_char(chr(code))
         flushed.extend(delta)
-
-    def _initial_pointers(self, start: tuple[int, int]) -> tuple[_Pointer, ...]:
-        """Return the start node's initial pointers, one per attached path.
-
-        The start ``( )`` forks like any other, but there is no arriving
-        heading to exclude, so every attached path gets a pointer, the
-        pointer's own first.
-        """
-        exits = _forward_first(
-            _exits_from_node(self.grid, self.nodes, self.width, *start, None),
-            _RIGHT,
-        )
-        if not exits:
-            raise syntax_error(
-                "start node has no exit path", "connect a path leaving the start node"
-            )
-        return tuple(_Pointer(row, col, d, prev=start) for row, col, d in exits)
 
     def _read_bit(self) -> int | None:
         """Read the next input bit, low bit first, or ``None`` at EOF."""
@@ -1021,23 +1051,17 @@ class _Tick:
         return run, tuple(self.printed)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source while giving each grid run private state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the parsed grid and its startup paths."""
     if not isinstance(source, list):
         raise TypeError("flowchart machines require split text source")
     if options:
         raise TypeError("flowchart machines accept no runtime options")
-    code = tuple(source)
-
-    def build(io: IO) -> _Machine:
-        return _Machine(list(code), io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: list[str], io: IO) -> CompletionReport:
+def _execute(code: list[str] | _Image, io: IO) -> CompletionReport:
     """Execute a Flowchart program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

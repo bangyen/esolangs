@@ -446,7 +446,7 @@ def test_a_fork_keeps_its_own_pointer_on_the_forward_exit() -> None:
 class TestPureTransition:
     """``_advance`` owns the pointers, deques and output; ``step`` is the shell."""
 
-    def test_advance_is_pure_and_repeatable(self) -> None:
+    def test_advance_is_pure_and_repeatable(self, monkeypatch) -> None:
         from esolangs.languages.flowchart.interpreter import _advance, prepare_machine
 
         machine = _Machine(TRUTH_MACHINE, ScriptedIO("0"))
@@ -479,7 +479,17 @@ class TestPureTransition:
         while not second.halted:
             second.step()
         assert second.io.getvalue() == "\0"
-        assert factory(ScriptedIO()).snapshot() == before
+        from esolangs.languages.flowchart import interpreter
+
+        def unexpected_parse(_source):
+            pytest.fail("prepared execution reparsed the diagram")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(interpreter, "_prepare_source", unexpected_parse)
+            assert factory(ScriptedIO()).snapshot() == before
+            port = ScriptedIO("A")
+            factory.run(port)
+            assert port.getvalue() == "\x01"
         with pytest.raises(TypeError, match="split text"):
             prepare_machine("( )", {})
         with pytest.raises(TypeError, match="no runtime options"):
