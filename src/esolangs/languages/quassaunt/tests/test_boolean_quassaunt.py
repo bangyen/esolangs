@@ -71,7 +71,11 @@ def test_constants_read_every_input(n: int, bit: str) -> None:
 
 
 def _check_store_loop() -> None:
-    from esolangs.languages.quassaunt.proof_formulas import execution, workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bounds = resource_bounds("Quassaunt")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     table = "00110110"
     baseline_steps = {}

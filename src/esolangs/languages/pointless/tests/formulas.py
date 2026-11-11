@@ -3,7 +3,7 @@
 from tests.proofs._diagram_bounds import digits, profile
 
 
-def _chars(n: int, _: str) -> int:
+def scaling_terms(n: int, _: str) -> dict[str, int]:
     """A bound: the program declaring every function, levels of the reduced diagram.
 
     Inlining only shrinks it: callees are decided first, so a function's
@@ -17,8 +17,7 @@ def _chars(n: int, _: str) -> int:
     """
     branching, equal, constants, top = profile(n)
     name = [3 + len(str(k)) for k in range(n + 1)]
-    total = 305 + 6 * n + len(str(top[0])) + 2
-    total += 2 * (name[n] + 4) + 8 * n + 8  # the two leaves
+    total = 0
     for k in range(n):
         nodes = branching[k] + equal[k]
         total += 4 * nodes + digits(top[k], nodes)
@@ -32,4 +31,4 @@ def _chars(n: int, _: str) -> int:
         widest = max(len(str(top[k + 1])), name[k + 1])
         total += digits(top[k + 1], below) + constants[k + 1] * name[k + 1]
         total += max(0, slots - below - constants[k + 1]) * widest
-    return total
+    return {"A": total, "P": top[0]}

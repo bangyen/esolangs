@@ -1,13 +1,16 @@
-"""RAM0's emitted characters: tokens from distinct subtables per level."""
+"""RAM0's base token count and unequal-half node cap."""
+
+from esolangs.generation.decision import saturated_residual_levels
 
 
-def _chars(n: int, _: str) -> int:
-    """C: tokens bounded by the distinct subtables of each level."""
-    nodes = [
-        min(1 << k, (1 << (1 << (n - k))) - (1 << (1 << (n - k - 1)))) for k in range(n)
-    ]
-    prefix = n * (n + 9) // 2
-    base = 8 + prefix + sum(nk * (n - k + 4) for k, nk in enumerate(nodes))
-    tokens = base if base + 1 < 10**4 else base + 2 * sum(nodes)
-    digits = len(str(tokens + 1))
-    return 2 * tokens - 1 + (2 * sum(nodes) + 1) * (digits - 1)
+def scaling_terms(n: int, _: str) -> dict[str, int]:
+    """Price the positional prefix geometrically, then the saturated tail."""
+    saturated = saturated_residual_levels(n)
+    positions = 1 << (n - saturated)
+    nodes = positions - 1
+    weighted = (saturated + 6) * positions - n - 6
+    for h in range(1, saturated + 1):
+        layer = (1 << (1 << h)) - (1 << (1 << (h - 1)))
+        nodes += layer
+        weighted += layer * (h + 4)
+    return {"B": 8 + n * (n + 9) // 2 + weighted, "P": nodes}

@@ -89,12 +89,16 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: C marks a straight-line constant" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.pointless.tests.formulas:_chars"
+# P is the largest root identifier and A prices declarations and
+# references by layer. The header and two constant leaves contribute
+# the remaining terms. Costed inlining only shrinks this envelope.
+expression = "329+14n+digits(P)+2digits(n)+A"
+source_terms = { names = ["A", "P"], provider = "esolangs.languages.pointless.tests.formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: every function declared", formula = "F" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: every function declared" }
 
 [semantic_evidence]
 version = 1

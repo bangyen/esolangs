@@ -92,12 +92,15 @@ unit = "bits"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: R tokens, C marks constants" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.ram0.tests.formulas:_chars"
+# B is the base token count, P the unequal-half residual cap. At
+# five-digit addresses each shared node may need two additional tokens.
+expression = "2(B+2P·min(1,max(0,B-9998)))-1+(2P+1)(digits((B+2P·min(1,max(0,B-9998)))+1)-1)"
+source_terms = { names = ["B", "P"], provider = "esolangs.languages.ram0.tests.formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: tokens per distinct subtable", formula = "C" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: tokens per distinct subtable" }
 
 [semantic_evidence]
 version = 1

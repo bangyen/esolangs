@@ -70,12 +70,15 @@ def test_every_formula_cell_is_checked() -> None:
     _check_rational_arithmetic()
     _check_decimal_digits()
     _check_weighted_widths()
+    _check_spill_widths()
     _check_residual_counts()
     _check_bit_width_sums()
     _check_source_term_schema()
 
 
 def _check_source_term_schema() -> None:
+    from scripts.docs.resource_formula import arity_cases, case_formula
+
     terms = frozenset({"S"})
     for expression in ("2X", "2", "S(n)"):
         with pytest.raises(ValueError, match="resource expression"):
@@ -85,6 +88,22 @@ def _check_source_term_schema() -> None:
         formula = expression_formula("2S", (terms, lambda _n, _p, value=value: value))
         with pytest.raises(ValueError, match="invalid source terms"):
             formula(1, "")
+
+    calls = []
+
+    def source_count(n, program):
+        calls.append((n, program))
+        return {"S": len(program)}
+
+    rows = [{"through": 1, "expression": "29"}, {"expression": "2S"}]
+    cases = arity_cases(rows, terms)
+    formula = case_formula(cases, (terms, source_count))
+    assert formula(1, "abc") == 29
+    assert calls == []
+    assert formula(2, "abc") == 6
+    assert calls == [(2, "abc")]
+    with pytest.raises(ValueError, match="unused source terms"):
+        arity_cases([rows[0], {"expression": "42"}], terms)
 
 
 def _check_bit_width_sums() -> None:
@@ -205,3 +224,13 @@ def _check_weighted_widths() -> None:
     for expression in ("power2_digits_sum(-1)", "weighted_bit_sum(1/2)"):
         with pytest.raises(ValueError, match="non-negative integer"):
             expression_formula(expression)(1, "")
+
+
+def _check_spill_widths() -> None:
+    weighted = expression_formula("weighted_decimal_sum(n)")
+    for n in range(102):
+        assert weighted(n, "") == sum(len(str(k)) << (n - k) for k in range(1, n + 1))
+    sqrt = expression_formula("isqrt(T+2n-65536)")
+    assert sqrt(16, "") == 5
+    with pytest.raises(ValueError, match="non-negative integer"):
+        expression_formula("isqrt(1/2)")(1, "")

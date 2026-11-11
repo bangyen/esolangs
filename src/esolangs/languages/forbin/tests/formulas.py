@@ -1,63 +1,24 @@
-"""Forbin's emitted characters: reads, shift register, a tree of blocks."""
+"""The shift-register term of Forbin's seven-input block ceiling."""
 
 
-def _chars_of_names(m: int) -> int:
-    """Characters of the first m identifiers: 52 one-letter, then two-letter."""
-    return m + max(0, m - 52)
-
-
-def _length(k: int) -> int:
-    return 1 if k < 52 else 2
-
-
-def _chars(n: int, _: str) -> int:
-    """N: the b = 7 build, main, reads, shift register, 2^(n-7) distinct blocks.
-
-    A table's size is this minus what constants, repeats and ignored inputs
-    drop: a nonconstant leaf costs 7 + len(table) + 2 * block, a collapsed
-    constant span a call (about 12) plus one of two 23-character printers,
-    and a subtree used k times a definition (at most 6 over its body) and k
-    calls, against the k - 1 leaves it omits.
-    """
-    h = max(n - 7, 0)
-    low = n - h
-    block = 1 << low
-    # Name indexes, in order of first use: junk, n bits, table, then the cells.
-    junk, table, first = 0, n + 1, n + 2
-
-    def cells(a: int, b: int) -> int:
-        return _chars_of_names(first + b) - _chars_of_names(first + a)
-
-    reads = (
-        7 * n * _length(junk)
-        + _chars_of_names(n + 1)
-        - _chars_of_names(1)
-        + (8 * n - 1)
-        + 8
+def scaling_terms(n: int, _: str) -> dict[str, int]:
+    """Price a register whose live prefix halves at each shift."""
+    depth = min(n, 7)
+    block = 1 << depth
+    high = n - depth
+    # Cell names start at index n+2. Each live prefix pays one extra
+    # letter for each cell beyond the one-letter alphabet.
+    short = max(0, 50 - n)
+    first = min(depth + 1, max(1, short.bit_length()))
+    shift_extras = 2 * block - (1 << first) - (depth - first + 1) * short
+    register = (
+        19
+        + (n >= 51)
+        + (n >= 50)
+        + 6 * block
+        + max(0, block - short)
+        + 11 * depth
+        + max(0, n - max(high, 51))
+        + shift_extras
     )
-    register = _length(table) + 1 + cells(0, block) + (block - 1) + 1
-    live = block
-    for level in range(h, n):
-        half = live // 2
-        register += (
-            9
-            + _length(level + 1)
-            + 1
-            + cells(0, half)
-            + half
-            - 1
-            + 1
-            + cells(half, live)
-            + (live - half)
-            - 1
-            + 1
-        )
-        live = half
-    register += 18 + _length(first) + 1 + 1
-    leaf = 7 + _length(table) + 2 * block
-    tree = sum((1 << lv) * (11 + _length(lv + 1)) for lv in range(h)) + (1 << h) * leaf
-    lines = 4 + (1 << (h + 2)) - 2
-    return 5 + reads + register + tree + 1 + (lines - 1)
-
-
-#: The b = 7 build's size; the race (3 <= b <= 7) reaches it only where 7 wins.
+    return {"G": register}

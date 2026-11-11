@@ -101,12 +101,18 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..6, at most V after: 2T + 7 cells", formula = "W" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.rotfuck.tests.formulas:_chars"
+# The cooked prefix uses one phase through n=6. The raw prefix uses
+# full five-input phases plus its leading remainder. The walk strides
+# form a geometric series of ratio 32 and alternate parity.
+cases = [
+    { through = 6, expression = "3T+79n+43" },
+    { expression = "3T+48+31n+(97⌊n/5⌋+16floor((⌊n/5⌋+(n%5)%2)/2))/3-5min(1,(n%5))+min((48(2^(n%5)-1)%256),256-(48(2^(n%5)-1)%256))+32(T-2^(n%5))/93" },
+]
 exact = true
 arities = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 first = 2
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 2..10: a lone zero", formula = "P" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: lone-zero witness n=2..10" }
 
 [semantic_evidence]
 version = 1

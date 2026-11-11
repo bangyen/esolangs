@@ -110,6 +110,7 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
             required | {"expression", "source_terms"},
             required | {"provider"},
             required | {"cases"},
+            required | {"cases", "source_terms"},
         ):
             raise ValueError("invalid resource bound fields")
         arities = _arities(row["arities"])
@@ -142,16 +143,17 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
         }:
             raise ValueError("scaling bounds require an emitted source unit")
         formula: Formula
+        names: frozenset[str] = frozenset()
+        terms = None
+        if "source_terms" in row:
+            names, reference = source_terms(row["source_terms"])
+            terms = names, cast(TermProvider, _provider(language, reference))
         if "expression" in row:
             if not isinstance(row["expression"], str):
                 raise ValueError("resource expression must be text")
-            terms = None
-            if "source_terms" in row:
-                names, reference = source_terms(row["source_terms"])
-                terms = names, cast(TermProvider, _provider(language, reference))
             formula = expression_formula(row["expression"], terms)
         elif "cases" in row:
-            formula = case_formula(arity_cases(row["cases"]))
+            formula = case_formula(arity_cases(row["cases"], names), terms)
         else:
             formula = cast(Formula, _provider(language, row["provider"]))
         found[column] = ResourceBound(

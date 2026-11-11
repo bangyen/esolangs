@@ -85,12 +85,15 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: queue, position, heading, halt and dump flags" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.arrowqueue.tests.formulas:_cells"
+# The widest table has T-1 leaves. Adding leaves cannot reduce
+# a fold's area. A through D measure its four candidate heights.
+expression = "min(6(2T+6n+7),A,B,C,D)"
+source_terms = { names = ["A", "B", "C", "D"], provider = "esolangs.languages.arrowqueue.tests.formulas:scaling_terms" }
 exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "cells"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the least-area cascade or fold, T - 1 leaves", formula = "A" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: cascade and four folds" }
 
 [semantic_evidence]
 version = 1

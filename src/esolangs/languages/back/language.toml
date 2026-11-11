@@ -8,7 +8,6 @@ admitted = 2020-07-10T04:13:12-04:00
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "last tested bit held in cell n; equal halves pass; pair finishers compute the answer"
-definitions = ["A = 3T/4+1", "E = 13/27 at n=1/2; then max(6n+1,T/2)+T/2+3n+6 through7; E(8)=258; E(9)=469"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 24, "1" = 27, "2" = 24, "3" = 28, "4" = 25, "5" = 28, "6" = 25, "7" = 28 }, source_units = 170 }
@@ -82,16 +81,25 @@ version = 2
 construction = "esolangs.languages.back.generator:back_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.back.proof_formulas:execution"
+# Folded-area selection restricts n=8/9 combs to 114/218 rows.
+cases = [
+    { through = 1, expression = "C*(3n+2+B)+(1-C)*13" },
+    { through = 2, expression = "C*(3n+2+B)+(1-C)*27" },
+    { through = 7, expression = "C*(3n+2+B)+(1-C)*(max(T/2,6n+1)+T/2+3n+6)" },
+    { through = 8, expression = "C*(3n+2+B)+(1-C)*258" },
+    { through = 9, expression = "C*(3n+2+B)+(1-C)*469" },
+    { expression = "C*(3n+2+B)+(1-C)*(max(3T/4+1,6n-1)+3T/4+3n+7)" },
+]
+source_terms = { names = ["C", "B"], provider = "esolangs.languages.back.proof_formulas:layout_terms" }
 exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 1..9, then at most 2A+3n+6", formula = "E" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}. C constant B, bounds past n=9" }
 
 [resource_evidence.workspace]
 expression = "n+bl(n)+C*(3+bl(3n+B))+(1-C)*(7+max(bl(6n-2),n)+bl(3n+4))"
-source_terms = { names = ["C", "B"], provider = "esolangs.languages.back.proof_formulas:workspace_terms" }
+source_terms = { names = ["C", "B"], provider = "esolangs.languages.back.proof_formulas:layout_terms" }
 exact = true
 arities = [1, 2, 3, 6]
 first = 1

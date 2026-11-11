@@ -8,7 +8,7 @@ admitted = 2026-08-13T21:46:33-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it"
-definitions = ["m = min(16, T/4), the distinct four-row cells", "K = the constants closure: 30 for n = 6..8, 2n + 14 past n = 8", "A = the cell array, an (index, value) pair per entry", "D = the decoder array, one entry per set bit of the m cells"]
+definitions = ["K = the constants closure", "A = the cell array, an (index, value) pair per entry", "D = the decoder array, one entry per set bit of a cell"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 33, "1" = 33, "2" = 33, "3" = 33, "4" = 33, "5" = 33, "6" = 33, "7" = 33 }, source_units = 771 }
@@ -106,28 +106,37 @@ version = 2
 construction = "esolangs.languages.collatz_multiverse.generator:collatz_multiverse_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.collatz_multiverse.proof_formulas:execution"
+# Every unhosted line runs once. The decoder has up to 16 distinct four-row cells.
+expression = "C*(n+10)+(1-C)*(T/4+3n+4min(16,T/4)+2K+10)"
+source_terms = { names = ["C", "K"], provider = "esolangs.languages.collatz_multiverse.proof_formulas:execution_terms" }
 exact = false
 arities = [3, 5, 6, 8]
 first = 3
 unit = "lines"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: one step per line", formula = "T/4 + 3n + 4m + 2K + 10" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: constant C, one step per line" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.collatz_multiverse.proof_formulas:workspace"
+# Constants retain five registers, then the instruction and input cursors.
+expression = "bl(2n-1)+C*(132+bl(n+11))+(1-C)*(R+A+D+bl(T/4+3n+4min(16,T/4)+2K+11))"
+source_terms = { names = ["C", "K", "R", "A", "D"], provider = "esolangs.languages.collatz_multiverse.proof_formulas:workspace_terms" }
 exact = false
 arities = [3, 4, 5, 6, 7, 9]
 first = 3
 unit = "bits"
-description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: top code repeated", formula = "end-state registers, arrays A and D, ip, input counter" }
+description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: R registers, A and D arrays" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.collatz_multiverse.tests.formulas:_chars"
+# Q prices the unhosted constant closure. The decoder uses the
+# largest popcounts of its distinct codes, and the read and address
+# lines include each index's decimal digits. Endpoint and affine routes
+# fit this four-row envelope.
+expression = "411+31(T/4)+((T/4)-3)min(1,max(0,(T/4)-3))+76min(16,(T/4))+13(min(1,(T/4))+min(5,(T/4))+min(11,(T/4))+min(15,(T/4)))+23n+digits_sum(n)+Q+39max(0,n-3)+2digits_sum(max(0,n-3))+power2_digits_sum(max(1,n-2))-1+2(digits(max(0,n-3))+max(0,3-n)+digits(n-2)+digits(n-1))"
+source_terms = { names = ["Q"], provider = "esolangs.languages.collatz_multiverse.tests.formulas:scaling_terms" }
 exact = false
 arities = [3, 4, 5, 6, 7]
 first = 3
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: a line per cell", formula = "N" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: one line per cell" }
 
 [semantic_evidence]
 version = 1

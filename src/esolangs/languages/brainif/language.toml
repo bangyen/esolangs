@@ -111,12 +111,16 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: cell storage C and R lines" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.brainif.tests.formulas:_chars"
+# N counts layered nodes, A counts goto-address digits. Each node
+# pays 52 characters including line separators; the root saves 17.
+# The fixed climb and output tail add 840 plus both done-address widths.
+expression = "52N+823+A+2digits(4N+54)"
+source_terms = { names = ["A", "N"], provider = "esolangs.languages.brainif.tests.formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: widest layered DAG, before the fall-through layout", formula = "W" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: layered DAG before fall-through" }
 
 [semantic_evidence]
 version = 1

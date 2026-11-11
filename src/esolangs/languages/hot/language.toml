@@ -86,12 +86,14 @@ unit = "rewrites"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: C marks the constant spine" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.hot.proof_formulas:workspace"
+# Shorter bottom terms duplicate only literal bits and stay below the replaced pairs.
+expression = "C*(32n+27)+(1-C)*max(88T+232n+235,132T+24n-53)+bl(n)"
+source_terms = { names = ["C"], provider = "esolangs.languages.hot.proof_formulas:execution_terms" }
 exact = true
 arities = [2, 3, 6]
 first = 2
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: two copies early, three at the end", formula = "max(88T+232n+235, 132T+24n-53) + bl(n)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. C marks the constant spine" }
 
 [resource_evidence.scaling]
 expression = "27T/2 + 73n + 86"

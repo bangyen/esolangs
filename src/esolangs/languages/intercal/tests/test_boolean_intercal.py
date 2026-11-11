@@ -200,7 +200,9 @@ def intercal_plain(truth_table: str, perm: tuple[int, ...]) -> str:
 @pytest.mark.medium
 def test_constants_reuse_one_variable_and_print_the_literal() -> None:
     _check_emitted_resource_routes()
-    from esolangs.languages.intercal.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("INTERCAL")["workspace"].formula
 
     for n, bit, options, template in constant_artifacts("INTERCAL", range(1, 13)):
         assert template.source.count(TEMPLATE_CHAR) == 2 * n
@@ -230,11 +232,12 @@ def _check_emitted_resource_routes() -> None:
     from esolangs.languages.intercal.proof_formulas import (
         global_execution,
         global_workspace,
-        workspace,
     )
     from scripts.docs.resource_evidence import resource_bounds
 
-    execution = resource_bounds("INTERCAL")["execution"].formula
+    bounds = resource_bounds("INTERCAL")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     for n in (13, 16, 20, 21, 22, 25, 26, 27):
         selector = _Expr("input", n - 1)

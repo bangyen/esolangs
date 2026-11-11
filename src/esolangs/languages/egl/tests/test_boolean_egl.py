@@ -86,8 +86,12 @@ def _check_constants() -> None:
 
 
 def _check_folded() -> None:
-    from esolangs.languages.egl.proof_formulas import execution, workspace
     from esolangs.languages.egl.tests.ablations import ablate
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bounds = resource_bounds("EGL")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     for n in (4, 7):
         rng = random.Random(n)

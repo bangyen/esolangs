@@ -94,12 +94,15 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: whole program state", formula = "2bl(N) + 32 + bl(2n+3) + 2n(10+bl(N-1)) + P(28+3bl(2n+2)+2bl(N-2))" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.crement.tests.formulas:_lines"
+# Named presets take five and thirteen lines. Past them, each
+# distinct unequal-half residual uses three lines.
+expression = "5+8min(1,n-1)+min(1,max(0,n-2))(3P+2n-10)"
+source_terms = { names = ["P"], provider = "esolangs.languages.crement.proof_formulas:scaling_terms" }
 exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "lines"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: subtree ids", formula = "N" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: subtree ids" }
 
 [semantic_evidence]
 version = 1

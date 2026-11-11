@@ -102,12 +102,16 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n ≤ 48: constant C and loop state G" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.forbin.tests.formulas:_chars"
+# The seven-input block route bounds the size before the race. G
+# prices the shift register. Above the 52 one-letter names, the longest
+# selector and table names use two letters.
+expression = "16n+2+max(0,n-51)+G+2^max(0,n-7)(24+min(1,max(0,n-50))+2^(min(n,7)+1))+max(0,2^max(0,n-7)-2^51)"
+source_terms = { names = ["G"], provider = "esolangs.languages.forbin.tests.formulas:scaling_terms" }
 exact = [2, 3, 12, 13]
 arities = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
 first = 2
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, n = 2..134: two an entry, distinct blocks", formula = "N" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, n=2..134" }
 
 [semantic_evidence]
 version = 1

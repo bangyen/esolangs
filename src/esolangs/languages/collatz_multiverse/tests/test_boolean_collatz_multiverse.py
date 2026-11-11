@@ -370,10 +370,11 @@ def test_three_input_corpus_size() -> None:
 
 def _check_affine_stream() -> None:
     from esolangs.languages.collatz_multiverse.interpreter import _Machine
-    from esolangs.languages.collatz_multiverse.proof_formulas import (
-        execution,
-        workspace,
-    )
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bounds = resource_bounds("Collatz Multiverse")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     for n in range(1, 6):
         for mask in range(1 << n):

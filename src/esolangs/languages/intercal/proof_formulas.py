@@ -37,7 +37,7 @@ def execution_terms(_: int, program: str) -> dict[str, int]:
     return {"S": len(_STATEMENT.findall(program))}
 
 
-def workspace(_: int, program: str) -> int:
+def workspace_terms(_: int, program: str) -> dict[str, int]:
     """Price the final write set; all-one inputs attain every mask's two bits.
 
     Inputs, negations, shared nodes and result are Boolean. A named selector
@@ -69,7 +69,7 @@ def workspace(_: int, program: str) -> int:
         + sum((index.bit_length() or 1) + 1 for index in written)
         for key, (width, written) in arrays.items()
     )
-    return bits + len(statements).bit_length()
+    return {"B": bits, "S": len(statements)}
 
 
 def global_execution(n: int) -> int:

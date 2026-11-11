@@ -27,43 +27,26 @@ def _constants(n: int) -> set[int]:
     return seen
 
 
-def execution(n: int, program: str) -> int:
-    """Lines of an all-essential table with min(16, T/4) distinct cells.
-
-    No line branches, so every line runs once. A conservative unhosted layout
-    has constants 4 + 2K, the decoder
-    1 + 4m, a parity pad, the cells 1 + T/4 and the address 3n + 3.  K is the
-    closure of 48, 4c (0 < c < m) and the weights 2^j under k -> (k - c)/2,
-    c = (k - 2) mod 4, as ``_cm_plan`` splits a constant.  Both terms grow
-    with the essential inputs and the distinct cells, so this is the worst.
-    """
-    if program.startswith("r=z x+input,NOT PRINT."):
-        return n + 10
-    m = min(16, 1 << (n - 2))
-    return (1 << n) // 4 + 3 * n + 4 * m + 10 + 2 * len(_constants(n))
+def _constant(program: str) -> bool:
+    return program.startswith("r=z x+input,NOT PRINT.")
 
 
-def workspace(n: int, program: str) -> int:
-    """Bound on the end state of the all-ones row, per snapshot part.
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Identify constant readers and count the constants in the table layout."""
+    constant = _constant(program)
+    return {"C": int(constant), "K": 0 if constant else len(_constants(n))}
 
-    Registers: the constants closure, negativeOne, z, o, s (the last cell's
-    line), t (decoder base + 4 m + 0 for code m-1, select 3) and the weights.
-    Arrays: A holds every cell but a code-0 one, each value at most 4 (m-1);
-    D one entry per set bit, the m cells' popcounts ascending up the codes
-    and each index at most its code's last.  Then ip and the input counter
-    (2n - 1).  Either polarity of the table can be built, so the code order
-    is any: the bound is not reached.
-    """
+
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Count the registers and arrays of the all-ones snapshot."""
+    if _constant(program):
+        return {"C": 1, "K": 0, "R": 0, "A": 0, "D": 0}
     bl = int.bit_length
-    if program.startswith("r=z x+input,NOT PRINT."):
-        # negativeOne, r, a, b and c: 132 bits; then ip and the input cursor.
-        return 132 + bl(n + 11) + bl(2 * n - 1)
     cells, high = 1 << (n - 2), n - 2
     m = min(16, cells)
     consts = _constants(n)
     cap_d = 2 * len(consts) + 5  # the decoder's capture line
     cap_s = cap_d + 4 * m + 2  # the cells' capture line
-    lines = cells + 3 * n + 4 * m + 2 * len(consts) + 10
     regs = sum(8 * (1 + len(str(k))) + bl(k) for k in consts | {1, 2})
     regs += 90 + 9 + 14 + 16 + bl(cap_s + cells) + bl(cap_d + 4 * m)
     regs += sum(8 * (1 + len(str(i))) for i in range(n))
@@ -72,4 +55,4 @@ def workspace(n: int, program: str) -> int:
     a += (cells - 1) * bl(4 * (m - 1))
     pops = sorted(range(16), key=lambda v: (v.bit_count(), v))[16 - m :]
     d = 8 + sum(v.bit_count() * (bl(cap_d + 4 * c + 4) + 1) for c, v in enumerate(pops))
-    return regs + a + d + bl(lines + 1) + bl(2 * n - 1)
+    return {"C": 0, "K": len(consts), "R": regs, "A": a, "D": d}

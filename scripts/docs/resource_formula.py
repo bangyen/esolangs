@@ -14,6 +14,7 @@ from esolangs.generation.decision import residual_count_bound
 
 Formula = Callable[[int, str], int | Fraction]
 TermProvider = Callable[[int, str], Mapping[str, int | Fraction]]
+type SourceTerms = tuple[frozenset[str], TermProvider]
 type ArityCases = tuple[tuple[int | None, str], ...]
 _FUNCTIONS = {
     "bl",
@@ -26,6 +27,8 @@ _FUNCTIONS = {
     "floor",
     "power2_digits_sum",
     "weighted_bit_sum",
+    "weighted_decimal_sum",
+    "isqrt",
     "residuals",
     "residuals_without_constants",
 }
@@ -96,6 +99,25 @@ def _weighted_bit_sum(value: int | Fraction) -> int:
     return sum((1 << (count - (1 << d) + 1)) - 1 for d in range(count.bit_length()))
 
 
+def _weighted_decimal_sum(value: int | Fraction) -> int:
+    """Sum digits(k) for k=1..n, with weight 2^(n-k) for k."""
+    count = int(value)
+    if count < 0 or count != value:
+        raise ValueError("resource weighted decimal sum needs a non-negative integer")
+    if not count:
+        return 0
+    # Every decimal threshold 10^d contributes a geometric tail.
+    return sum((1 << (count - int(10**d) + 1)) - 1 for d in range(_digits(count)))
+
+
+def _isqrt(value: int | Fraction) -> int:
+    """Evaluate the integer square root of a non-negative count."""
+    integer = int(value)
+    if integer < 0 or integer != value:
+        raise ValueError("resource square root needs a non-negative integer")
+    return math.isqrt(integer)
+
+
 def _residuals(value: int | Fraction, *, include_constants: bool = True) -> int:
     """Count the maximum distinct subtables across the internal levels."""
     arity = int(value)
@@ -130,6 +152,7 @@ def _parse_expression(
         ast.Sub,
         ast.Mult,
         ast.Div,
+        ast.Mod,
         ast.Pow,
         ast.USub,
     )
@@ -178,7 +201,10 @@ class _ExactArithmetic(ast.NodeTransformer):
 
 
 def expression_formula(
-    expression: str, source_terms: tuple[frozenset[str], TermProvider] | None = None
+    expression: str,
+    source_terms: SourceTerms | None = None,
+    *,
+    allow_unused_terms: bool = False,
 ) -> Formula:
     """Return the checked arithmetic formula, rejecting unknown syntax."""
     source_names = source_terms[0] if source_terms is not None else frozenset()
@@ -191,7 +217,8 @@ def expression_formula(
     # A raster program has no length; only a bound that reads L asks.
     reads_length = "L" in code.co_names
     reads_table_size = "T" in code.co_names
-    if source_names - set(code.co_names):
+    used_terms = source_names.intersection(code.co_names)
+    if not allow_unused_terms and source_names != used_terms:
         raise ValueError("resource expression has unused source terms")
 
     def formula(n: int, program: str) -> int | Fraction:
@@ -205,6 +232,8 @@ def expression_formula(
             "digits_sum": _digits_sum,
             "power2_digits_sum": _power2_digits_sum,
             "weighted_bit_sum": _weighted_bit_sum,
+            "weighted_decimal_sum": _weighted_decimal_sum,
+            "isqrt": _isqrt,
             "residuals": _residuals,
             "residuals_without_constants": partial(_residuals, include_constants=False),
             "max": max,
@@ -214,7 +243,7 @@ def expression_formula(
             "_divide": Fraction,
             "_power": _power,
         }
-        if source_terms is not None:
+        if source_terms is not None and used_terms:
             terms = source_terms[1](n, program)
             if (
                 not isinstance(terms, Mapping)
@@ -247,11 +276,14 @@ def source_term_names(value: object) -> frozenset[str]:
     return frozenset(value)
 
 
-def arity_cases(value: object) -> ArityCases:
+def arity_cases(
+    value: object, source_names: frozenset[str] = frozenset()
+) -> ArityCases:
     """Validate contiguous positive arities with an unbounded final case."""
     if not isinstance(value, list) or len(value) < 2:
         raise ValueError("resource cases require at least two expressions")
     cases: list[tuple[int | None, str]] = []
+    used: set[str] = set()
     previous = 0
     for index, row in enumerate(value):
         last = index == len(value) - 1
@@ -264,9 +296,15 @@ def arity_cases(value: object) -> ArityCases:
                 raise ValueError("resource case endpoints must increase")
             previous = through
         expression = row["expression"]
-        if not isinstance(expression, str) or _parse_expression(expression) is None:
+        if (
+            not isinstance(expression, str)
+            or (tree := _parse_expression(expression, source_names)) is None
+        ):
             raise ValueError("invalid resource case expression")
+        used.update(node.id for node in ast.walk(tree) if isinstance(node, ast.Name))
         cases.append((through, expression))
+    if source_names - used:
+        raise ValueError("resource cases have unused source terms")
     return tuple(cases)
 
 
@@ -285,10 +323,11 @@ def describe_cases(cases: ArityCases, first: int, unit: str) -> str:
     return ", ".join(parts) + f" {unit}"
 
 
-def case_formula(cases: ArityCases) -> Formula:
+def case_formula(cases: ArityCases, source_terms: SourceTerms | None = None) -> Formula:
     """Select an expression by arity, then evaluate only that expression."""
     compiled = tuple(
-        (through, expression_formula(expression)) for through, expression in cases
+        (through, expression_formula(expression, source_terms, allow_unused_terms=True))
+        for through, expression in cases
     )
 
     def formula(n: int, program: str) -> int | Fraction:

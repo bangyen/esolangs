@@ -9,7 +9,7 @@ def _digits(n: int) -> int:
         return len(str(1 << (1 << n)))
 
 
-def _lift_bits(n: int) -> int:
+def _lift_bits(n: int, d: int) -> int:
     """Bit length of the largest lift with d + 1 digits, d those of 2^T.
 
     v lifts below d + 1 digits iff a band [10^j, 2·10^j), j < d, holds a
@@ -17,7 +17,6 @@ def _lift_bits(n: int) -> int:
     The largest is the valid residue cyclically nearest below 10^d mod 2^T.
     """
     span = 1 << (1 << n)
-    d = _digits(n)
     covered: list[tuple[int, int]] = []
     for j in range(d):
         lo = 10**j % span
@@ -35,21 +34,7 @@ def _lift_bits(n: int) -> int:
     raise AssertionError("no valid residue")
 
 
-def workspace(n: int, _: str) -> int:
-    """Peak written bits: the frame text, the stack, the two read counters.
-
-    The frame peaks at the literal's last digit, 8 bits a program character;
-    the stack at the last read (T + 14) or the tail's ``[λ, 2, λ]``.
-    """
-    bl = int.bit_length
-    t = 1 << n
-    d = _digits(n)
-    return (
-        16 * d
-        + 136 * n
-        + 155
-        + bl(17 * n + d)
-        + max(t + 14, 2 * _lift_bits(n) + 2)
-        + bl(2 * n)
-        + bl(n)
-    )
+def workspace_terms(n: int, _: str) -> dict[str, int]:
+    """Price the decimal modulus and the largest accepted lift."""
+    width = _digits(n)
+    return {"D": width, "B": _lift_bits(n, width)}

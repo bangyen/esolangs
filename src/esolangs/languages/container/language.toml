@@ -91,12 +91,13 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. C marks the threshold route in default layouts" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.container.proof_formulas:workspace"
+expression = "C*(145+3bl(n))+(1-C)*(V+max(bl(E),1)+2bl(2n+2))"
+source_terms = { names = ["C", "V", "E"], provider = "esolangs.languages.container.proof_formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 7]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} over containers + 2bl(2n+2) + bl(EXIT): peak ≤ start + (2n+2)Σ⁺deltas", formula = "Σ (8|name| + bl(peak))" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}. C marks the threshold route, V counts stored bits and E is the exit value ceiling" }
 
 [resource_evidence.scaling]
 # For the alternating threshold witness, 0 0 (1 0)^(T/2-1), each

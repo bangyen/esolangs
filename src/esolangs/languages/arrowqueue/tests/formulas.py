@@ -1,40 +1,57 @@
-"""ArrowQueue's emitted cells: the least-area of the cascade and its folds."""
+"""The four closed-form strip areas in ArrowQueue's layout race."""
 
 from math import isqrt
 
 
 def _fold(n: int, height: int, leaves: int) -> int | None:
-    """Cells of the fold at ``height``: blocks packed greedily into strips.
+    """Price packed six-line stages, one middle, leaf strips and the end."""
+    capacity = height - 3
+    stages_per_strip = capacity // 6
+    stage_strips, stage_tail = divmod(n - 1, stages_per_strip)
+    last_stage = 6 * (stage_tail + 1)
+    stage_height = 6 * stages_per_strip if stage_strips else 0
+    middle, middle_width = last_stage + 7, 5
+    if middle > capacity:
+        stage_strips += 1
+        stage_height = max(stage_height, last_stage)
+        middle, middle_width = 7, 4
 
-    Blocks are n stages (6 lines, 5 wide), the middle (7, 4, shifts its
-    strip one right unless last), ``leaves`` one-line leaves and the 2-line
-    end block (6 wide).  ``None`` when one strip holds everything.
-    """
-    cap = height - 3
-    blocks = [(6, 5, 0)] * n + [(7, 4, 1)] + [(1, 6, 0)] * leaves + [(2, 6, 0)]
-    strips = [[0, 0, 0]]
-    for lines, width, middle in blocks:
-        if strips[-1][0] + lines > cap:
-            strips.append([0, 0, 0])
-        strip = strips[-1]
-        strip[0] += lines
-        strip[1] = max(strip[1], width)
-        strip[2] |= middle
-    if len(strips) == 1:
+    added = min(leaves, capacity - middle)
+    middle += added
+    if added:
+        middle_width = 6
+    remaining = leaves - added
+    full, tail = divmod(remaining, capacity)
+    last = tail or (capacity if full else middle)
+    separate_end = last + 2 > capacity
+    middle_before_end = bool(remaining) or separate_end
+    if not middle_before_end:
+        middle_width = 6
+    strips_after_middle = full + bool(tail) + separate_end
+    if not stage_strips and not strips_after_middle:
         return None
-    last = len(strips) - 1
-    wide = sum(s[1] + (i < last and s[2]) for i, s in enumerate(strips))
-    return wide * max(2 + s[0] + (i < last) for i, s in enumerate(strips))
+
+    width = (
+        5 * stage_strips + middle_width + middle_before_end + 6 * strips_after_middle
+    )
+    # The end cannot fit in a full leaf strip, so each full one pays
+    # the extra linking row. Only a partial final strip can take the end.
+    tallest = max(
+        stage_height + 3 if stage_strips else 0,
+        middle + 3 if middle_before_end else 0,
+        capacity + 3 if full else 0,
+        tail + 3 if tail and separate_end else 0,
+        4 if separate_end else last + 4,
+    )
+    return width * tallest
 
 
-def _cells(n: int, _: str) -> int:
-    """A: the least of the 6-wide cascade and the four folds, T - 1 leaves.
-
-    A fold's area never falls as leaves are added, so T - 1 bounds every
-    table.  A ones-then-zero-last table reaches it from n = 4 (its leaf
-    order is permutation-invariant); the lone zero second to last, n <= 3.
-    """
+def scaling_terms(n: int, _: str) -> dict[str, int]:
+    """Price the four heights around the quadratic layout centre."""
     t = 1 << n
+    raw = 6 * (2 * t + 6 * n + 7)
     centre = (3 + isqrt(9 + 12 * (6 * n + 7 + t))) // 2
-    folds = (_fold(n, max(10, h), t - 1) for h in range(centre - 1, centre + 3))
-    return min(6 * (2 * t + 6 * n + 7), *(f for f in folds if f is not None))
+    return {
+        key: _fold(n, max(10, height), t - 1) or raw
+        for key, height in zip("ABCD", range(centre - 1, centre + 3), strict=True)
+    }

@@ -7,7 +7,7 @@ backlinks = 100
 [proof_status]
 labels = ["parameterized tree"]
 qualification = "equal-width inputs feed a reduced diagram; actual folded expressions and coupled selector/mask aliases are shared where shorter"
-definitions = ["S = emitted DO/PLEASE statement count, including GIVE UP, independent of wrapping; separate global ceilings are not claimed attained", "W = Boolean scalar keys/values, two-bit named masks, actual array dimensions/written elements, and bl(S)", "F = U+3 without spilling, otherwise 5(U+3)+DIM; U is the full unshared-select template"]
+definitions = ["S = emitted DO/PLEASE statements, including GIVE UP, independent of wrapping"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6 }, source_units = 103 }
@@ -88,20 +88,27 @@ unit = "commands"
 description = { growth = "linear", claim = "exact", template = "{claim} {formula} {unit}. S counts statements including GIVE UP" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.intercal.proof_formulas:workspace"
+expression = "B+bl(S)"
+source_terms = { names = ["B", "S"], provider = "esolangs.languages.intercal.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "exact", template = "{claim} {formula} {unit} per emitted program: all-one worst row", formula = "W" }
+description = { growth = "linear", claim = "exact", template = "{claim} {formula} {unit}. B counts the final write set and S counts statements" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.intercal.tests.formulas:_chars"
+# Each scalar level prices its input labels by decimal width. A spilled
+# reference adds at most eight characters, at most five times its scalar
+# price. Dimension statements pay the exact array count and width.
+cases = [
+    { through = 15, expression = "24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4⌊(n+7)/5⌋+13" },
+    { expression = "5(24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4⌊(n+7)/5⌋+13)+⌈(T+2n-65535)/(1+isqrt(T+2n-65536))⌉(14+digits((1+isqrt(T+2n-65536))))+digits_sum(⌈(T+2n-65535)/(1+isqrt(T+2n-65536))⌉+1)-1" },
+]
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: unshared-select envelope plus bounded spilling", formula = "F" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}: scalar or spilled" }
 
 [semantic_evidence]
 version = 1

@@ -8,7 +8,6 @@ admitted = 2026-10-15T12:24:04-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "shared residuals read every input depth; a fixed helper stores all code before the root runs"
-definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "G = 96n+161+bl(n+1)+bl(n) for constants; otherwise 8(R+26+2B+3A+2H+K)+10+bl(P-1)+bl(n). R/P=word characters/count; A/B=payload name/body lengths; H=helper body length; K=longest key; payload excludes helper/dummy."]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 279, "1" = 279, "2" = 279, "3" = 279, "4" = 286, "5" = 286, "6" = 293, "7" = 293 }, source_units = 970 }
@@ -75,20 +74,24 @@ version = 2
 construction = "esolangs.languages.quassaunt.generator:quassaunt_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.quassaunt.proof_formulas:execution"
+# The full diagram attains the store-path ceiling without any seven-word chain savings.
+expression = "C*(26(residuals(n)+2)+15n+66)+(1-C)*(n+2)+2Q"
+source_terms = { names = ["C", "Q"], provider = "esolangs.languages.quassaunt.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "steps"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: store loop, then one path", formula = "26N + 15n + 66" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. C marks shared stores and Q counts concatenations" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.quassaunt.proof_formulas:workspace"
+# The raw frame retains the extra literal words and concatenate commands introduced by cuts.
+expression = "8R+(1-C)*(8(n+1)+bl(n+1)+1)+C*(8(26+2B+3A+2H+K)+10+bl(W-1))+bl(n)"
+source_terms = { names = ["C", "R", "B", "A", "H", "K", "W"], provider = "esolangs.languages.quassaunt.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: frames, stack, globals, locals and input", formula = "G" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. C shared stores, R characters, W words, A names, B bodies, H helper, K longest key" }
 
 [resource_evidence.scaling]
 # The internal residual cap plus both constant leaves bounds stored

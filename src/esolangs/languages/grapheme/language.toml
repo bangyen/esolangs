@@ -8,7 +8,7 @@ admitted = 2026-08-14T12:11:48-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the whole table is one int-mode literal read in base 10, and after the seeded first factor each `W` squares an accumulator and doubles it on a 0 (or a 1), which is Horner's rule for the complemented (or direct) index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0"
-definitions = ["λ = the largest minimal leading-one lift modulo 2^T; d = digits(2^T)"]
+definitions = ["B = bit width of the largest minimal leading-one lift modulo 2^T", "D = digits(2^T)"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 65, "1" = 65, "2" = 65, "3" = 65, "4" = 65, "5" = 65, "6" = 65, "7" = 65 }, source_units = 65 }
@@ -87,12 +87,16 @@ unit = "commands"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2: one per program character" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.grapheme.proof_formulas:workspace"
+# D is the decimal width of the modulus and B the largest lift's
+# bit width. Frame text peaks at the final literal digit. The stack
+# peaks at the final read or at the tail's [lift, 2, lift].
+expression = "16D+136n+155+bl(17n+D)+max(T+14,2B+2)+bl(2n)+bl(n)"
+source_terms = { names = ["B", "D"], provider = "esolangs.languages.grapheme.proof_formulas:workspace_terms" }
 exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2", formula = "16d + 136n + 155 + bl(17n+d) + max(T+14, 2bl(λ)+2) + bl(2n) + bl(n)" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2" }
 
 [resource_evidence.scaling]
 expression = "17n+15+digits(2^T)"

@@ -1,5 +1,7 @@
 """Snapshot-bit bounds."""
 
+from esolangs.generation.decision import saturated_residual_levels
+
 
 def lines(n: int) -> int:
     """The line maximum; named presets remove the old maxima below three."""
@@ -9,10 +11,20 @@ def lines(n: int) -> int:
 
 
 def _nodes(n: int) -> int:
-    return sum(
-        min(1 << k, (1 << (2 * (1 << (n - k - 1)))) - (1 << (1 << (n - k - 1))))
-        for k in range(n)
+    if n <= 1:
+        return n
+    # Unequal halves saturate at the same positional cutoff as all
+    # residuals. At the one-input tie both counts still give the same cap.
+    saturated = saturated_residual_levels(n)
+    prefix = (1 << (n - saturated)) - 1
+    return prefix + sum(
+        (1 << (1 << h)) - (1 << (1 << (h - 1))) for h in range(1, saturated + 1)
     )
+
+
+def scaling_terms(n: int, _: str) -> dict[str, int]:
+    """Use the same unequal-half cap as the workspace proof."""
+    return {"P": _nodes(n)}
 
 
 def _crement(n: int, _: str) -> int:

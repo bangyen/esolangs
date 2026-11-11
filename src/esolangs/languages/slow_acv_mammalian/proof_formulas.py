@@ -157,26 +157,20 @@ def _tokens(n: int) -> int:
     return plan.window + plan.prologue + levels + _ROUTE_OUT + _DISPATCH + 2
 
 
-def characters(n: int, _: str) -> int:
-    """V: leaf slots and gaps exactly, every other token at its list bound.
-
-    A slot is 5 unit + 19 characters (a guard SPRINT ends it; another replaces
-    a gap SEED at each block start) and the rest of the table SEEDs, so the
-    table is at most 20 T + 5 table; the jump, prologue and levels count 5 per
-    token plus 4 more for each non-SEED one.
-    """
+def scaling_terms(n: int, _: str) -> dict[str, int]:
+    """Price the all-essential plan's token and non-SEED counts."""
     plan = _plan(n)
     pools = min(n, 5) - 1
-    delta = sum(8 << k for k in range(1, pools + 1))
+    delta = 16 * ((1 << pools) - 1)
     chunks = _window(plan.table)[1]
-    head = 5 * (plan.window - plan.table) + 4 * (2 * chunks + 4)
-    non_seed = 2 * delta + 2 * (6 + 2 * pools) + 3 * (6 + 2 * pools)
-    non_seed += _raise(plan.base)
-    body = 5 * plan.prologue + 4 * non_seed
-    for r in plan.levels:
-        body += 5 * r["len"] + 4 * (r["pn"] + r["arm"] + r["z"])
-    tail = 9 * (_ROUTE_OUT + _DISPATCH + 2)
-    return head + 20 * (1 << n) + 5 * plan.table + body + tail
+    return {
+        "W": plan.window,
+        "P": plan.prologue,
+        "Q": sum(r["len"] for r in plan.levels),
+        "C": chunks,
+        "U": 2 * delta + 5 * (6 + 2 * pools) + _raise(plan.base),
+        "M": sum(r["pn"] + r["arm"] + r["z"] for r in plan.levels),
+    }
 
 
 def workspace(n: int, program: str) -> int:

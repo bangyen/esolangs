@@ -8,16 +8,24 @@ from typing import NamedTuple
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 
 
+def saturated_residual_levels(n: int) -> int:
+    """Count terminal-side internal levels whose subtables fit their positions."""
+    if n <= 1:
+        return 0
+    # With h inputs left, saturation means h+2^h <= n. Only the
+    # largest possible power of two can cross n once h is added.
+    highest = n.bit_length() - 1
+    return highest - (n < highest + (1 << highest))
+
+
 def residual_count_bound(n: int, *, include_constants: bool = True) -> int:
     """Sum distinct subtable caps over internal levels, before reduction."""
     if n <= 1:
         return n
 
-    # A level with h inputs left saturates when it has at least 2^(2^h)
-    # positions, equivalently h+2^h <= n. Excluding the two constant
-    # subtables moves only the h=1, n=2 tie, where the count is unchanged.
-    saturated = n.bit_length() - 1
-    saturated -= n < saturated + (1 << saturated)
+    # Excluding the two constant subtables moves only the h=1, n=2
+    # tie, where the count is unchanged.
+    saturated = saturated_residual_levels(n)
 
     # Shallower levels use their position caps. Only build the small
     # towers at the saturated end, where their exponents are at most n.

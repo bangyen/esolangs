@@ -8,7 +8,6 @@ admitted = 2026-09-13T09:46:59-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "a boustrophedon table has three rows per block; binary weights walk horizontally or down whole blocks; symmetric tables retain the count reader"
-definitions = ["E = 3T+85n+5 through n=3; 2T+c+5r+85n-1 beyond; c = 2^min(n,floor((n+3)/2)), r = T/c", "W = 3T+2n+10+bl(L-d-3)+bl(L-d-9)+2bl(n) through n=3, d = digits(T); wh+7+2b(w-1)+2b(h-1)+2b(B)+2b(n) beyond; w,h declared dimensions, B body length, b(x) = max(1,bl(x))"]
 
 
 [generator_sizes]
@@ -90,20 +89,24 @@ version = 2
 construction = "esolangs.languages.egl.generator:egl_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.egl.proof_formulas:execution"
+# The worst row paints T-1 ones and takes every guard.
+expression = "(1+R)*(3T+85n+5+min(1,max(0,n-3))*(-T+2^min(n,floor((n+3)/2))+5T/2^min(n,floor((n+3)/2))-6))+R"
+source_terms = { names = ["R"], provider = "esolangs.languages.egl.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; at most 2E+1 with wrapping newlines", formula = "E default" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. R marks wrapping with additional no-ops" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.egl.proof_formulas:workspace"
+# Small grids retain the original cursor offsets. Large grids use a seven-bit guard allowance.
+expression = "(1-G)*(3T+2n+10+bl(L-digits(T)-3)+bl(L-digits(T)-9))+G*(W*H+7+2max(1,bl(W-1))+2max(1,bl(H-1))+2max(1,bl(B)))+2bl(n)"
+source_terms = { names = ["G", "W", "H", "B"], provider = "esolangs.languages.egl.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: grid, one counter frame and cursors", formula = "W" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. G marks the grid route, W and H are its dimensions, and B counts body characters" }
 
 [resource_evidence.scaling]
 # Every input matters in the off-diagonal zero witness. Ignored reads

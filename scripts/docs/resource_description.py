@@ -93,10 +93,11 @@ def _description(column: str, row: dict[str, Any]) -> ResourceDescription:
         or set(raw) != (fields | {"formula"} if "provider" in kinds else fields)
     ):
         raise ValueError("invalid resource description fields")
+    names: frozenset[str] = frozenset()
     if "source_terms" in row:
-        if "expression" not in kinds:
-            raise ValueError("resource source terms require an expression")
-        source_terms(row["source_terms"])
+        if "provider" in kinds:
+            raise ValueError("resource source terms require an expression or cases")
+        names, _ = source_terms(row["source_terms"])
     if not isinstance(raw["claim"], str) or raw["claim"] not in {
         "worst",
         "at most",
@@ -117,7 +118,7 @@ def _description(column: str, row: dict[str, Any]) -> ResourceDescription:
     ):
         raise ValueError("invalid resource description values")
     formula = (
-        describe_cases(arity_cases(row["cases"]), first, unit)
+        describe_cases(arity_cases(row["cases"], names), first, unit)
         if "cases" in row
         else row.get("expression", raw.get("formula"))
     )

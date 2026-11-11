@@ -105,12 +105,16 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "B" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:characters"
+# W is the first window, P the prologue and Q the level token count.
+# The base token price is five characters. Chunk branches (C), prologue
+# non-SEEDs (U) and level non-SEEDs (M) pay four more each.
+expression = "20T+5(W+P+Q)+4(2C+U+M)+1681"
+source_terms = { names = ["C", "M", "P", "Q", "U", "W"], provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "V" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]
 version = 1

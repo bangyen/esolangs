@@ -8,7 +8,6 @@ admitted = 2026-10-20T08:38:48-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "the table is one `\"` literal, row 0 on top, and Horner's rule over the essential inputs gives the depth `&` copies; past the crossover the literal packs six entries a character and the row splits into that depth and a bit"
-definitions = ["P = 6t + 7 + bl(t+2) + bl(2n+2m) + bl(2n), m = min(n, 4), t = 2^m", "W = 7⌊T/6⌋ + 7 + bl(⌈T/6⌉+4) + max(16, 2n+3) + bl(4n+18) + bl(2n), 0 below n = 5"]
 
 [catalogue]
 folding_constant_local = "freestajlo"  # one projected table entry, no index
@@ -91,12 +90,17 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula}; includes decode" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.freestajlo.tests.formulas:_freestajlo"
+# The plain literal keeps at most 16 entries. The packed literal
+# uses seven bits per full six-entry word, then a length and transient.
+cases = [
+    { through = 4, expression = "6T+7+bl(T+2)+bl(4n)+bl(2n)" },
+    { expression = "bl(2n)+max(108+bl(2n+8),7+7⌊T/6⌋+bl(⌈T/6⌉+4)+max(16,2n+3)+bl(4n+18))" },
+]
 exact = true
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the literal's codes on the stack, plain or packed", formula = "max(P, W)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: literal stack" }
 
 [resource_evidence.scaling]
 expression = "min(T + 4n + 1, ⌈T/6⌉ + 4n + 19)"

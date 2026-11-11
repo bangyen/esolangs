@@ -8,27 +8,17 @@ def node_cap(n: int) -> int:
     return residual_count_bound(n) + (1 << min(1, n))
 
 
-def execution(n: int, program: str) -> int:
-    """Startup, 23 words per stored triple, then one n-level dispatch path."""
-    extra = 2 * program.split().count("%%Concatenate")
-    if "%%Store" not in program:
-        return n + 2 + extra
-    # D <= N+1 includes [], and C chains save seven words versus branches.
-    # Exact path: 40+15n+26D-7C; the full-diagram witness has C=0.
-    return 26 * node_cap(n) + 15 * n + 66 + extra
+def execution_terms(_: int, program: str) -> dict[str, int]:
+    """Mark the shared-store route and count concatenations."""
+    return {"C": int("%%Store" in program), "Q": program.split().count("%%Concatenate")}
 
 
-def workspace(n: int, program: str) -> int:
-    """Exact component peaks; cuts alter the raw frame, not assembled payloads."""
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Measure raw frame words and reconstruct store keys and bodies."""
     raw = program.split()
+    chars = sum(map(len, raw))
     if "%%Store" not in program:
-        return (
-            8 * sum(map(len, raw))
-            + 8 * (n + 1)
-            + (n + 1).bit_length()
-            + 1
-            + n.bit_length()
-        )
+        return {"C": 0, "R": chars, "W": len(raw), "B": 0, "A": 0, "H": 0, "K": 0}
     words: list[str] = []
     for word in raw:
         if word == "%%Concatenate":
@@ -42,13 +32,12 @@ def workspace(n: int, program: str) -> int:
     triples = words[8 + 2 * n : -7]
     names = [len(triples[i]) - 2 for i in range(0, len(triples), 3)]
     bodies = [len(triples[i]) - 2 for i in range(1, len(triples), 3)]
-    a, b, k = sum(names), sum(bodies), max(names)
-    # Stack: dummy, all triples and helper. Globals: every definition plus
-    # helper, dummy and error name. Local d holds the longest key. Raw words
-    # dominate frame peaks, including every literal/Concatenate introduced by cuts.
-    return (
-        8 * (sum(map(len, raw)) + 26 + 2 * b + 3 * a + 2 * helper + k)
-        + 10
-        + (len(raw) - 1).bit_length()
-        + n.bit_length()
-    )
+    return {
+        "C": 1,
+        "R": chars,
+        "W": len(raw),
+        "B": sum(bodies),
+        "A": sum(names),
+        "H": helper,
+        "K": max(names),
+    }
