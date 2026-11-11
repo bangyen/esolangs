@@ -7,7 +7,7 @@ backlinks = 130
 [proof_status]
 labels = ["exception"]
 qualification = "constants read every input before building ASCII 48/49; finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; at seventeen it also builds tables constant on Hamming-weight classes, whose first fold group reads four inputs into a popcount digit; below sixteen the unused reads are held at 0; the cap is sixteen for general tables, and seventeen is open ([summary](#malbolge-bound))"
-definitions = ["B = the initial memory's bits, the source's cells then the fill", "E = the Execution bound", "P = the `*` and `p` cells before closing i, or in all constant code", "S = zero for constants; otherwise the longest stub, 199 commands (200 at fourteen inputs)"]
+definitions = ["B = the initial memory bits, source cells and fill", "E = executed main-prefix commands", "J = commands in the longest reachable stub"]
 
 [proof_status.audit]
 totality = "Exception"
@@ -79,20 +79,23 @@ version = 2
 construction = "esolangs.languages.malbolge.generator:malbolge_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.malbolge.proof_formulas:execution"
+expression = "E+J"
+source_terms = { names = ["E", "J"], provider = "esolangs.languages.malbolge.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "unmeasured", claim = "at most", template = "{claim} {formula} {unit} at n=1 and 5,953 at n=16: main plus longest stub; exact at n=2,3,6", formula = "6,748" }
+description = { growth = "unmeasured", claim = "at most", template = "{claim} {formula} {unit}. E is the main prefix and J the longest reachable stub" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.malbolge.proof_formulas:workspace"
+# Memory includes fill past short source. Each stub step may write one cell.
+expression = "B+E+10W+J*(1+10F)+49+bl(n)"
+source_terms = { names = ["B", "E", "W", "J", "F"], provider = "esolangs.languages.malbolge.proof_formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: a bit a step, ten a write", formula = "B + E + 10(P+S) + 49 + bl(n)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}. W prefix writes, F marks a following stub" }
 
 [resource_evidence.scaling]
 # 13340 characters to thirteen inputs, 19683 and 52480 at fourteen and

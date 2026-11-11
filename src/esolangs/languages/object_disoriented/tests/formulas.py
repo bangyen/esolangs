@@ -110,33 +110,6 @@ def _chars(n: int, text: str) -> int:
     return min(24 * 2**n + 56, _shared(n, text))
 
 
-def _workspace(n: int, text: str) -> int:
-    """Frames + store + cell count + 14 + input count, each bounded by its own shape.
-
-    Apart from B, at most 2n + 3 calls alternate the bit object's or
-    ``N``'s one-line body (<= 9 ops) with a branch body (<= 16n + 40 ops); a call's
-    cells, 6n + 9 at most, are numbered below the cell count, so a frame at
-    depth j holds code, pc and three refs (a slot adds a bit).  Its stack is
-    empty but at the innermost call (<= 3 items).  A cell is z, a bit or an
-    ``N`` object (c, 0, 0) or a branch object (c, N, 0). Each level has
-    one branch containing N, a bit or untaken child, and a B temporary:
-    at most four code ids and eight zero members.
-    B returns before branch descent: only one extra frame is live; its
-    parameter aliases a caller member and costs at most one selector bit.
-    Six cells per zero-arm level plus transient calls fit 6n+9 cells.
-    ``c`` bounds code ids: three built-ins and one per ``n`` form or class.
-    Input and output buffers peak at seven bits each.
-    """
-    bl = int.bit_length
-    c = 3 + text.count("n") + text.count("d")
-    cells = 6 * n + 9
-    frames = sum(
-        bl(c)
-        + (4 if j % 2 == 0 else bl(16 * n + 40))
-        + 3 * (bl(6 * ((j + 1) // 2) + 9) + 1)
-        for j in range(2 * n + 3)
-    )
-    frames += 4 * bl(cells) + 5
-    frames += bl(c) + bl(16 * n + 40) + 3 * (bl(cells) + 1)
-    store = (n + 1) * (4 * bl(c) + 8) + cells
-    return frames + store + bl(cells) + bl(n) + 14
+def workspace_terms(_: int, text: str) -> dict[str, int]:
+    """Count code IDs that may be live in frames or cells."""
+    return {"C": 3 + text.count("n") + text.count("d")}

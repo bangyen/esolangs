@@ -13,7 +13,6 @@ admitted = 2026-08-14T07:18:25-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "essential raw-byte Horner index; fixed hot data slots; packed cells selected by a self-modified operand"
-definitions = ["C = ⌈T/n⌉, I = 5n + 54, B = 4I, M = B + 14 + 2C", "Q = I·bl(B) + (3I-2)bl(B+13) + 2bl(M-1) + bl(20n+212) + 23"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 17, "1" = 17, "2" = 17, "3" = 17, "4" = 20, "5" = 20, "6" = 23, "7" = 23 }, source_units = 344 }
@@ -100,12 +99,14 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. C marks direct constants" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.addsubjump.proof_formulas:workspace"
+# The packed envelope retains the old word count and charges the spare bits for raw INDEX.
+expression = "C*(A+bl(4(n+1))+bl(49n)+1+max(5,bl(4n))+bl(n))+(1-C)*(bit_sum(20n+230+2ceil(T/n))+ceil(T/n)*(n+bl(20n+229+ceil(T/n)))+3n+5bl(n)+(5n+54)*bl(20n+216)+(15n+160)*bl(20n+229)+2bl(20n+229+2ceil(T/n))+bl(20n+212)+23)"
+source_terms = { names = ["C", "A"], provider = "esolangs.languages.addsubjump.proof_formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: program cells, T/n packed", formula = "Σ_{a<M} bl(a) + C(n + bl(B+13+C)) + 3n + 5bl(n) + Q" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}. C marks direct constants and A counts their initial nonzero cells and addresses in bits" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.addsubjump.tests.formulas:_chars"

@@ -20,7 +20,7 @@ def _switch(n: int, k: int) -> int:
     return 56 + 36 * (n - 1 - k) + sum(_rail(n, j) for j in range(k, n - 1))
 
 
-def workspace(n: int, _: str) -> int:
+def workspace_terms(n: int, _: str) -> dict[str, int]:
     """Peak written bits of the T - 1 run layout, row T - 4, n >= 3.
 
     The pointer's exit memory keeps an entry per node left and path cell
@@ -61,5 +61,4 @@ def workspace(n: int, _: str) -> int:
         d += w
     entries += 2 * len(tiles) + 1
     cols += bl(d)
-    deque = sum(max(bl(i), 1) + (1 << _depth(n)) for i in range(t >> _depth(n)))
-    return 4 * entries - 1 + cols + 13 + n - _depth(n) + deque + 2 * bl(n) + 17
+    return {"E": entries, "C": cols}

@@ -8,7 +8,6 @@ admitted = 2026-10-15T11:05:46-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node keeps its input bit in `t` and its negation in `a`, via reader B and a negation object that is a 1 until a 1 bit calls it; each bit object calls its branch only on a 1; constant subtables fold, and a repeated branch is a class written once"
-definitions = ["c = 3 + the `n` and `d` letters", "F = Σ_{j<2n+3} (bl(c) + p_j + 3(bl(6⌈j/2⌉+9)+1)) + 4bl(6n+9) + 5; p_j = 4 even j, else bl(16n+40)", "H = bl(c) + bl(16n+40) + 3(bl(6n+9)+1): reader frame", "M = (n+1)(4bl(c)+8) + 6n + 9"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 126, "1" = 126, "2" = 126, "3" = 126, "4" = 186, "5" = 186, "6" = 246, "7" = 262 }, source_units = 174 }
@@ -88,12 +87,14 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: one tree path, 76 ops a level" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.object_disoriented.tests.formulas:_workspace"
+# Frames alternate short and branch bodies. B returns before branch descent.
+expression = "(6n+8)bl(C)+(n+2)bl(16n+40)+8bl(6n+9)+6bit_stride(15,6,n+1)+24n+68+bl(n)"
+source_terms = { names = ["C"], provider = "esolangs.languages.object_disoriented.tests.formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, c code ids, 2n+4 frames", formula = "F + H + M + bl(6n+9) + bl(n) + 14" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}. C counts built-ins and each object or class form" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.object_disoriented.tests.formulas:_chars"

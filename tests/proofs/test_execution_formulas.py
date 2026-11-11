@@ -74,6 +74,26 @@ def test_every_formula_cell_is_checked() -> None:
     _check_residual_counts()
     _check_bit_width_sums()
     _check_source_term_schema()
+    _check_formula_reference(data)
+
+
+def _check_formula_reference(data: dict) -> None:
+    data = copy.deepcopy(data)
+    scaling = data["scaling"]
+    del scaling["expression"]
+    scaling["formula_ref"] = "execution"
+    data["execution"]["expression"] = "11n"
+    bounds = parse_bounds(REFERENCE, data)
+    assert bounds["scaling"].unit != bounds["execution"].unit
+    assert bounds["scaling"].formula(2, "") == bounds["execution"].formula(2, "") == 22
+    assert "11n" in parse_descriptions(data).scaling.clause
+    data["execution"]["expression"] = "13n"
+    assert parse_bounds(REFERENCE, data)["scaling"].formula(2, "") == 26
+    assert "13n" in parse_descriptions(data).scaling.clause
+    for reference in ("scaling", "unknown", []):
+        scaling["formula_ref"] = reference
+        with pytest.raises(ValueError, match="resource formula reference"):
+            parse_bounds(REFERENCE, data)
 
 
 def _check_source_term_schema() -> None:
@@ -111,7 +131,22 @@ def _check_bit_width_sums() -> None:
     for count in range(513):
         assert formula(count, "") == sum(k.bit_length() for k in range(count))
     assert formula(1 << 1024, "") == 1023 * (1 << 1024) + 1
-    for expression in ("bit_sum(-1)", "bit_sum(1/2)"):
+    for first, step in ((0, 1), (1, 2), (2, 3), (3, 7), (15, 6)):
+        stride = expression_formula(f"bit_stride({first},{step},n)")
+        for count in range(33):
+            assert stride(count, "") == sum(
+                (first + step * i).bit_length() for i in range(count)
+            )
+    assert expression_formula("bit_stride(0,1,n)")(1 << 1024, "") == formula(
+        1 << 1024, ""
+    )
+    for expression in (
+        "bit_sum(-1)",
+        "bit_sum(1/2)",
+        "bit_stride(-1,1,n)",
+        "bit_stride(1,0,n)",
+        "bit_stride(1,1,1/2)",
+    ):
         with pytest.raises(ValueError, match="non-negative integer"):
             expression_formula(expression)(1, "")
 

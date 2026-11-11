@@ -35,16 +35,9 @@ def _bound_weight(term: _Term) -> int:
     return best
 
 
-def _workspace(n: int, program: str) -> int:
-    """Tight constant task/frame peaks; otherwise 16(P+nS)+D bl(D)+9+bl(n)."""
-    bl = int.bit_length
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Distinguish the constant chain and measure the other terms."""
     if program.replace("\n", "") in ("`@`d" * n + ".0", "`@`d" * n + ".1"):
-        # Task: 16n+8; character/done/input: 9+bl(n). At continuation
-        # depth d>=2, live terms cost 16n+16-8d, maximized at d=2.
-        # Cached continuation depths do not belong to logical workspace.
-        return 32 * n + 17 + bl(n)
+        return {"C": 1, "P": 0, "S": 0}
     term = _parse(program)
-    frames = 3 * n + 9
-    return (
-        16 * (_weight(term) + n * _bound_weight(term)) + frames * bl(frames) + 9 + bl(n)
-    )
+    return {"C": 0, "P": _weight(term), "S": _bound_weight(term)}

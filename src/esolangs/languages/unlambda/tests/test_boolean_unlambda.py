@@ -75,7 +75,9 @@ def unlambda_plain(truth_table: str) -> str:
 
 def _check_constants(arities: range) -> None:
     from esolangs.languages.unlambda.interpreter import _Machine
-    from esolangs.languages.unlambda.tests.formulas import _workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    _workspace = resource_bounds("Unlambda")["workspace"].formula
 
     for n, bit, options, program in constant_programs("Unlambda", arities):
         if not options:

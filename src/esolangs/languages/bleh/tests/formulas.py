@@ -66,21 +66,15 @@ def _prices(
     )
 
 
-def _chars(n: int, _: str) -> int:
-    """Exact source at n=3..23 after forced-cover and ordered-pair losses.
-
-    The original diagram extremizers remain valid at the actual alias
-    prices: branch references still dominate equal ones, while complete
-    capped levels force all child species. Shared loss helpers accept
-    these prices directly, including newly tied constant/branch references.
-    """
+def scaling_terms(n: int, _: str) -> dict[str, int]:
+    """Price the dearest aliases and the three independent read losses."""
     prices = _prices(n)
-    return (
-        _bound(n)
-        - capped_loss(n, *prices)
-        - parent_loss(n, *prices)
-        - pair_loss(n, *prices)
-    )
+    return {
+        "B": _bound(n),
+        "A": capped_loss(n, *prices),
+        "P": parent_loss(n, *prices),
+        "R": pair_loss(n, *prices),
+    }
 
 
 def _tenth() -> str:

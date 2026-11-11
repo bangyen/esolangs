@@ -8,7 +8,7 @@ admitted = 2026-08-12T17:01:43-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "packed chunks decoded after the hoisted read block, against a hoisted tree that lays out each distinct subtable once and jumps to it"
-definitions = ["B = the program cells' bits, a sign one more", "C = the program's cell count"]
+definitions = ["B = the program cells' bits, a sign one more", "C = the program's cell count", "A = extra decimal address widths of the packed decoder"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 122 }
@@ -109,12 +109,20 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the self-modified program, decimal cells", formula = "B + 6n + bl(3C) + bl(n) + 1" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.s_bleq.tests.formulas:_scaling"
+# The packed route adds two separators and the decimal literal
+# width for each chunk. At n=5..10 the generator races the tree;
+# under five inputs only the tree is available.
+cases = [
+    { through = 4, expression = "Q" },
+    { through = 10, expression = "min(Q,175n+717+2(digits(n)-1)+A+⌊T/n⌋(2+digits(T-1))+min(1,T%n)(2+digits(2^(T%n)-1)))" },
+    { expression = "175n+717+2(digits(n)-1)+A+⌊T/n⌋(2+digits(T-1))+min(1,T%n)(2+digits(2^(T%n)-1))" },
+]
+source_terms = { names = ["A", "Q"], provider = "esolangs.languages.s_bleq.tests.formulas:scaling_terms" }
 exact = [11, 12, 13, 19, 20, 21, 22, 23, 24, 25]
 arities = [5, 8, 10, 11, 12, 13, 19, 20, 21, 22, 23, 24, 25]
 first = 11
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 11..28; below, at most min(tree, P)", formula = "P" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}; through n=28" }
 
 [semantic_evidence]
 version = 1

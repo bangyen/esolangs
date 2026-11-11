@@ -312,7 +312,9 @@ def test_five_input_all_essential_table_pins_its_balanced_size() -> None:
 
 def _check_native_constants() -> None:
     from esolangs.languages.addsubjump.interpreter import _Machine
-    from esolangs.languages.addsubjump.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("AddSubJump")["workspace"].formula
 
     for n, bit, _options, program in constant_programs("AddSubJump", range(1, 13)):
         for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

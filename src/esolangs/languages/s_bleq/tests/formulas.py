@@ -44,20 +44,6 @@ def _extra(n: int) -> int:
     return extra + _wide(3 * (11 * n + 14) + 1, 3 * (11 * n + 14) + 1)
 
 
-def _chars(n: int, _: str) -> int:
-    """P: 175n + 717 + _extra(n), then each chunk's widest decimal.
-
-    Two more once N and COUNT take two digits.
-    """
-    t = 1 << n
-    full, rest = divmod(t, n)
-    total = 175 * n + 717 + 2 * (len(str(n)) - 1) + _extra(n)
-    total += full * (2 + len(str(t - 1)))
-    if rest:
-        total += 2 + len(str((1 << rest) - 1))
-    return total
-
-
 def _distinct(n: int, d: int) -> int:
     """Most distinct tested subtables at depth d: differing halves, at most 2^d."""
     m = n - d
@@ -81,16 +67,9 @@ def tree_chars(n: int, _: str = "") -> int:
     return pre + data + 4 + 2 * n + tg + 3 * ins * (len(str(cb)) + 1)
 
 
-def below_eleven(n: int, _: str = "") -> int:
-    """Shipped bound for n = 5..10: the shorter of tree and packed (<= P)."""
-    return min(tree_chars(n), _chars(n, ""))
-
-
-def _scaling(n: int, _: str) -> int:
-    """P from n = 11; below, the shorter of tree and packed (tree alone under 5)."""
-    if n >= 11:
-        return _chars(n, "")
-    return below_eleven(n) if n >= 5 else tree_chars(n)
+def scaling_terms(n: int, _: str) -> dict[str, int]:
+    """Price only the routes admitted at this arity."""
+    return {"A": _extra(n) if n >= 5 else 0, "Q": tree_chars(n) if n <= 10 else 0}
 
 
 def _cell_bits(program: str) -> int:

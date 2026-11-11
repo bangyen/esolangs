@@ -76,12 +76,14 @@ unit = "steps"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: 77 a split level, 7 a bound node" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.unlambda.tests.formulas:_workspace"
+# The constant continuation peaks at depth two. Cached depths do not count as workspace.
+expression = "C*(32n+17)+(1-C)*(16(P+n*S)+(3n+9)bl(3n+9)+9)+bl(n)"
+source_terms = { names = ["C", "P", "S"], provider = "esolangs.languages.unlambda.tests.formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
-description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}: a copy of the shared subterm per read", formula = "16(P + n·S) + (3n+9)bl(3n+9) + 9 + bl(n)" }
+description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}. C marks direct constants, P is the weighted term size and S the largest bound share" }
 
 [resource_evidence.scaling]
 expression = "169T/8 - 21"

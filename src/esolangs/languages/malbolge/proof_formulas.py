@@ -1,44 +1,39 @@
-"""Executed command and snapshot-bit bounds."""
+"""Source and memory facts for the straight-line main and stub."""
 
 from esolangs.languages.malbolge.generator.digits import _SHORT_MAX, _longest_stub
 from esolangs.languages.malbolge.interpreter import _initial_memory, _op
 
 
 def _stub(n: int) -> int:
-    """The longest stub's commands: one hub per label to n = 15, else two."""
+    """Count the longest short stub, or the full layout's 199 commands."""
     return _longest_stub(n) if n <= _SHORT_MAX else 199
 
 
-def execution(n: int, program: str) -> int:
-    """The worst row: the straight-line main code, then the longest reachable stub.
-
-    Main code runs from cell 0 through its closing ``i`` and depends on n only.
-    A row then runs one stub, in full: ``x`` three commands, ``0``, ``1`` and
-    ``n`` four plus the span from landing to last operand.  The short layout
-    (n <= 15) has one hub each, the longest 199 to n = 13, 200 at 14, 199 at
-    15; the full one has two each, the longest 199.
-    """
-    end = next((a for a, char in enumerate(program) if _op(ord(char), a) == "i"), None)
-    if end is None:
-        return len(program)
-    return end + 1 + _stub(n)
+def _main(program: str) -> tuple[int, int]:
+    """Find the main prefix and its closing instruction, if present."""
+    for address, char in enumerate(program):
+        if _op(ord(char), address) == "i":
+            return address + 1, 1
+    return len(program), 0
 
 
-def workspace(n: int, program: str) -> int:
-    """Memory bits, a bit a step, ten a `*`/`p` write, registers, flag, input count.
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Measure the straight-line main before the stub."""
+    prefix, closed = _main(program)
+    return {"E": prefix, "J": _stub(n) if closed else 0}
 
-    The memory is the source's cells then the fill past a short source.
 
-    Main code runs each cell once, so its writes are those before the closing
-    ``i``; a stub runs at most 200 steps, each at most one write.
-    """
-    bits = sum(word.bit_length() for word in _initial_memory(program))
-    end = next(
-        (a for a, char in enumerate(program) if _op(ord(char), a) == "i"),
-        len(program) - 1,
-    )
-    stub = _stub(n) if end < len(program) - 1 else 0
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Measure loaded memory and the main prefix's writes."""
+    prefix, closed = _main(program)
     writes = sum(
-        1 for a, c in enumerate(program[: end + 1]) if _op(ord(c), a) in ("*", "p")
+        _op(ord(char), address) in ("*", "p")
+        for address, char in enumerate(program[:prefix])
     )
-    return bits + execution(n, program) + 10 * (writes + stub) + 49 + n.bit_length()
+    return {
+        "B": sum(word.bit_length() for word in _initial_memory(program)),
+        "E": prefix,
+        "W": writes,
+        "J": _stub(n) if closed else 0,
+        "F": int(prefix < len(program)),
+    }

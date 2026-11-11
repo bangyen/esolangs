@@ -86,28 +86,42 @@ version = 2
 construction = "esolangs.languages.piet.generator:piet_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.piet.tests.formulas:_steps"
+# Triple commands dominate the checked projections at n=4..6. From n=7
+# they exceed 71+11n, with each added input increasing the gap.
+cases = [
+    { through = 3, expression = "P" },
+    { expression = "2ceil(T/3)+4n+40" },
+]
+source_terms = { names = ["P"], provider = "esolangs.languages.piet.tests.formulas:execution_terms" }
 exact = [3, 4, 5, 6, 7]
 arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "steps"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..7, then at most F: triples or small projections", formula = "F" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}. small-layout walk P. Exact at n=3..7" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.piet.tests.formulas:_written"
+cases = [
+    { through = 3, expression = "B" },
+    { expression = "floor((11ceil(T/3)-5+2(n-2floor(n/2)))/4)+3n+bl(3ceil(T/3)+5n+48+3T/2+n-2floor(n/2))+bl(2n-1)+bl(n)+3" },
+]
+source_terms = { names = ["B"], provider = "esolangs.languages.piet.tests.formulas:workspace_terms" }
 exact = [3, 4, 5, 6, 7]
 arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..7, then at most F: stack and cursor", formula = "F" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}. small-layout stack and cursor B. Exact at n=3..7" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.piet.tests.formulas:_codels"
+cases = [
+    { through = 3, expression = "A" },
+    { expression = "3(3ceil(T/3)+5n+49+3T/2+n-2floor(n/2))" },
+]
+source_terms = { names = ["A"], provider = "esolangs.languages.piet.tests.formulas:scaling_terms" }
 exact = [3, 4, 5, 6, 7]
 arities = [2, 3, 4, 5, 6, 7, 8]
 first = 2
 unit = "codels"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 2..7, then at most F", formula = "F" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}. Small-layout A, exact n=3..7" }
 
 [semantic_evidence]
 version = 1

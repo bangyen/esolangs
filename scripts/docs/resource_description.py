@@ -68,6 +68,27 @@ def source_terms(value: object) -> tuple[frozenset[str], str]:
     return source_term_names(value["names"]), value["provider"]
 
 
+def formula_record(data: dict[str, Any], column: str) -> dict[str, Any]:
+    """Resolve a formula shared by two claims with separate scopes and units."""
+    row: dict[str, Any] = data[column]
+    if "formula_ref" not in row:
+        return row
+    reference = row["formula_ref"]
+    formula_fields = {"expression", "cases", "source_terms"}
+    if (
+        not isinstance(reference, str)
+        or reference not in COLUMNS - {column}
+        or set(row) & (formula_fields | {"provider", "qualitative"})
+    ):
+        raise ValueError("invalid resource formula reference")
+    owner = data[reference]
+    if "formula_ref" in owner or len(set(owner) & {"expression", "cases"}) != 1:
+        raise ValueError("resource formula reference needs a direct expression owner")
+    return {key: value for key, value in row.items() if key != "formula_ref"} | {
+        key: owner[key] for key in formula_fields & owner.keys()
+    }
+
+
 def _description(column: str, row: dict[str, Any]) -> ResourceDescription:
     """Validate and render one quantitative or qualitative resource claim."""
     if "qualitative" in row:
@@ -160,7 +181,7 @@ def parse_descriptions(data: dict[str, Any]) -> ResourceDescriptions:
     ):
         raise ValueError("invalid resource descriptions schema")
     return ResourceDescriptions(
-        _description("scaling", data["scaling"]),
-        _description("execution", data["execution"]),
-        _description("workspace", data["workspace"]),
+        _description("scaling", formula_record(data, "scaling")),
+        _description("execution", formula_record(data, "execution")),
+        _description("workspace", formula_record(data, "workspace")),
     )

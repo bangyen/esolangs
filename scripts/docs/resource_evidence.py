@@ -13,7 +13,7 @@ from typing import Any, cast
 
 from esolangs.registry import LANGUAGES
 
-from .resource_description import parse_descriptions, source_terms
+from .resource_description import formula_record, parse_descriptions, source_terms
 from .resource_formula import (
     TermProvider,
     arity_cases,
@@ -97,7 +97,7 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
     for column in COLUMNS & data.keys():
         if not getattr(descriptions, column).bounded:
             continue
-        row = data[column]
+        row = formula_record(data, column)
         required = {
             "exact",
             "arities",

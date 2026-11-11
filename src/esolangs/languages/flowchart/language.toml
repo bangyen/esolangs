@@ -13,7 +13,7 @@ outside_implementation = { date = 2026-08-26, source = "Aadenboy's interpreter.l
 [proof_status]
 labels = ["finite lookup"]
 qualification = "a pair of answers per deque, and the input walks the deque cursor to the pair it wants"
-definitions = ["F = Σ over exit-memory cells of 4 + bl(column), plus deque keys and counters"]
+definitions = ["E = number of exit-memory entries", "C = sum of their column bit widths"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 47, "1" = 47, "2" = 45, "3" = 45, "4" = 46, "5" = 46, "6" = 44, "7" = 44 }, source_units = 362 }
@@ -93,12 +93,15 @@ unit = "nodes"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: preload T plus T - 1 runs" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.flowchart.proof_formulas:workspace"
+# Each exit-memory entry uses four heading bits and its column's
+# bit width. Deque keys fill the power-of-two range, with zero one bit.
+expression = "4E+C+31+⌊n/2⌋+T+(⌊n/2⌋-1)·2^⌊n/2⌋+2bl(n)"
+source_terms = { names = ["C", "E"], provider = "esolangs.languages.flowchart.proof_formulas:workspace_terms" }
 exact = true
 arities = [3, 4, 5]
 first = 3
 unit = "bits"
-description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: 4T+6·2^⌊n/2⌋+6·2^⌈n/2⌉+18n-7 exit-memory cells, the deques, the counters", formula = "F" }
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: exit memory, deques and counters" }
 
 [resource_evidence.scaling]
 # 20T + 16 * 2^floor(n/2) + 12 * 2^ceil(n/2) + 72n + 14 = 2 * row.

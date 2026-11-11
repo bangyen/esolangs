@@ -8,7 +8,7 @@ admitted = 2026-10-07T12:46:28-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros and up to three delimiter macros carry the repeated text, and a subtree two parents reach is one more when that is shorter"
-definitions = ["C = historical finite price; its 44-name derivation at n=12..16 remains open. Raw-tree bound 6T+86 is independent of name prices"]
+definitions = ["B = capped diagram node and edge prices through n=11", "E = final level's outgoing edges", "P = pads through n=11"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 119 }
@@ -103,12 +103,23 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. C marks direct constants" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.smu.tests.formulas:_chars"
+# From n=12..16 retain the 47-name prices. The current 44-name
+# allocator's derivation at those rungs is open. Raw-tree 6T+86
+# beyond n=16 is independent of macro-name prices: a raw leaf costs one,
+# a branch five plus its children and a pad three plus its child. The
+# macro admission rule and delimiter definitions only shrink that tree.
+cases = [
+    { through = 11, expression = "103+B+E-max(0,4-P)" },
+    { through = 15, expression = "5T/8+248+36min(1,max(0,n-13))+16min(4·2^(n-11),6+2^(n-11))+(11+4min(1,max(0,n-13)))min(7·2^(n-11),9+2^(n-11))+(229-4min(1,max(0,n-13)))min(7·2^(n-11),11+2·2^(n-11))" },
+    { through = 16, expression = "5T/8+465T/2048+3486" },
+    { expression = "6T+86" },
+]
+source_terms = { names = ["B", "E", "P"], provider = "esolangs.languages.smu.tests.formulas:scaling_terms" }
 exact = [3, 5, 9, 10, 11]
 arities = [1, 2, 3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} to n = 16, 6T+86 after", formula = "C" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1

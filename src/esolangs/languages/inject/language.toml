@@ -8,7 +8,6 @@ admitted = 2026-09-01T10:54:08-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "one table block halved by `O(n)` conditional substitutions"
-definitions = ["R = Σ_{i<n}(13q_i+min(r_i,3+digits10(r_i))), (q_i,r_i)=divmod(2^i,2^31)", "A = bl(12n+10) + bl(2n) + bl(n) + Σ_{j<4n} bl(n+2j+1) + Σ_{k∈{1,3,4,6,7,9}} bl(9n+k) + Σ_{i<n}(bl(9n+3i+10) + bl(9n+3i+12))"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 24, "5" = 24, "6" = 27, "7" = 27 }, source_units = 166 }
@@ -98,12 +97,14 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: C marks the literal tail" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.inject.proof_formulas:workspace"
+# Span widths cover the four halving delimiters per level and the rewritten input blocks.
+expression = "C*(64n+144+bl(n+7)+bl(n+1)+bl(n+3)+bl(n+4)+bl(n+6))+(1-C)*(8T+512n+184+16R+bl(12n+10)+bit_stride(n+1,2,4n)+bl(9n+1)+bl(9n+3)+bl(9n+4)+bl(9n+6)+bl(9n+7)+bl(9n+9)+bit_stride(9n+10,3,n)+bit_stride(9n+12,3,n))+bl(2n)+bl(n)"
+source_terms = { names = ["C", "R"], provider = "esolangs.languages.inject.proof_formulas:workspace_terms" }
 exact = true
 arities = [5]
 first = 5
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 5..16: program after n reads", formula = "8T + 512n + 184 + 16R + A" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. C marks the literal tail and R counts halving regex characters" }
 
 [resource_evidence.scaling]
 # R counts the halving regex widths. Label names gain letters after

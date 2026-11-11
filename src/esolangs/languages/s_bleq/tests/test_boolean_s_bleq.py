@@ -11,7 +11,6 @@ from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.languages.s_bleq import generator as boolean
 from esolangs.languages.s_bleq.generator import _compact_tree, _tree_min_chars
 from esolangs.languages.s_bleq.interpreter import _Machine
-from esolangs.languages.s_bleq.tests.formulas import below_eleven, tree_chars
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner
 from tests.proofs._witnesses import _sbleq_worst
@@ -129,7 +128,9 @@ def test_parity_still_runs_the_race_and_ships_the_tree() -> None:
 @pytest.mark.parametrize("n", [3, 4, 5, 8, 10])
 def test_size_below_eleven_inputs_is_at_most_the_shorter_route(n: int) -> None:
     """The ledger's ``worst P`` starts at n = 11; below, min(tree, P) bounds it."""
-    bound = below_eleven(n) if n >= 5 else tree_chars(n)
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bound = resource_bounds("S*bleq")["scaling"].formula(n, "")
     for table in _tables("S*bleq", n):
         assert len(esolangs.generate("S*bleq", table).source) <= bound, table
 

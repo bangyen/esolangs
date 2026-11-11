@@ -125,13 +125,6 @@ def walk_zeros(n: int) -> int:
     return max(range(2, (1 << n) - 1), key=lambda z: (_walk(n, z), z))
 
 
-def _lookup_steps(n: int, _: str) -> int:
-    """Worst steps: the most over z to n = 7, then the fold's bound."""
-    if n >= 8:
-        return 5 * (1 << n) + 11 * n + 31
-    return _walk(n, walk_zeros(n))
-
-
 @cache
 def _trace(n: int, row: int, *, flip: bool = False) -> list[int]:
     """Stack bits after each tail operation on ``row``; entries are 1 bit each."""
@@ -231,20 +224,6 @@ def bit_zeros(n: int) -> int:
     return max(range(2, (1 << n) - 1), key=lambda z: (_bits(n, z, (1 << n) - 1), z))
 
 
-def _lookup_written(n: int, _: str) -> int:
-    """Worst written bits: the most over z and rows to n = 7, then the stack bound."""
-    if n >= 8:
-        return (
-            (1 << n)
-            + 2 * n
-            + 12
-            + 2 * (3 * (1 << n) + 5 * n + 15).bit_length()
-            + (2 * n - 1).bit_length()
-            + n.bit_length()
-        )
-    return _written_at(n)
-
-
 @cache
 def _written_at(n: int) -> int:
     return _bits(n, bit_zeros(n), (1 << n) - 1)
@@ -254,35 +233,6 @@ def zeros(n: int) -> int:
     """The last z whose shipped area is the worst."""
     shipped = {z: min(_strip(n, z), _packed(n, z)) for z in range(2, (1 << n) - 1)}
     return max(shipped, key=lambda z: (shipped[z], z))
-
-
-def _fold(blocks: int) -> int:
-    """The fold plan's area bound for ``blocks`` codels of bounded operations.
-
-    Columns c = max(13, isqrt(2C - 1) + 9).  A row packs at least c - 9
-    codels (room is c - 7 or less, a block wastes one), so R <= 1 +
-    (C - 1) // (c - 9) rows; a right/left row pair is five rows tall, the
-    last bend two more, plus the border: height <= 5R/2 + 3, width <= c.
-    """
-    columns = max(13, isqrt(2 * blocks - 1) + 9)
-    rows = 1 + (blocks - 1) // (columns - 9)
-    return columns * (5 * rows // 2 + 3 + 1)
-
-
-def _lookup_codels(n: int, _: str) -> int:
-    """F: max over z in [2, T - 2] of min(strip, least packed layout) to n = 7.
-
-    Fewer essential inputs store fewer entries (the family
-    scan never reached the plain family).  From n = 8 the result is also at
-    most the fold, drawn in the race, at the most blocks C = 2T + 8n + 17.
-    """
-    if n >= 8:
-        return min(
-            3 * (3 * (1 << n) + 5 * n + 16),
-            max(_fold(c) for c in range(2, 2 * (1 << n) + 8 * n + 18)),
-        )
-    z = zeros(n)
-    return min(_strip(n, z), _packed(n, z))
 
 
 @cache
@@ -322,38 +272,20 @@ def _chunk_count(n: int) -> int:
     return ((1 << n) + 2) // 3
 
 
-def _chunk_width(n: int) -> int:
-    # Endpoint chunk costs sum to nine. The final one-bit chunk forces
-    # a one-codel congruence loss at even arities.
-    return 3 * _chunk_count(n) + 5 * n + 50 + 3 * (1 << (n - 1)) - (n % 2 == 0)
+def execution_terms(n: int, _: object) -> dict[str, int]:
+    """Price the selected packed walk below four inputs."""
+    return {"P": _walk(n, walk_zeros(n))}
 
 
-def _chunk_bits(n: int) -> int:
-    return (11 * _chunk_count(n) - (3 if n % 2 else 5)) // 4
+def workspace_terms(n: int, _: object) -> dict[str, int]:
+    """Price the packed stack and cursor below four inputs."""
+    return {"B": _written_at(n)}
 
 
-def _codels(n: int, program: str) -> int:
-    return _lookup_codels(n, program) if n < 4 else 3 * _chunk_width(n)
-
-
-def _steps(n: int, program: str) -> int:
-    if n < 4:
-        return _lookup_steps(n, program)
-    projected = _projected_steps(n) if n <= 6 else 71 + 11 * n
-    return max(2 * _chunk_count(n) + 4 * n + 40, projected)
-
-
-def _written(n: int, program: str) -> int:
-    if n < 4:
-        return _lookup_written(n, program)
-    return (
-        _chunk_bits(n)
-        + 3 * n
-        + (_chunk_width(n) - 1).bit_length()
-        + (2 * n - 1).bit_length()
-        + n.bit_length()
-        + 3
-    )
+def scaling_terms(n: int, _: object) -> dict[str, int]:
+    """Price the worst selected packed layout below four inputs."""
+    z = zeros(n)
+    return {"A": min(_strip(n, z), _packed(n, z))}
 
 
 def _chunk_table(values: list[int], n: int) -> str:

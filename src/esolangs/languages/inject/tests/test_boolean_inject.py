@@ -208,7 +208,9 @@ def test_counted_halving_splits_unrepresentable_repeat_counts() -> None:
 @pytest.mark.medium
 def test_constant_scratch_reuse_reads_first_and_preserves_the_next_line() -> None:
     from esolangs.languages.inject.interpreter import _Machine
-    from esolangs.languages.inject.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("Inject")["workspace"].formula
 
     for n, bit, _options, program in constant_programs("Inject", range(1, 13)):
         assert len(program) == 9 * n + 20

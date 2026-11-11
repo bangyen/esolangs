@@ -19,6 +19,7 @@ type ArityCases = tuple[tuple[int | None, str], ...]
 _FUNCTIONS = {
     "bl",
     "bit_sum",
+    "bit_stride",
     "digits",
     "digits_sum",
     "max",
@@ -50,6 +51,29 @@ def _bit_sum(value: int | Fraction) -> int:
     # Each power of two below count contributes one bit to the rest of the range.
     width = (count - 1).bit_length()
     return count * width - (1 << width) + 1
+
+
+def _bit_stride(
+    start: int | Fraction, step: int | Fraction, count: int | Fraction
+) -> int:
+    """Sum bit lengths over an ascending arithmetic progression."""
+    first, stride, length = int(start), int(step), int(count)
+    if (
+        (first, stride, length) != (start, step, count)
+        or min(first, length) < 0
+        or stride < 1
+    ):
+        raise ValueError(
+            "resource bit stride needs non-negative integer bounds and a positive step"
+        )
+    if length == 0:
+        return 0
+    last = first + stride * (length - 1)
+    # Each power of two adds one to every progression entry at or above it.
+    return sum(
+        length - max(0, ((1 << bit) - first + stride - 1) // stride)
+        for bit in range(last.bit_length())
+    )
 
 
 def _digits(value: int | Fraction) -> int:
@@ -228,6 +252,7 @@ def expression_formula(
             "L": len(program) if reads_length else None,
             "bl": bl,
             "bit_sum": _bit_sum,
+            "bit_stride": _bit_stride,
             "digits": _digits,
             "digits_sum": _digits_sum,
             "power2_digits_sum": _power2_digits_sum,

@@ -8,7 +8,7 @@ admitted = 2020-07-13T15:19:36-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "head/tail discards leave the indexed entry in the deque"
-definitions = ["U = 4n + 25 + Σ_{d<n-1} (2c_d + 2min(c_d, 2c_d - c_{d+1})), c_d = min(2^d, 2^(2^(n-d)) - 2)"]
+definitions = ["U = 4n + 25 + Σ_{d<n-1} (2c_d + 2min(c_d, 2c_d - c_{d+1})), c_d = min(2^d, 2^(2^(n-d)) - 2)", "S = (U-4n-25)/2, node and zero-pointer units"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 23, "5" = 23, "6" = 21, "7" = 19 }, source_units = 164 }
@@ -98,12 +98,15 @@ unit = "bits"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: n deque bits, register and dump bits, the cursor", formula = "n + 2 + bl(U)" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.bitdeque.tests.formulas:_bound"
+# S counts the general nodes and repeated zero-edge pointers.
+# The largest GOTO operand fits the digit width of 4n+26+2S.
+expression = "79+20n+digits(4n+26+2S)+2max(37,23+2digits(4n+26+2S))+(13+digits(4n+26+2S))S"
+source_terms = { names = ["S"], provider = "esolangs.languages.bitdeque.proof_formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the shared tree's token bound", formula = "B" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: shared-tree token bound" }
 
 [semantic_evidence]
 version = 1

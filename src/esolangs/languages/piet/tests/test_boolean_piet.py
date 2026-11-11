@@ -281,7 +281,12 @@ def test_compact_majority_is_smaller() -> None:
 
 def _check_majority() -> None:
     from esolangs.languages.piet.interpreter import _Machine
-    from esolangs.languages.piet.tests.formulas import _codels, _steps, _written
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bounds = resource_bounds("Piet")
+    bound_area = bounds["scaling"].formula
+    bound_steps = bounds["execution"].formula
+    bound_written = bounds["workspace"].formula
 
     for n in range(3, 9):
         for inverted in (False, True):
@@ -303,9 +308,11 @@ def _check_majority() -> None:
                     assert io.past_end == 0
                     assert io.input_token() == "7"
                     if not options:
-                        assert len(image.rows) * len(image.rows[0]) <= _codels(n, "")
-                        assert steps <= _steps(n, "")
-                        assert written.bits <= _written(n, "")
+                        assert len(image.rows) * len(image.rows[0]) <= bound_area(
+                            n, image
+                        )
+                        assert steps <= bound_steps(n, image)
+                        assert written.bits <= bound_written(n, image)
     # Ignored reads before, between and after the five essential positions.
     selected = (1, 2, 4, 6, 7)
     table = "".join(
@@ -370,13 +377,16 @@ def _check_triples() -> None:
     """Exercise the command-admitted strip, polarity and ignored-input layouts."""
     from esolangs.languages.piet.generator import _INITIAL, _chunks, _next_colour, strip
     from esolangs.languages.piet.interpreter import _Machine
-    from esolangs.languages.piet.tests.formulas import (
-        _codels as bound_area,
-    )
-    from esolangs.languages.piet.tests.formulas import (
-        _steps,
-        _written,
-    )
+    from esolangs.languages.piet.tests.formulas import _projected_steps
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bounds = resource_bounds("Piet")
+    bound_area = bounds["scaling"].formula
+    bound_steps = bounds["execution"].formula
+    bound_written = bounds["workspace"].formula
+    for n in (4, 5, 6):
+        assert _projected_steps(n) <= bound_steps(n, "")
+    assert bound_steps(7, "") >= 71 + 11 * 7
 
     for n in (7, 8):
         rng = random.Random(184700 + n)
@@ -399,9 +409,9 @@ def _check_triples() -> None:
                     assert io.past_end == 0
                     assert io.input_token() == "7"
                     if not options:
-                        assert _codels(image) <= bound_area(n, "")
-                        assert steps <= _steps(n, "")
-                        assert written.bits <= _written(n, "")
+                        assert _codels(image) <= bound_area(n, image)
+                        assert steps <= bound_steps(n, image)
+                        assert written.bits <= bound_written(n, image)
     # The divisor is essential: modulo3 cannot decode three packed bits.
     table = "00110110"
     operations = _chunks(table, [0, 1, 2], 3, flip=False)
