@@ -2,8 +2,10 @@
 
 import itertools
 import random
+from dataclasses import replace
 from importlib import import_module
 from itertools import pairwise
+from math import isqrt
 from unittest.mock import patch
 
 import pytest
@@ -243,9 +245,8 @@ def test_balance_fold_target_uses_the_western_margin() -> None:
     """The fold's target squares the span east of the first used column."""
 
     language = esolangs.Language("Streetcode")
-    for witness in construction_boundaries(language.name)[
-        "balanced_stacked_fold_cutoff"
-    ]:
+    records = construction_boundaries(language.name)
+    for witness in records["balanced_stacked_fold_cutoff"]:
         n, table = witness.arity, witness.table()
         with patch.object(
             boolean, "_streetcode_folded", wraps=boolean._streetcode_folded
@@ -254,12 +255,23 @@ def test_balance_fold_target_uses_the_western_margin() -> None:
         assert [call.kwargs.get("tall", False) for call in fold.call_args_list] == (
             [False] if n == 5 else [False, True]
         )
-        restored = language.load_program(language.dump_program(artifact))
-        prepared = language.prepare(restored)
-        for row in (0, 1, len(table) // 2, len(table) - 1):
-            result = prepared.evaluate(row_bits(row, n))
-            assert result.bit == table[row]
-            assert result.observation.input_reads == n
+        assert_saved_rows(
+            language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
+        )
+
+    for witness in records["balanced_room_starts_folding"]:
+        n, table = witness.arity, witness.table()
+        piece = boolean._ROOM_PIECE * isqrt(len(table))
+        rooms = boolean._streetcode_mouths(n, 0, [0] * n, piece)
+        pieces = [len(boolean._room_pieces(room, piece)) - 1 for _, room, _ in rooms]
+        assert pieces == ([1] * n if n == 7 else [3, *([1] * (n - 1))])
+        source = boolean._streetcode_folded(
+            boolean._streetcode_flat(table, n, piece), tall=True
+        )
+        artifact = replace(language.generate(table, balance=True), source=source)
+        assert_saved_rows(
+            language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
+        )
 
     parity = "".join(str(index.bit_count() & 1) for index in range(64))
     program = str(esolangs.generate("Streetcode", parity, balance=True).source)

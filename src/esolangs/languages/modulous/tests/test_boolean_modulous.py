@@ -9,11 +9,13 @@ from esolangs.exceptions import InputExhaustedError
 from esolangs.languages.modulous import generator as boolean
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
+    assert_saved_rows,
     measure_run,
     three_input_corpus_size,
 )
@@ -25,6 +27,16 @@ run_modulous = _runner("modulous", newline=True)
 class TestModulous:
     @pytest.mark.parametrize("width", [1, 4, 7, 13, 40, 80])
     def test_narrow_chunks_execute_every_small_table(self, width: int) -> None:
+        if width == 4:
+            language = esolangs.Language("Modulous")
+            records = construction_boundaries(language.name)
+            for witness in records["integer_to_string_chunk_width"]:
+                table = witness.table()
+                for columns, value_type in ((3, "INT"), (4, "STR")):
+                    artifact = language.generate(table, width=columns)
+                    assert artifact.source.split()[2] == value_type
+                    assert_saved_rows(language, artifact, table, range(len(table)))
+
         for n in range(1, 4):
             for table in witnesses(n):
                 program = esolangs.generate("Modulous", table, width=width).source

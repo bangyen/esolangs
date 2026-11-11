@@ -365,6 +365,21 @@ class TestDig:
                 for row in range(2 * len(table))
             )
 
+        language = esolangs.Language("Dig")
+        records = construction_boundaries(language.name)
+        for witness in records["alternating_ignored_input_before_kept_level"]:
+            inner = witness.table()
+            for table, skips in ((inner, [0, 0, 0]), (ignore(inner, 1), [0, 1, 0])):
+                n = len(table).bit_length() - 1
+                assert layout._dig_leaf_inputs(table, n)[2] == skips
+                artifact = language.generate(table)
+                rows = (0, 1, len(table) // 4, len(table) // 2, len(table) - 1)
+                assert_saved_rows(language, artifact, table, rows)
+                alternating = boolean._dig_alternating(table, n)
+                for row in rows:
+                    bits = [str(bit) for bit in row_bits(row, n)]
+                    assert run_dig(alternating, bits) == table[row]
+
         six, seven, eight = (
             "".join(str((row * 73 + row // 3) & 1) for row in range(size))
             for size in (64, 128, 256)

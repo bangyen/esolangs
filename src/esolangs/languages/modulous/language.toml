@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+integer_to_string_chunk_width = { tables = [{ arity = 3, rule = "dense" }], benchmark = false, test = "test_boolean_modulous.py::TestModulous::test_narrow_chunks_execute_every_small_table[4]" }
+
 [curation]
 backlinks = 6
 admitted = 2021-05-16T15:17:47-04:00

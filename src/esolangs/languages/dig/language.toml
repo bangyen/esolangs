@@ -5,6 +5,7 @@
 indexed_decoder_class_label_cap = { tables = [{ arity = 10, rule = "dense" }], benchmark = false, test = "test_boolean_dig.py::test_indexed_sharing_builds_four_classes_at_nine_inputs" }
 indexed_decoder_leaf_arity_cutoff = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false, test = "test_boolean_dig.py::test_indexed_sharing_builds_four_classes_at_nine_inputs" }
 default_tree_to_alternating_race = { tables = [{ arity = 4, rule = "dense" }, { arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_dig.py::TestDig::test_alternating_layout_executes_every_row" }
+alternating_ignored_input_before_kept_level = { tables = [{ arity = 9, rule = "dense" }], benchmark = false, test = "test_boolean_dig.py::TestDig::test_an_ignored_middle_input_costs_no_level" }
 
 [curation]
 backlinks = 11
