@@ -24,6 +24,19 @@ def _run(code, stdin=""):
     return run_program(run, code, stdin=stdin)
 
 
+def test_prepared_runs_reuse_initial_memory(monkeypatch) -> None:
+    from esolangs.languages.addsubjump import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "AddSubJump",
+        "ASJ byte IO emit @0\nemit: IO byte -1\nbyte: .data 0",
+        interpreter,
+        "_parse",
+        monkeypatch,
+    )
+
+
 class TestAssembly:
     def test_labels_offsets_and_question_mark(self) -> None:
         code = """

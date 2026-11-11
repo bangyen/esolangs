@@ -43,7 +43,7 @@ from esolangs.languages.addsubjump.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -415,6 +415,11 @@ def _pack(values: list[int]) -> _Cells:
     return (MappingProxyType({i: v for i, v in enumerate(values) if v}), len(values))
 
 
+def _parse(code: str) -> _Cells:
+    """Load source into the initial immutable sparse store."""
+    return _pack(_program(code))
+
+
 def _operands(state: _State) -> tuple[int, int, int, int]:
     """Return the four cells of the instruction under the pointer.
 
@@ -539,10 +544,11 @@ _WORKSPACE_MODEL = WorkspaceModel(
 class _Machine:
     """Per-run ASJ state: the self-modifying memory, ip, and flags."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        """Parse ``code`` into memory and reset the pointer and flags."""
+    def __init__(self, code: str | _Cells, io: IO) -> None:
+        """Start at the first instruction with cleared flags."""
         self.io = io
-        self.state: _State = (_pack(_program(code)), 0, 0, 0, 0)
+        memory = _parse(code) if isinstance(code, str) else code
+        self.state: _State = (memory, 0, 0, 0, 0)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -640,22 +646,22 @@ class _Machine:
             self.io.print_char(chr(value & 0xFF))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Share initial memory across independently self-modifying runs."""
     if not isinstance(source, str):
         raise TypeError("addsubjump machines require text source")
     if options:
         raise TypeError("addsubjump machines accept no runtime options")
 
+    image = _parse(source)
+
     def build(io: IO) -> _Machine:
-        return _Machine(source, io)
+        return _Machine(image, io)
 
-    return build
+    return RuntimePlan(build, lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Cells, io: IO) -> CompletionReport:
     """Run an AddSubJump program to completion."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

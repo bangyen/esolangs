@@ -46,7 +46,7 @@ from esolangs.languages.b_tapemark.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._snapshot import SnapshotCodec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
@@ -279,8 +279,10 @@ class _Machine:
 
     ip_shape = "grid"
 
-    def __init__(self, source: str, io: IO, *, swap_marker: str = "new") -> None:
-        self.state = _load(source, swap_marker)
+    def __init__(
+        self, source: str | _State, io: IO, *, swap_marker: str = "new"
+    ) -> None:
+        self.state = _load(source, swap_marker) if isinstance(source, str) else source
         self.io = io
 
     @property
@@ -323,23 +325,23 @@ class _Machine:
             self.io.print_char(output)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Share the initial grids while each run owns its transitions."""
     if not isinstance(source, str):
         raise TypeError("b_tapemark machines require text source")
     if options.keys() - {"swap_marker"}:
         raise TypeError("b_tapemark machines accept only the swap_marker option")
-    swap_marker = options.get("swap_marker", "new")
+    initial = _load(source, swap_marker=options.get("swap_marker", "new"))
 
     def build(io: IO) -> _Machine:
-        return _Machine(source, io, swap_marker=swap_marker)
+        return _Machine(initial, io)
 
-    return build
+    return RuntimePlan(build, lambda io: _execute(initial, io))
 
 
-def _execute(source: str, io: IO, *, swap_marker: str = "new") -> CompletionReport:
+def _execute(
+    source: str | _State, io: IO, *, swap_marker: str = "new"
+) -> CompletionReport:
     """Run a B-tapemark program until ``!`` executes."""
     machine = _Machine(source, io, swap_marker=swap_marker)
     return drive(machine, policy=CAPABILITIES.completion)

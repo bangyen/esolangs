@@ -16,6 +16,20 @@ def execute(source: str, stdin: str = "") -> str:
     return io.getvalue()
 
 
+@pytest.mark.parametrize(("dialect", "ip"), [("new", (1, 0)), ("old", (0, 0))])
+def test_prepared_runs_reuse_initial_grids(monkeypatch, dialect, ip) -> None:
+    import esolangs
+    from tests.support.prepared_support import check_image_reuse
+
+    api = esolangs.Language("B-tapemark")
+    settings = api.settings(swap_marker=dialect)
+    check_image_reuse(api.name, ">-+!", native, "_load", monkeypatch, settings=settings)
+    machine = api.prepare(">?", settings=settings).make_vm()
+    machine.step()
+    machine.step()
+    assert machine.ip == ip
+
+
 def test_documented_cat() -> None:
     io = ScriptedIO("A\nB\n")
     with pytest.raises(EOFError):
