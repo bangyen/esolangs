@@ -14,9 +14,11 @@ from typing import Any
 from esolangs.registry import LANGUAGES
 
 PACKAGES = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
-_RULES = frozenset({"parity", "and", "or", "majority", "zero", "random", "dense"})
+_RULES = frozenset(
+    {"parity", "and", "or", "majority", "zero", "one", "random", "dense"}
+)
 SOURCE_ANCHOR = re.compile(
-    r"n=(\d+)\s+(parity|and|or|majority|zero|dense|random\s+-?\d+):\s*"
+    r"n=(\d+)\s+(parity|and|or|majority|zero|one|dense|random\s+-?\d+):\s*"
     r"([\d,]+)\s+(chars|codels|pixels)"
 )
 _UNITS = frozenset({"chars", "codels", "pixels"})
@@ -75,6 +77,7 @@ class TableWitness:
             "or": lambda ones: ones > 0,
             "majority": lambda ones: 2 * ones > n,
             "zero": lambda _: 0,
+            "one": lambda _: 1,
         }
         rule = rules[self.rule]
         return "".join(str(int(rule(row.bit_count()))) for row in range(1 << n))

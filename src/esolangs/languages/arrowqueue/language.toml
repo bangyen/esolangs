@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+small_to_full_constant_ring = { tables = [{ arity = 2, rule = "one" }, { arity = 3, rule = "one" }], benchmark = false }
+
 [curation]
 backlinks = 3
 admitted = 2026-08-12T18:39:04-04:00

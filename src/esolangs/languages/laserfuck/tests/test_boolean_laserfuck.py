@@ -13,6 +13,7 @@ from esolangs.languages.laserfuck import generator as boolean
 from esolangs.languages.laserfuck.generator import MARGIN
 from esolangs.languages.laserfuck.tests.runners import run_laserfuck
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import measure_run, three_input_corpus_size
 from tests.support.witness_tables import row_bits, witnesses
@@ -30,6 +31,19 @@ class TestLaserFuck:
     def test_weighted_table_executes_every_row(self) -> None:
         """The default route computes dense tables at every initial heading."""
         module = importlib.import_module("esolangs.languages.laserfuck.generator")
+        language = esolangs.Language("LaserFuck")
+        for witness in construction_boundaries("LaserFuck")["tree_to_weighted_lookup"]:
+            n, table = witness.arity, witness.table()
+            artifact = language.generate(table)
+            weighted = module._laserfuck_weighted(table)
+            assert (artifact.source == weighted) == (n == 7)
+            restored = language.load_program(language.dump_program(artifact))
+            prepared = language.prepare(restored)
+            for row in (0, 1, len(table) // 2, len(table) - 1):
+                result = prepared.evaluate(row_bits(row, n))
+                assert result.bit == table[row]
+                assert result.observation.input_reads == n
+
         for n in (5, 6):
             size = 1 << n
             tables = (

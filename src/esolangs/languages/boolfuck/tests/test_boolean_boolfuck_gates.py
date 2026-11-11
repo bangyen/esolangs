@@ -13,9 +13,10 @@ from esolangs.languages.boolfuck.generator import (
 )
 from esolangs.languages.boolfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import measure_run
-from tests.support.witness_tables import nested_dense
+from tests.support.witness_tables import nested_dense, row_bits
 
 
 def _execute(table: str, program: str, rows: range | list[int]) -> int:
@@ -287,3 +288,20 @@ def test_four_input_table_keeps_its_gate_size() -> None:
     program = boolfuck(table)
     assert len(esolangs.generate("Boolfuck", table).source) == 191
     assert _evaluate("Boolfuck", program, inputs=4) == table
+
+    language = esolangs.Language("Boolfuck")
+    for witness in construction_boundaries("Boolfuck")["normalized_gate_admission"]:
+        n, table = witness.arity, witness.table()
+        gated = normal_gates(table)
+        artifact = language.generate(table)
+        if n == 3:
+            assert gated is None
+        else:
+            assert gated is not None
+            assert artifact.source == gated
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row in range(len(table)):
+            result = prepared.evaluate(row_bits(row, n))
+            assert result.bit == table[row]
+            assert result.observation.input_reads == n

@@ -2,6 +2,7 @@
 
 import random
 from itertools import pairwise, permutations
+from unittest.mock import patch
 
 import pytest
 
@@ -14,6 +15,7 @@ from esolangs.languages.back.generator import _back_ordered
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.proofs.deep.execution import run_to_answer
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import count_steps
@@ -147,6 +149,32 @@ class TestParameterizedBack:
         """Rudin-Shapiro shares nothing: the comb is 3n + 5 wide, the fold is not."""
         from esolangs.generation.helpers import grid_area
         from esolangs.languages.back import generator as generators
+
+        language = esolangs.Language("Back")
+        fold = generators._back_htree
+        candidates = []
+
+        def observe(*args, **kwargs):
+            layout = fold(*args, **kwargs)
+            candidates.append(layout.source)
+            return layout
+
+        for witness in construction_boundaries("Back")["comb_to_fold_race"]:
+            n, table = witness.arity, witness.table()
+            candidates.clear()
+            with patch.object(generators, "_back_htree", side_effect=observe):
+                artifact = language.generate(table)
+            assert len(candidates) == int(n == 6)
+            restored = language.load_program(language.dump_program(artifact))
+            for row in (0, 1, len(table) // 2, len(table) - 1):
+                bits = row_bits(row, n)
+                result = language.evaluate(restored, bits)
+                assert result.bit == table[row]
+                assert result.observation.input_reads == 0
+                for source in candidates:
+                    assert (
+                        self.run_back(self.instantiate(source, bits), n) == table[row]
+                    )
 
         n = 12
         table = "".join(

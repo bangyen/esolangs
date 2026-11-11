@@ -1,14 +1,17 @@
 """Covers :mod:`esolangs.languages.arrowqueue.generator`."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
+from esolangs.languages.arrowqueue import generator
 from esolangs.languages.arrowqueue.descriptor import PAIR
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import row_bits
 
@@ -120,6 +123,27 @@ def test_constant_balance_and_setters_off_path(bit: str) -> None:
     for options in ({}, {"width": 1}, {"width": 5}, {"width": 6}, {"balance": True}):
         program = esolangs.generate("ArrowQueue", table, **options)
         assert _evaluate("ArrowQueue", program, inputs=n) == table
+
+    if bit == "1":
+        language = esolangs.Language("ArrowQueue")
+        witnesses = construction_boundaries("ArrowQueue")["small_to_full_constant_ring"]
+        for witness in witnesses:
+            with patch.object(
+                generator, "_constant_ring", wraps=generator._constant_ring
+            ) as ring:
+                artifact = language.generate(witness.table())
+            assert ring.call_count == (2 if witness.arity == 3 else 0)
+            restored = language.load_program(language.dump_program(artifact))
+            for row in range(1 << witness.arity):
+                result = language.evaluate(
+                    restored,
+                    row_bits(row, witness.arity),
+                    limits=esolangs.ExecutionLimits(max_steps=200),
+                )
+                assert result.bit == "1"
+                assert result.observation.input_reads == 0
+                assert result.termination is not None
+                assert result.termination.cycle is not None
 
 
 def test_ring_pops_rdlu_then_sustains() -> None:

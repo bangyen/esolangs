@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+normalized_gate_admission = { tables = [{ arity = 3, rule = "dense" }, { arity = 4, rule = "dense" }], benchmark = false }
+
 [deep_arities]
 # Normalized gates start at four; both three-rung parity windows need
 # fourteen.

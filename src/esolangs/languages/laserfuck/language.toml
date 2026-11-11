@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+tree_to_weighted_lookup = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false }
+
 [deep_arities]
 # The weighted route starts at n = 7 (75 -> 1,493 bits on parity), so the
 # fit needs n = 7..11 for its five rungs; n = 10, 11 add 1.9 s.

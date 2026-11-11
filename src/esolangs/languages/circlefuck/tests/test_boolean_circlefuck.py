@@ -9,6 +9,7 @@ from esolangs import run as execute
 from esolangs.languages.circlefuck import generator as boolean
 from esolangs.languages.circlefuck.generator import _DIGIT_BITS
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
@@ -129,6 +130,23 @@ def _check_constants() -> None:
 
 def _check_reader() -> None:
     from esolangs.languages.circlefuck.interpreter import run
+
+    language = esolangs.Language("Circlefuck")
+    witnesses = construction_boundaries("Circlefuck")[
+        "individual_to_batched_input_reader"
+    ]
+    for witness in witnesses:
+        n, table = witness.arity, witness.table()
+        artifact = language.generate(table)
+        reader = boolean._READ * n
+        assert (reader in artifact.source) == (n == 2)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row in range(len(table)):
+            bits = [int(bit) for bit in f"{row:0{n}b}"]
+            result = prepared.evaluate(bits)
+            assert result.bit == table[row]
+            assert result.observation.input_reads == n
 
     total = 0
     for value in range(256):
