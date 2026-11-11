@@ -54,14 +54,15 @@ from __future__ import annotations
 
 import math
 from collections.abc import Hashable, Mapping
-from typing import Any
+from types import MappingProxyType
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.cvnc.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -395,9 +396,9 @@ def _nasal(state: _State, token: str) -> _State:
 def _approximant(
     state: _State,
     token: str,
-    starts: list[int],
-    pairs: dict[int, int],
-    offsets: dict[int, int],
+    starts: tuple[int, ...],
+    pairs: Mapping[int, int],
+    offsets: Mapping[int, int],
     end: int,
 ) -> _State:
     """Jump: a goto, a loop test, or a loop end."""
@@ -424,9 +425,9 @@ def _approximant(
 def _advance(
     state: _State,
     token: str,
-    starts: list[int],
-    pairs: dict[int, int],
-    offsets: dict[int, int],
+    starts: tuple[int, ...],
+    pairs: Mapping[int, int],
+    offsets: Mapping[int, int],
     end: int,
     line: str | None = None,
     byte: int | None = None,
@@ -453,29 +454,40 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _Image(NamedTuple):
+    tokens: tuple[str, ...]
+    starts: tuple[int, ...]
+    pairs: Mapping[int, int]
+    offsets: Mapping[int, int]
+
+
+def _prepare_source(code: str) -> _Image:
+    tokens = _tokenize(code.replace("\n", ""))
+    if not tokens:
+        raise syntax_error(
+            "program is empty",
+            "provide at least one CV(N)(C) syllable, for example si",
+        )
+    starts = _syllabify(tokens)
+    pairs = _match_loops(tokens)
+    # A ɰ̊ occupies two codepoint offsets and both resume at that command.
+    offsets: dict[int, int] = {}
+    offset = 0
+    for index, token in enumerate(tokens):
+        for step in range(len(token)):
+            offsets[offset + step] = index
+        offset += len(token)
+    return _Image(
+        tuple(tokens), tuple(starts), MappingProxyType(pairs), MappingProxyType(offsets)
+    )
+
+
 class _Machine:
     """The run state of one CV(N)(C) program, steppable one command at a time."""
 
-    def __init__(self, code: str, io: IO) -> None:
-        """Parse ``code`` into commands and syllables, ready to step."""
-        self.tokens = _tokenize(code.replace("\n", ""))
-        if not self.tokens:
-            raise syntax_error(
-                "program is empty",
-                "provide at least one CV(N)(C) syllable, for example si",
-            )
-        self.starts = _syllabify(self.tokens)
-        self.pairs = _match_loops(self.tokens)
-        # ``ɹ`` indexes the source by codepoint, so the token that each
-        # codepoint offset begins at is precomputed once.  A ``ɰ̊`` occupies
-        # two offsets and both map to it: there is no command to resume at
-        # in the middle of one.
-        self.offsets: dict[int, int] = {}
-        offset = 0
-        for index, token in enumerate(self.tokens):
-            for step in range(len(token)):
-                self.offsets[offset + step] = index
-            offset += len(token)
+    def __init__(self, code: str | _Image, io: IO) -> None:
+        image = _prepare_source(code) if isinstance(code, str) else code
+        self.tokens, self.starts, self.pairs, self.offsets = image
         self.io = io
         self.accumulator = 0
         self.deque: tuple[int, ...] = ()
@@ -560,22 +572,18 @@ class _Machine:
             self.io.print_char(output)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain commands, syllables and jump targets for each invocation."""
     if not isinstance(source, str):
         raise TypeError("cvnc machines require text source")
     if options:
         raise TypeError("cvnc machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a CV(N)(C) program to completion."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

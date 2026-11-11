@@ -32,7 +32,7 @@ class TestGraphemeReadsWhatTheDocsNowSay:
         }
 
 
-def test_conversion_reaches_debugger_and_bound_language() -> None:
+def test_conversion_reaches_debugger_and_bound_language(monkeypatch) -> None:
     settings = esolangs.Language("Grapheme").settings(
         integer_conversion="after_each_letter"
     )
@@ -41,6 +41,19 @@ def test_conversion_reaches_debugger_and_bound_language() -> None:
     debugger = make_debugger("Grapheme", "FAFY", settings=settings)
     debugger.run(max_steps=10)
     assert debugger.vm.output == "10"
+
+    from esolangs.languages.grapheme import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Grapheme",
+        "WKY\nFAFY",
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+        cases=(("A", "A10"), ("Z", "Z10"), ("Q", "Q10")),
+        settings=settings,
+    )
 
 
 # The dialect is machine-wide; one string call and one Z rewind witness it.

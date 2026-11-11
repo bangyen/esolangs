@@ -270,11 +270,25 @@ class TestControlFlow:
         io = ScriptedIO("2\n")
         assert run_until_halt_or_cycle(_Machine("su" + "ɹi" + "θi", io)) is False
 
-    def test_landing_on_a_combining_ring_resumes_at_its_command(self) -> None:
+    def test_landing_on_a_combining_ring_resumes_at_its_command(
+        self, monkeypatch
+    ) -> None:
         """``ɰ̊`` spans two codepoints, and both name the one command."""
         program = "su" + "ɹi" + "ci" + "ɰ̊u" + "θə" + "ʋu" + "θi"
         assert run_program(program, "6\n") == "6543210"
         assert run_program(program, "7\n") == "76543210"
+
+        from esolangs.languages.cvnc import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "CV(N)(C)",
+            "\n".join(program),
+            interpreter,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("6", "6543210"), ("7", "76543210"), ("8", "876543210")),
+        )
 
 
 class TestSpellings:

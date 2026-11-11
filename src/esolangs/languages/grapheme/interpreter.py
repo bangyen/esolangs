@@ -51,7 +51,7 @@ from dataclasses import dataclass
 from itertools import takewhile
 from operator import add, mul, sub
 from types import MappingProxyType
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, NamedTuple
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.grapheme.dialect import DEFAULT_GRAPHEME, GraphemeDialect
@@ -59,7 +59,7 @@ from esolangs.languages.grapheme.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -546,32 +546,45 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _Image(NamedTuple):
+    frames: tuple[_Frame, ...]
+    dialect: GraphemeDialect
+    length: int
+
+
+def _prepare_source(code: str, *, integer_conversion: str) -> _Image:
+    dialect = GraphemeDialect(integer_conversion)
+    code = code.replace("\n", "")
+    if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
+        raise syntax_error(
+            "Grapheme programs may only contain uppercase Latin letters",
+            "use uppercase Latin command letters A through Z",
+        )
+    return _Image((_frame(code),), dialect, len(code))
+
+
 class _Machine:
     """Shared stack, variables, and call stack for a run."""
 
     def __init__(
         self,
-        code: str,
+        code: str | _Image,
         io: IO,
         *,
         integer_conversion: str = "between_letters",
     ) -> None:
-        """Build a machine running ``code`` as its top-level frame."""
-        self.dialect = GraphemeDialect(integer_conversion)
-        code = code.replace("\n", "")
-        if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
-            raise syntax_error(
-                "Grapheme programs may only contain uppercase Latin letters",
-                "use uppercase Latin command letters A through Z",
-            )
+        """Start a machine at its top-level frame."""
+        image = (
+            _prepare_source(code, integer_conversion=integer_conversion)
+            if isinstance(code, str)
+            else code
+        )
+        # The initial frame is immutable; transitions replace it by value.
+        self.frames, self.dialect, self._top_length = image
         self.stack: list[_Value] = []
         self.vars: _Vars = MappingProxyType({})
         self.io = io
         self._input_reads = 0
-        self.frames: tuple[_Frame, ...] = (_frame(code),)
-        # Where the top-level frame ends, so ``ip`` can still report a
-        # position once every frame has been popped.
-        self._top_length = len(code)
 
     @property
     def halted(self) -> bool:
@@ -689,24 +702,20 @@ class _Machine:
                 self.io.print_value(output)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the validated initial frame and dialect for each invocation."""
     if not isinstance(source, str):
         raise TypeError("grapheme machines require text source")
     if options.keys() - {"integer_conversion"}:
         raise TypeError("grapheme machines accept only integer_conversion")
     integer_conversion = options.get("integer_conversion", "between_letters")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io, integer_conversion=integer_conversion)
-
-    return build
+    image = _prepare_source(source, integer_conversion=integer_conversion)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
 def _execute(
-    code: str,
+    code: str | _Image,
     io: IO,
     *,
     integer_conversion: str = "between_letters",
