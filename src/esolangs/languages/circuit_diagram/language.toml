@@ -140,12 +140,17 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, n ≤ 7; 7T + 2n - 9 after: latches, pulses", formula = "7T/2 + 2n - 5" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.circuit_diagram.tests.formulas:_cells"
+# The race charges complete folds and their atomic definitions. Its winner
+# fits the pool. A leaf has k=7 inputs when n is odd and k=8 when even.
+# With G=14+3(2^(k-2)-1)+k gates, the leaf side rounds 4G+10k+59 down
+# to a multiple of eight. Adding 16k+72 yields 768 or 1176 before each
+# pair of prefix levels doubles the side. The final port margin is 8n+8.
+expression = "((1176-408(n-2⌊n/2⌋))·2^(n-4-⌊n/2⌋)-8n-64)^2"
 exact = false
 arities = [9, 10, 11]
 first = 9
 unit = "cells"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: H-tree pool caps it", formula = "F" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: H-tree pool caps it" }
 
 [semantic_evidence]
 version = 1

@@ -18,8 +18,8 @@ def bl(value: Fraction | int) -> int:
     return int(value).bit_length()
 
 
-def _python(expression: str) -> str | None:
-    """Return ``expression`` as Python, or None outside the notation."""
+def _parse_expression(expression: str) -> ast.Expression | None:
+    """Parse and validate the arithmetic notation as a Python expression."""
     text = expression.replace("·", "*").replace("²", "^2").replace("^", "**")
     text = re.sub(r"⌈([^⌈⌉]*)⌉", r"ceil(\1)", text)
     text = re.sub(r"⌊([^⌊⌋]*)⌋", r"floor(\1)", text)
@@ -57,29 +57,62 @@ def _python(expression: str) -> str | None:
             return None
         if isinstance(node, ast.Constant) and type(node.value) is not int:
             return None
-    return text
+    return tree
+
+
+def _power(base: int | Fraction, exponent: int | Fraction) -> int | Fraction:
+    """Evaluate an integral power without leaving rational arithmetic."""
+    power = int(exponent)
+    if power != exponent:
+        raise ValueError("resource exponent must be an integer")
+    return Fraction(base) ** power if power < 0 else base**power
+
+
+class _ExactArithmetic(ast.NodeTransformer):
+    """Replace operators that can return a float on integer operands."""
+
+    def visit_BinOp(self, node: ast.BinOp) -> ast.expr:
+        self.generic_visit(node)
+        if isinstance(node.op, ast.Div):
+            name = "_divide"
+        elif isinstance(node.op, ast.Pow):
+            name = "_power"
+        else:
+            return node
+        return ast.copy_location(
+            ast.Call(
+                func=ast.Name(id=name, ctx=ast.Load()),
+                args=[node.left, node.right],
+                keywords=[],
+            ),
+            node,
+        )
 
 
 def expression_formula(expression: str) -> Formula:
     """Return the checked arithmetic formula, rejecting unknown syntax."""
-    python = _python(expression)
-    if python is None:
+    tree = _parse_expression(expression)
+    if tree is None:
         raise ValueError(f"invalid resource expression: {expression}")
-    code = compile(python, "<ledger>", "eval")
+    code = compile(
+        ast.fix_missing_locations(_ExactArithmetic().visit(tree)), "<ledger>", "eval"
+    )
     # A raster program has no length; only a bound that reads L asks.
     reads_length = "L" in code.co_names
     reads_table_size = "T" in code.co_names
 
     def formula(n: int, program: str) -> int | Fraction:
         names = {
-            "n": Fraction(n),
-            "T": Fraction(2**n) if reads_table_size else None,
-            "L": Fraction(len(program)) if reads_length else None,
+            "n": n,
+            "T": 2**n if reads_table_size else None,
+            "L": len(program) if reads_length else None,
             "bl": bl,
             "max": max,
             "min": min,
             "ceil": math.ceil,
             "floor": math.floor,
+            "_divide": Fraction,
+            "_power": _power,
         }
         value = Fraction(eval(code, {"__builtins__": {}}, names))
         return value.numerator if value.denominator == 1 else value
@@ -104,7 +137,7 @@ def arity_cases(value: object) -> ArityCases:
                 raise ValueError("resource case endpoints must increase")
             previous = through
         expression = row["expression"]
-        if not isinstance(expression, str) or _python(expression) is None:
+        if not isinstance(expression, str) or _parse_expression(expression) is None:
             raise ValueError("invalid resource case expression")
         cases.append((through, expression))
     return tuple(cases)

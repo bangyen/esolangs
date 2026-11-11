@@ -7,6 +7,7 @@ Each was derived from its generator, not fitted: a fit from parity data
 
 import copy
 import tomllib
+from fractions import Fraction
 
 import pytest
 
@@ -14,6 +15,7 @@ import esolangs
 from esolangs.registry import LANGUAGES
 from scripts.docs.resource_description import parse_descriptions
 from scripts.docs.resource_evidence import PACKAGES, parse_bounds
+from scripts.docs.resource_formula import expression_formula
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.execution import FORMULAS, measure
 from tests.support.generator_support import CHECK
@@ -65,6 +67,7 @@ def test_every_formula_cell_is_checked() -> None:
     with pytest.raises(AssertionError, match="bound"):
         assert commands <= bound.formula(2, program.source), "mutated execution bound"
     _check_arity_cases(data)
+    _check_rational_arithmetic()
 
 
 def _check_arity_cases(data: dict) -> None:
@@ -102,3 +105,16 @@ def _check_arity_cases(data: dict) -> None:
         broken["execution"]["cases"] = cases
         with pytest.raises(ValueError, match="resource case"):
             parse_bounds(REFERENCE, broken)
+
+
+def _check_rational_arithmetic() -> None:
+    for expression, expected in (
+        ("1/10+2/10", Fraction(3, 10)),
+        ("T+⌈n/7⌉/2", 2**55 + 4),
+        ("(1/3)/(1/9)", 3),
+        ("3^(-2)", Fraction(1, 9)),
+        ("(2/3)^(-2)", Fraction(9, 4)),
+    ):
+        assert expression_formula(expression)(55, "") == expected
+    with pytest.raises(ValueError, match="exponent must be an integer"):
+        expression_formula("2^(1/2)")(1, "")
