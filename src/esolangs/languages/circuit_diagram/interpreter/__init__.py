@@ -85,6 +85,7 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from threading import Lock
+from types import MappingProxyType
 from typing import Any, NamedTuple, cast
 
 from esolangs.languages.circuit_diagram.interpreter._functions import (
@@ -111,7 +112,7 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
 from esolangs.languages.circuit_diagram.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -129,10 +130,10 @@ class _Topology(NamedTuple):
     """
 
     grid: _Grid
-    wirings: list[_Wiring]
-    gates: list[_Gate]
-    wire_index: dict[int, int]
-    by_cell: dict[tuple[int, int], _Wiring]
+    wirings: tuple[_Wiring, ...]
+    gates: tuple[_Gate, ...]
+    wire_index: Mapping[int, int]
+    by_cell: Mapping[tuple[int, int], _Wiring]
     consumers: tuple[tuple[tuple[int, int], ...], ...]
 
 
@@ -150,10 +151,10 @@ def _parse_topology(code: tuple[str, ...]) -> _Topology:
                 fed[index[id(wiring)]].append((position, slot))
     return _Topology(
         grid,
-        wirings,
-        parsed.gates,
-        index,
-        {cell: wiring for wiring in wirings for cell in wiring.cells},
+        tuple(wirings),
+        tuple(parsed.gates),
+        MappingProxyType(index),
+        MappingProxyType({cell: wiring for wiring in wirings for cell in wiring.cells}),
         tuple(map(tuple, fed)),
     )
 
@@ -422,12 +423,12 @@ class _Machine:
     eof_is_a_value = True
 
     def __init__(
-        self, code: list[str], io: IO, *, clock: _ClockStream | None = None
+        self, code: list[str] | _Topology, io: IO, *, clock: _ClockStream | None = None
     ) -> None:
         """Parse ``code`` and read the input its ``-n-`` ports call for."""
         self.clock = clock if clock is not None else _ClockStream()
         self.io = io
-        self.topology = _compile(tuple(code))
+        self.topology = _compile(tuple(code)) if isinstance(code, list) else code
         self.halted = False
         # Static topology is shared; values and remembered gate inputs stay
         # per-machine tuples indexed by topology position.
@@ -446,17 +447,17 @@ class _Machine:
         return self.topology.grid
 
     @property
-    def wirings(self) -> list[_Wiring]:
+    def wirings(self) -> tuple[_Wiring, ...]:
         """Every wiring, by position."""
         return self.topology.wirings
 
     @property
-    def gates(self) -> list[_Gate]:
+    def gates(self) -> tuple[_Gate, ...]:
         """Every gate, by position."""
         return self.topology.gates
 
     @property
-    def index(self) -> dict[int, int]:
+    def index(self) -> Mapping[int, int]:
         """``id(wiring)`` to its position."""
         return self.topology.wire_index
 
@@ -589,23 +590,19 @@ class _Machine:
         return (self.values, self.latches, self.halted, self.clock.position)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the topology while binding a fresh clock and state per run."""
     if not isinstance(source, list):
         raise TypeError("circuit_diagram machines require split text source")
     if options:
         raise TypeError("circuit_diagram machines accept no runtime options")
-    code = tuple(source)
-
-    def build(io: IO) -> _Machine:
-        return _Machine(list(code), io)
-
-    return build
+    topology = _compile(tuple(source))
+    return RuntimePlan(
+        lambda io: _Machine(topology, io), lambda io: _execute(topology, io)
+    )
 
 
-def _execute(code: list[str], io: IO) -> CompletionReport:
+def _execute(code: list[str] | _Topology, io: IO) -> CompletionReport:
     """Execute a Circuit Diagram program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

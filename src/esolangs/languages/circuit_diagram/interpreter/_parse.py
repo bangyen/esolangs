@@ -1,6 +1,9 @@
 """Circuit Diagram parsing: the character grid into wirings and gates."""
 
 import re
+from collections.abc import Mapping
+from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Final, Literal, cast
 
 from esolangs.languages.circuit_diagram.interpreter._definitions import (
@@ -11,7 +14,7 @@ from esolangs.languages.circuit_diagram.interpreter._functions import (
 )
 from esolangs.languages.circuit_diagram.interpreter._hints import Hint
 
-type _Definitions = dict[str, tuple[str, ...]]
+type _Definitions = Mapping[str, tuple[str, ...]]
 
 
 def _width_integer(text: str) -> int:
@@ -125,15 +128,21 @@ _OUT_OF_SCOPE = {
 }
 
 
+@dataclass(frozen=True, slots=True, init=False, eq=False, repr=False)
 class _Grid:
     """The program text as a rectangular character grid."""
 
+    rows: tuple[str, ...]
+    width: int
+    height: int
+
     def __init__(self, code: list[str]) -> None:
-        """Store ``code`` padded to a common width."""
-        self.rows = [line.rstrip("\n") for line in code]
-        self.width = max((len(r) for r in self.rows), default=0)
-        self.rows = [r.ljust(self.width) for r in self.rows]
-        self.height = len(self.rows)
+        """Store code padded to a common width."""
+        rows = [line.rstrip("\n") for line in code]
+        width = max(map(len, rows), default=0)
+        object.__setattr__(self, "width", width)
+        object.__setattr__(self, "rows", tuple(row.ljust(width) for row in rows))
+        object.__setattr__(self, "height", len(rows))
 
     def at(self, row: int, col: int) -> str:
         """Return the character at ``(row, col)``, or a space when off-grid."""
@@ -142,6 +151,7 @@ class _Grid:
         return " "
 
 
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Wiring:
     """One group of mutually connected wires.
 
@@ -149,11 +159,10 @@ class _Wiring:
     machine's state, indexed by position.
     """
 
-    def __init__(self, cells: frozenset[tuple[int, int]]) -> None:
-        """Create a Null wiring covering ``cells``."""
-        self.cells = cells
-        self.width = 1
-        self.labelled = False
+    cells: frozenset[tuple[int, int]]
+    # The parser resolves widths before publishing the topology.
+    width: int = 1
+    labelled: bool = False
 
 
 class _Connections:
@@ -229,31 +238,17 @@ class _Connections:
         return found
 
 
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Gate:
-    """One gate, splitter, combiner or output port.
+    """A gate with its ports in top-to-bottom order."""
 
-    ``inputs``/``outputs`` are ordered top to bottom and assigned by
-    ``_build_gates`` right after construction; ``row``/``col`` order the
-    printing.
-    """
-
-    inputs: list[_Wiring]
-    outputs: list[_Wiring]
-
-    def __init__(
-        self,
-        kind: _GateKind,
-        row: int,
-        col: int,
-        body: tuple[str, ...] | None = None,
-        definitions: _Definitions | None = None,
-    ) -> None:
-        """Create a gate of ``kind`` at ``(row, col)`` with no ports bound."""
-        self.kind = kind
-        self.row = row
-        self.col = col
-        self.body = body
-        self.definitions = definitions or {}
+    kind: _GateKind
+    row: int
+    col: int
+    inputs: tuple[_Wiring, ...]
+    outputs: tuple[_Wiring, ...]
+    body: tuple[str, ...] | None
+    definitions: _Definitions
 
 
 class _Parser:
@@ -262,7 +257,7 @@ class _Parser:
     def __init__(self, grid: _Grid, definitions: _Definitions | None = None) -> None:
         """Parse ``grid`` into ``wirings`` and ``gates``."""
         self.grid = grid
-        self.definitions = definitions or {}
+        self.definitions: _Definitions = MappingProxyType(dict(definitions or {}))
         self.links = _Connections(grid)
         self._check_characters()
         self.wirings = self._build_wirings()
@@ -429,9 +424,11 @@ class _Parser:
                 f"wire label at ({start}, {row}) annotates no wire"
             )
 
-        merged = _Wiring(frozenset().union(*(w.cells for w in flanking)))
-        merged.width = width if width is not None else flanking[0].width
-        merged.labelled = width is not None or any(w.labelled for w in flanking)
+        merged = _Wiring(
+            frozenset().union(*(w.cells for w in flanking)),
+            width if width is not None else flanking[0].width,
+            width is not None or any(w.labelled for w in flanking),
+        )
         for wiring in flanking:
             if width is not None and wiring.labelled and wiring.width != width:
                 raise Hint.WIRE_WIDTH.error(
@@ -560,7 +557,6 @@ class _Parser:
         """Bind one gate candidate's ports and check its shape."""
         # A built-in gate or mover, or a function name.
         kind = cast(_GateKind, char)
-        gate = _Gate(kind, row, col, body, self.definitions)
         incoming, outputs = self._gate_ports(row, col, end, char)
         if char == _OUTPUT and self.grid.at(row, col - 1) != "-":
             raise Hint.OUTPUT_WIRE.error(
@@ -575,8 +571,9 @@ class _Parser:
                 incoming = level
         if any(wiring in outputs for wiring in incoming):
             raise ValueError("wiring feeds both input and output of a gate")
-        gate.inputs = incoming
-        gate.outputs = outputs
+        gate = _Gate(
+            kind, row, col, tuple(incoming), tuple(outputs), body, self.definitions
+        )
         self._check_arity(gate)
         return gate
 
@@ -625,7 +622,7 @@ class _Parser:
                             f"{width} wire(s) for a wiring labelled "
                             f"{wiring.width}"
                         )
-                    wiring.width = width
+                    object.__setattr__(wiring, "width", width)
                     changed = True
             if not changed:
                 for gate in self.gates:
@@ -662,7 +659,7 @@ class _Parser:
             widths[name] = width
             for wiring in wirings:
                 if wiring.width != width:
-                    wiring.width = width
+                    object.__setattr__(wiring, "width", width)
                     changed = True
         for old, terms in self._expressions:
             wiring = self._wiring_at(next(iter(old.cells))) or old
@@ -675,7 +672,7 @@ class _Parser:
                     f"labelled {wiring.width}"
                 )
             if wiring.width != width:
-                wiring.width = width
+                object.__setattr__(wiring, "width", width)
                 changed = True
         return changed
 

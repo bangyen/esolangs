@@ -722,7 +722,12 @@ class TestPureTransition:
 
         rows = ["-.~.-:"]
         factory = prepare_machine(rows, {})
-        first, second = factory(ScriptedIO("0")), factory(ScriptedIO("1"))
+        with monkeypatch.context() as patch:
+            patch.setattr(interpreter, "_compile", forbidden)
+            first, second = factory(ScriptedIO("0")), factory(ScriptedIO("1"))
+            native_io = ScriptedIO("0")
+            factory.run(native_io)
+            assert native_io.getvalue() == "1"
         rows.clear()
         assert first.topology is second.topology
         assert first.clock is not second.clock
