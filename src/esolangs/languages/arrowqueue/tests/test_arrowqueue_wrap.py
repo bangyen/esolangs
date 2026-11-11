@@ -120,6 +120,6 @@ def test_fold_heights_stay_near_the_swept_optimum() -> None:
                 continue
             limit = 6 * n + len(table) + 12
             every = (_folded(table, h) for h in range(10, limit))
-            swept += min(balance_score(f)[0] for f in every if f is not None)
-            got += min(balance_score(f)[0] for f in _folds(table))
+            swept += min(balance_score(f.source)[0] for f in every if f is not None)
+            got += min(balance_score(f.source)[0] for f in _folds(table))
     assert swept <= got <= 1.05 * swept

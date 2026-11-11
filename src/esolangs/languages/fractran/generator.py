@@ -22,24 +22,20 @@ from typing import Any
 
 from esolangs.factor_primes import prime_segments
 from esolangs.generation.decision import reduced_diagram
+from esolangs.generation.fraction_templates import fraction_template, wrap_fractions
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     layout_width,
     same_tokens,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.template import TemplateLayout
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import (
-    _join_tokens,
-    balance_score,
-    wrap_program,
-)
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.fractran.interpreter.index import SMALL_BASE
-from esolangs.runtime._program import Program
 
 #: How each input is set: the exponent of its prime in the starting value.
-#: One digit wide, so the run is one :data:`TEMPLATE_CHAR`.
+#: Each exponent occupies one source character.
 
 
 @dataclass(frozen=True)
@@ -106,13 +102,6 @@ def _nodes(
     return fractions
 
 
-def _start(states: list[int], inputs: list[int]) -> str:
-    """Return the starting value: the root's state, and each input's run."""
-    return "*".join(
-        [str(states[-1])] + [f"{prime}^{TEMPLATE_CHAR}" for prime in inputs]
-    )
-
-
 def _unread(nodes: list[_Leaf | _Node], n: int) -> set[int]:
     """Return the inputs some path never reads: each needs a clear.
 
@@ -129,7 +118,7 @@ def _unread(nodes: list[_Leaf | _Node], n: int) -> set[int]:
     return unread
 
 
-def _plain(truth_table: str, n: int, *, small_root: bool = False) -> str:
+def _plain(truth_table: str, n: int, *, small_root: bool = False) -> TemplateLayout:
     """Return the table as a decision diagram: every level read.
 
     Only ``2`` is reserved, so the inputs and states take the smallest primes
@@ -152,7 +141,7 @@ def _plain(truth_table: str, n: int, *, small_root: bool = False) -> str:
     fractions = _nodes(nodes, states, inputs)
     unread = _unread(nodes, n)
     fractions += [f"1/{p}" for depth, p in enumerate(inputs) if depth in unread]
-    return " ".join([_start(states, inputs), *fractions])
+    return fraction_template(inputs, fractions, root=str(states[-1]))
 
 
 def _widest(program: str) -> int:
@@ -165,29 +154,27 @@ def fractran(truth_table: str, width: int | None = None) -> str:
 
     Halts at 1 or 2 for zero or one; input-prime exponents are filled by ``PAIR``.
     """
+    return _layout(truth_table, width).source
+
+
+def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if truth_table == truth_table[0] * len(truth_table):
         bit = int(truth_table[0])
         inputs = _primes(n + bit)[bit:]
-        factors = (["2"] if bit else []) + [f"{p}^{TEMPLATE_CHAR}" for p in inputs]
-        program = " ".join(["*".join(factors), *[f"1/{p}" for p in inputs]])
-        return program if width is None else wrap_program(program, "fractran", width)
-    program = _plain(truth_table, n)
+        layout = fraction_template(
+            inputs, [f"1/{prime}" for prime in inputs], root="2" if bit else ""
+        )
+        return wrap_fractions(layout, width)
+    layout = _plain(truth_table, n)
     if width is None:
-        return program
-    floor = _widest(program)
+        return layout
+    floor = _widest(layout.source)
     if floor > width:
         narrow = _plain(truth_table, n, small_root=True)
-        if _widest(narrow) < floor:
-            program = narrow
-    return wrap_program(program, "fractran", width)
-
-
-def _balance(_table: str, default: str) -> str:
-    """Return the default or its fractions joined at the squarest token width."""
-    tokens = default.split()
-    width = balanced_token_width(tokens, " ", minimum=_widest(default))
-    return min([default, _join_tokens(tokens, width, " ")], key=balance_score)
+        if _widest(narrow.source) < floor:
+            layout = narrow
+    return wrap_fractions(layout, width)
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
@@ -198,13 +185,17 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
     )
 
 
-def fractran_request(request: GenerationRequest) -> Program:
+def fractran_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return fractran(request.table, request.width)
-    return fractran(request.table)
+    return _layout(request.table, request.width)
 
 
-def fractran_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+def fractran_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Return the default or its fractions at the squarest token width."""
+    layout = request.source
+    if not isinstance(layout, TemplateLayout):
+        raise TypeError("balancing needs a rendered template with slots")
+    tokens = layout.source.split()
+    width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
+    fitted = wrap_fractions(layout, width)
+    return min(layout, fitted, key=lambda candidate: balance_score(candidate.source))

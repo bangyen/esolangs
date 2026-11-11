@@ -151,7 +151,7 @@ def test_program_declares_one_array_per_spill_width_of_names() -> None:
     """289 names past the cap at width 17 declare 17 arrays, not 18."""
     from esolangs.languages.intercal.generator import _VARIABLE_MAX
 
-    program = _program(2, [(_VARIABLE_MAX + 289, _ZERO)], _ZERO, width=17)
+    program = _program(2, [(_VARIABLE_MAX + 289, _ZERO)], _ZERO, width=17).source
     assert re.findall(r",(\d+) <- #17", program) == [str(j) for j in range(1, 18)]
 
 
@@ -194,7 +194,7 @@ def intercal_plain(truth_table: str, perm: tuple[int, ...]) -> str:
         zero, one = tree(level + 1, lo, mid), tree(level + 1, mid, hi)
         return _mux(_Expr("input", n - 1 - perm[level]), zero, one)
 
-    return _program(n, [], tree(0, 0, len(truth_table)))
+    return _program(n, [], tree(0, 0, len(truth_table))).source
 
 
 @pytest.mark.medium
@@ -250,7 +250,7 @@ def _check_emitted_resource_routes() -> None:
         width = _spill(_VARIABLE_MAX + 5)
         result = _reference(_VARIABLE_MAX + 5, width)
         assert result is not None
-        template = _program(n, assigned, result, width)
+        template = _program(n, assigned, result, width).source
         for layout in (
             template,
             _wrap_intercal(template, 12),
@@ -286,7 +286,7 @@ def _check_select_bits() -> None:
             assigned: list[tuple[int | str, _Expr]] = [(":1", mask)] if named else []
             reference = _Expr("element", text=":1") if named else mask
             result = _Expr("select", children=(zero, one, reference))
-            template = _program(3, assigned, result)
+            template = _program(3, assigned, result).source
             for row in range(8):
                 # Setters run .3,.2,.1: one, zero, selector.
                 bits = tuple(map(int, f"{row:03b}"))

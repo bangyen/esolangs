@@ -52,23 +52,29 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.lookup import symmetric_outputs
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_fragments,
+    layout_tokens,
+)
 from esolangs.generation.wrap import balance_score
-from esolangs.runtime._program import Program
 
 _Node = tuple[int, int]
-_Grid = dict[tuple[int, int], str]
+_Grid = dict[tuple[int, int], TemplateToken]
 
 
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
 #: Both are one grid cell, so a run is the exact width of its program.
 #: Pair leaves act on the input bit already held in the answer cell.
 _PAIR_FINISHERS = {"01": "*", "10": "-*", "00": "+-*", "11": "+--*"}
-_BACK_INPUT = TEMPLATE_CHAR
+_BACK_INPUT = InputSlot(1)
 #: Subtrees this short stay combs; taller ones fold (25-28 cells per leaf).
 _FOLD_BASE = 5
 #: Comb bases the balance race folds at (inclusive); the default fold uses 5.
 _BALANCE_BASES = (2, 6)
-_MIRROR = {"/": "\\", "\\": "/"}
+_MIRROR: dict[TemplateToken, TemplateToken] = {"/": "\\", "\\": "/"}
 
 
 def _extent(grid: _Grid) -> tuple[int, int]:
@@ -79,18 +85,27 @@ def _extent(grid: _Grid) -> tuple[int, int]:
     )
 
 
-def _render(rows: list[dict[int, str]]) -> str:
-    """Join sparse rows, gaps blank, each row only as long as its last cell."""
-    lines = []
+def _render(rows: list[dict[int, TemplateToken]]) -> TemplateLayout:
+    """Join sparse rows and record their input cells in reading order."""
+    lines: list[str] = []
+    spans: list[tuple[int, int]] = []
+    offset = 0
     for cells in rows:
         line = [" "] * (max(cells, default=-1) + 1)
-        for x, char in cells.items():
-            line[x] = char
+        slots = []
+        for column, cell in cells.items():
+            if isinstance(cell, InputSlot):
+                slots.append(column)
+                line[column] = TEMPLATE_CHAR
+            else:
+                line[column] = cell
+        spans.extend((offset + column, offset + column + 1) for column in sorted(slots))
         lines.append("".join(line))
-    return "\n".join(lines)
+        offset += len(line) + 1
+    return TemplateLayout("\n".join(lines), tuple(spans))
 
 
-def _place_load(grid: _Grid, units: list[str], height: int) -> None:
+def _place_load(grid: _Grid, units: list[TemplateToken], height: int) -> None:
     """Put the origin ``/`` and the load column, bottom up, into ``grid``."""
     # The load runs down column 0 and the tree starts at column 1, so no row
     # carries the load's width as indent.  The beam starts heading right; the
@@ -103,7 +118,7 @@ def _place_load(grid: _Grid, units: list[str], height: int) -> None:
         grid[(height - 1 - k, 0)] = unit
 
 
-def _reflect_back(grid: _Grid, height: int, width: int) -> str:
+def _reflect_back(grid: _Grid, height: int, width: int) -> TemplateLayout:
     r"""Reflect a Back template and route the fixed eastward start into it.
 
     ``grid`` maps ``(row, column)`` to a character; ``width`` is the widest
@@ -113,7 +128,7 @@ def _reflect_back(grid: _Grid, height: int, width: int) -> str:
     cells, each row only as long as its last one, so the cost is the
     output's size rather than the full height-by-width bounding box.
     """
-    rows: list[dict[int, str]] = [{} for _ in range(height)]
+    rows: list[dict[int, TemplateToken]] = [{} for _ in range(height)]
     for (row, column), cell in grid.items():
         rows[row][width - column] = _MIRROR.get(cell, cell)
 
@@ -125,11 +140,11 @@ def _reflect_back(grid: _Grid, height: int, width: int) -> str:
     return _render(rows)
 
 
-def _descending_back(grid: _Grid, units: list[str]) -> str:
+def _descending_back(grid: _Grid, units: list[TemplateToken]) -> TemplateLayout:
     """Reflect the tree below a downward loader, without outer entry columns."""
     top = len(units) + 1
     last = max(column for _, column in grid)
-    rows: dict[int, dict[int, str]] = {0: {last: "\\"}}
+    rows: dict[int, dict[int, TemplateToken]] = {0: {last: "\\"}}
     for row, unit in enumerate(units, 1):
         rows[row] = {last: unit}
     rows[top] = {last: "/"}
@@ -138,20 +153,22 @@ def _descending_back(grid: _Grid, units: list[str]) -> str:
     return _render([rows.get(y, {}) for y in range(max(rows) + 1)])
 
 
-def _back_parity(truth_table: str, n: int) -> str | None:
+def _back_parity(truth_table: str, n: int) -> TemplateLayout | None:
     """Return a one-column parity accumulator, or None for another function."""
     bias = parity_bias(truth_table)
     if bias is None:
         return None
     # The primer flips the accumulator. Zero flips it back; one keeps it,
     # and its possible skip consumes only the blank spacer, not the next bit.
-    rows = ["\\", *(">" * n), *(["-"] if bias else [])]
+    rows: list[TemplateToken] = ["\\", *(">" * n), *(["-"] if bias else [])]
     for _ in range(n):
         rows.extend(("-", _BACK_INPUT, " "))
-    return "\n".join([*rows, "*"])
+    return layout_tokens([*rows, "*"], 1)
 
 
-def _back_htree(table: str, weights: Sequence[int], base: int = _FOLD_BASE) -> str:
+def _back_htree(
+    table: str, weights: Sequence[int], base: int = _FOLD_BASE
+) -> TemplateLayout:
     r"""Fold the decision tree into an H-tree of combs, under a row of load.
 
     A subtree of at most ``base`` levels is the plain comb (``+\>``
@@ -253,7 +270,7 @@ def _back_htree(table: str, weights: Sequence[int], base: int = _FOLD_BASE) -> s
     emit(0, 0, 1, left, swap=True)
     out.update({(0, k): unit for k, unit in enumerate(units)})
     out[0, left + entry] = "\\"
-    rows: list[dict[int, str]] = [{} for _ in range(1 + width)]
+    rows: list[dict[int, TemplateToken]] = [{} for _ in range(1 + width)]
     for (r, c), char in out.items():
         rows[r][c] = char
     return _render(rows)
@@ -261,16 +278,20 @@ def _back_htree(table: str, weights: Sequence[int], base: int = _FOLD_BASE) -> s
 
 def back(truth_table: str, width: int | None = None) -> str:
     """Build a Back template; ``truth_table`` has length ``2**n``, MSB first."""
+    return _layout(truth_table, width).source
+
+
+def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
     if len(table) == 1:
         # [ablations.constant_table_audit_20261101]: each run clears cell 0.
-        units = [_BACK_INPUT, "-"] * n + list(">" * n)
+        units = [*(_BACK_INPUT, "-") * n, *(">" * n)]
         units += (["-"] if table == "1" else []) + ["*"]
-        flat = "".join(units)
-        return (
-            flat if width is None or width >= len(flat) else "\n".join(["\\", *units])
-        )
+        flat = layout_fragments(units)
+        if width is None or width >= len(flat.source):
+            return flat
+        return layout_tokens(["\\", *units], 1)
     levels = len(table).bit_length() - 1
     order = tuple(range(levels))
     if width is None and symmetric_outputs(table, levels) is not None:
@@ -282,9 +303,9 @@ def back(truth_table: str, width: int | None = None) -> str:
         program = min(
             program,
             _back_htree(table, weights),
-            key=grid_rank,
+            key=lambda layout: grid_rank(layout.source),
         )
-    if width is not None and width > 0 and grid_width(program) > width:
+    if width is not None and width > 0 and grid_width(program.source) > width:
         parity = _back_parity(truth_table, n)
         if parity is not None:
             return parity
@@ -302,7 +323,7 @@ def _back_load(
     weights: Sequence[int],
     levels: int,
     n: int,
-) -> list[str]:
+) -> list[TemplateToken]:
     """Load the inputs in ``order``, then visit the answer cell and home.
 
     ``cells[i]`` is the tape cell input ``i`` loads into and ``weights[i]``
@@ -315,7 +336,7 @@ def _back_load(
         if weights[i]:
             spare = cells[i]
         borrowed[i] = spare
-    units: list[str] = []
+    units: list[TemplateToken] = []
     at = 0
     for i in order:
         # Primer '-' then the run, one row each (the beam reads one cell
@@ -463,7 +484,7 @@ def _back_ordered(
     perm: tuple[int, ...],
     width: int | None = None,
     weights: Sequence[int] | None = None,
-) -> str:
+) -> TemplateLayout:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 
     ``truth_table`` is already permuted, so row indices are in the permuted
@@ -536,30 +557,30 @@ def _back_ordered(
     return _reflect_back(grid, height, tree_width)
 
 
-def _balance(table: str, default: str) -> str:
+def _balance(table: str, default: TemplateLayout) -> TemplateLayout:
     """Compare the default, one column and the folded tree at each comb base.
 
     The comb wins area at n=8 (140 x 29) but the tree is squarer (63 x 80).
     A base moves the fold's shape by a factor of two per level of parity, so
     the even arities reach 2:1 only at another base (n=8: 46 x 102 at base 6).
     """
-    candidates = [default, back(table, 1)]
+    candidates = [default, _layout(table, 1)]
     weights, reduced = input_weights(table, _validate_truth_table(table))
     candidates.extend(
         _back_htree(reduced, weights, base)
         for base in range(_BALANCE_BASES[0], _BALANCE_BASES[1] + 1)
         if len(reduced) > 1 << base
     )
-    return min(candidates, key=balance_score)
+    return min(candidates, key=lambda layout: balance_score(layout.source))
 
 
-def back_request(request: GenerationRequest) -> Program:
+def back_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return back(request.table, request.width)
-    return back(request.table)
+    return _layout(request.table, request.width)
 
 
-def back_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+def back_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Balance the native layouts while preserving their slot positions."""
+    if not isinstance(request.source, TemplateLayout):
+        raise TypeError("balancing needs a rendered template with slots")
+    return _balance(request.table, request.source)

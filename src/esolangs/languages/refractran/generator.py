@@ -27,11 +27,12 @@ from __future__ import annotations
 
 from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.decision import reduced_diagram
-from esolangs.generation.helpers import TEMPLATE_CHAR, _validate_truth_table
+from esolangs.generation.fraction_templates import fraction_template, wrap_fractions
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.template import TemplateLayout
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import balance_score, wrap_space_delimited
-from esolangs.runtime._program import Program
+from esolangs.generation.wrap import balance_score
 
 
 def _primes(count: int) -> list[int]:
@@ -99,12 +100,16 @@ def _swap(a: int, b: int, controls: tuple[int, ...]) -> list[str]:
 
 def refractran(truth_table: str, width: int | None = None) -> str:
     """Return a template whose final integer is odd exactly for answer one."""
+    return _layout(truth_table, width).source
+
+
+def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     nodes, root = _diagram(truth_table, n)
     if not nodes:
         # Ignored exponents may share an odd prime: only parity carries output.
-        program = ("1" if root else "2") + f"*3^{TEMPLATE_CHAR}" * n
-        return wrap_space_delimited(program, width) if width is not None else program
+        layout = fraction_template([3] * n, [], root="1" if root else "2")
+        return wrap_fractions(layout, width)
     # Leaf constants no longer need rails. Keep only output and scratch fixed.
     reserved = {2, 3, 11, 13, 17}
     free = [p for p in _primes(5 + n + 2 * len(nodes)) if p not in reserved]
@@ -115,7 +120,7 @@ def refractran(truth_table: str, width: int | None = None) -> str:
         a, b = rails[abs(reference) - 2]
         return a if reference < 0 else b
 
-    initial = ["2", *(f"{p}^{TEMPLATE_CHAR}" for p in inputs)]
+    initial: list[str] = []
     fractions: list[str] = []
     for target, (depth, zero, one) in enumerate(nodes):
         a, b = rails[target]
@@ -134,11 +139,11 @@ def refractran(truth_table: str, width: int | None = None) -> str:
         elif one == 1:
             fractions += _swap(a, b, (x,))
     fractions += _swap(2, 3, (asserted(root),))
-    program = " ".join(["*".join(initial), *fractions])
-    return wrap_space_delimited(program, width) if width is not None else program
+    layout = fraction_template(inputs, fractions, root="2", factors=initial)
+    return wrap_fractions(layout, width)
 
 
-def _path_program(table: str) -> str | None:
+def _path_program(table: str) -> TemplateLayout | None:
     """Return root-first transfers with an O(n log n) initial token."""
     n = len(table).bit_length() - 1
     diagram, root = reduced_diagram(table, n)
@@ -173,28 +178,23 @@ def _path_program(table: str) -> str | None:
             counters[reference], counters[one] * marker, (inputs[level],)
         )
         fractions += _swap(counters[reference], counters[zero] * marker, ())
-    initial = [str(counters[root]), *(f"{prime}^{TEMPLATE_CHAR}" for prime in inputs)]
-    return " ".join(["*".join(initial), *fractions])
+    return fraction_template(inputs, fractions, root=str(counters[root]))
 
 
-def _balance(table: str, default: str) -> str:
-    """Return the best plain, rail-circuit or marked-path layout."""
-    candidates = [default]
-    for program in (default, _path_program(table)):
-        if program is not None:
-            tokens = program.split()
-            width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
-            candidates.append(wrap_space_delimited(program, width))
-    return min(candidates, key=balance_score)
-
-
-def refractran_request(request: GenerationRequest) -> Program:
+def refractran_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return refractran(request.table, request.width)
-    return refractran(request.table)
+    return _layout(request.table, request.width)
 
 
-def refractran_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+def refractran_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Return the best plain, rail-circuit or marked-path layout."""
+    default = request.source
+    if not isinstance(default, TemplateLayout):
+        raise TypeError("balancing needs a rendered template with slots")
+    candidates = [default]
+    for layout in (default, _path_program(request.table)):
+        if layout is not None:
+            tokens = layout.source.split()
+            width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
+            candidates.append(wrap_fractions(layout, width))
+    return min(candidates, key=lambda candidate: balance_score(candidate.source))

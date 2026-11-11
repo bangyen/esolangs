@@ -28,13 +28,18 @@ from collections import Counter
 
 from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
 )
 from esolangs.generation.requests import GenerationRequest
-from esolangs.runtime._program import Program
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_fragments,
+)
 
 #: Each input is one atom, ``0`` or ``1``, inside its frame.
+_INPUT = InputSlot(1)
 #: The drain: under a leaf every remaining frame rewrites to the leaf.
 _DRAIN = "c->s[x]=c;"
 #: Native list-head selectors precede the variable-head drain.
@@ -44,10 +49,16 @@ _CONS = "(l h)->s[0]=l;(l h)->s[1]=h;"
 
 def stisp(truth_table: str) -> str:
     """Build a Stisp template whose result is ``truth_table[row]``."""
+    return _layout(truth_table).source
+
+
+def _layout(truth_table: str) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        head = TEMPLATE_CHAR if n == 1 else "(" + " ".join(TEMPLATE_CHAR * n) + ")"
-        return f"x->s[]={truth_table[0]};{head}->s[]"
+        head: tuple[TemplateToken, ...] = (_INPUT,)
+        if n > 1:
+            head = ("(", *(_INPUT, " ") * (n - 1), _INPUT, ")")
+        return layout_fragments((f"x->s[]={truth_table[0]};", *head, "->s[]"))
     diagram = decision_layers(truth_table)
     nodes = {
         node: pair
@@ -89,10 +100,11 @@ def stisp(truth_table: str) -> str:
             named.add(node)
     prefix = _CONS if len(named) != len(nodes) else ""
     equations = "".join(definitions[node] for node in nodes if node in named)
-    frames = f"->s[{TEMPLATE_CHAR}]" * n
-    return prefix + equations + _DRAIN + heads[diagram.root] + frames
+    return layout_fragments(
+        (prefix + equations + _DRAIN + heads[diagram.root], *("->s[", _INPUT, "]") * n)
+    )
 
 
-def stisp_request(request: GenerationRequest) -> Program:
+def stisp_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return stisp(request.table)
+    return _layout(request.table)

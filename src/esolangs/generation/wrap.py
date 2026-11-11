@@ -20,7 +20,12 @@ from math import isqrt
 from typing import TYPE_CHECKING
 
 from esolangs.generation.helpers import MARK, MOST_INPUTS, mark
-from esolangs.generation.template import TemplateLayout
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_tokens,
+)
 from esolangs.generation.token_balance import (
     CELL_ASPECT,
     balanced_token_width,
@@ -224,6 +229,47 @@ class TokenWrapper:
     def __call__(self, program: str, width: int) -> str:
         """Wrap ``program`` to ``width`` between tokens."""
         return wrap_tokens(program, width, self.pattern)
+
+    def _template_tokens(self, layout: TemplateLayout) -> list[TemplateToken] | None:
+        tokens: list[TemplateToken] = []
+        for fragment in layout.fragments():
+            if isinstance(fragment, InputSlot):
+                tokens.append(fragment)
+                continue
+            literal = re.findall(self.pattern, fragment)
+            if "".join(literal) != fragment:
+                return None
+            tokens.extend(literal)
+        return tokens
+
+    def wrap_template(self, layout: TemplateLayout, width: int) -> TemplateLayout:
+        """Fold between complete tokens, including the template's slots."""
+        tokens = self._template_tokens(layout)
+        return layout if tokens is None else layout_tokens(tokens, width, separator="")
+
+    def fit_template(
+        self, layout: TemplateLayout, *, minimum: int = 1, maximum: int | None = None
+    ) -> TemplateLayout:
+        """Choose a token fit while preserving each input slot."""
+        tokens = self._template_tokens(layout)
+        if tokens is None:
+            return layout
+        width = balanced_token_width(
+            [
+                "x" * len(token) if isinstance(token, InputSlot) else token
+                for token in tokens
+            ],
+            minimum=minimum,
+            maximum=maximum,
+        )
+        return layout_tokens(tokens, width, separator="")
+
+    def balance_template(self, layout: TemplateLayout) -> TemplateLayout:
+        """Compare the original and the fitted layout."""
+        fitted = self.fit_template(layout)
+        return min(
+            layout, fitted, key=lambda candidate: balance_score(candidate.source)
+        )
 
 
 _dimensional = TokenWrapper(_DIMENSIONAL_COMMAND)

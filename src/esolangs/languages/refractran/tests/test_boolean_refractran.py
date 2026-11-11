@@ -159,8 +159,9 @@ def _check_pruned_children_and_polarity() -> None:
 def _check_marked_paths() -> None:
     for table in ("10", "1101", "0110", "00110110", "00010111"):
         n = len(table).bit_length() - 1
-        text = generator._path_program(table)
-        assert text is not None
+        layout = generator._path_program(table)
+        assert layout is not None
+        text = layout.source
         template = esolangs.TemplateArtifact(
             text, "REFRACTRAN", esolangs.TemplateBindings(setters=(("0", "1"),) * n)
         )
@@ -194,8 +195,9 @@ def _check_marked_paths() -> None:
         "_swap",
         side_effect=lambda a, b, controls: _swap(a, b // markers[a], controls),
     ):
-        broken = generator._path_program(table)
-    assert broken is not None
+        layout = generator._path_program(table)
+    assert layout is not None
+    broken = layout.source
     template = esolangs.TemplateArtifact(
         broken, "REFRACTRAN", esolangs.TemplateBindings(setters=(("0", "1"),) * 3)
     )

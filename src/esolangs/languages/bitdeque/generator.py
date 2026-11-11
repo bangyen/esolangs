@@ -24,7 +24,7 @@ Decisions:
 """
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -36,9 +36,13 @@ from esolangs.generation.helpers import (
     same_tokens,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_tokens,
+)
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens
-from esolangs.runtime._program import Program
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 
@@ -48,7 +52,8 @@ BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 _BITDEQUE_SHORT_PAIR = ("POP  ", "EJECT")
 _PRELUDE_LEN = 5
 #: One setter run: a token of template text, two commands once filled.
-_SETTER = TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])
+_SETTER = InputSlot(len(BITDEQUE_PAIR[0]))
+_SHORT_SETTER = InputSlot(5)
 _SHORT_BLOCK = 15
 
 
@@ -57,20 +62,21 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
 
     ``width`` wraps the program; below 11 with n <= 4 it uses the short load.
     """
+    return _layout(truth_table, width).source
+
+
+def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     small = len(truth_table) <= 16
     short = small and width is not None and width < len(BITDEQUE_PAIR[0])
-    program = _bitdeque_ordered(truth_table, short=short)
-    if width is not None:
-        return _bitdeque(program, width)
-    return program
+    return layout_tokens(_bitdeque_ordered(truth_table, short=short), width)
 
 
-def _bitdeque_short_load(n: int) -> list[str]:
+def _bitdeque_short_load(n: int) -> list[TemplateToken]:
     """Bracket stored inputs with head one/tail zero before each setter.
 
     Loads each input via POP/EJECT on fresh zero/one endpoints, 15 commands each.
     """
-    tokens: list[str] = []
+    tokens: list[TemplateToken] = []
     for i in range(n):
         # The block's first command, counted from 1 as ``GOTO`` counts.
         at = _PRELUDE_LEN + 1 + _SHORT_BLOCK * i
@@ -82,7 +88,7 @@ def _bitdeque_short_load(n: int) -> list[str]:
                 "INJECT",
                 "INVERT",
                 "PUSH",
-                TEMPLATE_CHAR * 5,
+                _SHORT_SETTER,
                 f"GOTO {at + 11}",
                 "EJECT",
                 "INVERT",
@@ -103,7 +109,7 @@ def bitdeque_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     normalized = " ".join(template.split())
     header = re.match(r"GOTO 4 INVERT GOTO 5 GOTO [0-9]+ INVERT ", normalized)
     short_count = template.count(TEMPLATE_CHAR) // 5
-    short_load = " ".join(_bitdeque_short_load(short_count))
+    short_load = layout_tokens(_bitdeque_short_load(short_count)).source
     short = header is not None and normalized[header.end() :].startswith(
         short_load + " "
     )
@@ -181,7 +187,7 @@ class _BitdequeTreeBuilder:
         return self.walk(0, self.diagram.root, start)
 
 
-def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
+def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> list[TemplateToken]:
     """Emit the Bitdeque template; see :func:`bitdeque`.
 
     Level ``i`` consumes input ``i`` from the head (``EJECT``); the last
@@ -194,9 +200,9 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     n = _validate_truth_table(truth_table)
     if not short and truth_table.count(truth_table[0]) == len(truth_table):
         # [ablations.constant_table_audit_20261101]: no branch needs a trampoline.
-        tokens = [_SETTER] * n + ["POP"] * (n + 1)
+        tokens: list[TemplateToken] = [*[_SETTER] * n, *["POP"] * (n + 1)]
         tokens += (["INVERT"] if truth_table[0] == "1" else []) + ["PUSH"]
-        return " ".join(tokens)
+        return tokens
     # Level ``level`` tests input ``level``, whose load position is its name;
     # the row bit for a level is ``n - 1 - level``.
     mask = 0 if short else sum(1 << (n - 1 - level) for level in range(n) if level % 2)
@@ -224,14 +230,8 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> str:
     )
     tree = builder.build(len(prelude) + load_len + 1)
     end = len(prelude) + load_len + len(tree) + 1
-    tokens = prelude + load + tree
-    return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
-
-
-def _balance(_table: str, default: str) -> str:
-    """Balance the eleven-cell endpoint loads."""
-    normal = _bitdeque_tokens(default)
-    return _join_tokens(normal, balanced_token_width(normal, " ", minimum=11), " ")
+    prelude[3] = f"GOTO {end}"
+    return [*prelude, *load, *tree]
 
 
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
@@ -241,27 +241,29 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
 
 def _bitdeque(program: str, width: int) -> str:
     """Wrap Bitdeque, keeping each ``GOTO`` with its target operand."""
-    return _join_tokens(_bitdeque_tokens(program), width, separator=" ")
+    return layout_tokens(_bitdeque_tokens(program.split()), width).source
 
 
-def _bitdeque_tokens(program: str) -> list[str]:
+def _bitdeque_tokens(program: Iterable[TemplateToken]) -> list[TemplateToken]:
     """Return Bitdeque commands with their attached branch operands."""
-    tokens: list[str] = []
-    for token in program.split():
-        if tokens and tokens[-1] == "GOTO":
+    tokens: list[TemplateToken] = []
+    for token in program:
+        if tokens and tokens[-1] == "GOTO" and isinstance(token, str):
             tokens[-1] = f"GOTO {token}"
         else:
             tokens.append(token)
     return tokens
 
 
-def bitdeque_request(request: GenerationRequest) -> Program:
+def bitdeque_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return bitdeque(request.table, request.width)
-    return bitdeque(request.table)
+    return _layout(request.table, request.width)
 
 
-def bitdeque_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+def bitdeque_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Balance the default eleven-cell endpoint loads."""
+    if not isinstance(request.source, TemplateLayout):
+        raise TypeError("balancing needs a rendered template with slots")
+    tokens = _bitdeque_tokens(request.source.tokens())
+    widths = [token if isinstance(token, str) else "x" * len(token) for token in tokens]
+    return layout_tokens(tokens, balanced_token_width(widths, " ", minimum=11))

@@ -8,14 +8,14 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
+    from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import _quote_literal
     from esolangs.registry._backend import BooleanBackend, TemplateSpec
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
-    from esolangs.runtime._program import Program
 
     return BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
+        entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.eval.generator", "eval_request"
         ),
         layout_width=False,

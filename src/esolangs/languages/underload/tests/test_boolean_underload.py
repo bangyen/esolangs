@@ -175,11 +175,8 @@ def test_short_selectors_execute_larger_carried_trees(n: int) -> None:
 
 def underload_plain(truth_table: str) -> str:
     """Return the unshared promise tree, each leaf printing its own bit."""
-    from esolangs.generation.helpers import reflected_table
-    from esolangs.languages.underload.generator import (
-        PAIR,
-        TEMPLATE_CHAR,
-    )
+    from esolangs.generation.helpers import TEMPLATE_CHAR, reflected_table
+    from esolangs.languages.underload.generator import PAIR
 
     n = _validate_truth_table(truth_table)
     reflected = reflected_table(truth_table, n)

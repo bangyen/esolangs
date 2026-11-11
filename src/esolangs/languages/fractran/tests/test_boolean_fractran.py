@@ -1,7 +1,6 @@
 """fractran generator tests."""
 
 from collections.abc import Iterator
-from dataclasses import replace
 
 import pytest
 
@@ -11,7 +10,6 @@ from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, runs
 from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.languages.fractran import generator as boolean
 from esolangs.languages.fractran.descriptor import PAIR as FRACTRAN_PAIR
-from esolangs.languages.fractran.generator import _balance as _fractran
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.fractran.interpreter import _Machine
 from esolangs.languages.fractran.interpreter import run as run_fractran
@@ -173,7 +171,8 @@ def test_balanced_width_bounds_stop_below_the_widest_token() -> None:
 
 def test_fractran_parity_two_balances_and_executes() -> None:
     template = esolangs.generate("FRACTRAN", "0110", width=4)
-    balanced = replace(template, source=_fractran("0110", template.source))
+    balanced = esolangs.generate("FRACTRAN", "0110", balance=True)
+    assert _evaluate("FRACTRAN", template, inputs=2) == "0110"
     assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"
 
 

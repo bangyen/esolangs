@@ -14,7 +14,7 @@ _EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
 def _eval_ordered(truth_table: str, ops: str) -> str:
     """Emit one input order's linear lookup; see :func:`eval`."""
     n = _validate_truth_table(truth_table)
-    return _ordered(truth_table, ops, n, essential_inputs(truth_table, n))
+    return _ordered(truth_table, ops, n, essential_inputs(truth_table, n)).source
 
 
 # Longest op string worth building.  Costs run to roughly 3 characters per

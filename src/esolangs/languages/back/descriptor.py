@@ -15,16 +15,16 @@ PAIR = ("-", "+")
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.template import TemplateLayout
     from esolangs.registry._backend import BooleanBackend, TemplateSpec
     from esolangs.registry._operations import OperationRef
-    from esolangs.runtime._program import Program
 
     return BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
+        entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.back.generator", "back_request"
         ),
         layout_width=True,
-        balance=OperationRef[BalanceRequest, Program](
+        balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.back.generator", "back_balance_request"
         ),
         no_wrap="the beam path and embedded input occupy fixed grid coordinates",

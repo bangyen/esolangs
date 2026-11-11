@@ -13,13 +13,13 @@ PAIR = ("0", "1")
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
+    from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import TokenWrapper
     from esolangs.registry._backend import BooleanBackend, TemplateSpec
     from esolangs.registry._operations import OperationRef
-    from esolangs.runtime._program import Program
 
     return BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
+        entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.stisp.generator", "stisp_request"
         ),
         layout_width=False,

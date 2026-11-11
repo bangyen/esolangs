@@ -18,7 +18,7 @@ Decisions:
 """
 
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from math import isqrt
 from typing import Any, NamedTuple
@@ -27,12 +27,17 @@ from esolangs.generation.decision import DecisionNode as _Node
 from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    in_input_order,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
-from esolangs.generation.wrap import _join_tokens, balance_score
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_fragments,
+    layout_tokens,
+)
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.intercal import descriptor
-from esolangs.runtime._program import Program
 
 _VARIABLE_MAX = 65535  # the largest INTERCAL variable number
 
@@ -79,27 +84,29 @@ _ZERO, _ONE = _Expr("constant", 0), _Expr("constant", 1)
 _STATEMENT_OVERHEAD = 2
 
 
+_INPUT = InputSlot(2)
+type _Statement = str | tuple[str, InputSlot]
+
+
 def intercal(truth_table: str, width: int | None = None) -> str:
     """Return a polite C-INTERCAL template computing ``truth_table``.
 
     Inputs are tested in input order.  A ``width`` breaks over-wide
     statements between tokens.
     """
+    return _layout(truth_table, width).source
+
+
+def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         # [ablations.constant_table_audit_20261101]: all setters overwrite .1.
         natural = _polite(
-            [
-                *[f".1 <- {descriptor.TEMPLATE_CHAR * 2}"] * n,
-                f"READ OUT #{truth_table[0]}",
-                "GIVE UP",
-            ]
+            [*[(".1 <- ", _INPUT)] * n, f"READ OUT #{truth_table[0]}", "GIVE UP"]
         )
     else:
-        natural = in_input_order(truth_table, _intercal_shared)
-    if width is None:
-        return natural
-    return _wrap_intercal(natural, width)
+        natural = _intercal_shared(truth_table, tuple(range(n)))
+    return natural if width is None else _wrap_layout(natural, width)
 
 
 _TOKEN = re.compile(r"[A-Z]+|[.,;#][0-9]+|<-|@+|[0-9]+|[^\s]")
@@ -110,7 +117,7 @@ def _intercal_tokens(program: str) -> list[str]:
     return _TOKEN.findall(program)
 
 
-def balance_intercal(_table: str, default: str) -> str:
+def balance_intercal(default: TemplateLayout) -> TemplateLayout:
     """Return the lowest-``balance_score`` of four packed wraps of ``default``.
 
     Statements are token-wrapped (:func:`_wrap_intercal`), then consecutive
@@ -121,12 +128,15 @@ def balance_intercal(_table: str, default: str) -> str:
     7% of the best width on the measured tables (see
     [ablations.balance_packed_rows]).
     """
-    root = (2 * len(default)) ** 0.5
-    candidates = [
-        _pack_rows(_wrap_intercal(default, width), width)
-        for width in (max(1, round(root * scale)) for scale in (1.1, 1.2, 1.3, 1.4))
-    ]
-    return min(candidates, key=balance_score)
+    root = (2 * len(default.source)) ** 0.5
+    candidates = []
+    for scale in (1.1, 1.2, 1.3, 1.4):
+        width = max(1, round(root * scale))
+        wrapped = _wrap_layout(default, width)
+        candidates.append(
+            TemplateLayout(_pack_rows(wrapped.source, width), wrapped.spans)
+        )
+    return min(candidates, key=lambda candidate: balance_score(candidate.source))
 
 
 def _pack_rows(program: str, width: int) -> str:
@@ -142,12 +152,28 @@ def _pack_rows(program: str, width: int) -> str:
 
 def _wrap_intercal(program: str, width: int) -> str:
     """Break over-wide statements only at C-INTERCAL token boundaries."""
-    return "\n".join(
-        line
-        if len(line) <= width
-        else _join_tokens(_intercal_tokens(line), width, separator=" ")
-        for line in program.splitlines()
-    )
+    return _wrap_layout(TemplateLayout(program, ()), width).source
+
+
+def _wrap_layout(program: TemplateLayout, width: int) -> TemplateLayout:
+    def parts() -> Iterator[TemplateToken]:
+        for i, line in enumerate(program.lines()):
+            if i:
+                yield "\n"
+            if len(line.source) <= width:
+                yield from line.fragments()
+                continue
+            tokens: list[TemplateToken] = []
+            for part in line.fragments():
+                if isinstance(part, InputSlot):
+                    tokens.append(part)
+                else:
+                    tokens.extend(_intercal_tokens(part))
+            yield from layout_tokens(
+                tokens, width, char=descriptor.TEMPLATE_CHAR
+            ).fragments()
+
+    return layout_fragments(parts(), char=descriptor.TEMPLATE_CHAR)
 
 
 def _mux(
@@ -176,7 +202,7 @@ def _mux(
     return _Expr("select", children=(zero, one, mask))
 
 
-def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> str:
+def _intercal_shared(truth_table: str, perm: tuple[int, ...]) -> TemplateLayout:
     """Name profitable folded expressions after planning selector aliases.
 
     Graph readers are lower bounds on rendered uses; unnamed parents can
@@ -394,9 +420,9 @@ def _reference(name: int | None, width: int) -> _Expr | None:
 
 def _program(
     n: int, assigned: list[tuple[int | str, _Expr]], result: _Expr, width: int = 0
-) -> str:
+) -> TemplateLayout:
     """Return the polite template: inputs, arrays, shared names, result, output."""
-    statements = [f".{n - i} <- {descriptor.TEMPLATE_CHAR * 2}" for i in range(n)]
+    statements: list[_Statement] = [(f".{n - i} <- ", _INPUT) for i in range(n)]
     if width:
         last = max(name for name, _ in assigned if isinstance(name, int))
         arrays = (last - _VARIABLE_MAX - 1) // width + 1
@@ -409,13 +435,21 @@ def _program(
     return _polite(statements)
 
 
-def _polite(statements: list[str]) -> str:
+def _polite(statements: list[_Statement]) -> TemplateLayout:
     """Mark one statement in five PLEASE, rounding up."""
-    polite = max(1, (len(statements) + 4) // 5)  # one statement in five
-    return "\n".join(
-        f"{'PLEASE' if i < polite else 'DO'} {statement}"
-        for i, statement in enumerate(statements)
-    )
+    polite = max(1, (len(statements) + 4) // 5)
+
+    def parts() -> Iterator[TemplateToken]:
+        for i, statement in enumerate(statements):
+            if i:
+                yield "\n"
+            yield "PLEASE " if i < polite else "DO "
+            if isinstance(statement, str):
+                yield statement
+            else:
+                yield from statement
+
+    return layout_fragments(parts(), char=descriptor.TEMPLATE_CHAR)
 
 
 def _same_layout(template: str, _plain: str, layout: Callable[[int], Any]) -> bool:
@@ -426,13 +460,13 @@ def _same_layout(template: str, _plain: str, layout: Callable[[int], Any]) -> bo
     )
 
 
-def intercal_request(request: GenerationRequest) -> Program:
+def intercal_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return intercal(request.table, request.width)
-    return intercal(request.table)
+    return _layout(request.table, request.width)
 
 
-def intercal_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return balance_intercal(request.table, request.text_source())
+def intercal_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Pack rows and preserve the ordered input slots."""
+    if not isinstance(request.source, TemplateLayout):
+        raise TypeError("balancing needs a rendered template with slots")
+    return balance_intercal(request.source)

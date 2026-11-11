@@ -8,13 +8,13 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.template import TemplateLayout
     from esolangs.registry._backend import BooleanBackend, TemplateSpec
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
-    from esolangs.runtime._program import Program
 
     return BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
+        entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.bitdeque.generator", "bitdeque_request"
         ),
         layout_width=True,
@@ -27,7 +27,7 @@ def _backend() -> BackendDefinition:
         wrap=FunctionRef(
             "esolangs.languages.bitdeque.generator", "_bitdeque", ("program", "width")
         ),
-        balance=OperationRef[BalanceRequest, Program](
+        balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.bitdeque.generator", "bitdeque_balance_request"
         ),
         template=TemplateSpec(

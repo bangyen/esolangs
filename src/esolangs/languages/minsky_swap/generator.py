@@ -29,8 +29,14 @@ from esolangs.generation.helpers import (
     symmetric_weights,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_fragments,
+    layout_tokens,
+)
 from esolangs.generation.wrap import balance_score
-from esolangs.runtime._program import Program
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 
@@ -50,12 +56,20 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
 
     A ``width`` the program exceeds switches to RMSN.
     """
+    return _layout(truth_table, width).source
+
+
+def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     constant = truth_table == truth_table[0] * len(truth_table)
     if constant:
         bit = int(truth_table[0])
-        run = TEMPLATE_CHAR * len(MINSKY_SWAP_PAIR[0])
-        tokens = ["*+*~" if bit else "~", *[run, "*"] * (n - 1), run]
+        run = InputSlot(len(MINSKY_SWAP_PAIR[0]))
+        tokens: list[TemplateToken] = [
+            "*+*~" if bit else "~",
+            *(run, "*") * (n - 1),
+            run,
+        ]
         resolved = [3 * n + 1 + 3 * bit]
     else:
         # Symmetric tables count inputs into n+1 rows instead of a binary index.
@@ -65,29 +79,31 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
         else:
             tokens, resolved = _pair_cascade(*input_weights(truth_table, n))
     program = _render(tokens, resolved)
-    if width is None or grid_width(program) <= width:
+    if width is None or grid_width(program.source) <= width:
         return program
     if n <= 2 and width < 10 and not constant:
         return _rmsn_small(truth_table, n)
     return _rmsn_expand(tokens, resolved)
 
 
-def _render(tokens: list[str], resolved: list[int]) -> str:
+def _render(tokens: list[TemplateToken], resolved: list[int]) -> TemplateLayout:
     """Return the compact program: the commands, then the jump targets.
 
     The wiki splits the code line into characters, each a command, so no
     separator; a jump names a command (1-based), so none is 0.
     """
-    return "".join(tokens) + "\n" + " ".join(map(str, resolved))
+    return layout_fragments((*tokens, "\n", " ".join(map(str, resolved))))
 
 
-def _cascade(weights: Sequence[int], table: str) -> tuple[list[str], list[int]]:
+def _cascade(
+    weights: Sequence[int], table: str
+) -> tuple[list[TemplateToken], list[int]]:
     """Return the stages adding each input's weight, then the ``~`` cascade."""
     # Two shared leaves sit behind a line-1 ``~`` that jumps over them at
     # start: line 2 halts (a ``~`` targeting one past the end), lines 3-5
     # (``+ * ~``) set ``reg[1]`` first.
     zero_leaf, one_leaf = 2, 3
-    tokens: list[str] = ["~", "~", "+", "*", "~"]
+    tokens: list[TemplateToken] = ["~", "~", "+", "*", "~"]
     targets: list[int | None] = [6, None, None]  # None: one past the end
     pos = 5  # instantiated command index of the next command
 
@@ -99,7 +115,7 @@ def _cascade(weights: Sequence[int], table: str) -> tuple[list[str], list[int]]:
     # ``reg[0]`` is zero with the pointer on it.  An ignored input's stage is
     # just ``~ ~``, so every table of one arity whose inputs all matter is
     # one length.
-    run = TEMPLATE_CHAR * len(MINSKY_SWAP_PAIR[0])
+    run = InputSlot(len(MINSKY_SWAP_PAIR[0]))
     for weight in weights:
         if not weight:
             # An ignored input's two decrements drain its run, both jumping
@@ -127,7 +143,9 @@ def _cascade(weights: Sequence[int], table: str) -> tuple[list[str], list[int]]:
     return tokens, [end if t is None else t for t in targets]
 
 
-def _pair_cascade(weights: Sequence[int], table: str) -> tuple[list[str], list[int]]:
+def _pair_cascade(
+    weights: Sequence[int], table: str
+) -> tuple[list[TemplateToken], list[int]]:
     """Hold the last essential input; trailing ignored runs preserve its bit."""
     held = max(i for i, weight in enumerate(weights) if weight)
     weights = [weight // 2 for weight in weights]
@@ -135,10 +153,10 @@ def _pair_cascade(weights: Sequence[int], table: str) -> tuple[list[str], list[i
     # Entry pointer is on the zero index register. Mixed leaves test the
     # held 0/2; the one leaf's three decrements drain either before halting.
     # Target 13 is two digits; see [ablations.low_bit_leaf_split].
-    tokens = list("~~*+*~~~*~*~*~~~")
+    tokens: list[TemplateToken] = list("~~*+*~~~*~*~*~~~")
     targets: list[int | None] = [17, None, None, None, None, None, 4, 3, None, None]
     pos = 16
-    run = TEMPLATE_CHAR * len(MINSKY_SWAP_PAIR[0])
+    run = InputSlot(len(MINSKY_SWAP_PAIR[0]))
     for weight in weights[:held]:
         skip = pos + len(run) + (4 + weight if weight else 2) + 1
         tokens += [run, "~", "~"]
@@ -164,7 +182,7 @@ def _pair_cascade(weights: Sequence[int], table: str) -> tuple[list[str], list[i
     return tokens, [end if target is None else target for target in targets]
 
 
-def _rmsn_small(truth_table: str, n: int) -> str:
+def _rmsn_small(truth_table: str, n: int) -> TemplateLayout:
     """Decision-chain RMSN for ``n <= 2``, whose lines stay under 10 columns.
 
     Nine commands at ``n = 2``; the first register is scratch, the answer
@@ -172,30 +190,31 @@ def _rmsn_small(truth_table: str, n: int) -> str:
     """
     # One bit contributes 1, the other 2: common inc plus decnz/inc
     # adds 0/2 without branching. All leaves fit single-digit targets.
-    slot = TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])
-    lines = [slot] if n == 1 else [slot, "inc();", slot]
+    slot = InputSlot(len(_MINSKY_SMALL_RMSN_PAIR[0]))
+    lines: list[TemplateToken] = [slot] if n == 1 else [slot, "inc();", slot]
     one = len(lines) + len(truth_table) + 1
     for value in range(len(truth_table)):
         # the chain adds the low bit as 2 and the high bit as 1: swap them
         row = value if n == 1 else (value & 1) * 2 + (value >> 1)
         lines.append(f"decnz({one if truth_table[row] == '1' else one + 1});")
-    return "\n".join([*lines, "swap();", "inc();"])
+    return layout_tokens([*lines, "swap();", "inc();"], 1)
 
 
-def _rmsn_expand(tokens: list[str], jumps: list[int]) -> str:
+def _rmsn_expand(tokens: list[TemplateToken], jumps: list[int]) -> TemplateLayout:
     """One RMSN command per line: short setters, ``~`` taking ``jumps`` in order."""
-    lines: list[str] = []
+    lines: list[TemplateToken] = []
     targets = iter(jumps)
+    slot = InputSlot(len(_MINSKY_SHORT_RMSN_PAIR[0]))
     for token in tokens:
-        if token.startswith(TEMPLATE_CHAR):
+        if isinstance(token, InputSlot):
             # Both fills still execute two commands, preserving every target.
-            lines.extend(("inc();", TEMPLATE_CHAR * len(_MINSKY_SHORT_RMSN_PAIR[0])))
+            lines.extend(("inc();", slot))
         else:
             lines.extend(
                 f"decnz({next(targets)});" if command == "~" else _RMSN[command]
                 for command in token
             )
-    return "\n".join(lines)
+    return layout_tokens(lines, 1)
 
 
 def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
@@ -208,11 +227,6 @@ def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     return (pair,) * n
 
 
-def _balance(table: str, default: str) -> str:
-    """Compare compact source and the three line-oriented setter regimes."""
-    return min(default, minsky_swap(table, 1), key=balance_score)
-
-
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
     """Match whole 1-, 10- and 15-wide representation switches."""
     return template in (layout(1), layout(10), layout(15)) or same_up_to_wrapping(
@@ -220,13 +234,18 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
     )
 
 
-def minsky_swap_request(request: GenerationRequest) -> Program:
+def minsky_swap_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return minsky_swap(request.table, request.width)
-    return minsky_swap(request.table)
+    return _layout(request.table, request.width)
 
 
-def minsky_swap_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+def minsky_swap_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Compare compact source and the three line-oriented setter regimes."""
+    default = request.source
+    if not isinstance(default, TemplateLayout):
+        raise TypeError("balancing needs a rendered template with slots")
+    return min(
+        default,
+        _layout(request.table, 1),
+        key=lambda layout: balance_score(layout.source),
+    )

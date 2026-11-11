@@ -29,14 +29,18 @@ Decisions:
 """
 
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.requests import GenerationRequest
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_fragments,
+)
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens, _tokens, balance_score
-from esolangs.runtime._program import Program
+from esolangs.generation.wrap import balance_score, wrap_character_slots
 
 #: Binary to unary, most significant bit first: the row as that many ``*``.
 _UNARY = "/b/a*//*a/a**//a//"
@@ -53,6 +57,9 @@ _DECODE = "/>qA/C//>qB/D//qA///qB///C/0//D/1/"
 _IGNORE = "/Xa///Xb//"
 #: Former constant prefix, retained to recognize old templates.
 _CONSTANT = "/a///b//"
+
+
+_INPUT = InputSlot(1)
 
 
 def _sweeps(bits: str) -> int:
@@ -80,40 +87,46 @@ def slashes(truth_table: str) -> str:
     the 2^m entries for the m inputs the table depends on.
     The unary rules use letters the table and decoder never contain.
     """
+    return _layout(truth_table).source
+
+
+def _layout(truth_table: str) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         # The a/b pattern is parsed but cannot match the literal digit.
-        return _constant_pattern(n, truth_table[0])
+        return layout_fragments(("/", *(_INPUT,) * n, "//" + truth_table[0]))
     weights, bits = input_weights(truth_table, n)
     table = "".join("qA" if bit == "0" else "qB" for bit in bits)
-    slots = "".join(
-        TEMPLATE_CHAR if weight else "X" + TEMPLATE_CHAR for weight in weights
-    )
     prefix = _IGNORE if 0 in weights else ""
-    return prefix + _UNARY + _sweep_rules(bits) + _DECODE + slots + ">" + table
-
-
-def _constant_pattern(n: int, bit: str) -> str:
-    """Parse all input letters as a rule pattern that cannot match the answer."""
-    return "/" + TEMPLATE_CHAR * n + "//" + bit
+    parts: list[TemplateToken] = [prefix + _UNARY + _sweep_rules(bits) + _DECODE]
+    for weight in weights:
+        if not weight:
+            parts.append("X")
+        parts.append(_INPUT)
+    parts.append(">" + table)
+    return layout_fragments(parts)
 
 
 #: Deletes every later newline, so the rest wraps anywhere.
 _NEWLINES = "/\n//"
 
 
-def _balance(program: str) -> str:
-    """Return the program behind :data:`_NEWLINES`, folded square.
-
-    A break may fall anywhere, inside a rule too: the newline rule runs first
-    and every later newline is gone before a rule is read.  Template runs
-    stay whole.  The unwrapped line stays a candidate for tiny tables.
-    """
-    tokens = _tokens(_NEWLINES + program, r"[\s\S]")
-    width = balanced_token_width(tokens)
-    return min(program, _join_tokens(tokens, width, ""), key=balance_score)
-
-
-def slashes_request(request: GenerationRequest) -> Program:
+def slashes_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return slashes(request.table)
+    return _layout(request.table)
+
+
+def slashes_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Compare the original with a character fold guarded by a newline rule."""
+    layout = request.source
+    if not isinstance(layout, TemplateLayout):
+        raise TypeError("balancing needs a rendered template with slots")
+    prefixed = TemplateLayout(
+        _NEWLINES + layout.source,
+        tuple(
+            (start + len(_NEWLINES), end + len(_NEWLINES))
+            for start, end in layout.spans
+        ),
+    )
+    folded = wrap_character_slots(prefixed, balanced_token_width(list(prefixed.source)))
+    return min(layout, folded, key=lambda candidate: balance_score(candidate.source))

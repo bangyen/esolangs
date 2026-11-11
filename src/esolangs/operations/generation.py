@@ -1,5 +1,6 @@
 """Generate and bind explicit program artifacts."""
 
+from collections.abc import Callable
 from dataclasses import replace
 from functools import cache
 from math import isqrt
@@ -29,6 +30,7 @@ from esolangs.generation.requests import (
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import (
+    TokenWrapper,
     balance_character_slots,
     balance_program,
     wrap_character_slots,
@@ -160,9 +162,12 @@ def generate(
     inputs = len(truth_table).bit_length() - 1
     if isinstance(generated, TemplateLayout):
         if width is not None and not laid_out and backend.wrap is not None:
-            if backend.wrap is not wrap_chars or not _character_slots(generated):
+            if backend.wrap is wrap_chars and _character_slots(generated):
+                generated = wrap_character_slots(generated, width)
+            elif isinstance(backend.wrap, TokenWrapper):
+                generated = backend.wrap.wrap_template(generated, width)
+            else:
                 raise ProgramError(f"{resolved} requires a slot-aware wrapper")
-            generated = wrap_character_slots(generated, width)
         return _structured_template(
             generated,
             lang.id,
@@ -292,7 +297,7 @@ def _generate_balanced(
             default,
             lang.id,
             catalog,
-            character_wrap=backend.wrap is wrap_chars and backend.wrap_balance is None,
+            wrapper=None if backend.wrap_balance is not None else backend.wrap,
         )
     return ProgramArtifact(
         balance_program(source, lang.id, catalog=catalog),
@@ -314,14 +319,17 @@ def _balance_template(
     language_id: str,
     catalog: Catalog,
     *,
-    character_wrap: bool,
+    wrapper: Callable[[str, int], str] | None,
 ) -> TemplateArtifact:
     """Balance source using positional slots when the wrapper supports them."""
     bindings = template.bindings
-    if character_wrap and template.spans:
+    if template.spans and "\n" not in template.source:
         layout = TemplateLayout(template.source, template.spans)
-        if _character_slots(layout):
+        if wrapper is wrap_chars and _character_slots(layout):
             balanced = balance_character_slots(layout)
+            return replace(template, source=balanced.source, spans=balanced.spans)
+        if isinstance(wrapper, TokenWrapper):
+            balanced = wrapper.balance_template(layout)
             return replace(template, source=balanced.source, spans=balanced.spans)
     marked = mark_runs(template.source, bindings.char, bindings.setters)
     text = unmark(

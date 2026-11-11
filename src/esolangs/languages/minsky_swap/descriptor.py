@@ -13,13 +13,13 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.template import TemplateLayout
     from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
-    from esolangs.runtime._program import Program
 
     return BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
+        entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.minsky_swap.generator", "minsky_swap_request"
         ),
         layout_width=True,
@@ -30,7 +30,7 @@ def _backend() -> BackendDefinition:
         ),
         # Each input adds its weight; a ``~`` cascade picks one of two leaves.
         shape=Shape.LOOKUP,
-        balance=OperationRef[BalanceRequest, Program](
+        balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.minsky_swap.generator", "minsky_swap_balance_request"
         ),
         no_wrap="only line 1 is code; line 2 gives its numeric jump distances",

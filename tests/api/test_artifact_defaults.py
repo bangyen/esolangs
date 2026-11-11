@@ -31,6 +31,14 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
         inspect.signature(backend.entrypoint)
     assert not hasattr(wrap, "takes_width")
     assert not hasattr(esolangs, "_takes_width")
+    if bound.describe()["parameterized"]:
+
+        def rediscovered(*_args):
+            raise AssertionError("catalog generation rediscovered input slots")
+
+        monkeypatch.setattr("esolangs.artifacts.runs", rediscovered)
+        monkeypatch.setattr("esolangs.operations.generation.mark_runs", rediscovered)
+        monkeypatch.setattr("esolangs.registry.mark_runs", rediscovered)
     for options in ({}, {"width": 1}, {"balance": True}):
         program = esolangs.generate(language, "01", **options)
         assert isinstance(

@@ -28,14 +28,37 @@ class TemplateLayout:
     source: str
     spans: Spans
 
-    def tokens(self) -> Iterator[TemplateToken]:
-        """Recover whitespace-delimited tokens using known slot positions."""
+    def fragments(self) -> Iterator[TemplateToken]:
+        """Recover literal fragments and slots using their known positions."""
         position = 0
         for start, end in self.spans:
-            yield from self.source[position:start].split()
+            yield self.source[position:start]
             yield InputSlot(end - start)
             position = end
-        yield from self.source[position:].split()
+        yield self.source[position:]
+
+    def lines(self) -> Iterator["TemplateLayout"]:
+        """Yield layouts for individual lines with offsets local to each line."""
+        first = offset = 0
+        for line in self.source.splitlines(keepends=True):
+            end = offset + len(line)
+            last = first
+            while last < len(self.spans) and self.spans[last][0] < end:
+                last += 1
+            spans = tuple(
+                (start - offset, stop - offset)
+                for start, stop in self.spans[first:last]
+            )
+            yield TemplateLayout(line.removesuffix("\n"), spans)
+            first, offset = last, end
+
+    def tokens(self) -> Iterator[TemplateToken]:
+        """Split only the literal fragments on whitespace."""
+        for fragment in self.fragments():
+            if isinstance(fragment, InputSlot):
+                yield fragment
+            else:
+                yield from fragment.split()
 
 
 def layout_fragments(
@@ -61,18 +84,20 @@ def layout_tokens(
     width: int | None = None,
     *,
     char: str = TEMPLATE_CHAR,
+    separator: str = " ",
 ) -> TemplateLayout:
     """Wrap whole tokens and record slot positions as source is written."""
     fragments: list[str] = []
     spans: list[tuple[int, int]] = []
     offset = column = 0
+    gap = len(separator)
     for token in tokens:
         size = len(token)
         if column:
-            wrap = width is not None and column + 1 + size > width
-            fragments.append("\n" if wrap else " ")
-            offset += 1
-            column = 0 if wrap else column + 1
+            wrap = width is not None and column + gap + size > width
+            fragments.append("\n" if wrap else separator)
+            offset += 1 if wrap else gap
+            column = 0 if wrap else column + gap
         if isinstance(token, InputSlot):
             spans.append((offset, offset + size))
             fragments.append(char * size)

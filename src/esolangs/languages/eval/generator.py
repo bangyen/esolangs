@@ -18,23 +18,27 @@ Size:
 """
 
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
     essential_inputs,
     permute_truth_table,
     read_at,
 )
 from esolangs.generation.requests import GenerationRequest
-from esolangs.runtime._program import Program
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_fragments,
+)
 
 #: Stage the bit on the tree stack (``0`` or backtick), ``=`` moves it to the
-#: input stack.  Each input is a run of :data:`TEMPLATE_CHAR` this wide.
+#: input stack. Each slot has the same width as the bit instruction.
 PAIR = ("0=", "`=")
-_EVAL_INPUT = TEMPLATE_CHAR * len(PAIR[0])
+_EVAL_INPUT = InputSlot(len(PAIR[0]))
 
 #: The two-stack build stages each bit on both stacks (``^`` copies it).
 DUAL_PAIR = ("0^=", "`^=")
-_DUAL_INPUT = TEMPLATE_CHAR * len(DUAL_PAIR[0])
+_DUAL_INPUT = InputSlot(len(DUAL_PAIR[0]))
 _DUAL_SELECT = "~;~?~"
 
 
@@ -47,9 +51,14 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     Each placeholder stages one equal-width bit on the input stack; ignored
     inputs are drained, except a constant's, which no halving step reads.
     """
+    return _layout(truth_table).source
+
+
+def _layout(truth_table: str) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
-        return TEMPLATE_CHAR * n + ("0" if truth_table[0] == "0" else "`") + "."
+        answer = "0." if truth_table[0] == "0" else "`."
+        return layout_fragments((*(InputSlot(1),) * n, answer))
     table = permute_truth_table(truth_table, tuple(reversed(range(n))))
     used = essential_inputs(table, n)
     # With carried orientation, the two-stack saving is R/2-runs-2n-1.
@@ -80,17 +89,20 @@ def _gray_order(table: str) -> str:
     return "".join(table[i ^ (i >> 1)] for i in range(len(table)))
 
 
-def _eval_dual(table: str, used: list[int], n: int) -> str:
+def _eval_dual(table: str, used: list[int], n: int) -> TemplateLayout:
     """Emit the two-stack lookup: the top input picks the stack holding its half."""
     reduced = read_at(table, used, n)
     half = len(reduced) // 2
     lower, upper = _gray_order(reduced[:half]), _gray_order(reduced[half:])
-    out = ["".join("`" if bit == "1" else "0" for bit in lower), "~"]
+    out: list[TemplateToken] = [
+        "".join("`" if bit == "1" else "0" for bit in lower),
+        "~",
+    ]
     previous = "0"
     for bit in upper:
         out.append("0" if bit == "0" else "^" if previous == "1" else "0+")
         previous = bit
-    out.extend(("~", _DUAL_INPUT * n, _DUAL_SELECT, ";" * (n - 1)))
+    out.extend(("~", *(_DUAL_INPUT,) * n, _DUAL_SELECT, ";" * (n - 1)))
     used_set = set(used)
     remaining = half
     for level in range(1, n):
@@ -100,15 +112,14 @@ def _eval_dual(table: str, used: list[int], n: int) -> str:
         remaining //= 2
         out.extend(("~=~?*", ";" * remaining))
     out.append(".")
-    return "".join(out)
+    return layout_fragments(out)
 
 
-def _ordered(truth_table: str, ops: str, n: int, used: list[int]) -> str:
+def _ordered(truth_table: str, ops: str, n: int, used: list[int]) -> TemplateLayout:
     """Render a validated table with its already known essential inputs."""
     reduced = read_at(truth_table, used, n)
-    bits = _EVAL_INPUT * n
     values = "".join("`" if bit == "1" else "0" for bit in _gray_order(reduced))
-    out = [bits, ops, values]
+    out: list[TemplateToken] = [*(_EVAL_INPUT,) * n, ops, values]
     remaining = len(reduced)
     used_set = set(used)
     for level in range(n):
@@ -124,9 +135,9 @@ def _ordered(truth_table: str, ops: str, n: int, used: list[int]) -> str:
         remaining //= 2
         out.extend(("~=~?*", ";" * remaining))
     out.append(".")
-    return "".join(out)
+    return layout_fragments(out)
 
 
-def eval_request(request: GenerationRequest) -> Program:
+def eval_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return eval(request.table)
+    return _layout(request.table)

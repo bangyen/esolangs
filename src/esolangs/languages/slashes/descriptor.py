@@ -7,22 +7,21 @@ from esolangs.runtime._definition import RuntimeSpec, TextSourcePolicy
 
 
 def _backend() -> BackendDefinition:
-    from esolangs.generation.requests import GenerationRequest
+    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.template import TemplateLayout
     from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
-    from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
-    from esolangs.runtime._program import Program
 
     return BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
+        entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.slashes.generator", "slashes_request"
         ),
         layout_width=False,
         # Not a tree: an indexed table rewrite.
         shape=Shape.LOOKUP,
         no_wrap="newlines are literal output and substitution data",
-        wrap_balance=FunctionRef(
-            "esolangs.languages.slashes.generator", "_balance", ("program",)
+        balance=OperationRef[BalanceRequest, TemplateLayout](
+            "esolangs.languages.slashes.generator", "slashes_balance_request"
         ),
         template=TemplateSpec(pair=("a", "b")),
     )

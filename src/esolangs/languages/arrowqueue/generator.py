@@ -30,8 +30,9 @@ Decisions:
     loop, so no output flip either; no loop-less mirror exists.
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from math import isqrt
+from typing import cast
 
 from esolangs.generation.helpers import (
     TEMPLATE_CHAR,
@@ -42,22 +43,29 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_fragments,
+)
 from esolangs.generation.wrap import balance_score
-from esolangs.runtime._program import Program
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
 
 _MIDDLE = ["*~* ", "*  *", "*  *", "~ ~ ", "*~* ", "**  ", "*  *"]
 
 
-_STAGE = ["  *+*", "   ~" + TEMPLATE_CHAR, "   ~", "  **", " *~*", " *  *"]
+_INPUT = InputSlot(1)
+type _Row = Sequence[TemplateToken]
+_STAGE: list[_Row] = ["  *+*", (*"   ~", _INPUT), "   ~", "  **", " *~*", " *  *"]
 
 #: An ignored input's setter, off the selector's path: either fill leaves the
 #: queue as it found it, so the cascade indexes the essential inputs alone.
-_IGNORED = [" " * 5 + TEMPLATE_CHAR]
+_IGNORED = [(*"     ", _INPUT)]
 
 #: The same setter one column in, for the narrow paths.
-_IGNORED_NARROW = [" " * 4 + TEMPLATE_CHAR]
+_IGNORED_NARROW = [(*"    ", _INPUT)]
 
 #: The cascade's row per table entry.  The IP enters down column 1; each ``+``
 #: there pops a marker D, and the sentinel pop (heading R) leaves the queue
@@ -78,16 +86,38 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
 
     Unbounded, the smaller by area of the unfolded cascade and the folds.
     """
+    return _layout(truth_table, width).source
+
+
+def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     program = _program(truth_table, width)
     if width is None and constant_output(truth_table) is None:
-        return min([program, *_folds(truth_table)], key=grid_rank)
+        return min(
+            (program, *_folds(truth_table)), key=lambda layout: grid_rank(layout.source)
+        )
     return program
 
 
-def _constant_ring(n: int, width: int) -> str:
+def _render_grid(rows: Iterable[_Row]) -> TemplateLayout:
+    def parts() -> Iterator[TemplateToken]:
+        for i, row in enumerate(rows):
+            if i:
+                yield "\n"
+            if isinstance(row, str):
+                yield row.rstrip()
+                continue
+            last = len(row)
+            while last and row[last - 1] == " ":
+                last -= 1
+            yield from row[:last]
+
+    return layout_fragments(parts())
+
+
+def _constant_ring(n: int, width: int) -> TemplateLayout:
     """Pack ignored setters outside the one-heading ring's eight visited cells."""
     height = max(3, -(-(n + 8) // width))
-    rows = [list(" " * width) for _ in range(height)]
+    rows: list[list[TemplateToken]] = [[" "] * width for _ in range(height)]
     ring = {
         (0, 0): "~",
         (0, 1): "*",
@@ -104,35 +134,37 @@ def _constant_ring(n: int, width: int) -> str:
     for row in range(height):
         for col in range(width):
             if left and (row, col) not in ring:
-                rows[row][col] = TEMPLATE_CHAR
+                rows[row][col] = _INPUT
                 left -= 1
     assert left == 0
-    return "\n".join("".join(row).rstrip() for row in rows)
+    return _render_grid(rows)
 
 
-def _program(truth_table: str, width: int | None = None) -> str:
+def _program(truth_table: str, width: int | None = None) -> TemplateLayout:
     """Build the marker cascade, or a direct constant halt/ring."""
     n = _validate_truth_table(truth_table)
     if (constant := constant_output(truth_table)) is not None:
         if constant == "0":
-            return "+" + ("\n" + TEMPLATE_CHAR) * n
+            return _render_grid(("+", *((_INPUT,),) * n))
         if n >= 3:
             forms = [_constant_ring(n, 4), _constant_ring(n, max(4, -(-(n + 8) // 3)))]
-            best = min(forms, key=grid_rank)
-            if width is None or max(map(len, best.splitlines())) <= max(4, width):
+            best = min(forms, key=lambda layout: grid_rank(layout.source))
+            if width is None or max(map(len, best.source.splitlines())) <= max(
+                4, width
+            ):
                 return best
             return _constant_ring(n, max(4, width))
         # The initial ~ supplies R to the top-left +. The ring's top ~
         # replenishes it before three clockwise corners return to that +.
         # Column zero below the entry is never visited, so either setter
         # leaves the ring's one-heading queue and path alone.
-        rows = [
-            "~*",
-            TEMPLATE_CHAR + "+~*",
-            (TEMPLATE_CHAR if n > 1 else " ") + "* *",
-            *([TEMPLATE_CHAR] * max(n - 2, 0)),
-        ]
-        return "\n".join(rows)
+        return _render_grid(
+            (
+                "~*",
+                (_INPUT, *"+~*"),
+                (_INPUT if n > 1 else " ", *"* *"),
+            )
+        )
     width = max(width or 0, 0)  # 0, None and negative all mean unbounded
     weights, table = input_weights(truth_table, n)
     if 0 < width < 5:
@@ -143,15 +175,15 @@ def _program(truth_table: str, width: int | None = None) -> str:
         leaves = [row[:2] + row[3:] for row in leaves]
     ignored = _IGNORED_NARROW if narrow else _IGNORED
     stages = [row for weight in weights for row in (_STAGE if weight else ignored)]
-    rows = ["  ~*", *stages, *_MIDDLE, *leaves]
-    return "\n".join(row.rstrip() for row in rows)
+    rows: list[_Row] = ["  ~*", *stages, *_MIDDLE, *leaves]
+    return _render_grid(rows)
 
 
-def _four_column_cascade(table: str, weights: Sequence[int]) -> str:
+def _four_column_cascade(table: str, weights: Sequence[int]) -> TemplateLayout:
     """Prepend a down marker to route the selector along column0."""
     # Shift input stages left; a clockwise detour lands down at column 1.
     stages = (row[1:] for w in weights for row in (_STAGE if w else _IGNORED_NARROW))
-    rows = [" ~*", *stages, "**", "* *", " ~"]
+    rows: list[_Row] = [" ~*", *stages, "**", "* *", " ~"]
     # Append D, rotate the D markers to the R sentinel; queue becomes D^(index+1),R.
     rows.extend(["*+~*", " ~", "**"])
     rows.extend(_MIDDLE)
@@ -160,7 +192,7 @@ def _four_column_cascade(table: str, weights: Sequence[int]) -> str:
     for bit in table:
         # Unfold the constant tail: its old drain loop uses column0.
         rows.extend((row[:2] + row[3:])[1:] for row in _ROWS[bit])
-    return "\n".join(row.rstrip() for row in rows)
+    return _render_grid(rows)
 
 
 def _cascade(truth_table: str) -> list[str]:
@@ -186,10 +218,10 @@ _LEAF = {"0": " +++~+", "1": " + +~+"}
 _LEAF_END = {"0": "  ++", "1": "   +~+"}
 
 #: Lines, entry column, exit column; the IP enters and leaves heading down.
-type _Block = tuple[list[str], int, int]
+type _Block = tuple[Sequence[_Row], int, int]
 
 
-def _folded(table: str, height: int) -> str | None:
+def _folded(table: str, height: int) -> TemplateLayout | None:
     """Fold the cascade into side-by-side strips at most ``height`` rows tall.
 
     Each strip but the last ends in a corridor: ``*`` turns left below its
@@ -246,11 +278,11 @@ def _folded(table: str, height: int) -> str | None:
     return _render_strips(strips)
 
 
-def _render_strips(strips: list[list[_Block]]) -> str:
+def _render_strips(strips: list[list[_Block]]) -> TemplateLayout:
     """Draw ``strips`` from row 2 with their corridors; see :func:`_folded`."""
     last = len(strips) - 1
     shifts = [
-        int(i < last and any(line[:1].strip() for b in strip for line in b[0]))
+        int(i < last and any(line and line[0] != " " for b in strip for line in b[0]))
         for i, strip in enumerate(strips)
     ]
     widths = [
@@ -261,6 +293,7 @@ def _render_strips(strips: list[list[_Block]]) -> str:
         2 + sum(len(b[0]) for b in strip) + (i < last) for i, strip in enumerate(strips)
     ]
     grid = [[" "] * sum(widths) for _ in range(max(heights))]
+    slots: dict[int, list[int]] = {}
     x = 0
     entries = []
     for i, strip in enumerate(strips):
@@ -269,7 +302,13 @@ def _render_strips(strips: list[list[_Block]]) -> str:
         row = 2
         for lines, _entry, _exit in strip:
             for line in lines:
-                grid[row][left : left + len(line)] = line
+                if isinstance(line, str):
+                    grid[row][left : left + len(line)] = line
+                else:
+                    column = left + len(line) - 1
+                    grid[row][left:column] = cast("Sequence[str]", line[:-1])
+                    grid[row][column] = TEMPLATE_CHAR
+                    slots.setdefault(row, []).append(column)
                 row += 1
         if i < last:
             lines, _entry, exit_col = strip[-1]
@@ -283,10 +322,18 @@ def _render_strips(strips: list[list[_Block]]) -> str:
     for i in range(last):
         grid[1 - i % 2][x] = grid[1 - i % 2][entries[i + 1]] = "*"
         x += widths[i]
-    return "\n".join("".join(row).rstrip() for row in grid)
+    rendered = ["".join(row).rstrip() for row in grid]
+    spans: list[tuple[int, int]] = []
+    offset = 0
+    for row, line in enumerate(rendered):
+        spans.extend(
+            (offset + column, offset + column + 1) for column in slots.get(row, ())
+        )
+        offset += len(line) + 1
+    return TemplateLayout("\n".join(rendered), tuple(spans))
 
 
-def _folds(table: str) -> list[str]:
+def _folds(table: str) -> list[TemplateLayout]:
     """Folds at distinct heights around where the strips' width meets twice the height.
 
     A fold is ``F`` lines (``6n + 7 +`` one a table entry) cut into strips of
@@ -302,20 +349,19 @@ def _folds(table: str) -> list[str]:
     return [fold for fold in folds if fold is not None]
 
 
-def _balance(table: str, default: str) -> str:
-    """Return the default or the fold with the least balanced side."""
-    if constant_output(table) is not None:
-        return default
-    return min([default, *_folds(table)], key=balance_score)
-
-
-def arrowqueue_request(request: GenerationRequest) -> Program:
+def arrowqueue_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return arrowqueue(request.table, request.width)
-    return arrowqueue(request.table)
+    return _layout(request.table, request.width)
 
 
-def arrowqueue_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+def arrowqueue_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Return the default or the fold with the least balanced side."""
+    default = request.source
+    if not isinstance(default, TemplateLayout):
+        raise TypeError("balancing needs a rendered template with slots")
+    if constant_output(request.table) is not None:
+        return default
+    return min(
+        (default, *_folds(request.table)),
+        key=lambda layout: balance_score(layout.source),
+    )

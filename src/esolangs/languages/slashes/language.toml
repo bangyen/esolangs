@@ -20,7 +20,7 @@ definitions = ["D = decoder flag", "S = table size", "P = ignore preamble", "X =
 "11111110" = { commands_by_row = { "0" = 35, "1" = 36, "2" = 37, "3" = 38, "4" = 39, "5" = 40, "6" = 41, "7" = 42 }, source_units = 90 }
 
 [catalogue]
-folding_constant_local = "_constant_pattern"  # parse inputs before the literal answer
+folding_constant_local = "_layout"  # parse inputs before the literal answer
 
 [schemes]
 folds_without_tree = true

@@ -15,14 +15,14 @@ PAIR = ("0", "1")
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import wrap_space_delimited
     from esolangs.registry._backend import BooleanBackend, TemplateSpec
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
-    from esolangs.runtime._program import Program
 
     return BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
+        entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.fractran.generator", "fractran_request"
         ),
         layout_width=True,
@@ -34,7 +34,7 @@ def _backend() -> BackendDefinition:
         # Whitespace- or comma-separated tokens, and a break inside one would
         # change a number.
         wrap=wrap_space_delimited,
-        balance=OperationRef[BalanceRequest, Program](
+        balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.fractran.generator", "fractran_balance_request"
         ),
         template=TemplateSpec(pair=PAIR),

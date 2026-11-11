@@ -38,16 +38,14 @@ from functools import cache
 from typing import Any
 
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     SubtreeDiagram,
     _validate_truth_table,
     reflected_table,
     same_up_to_wrapping,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
-from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import wrap_tokens
-from esolangs.runtime._program import Program
+from esolangs.generation.template import InputSlot, TemplateLayout, layout_fragments
+from esolangs.generation.wrap import TokenWrapper
 
 # A zero duplicates the returned bit, giving both selectors five characters.
 PAIR = ("(!^:)", "(~!^)")
@@ -60,9 +58,7 @@ _REACH = 4
 _PREFIX = "()!"
 
 
-def _token_pattern(slots: int) -> str:
-    """Return the wrap pattern: ``slots`` slot run, inert prefix, literal, char."""
-    return rf"{re.escape(TEMPLATE_CHAR)}{{{slots}}}|\(\)!|\([01]\)|."
+_WRAPPER = TokenWrapper(r"\(\)!|\([01]\)|.")
 
 
 def _terminal_family(table: str, n: int) -> bool:
@@ -131,30 +127,31 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
         return sorted(candidates, key=len)[:1]  # stable: the first shortest
 
     body = tree(0, diagram.root, None).replace("\ue000", "")
-    slots = TEMPLATE_CHAR * ((1 if short else len(PAIR[0])) * n)
-    return slots + "(" + body + ")^S"
+    return "(" + body + ")^S"
 
 
 def underload(truth_table: str, width: int | None = None) -> str:
     """Return a promise tree; narrow selectors defer execution to their node."""
+    return _layout(truth_table, width).source
+
+
+def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        program = f"({truth_table[0]})" + TEMPLATE_CHAR * (3 * n) + "!" * n + "S"
-        return (
-            program if width is None else wrap_tokens(program, width, _token_pattern(3))
+        layout = layout_fragments(
+            (f"({truth_table[0]})", *(InputSlot(3),) * n, "!" * n + "S")
         )
-    short = width is not None and width < 5
-    program = _shared(truth_table, short=short)
-    if width is None:
-        return program
-    # Only bit literals reach S; every other pushed string is executable code.
-    if not short:
-        return wrap_tokens(program, width, _token_pattern(len(PAIR[0])))
-    # Dropping the optional tilde or concatenating it onto the empty string
-    # chooses ! or ~! after appending the final drop, without padding spaces.
-    selector = "()(~)" + TEMPLATE_CHAR + "(!)*"
-    program = _PREFIX + selector * n + program[n:]
-    return wrap_tokens(program, width, _token_pattern(1))
+    elif width is not None and width < 5:
+        # The node runs the chosen selector; neither fill needs padding.
+        selectors = ("()(~)", InputSlot(1), "(!)*") * n
+        layout = layout_fragments(
+            (_PREFIX, *selectors, _shared(truth_table, short=True))
+        )
+    else:
+        layout = layout_fragments(
+            (*(InputSlot(len(PAIR[0])),) * n, _shared(truth_table))
+        )
+    return layout if width is None else _WRAPPER.wrap_template(layout, width)
 
 
 def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
@@ -174,13 +171,6 @@ def _underload_layout_tokens(template: str) -> list[str]:
     return re.findall(r"\${3,4}|\([01]\)|[^\n]", template)
 
 
-def _balance(table: str, default: str) -> str:
-    """Balance the selectors at their token fit; the default never won."""
-    slots = 3 if len(set(table)) == 1 else len(PAIR[0])
-    normal = re.findall(_token_pattern(slots), default)
-    return underload(table, balanced_token_width(normal, minimum=5))
-
-
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
     """Compare the narrow layouts token by token."""
     if plain.startswith(("(0)", "(1)")):
@@ -192,13 +182,13 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
     return same_up_to_wrapping(template, plain)
 
 
-def underload_request(request: GenerationRequest) -> Program:
+def underload_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return underload(request.table, request.width)
-    return underload(request.table)
+    return _layout(request.table, request.width)
 
 
-def underload_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+def underload_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Balance the default selector layout at its whole-token fit."""
+    if not isinstance(request.source, TemplateLayout):
+        raise TypeError("balancing needs a rendered template with slots")
+    return _WRAPPER.fit_template(request.source, minimum=5)

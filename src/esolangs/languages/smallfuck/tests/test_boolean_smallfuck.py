@@ -145,7 +145,7 @@ def test_shared_residual_executes_within_ledger() -> None:
     assert_shared_program(
         "Smallfuck",
         table,
-        plain,
+        plain.source,
         1396,
         lambda p: len(p) + len(p).bit_length() + (3 * 8).bit_length() + 1,
     )
@@ -159,7 +159,7 @@ def test_complemented_shared_arm_contributes_its_constant_first() -> None:
         table, tuple(range(4)), shared_blocks=repeated_blocks(table)
     )
     for row, expected in enumerate(table):
-        assert run_filled(run, forced, [PAIR] * 4, row, 4) == expected
+        assert run_filled(run, forced.source, [PAIR] * 4, row, 4) == expected
     assert_shared_program(
         "Smallfuck",
         table,
@@ -198,7 +198,7 @@ def test_multiple_residuals_preserve_bands_and_native_bounds(
     )
     width = len(table) // 2
     _check_completed_rows(
-        template, limit, n, table, range(half * width, (half + 1) * width)
+        template.source, limit, n, table, range(half * width, (half + 1) * width)
     )
 
 
@@ -234,7 +234,7 @@ def test_multiple_residuals_reduce_tiled_cap_program_within_ledger() -> None:
         _smallfuck_tree(table, perm),
         _smallfuck_tree(table, perm, shared_blocks=repeated_blocks(table)),
     ]
-    previous = min((p for p, c in forms if c <= bound), key=len)
+    previous = min((p.source for p, c in forms if c <= bound), key=len)
     ignored = ((1 << (n - 6)) - 1) << 3
     rows = [
         (prefix << (n - 3)) | suffix | padding
@@ -268,7 +268,7 @@ def test_all_two_input_complement_pairs_and_ignored_prefixes(swap_suffix, half) 
     assert {code for code, _ in pairs} == set(range(1, 8))
     template, limit = _smallfuck_tree(ordered, perm, paired_roots=pairs)
     _check_completed_rows(
-        template, limit, n, table, range(half * 128, (half + 1) * 128)
+        template.source, limit, n, table, range(half * 128, (half + 1) * 128)
     )
 
 
@@ -309,7 +309,10 @@ def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> No
     template, _ = _smallfuck_tree(table, (0, 1, 2, 3), paired_roots=pairs)
     for row, expected in enumerate(table):
         program = fill_runs(
-            template, TEMPLATE_CHAR, [PAIR] * 4, [int(bit) for bit in f"{row:04b}"]
+            template.source,
+            TEMPLATE_CHAR,
+            [PAIR] * 4,
+            [int(bit) for bit in f"{row:04b}"],
         )
         assert execute("Smallfuck", program).output == expected
 
@@ -325,7 +328,7 @@ def test_davio_weights_use_spare_band_cells(
             _smallfuck_tree("0110", (0, 1), band=4)
     rng = random.Random(8)
     table = "".join(rng.choice("01") for _ in range(1 << n))
-    template = in_input_order(table, _smallfuck_ordered)
+    template = in_input_order(table, _smallfuck_ordered).source
     for row in range(0, 1 << n, max(1, (1 << n) // 16)):
         assert run_filled(run, template, [PAIR] * n, row, n) == table[row]
 

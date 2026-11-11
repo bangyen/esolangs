@@ -68,7 +68,7 @@ class TestParameterizedArrowQueue:
             rows = generators.arrowqueue(table).count("\n") + 1
             assert rows <= bound, f"{table}: {rows} > {bound}"
         witness = "1" * (width - 2) + "01"
-        assert _program(witness).count("\n") + 1 == bound
+        assert _program(witness).source.count("\n") + 1 == bound
 
     @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
     def test_every_input_is_the_same_one_cell(self, table: str) -> None:

@@ -458,10 +458,10 @@ def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
     return {perm[k] for k in essential_inputs(truth_table, n)}
 
 
-def in_input_order(
+def in_input_order[T](
     truth_table: str,
-    build: Callable[[str, tuple[int, ...]], str],
-) -> str:
+    build: Callable[[str, tuple[int, ...]], T],
+) -> T:
     """Build a validated table in input order."""
     n = _validate_truth_table(truth_table)
     return build(truth_table, tuple(range(n)))

@@ -120,7 +120,7 @@ class TestParameterizedBack:
         monkeypatch.setattr(generator, "_FOLD_BASE", 1)
         for value in range(256):
             table = format(value, "08b")
-            program = _back_htree(table, [1, 1, 1])
+            program = _back_htree(table, [1, 1, 1]).source
             for row in range(8):
                 bits = [(row >> (2 - i)) & 1 for i in range(3)]
                 assert self.run_back(self.instantiate(program, bits), 3) == table[row]
@@ -132,8 +132,8 @@ class TestParameterizedBack:
             lambda table: [[0] * len(layer) for layer in analyze(table)],
         )
         for program in (
-            _back_ordered("0001", (0, 1)),
-            _back_htree("0001", [1, 1]),
+            _back_ordered("0001", (0, 1)).source,
+            _back_htree("0001", [1, 1]).source,
         ):
             assert (
                 "".join(
@@ -232,7 +232,7 @@ class TestParameterizedBack:
             order = tuple(range(n))
             if table in ("01101001", "00010111", "01111110", "10010110"):
                 order = tuple(reversed(order))
-            assert generators.back(table) == _back_ordered(table, order), table
+            assert generators.back(table) == _back_ordered(table, order).source, table
 
     def test_reordering_pays_a_walk_and_keeps_name_order(self) -> None:
         """A permuted load spends rows on the walk, and keeps its runs in name order."""
@@ -241,7 +241,7 @@ class TestParameterizedBack:
             n = (len(table) - 1).bit_length()
             for perm in permutations(range(n)):
                 permuted = permute_truth_table(table, perm)
-                built = _back_ordered(permuted, perm)
+                built = _back_ordered(permuted, perm).source
                 assert built.count(TEMPLATE_CHAR) == n, (table, perm)
                 walked += built.count("<")
         # A non-identity order has to step the pointer back at some point;
@@ -318,7 +318,7 @@ def test_descending_loader_walks_permuted_cells_in_name_order() -> None:
 
     table = "00010011"
     order = (2, 0, 1)
-    template = _back_ordered(permute_truth_table(table, order), order, 1)
+    template = _back_ordered(permute_truth_table(table, order), order, 1).source
     runner = TestParameterizedBack()
     for row, expected in enumerate(table):
         bits = list(map(int, f"{row:03b}"))
@@ -411,7 +411,7 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
             n = 3
             builds: dict[str, set[int]] = {}
             for perm in permutations(range(n)):
-                built = build(permute_truth_table(table, perm), perm)
+                built = build(permute_truth_table(table, perm), perm).source
                 builds.setdefault(_drawing(built), set()).add(len(built))
             checked += 1
             # The orders must not all collapse onto one drawing, or the
