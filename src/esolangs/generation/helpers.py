@@ -443,13 +443,11 @@ def symmetric_weights(truth_table: str, n: int) -> WeightedLookup | None:
 def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
     """Return the *stream* inputs a decision tree over ``perm`` has to keep.
 
-    A level whose halves agree is never tested, so its read is discarded.
-    The fold is computed in *level* space over the permuted table, the
-    reads run in *stream* order, so the answer is translated back through
-    ``perm``; mixing the frames stores the wrong bits.
+    Analyze the permuted table in O(T), then map essential levels through
+    ``perm`` to their positions in the original input stream.
     """
     n = _validate_truth_table(truth_table)
-    return {perm[k] for k in range(n) if _depends_on(truth_table, 1 << (n - 1 - k))}
+    return {perm[k] for k in essential_inputs(truth_table, n)}
 
 
 def in_input_order(
@@ -469,104 +467,6 @@ def move_text(start: int, target: int, right: str, left: str) -> str:
     """
     delta = target - start
     return right * delta if delta >= 0 else left * -delta
-
-
-def decision_tree_body(
-    truth_table: str,
-    right: str,
-    left: str,
-    perm: tuple[int, ...],
-    start: int,
-    *,
-    binary_leaves: bool = False,
-    result: int | None = None,
-) -> tuple[str, int]:
-    """Return the decision tree alone, and the cell it leaves the pointer on.
-
-    The reads above it and the print below it are the caller's.  Split out
-    for a caller that pays per maximal run rather than per character, and
-    so wants to fold the ASCII offsets the reads and the print would
-    otherwise spend 48 characters on each.
-    ``binary_leaves`` transfers the final bit directly into the answer.
-    """
-    n = _validate_truth_table(truth_table)
-
-    cells: list[str] = []
-    pos = start
-
-    def move(target: int) -> None:
-        nonlocal pos
-        cells.append(move_text(pos, target, right, left))
-        pos = target
-
-    result = 2 * n if result is None else result
-    is_constant = constant_span_test(truth_table)
-    ids = subtree_ids(truth_table)
-
-    def set_result() -> None:
-        """Add one to the answer cell."""
-        move(result)
-        cells.append("+")
-
-    def constant(i: int, combo: int) -> str | None:
-        """Return the shared value of the subtree at ``(i, combo)``, else None."""
-        span = 2 ** (n - i)
-        return truth_table[combo] if is_constant(combo, combo + span) else None
-
-    def branch(i: int, combo: int) -> None:
-        """Emit one side of node ``i``: a leaf when constant, else a subtree."""
-        value = constant(i + 1, combo)
-        if value is None:
-            move(2 * perm[i + 1])
-            node(i + 1, combo)
-        elif value == "1":
-            set_result()
-
-    def node(i: int, combo: int) -> None:
-        """Emit node ``i``: test ``b_i``, run one side, leave both cells zero.
-
-        No later node reads ``b_i``, so an untested one may stay set.
-        """
-        bit = 2 * perm[i]
-        one = combo | (1 << (n - 1 - i))
-        below = ids[i + 1]
-        if below[combo >> (n - 1 - i)] == below[one >> (n - 1 - i)]:
-            branch(i, combo)  # halves agree: b_i cannot matter, so no test
-            return
-        if binary_leaves and i == n - 1:
-            if truth_table[combo] == truth_table[combo + 1]:
-                if truth_table[combo] == "1":
-                    set_result()
-                return
-            move(bit)
-            if truth_table[combo] == "1":
-                set_result()
-                move(bit)
-            cells.append("[-")
-            move(result)
-            cells.append("+" if truth_table[combo + 1] == "1" else "-")
-            move(bit)
-            cells.append("]")
-            return
-        flag = bit + 1
-        move(flag)
-        cells.append("+")  # flag = 1, pending
-        move(bit)
-        cells.append("[-")  # one-side: if b_i, and clear it so this ] exits
-        move(flag)
-        cells.append("-")  # the one-side ran, so the zero-side must not
-        branch(i, one)
-        move(bit)
-        cells.append("]")
-        move(flag)
-        cells.append("[-")  # zero-side: the flag survived, so b_i was 0
-        branch(i, combo)
-        move(flag)
-        cells.append("]")
-
-    move(2 * perm[0])
-    node(0, 0)
-    return "".join(cells), pos
 
 
 def same_up_to_wrapping(template: str, plain: str) -> bool:

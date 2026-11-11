@@ -8,8 +8,8 @@ scratch (bytes consumed whole).  Node ``i`` sets ``flag_i``; ``[+`` on the bit
 clears it and runs the one-side (which clears the flag); ``[+`` on the flag runs
 the zero-side only if the flag survived.  Every flag is 0 again on return.
 An ignored input is read into scratch and the tree and the gates run over
-the essential ones.  Constant subtrees fold to a leaf as in
-``helpers.decision_tree_body``; a ``"1"`` leaf flips R, and one leaf executes,
+the essential ones.  Constant subtrees fold to a leaf; a ``"1"`` leaf
+flips R, and one leaf executes,
 so R flips at most once.  From n=4,
 two-input cofactors normalize to shared AND/XOR gates; input flips and output
 bias distinguish their functions without extra flags.  Affine tables stream

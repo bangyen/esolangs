@@ -28,15 +28,65 @@ from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    decision_tree_body,
     essential_inputs,
     move_text,
+    subtree_ids,
 )
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
 _MAX_SOURCE = 256 * 1024 * 1024
 _LIMITS = TextLimits(32 * 1024 * 1024, _MAX_SOURCE, 256 * 1024)
+
+
+def _decision_body(table: str, n: int) -> tuple[str, int]:
+    """Emit the Unary tape tree, leaving its answer bit in cell 2n."""
+    ids = subtree_ids(table)
+    code: list[str] = []
+    pos = 2 * (n - 1)
+
+    def move(target: int) -> None:
+        nonlocal pos
+        code.append(move_text(pos, target, ">", "<"))
+        pos = target
+
+    def branch(depth: int, block: int) -> None:
+        residual = ids[depth][block]
+        if residual == 1:
+            move(2 * n)
+            code.append("+")
+        elif residual > 1:
+            move(2 * depth)
+            node(depth, block)
+
+    def node(depth: int, block: int) -> None:
+        zero = 2 * block
+        one = zero + 1
+        below = ids[depth + 1]
+        if below[zero] == below[one]:
+            branch(depth + 1, zero)
+            return
+
+        bit = 2 * depth
+        flag = bit + 1
+        move(flag)
+        code.append("+")
+        move(bit)
+        code.append("[-")
+        move(flag)
+        code.append("-")  # The one arm disarms the zero arm.
+        branch(depth + 1, one)
+        move(bit)
+        code.append("]")
+        move(flag)
+        code.append("[-")
+        branch(depth + 1, zero)
+        move(flag)
+        code.append("]")
+
+    move(0)
+    node(0, 0)
+    return "".join(code), pos
 
 
 def _decoded(truth_table: str) -> str:
@@ -58,9 +108,7 @@ def _decoded(truth_table: str) -> str:
         return "," + ">," * (n - 1) + "[<" * (n - 1) + "[]" + "]" * (n - 1)
     # Complemented bytes are bits; reversing the table complements every input.
     reads = ">>".join(",+" for _ in range(n))
-    body, pos = decision_tree_body(
-        truth_table[::-1], ">", "<", tuple(range(n)), 2 * (n - 1)
-    )
+    body, pos = _decision_body(truth_table[::-1], n)
     return reads + body + move_text(pos, 2 * n, ">", "<") + "[]"
 
 

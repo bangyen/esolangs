@@ -25,6 +25,7 @@ def test_dependencies_exhaustive() -> None:
     assert parity_bias("0") == 0
     assert parity_bias("1") == 1
     for n in range(1, 5):
+        perm = tuple(reversed(range(n)))
         forms = {
             "".join(
                 str(
@@ -42,6 +43,7 @@ def test_dependencies_exhaustive() -> None:
         for table in tables:
             dependencies = _oracle(table, n)
             assert helpers.essential_inputs(table, n) == dependencies
+            assert helpers.stored_inputs(table, perm) == {perm[i] for i in dependencies}
             form = forms.get(table)
             assert affine_form(table, n) == form
             assert parity_bias(table) == (
@@ -144,4 +146,7 @@ def test_dependency_scan_has_linear_character_budget() -> None:
     for n in (8, 10, 12):
         table = Metered("01" * (1 << (n - 1)))
         assert helpers.essential_inputs(table, n) == [n - 1]
+        assert table.scanned <= 4 * len(table)
+        table.scanned = 0
+        assert helpers.stored_inputs(table, tuple(reversed(range(n)))) == {0}
         assert table.scanned <= 4 * len(table)

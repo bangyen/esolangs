@@ -15,6 +15,9 @@ class DecisionLayers(NamedTuple):
     children: tuple[Mapping[int, tuple[int, int]], ...]
 
 
+_FOLD_CHUNK = 256
+
+
 def decision_layers(truth_table: str) -> DecisionLayers:
     """Index subtable children in O(T), ordered by leftmost occurrence.
 
@@ -43,22 +46,84 @@ def fold_subtables[V](
     terminals: Mapping[str, V],
     branch: Callable[[V, V], V],
 ) -> V:
-    """Fold distinct subtables once, using emitter-owned terminals and branches."""
+    """Fold in left-first order with linear analysis and emitter-owned branches."""
     _validate_truth_table(truth_table)
     if "0" not in terminals or "1" not in terminals:
         raise ValueError("subtable folding requires both Boolean leaves")
-    return _fold_subtable(truth_table, dict(terminals), branch)
+    text_memo = dict(terminals)
+    if len(truth_table) <= _FOLD_CHUNK or truth_table in text_memo:
+        return _fold_text(truth_table, text_memo, branch)
+    return _fold_indexed(truth_table, text_memo, branch)
 
 
-def _fold_subtable[V](table: str, memo: dict[str, V], branch: Callable[[V, V], V]) -> V:
-    """Resolve one subtable without retaining a recursive closure after the fold."""
+def _fold_text[V](table: str, memo: dict[str, V], branch: Callable[[V, V], V]) -> V:
     if table not in memo:
         half = len(table) // 2
         memo[table] = branch(
-            _fold_subtable(table[:half], memo, branch),
-            _fold_subtable(table[half:], memo, branch),
+            _fold_text(table[:half], memo, branch),
+            _fold_text(table[half:], memo, branch),
         )
     return memo[table]
+
+
+def _fold_indexed[V](
+    table: str, text_memo: dict[str, V], branch: Callable[[V, V], V]
+) -> V:
+    """Intern large spans, leaving bounded-size chunks to the text fold."""
+    span = _FOLD_CHUNK
+    chunks: dict[str, int] = {}
+    level = []
+    for start in range(0, len(table), span):
+        chunk = table[start : start + span]
+        level.append(chunks.setdefault(chunk, len(chunks)))
+    base = tuple(chunks)
+    pairs: dict[tuple[int, int], int] = {}
+    children: list[tuple[int, int]] = []
+    while len(level) > 1:
+        halves = iter(level)
+        level = []
+        for pair in zip(halves, halves, strict=True):
+            node = pairs.get(pair)
+            if node is None:
+                node = pairs[pair] = len(base) + len(children)
+                children.append(pair)
+            level.append(node)
+    memo: dict[int, V] = {}
+    for text, value in text_memo.items():
+        size = len(text)
+        if size <= span or size & (size - 1):
+            continue
+        try:
+            parts = [
+                chunks[text[start : start + span]]
+                for start in range(0, len(text), span)
+            ]
+            while len(parts) > 1:
+                halves = iter(parts)
+                parts = [pairs[pair] for pair in zip(halves, halves, strict=True)]
+        except KeyError:
+            continue
+        memo[parts[0]] = value
+    return _fold_node(level[0], base, children, memo, text_memo, branch)
+
+
+def _fold_node[V](
+    node: int,
+    base: tuple[str, ...],
+    children: list[tuple[int, int]],
+    memo: dict[int, V],
+    text_memo: dict[str, V],
+    branch: Callable[[V, V], V],
+) -> V:
+    if node < len(base):
+        return _fold_text(base[node], text_memo, branch)
+    if node not in memo:
+        zero, one = children[node - len(base)]
+        memo[node] = branch(
+            _fold_node(zero, base, children, memo, text_memo, branch),
+            _fold_node(one, base, children, memo, text_memo, branch),
+        )
+    return memo[node]
 
 
 class DecisionNode(NamedTuple):

@@ -7,7 +7,38 @@ import pytest
 from esolangs.generation.decision import decision_layers, fold_subtables
 
 
+def _check_indexed_fold_keeps_seeded_spans_and_callback_order():
+    first = "0010" * 128
+    second = ("1110" * 64) + ("0111" * 64)
+    table = first + second
+    terminals = {"0": "0", "1": "1", "01": "low", first: "high"}
+
+    def record(calls):
+        def combine(zero, one):
+            calls.append((zero, one))
+            return f"({zero},{one})"
+
+        return combine
+
+    expected = []
+    memo = dict(terminals)
+    combine = record(expected)
+
+    def reference(text):
+        if text not in memo:
+            half = len(text) // 2
+            memo[text] = combine(reference(text[:half]), reference(text[half:]))
+        return memo[text]
+
+    result = reference(table)
+    actual = []
+    assert fold_subtables(table, terminals, record(actual)) == result
+    assert actual == expected
+    assert actual[-1][0] == "high"
+
+
 def test_layers_retain_every_input_and_first_occurrence_order():
+    _check_indexed_fold_keeps_seeded_spans_and_callback_order()
     with pytest.raises(ValueError, match="Boolean leaves"):
         fold_subtables("01", {"0": "0"}, str.__add__)
 
