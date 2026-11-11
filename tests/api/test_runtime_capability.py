@@ -154,6 +154,9 @@ import subprocess
 
 import esolangs
 from esolangs.languages.deadfish.descriptor import LANGUAGE
+from esolangs.raster import Raster
+from esolangs.runtime._isolated import termination_result_isolated
+from esolangs.runtime._termination import _termination_result
 from esolangs.vm import complete_vm
 
 installed = esolangs.Language(LANGUAGE.name)
@@ -178,6 +181,24 @@ for steps in (None, 20):
     scoped = esolangs.Catalog([LANGUAGE]).bind(LANGUAGE.name)
     limits = esolangs.ExecutionLimits(max_steps=steps)
     assert scoped.execute('$io', isolated=True, limits=limits).unwrap().output == '1\n'
+
+piet = esolangs.Language('Piet')
+loop = Raster((((255, 192, 192), (255, 0, 0)),))
+black = Raster((((0, 0, 0), (255, 0, 0)),))
+prepared = piet.prepare(loop)
+limits = esolangs.ExecutionLimits(max_steps=20)
+for isolated in (False, True):
+    assert piet.prepare(black).run(isolated=isolated).output == ''
+    outcome = prepared.execute(isolated=isolated, limits=limits)
+    assert outcome.status == 'limit' and outcome.observation.steps == 20
+
+for name, source, halts in (('Piet', loop, False), (LANGUAGE.name, '$io', True)):
+    local = _termination_result(name, source, '', 5)
+    worker = termination_result_isolated(name, source, '', 5)
+    assert local == worker
+    assert worker.decision.halts is halts and worker.decision.commands > 0
+    if not halts:
+        assert worker.decision.cycle is not None
 
 class BackendTrap:
     @property
