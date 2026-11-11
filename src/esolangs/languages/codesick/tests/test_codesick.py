@@ -68,9 +68,20 @@ def test_quoted_strings_are_not_keywords() -> None:
     assert _run('codesick out "say \\"hi\\"" * *;') == 'say "hi"'
 
 
-def test_every_in_is_the_whole_input() -> None:
+def test_every_in_is_the_whole_input(monkeypatch) -> None:
     assert _run("codesick in in z w;\nw codesick out in * *;", "01") == "01"
     assert _steps("codesick in in z w;", "01", 1)[0].memory["01"] == "0101"
+
+    from esolangs.languages.codesick import interpreter
+    from tests.support.prepared_support import check_image_reuse
+
+    check_image_reuse(
+        "Codesick",
+        "codesick in in z w;\nw codesick out in * *;",
+        interpreter,
+        "_prepare_source",
+        monkeypatch,
+    )
 
 
 def test_a_missing_label_halts_and_empty_programs_halt() -> None:

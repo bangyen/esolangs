@@ -45,7 +45,7 @@ from esolangs.languages.codesick.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -147,6 +147,14 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[tuple[_Parsed, ...], bool, tuple[int, ...], int]
+
+
+def _prepare_source(code: str) -> _Image:
+    parsed, reads = _load(code)
+    return tuple(parsed), reads, tuple(p[0] for p in parsed), len(code)
+
+
 class _Machine:
     """The shell around :func:`_advance`: memory, labels, input and output."""
 
@@ -154,16 +162,16 @@ class _Machine:
     #: string and answers the row it spells.
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
-        parsed, reads = _load(code)
+        parsed, reads, self.offsets, self.end = (
+            _prepare_source(code) if isinstance(code, str) else code
+        )
         given = io.input_all() if reads else ""
         self.program = [_resolve(p, given) for p in parsed]
-        self.offsets = [p[0] for p in parsed]
         self.labels = {
             ins[0]: k for k, ins in enumerate(self.program) if ins[0] is not None
         }
-        self.end = len(code)
         #: Only the strings that no longer map to themselves.
         self.memory: dict[str, str] = {}
         self.pc: int | None = 0 if self.program else None
@@ -204,22 +212,18 @@ class _Machine:
         self.pc = self.labels.get(label)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain parsed instructions and substitute input separately for each run."""
     if not isinstance(source, str):
         raise TypeError("codesick machines require text source")
     if options:
         raise TypeError("codesick machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Codesick program."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
