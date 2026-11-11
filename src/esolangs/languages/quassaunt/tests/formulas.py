@@ -6,13 +6,11 @@ from esolangs.languages.quassaunt.proof_formulas import node_cap
 from tests.proofs._diagram_bounds import capped_level, worst_diagram
 
 
-def _chars(n: int, _: str) -> int:
-    """At most N bodies/keys, fixed helper/startup, and two fillers per input."""
+def scaling_terms(n: int, _: str) -> dict[str, int]:
+    """Price the longest key using the emitter's bijective alphabet."""
     nodes = node_cap(n)
     width = len(short_name(nodes - 1, _ALPHABET))
-    # A triple costs at most 134+4u characters; 170 leaves room for every
-    # node kind. The helper, [] triple, dummy and start cost below 400+u.
-    return nodes * (170 + 4 * width) + 400 + width + 6 * n
+    return {"W": width}
 
 
 def witness(n: int) -> str:

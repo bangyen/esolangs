@@ -79,12 +79,13 @@ version = 2
 construction = "esolangs.languages.intercal.generator:intercal_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.intercal.proof_formulas:execution"
+expression = "S"
+source_terms = { names = ["S"], provider = "esolangs.languages.intercal.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "exact", template = "{claim} {formula}", formula = "S statements per emitted program: straight-line" }
+description = { growth = "linear", claim = "exact", template = "{claim} {formula} {unit}. S counts statements including GIVE UP" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.intercal.proof_formulas:workspace"

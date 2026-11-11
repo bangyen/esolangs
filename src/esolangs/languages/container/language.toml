@@ -82,12 +82,13 @@ version = 2
 construction = "esolangs.languages.container.generator:container_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.container.proof_formulas:execution"
+expression = "2n+2-2C"
+source_terms = { names = ["C"], provider = "esolangs.languages.container.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 7]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, default tree/threshold builds", formula = "2n + 2" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. C marks the threshold route in default layouts" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.container.proof_formulas:workspace"
@@ -98,12 +99,19 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} over containers + 2bl(2n+2) + bl(EXIT): peak ≤ start + (2n+2)Σ⁺deltas", formula = "Σ (8|name| + bl(peak))" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.container.tests.formulas:_threshold"
+# For the alternating threshold witness, 0 0 (1 0)^(T/2-1), each
+# even row index shares its digit width with the following odd index.
+# The threshold adjustment starts at n=2, after the one-input projection.
+# The source envelope prices one-letter variable names through n=25.
+cases = [
+    { through = 1, expression = "75+63n+7T+digits_sum(2n+1)+digits_sum(2n)+digits_sum(2n+2)/2+digits(2n-1)+4digits(2n)+power2_digits_sum(n)+digits_sum(T)" },
+    { expression = "72+59n+13T/2+digits_sum(2n+1)+digits_sum(2n)+digits_sum(2n+2)/2+digits(2n-1)+4digits(2n)+power2_digits_sum(n)+digits_sum(T)" },
+]
 exact = false
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "the threshold build on 0 0 (1 0)^(T/2-1)" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}: threshold build" }
 
 [semantic_evidence]
 version = 1

@@ -1,9 +1,9 @@
 """Executed command and snapshot-bit bounds."""
 
 
-def execution(n: int, program: str) -> int:
-    """Return the default tree/threshold execution bound, excluding balanced blocks."""
-    return 2 * n if program.startswith("T=") else 2 * n + 2
+def execution_terms(_: int, program: str) -> dict[str, int]:
+    """Identify the threshold route among default tree and threshold builds."""
+    return {"C": int(program.startswith("T="))}
 
 
 def workspace(n: int, program: str) -> int:
@@ -18,7 +18,7 @@ def workspace(n: int, program: str) -> int:
         # Fixed port names, six-bit IN/OUT, countdown and two read cursors.
         return 145 + 3 * n.bit_length()
     bl = int.bit_length
-    ticks = execution(n, program)
+    ticks = 2 * n + 2
     peaks: dict[str, int] = {}
     name = ""
     for raw in program.splitlines():

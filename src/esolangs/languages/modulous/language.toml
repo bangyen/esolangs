@@ -8,7 +8,6 @@ admitted = 2021-05-16T15:17:47-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "pair literal for asymmetric inputs; O(n)-source symmetric count reader retained; default exact maxima, split literals pay extra pushes/cursor bits"
-definitions = ["S = 6T+28n+21 at n=2..4; 3T+28n+144 at n=5; otherwise T/2+48n+157+sum(digits(2^k),k=0..n-2)", "E = T+3n+2 at n=2..4; T/2+3n+6 at n=5; otherwise 5T/2+5n-31", "P = T+3n+2 at n=2..4; T/2+3n+14 at n=5; otherwise 6n+17 default commands", "W = 6T+2+bl(P)+bl(2n-1)+bl(n) at n=2..4; otherwise 3T+(2 if n<=5 else n+1)+bl(P)+bl(2n-1)+bl(n)", "H = number of table-literal pushes"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 12, "1" = 13, "2" = 13, "3" = 14, "4" = 13, "5" = 14, "6" = 14, "7" = 15 }, source_units = 129 }
@@ -83,28 +82,36 @@ version = 2
 construction = "esolangs.languages.modulous.generator:modulous_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.modulous.proof_formulas:execution"
+expression = "4D+7J+P*(2n+3)+(1-D-J-P)*(T+3n+2+min(1,max(0,n-4))*(4-T/2)+min(1,max(0,n-5))*(2T+2n-37)+min(1,n-1)*max(0,S-1))"
+source_terms = { names = ["D", "J", "P", "S"], provider = "esolangs.languages.modulous.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst7 at n=1; split literal adds H-1", formula = "E" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. D, J and P mark the direct, branch and discard readers. S counts literal pushes" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.modulous.proof_formulas:workspace"
+expression = "A*(9+bl(M))+P*(7+bl(2n+3)+bl(2n-1)+bl(n))+(1-A-P)*(13max(0,2-n)+min(1,n-1)*(6T+2-3T*min(1,max(0,n-4))+(n-1)*min(1,max(0,n-5))+bl(max(M,T+3n+2+min(1,max(0,n-4))*(12-T/2)+min(1,max(0,n-5))*(3n+3-T/2)))+bl(2n-1)+bl(n)))"
+source_terms = { names = ["A", "P", "M"], provider = "esolangs.languages.modulous.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst13 at n=1; split literal uses max(P,actual) command cursor", formula = "W" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. A selects the one-input integer reader, P the discard reader and M counts tokens" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.modulous.tests.formulas:_chars"
+# The full-essential pair reader writes powers of two in decimal.
+cases = [
+    { through = 1, expression = "68" },
+    { through = 4, expression = "6T+28n+21" },
+    { through = 5, expression = "3T+28n+144" },
+    { expression = "T/2+48n+157+power2_digits_sum(n-1)" },
+]
 exact = true
 arities = [1, 2, 3, 4, 5, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n=1; worst68 at n=1", formula = "S" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1

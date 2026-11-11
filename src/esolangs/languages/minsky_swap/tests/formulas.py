@@ -18,20 +18,6 @@ def _full_chars(n: int, _: str) -> int:
     )
 
 
-def _chars(n: int, _: str) -> int:
-    """Exact through five inputs; a global ceiling beyond the two-digit era."""
-    # For n<=5 every variable target has two digits. With m essential bits,
-    # q trailing ignored bits, K=2**(m-1), delta non-10 pairs, exact length is
-    # 34+10n+2m+5K+30q-delta. q<=n-m and delta>=1 for m>=2 make
-    # m=1,q=n-1,delta=0 maximal. The symmetric reader is <=17+16n.
-    if n <= 5:
-        return 40 * n + 11
-    from esolangs.languages.minsky_swap.proof_formulas import commands
-
-    bound = commands(n)
-    return bound + (8 * n - 1) * (len(str(bound + 1)) + 1) + 7 + 3 * (1 << n) // 2
-
-
 def witness(n: int) -> str:
     """The first-input projection attains the ignored-tail execution endpoint."""
     return "0" * (1 << (n - 1)) + "1" * (1 << (n - 1))

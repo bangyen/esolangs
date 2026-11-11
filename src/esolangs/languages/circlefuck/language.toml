@@ -105,12 +105,14 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} to n=7, with U the reader tally" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.circlefuck.proof_formulas:workspace"
+# On bit inputs each writable bank loses five bits before the index can grow.
+expression = "B+bl(R-1)+bl(A)+bl(n)+1"
+source_terms = { names = ["B", "R", "A"], provider = "esolangs.languages.circlefuck.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: tape and cursors", formula = "B + bl(L-1) + bl(h) + bl(n) + 1" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. B is initial tape bits, R its extent and A the data origin" }
 
 [resource_evidence.scaling]
 # Each index cell after the first adds a deleter. The batch uses ceil(n/7) cells.

@@ -91,12 +91,13 @@ version = 2
 construction = "esolangs.languages.addsubjump.generator:addsubjump_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.addsubjump.proof_formulas:execution"
+expression = "C*(n+1)+(1-C)*((11n+4)floor(T/n)+11T+10n-15+min(1,max(0,n-9)))"
+source_terms = { names = ["C"], provider = "esolangs.languages.addsubjump.proof_formulas:execution_terms" }
 exact = true
 arities = [6]
 first = 6
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula}", formula = "(11n+4)⌊T/n⌋ + 11T + 10n - 15 past n = 5, one more from n = 10" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. C marks direct constants" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.addsubjump.proof_formulas:workspace"

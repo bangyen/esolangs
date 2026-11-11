@@ -50,15 +50,8 @@ def _packed_steps(n: int, cells: list[int]) -> int | None:
     return 2 * n + 9 * m + 13 + worst
 
 
-def execution(n: int, program: str) -> int:
-    """The stated execution bound, evaluated for n and the program.
-
-    A tree uses one entry jump, n reads, at most n tests and n-1 relays,
-    then print and halt: at most 3n+2; a constant takes n+1. A packed program
-    is counted exactly from its chunks, so a row must meet its own worst row; over all
-    tables the packed worst is 8T + (7n + 5)(floor(T/n) - 1) + 26n - 8, reached
-    when the last full chunk is all ones.
-    """
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Identify the packed route and count its worst row."""
     cells = [int(word) for word in program.split()]
     packed = _packed_steps(n, cells)
-    return packed if packed is not None else 3 * n + 2
+    return {"K": int(packed is not None), "E": packed if packed is not None else 0}

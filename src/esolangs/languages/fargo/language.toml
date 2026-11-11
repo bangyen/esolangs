@@ -6,7 +6,6 @@ backlinks = 3
 admitted = 2026-08-30T07:59:49-04:00
 
 [proof_status]
-definitions = ["F = 7 + M_(n-1), M_1 = 23, M_t = 2M_(t-1) + 8 + bl(t): inline expression bound"]
 labels = ["tree"]
 qualification = "finite folded layout"
 
@@ -110,12 +109,17 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: D marks the false literal" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.fargo.tests.formulas:_chars"
+# Each additional input doubles the prior expression and adds
+# 8+bl(t) characters at input t. Sum the doubling recurrence.
+cases = [
+    { through = 1, expression = "14" },
+    { expression = "15T/2-1+weighted_bit_sum(n-1)" },
+]
 exact = false
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: inline Davio form", formula = "F" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}: inline Davio form" }
 
 [semantic_evidence]
 version = 1

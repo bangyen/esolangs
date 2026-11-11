@@ -106,12 +106,15 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}", formula = "n·bl(L) + bl(2n-1) + 3G + 2n + 2K(N) + 6bl(N-1) + 9 + Σ_{i≤N}(K(i)+3)" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.three_x.tests.formulas:_chars"
+# A split costs more than a leaf under the fixed assignment. The
+# rank-r key uses 1+3bl(r) characters, and each input read/scaler adds
+# 23 more. Summing over the tree weights each key by its level width.
+expression = "13T+24n+3((n+1)bl(n)-2^bl(n)+1)+3weighted_bit_sum(n)+2"
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree under fixed keys", formula = "K" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree under fixed keys" }
 
 [semantic_evidence]
 version = 1

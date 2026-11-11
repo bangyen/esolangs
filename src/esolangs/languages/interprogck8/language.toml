@@ -108,12 +108,14 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n = 3..12; at most F to n = 34: max of generic and parity walks", formula = "F" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.interprogck8.proof_formulas:workspace"
+# The slot and caller frame each hold up to 33 characters, plus a four-bit index.
+expression = "7+bl(R)+bl(2n)+532(1-C)"
+source_terms = { names = ["R", "C"], provider = "esolangs.languages.interprogck8.proof_formulas:workspace_terms" }
 exact = true
 arities = [3, 4, 5, 6]
 first = 3
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: accumulator, line cursor, input cursor, slot and frame bodies", formula = "bl(R) + bl(2n) + 543" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. R counts lines and C marks direct constants" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.interprogck8.tests.formulas:_chars"

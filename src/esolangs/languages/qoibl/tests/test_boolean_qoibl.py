@@ -27,7 +27,11 @@ class TestQoibl:
     @pytest.mark.parametrize("width", [1, 3, 80])
     def test_narrow_horner_literals_execute_small_tables(self, width: int) -> None:
         from esolangs.languages.qoibl.interpreter import _Machine
-        from esolangs.languages.qoibl.proof_formulas import execution, workspace
+        from scripts.docs.resource_evidence import resource_bounds
+
+        bounds = resource_bounds("Qoibl")
+        execution = bounds["execution"].formula
+        workspace = bounds["workspace"].formula
 
         for n in (1, 2, 3):
             for table in witnesses(n):
@@ -218,7 +222,11 @@ def test_constant_audit_three_input_corpus_size() -> None:
 def _check_compact_input_tokens() -> None:
     """Compaction preserves statements, all ordered reads and their answers."""
     from esolangs.languages.qoibl.interpreter import _Machine, tokenize
-    from esolangs.languages.qoibl.proof_formulas import execution, workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bounds = resource_bounds("Qoibl")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     cases = [(3, f"{value:08b}", None) for value in range(256)]
     parity = "".join(str(row.bit_count() & 1) for row in range(1 << 10))

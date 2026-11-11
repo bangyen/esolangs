@@ -8,7 +8,6 @@ admitted = 2026-10-20T08:59:29-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "shared-node functions match their input; short nullary reads validate both Boolean bytes before returning; constants use a flat read/print block"
-definitions = ["H = 128n+1+Σ_{0<a<2n} bl(a)", "w = max(ceil((n+1)/5),1+digits10(n-1))", "C = max(128,8w+16,8w+bl(2n)+1)", "K = max(105,8w+17,8w+2bl(2n)+1)"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 48, "1" = 49, "2" = 49, "3" = 50, "4" = 51, "5" = 52, "6" = 54, "7" = 56 }, source_units = 170 }
@@ -87,12 +86,13 @@ unit = "steps"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: C marks statement reads" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.bleh.proof_formulas:workspace"
+# Node IDs fit n+1 bits. The heap covers two byte thunks per matched read.
+expression = "128n+1+bit_sum(2n)+max(128,8max(floor((n+5)/5),1+digits(n-1))+max(16,bl(2n)+1))+max(105,8max(floor((n+5)/5),1+digits(n-1))+max(17,2bl(2n)+1))+bl(2n)+bl(n)"
 exact = [1, 2, 3, 4, 5, 6, 7]
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} through n=7; at most beyond", formula = "H+C(w)+K(w)+bl(2n)+bl(n)" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: heap, control, continuation and cursors" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.bleh.tests.formulas:_chars"

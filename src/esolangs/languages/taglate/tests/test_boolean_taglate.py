@@ -211,11 +211,12 @@ def _check_constants() -> None:
 
 def _check_packed_leaves() -> None:
     from esolangs.languages.taglate.interpreter import _Machine, run
-    from esolangs.languages.taglate.proof_formulas import workspace
     from esolangs.languages.taglate.tests.ablations import ablate
     from scripts.docs.resource_evidence import resource_bounds
 
-    execution = resource_bounds("Taglate")["execution"].formula
+    bounds = resource_bounds("Taglate")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     totals = [0, 0]
     for value in range(256):
@@ -252,11 +253,12 @@ def _check_packed_leaves() -> None:
 
 def _check_resource_layouts() -> None:
     from esolangs.languages.taglate.interpreter import _Machine
-    from esolangs.languages.taglate.proof_formulas import workspace
     from esolangs.languages.taglate.tests.formulas import resource_witness
     from scripts.docs.resource_evidence import resource_bounds
 
-    execution = resource_bounds("Taglate")["execution"].formula
+    bounds = resource_bounds("Taglate")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     for n in (1, 2, 3, 4, 5):
         table = resource_witness(n)

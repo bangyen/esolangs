@@ -46,7 +46,10 @@ class TestParameterizedBack:
     @pytest.mark.medium
     def test_constant_embedding_keeps_its_resource_bounds(self) -> None:
         from esolangs import generate, instantiate, read_answer
-        from esolangs.languages.back.proof_formulas import execution, workspace
+        from esolangs.languages.back.proof_formulas import execution
+        from scripts.docs.resource_evidence import resource_bounds
+
+        workspace = resource_bounds("Back")["workspace"].formula
 
         for n in (1, 2, 3, 6, 9, 12):
             for bit in "01":
@@ -550,14 +553,16 @@ def _check_held_input_and_dump() -> None:
 
 def _check_exact_preload_bounds() -> None:
     from esolangs.generation.helpers import grid_area
-    from esolangs.languages.back.proof_formulas import execution, workspace
+    from esolangs.languages.back.proof_formulas import execution
     from esolangs.languages.back.tests.formulas import (
         execution_witness,
         witness,
     )
     from scripts.docs.resource_evidence import resource_bounds
 
-    scaling = resource_bounds("Back")["scaling"].formula
+    bounds = resource_bounds("Back")
+    workspace = bounds["workspace"].formula
+    scaling = bounds["scaling"].formula
     for n in (1, 2, 3, 4, 5, 6, 7, 8, 9):
         area_table = witness(n)
         template = esolangs.generate("Back", area_table)

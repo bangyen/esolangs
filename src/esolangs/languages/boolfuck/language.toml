@@ -110,12 +110,13 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: the all-ones row of a symmetric count table" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.boolfuck.proof_formulas:workspace"
+expression = "bl(L-1)+bl(n)+(1-C)*bit_sum(n)+S*(12+bl(n))+13C+(1-S-C)*(max(12,bl(2n-3)+11)+n+bl(2n))"
+source_terms = { names = ["C", "S"], provider = "esolangs.languages.boolfuck.proof_formulas:workspace_terms" }
 exact = false
 arities = [2, 3, 4, 6, 7, 8]
 first = 2
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}", formula = "bl(L-1) + max(12, bl(2n-3)+11) + n + Σ_{i<n} bl(i) + bl(2n) + bl(n)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: C drains, S counts symmetrically" }
 
 [resource_evidence.scaling]
 # The finite three-input maximum, then the inherited upper envelopes.

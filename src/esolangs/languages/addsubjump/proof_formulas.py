@@ -8,12 +8,9 @@ def _native(n: int, p: str) -> list[int]:
     return cells if len(cells) == 4 * (n + 1) + 2 and cells[0] == 4 * (n + 1) else []
 
 
-def execution(n: int, p: str) -> int:
-    """The stated execution bound, evaluated for n and the program."""
-    if _native(n, p):
-        return n + 1
-    # One entry jump and 2n+1 raw-reader commands replace the old 5n reads.
-    return (11 * n + 4) * ((1 << n) // n) + 11 * (1 << n) + 10 * n - 15 + (n >= 10)
+def execution_terms(n: int, program: str) -> dict[str, int]:
+    """Identify the native constant memory layout."""
+    return {"C": int(bool(_native(n, program)))}
 
 
 def _add_sub_jump(n: int, _: str) -> int:

@@ -69,7 +69,9 @@ def test_every_formula_cell_is_checked() -> None:
     _check_arity_cases(data)
     _check_rational_arithmetic()
     _check_decimal_digits()
+    _check_weighted_widths()
     _check_residual_counts()
+    _check_bit_width_sums()
     _check_source_term_schema()
 
 
@@ -83,6 +85,16 @@ def _check_source_term_schema() -> None:
         formula = expression_formula("2S", (terms, lambda _n, _p, value=value: value))
         with pytest.raises(ValueError, match="invalid source terms"):
             formula(1, "")
+
+
+def _check_bit_width_sums() -> None:
+    formula = expression_formula("bit_sum(n)")
+    for count in range(513):
+        assert formula(count, "") == sum(k.bit_length() for k in range(count))
+    assert formula(1 << 1024, "") == 1023 * (1 << 1024) + 1
+    for expression in ("bit_sum(-1)", "bit_sum(1/2)"):
+        with pytest.raises(ValueError, match="non-negative integer"):
+            expression_formula(expression)(1, "")
 
 
 def _check_arity_cases(data: dict) -> None:
@@ -178,5 +190,18 @@ def _check_residual_counts() -> None:
         == 18
     )
     for expression in ("residuals(-1)", "residuals_without_constants(1/2)"):
+        with pytest.raises(ValueError, match="non-negative integer"):
+            expression_formula(expression)(1, "")
+
+
+def _check_weighted_widths() -> None:
+    power_digits = expression_formula("power2_digits_sum(n)")
+    weighted_bits = expression_formula("weighted_bit_sum(n)")
+    for n in range(65):
+        assert power_digits(n, "") == sum(len(str(1 << k)) for k in range(n))
+        assert weighted_bits(n, "") == sum(
+            k.bit_length() << (n - k) for k in range(1, n + 1)
+        )
+    for expression in ("power2_digits_sum(-1)", "weighted_bit_sum(1/2)"):
         with pytest.raises(ValueError, match="non-negative integer"):
             expression_formula(expression)(1, "")

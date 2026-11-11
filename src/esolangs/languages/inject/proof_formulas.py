@@ -53,3 +53,8 @@ def _constant(program: str) -> bool:
 def execution_terms(_: int, program: str) -> dict[str, int]:
     """Mark the literal-tail construction."""
     return {"C": int(_constant(program))}
+
+
+def scaling_terms(n: int, _: str) -> dict[str, int]:
+    """Expose the same halving widths used by the workspace proof."""
+    return {"R": _regex_chars(n)}

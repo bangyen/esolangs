@@ -8,7 +8,6 @@ admitted = 2020-07-25T21:13:52-04:00
 [proof_status]
 labels = ["parameterized lookup"]
 qualification = "uniform ++/** runs; weighted stages index higher essential inputs while the last essential input stays in scratch through bounded ignored-tail macros, and a cascade routes row pairs to four fixed leaves; symmetric tables count set inputs"
-definitions = ["N = 40n+11 through n=5; global ceiling beyond"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 13, "1" = 18, "2" = 18, "3" = 23, "4" = 18, "5" = 23, "6" = 23, "7" = 30 }, source_units = 65 }
@@ -121,12 +120,17 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula}; equality at n=1,2,3,6: registers, pointer, cursor and dump latch" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.minsky_swap.tests.formulas:_chars"
+# The ignored-tail reader attains the ceiling through n=5. From n=6 the
+# command ceiling is T+6n+12, and each jump target uses its digit width.
+cases = [
+    { through = 5, expression = "40n+11" },
+    { expression = "5T/2+6n+19+(8n-1)(digits(T+6n+13)+1)" },
+]
 exact = [1, 2, 3, 4, 5]
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} through n=5; at most beyond", formula = "N" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}; attained through n=5" }
 
 [semantic_evidence]
 version = 1

@@ -82,12 +82,14 @@ unit = "rewrites"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: one frame an input" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.stisp.proof_formulas:workspace"
+# Frames and head each fit in 16n bits, plus the rendered flag. All atoms are ASCII.
+expression = "32n+1-C*(24n-8)"
+source_terms = { names = ["C"], provider = "esolangs.languages.stisp.proof_formulas:workspace_terms" }
 exact = [1, 2, 3, 4, 5, 6, 7]
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} through n=7, at most beyond: frames/head 16n each plus rendered flag", formula = "32n+1" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. C marks direct constants. Exact through n=7" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.stisp.tests.formulas:_hybrid_chars"

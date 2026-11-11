@@ -5,9 +5,9 @@ import pytest
 import esolangs
 from esolangs import run
 from esolangs.languages.stisp.interpreter import _Machine
-from esolangs.languages.stisp.proof_formulas import workspace
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.resource_evidence import resource_bounds
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import constant_artifacts, three_input_corpus_size
 
@@ -21,6 +21,7 @@ def test_every_row_results_in_its_answer(table: str) -> None:
         _check_constants()
     n = len(table).bit_length() - 1
     template = esolangs.generate("Stisp", table)
+    workspace = resource_bounds("Stisp")["workspace"].formula
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         program = esolangs.instantiate("Stisp", template, bits)

@@ -106,12 +106,15 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 5..16: program after n reads", formula = "8T + 512n + 184 + 16R + A" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.inject.tests.formulas:_chars"
+# R counts the halving regex widths. Label names gain letters after
+# 49 one-letter names, then after 52² two-letter and 52³ three-letter names.
+expression = "T+71n+29+2R+3(max(0,n-49)+max(0,n-2753)+max(0,n-143361))+2(max(0,3n-49)+max(0,3n-2753)+max(0,3n-143361))"
+source_terms = { names = ["R"], provider = "esolangs.languages.inject.proof_formulas:scaling_terms" }
 exact = true
 arities = [5, 6, 17]
 first = 5
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: every n", formula = "C" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}" }
 
 [semantic_evidence]
 version = 1

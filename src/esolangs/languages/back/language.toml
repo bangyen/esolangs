@@ -90,12 +90,13 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n = 1..9, then at most 2A+3n+6", formula = "E" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.back.proof_formulas:workspace"
+expression = "n+bl(n)+C*(3+bl(3n+B))+(1-C)*(7+max(bl(6n-2),n)+bl(3n+4))"
+source_terms = { names = ["C", "B"], provider = "esolangs.languages.back.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}; equality at n = 1,2,3,6", formula = "n+7+bl(max(6n-2,T-1))+bl(3n+4)+bl(n)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: C marks the constant B" }
 
 [resource_evidence.scaling]
 # The pair fold starts at width 20 and height 32 for n=6. Each two

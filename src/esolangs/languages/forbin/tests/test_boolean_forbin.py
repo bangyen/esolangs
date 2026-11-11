@@ -266,7 +266,9 @@ def test_balanced_spaces_only_separate_word_tokens(n: int, side: int) -> None:
 @pytest.mark.medium
 def test_constants_read_whole_bytes_then_print_inline() -> None:
     from esolangs.languages.forbin.interpreter import _Machine
-    from esolangs.languages.forbin.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("Forbin")["workspace"].formula
 
     for n, bit, options, program in constant_programs("Forbin", range(1, 13)):
         if not options:

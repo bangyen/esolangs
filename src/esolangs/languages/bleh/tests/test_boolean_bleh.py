@@ -26,7 +26,9 @@ def test_every_row_prints_its_answer() -> None:
 @pytest.mark.medium
 def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
     from esolangs.languages.bleh.interpreter import _Machine
-    from esolangs.languages.bleh.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("Bleh")["workspace"].formula
 
     for n in (*range(1, 13), 19, 20, 21):
         for bit in "01":

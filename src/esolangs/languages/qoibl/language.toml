@@ -81,20 +81,22 @@ version = 2
 construction = "esolangs.languages.qoibl.generator:qoibl_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.qoibl.proof_formulas:execution"
+expression = "floor(W/3)+1"
+source_terms = { names = ["W"], provider = "esolangs.languages.qoibl.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 6, 10]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} in default layout, one statement per input", formula = "n + 6" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. W counts assignment markers" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.qoibl.proof_formulas:workspace"
+expression = "C*(15-8A)+(1-C)*(17+max(T+1,2T-2)+F*(2+max(T-1,6)))+bl(floor(W/3)+1)+bl(n)"
+source_terms = { names = ["C", "A", "F", "W"], provider = "esolangs.languages.qoibl.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 6, 10]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} in default layout: row/half, digit cells and cursors", formula = "max(T+18,2T+15) + bl(n+6) + bl(n)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. W assignment markers, C unary, A short unary, F expanded lookup" }
 
 [resource_evidence.scaling]
 expression = "T+35n+94"

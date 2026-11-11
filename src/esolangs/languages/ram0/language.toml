@@ -83,12 +83,13 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, one root-to-leaf path" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.ram0.proof_formulas:workspace"
+expression = "bl(R)+2+(1-C)*(n+2max(1,bl(n-1))+bit_sum(n))"
+source_terms = { names = ["C", "R"], provider = "esolangs.languages.ram0.proof_formulas:workspace_terms" }
 exact = true
 arities = [3, 6]
 first = 3
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}, S the token count", formula = "1 + n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a))" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: R tokens, C marks constants" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.ram0.tests.formulas:_chars"

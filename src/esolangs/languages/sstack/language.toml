@@ -91,12 +91,13 @@ unit = "commands"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, six a tree node plus guarded dispatch" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.sstack.proof_formulas:workspace"
+expression = "6n+12+bl(K)+bl(n)"
+source_terms = { names = ["K"], provider = "esolangs.languages.sstack.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, K commands: n stacked input bytes", formula = "6n + 12 + bl(K) + bl(n)" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: K parsed commands" }
 
 [resource_evidence.scaling]
 expression = "24T-9"

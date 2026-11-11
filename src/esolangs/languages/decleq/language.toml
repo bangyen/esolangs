@@ -8,7 +8,6 @@ admitted = 2026-08-14T08:52:07-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "zero edges enter fixed print gadgets directly; admitted symmetric thresholds use fall-through chains"
-definitions = ["M = bits of the program's cells", "C = cell count"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 241, "1" = 241, "2" = 241, "3" = 241, "4" = 242, "5" = 242, "6" = 243, "7" = 244 }, source_units = 149 }
@@ -76,12 +75,14 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: 47 passes, n - 2 copy jumps" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.decleq.proof_formulas:workspace"
+# Native constants add five scratch bits and one sign bit. Other tables peak on pass 16.
+expression = "B+bl(R)+bl(n)+5n+5-C*(5n-1)"
+source_terms = { names = ["B", "R", "C"], provider = "esolangs.languages.decleq.proof_formulas:workspace_terms" }
 exact = true
 arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: memory, pointer and input cursor", formula = "M + 5n + bl(C) + bl(n) + 5" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. B is program bits, R is memory extent and C marks direct constants" }
 
 [resource_evidence.scaling]
 # The code header rounds up to a multiple of three. The cells

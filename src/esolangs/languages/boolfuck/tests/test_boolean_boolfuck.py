@@ -32,7 +32,9 @@ def test_program_stays_within_the_command_bound(table) -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.boolfuck.interpreter import _Machine
-    from esolangs.languages.boolfuck.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("Boolfuck")["workspace"].formula
 
     for n, bit, _options, program in constant_programs("Boolfuck", range(1, 13)):
         commands = (14 * n + 11 if n >= 3 else 8 * n + 10) + 2 * int(bit)
@@ -57,7 +59,9 @@ def _check_constants() -> None:
 def _check_zero_guard() -> None:
     from esolangs.languages.boolfuck.generator import _boolfuck_tree, _command_bound
     from esolangs.languages.boolfuck.interpreter import _Machine
-    from esolangs.languages.boolfuck.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("Boolfuck")["workspace"].formula
 
     fixtures = (
         "00000001",

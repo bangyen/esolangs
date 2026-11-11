@@ -86,7 +86,10 @@ def test_an_ignored_input_is_one_pad() -> None:
 
 
 def _check_terminal_leaves() -> None:
-    from esolangs.languages.smu.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bounds = resource_bounds("Smu")
+    workspace = bounds["workspace"].formula
 
     tables = [
         "".join(str((row.bit_count() % 2) ^ inverted) for row in range(1 << n))
@@ -132,7 +135,10 @@ def _check_terminal_leaves() -> None:
 
 def _check_constants() -> None:
     assert_analysis_complement("Smu", "decision_layers")
-    from esolangs.languages.smu.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    bounds = resource_bounds("Smu")
+    workspace = bounds["workspace"].formula
 
     for n, bit, _options, program in constant_programs("Smu", range(1, 13)):
         for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

@@ -169,9 +169,11 @@ def _check_compacted_trees() -> None:
 
 
 def test_packed_execution_bound_recognizes_the_emitted_cells() -> None:
-    for n in (5, 6, 10):
-        from esolangs.languages.s_bleq.proof_formulas import _packed_steps, execution
+    from esolangs.languages.s_bleq.proof_formulas import _packed_steps
+    from scripts.docs.resource_evidence import resource_bounds
 
+    execution = resource_bounds("S*bleq")["execution"].formula
+    for n in (5, 6, 10):
         table = format(random.Random(1847).getrandbits(1 << n), f"0{1 << n}b")
         program = packed_decoder(table)
         bound = _packed_steps(n, list(map(int, program.split())))

@@ -13,12 +13,3 @@ def _constant(n: int, program: str) -> bool:
 def execution_terms(n: int, program: str) -> dict[str, int]:
     """Identify the direct constant program."""
     return {"C": int(_constant(n, program))}
-
-
-def workspace(n: int, program: str) -> int:
-    """Three accumulator copies or two selected arms fit the queue envelope."""
-    if _constant(n, program):
-        return (
-            max(3 * n, 9) + (len(program) - 1).bit_length() + 1 + (2 * n).bit_length()
-        )
-    return 3 * (1 << n) + 4 * n + len(program).bit_length() + 24

@@ -2,8 +2,6 @@
 
 from fractions import Fraction
 
-from esolangs.languages.three_x.generator import _SCALE
-
 bl = int.bit_length
 
 
@@ -41,31 +39,3 @@ def _three_x(n: int, p: str) -> int:
         + 9
         + sum(_key(i) + 3 for i in range(1, names + 1))
     )
-
-
-def _width(rank: int) -> int:
-    """Characters of the rank-th cheapest key: ``3``, then 4 + 3 (bl(k) - 1)."""
-    return 1 if rank == 0 else 4 + 3 * (bl(rank) - 1)
-
-
-def _chars(n: int, _: str) -> int:
-    """The plain tree over n essential inputs; fewer essential inputs only shrink it.
-
-    The shipped keys are the cheapest assignment for the real uses, so pricing
-    the tree under any one fixed assignment bounds it: the result variable
-    takes rank 0, then each level's bit, deepest first.  A node
-    at depth e is a leaf (a write of at most 5, or a copy of a bit
-    of a level >= e: 2 and its key) or a split (the
-    bit's key, ``^(`` and a close of at most 4) over two nodes at e + 1
-    (constant writes below the last level).  The worst node recurses on e;
-    the head reads and scales every bit, the tail prints the result.
-    """
-    bit = {n - 1 - i: _width(1 + i) for i in range(n)}
-    result = _width(0)
-    worst = 0
-    for e in range(n - 1, -1, -1):
-        leaf = result + max(5, 2 + max(bit[v] for v in range(e, n)))
-        child = result + 5 if e == n - 1 else worst
-        worst = max(leaf, bit[e] + 6 + 2 * child)
-    head = sum(3 + len(_SCALE) + bit[v] for v in range(n))
-    return head + worst + 8 + result

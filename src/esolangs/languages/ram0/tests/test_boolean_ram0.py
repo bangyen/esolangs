@@ -116,7 +116,9 @@ def test_constants_execute_every_fixed_width_setter() -> None:
     import esolangs
     from esolangs.languages.ram0.generator import PAIR
     from esolangs.languages.ram0.interpreter import _Machine
-    from esolangs.languages.ram0.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("RAM0")["workspace"].formula
 
     for n in range(1, 13):
         for bit in "01":

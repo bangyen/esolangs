@@ -8,7 +8,7 @@ admitted = 2026-10-07T12:46:28-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros and up to three delimiter macros carry the repeated text, and a subtree two parents reach is one more when that is shorter"
-definitions = ["C = historical finite price; its 44-name derivation at n=12..16 remains open. Raw-tree bound 6T+86 is independent of name prices", "E = 93T - 80, the macro-expanded program with no constant subtree"]
+definitions = ["C = historical finite price; its 44-name derivation at n=12..16 remains open. Raw-tree bound 6T+86 is independent of name prices"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 119 }
@@ -93,12 +93,14 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, one tree path of eight runs a level" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.smu.proof_formulas:workspace"
+# The terminal empty-name store exceeds the root variable peak at n=1 for constants.
+expression = "C*(2688n-1158+8max(0,2-n)+bl(84n+13))+(1-C)*(24(93T-80)-1214+bl(93T-80))+bl(n)"
+source_terms = { names = ["C"], provider = "esolangs.languages.smu.proof_formulas:workspace_terms" }
 exact = true
 arities = [2, 4]
 first = 2
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} for n ≥ 2: code, stack, variables", formula = "24E - 1214 + bl(E) + bl(n)" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. C marks direct constants" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.smu.tests.formulas:_chars"

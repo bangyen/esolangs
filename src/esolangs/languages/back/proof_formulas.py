@@ -29,19 +29,6 @@ def execution(n: int, program: str) -> int:
     return max(3 * (1 << n) // 4 + 1, 6 * n - 1) + 3 * (1 << n) // 4 + 1 + 3 * n + 6
 
 
-def workspace(n: int, program: str) -> int:
-    """Global bit envelope including halt/dump flags, attained at n=3/6.
-
-    Default area is below 16T from n=6, so beam-counter bit widths sum to at most
-    n+5, within the old envelope. Small loaders cross no old bit threshold.
-    """
-    if _constant(n, program):
-        bit = program.endswith("-*")
-        return n + 3 + (3 * n + bit).bit_length() + n.bit_length()
-    return (
-        n
-        + 7
-        + max(6 * n - 2, (1 << n) - 1).bit_length()
-        + (3 * n + 4).bit_length()
-        + n.bit_length()
-    )
+def workspace_terms(n: int, program: str) -> dict[str, int]:
+    """Identify the compact constant and its value."""
+    return {"C": int(_constant(n, program)), "B": int(program.endswith("-*"))}

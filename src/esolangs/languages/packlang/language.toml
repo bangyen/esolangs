@@ -98,20 +98,29 @@ unit = "steps"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, with C set for a direct constant" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.packlang.proof_formulas:workspace"
+# The constant package frame holds the names, character and its cursor.
+expression = "C*(159+bl(n+1))+(1-C)*(min(T,128)+2n+min(n,7)+192+16min(1,max(0,n-7))+bl(L))+2bl(n)"
+source_terms = { names = ["C"], provider = "esolangs.languages.packlang.proof_formulas:execution_terms" }
 exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: one frame, array", formula = "min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}. C marks the direct constant" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.packlang.tests.formulas:_chars"
+# Each block races singles against fill with punches. The longest
+# addresses give each option its largest write cost. For 128 rows, the
+# singles cost 743, a fill costs 742, and each block adds a 14-character
+# frame before its index digits. Folded lines reserve another 16 per block.
+cases = [
+    { through = 7, expression = "97+digits(T)+67n+(digits_sum(T)+max(9(T/2+1)-digits_sum(T/2-1),29+digits(T)+9max(0,T/2-2)-digits_sum(min(T,T/2+2))))+3ceil((37+(digits_sum(T)+max(9(T/2+1)-digits_sum(T/2-1),29+digits(T)+9max(0,T/2-2)-digits_sum(min(T,T/2+2)))))/56)" },
+    { expression = "109+2digits(2^(n-7)-1)+67n+757·2^(n-7)+digits_sum(2^(n-7))+3ceil((21+773·2^(n-7)+digits_sum(2^(n-7)))/56)" },
+]
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one write per differing row", formula = "N" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}: one write per differing row" }
 
 [semantic_evidence]
 version = 1

@@ -32,12 +32,12 @@ def _bl_sum(m: int) -> int:
     return (b - 2) * (1 << (b - 1)) + 1 + b * (m - (1 << (b - 1)) + 1)
 
 
-def execution(_n: int, program: str) -> int:
+def execution_terms(_: int, program: str) -> dict[str, int]:
     """Count straight-line statements, including GIVE UP, in any wrapping."""
-    return len(_STATEMENT.findall(program))
+    return {"S": len(_STATEMENT.findall(program))}
 
 
-def workspace(n: int, program: str) -> int:
+def workspace(_: int, program: str) -> int:
     """Price the final write set; all-one inputs attain every mask's two bits.
 
     Inputs, negations, shared nodes and result are Boolean. A named selector
@@ -47,7 +47,8 @@ def workspace(n: int, program: str) -> int:
     """
     scalars: dict[tuple[str, int], int] = {}
     arrays: dict[int, tuple[int, set[int]]] = {}
-    for statement in _STATEMENT.split(program)[1:]:
+    statements = _STATEMENT.split(program)[1:]
+    for statement in statements:
         matched = _ASSIGNMENT.match(statement)
         if matched is None:
             continue
@@ -68,7 +69,7 @@ def workspace(n: int, program: str) -> int:
         + sum((index.bit_length() or 1) + 1 for index in written)
         for key, (width, written) in arrays.items()
     )
-    return bits + execution(n, program).bit_length()
+    return bits + len(statements).bit_length()
 
 
 def global_execution(n: int) -> int:

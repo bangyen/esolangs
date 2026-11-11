@@ -144,10 +144,11 @@ def _check_reader() -> None:
     assert total == 34090
 
     from esolangs.languages.circlefuck.interpreter import _Machine
-    from esolangs.languages.circlefuck.proof_formulas import workspace
     from scripts.docs.resource_evidence import resource_bounds
 
-    execution = resource_bounds("Circlefuck")["execution"].formula
+    bounds = resource_bounds("Circlefuck")
+    execution = bounds["execution"].formula
+    workspace = bounds["workspace"].formula
 
     table = "00110110"
     for options in ({}, {"width": 1}, {"balance": True}):

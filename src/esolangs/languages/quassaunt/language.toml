@@ -8,7 +8,7 @@ admitted = 2026-10-15T12:24:04-04:00
 [proof_status]
 labels = ["tree"]
 qualification = "shared residuals read every input depth; a fixed helper stores all code before the root runs"
-definitions = ["F = N(170+4u)+400+u+6n, u is the length of the base-89 name for node N-1", "N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "G = 96n+161+bl(n+1)+bl(n) for constants; otherwise 8(R+26+2B+3A+2H+K)+10+bl(P-1)+bl(n). R/P=word characters/count; A/B=payload name/body lengths; H=helper body length; K=longest key; payload excludes helper/dummy."]
+definitions = ["N = Σ_h min(2^(n-h), 2^2^h), the most distinct subtables", "G = 96n+161+bl(n+1)+bl(n) for constants; otherwise 8(R+26+2B+3A+2H+K)+10+bl(P-1)+bl(n). R/P=word characters/count; A/B=payload name/body lengths; H=helper body length; K=longest key; payload excludes helper/dummy."]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 279, "1" = 279, "2" = 279, "3" = 279, "4" = 286, "5" = 286, "6" = 293, "7" = 293 }, source_units = 970 }
@@ -91,12 +91,15 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: frames, stack, globals, locals and input", formula = "G" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.quassaunt.tests.formulas:_chars"
+# The internal residual cap plus both constant leaves bounds stored
+# triples. W is the longest bijective name over the generator's alphabet.
+expression = "(residuals(n)+2)(170+4W)+400+W+6n"
+source_terms = { names = ["W"], provider = "esolangs.languages.quassaunt.tests.formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: bounded names and nodes", formula = "F" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: bounded names and nodes" }
 
 [semantic_evidence]
 version = 1

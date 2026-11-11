@@ -121,7 +121,9 @@ def test_multiline_source_is_untouched() -> None:
 
 @pytest.mark.medium
 def test_constants_reuse_scratch_and_print_after_every_read() -> None:
-    from esolangs.languages.decleq.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("Decleq")["workspace"].formula
 
     assert_oisc_constants("Decleq", workspace, decrement=True)
     assert sum(len(boolean.decleq(format(v, "08b"))) for v in range(256)) == 42228
@@ -129,7 +131,9 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
 
 def _check_gadgets_and_owner_families() -> None:
     from esolangs.languages.decleq.interpreter import _Machine
-    from esolangs.languages.decleq.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("Decleq")["workspace"].formula
 
     table = "".join(str(int(row.bit_count() >= 4)) for row in range(128))
     original = boolean.decleq(table)

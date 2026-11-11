@@ -90,12 +90,15 @@ version = 2
 construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.s_bleq.proof_formulas:execution"
+# Tree: an entry jump, n reads and at most n tests and n-1 relays, then print and halt.
+# Packed global envelope: 8T+(7n+5)(⌊T/n⌋-1)+26n-8, attained with the last full chunk all ones.
+expression = "E+(1-K)*(3n+2)"
+source_terms = { names = ["K", "E"], provider = "esolangs.languages.s_bleq.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "instructions"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} through n=9, at most beyond, the tree route; packed, worst 8T+(7n+5)(⌊T/n⌋-1)+26n-8 steps", formula = "3n + 2" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} through n=9, at most beyond. Packed route K costs E" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.s_bleq.tests.formulas:_workspace"

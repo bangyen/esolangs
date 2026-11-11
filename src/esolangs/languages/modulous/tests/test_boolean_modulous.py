@@ -97,7 +97,9 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 @pytest.mark.medium
 def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
     from esolangs.languages.modulous.interpreter import _Machine
-    from esolangs.languages.modulous.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("Modulous")["workspace"].formula
 
     for n in range(1, 13):
         if n == 1:
@@ -143,7 +145,12 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
 
 def _check_pair_resources() -> None:
     from esolangs.languages.modulous.interpreter import _Machine
-    from esolangs.languages.modulous.proof_formulas import execution, workspace
+    from scripts.docs.resource_evidence import resource_bounds
+
+    workspace = resource_bounds("Modulous")["workspace"].formula
+
+    bounds = resource_bounds("Modulous")
+    execution = bounds["execution"].formula
     from esolangs.languages.modulous.tests.formulas import resource_witness
 
     for n in range(2, 9):

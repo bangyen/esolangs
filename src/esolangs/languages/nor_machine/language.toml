@@ -78,12 +78,14 @@ unit = "commands"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, with C set for a direct constant" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.nor_machine.proof_formulas:workspace"
+# A constant peaks at three accumulator copies. A lookup keeps two selected arms.
+expression = "C*(max(3n,9)+bl(L-1)+1+bl(2n))+(1-C)*(3T+4n+bl(L)+24)"
+source_terms = { names = ["C"], provider = "esolangs.languages.nor_machine.proof_formulas:execution_terms" }
 exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: three accumulator copies or two selected arms", formula = "3T + 4n + bl(L) + 24" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}. C marks the direct constant" }
 
 [resource_evidence.scaling]
 qualitative = { growth = "linear", text = "6T + 8r + O(n^2) characters for r runs of 1s" }

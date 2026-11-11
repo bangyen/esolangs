@@ -17,12 +17,15 @@ TermProvider = Callable[[int, str], Mapping[str, int | Fraction]]
 type ArityCases = tuple[tuple[int | None, str], ...]
 _FUNCTIONS = {
     "bl",
+    "bit_sum",
     "digits",
     "digits_sum",
     "max",
     "min",
     "ceil",
     "floor",
+    "power2_digits_sum",
+    "weighted_bit_sum",
     "residuals",
     "residuals_without_constants",
 }
@@ -32,6 +35,18 @@ _NAMES = {"n", "T", "L"} | _FUNCTIONS
 def bl(value: Fraction | int) -> int:
     """Bit length of a non-negative integer, as the ledger uses it."""
     return int(value).bit_length()
+
+
+def _bit_sum(value: int | Fraction) -> int:
+    """Sum the bit lengths of the non-negative integers below value."""
+    count = int(value)
+    if count < 0 or count != value:
+        raise ValueError("resource bit sum requires a non-negative integer")
+    if count == 0:
+        return 0
+    # Each power of two below count contributes one bit to the rest of the range.
+    width = (count - 1).bit_length()
+    return count * width - (1 << width) + 1
 
 
 def _digits(value: int | Fraction) -> int:
@@ -52,6 +67,33 @@ def _digits_sum(value: int | Fraction) -> int:
     # Start with the widest term's width, then subtract each shorter band.
     width = _digits(count - 1)
     return count * width - (int(10**width) - 10) // 9
+
+
+def _power2_digits_sum(value: int | Fraction) -> int:
+    """Count decimal digits of 2^k for k from zero to count minus one."""
+    count = int(value)
+    if count < 0 or count != value:
+        raise ValueError("resource power-of-two digit sum needs a non-negative integer")
+    if not count:
+        return 0
+    # 10^d is never a power of two. Its bit length is the first k
+    # for which 2^k has more than d digits.
+    width = _digits(1 << (count - 1))
+    total, threshold = count, 10
+    for _ in range(1, width):
+        total += count - threshold.bit_length()
+        threshold *= 10
+    return total
+
+
+def _weighted_bit_sum(value: int | Fraction) -> int:
+    """Sum bl(k) for k=1..n, with weight 2^(n-k) for k."""
+    count = int(value)
+    if count < 0 or count != value:
+        raise ValueError("resource weighted bit sum needs a non-negative integer")
+    # Each bit threshold 2^d contributes one across the rest of the
+    # interval. Its weight sum is geometric.
+    return sum((1 << (count - (1 << d) + 1)) - 1 for d in range(count.bit_length()))
 
 
 def _residuals(value: int | Fraction, *, include_constants: bool = True) -> int:
@@ -158,8 +200,11 @@ def expression_formula(
             "T": 2**n if reads_table_size else None,
             "L": len(program) if reads_length else None,
             "bl": bl,
+            "bit_sum": _bit_sum,
             "digits": _digits,
             "digits_sum": _digits_sum,
+            "power2_digits_sum": _power2_digits_sum,
+            "weighted_bit_sum": _weighted_bit_sum,
             "residuals": _residuals,
             "residuals_without_constants": partial(_residuals, include_constants=False),
             "max": max,

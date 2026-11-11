@@ -10,7 +10,6 @@ backlinks = 90
 [proof_status]
 labels = ["tree"]
 qualification = "shared trees/formulas or a conditional packet tree; signed 32-bit multiplication extracts the answer"
-definitions = ["W = bl(n)+6n+2b+1 constant, bl(n)+5n+6+2b(S+2n+2) expression, bl(n)+34n+67+2b(n+2) lookup, bl(n)+n+1+2b(S+n+2) diagram"]
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 26, "5" = 26, "6" = 26, "7" = 26 }, source_units = 26 }
@@ -86,12 +85,14 @@ unit = "commands"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: formula budget or diagram path" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.false.tests.formulas:workspace"
+# A cached expression call can nest inside its parent's frame. Allow two frames per input.
+expression = "A*(34n+67+2bl(L)*(n+2))+B*(5n+6+2bl(L)*(S+2n+2))+C*(n+1+2bl(L)*(S+n+2))+(1-A-B-C)*(6n+1+2bl(L))+bl(n)"
+source_terms = { names = ["A", "B", "C", "S"], provider = "esolangs.languages.false.tests.formulas:workspace_terms" }
 exact = false
 arities = [3, 4, 5, 6, 8, 9]
 first = 3
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}, b = bl(L), S stores: the build's stack, variables, frames", formula = "W" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}. A/B lookup routes, C cached lambda, S non-input stores" }
 
 [resource_evidence.scaling]
 expression = "9T/2+5n-7"

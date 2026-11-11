@@ -228,11 +228,13 @@ def _check_emitted_resource_routes() -> None:
     """Check high-arity write-set syntax without building exponential tables."""
     from esolangs.languages.intercal.generator import _VARIABLE_MAX
     from esolangs.languages.intercal.proof_formulas import (
-        execution,
         global_execution,
         global_workspace,
         workspace,
     )
+    from scripts.docs.resource_evidence import resource_bounds
+
+    execution = resource_bounds("INTERCAL")["execution"].formula
 
     for n in (13, 16, 20, 21, 22, 25, 26, 27):
         selector = _Expr("input", n - 1)
