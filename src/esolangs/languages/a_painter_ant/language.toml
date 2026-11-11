@@ -80,12 +80,13 @@ version = 2
 construction = "esolangs.languages.a_painter_ant.generator:a_painter_ant_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.a_painter_ant.proof_formulas:execution"
+expression = "2S"
+source_terms = { names = ["S"], provider = "esolangs.languages.a_painter_ant.proof_formulas:source_terms" }
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one pass to the fixed point, one proving the repeat", formula = "2L" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: two passes over the S non-whitespace characters" }
 
 [resource_evidence.workspace]
 # Each visited coordinate lies within the at-most-2L-command walk.

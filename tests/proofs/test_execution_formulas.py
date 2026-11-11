@@ -68,6 +68,20 @@ def test_every_formula_cell_is_checked() -> None:
         assert commands <= bound.formula(2, program.source), "mutated execution bound"
     _check_arity_cases(data)
     _check_rational_arithmetic()
+    _check_decimal_digits()
+    _check_source_term_schema()
+
+
+def _check_source_term_schema() -> None:
+    terms = frozenset({"S"})
+    for expression in ("2X", "2", "S(n)"):
+        with pytest.raises(ValueError, match="resource expression"):
+            expression_formula(expression, (terms, lambda _n, _p: {"S": 3}))
+
+    for value in ({"R": 1}, {"S": 0.5}, {"S": True}):
+        formula = expression_formula("2S", (terms, lambda _n, _p, value=value: value))
+        with pytest.raises(ValueError, match="invalid source terms"):
+            formula(1, "")
 
 
 def _check_arity_cases(data: dict) -> None:
@@ -118,3 +132,27 @@ def _check_rational_arithmetic() -> None:
         assert expression_formula(expression)(55, "") == expected
     with pytest.raises(ValueError, match="exponent must be an integer"):
         expression_formula("2^(1/2)")(1, "")
+
+
+def _check_decimal_digits() -> None:
+    for expression, expected in (
+        ("digits(0)", 1),
+        ("digits(10^3-1)", 3),
+        ("digits(10^3)", 4),
+        ("digits(10^5000-1)", 5000),
+        ("digits(10^5000)", 5001),
+        ("digits(20/2)", 2),
+        ("digits_sum(0)", 0),
+        ("digits_sum(10)", 10),
+        ("digits_sum(11)", 12),
+        ("digits_sum(101)", 193),
+    ):
+        assert expression_formula(expression)(1, "") == expected
+    for expression in (
+        "digits(-1)",
+        "digits(1/2)",
+        "digits_sum(-1)",
+        "digits_sum(1/2)",
+    ):
+        with pytest.raises(ValueError, match="non-negative integer"):
+            expression_formula(expression)(1, "")

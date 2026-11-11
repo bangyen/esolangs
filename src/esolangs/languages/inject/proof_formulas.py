@@ -2,13 +2,17 @@
 
 
 def _regex_chars(n: int) -> int:
-    """Sum the n counted-or-literal regex widths, one per halving."""
-    total = 0
-    chunk = 1 << 31
-    for i in range(n):
-        full, tail = divmod(1 << i, chunk)
-        total += full * (3 + len(str(chunk))) + min(tail, 3 + len(str(tail)))
-    return total
+    """Sum the counted-or-literal regex widths across the halving levels."""
+    if n <= 3:
+        return (1 << n) - 1
+    # For exponents 3..30, floor(i log10(2)) = floor(3i/10).
+    # The quotient's full decades contribute 15q(q-1)+9q; the last
+    # decade adds 3q per term and crosses the local widths at i=4 and 7.
+    compact = min(n, 31)
+    q, r = divmod(compact, 10)
+    digits = 15 * q * (q - 1) + 9 * q + 3 * q * r + max(0, r - 4) + max(0, r - 7)
+    # Above exponent 30 each term uses only full 2^31 chunks of width 13.
+    return 4 * compact - 5 + digits + 13 * ((1 << max(0, n - 31)) - 1)
 
 
 def _inject(n: int, _: str) -> int:

@@ -77,12 +77,14 @@ version = 2
 construction = "esolangs.languages.grapheme.generator:grapheme_request"
 
 [resource_evidence.execution]
-provider = "esolangs.languages.grapheme.proof_formulas:execution"
+# The largest lift needs at most one more digit than 2^T. A modulus
+# residue of 10^(d-1)-1 needs all of them when d is the width of 2^T.
+expression = "17n+15+digits(2^T)"
 exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2, d the digits of 2^T: one per program character", formula = "17n + 15 + d" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2: one per program character" }
 
 [resource_evidence.workspace]
 provider = "esolangs.languages.grapheme.proof_formulas:workspace"
@@ -93,12 +95,12 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2", formula = "16d + 136n + 155 + bl(17n+d) + max(T+14, 2bl(λ)+2) + bl(2n) + bl(n)" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.grapheme.tests.formulas:_chars"
+expression = "17n+15+digits(2^T)"
 exact = true
 arities = [2, 3, 5]
 first = 2
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2", formula = "17n + 15 + digits(2^T)" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} from n=2" }
 
 [semantic_evidence]
 version = 1

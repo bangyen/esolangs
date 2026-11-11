@@ -8,7 +8,7 @@ admitted = 2026-09-13T09:46:59-04:00
 [proof_status]
 labels = ["finite lookup"]
 qualification = "a boustrophedon table has three rows per block; binary weights walk horizontally or down whole blocks; symmetric tables retain the count reader"
-definitions = ["F = 3T+25n+digits(T)+8 through n=3; 2T+c+5r+25n+digits(c)+digits(3r)+1 beyond; c = 2^min(n,floor((n+3)/2)), r = T/c", "E = 3T+85n+5 through n=3; 2T+c+5r+85n-1 beyond, with c,r as in F", "W = 3T+2n+10+bl(L-d-3)+bl(L-d-9)+2bl(n) through n=3, d = digits(T); wh+7+2b(w-1)+2b(h-1)+2b(B)+2b(n) beyond; w,h declared dimensions, B body length, b(x) = max(1,bl(x))"]
+definitions = ["E = 3T+85n+5 through n=3; 2T+c+5r+85n-1 beyond; c = 2^min(n,floor((n+3)/2)), r = T/c", "W = 3T+2n+10+bl(L-d-3)+bl(L-d-9)+2bl(n) through n=3, d = digits(T); wh+7+2b(w-1)+2b(h-1)+2b(B)+2b(n) beyond; w,h declared dimensions, B body length, b(x) = max(1,bl(x))"]
 
 
 [generator_sizes]
@@ -106,12 +106,17 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: grid, one counter frame and cursors", formula = "W" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.egl.tests.formulas:_chars"
+# Every input matters in the off-diagonal zero witness. Ignored reads
+# reduce the grid and replace a weighted guard by x.
+cases = [
+    { through = 3, expression = "3T+25n+digits(T)+8" },
+    { expression = "2T+2^⌊(n+3)/2⌋+5·2^(n-⌊(n+3)/2⌋)+25n+digits(2^⌊(n+3)/2⌋)+digits(3·2^(n-⌊(n+3)/2⌋))+1" },
+]
 exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: full binary layout with T-1 painted ones", formula = "F" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: T-1 painted ones" }
 
 [semantic_evidence]
 version = 1

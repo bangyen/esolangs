@@ -183,6 +183,12 @@ def test_counted_halving_keeps_the_exact_offset() -> None:
 
 
 def test_counted_halving_splits_unrepresentable_repeat_counts() -> None:
+    from esolangs.languages.inject.proof_formulas import _regex_chars
+
+    width = 0
+    for exponent in range(41):
+        assert _regex_chars(exponent) == width
+        width += len(_half_pattern(1 << exponent))
     for half in (1, 2, 4, 8, 16):
         pattern = _half_pattern(half)
         assert re.fullmatch(pattern, "x" * half)

@@ -86,20 +86,23 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n Horner reads and one `at`" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.alight.proof_formulas:workspace"
+# Each input number and its one-letter name take 15 bits. The column
+# reaches L-4, and both input cursors reach n. After 25 inputs, a0, a1,
+# ... add their decimal digits to the names; each extra byte costs 8 bits.
+expression = "15n+19+bl(L-4)+2bl(n)+8digits_sum(max(0,n-25))"
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n in 1..25", formula = "15n + 19 + bl(L-4) + 2bl(n)" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
-provider = "esolangs.languages.alight.tests.formulas:_chars"
+expression = "T+16n+38+digits(48(T-1))"
 exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one literal", formula = "T/2 + 16n + 61 + digits(48(T/2-1))" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: one literal" }
 
 [semantic_evidence]
 version = 1

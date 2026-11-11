@@ -5,12 +5,15 @@ from __future__ import annotations
 import ast
 import math
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from decimal import Decimal
 from fractions import Fraction
 
 Formula = Callable[[int, str], int | Fraction]
+TermProvider = Callable[[int, str], Mapping[str, int | Fraction]]
 type ArityCases = tuple[tuple[int | None, str], ...]
-_NAMES = {"n", "T", "L", "bl", "max", "min", "ceil", "floor"}
+_FUNCTIONS = {"bl", "digits", "digits_sum", "max", "min", "ceil", "floor"}
+_NAMES = {"n", "T", "L"} | _FUNCTIONS
 
 
 def bl(value: Fraction | int) -> int:
@@ -18,7 +21,29 @@ def bl(value: Fraction | int) -> int:
     return int(value).bit_length()
 
 
-def _parse_expression(expression: str) -> ast.Expression | None:
+def _digits(value: int | Fraction) -> int:
+    """Count decimal digits without consulting the process's int/str cap."""
+    integer = int(value)
+    if integer < 0 or integer != value:
+        raise ValueError("resource digit count requires a non-negative integer")
+    return Decimal(integer).adjusted() + 1
+
+
+def _digits_sum(value: int | Fraction) -> int:
+    """Count the decimal digits of all non-negative integers below value."""
+    count = int(value)
+    if count < 0 or count != value:
+        raise ValueError("resource digit sum requires a non-negative integer")
+    if count == 0:
+        return 0
+    # Start with the widest term's width, then subtract each shorter band.
+    width = _digits(count - 1)
+    return count * width - (int(10**width) - 10) // 9
+
+
+def _parse_expression(
+    expression: str, source_names: frozenset[str] = frozenset()
+) -> ast.Expression | None:
     """Parse and validate the arithmetic notation as a Python expression."""
     text = expression.replace("·", "*").replace("²", "^2").replace("^", "**")
     text = re.sub(r"⌈([^⌈⌉]*)⌉", r"ceil(\1)", text)
@@ -45,14 +70,14 @@ def _parse_expression(expression: str) -> ast.Expression | None:
         ast.Pow,
         ast.USub,
     )
+    names = _NAMES | source_names
     for node in ast.walk(tree):
         if not isinstance(node, allowed):
             return None
-        if isinstance(node, ast.Name) and node.id not in _NAMES:
+        if isinstance(node, ast.Name) and node.id not in names:
             return None
         if isinstance(node, ast.Call) and (
-            not isinstance(node.func, ast.Name)
-            or node.func.id not in {"bl", "max", "min", "ceil", "floor"}
+            not isinstance(node.func, ast.Name) or node.func.id not in _FUNCTIONS
         ):
             return None
         if isinstance(node, ast.Constant) and type(node.value) is not int:
@@ -89,9 +114,12 @@ class _ExactArithmetic(ast.NodeTransformer):
         )
 
 
-def expression_formula(expression: str) -> Formula:
+def expression_formula(
+    expression: str, source_terms: tuple[frozenset[str], TermProvider] | None = None
+) -> Formula:
     """Return the checked arithmetic formula, rejecting unknown syntax."""
-    tree = _parse_expression(expression)
+    source_names = source_terms[0] if source_terms is not None else frozenset()
+    tree = _parse_expression(expression, source_names)
     if tree is None:
         raise ValueError(f"invalid resource expression: {expression}")
     code = compile(
@@ -100,6 +128,8 @@ def expression_formula(expression: str) -> Formula:
     # A raster program has no length; only a bound that reads L asks.
     reads_length = "L" in code.co_names
     reads_table_size = "T" in code.co_names
+    if source_names - set(code.co_names):
+        raise ValueError("resource expression has unused source terms")
 
     def formula(n: int, program: str) -> int | Fraction:
         names = {
@@ -107,6 +137,8 @@ def expression_formula(expression: str) -> Formula:
             "T": 2**n if reads_table_size else None,
             "L": len(program) if reads_length else None,
             "bl": bl,
+            "digits": _digits,
+            "digits_sum": _digits_sum,
             "max": max,
             "min": min,
             "ceil": math.ceil,
@@ -114,10 +146,37 @@ def expression_formula(expression: str) -> Formula:
             "_divide": Fraction,
             "_power": _power,
         }
+        if source_terms is not None:
+            terms = source_terms[1](n, program)
+            if (
+                not isinstance(terms, Mapping)
+                or terms.keys() != source_names
+                or any(
+                    type(value) is not int and not isinstance(value, Fraction)
+                    for value in terms.values()
+                )
+            ):
+                raise ValueError("resource provider returned invalid source terms")
+            names.update(terms)
         value = Fraction(eval(code, {"__builtins__": {}}, names))
         return value.numerator if value.denominator == 1 else value
 
     return formula
+
+
+def source_term_names(value: object) -> frozenset[str]:
+    """Validate symbolic names independently of their language provider."""
+    if not isinstance(value, list) or not value:
+        raise ValueError("resource source terms require names")
+    if any(
+        not isinstance(name, str)
+        or not name.isidentifier()
+        or not name.isupper()
+        or name in _NAMES
+        for name in value
+    ) or len(set(value)) != len(value):
+        raise ValueError("invalid resource source term name")
+    return frozenset(value)
 
 
 def arity_cases(value: object) -> ArityCases:

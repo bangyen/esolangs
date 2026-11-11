@@ -1,6 +1,6 @@
 """Executed command bounds."""
 
 
-def execution(_: int, p: str) -> int:
-    """Two passes of the whitespace-free program, the second proving the repeat."""
-    return 2 * len("".join(p.split()))
+def source_terms(_: int, program: str) -> dict[str, int]:
+    """Count significant source characters."""
+    return {"S": len("".join(program.split()))}

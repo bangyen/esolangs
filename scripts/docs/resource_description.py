@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from string import Formatter
 from typing import Any, NamedTuple
 
-from .resource_formula import arity_cases, describe_cases
+from .resource_formula import arity_cases, describe_cases, source_term_names
 
 COLUMNS = frozenset({"scaling", "execution", "workspace"})
 SCALING_CLASSES = frozenset(
@@ -57,6 +57,17 @@ def _growth(column: str, value: object) -> str:
     return value
 
 
+def source_terms(value: object) -> tuple[frozenset[str], str]:
+    """Read source term declarations without importing their provider."""
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"names", "provider"}
+        or not isinstance(value["provider"], str)
+    ):
+        raise ValueError("invalid resource source term declaration")
+    return source_term_names(value["names"]), value["provider"]
+
+
 def _description(column: str, row: dict[str, Any]) -> ResourceDescription:
     """Validate and render one quantitative or qualitative resource claim."""
     if "qualitative" in row:
@@ -82,6 +93,10 @@ def _description(column: str, row: dict[str, Any]) -> ResourceDescription:
         or set(raw) != (fields | {"formula"} if "provider" in kinds else fields)
     ):
         raise ValueError("invalid resource description fields")
+    if "source_terms" in row:
+        if "expression" not in kinds:
+            raise ValueError("resource source terms require an expression")
+        source_terms(row["source_terms"])
     if not isinstance(raw["claim"], str) or raw["claim"] not in {
         "worst",
         "at most",

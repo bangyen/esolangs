@@ -17,6 +17,22 @@ from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import parity as _parity
 
 
+def _check_bound_uses_significant_characters() -> None:
+    import tomllib
+
+    from scripts.docs.resource_description import parse_descriptions
+    from scripts.docs.resource_evidence import PACKAGES, parse_bounds
+
+    path = PACKAGES / "a_painter_ant" / "language.toml"
+    evidence = tomllib.loads(path.read_text())["resource_evidence"]
+    name, source = "A Painter Ant", "a\t b\r\nc"
+    assert parse_bounds(name, evidence)["execution"].formula(2, source) == 6
+    assert "2S" in parse_descriptions(evidence).execution.clause
+    evidence["execution"]["expression"] = "3S"
+    assert parse_bounds(name, evidence)["execution"].formula(2, source) == 9
+    assert "3S" in parse_descriptions(evidence).execution.clause
+
+
 def _instantiate_apa(template: str, bits: list[int]) -> str:
     """Bind native source with explicitly declared setters."""
     bindings = esolangs.TemplateBindings(setters=(PAIR,) * len(bits))
@@ -58,6 +74,7 @@ class TestAPainterAnt:
     def test_tables_are_exact(self) -> None:
         """Every table at arity 1-3, and wide tables at 4-6, are exact."""
         _check_near_unanimity()
+        _check_bound_uses_significant_characters()
         for n in (1, 2):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")

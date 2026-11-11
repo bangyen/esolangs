@@ -9,15 +9,6 @@ def _digits(n: int) -> int:
         return len(str(1 << (1 << n)))
 
 
-def execution(n: int, _: str) -> int:
-    """One command a character: 17 an input, a 14-letter frame, ``F…F``.
-
-    The minimal lift has at most ``d + 1`` digits, ``d`` those of 2^T; the
-    value 10^(d-1) - 1 needs all of them.
-    """
-    return 17 * n + 15 + _digits(n)
-
-
 def _lift_bits(n: int) -> int:
     """Bit length of the largest lift with d + 1 digits, d those of 2^T.
 

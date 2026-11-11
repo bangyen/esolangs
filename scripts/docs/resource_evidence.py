@@ -13,8 +13,13 @@ from typing import Any, cast
 
 from esolangs.registry import LANGUAGES
 
-from .resource_description import parse_descriptions
-from .resource_formula import arity_cases, case_formula, expression_formula
+from .resource_description import parse_descriptions, source_terms
+from .resource_formula import (
+    TermProvider,
+    arity_cases,
+    case_formula,
+    expression_formula,
+)
 
 PACKAGES = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
 COLUMNS = frozenset({"execution", "workspace", "scaling"})
@@ -60,7 +65,7 @@ def _arities(value: object) -> tuple[int, ...]:
     return tuple(value)
 
 
-def _provider(language: str, reference: object) -> Formula:
+def _provider(language: str, reference: object) -> Callable[..., object]:
     """Resolve only an owned, explicitly named formula provider."""
     if not isinstance(reference, str):
         raise ValueError("resource provider must be a module:function reference")
@@ -75,7 +80,7 @@ def _provider(language: str, reference: object) -> Formula:
         or provider.__name__ != function
     ):
         raise ValueError("resource provider is not an owned function")
-    return cast(Formula, provider)
+    return provider
 
 
 def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound]:
@@ -102,6 +107,7 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
         }
         if not isinstance(row, dict) or set(row) not in (
             required | {"expression"},
+            required | {"expression", "source_terms"},
             required | {"provider"},
             required | {"cases"},
         ):
@@ -139,11 +145,15 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
         if "expression" in row:
             if not isinstance(row["expression"], str):
                 raise ValueError("resource expression must be text")
-            formula = expression_formula(row["expression"])
+            terms = None
+            if "source_terms" in row:
+                names, reference = source_terms(row["source_terms"])
+                terms = names, cast(TermProvider, _provider(language, reference))
+            formula = expression_formula(row["expression"], terms)
         elif "cases" in row:
             formula = case_formula(arity_cases(row["cases"]))
         else:
-            formula = _provider(language, row["provider"])
+            formula = cast(Formula, _provider(language, row["provider"]))
         found[column] = ResourceBound(
             formula,
             exact,

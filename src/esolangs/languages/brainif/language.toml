@@ -102,12 +102,13 @@ unit = "commands"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, one DAG path and a tail" }
 
 [resource_evidence.workspace]
-provider = "esolangs.languages.brainif.proof_formulas:workspace"
+expression = "C + bl(R) + bl(n)"
+source_terms = { names = ["C", "R"], provider = "esolangs.languages.brainif.proof_formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: two cells, a line cursor", formula = "13 + bl(lines) + bl(n)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: cell storage C and R lines" }
 
 [resource_evidence.scaling]
 provider = "esolangs.languages.brainif.tests.formulas:_chars"

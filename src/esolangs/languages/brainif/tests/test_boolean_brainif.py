@@ -301,8 +301,9 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
 def _check_or_zero_entries() -> None:
     from esolangs.languages.brainif.interpreter import _Machine
-    from esolangs.languages.brainif.proof_formulas import workspace
+    from scripts.docs.resource_evidence import resource_bounds
 
+    workspace = resource_bounds("BrainIf")["workspace"].formula
     for n, mask in ((1, 1), (3, 4), (6, 33), (8, 255), (8, 192)):
         table = "".join(str(int(bool(row & mask))) for row in range(1 << n))
         program = boolean.brainif(table)
