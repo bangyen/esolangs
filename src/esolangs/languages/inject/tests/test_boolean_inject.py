@@ -4,6 +4,7 @@ import random
 import re
 from collections import Counter
 from itertools import pairwise
+from unittest.mock import patch
 
 import pytest
 
@@ -12,12 +13,14 @@ from esolangs.generation.helpers import read_at
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.inject import generator as boolean
 from esolangs.languages.inject.generator import _half_pattern, _Names, _tree
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_parity_at_most_doubles,
+    assert_saved_rows,
     constant_programs,
     evaluate_generated,
     measure_run,
@@ -74,6 +77,19 @@ class TestInject:
 
     def test_halving_lookup_executes_wide_rows(self) -> None:
         """Regex halves return sampled six-input rows."""
+        language = esolangs.Language("Inject")
+        witnesses = construction_boundaries(language.name)[
+            "tree_to_halving_lookup_cutoff"
+        ]
+        for witness in witnesses:
+            n, table = witness.arity, witness.table()
+            with patch.object(
+                boolean, "_inject_halving", wraps=boolean._inject_halving
+            ) as halving:
+                artifact = language.generate(table)
+            assert halving.call_count == int(n == 5)
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
         assert_analysis_complement("Inject", "input_weights", "0011" * 8)
         n = 6
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))

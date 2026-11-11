@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+width_one_bare_axis_cutoff = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_dimensional.py::test_bare_axis_leaves_execute_all_small_tables" }
 painted_to_packed_lookup = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false, test = "test_boolean_dimensional.py::TestDimensional::test_a_pair_of_entries_shares_a_cell_from_n7" }
 
 [deep_arities]

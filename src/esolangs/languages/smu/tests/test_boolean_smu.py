@@ -9,10 +9,11 @@ from esolangs.languages.smu import generator as tools
 from esolangs.languages.smu.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.sample_tables import five_input_sample
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import constant_programs
+from tests.support.generator_support import assert_saved_rows, constant_programs
 
 
 def execute(program: str, row: int, n: int) -> tuple[str, int]:
@@ -139,6 +140,16 @@ def _check_constants() -> None:
 
     bounds = resource_bounds("Smu")
     workspace = bounds["workspace"].formula
+
+    language = esolangs.Language("Smu")
+    witnesses = construction_boundaries(language.name)[
+        "constant_delimiter_macro_cutoff"
+    ]
+    for witness in witnesses:
+        n, table = witness.arity, witness.table()
+        artifact = language.generate(table)
+        assert ("W)mW" in artifact.source) == (n == 5)
+        assert_saved_rows(language, artifact, table, range(len(table)))
 
     for n, bit, _options, program in constant_programs("Smu", range(1, 13)):
         for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

@@ -1,6 +1,7 @@
 """Generator round-trip checks for the development suite."""
 
 import random
+from collections.abc import Iterable
 from itertools import pairwise
 from math import isqrt
 
@@ -49,6 +50,45 @@ def assert_every_row(
         stdin = esolangs.encode_inputs(language, bits)
         got = esolangs.run(language, program, stdin=stdin, timeout=5).output
         assert esolangs.read_answer(language, got) == table[row], (table, row)
+
+
+def assert_saved_rows(
+    language: esolangs.Language,
+    program: esolangs.Artifact,
+    table: str,
+    rows: Iterable[int],
+) -> None:
+    """Check selected answers and input consumption after portable restoration."""
+    document = language.dump_program(program)
+    restored = language.load_program(document)
+    assert language.dump_program(restored) == document
+    template = isinstance(restored, esolangs.TemplateArtifact)
+    prepared = None if template else language.prepare(restored)
+    termination = language.describe()["answer_mode"] == "termination"
+    limits = esolangs.ExecutionLimits(max_steps=200_000) if termination else None
+    n = len(table).bit_length() - 1
+    for row in rows:
+        bits = row_bits(row, n)
+        result = (
+            language.evaluate(restored, bits, limits=limits)
+            if prepared is None
+            else prepared.evaluate(bits, limits=limits)
+        )
+        assert result.bit == table[row], (language.name, row)
+        if template:
+            assert result.observation.input_reads == 0
+            assert result.observation.input_position == 0
+        else:
+            stdin = language.encode_inputs(bits)
+            assert (
+                len(stdin.rstrip("\n"))
+                <= result.observation.input_position
+                <= len(stdin)
+            )
+        if termination:
+            assert result.termination is not None
+        else:
+            assert result.observation.completion is not None
 
 
 def assert_native_rows(

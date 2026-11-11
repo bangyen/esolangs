@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+compact_width_one_arity_cutoff = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_minsky_swap.py::TestParameterizedMinskySwap::test_short_rmsn_public_floor" }
+
 [curation]
 backlinks = 9
 admitted = 2020-07-25T21:13:52-04:00

@@ -4,9 +4,14 @@ import pytest
 
 import esolangs
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_every_row, three_input_corpus_size
+from tests.support.generator_support import (
+    assert_every_row,
+    assert_saved_rows,
+    three_input_corpus_size,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -21,6 +26,18 @@ def test_every_row_prints_its_answer(table: str) -> None:
 def _check_constants() -> None:
     assert_analysis_complement("IEBEL", "decision_layers")
     from esolangs.languages.iebel.interpreter import _Machine
+
+    language = esolangs.Language("IEBEL")
+    witnesses = construction_boundaries(language.name)[
+        "constant_read_initialization_cutoff"
+    ]
+    for witness in witnesses:
+        n, table = witness.arity, witness.table()
+        artifact = language.generate(table)
+        assert artifact.source.splitlines()[0] == ("0 49 -3" if n == 7 else "0 0 -3")
+        assert_saved_rows(
+            language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
+        )
 
     for n in range(1, 13):
         for bit in "01":

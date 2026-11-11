@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+zero_jump_fallback_cutoff = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_brainif.py::test_brainif_zero_landing_output_floor_and_corpus_size" }
 tree_to_width_lookup = { tables = [{ arity = 4, rule = "dense" }, { arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_brainif.py::test_brainif_unpruned_large_tree_uses_spatial_fallback" }
 
 [curation]

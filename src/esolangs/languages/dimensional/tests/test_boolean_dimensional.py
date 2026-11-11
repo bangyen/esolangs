@@ -20,7 +20,11 @@ from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import constant_programs, evaluate_generated
+from tests.support.generator_support import (
+    assert_saved_rows,
+    constant_programs,
+    evaluate_generated,
+)
 from tests.support.witness_tables import row_bits, witnesses
 
 run_dimensional = _runner("dimensional", newline=True)
@@ -52,6 +56,17 @@ def test_constant_reads_into_scratch_and_prints_a_fresh_literal(
 
 @pytest.mark.medium
 def test_bare_axis_leaves_execute_all_small_tables() -> None:
+    language = esolangs.Language("dimensional")
+    cases = construction_boundaries(language.name)["width_one_bare_axis_cutoff"]
+    for witness in cases:
+        table = witness.table()
+        with patch.object(
+            boolean, "_dimensional_bare", wraps=boolean._dimensional_bare
+        ) as route:
+            artifact = language.generate(table, width=1)
+        assert route.call_count == int(witness.arity == 2)
+        assert_saved_rows(language, artifact, table, range(len(table)))
+
     for n in range(1, 4):
         for table in witnesses(n):
             program = esolangs.generate("Dimensional", table, width=1).source

@@ -1,16 +1,23 @@
 """minsky_swap generator tests."""
 
 from itertools import pairwise
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, fill_runs, runs
+from esolangs.languages.minsky_swap import generator as boolean
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import count_steps
-from tests.support.generator_support import measure_run, three_input_corpus_size
+from tests.support.generator_support import (
+    assert_saved_rows,
+    measure_run,
+    three_input_corpus_size,
+)
 from tests.support.witness_tables import witnesses
 
 
@@ -63,6 +70,19 @@ class TestParameterizedMinskySwap:
                 )
 
     def test_short_rmsn_public_floor(self) -> None:
+
+        language = esolangs.Language("minsky_swap")
+        witnesses = construction_boundaries(language.name)[
+            "compact_width_one_arity_cutoff"
+        ]
+        for witness in witnesses:
+            table = witness.table()
+            with patch.object(
+                boolean, "_rmsn_small", wraps=boolean._rmsn_small
+            ) as route:
+                artifact = language.generate(table, width=1)
+            assert route.call_count == int(witness.arity == 2)
+            assert_saved_rows(language, artifact, table, range(len(table)))
 
         template = esolangs.generate("Minsky Swap", "0110", width=1)
         assert template.bindings.setters == (("decnz(2);", "inc();   "),) * 2

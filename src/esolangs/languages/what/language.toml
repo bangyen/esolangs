@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+flat_index_to_labelled_blocks = { tables = [{ arity = 15, rule = "and" }, { arity = 16, rule = "and" }], benchmark = false, test = "test_boolean_what.py::test_a_table_past_the_low_input_cap_labels_its_blocks" }
+
 [curation]
 backlinks = 0
 admitted = 2026-10-15T16:41:19-04:00

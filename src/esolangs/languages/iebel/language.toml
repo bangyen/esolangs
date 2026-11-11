@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+constant_read_initialization_cutoff = { tables = [{ arity = 7, rule = "one" }, { arity = 8, rule = "one" }], benchmark = false, test = "test_boolean_iebel.py::test_every_row_prints_its_answer[00]" }
+
 [curation]
 backlinks = 0
 admitted = 2026-10-27T11:07:52+00:00

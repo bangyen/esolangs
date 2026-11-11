@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+four_column_fallback_cutoff = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_laserfuck.py::TestLaserFuck::test_a_narrow_width_beats_the_old_floor" }
 tree_to_weighted_lookup = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false, test = "test_boolean_laserfuck.py::TestLaserFuck::test_weighted_table_executes_every_row" }
 
 [deep_arities]

@@ -19,6 +19,7 @@ from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_parity_at_most_doubles,
+    assert_saved_rows,
     evaluate_generated,
 )
 from tests.support.witness_tables import witnesses
@@ -171,6 +172,17 @@ def test_brainif_zero_landing_executes_all_small_tables(width: int) -> None:
 
 
 def test_brainif_zero_landing_output_floor_and_corpus_size() -> None:
+    language = esolangs.Language("brainif")
+    witnesses = construction_boundaries(language.name)["zero_jump_fallback_cutoff"]
+    for witness in witnesses:
+        table = witness.table()
+        with patch.object(
+            boolean, "_brainif_zero_jumps", wraps=boolean._brainif_zero_jumps
+        ) as route:
+            artifact = language.generate(table, width=1)
+        assert route.call_count == int(witness.arity == 2)
+        assert_saved_rows(language, artifact, table, range(len(table)))
+
     program = boolean.brainif("0110", 1)
     assert max(map(len, program.splitlines())) == 12
     assert len(program) == 818

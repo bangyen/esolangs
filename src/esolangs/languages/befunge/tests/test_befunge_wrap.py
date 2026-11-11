@@ -2,6 +2,7 @@
 
 import math
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -9,6 +10,7 @@ import esolangs
 from esolangs import run
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.befunge import generator as boolean
 from esolangs.languages.befunge.generator import (
     _BOUND_NARROW,
     _BOUND_PACKED,
@@ -21,7 +23,11 @@ from esolangs.languages.befunge.generator import (
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
-from tests.support.generator_support import constant_layouts, constant_runs
+from tests.support.generator_support import (
+    assert_saved_rows,
+    constant_layouts,
+    constant_runs,
+)
 from tests.support.witness_tables import row_bits
 
 
@@ -59,6 +65,18 @@ def test_befunge_keeps_a_header_that_already_fits() -> None:
 
 @pytest.mark.medium
 def test_befunge_default_uses_a_single_nibble_data_row() -> None:
+    language = esolangs.Language("Befunge")
+    for witness in construction_boundaries(language.name)[
+        "natural_layout_to_nibble_cutoff"
+    ]:
+        table = witness.table()
+        with patch.object(
+            boolean, "_natural_befunge", wraps=boolean._natural_befunge
+        ) as natural:
+            artifact = language.generate(table)
+        assert natural.call_count == int(witness.arity == 1)
+        assert_saved_rows(language, artifact, table, range(len(table)))
+
     _check_one_row_nibbles()
     # Eight inputs use sixty-four four-bit cells below a straight header.
     rows = befunge(_seeded(8)).splitlines()

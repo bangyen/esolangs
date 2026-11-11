@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+parity_integer_arity_cutoff = { tables = [{ arity = 3, rule = "parity" }, { arity = 4, rule = "parity" }], benchmark = false, test = "test_boolean_blindfolded_arithmetic.py::test_the_input_is_the_row_number" }
+
 [curation]
 backlinks = 19
 admitted = 2026-10-16T16:30:03-04:00

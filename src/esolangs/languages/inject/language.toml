@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+tree_to_halving_lookup_cutoff = { tables = [{ arity = 4, rule = "dense" }, { arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_inject.py::TestInject::test_halving_lookup_executes_wide_rows" }
+
 [curation]
 backlinks = 4
 admitted = 2026-09-01T10:54:08-04:00

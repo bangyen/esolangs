@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+constant_delimiter_macro_cutoff = { tables = [{ arity = 4, rule = "one" }, { arity = 5, rule = "one" }], benchmark = false, test = "test_boolean_smu.py::test_sharing_totals" }
+
 [curation]
 backlinks = 4
 admitted = 2026-10-07T12:46:28-04:00

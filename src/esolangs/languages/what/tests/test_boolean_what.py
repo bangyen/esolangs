@@ -8,9 +8,11 @@ import pytest
 import esolangs
 from esolangs import run
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_every_row,
+    assert_saved_rows,
     constant_programs,
     evaluate_generated,
 )
@@ -34,6 +36,18 @@ def test_every_row_prints_its_answer(table: str) -> None:
 @pytest.mark.medium
 def test_a_table_past_the_low_input_cap_labels_its_blocks() -> None:
     """n=16 splits into two labelled blocks; rows on both sides answer."""
+    language = esolangs.Language("What!?")
+    for witness in construction_boundaries(language.name)[
+        "flat_index_to_labelled_blocks"
+    ]:
+        n, table = witness.arity, witness.table()
+        artifact = language.generate(table)
+        assert artifact.source.startswith("??" if n == 15 else "." * 30 + "???")
+        half = len(table) // 2
+        assert_saved_rows(
+            language, artifact, table, (0, half - 1, half, len(table) - 1)
+        )
+
     table = format(random.Random(1).getrandbits(1 << 16), "065536b")
     program = esolangs.generate("What!?", table).source
     for row in (0, 32767, 32768, 65535):

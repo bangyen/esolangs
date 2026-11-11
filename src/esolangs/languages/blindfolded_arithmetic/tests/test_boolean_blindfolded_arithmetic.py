@@ -1,12 +1,19 @@
 """Tests for the Blindfolded Arithmetic Boolean generator."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.generator_support import assert_every_row, measure_run
+from tests.support.generator_support import (
+    assert_every_row,
+    assert_saved_rows,
+    measure_run,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -18,6 +25,20 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def test_the_input_is_the_row_number() -> None:
     """The input must be positive, so row 0 is fed as 1."""
+    from esolangs.languages.blindfolded_arithmetic import generator as boolean
+
+    language = esolangs.Language("Blindfolded Arithmetic")
+    for witness in construction_boundaries(language.name)[
+        "parity_integer_arity_cutoff"
+    ]:
+        n, table = witness.arity, witness.table()
+        with patch.object(
+            boolean, "_parity_integer", wraps=boolean._parity_integer
+        ) as parity:
+            artifact = language.generate(table)
+        assert parity.call_count == int(n == 4)
+        assert_saved_rows(language, artifact, table, range(len(table)))
+
     assert esolangs.describe("Blindfolded Arithmetic")["input_shape"] == "row_number"
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [0, 0]) == "1\n"
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [1, 0]) == "3\n"

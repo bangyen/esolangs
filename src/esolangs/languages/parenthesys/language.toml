@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+literal_to_packed_lookup_cutoff = { tables = [{ arity = 3, rule = "dense" }, { arity = 4, rule = "dense" }], benchmark = false, test = "test_boolean_parenthesys.py::test_every_row_prints_its_answer[00]" }
+
 [curation]
 backlinks = 3
 admitted = 2026-10-15T18:27:40-04:00

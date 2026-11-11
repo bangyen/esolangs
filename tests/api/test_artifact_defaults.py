@@ -9,8 +9,8 @@ from esolangs.generation import wrap
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
 from tests.support.evaluation import _evaluate
+from tests.support.generator_support import assert_saved_rows
 from tests.support.pick import languages
-from tests.support.witness_tables import row_bits
 
 
 @pytest.mark.medium
@@ -47,7 +47,9 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
     # cap supplies its own admitted benchmark controls.
     table = max(controls, key=len) if controls else "00110110"
     for options in ({}, {"width": 1}, {"balance": True}):
-        _check_saved_rows(bound, table, options)
+        assert_saved_rows(
+            bound, bound.generate(table, **options), table, range(len(table))
+        )
         program = esolangs.generate(language, "01", **options)
         assert isinstance(
             program, (esolangs.ProgramArtifact, esolangs.TemplateArtifact)
@@ -81,42 +83,3 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
             if not options:
                 with pytest.raises(esolangs.ArgumentError, match="expects 1 bits"):
                     restored.evaluate([0, 1])
-
-
-def _check_saved_rows(bound, table, options):
-    program = bound.generate(table, **options)
-    document = bound.dump_program(program)
-    restored = bound.load_program(document)
-    assert bound.dump_program(restored) == document
-    n = len(table).bit_length() - 1
-    answer_mode = bound.describe()["answer_mode"]
-    limits = (
-        esolangs.ExecutionLimits(max_steps=200_000)
-        if answer_mode == "termination"
-        else None
-    )
-    template = isinstance(restored, esolangs.TemplateArtifact)
-    prepared = None if template else bound.prepare(restored)
-    for row, expected in enumerate(table):
-        bits = row_bits(row, n)
-        result = (
-            bound.evaluate(restored, bits, limits=limits)
-            if prepared is None
-            else prepared.evaluate(bits, limits=limits)
-        )
-        assert result.bit == expected, (options, row)
-        if template:
-            assert result.observation.input_reads == 0
-            assert result.observation.input_position == 0
-        else:
-            stdin = bound.encode_inputs(bits)
-            # Numeric reads may leave the final delimiter for the next read.
-            assert (
-                len(stdin.rstrip("\n"))
-                <= result.observation.input_position
-                <= len(stdin)
-            )
-        if answer_mode == "termination":
-            assert result.termination is not None
-        else:
-            assert result.observation.completion is not None

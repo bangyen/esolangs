@@ -15,6 +15,7 @@ output_size = "Linear"
 evidence = "docs/proofs/index.md#exceptions-and-walls"
 
 [construction_boundaries]
+natural_layout_to_nibble_cutoff = { tables = [{ arity = 1, rule = "parity" }, { arity = 2, rule = "parity" }], benchmark = false, test = "test_befunge_wrap.py::test_befunge_default_uses_a_single_nibble_data_row" }
 torus_input_cap = { tables = [{ arity = 13, rule = "dense" }, { arity = 14, rule = "dense" }], benchmark = false, test = "test_befunge_wrap.py::test_befunge_refuses_a_table_larger_than_the_torus" }
 wide_parity_to_mandatory_packing = { tables = [{ arity = 10, rule = "parity" }, { arity = 11, rule = "parity" }], benchmark = false, test = "test_befunge_wrap.py::test_width_one_and_balance_cross_the_packing_cutoff" }
 nibble_index_controls = { tables = [{ arity = 2, rule = "parity" }, { arity = 7, rule = "parity" }], benchmark = true }

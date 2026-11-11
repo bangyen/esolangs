@@ -3,6 +3,7 @@
 import importlib
 import random
 import re
+from unittest.mock import patch
 
 import pytest
 
@@ -15,7 +16,11 @@ from esolangs.languages.laserfuck.tests.runners import run_laserfuck
 from esolangs.runtime.io import ScriptedIO
 from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
-from tests.support.generator_support import measure_run, three_input_corpus_size
+from tests.support.generator_support import (
+    assert_saved_rows,
+    measure_run,
+    three_input_corpus_size,
+)
 from tests.support.witness_tables import row_bits, witnesses
 
 
@@ -362,6 +367,21 @@ class TestLaserFuck:
 
     def test_a_narrow_width_beats_the_old_floor(self) -> None:
         """Standing blocks on end reaches widths the flat reader cannot."""
+        language = esolangs.Language("laserfuck")
+        witnesses = construction_boundaries(language.name)[
+            "four_column_fallback_cutoff"
+        ]
+        for witness in witnesses:
+            table = witness.table()
+            with patch.object(
+                boolean,
+                "_laserfuck_four_columns",
+                wraps=boolean._laserfuck_four_columns,
+            ) as route:
+                artifact = language.generate(table, width=1)
+            assert route.call_count == int(witness.arity == 2)
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
         for table, floor in (("0110", 18), ("01101001", 24)):
             program = boolean.laserfuck(table, floor).split("\n")
             assert max(len(line) for line in program) <= floor

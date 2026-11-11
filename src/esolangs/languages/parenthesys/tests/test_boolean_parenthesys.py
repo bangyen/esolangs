@@ -5,7 +5,8 @@ import pytest
 import esolangs
 from esolangs.languages.parenthesys.interpreter import run
 from esolangs.runtime.io import ScriptedIO
-from tests.support.generator_support import assert_native_rows
+from scripts.docs.evidence import construction_boundaries
+from tests.support.generator_support import assert_native_rows, assert_saved_rows
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 #: n=5 and 6 take the packed route, whose bit test reads every position.
@@ -17,6 +18,17 @@ PACKED = ["0110100110010110" * 2, "00010111" * 8, "1" + "0" * 63, "0" * 63 + "1"
 )
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
+
+    if table == "00":
+        language = esolangs.Language("Parenthesys")
+        witnesses = construction_boundaries(language.name)[
+            "literal_to_packed_lookup_cutoff"
+        ]
+        for witness in witnesses:
+            n, case = witness.arity, witness.table()
+            artifact = language.generate(case)
+            assert ("[ord|" in artifact.source) == (n == 4)
+            assert_saved_rows(language, artifact, case, range(len(case)))
 
     program = esolangs.generate("Parenthesys", table).source
     assert_native_rows("Parenthesys", table, program, run, sentinel="Q", token=True)
