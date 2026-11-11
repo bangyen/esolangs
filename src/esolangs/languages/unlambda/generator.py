@@ -118,7 +118,7 @@ def unlambda(truth_table: str) -> str:
         # (n=8,10), 14-20% on threshold-3, 8-15% on a 3-block pool, 2% on random.
         return sorted(candidates, key=len)[:1]  # stable: the first shortest
 
-    root = diagram.ids[0][0]
+    root = diagram.root
     if root < 2:
         # Each read forces the next promise; the final flag applies the printer.
         return _READ * n + f".{root}"

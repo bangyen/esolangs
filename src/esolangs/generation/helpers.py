@@ -4,8 +4,10 @@ A valid table has ``2**n`` entries, so ``n`` is recovered from the length
 and the generators take no ``n`` parameter.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from itertools import pairwise
+from types import MappingProxyType
 from typing import NamedTuple
 
 from esolangs._bindings import MARK as MARK
@@ -122,6 +124,7 @@ def subtree_slot(
     return level, block, (level, key) if key >= 2 else (-1, key)
 
 
+@dataclass(frozen=True, slots=True, init=False, eq=False, repr=False)
 class SubtreeDiagram:
     """The reduced diagram by subtree id, for a tree that hands a share down.
 
@@ -133,18 +136,27 @@ class SubtreeDiagram:
     per id, so each is O(1) a node amortized for a fixed ``depth``.
     """
 
+    root: int
+    halves: Mapping[int, tuple[int, int]]
+    level: Mapping[int, int]
+    _reach: dict[tuple[int, int], bool] = field(init=False)
+    _counts: dict[tuple[int, int], dict[int, int]] = field(init=False)
+
     def __init__(self, truth_table: str) -> None:
-        """Intern ``truth_table``'s subtrees and index each node's halves."""
-        self.ids = subtree_ids(truth_table)
-        self.halves: dict[int, tuple[int, int]] = {}
-        self.level: dict[int, int] = {}
-        for depth, (row, under) in enumerate(pairwise(self.ids)):
+        """Intern subtrees and retain the read-only node index."""
+        ids = subtree_ids(truth_table)
+        halves: dict[int, tuple[int, int]] = {}
+        level: dict[int, int] = {}
+        for depth, (row, under) in enumerate(pairwise(ids)):
             for block, key in enumerate(row):
-                if key >= 2 and key not in self.halves:
-                    self.halves[key] = (under[2 * block], under[2 * block + 1])
-                    self.level[key] = depth
-        self._reach: dict[tuple[int, int], bool] = {}
-        self._counts: dict[tuple[int, int], dict[int, int]] = {}
+                if key >= 2 and key not in halves:
+                    halves[key] = (under[2 * block], under[2 * block + 1])
+                    level[key] = depth
+        object.__setattr__(self, "root", ids[0][0])
+        object.__setattr__(self, "halves", MappingProxyType(halves))
+        object.__setattr__(self, "level", MappingProxyType(level))
+        object.__setattr__(self, "_reach", {})
+        object.__setattr__(self, "_counts", {})
 
     def reaches(self, key: int, target: int) -> bool:
         """Whether node ``target`` is ``key`` or lies below it."""

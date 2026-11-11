@@ -66,6 +66,6 @@ def ablate(truth_table: str, rule: Literal["default", "terminal_drops"]) -> str:
         # threshold-3, 11% on random tables.
         return sorted(candidates, key=len)[:1]  # stable: the first shortest
 
-    body = tree(0, diagram.ids[0][0], None).replace("\ue000", "")
+    body = tree(0, diagram.root, None).replace("\ue000", "")
     slots = TEMPLATE_CHAR * (len(PAIR[0]) * n)
     return slots + "(" + body + ")^S"
