@@ -1,5 +1,7 @@
 """Super SNUSP through the shared API, CLI and machinery."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
@@ -7,10 +9,12 @@ from esolangs import run as execute
 from esolangs.languages.super_snusp import generator as boolean
 from esolangs.languages.super_snusp.generator import balance_super_snusp, super_snusp
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_roots,
+    assert_saved_rows,
     measure_run,
     three_input_corpus_size,
 )
@@ -27,6 +31,28 @@ class TestSuperSNUSPWidth:
 
     def test_a_width_folds_the_line_and_it_still_computes(self) -> None:
         """The folded pointer computes what the straight one did."""
+        language = esolangs.Language("Super SNUSP")
+        cases = construction_boundaries(language.name)
+        for witness in cases["two_input_xor_short_form"]:
+            table = witness.table()
+            with patch.object(
+                boolean, "_emit_lookup", wraps=boolean._emit_lookup
+            ) as lookup:
+                artifact = language.generate(table)
+            assert lookup.call_count == int(witness.arity == 3)
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
+        for witness in cases["vertical_to_fold_width_floor"]:
+            table = witness.table()
+            floor = boolean._fold_floor(boolean.super_snusp(table))
+            for width in (floor - 1, floor):
+                with patch.object(
+                    boolean, "_super_snusp_folded", wraps=boolean._super_snusp_folded
+                ) as fold:
+                    artifact = language.generate(table, width=width)
+                assert fold.call_count == int(width == floor)
+                assert_saved_rows(language, artifact, table, range(len(table)))
+
         for table in ("0110", "01101001", "0110100110010110"):
             n = len(table).bit_length() - 1
             flat = boolean.super_snusp(table)

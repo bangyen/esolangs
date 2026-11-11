@@ -6,8 +6,13 @@ import esolangs
 from esolangs.debugger import make_vm
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import constant_programs, three_input_corpus_size
+from tests.support.generator_support import (
+    assert_saved_rows,
+    constant_programs,
+    three_input_corpus_size,
+)
 
 
 @pytest.mark.parametrize("table", ["01101001", "00000000"])
@@ -35,6 +40,15 @@ def _check_constants() -> None:
     from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Boolfuck")["workspace"].formula
+
+    language = esolangs.Language("Boolfuck")
+    for witness in construction_boundaries(language.name)[
+        "constant_batched_read_cutoff"
+    ]:
+        table = witness.table()
+        artifact = language.generate(table)
+        assert ("[,,,,,,,,>]" in artifact.source) == (witness.arity == 3)
+        assert_saved_rows(language, artifact, table, range(len(table)))
 
     for n, bit, _options, program in constant_programs("Boolfuck", range(1, 13)):
         commands = (14 * n + 11 if n >= 3 else 8 * n + 10) + 2 * int(bit)

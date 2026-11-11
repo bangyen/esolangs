@@ -2,6 +2,7 @@
 
 import random
 from itertools import product
+from unittest.mock import patch
 
 import pytest
 
@@ -19,11 +20,13 @@ from esolangs.languages.b_tapemark.generator import (
 )
 from esolangs.languages.b_tapemark.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_constant_roots,
+    assert_saved_rows,
 )
 from tests.support.witness_tables import witnesses
 
@@ -307,6 +310,17 @@ def test_folded_copy_and_runs_keep_the_walk(copy: int, run: int) -> None:
 def test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms() -> None:
     """The strip wins a tie; each layout the default takes runs and is no larger."""
     rng = random.Random(11)
+    language = esolangs.Language("B-tapemark")
+    for witness in construction_boundaries(language.name)[
+        "unbounded_closed_form_admission"
+    ]:
+        table = witness.table()
+        for width in (None, 1):
+            with patch.object(tools, "_closed_forms", wraps=_closed_forms) as forms:
+                artifact = language.generate(table, width=width)
+            assert forms.call_count == int(width is None)
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
     for bits in (2, 4, 6, 7):
         table = "".join(rng.choice("01") for _ in range(1 << bits))
         strip, chosen = _b_tapemark_program(table), tools.b_tapemark(table)

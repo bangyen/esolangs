@@ -1,6 +1,10 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+two_input_xor_short_form = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_super_snusp.py::TestSuperSNUSPWidth::test_a_width_folds_the_line_and_it_still_computes" }
+vertical_to_fold_width_floor = { tables = [{ arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_super_snusp.py::TestSuperSNUSPWidth::test_a_width_folds_the_line_and_it_still_computes" }
+
 [curation]
 backlinks = 1
 admitted = 2026-09-03T18:39:07-04:00

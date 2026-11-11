@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+near_unanimity_mirror_admission = { tables = [{ arity = 3, rule = "majority" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_a_painter_ant.py::TestAPainterAnt::test_tables_are_exact" }
+
 [curation]
 backlinks = 4
 admitted = 2026-08-13T22:20:56-04:00

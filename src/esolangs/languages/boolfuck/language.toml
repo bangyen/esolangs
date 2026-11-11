@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+constant_batched_read_cutoff = { tables = [{ arity = 2, rule = "one" }, { arity = 3, rule = "one" }], benchmark = false, test = "test_boolean_boolfuck.py::test_program_stays_within_the_command_bound[00000000]" }
 normalized_gate_admission = { tables = [{ arity = 3, rule = "dense" }, { arity = 4, rule = "dense" }], benchmark = false, test = "test_boolean_boolfuck_gates.py::test_four_input_table_keeps_its_gate_size" }
 
 [deep_arities]

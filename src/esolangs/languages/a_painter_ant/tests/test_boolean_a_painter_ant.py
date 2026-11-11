@@ -2,18 +2,22 @@
 reads."""
 
 from itertools import product
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
+from esolangs.languages.a_painter_ant import generator as boolean
 from esolangs.languages.a_painter_ant.descriptor import PAIR
 from esolangs.languages.a_painter_ant.generator import a_painter_ant
 from esolangs.languages.a_painter_ant.interpreter import _Machine
 from esolangs.languages.a_painter_ant.interpreter import run as run_a_painter_ant
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
+from tests.support.generator_support import assert_saved_rows
 from tests.support.witness_tables import parity as _parity
 
 
@@ -73,6 +77,19 @@ class TestAPainterAnt:
 
     def test_tables_are_exact(self) -> None:
         """Every table at arity 1-3, and wide tables at 4-6, are exact."""
+        language = esolangs.Language("A Painter Ant")
+        cases = construction_boundaries(language.name)[
+            "near_unanimity_mirror_admission"
+        ]
+        for witness in cases:
+            table = witness.table()
+            with patch.object(
+                boolean, "_westward_flipped", wraps=boolean._westward_flipped
+            ) as mirror:
+                artifact = language.generate(table)
+            assert mirror.call_count == (2 if witness.rule == "majority" else 0)
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
         _check_near_unanimity()
         _check_bound_uses_significant_characters()
         for n in (1, 2):

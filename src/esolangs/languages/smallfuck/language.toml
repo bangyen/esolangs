@@ -3,6 +3,7 @@
 
 [construction_boundaries]
 constant_one_off_walk_cell_cutoff = { tables = [{ arity = 2, rule = "one" }, { arity = 3, rule = "one" }], benchmark = false, test = "test_boolean_smallfuck.py::test_constant_arms_and_banded_results_shrink_the_tree" }
+embedded_setter_width_floor = { tables = [{ arity = 3, rule = "dense" }], benchmark = false, test = "test_boolean_smallfuck.py::test_setters_are_equal_width_and_embedded_once" }
 
 [curation]
 backlinks = 66

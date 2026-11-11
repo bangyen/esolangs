@@ -8,7 +8,11 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.generator_support import assert_every_row, constant_programs
+from tests.support.generator_support import (
+    assert_every_row,
+    assert_saved_rows,
+    constant_programs,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 from tests.support.witness_tables import row_bits
 
@@ -49,6 +53,13 @@ def _check_constants() -> None:
     assert_analysis_complement("Sonata", "symmetric_weights", "0110")
     assert_analysis_complement("Sonata", "read_at", "0010")
     from esolangs.languages.sonata.interpreter import _Machine
+
+    language = esolangs.Language("Sonata")
+    for witness in construction_boundaries(language.name)["two_input_constant_guard"]:
+        table = witness.table()
+        artifact = language.generate(table)
+        assert artifact.source.startswith("0^a->=1\n1^a") == (witness.arity == 2)
+        assert_saved_rows(language, artifact, table, range(len(table)))
 
     for n, bit, _options, program in constant_programs("Sonata", range(1, 13)):
         assert len(program) == (16 if n == 2 else 2 * n + 5)

@@ -5,8 +5,9 @@ import pytest
 import esolangs
 from esolangs.languages.cyclic_tag.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
-from tests.support.generator_support import constant_artifacts
+from tests.support.generator_support import assert_saved_rows, constant_artifacts
 
 
 @pytest.mark.medium
@@ -41,6 +42,14 @@ def test_constant_uses_one_empty_production_and_deletes_each_embedded_input(
 
 
 def _check_constants() -> None:
+
+    language = esolangs.Language("Cyclic tag")
+    for witness in construction_boundaries(language.name)["endpoint_and_marker_cutoff"]:
+        table = witness.table()
+        artifact = language.generate(table)
+        rules = artifact.source.partition(",")[0].split(";")
+        assert rules[witness.arity] == ("1" if witness.arity == 2 else "10")
+        assert_saved_rows(language, artifact, table, range(len(table)))
 
     for n, bit, _options, template in constant_artifacts("Cyclic tag", range(1, 13)):
         assert template.source.count("$") == n

@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+preset_tester_family_admission = { tables = [{ arity = 3, rule = "parity" }, { arity = 3, rule = "dense" }], benchmark = false, test = "test_boolean_crement.py::TestCrementSweepPins::test_width_six_preserves_preset_and_generic_setters" }
+
 [curation]
 backlinks = 2
 admitted = 2026-09-13T11:40:58-04:00

@@ -12,6 +12,7 @@ from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
+    assert_saved_rows,
     assert_shared_program,
     constant_programs,
     evaluate_generated,
@@ -167,6 +168,15 @@ def _check_literal_counter_cutoff() -> None:
 
 def _check_constants() -> None:
     from esolangs.languages.brainfuck.interpreter import _Machine
+
+    language = esolangs.Language(REFERENCE)
+    for witness in construction_boundaries(language.name)[
+        "constant_ascii_counter_cutoff"
+    ]:
+        table = witness.table()
+        artifact = language.generate(table)
+        assert (">++++++[>++++++++<-]>" in artifact.source) == (witness.arity == 2)
+        assert_saved_rows(language, artifact, table, range(len(table)))
 
     for n, bit, _options, program in constant_programs("brainfuck", range(2, 13)):
         for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):

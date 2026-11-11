@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+seed_bootstrap_width_floor = { tables = [{ arity = 3, rule = "dense" }], benchmark = false, test = "test_boolean_taglate.py::test_narrow_seed_truth_tables[1]" }
+
 [deep_arities]
 workspace = 7
 

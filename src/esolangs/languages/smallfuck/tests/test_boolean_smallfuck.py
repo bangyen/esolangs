@@ -2,6 +2,7 @@
 
 import random
 from itertools import pairwise
+from unittest.mock import patch
 
 import pytest
 
@@ -51,6 +52,18 @@ def test_first_eight_tables_through_three_inputs(n: int) -> None:
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
+    language = esolangs.Language("Smallfuck")
+    for witness in construction_boundaries(language.name)[
+        "embedded_setter_width_floor"
+    ]:
+        table = witness.table()
+        floor = len(PAIR[0])
+        for width in (floor - 1, floor):
+            with patch.object(boolean, "_narrow", wraps=boolean._narrow) as narrow:
+                artifact = language.generate(table, width=width)
+            assert narrow.call_count == int(width < floor)
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
     _check_constants()
     assert len(PAIR[0]) == len(PAIR[1]) == 4
     for n in range(1, 8):

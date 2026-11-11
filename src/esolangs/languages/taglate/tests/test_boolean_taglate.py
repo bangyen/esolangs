@@ -1,5 +1,7 @@
 """Covers :mod:`esolangs.languages.taglate.generator`."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
@@ -9,9 +11,14 @@ from esolangs.languages.taglate.generator import _seed_commands, _taglate_raw
 from esolangs.languages.taglate.wrapping import _taglate
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_constant_output, constant_programs
+from tests.support.generator_support import (
+    assert_constant_output,
+    assert_saved_rows,
+    constant_programs,
+)
 from tests.support.witness_tables import row_bits, witnesses
 
 
@@ -160,6 +167,21 @@ class TestTaglate:
 @pytest.mark.parametrize("width", [1, 7, 19])
 def test_narrow_seed_truth_tables(width: int) -> None:
     """Bootstrapping leaves the original seed and input consumption intact."""
+    if width == 1:
+        language = esolangs.Language("Taglate")
+        for witness in construction_boundaries(language.name)[
+            "seed_bootstrap_width_floor"
+        ]:
+            table = witness.table()
+            seed_width = len(language.generate(table).source.partition("\n")[0])
+            for columns in (seed_width - 1, seed_width):
+                with patch.object(
+                    boolean, "_bootstrapped", wraps=boolean._bootstrapped
+                ) as boot:
+                    artifact = language.generate(table, width=columns)
+                assert boot.call_count == int(columns < seed_width)
+                assert_saved_rows(language, artifact, table, range(len(table)))
+
     tables = [f"{value:02b}" for value in range(4)]
     tables += [f"{value:04b}" for value in range(16)]
     tables += ["10010110", "00000001", "0000000000000001"]

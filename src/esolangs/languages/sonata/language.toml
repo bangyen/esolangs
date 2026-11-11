@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+two_input_constant_guard = { tables = [{ arity = 1, rule = "one" }, { arity = 2, rule = "one" }, { arity = 3, rule = "one" }], benchmark = false, test = "test_boolean_sonata.py::test_every_row_prints_its_answer[00]" }
 doubling_to_paired_lookup = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false, test = "test_boolean_sonata.py::test_pair_table_prints_its_answer" }
 
 [curation]

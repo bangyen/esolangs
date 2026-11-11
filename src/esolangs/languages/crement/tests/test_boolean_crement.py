@@ -2,6 +2,7 @@
 
 import random
 from itertools import pairwise, product
+from unittest.mock import patch
 
 import pytest
 
@@ -9,6 +10,7 @@ import esolangs
 from esolangs.exceptions import TruthTableError
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.crement import generator as boolean
 from esolangs.languages.crement.generator import (
     PAIR,
     _packed,
@@ -18,11 +20,16 @@ from esolangs.languages.crement.generator import (
 from esolangs.languages.crement.interpreter import _Machine
 from esolangs.vm import run_until_halt_or_cycle
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.sample_tables import five_input_sample
 from tests.support.divergence import diverges
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import count_steps
-from tests.support.generator_support import constant_artifacts, source_shape
+from tests.support.generator_support import (
+    assert_saved_rows,
+    constant_artifacts,
+    source_shape,
+)
 from tests.support.witness_tables import dense, parity
 
 
@@ -294,6 +301,17 @@ class TestCrementSweepPins:
         assert source_shape(program) == (11758, 1294, 10)
 
     def test_width_six_preserves_preset_and_generic_setters(self) -> None:
+        language = esolangs.Language("Crement")
+        cases = construction_boundaries(language.name)["preset_tester_family_admission"]
+        for witness in cases:
+            table = witness.table()
+            with patch.object(
+                boolean, "_preset_template", wraps=boolean._preset_template
+            ) as preset:
+                artifact = language.generate(table, width=6)
+            assert preset.call_count == int(witness.rule == "parity")
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
         program = crement("0110", width=6)
         assert source_shape(program) == (70, 11, 6)
         assert crement_setters(program, 2) == (("0", "1"),) * 2

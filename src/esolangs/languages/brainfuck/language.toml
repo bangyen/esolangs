@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+constant_ascii_counter_cutoff = { tables = [{ arity = 1, rule = "one" }, { arity = 2, rule = "one" }], benchmark = false, test = "test_boolean_brainfuck.py::test_affine_stream_all_small_coefficients_within_ledger" }
 literal_counter_arity_cutoff = { tables = [{ arity = 1, rule = "and" }, { arity = 2, rule = "and" }], benchmark = false, test = "test_boolean_brainfuck.py::test_literal_counter_consumes_inputs_within_revised_bounds[2]" }
 
 [curation]

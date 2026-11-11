@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+unbounded_closed_form_admission = { tables = [{ arity = 3, rule = "dense" }], benchmark = false, test = "test_boolean_b_tapemark.py::test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms" }
+
 [deep_arities]
 execution = 7
 workspace = 7

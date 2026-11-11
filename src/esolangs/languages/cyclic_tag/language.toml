@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+endpoint_and_marker_cutoff = { tables = [{ arity = 2, rule = "and" }, { arity = 3, rule = "and" }], benchmark = false, test = "test_boolean_cyclic_tag.py::test_constant_uses_one_empty_production_and_deletes_each_embedded_input" }
+
 [curation]
 backlinks = 91
 
