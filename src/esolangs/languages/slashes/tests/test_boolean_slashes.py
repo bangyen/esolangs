@@ -70,10 +70,10 @@ def test_constant_recognizer_does_not_reserve_other_literal_dollars(suffix) -> N
     assert not _is_unfilled_template("/a///b//" + suffix)
 
 
-def test_all_slots_ignored_is_still_a_template() -> None:
-    # read == 0: the one slot is an ignored X and the table has one entry.
+def test_former_all_ignored_layout_is_not_a_template() -> None:
     program = boolean._IGNORE + boolean._UNARY + boolean._DECODE + "X$>qA"
-    assert _is_unfilled_template(program)
+    assert not hasattr(boolean, "_CONSTANT")
+    assert not _is_unfilled_template(program)
 
 
 def test_filled_slots_are_not_a_template() -> None:
@@ -101,7 +101,7 @@ def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
 
 
 def test_partly_filled_constant_still_requires_its_remaining_input() -> None:
-    assert _is_unfilled_template("/a///b//a$b1")
+    assert _is_unfilled_template("/a$b//1")
     assert esolangs.run("///", "$0").output == "$0"
 
 

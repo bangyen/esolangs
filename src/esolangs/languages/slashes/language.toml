@@ -133,4 +133,4 @@ scale = 1
 budget = 10
 band = "fast"
 construction = "esolangs.languages.slashes.generator:slashes_request"
-notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Require an ignored X marker to prefix its own filled or unfilled slot. XX$$ formerly passed the canonical-template recognizer despite having no valid slot ordering. Ordinary emitted bytes, source/command/workspace bounds, size pins and Size anchors remain unchanged. All-ignored legacy templates remain recognized."
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Require an ignored X marker to prefix its own filled or unfilled slot. XX$$ formerly passed the canonical-template recognizer despite having no valid slot ordering. Ordinary emitted bytes, source/command/workspace bounds, size pins and Size anchors remain unchanged. The legacy all-ignored recognizer was later retired."

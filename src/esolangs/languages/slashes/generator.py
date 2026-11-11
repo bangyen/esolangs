@@ -55,8 +55,6 @@ _SWEEP_DEF = "/S/" + _SWEEP.replace("\\", "\\\\").replace("/", "\\/") + "/"
 _DECODE = "/>qA/C//>qB/D//qA///qB///C/0//D/1/"
 #: Deletes an ignored input's ``X``-marked bit before the unary sweep reads it.
 _IGNORE = "/Xa///Xb//"
-#: Former constant prefix, retained to recognize old templates.
-_CONSTANT = "/a///b//"
 
 
 _INPUT = InputSlot(1)
