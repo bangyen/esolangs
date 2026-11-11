@@ -13,7 +13,14 @@ Releases before 0.10.0 are described on the
 - **Breaking:** `run` returns `ExecutionResult`; use `.output` for printed text.
 - **Breaking:** Unfilled templates require explicit bindings and cannot execute.
   Tagged-string wrappers, inferred bindings and temporary compatibility aliases
-  are removed. Use canonical artifact APIs and supported imports.
+  are removed. Fill a template with `template.fill(bits)` or `instantiate`.
+  Use `dump_program` to save dialect settings and template bindings.
+- **Breaking:** Strings passed to `run` are literal source. Pass a `Path` or
+  use `Language.from_file(path)` to load a file. Both preserve decoded text,
+  including line endings. `save_program` preserves text by default too.
+  Pass `normalize=True` to `from_file` for native newline handling or to
+  `save_program` to append a native terminator where permitted. The CLI
+  selects native file handling.
 - **Breaking:** Construct dialect overrides with `Language(name).settings(...)`;
   settings are immutable and validated against that language's schema.
 - **Breaking:** Raw `Raster` and `CompressedText` payloads no longer carry
@@ -24,8 +31,11 @@ Releases before 0.10.0 are described on the
 - Add `Language.prepare(...)` returning `PreparedProgram` for repeated native
   runs or VM construction, with fresh IO, machine state and randomness per call.
   Source decoding is shared; parsing remains language-owned.
-- Share execution control between bounded runs and the debugger, with
-  invocation-owned IO.
+- Use `Language.execute` or `PreparedProgram.execute` for an
+  `ExecutionOutcome` that retains the original error and any partial
+  observation. `ExecutionLimits.execution_timeout` budgets execution.
+  `total_timeout` includes acquisition and worker startup. Bounded runs
+  and the debugger share execution control.
 - Declare interpreter lifecycle, source-loading, dialect and accounting
   capabilities independently of generator implementations.
 - Tighten worker, snapshot and persistence validation. Supported version-1
