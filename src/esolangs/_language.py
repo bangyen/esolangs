@@ -8,7 +8,7 @@ from pathlib import Path
 
 import esolangs
 import esolangs.operations.source as _source_operations
-from esolangs.artifacts import Artifact, ProgramArtifact
+from esolangs.artifacts import Artifact, BooleanEvaluation, ProgramArtifact
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry import Catalog, get_catalog
@@ -29,7 +29,7 @@ class Language:
     ``generate``/``instantiate`` are generator-made, ``run`` executes
     caller-supplied source, ``encode_inputs``/``read_answer`` and
     ``dump_program``/``load_program`` are contract adapters, and
-    ``describe`` is catalog.  Boolean evaluation is private machinery.
+    ``describe`` is catalog. ``evaluate`` runs one Boolean row.
     """
 
     name: str
@@ -141,6 +141,23 @@ class Language:
             settings=settings,
             catalog=self.catalog,
         )
+
+    def evaluate(
+        self,
+        artifact: Artifact,
+        bits: list[int] | tuple[int, ...],
+        *,
+        limits: ExecutionLimits | None = None,
+    ) -> BooleanEvaluation:
+        """Evaluate a generated row within this language's catalog."""
+        from esolangs.exceptions import ProgramError
+        from esolangs.operations.evaluation import evaluate
+
+        if self.catalog.resolve(artifact.language) != self.name:
+            raise ProgramError(
+                f"artifact belongs to {artifact.language}, not {self.name}"
+            )
+        return evaluate(artifact, bits, limits=limits, catalog=self.catalog)
 
     def instantiate(
         self,

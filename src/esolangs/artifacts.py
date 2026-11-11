@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import NamedTuple
 
 from esolangs._bindings import (
     TEMPLATE_CHAR,
@@ -14,13 +15,30 @@ from esolangs._bindings import (
 )
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, ProgramError, TemplateError
+from esolangs.limits import ExecutionLimits
 from esolangs.raster import Raster
+from esolangs.results import ExecutionResult
 from esolangs.runtime._program import Program
+from esolangs.runtime._proof import CycleDecision
 from esolangs.runtime._validate import check_bits, check_scale
 
-__all__ = ["Artifact", "ProgramArtifact", "TemplateArtifact", "TemplateBindings"]
+__all__ = [
+    "Artifact",
+    "BooleanEvaluation",
+    "ProgramArtifact",
+    "TemplateArtifact",
+    "TemplateBindings",
+]
 
 from esolangs.settings import DialectSettings
+
+
+class BooleanEvaluation(NamedTuple):
+    """Answer with the observed IO and, for termination answers, a proof."""
+
+    bit: str
+    observation: ExecutionResult
+    termination: CycleDecision | None = None
 
 
 def _origin(language: str, settings: DialectSettings | None) -> str:
@@ -46,6 +64,7 @@ class ProgramArtifact[Source: Program]:
     language: str
     settings: DialectSettings | None = None
     scale: int | None = None
+    input_arity: int | None = None
 
     def __post_init__(self) -> None:
         """Validate source storage and explicit provenance."""
@@ -54,11 +73,26 @@ class ProgramArtifact[Source: Program]:
         if not isinstance(self.source, (str, Raster, CompressedText)):
             raise ProgramError("a program needs text, compressed source, or a raster")
         object.__setattr__(self, "language", _origin(self.language, self.settings))
+        if self.input_arity is not None and (
+            type(self.input_arity) is not int or self.input_arity < 1
+        ):
+            raise ArgumentError("input_arity must be a positive integer")
         if isinstance(self.source, Raster):
             if self.scale is not None:
                 check_scale(self.scale)
         elif self.scale is not None:
             raise ArgumentError("scale is only supported for raster programs")
+
+    def evaluate(
+        self,
+        bits: list[int] | tuple[int, ...],
+        *,
+        limits: ExecutionLimits | None = None,
+    ) -> BooleanEvaluation:
+        """Run one Boolean row and return its answer and execution evidence."""
+        from esolangs.operations.evaluation import evaluate
+
+        return evaluate(self, bits, limits=limits)
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +162,17 @@ class TemplateArtifact:
             )
         except (TypeError, ValueError) as error:
             raise TemplateError(str(error)) from error
+
+    def evaluate(
+        self,
+        bits: list[int] | tuple[int, ...],
+        *,
+        limits: ExecutionLimits | None = None,
+    ) -> BooleanEvaluation:
+        """Run one Boolean row and return its answer and execution evidence."""
+        from esolangs.operations.evaluation import evaluate
+
+        return evaluate(self, bits, limits=limits)
 
     def fill(self, bits: Sequence[int]) -> ProgramArtifact[str]:
         """Bind inputs without rescanning the immutable template's runs."""

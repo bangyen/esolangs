@@ -65,7 +65,6 @@ _REQUEST_FIELDS = frozenset(
         "max_steps",
         "integer_max_steps",
         "termination",
-        "execution_timeout",
         "report_prepared",
     }
 )
@@ -361,8 +360,10 @@ def execute_isolated(
                         max_memory=max_memory,
                         max_output=max_output,
                         max_steps=max_steps,
-                        execution_timeout=execution_timeout,
-                        report_prepared=preparation_deadline is not None,
+                        report_prepared=(
+                            preparation_deadline is not None
+                            or execution_timeout is not None
+                        ),
                         catalog=catalog,
                     )
                 )
@@ -386,7 +387,7 @@ def execute_isolated(
     if isinstance(request, BaseException):
         raise request
     with _timeout_named(timeout):
-        if preparation_deadline is None:
+        if preparation_deadline is None and execution_timeout is None:
             result = _launch(request, deadline - now, max_output=max_output)
         else:
             result = _launch(
@@ -394,6 +395,7 @@ def execute_isolated(
                 deadline - now,
                 max_output=max_output,
                 preparation_deadline=preparation_deadline,
+                execution_timeout=execution_timeout,
             )
     if isinstance(result, ExecutionOutcome):
         if (
@@ -438,12 +440,14 @@ def _launch(
     *,
     max_output: int | None = None,
     preparation_deadline: float | None = None,
+    execution_timeout: float | None = None,
 ) -> _WorkerResponse:
     """Run one JSON request, killing and reaping on deadline."""
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(sys.path)
     deadline = monotonic() + timeout
-    streaming = max_output is not None or preparation_deadline is not None
+    report_prepared = preparation_deadline is not None or execution_timeout is not None
+    streaming = max_output is not None or report_prepared
     with subprocess.Popen(  # fixed executable and code, no shell.
         [
             sys.executable,
@@ -462,9 +466,13 @@ def _launch(
             child.kill()
             output, _stderr = child.communicate()
             return _decode_outcome(output, expired=True)
-        if preparation_deadline is not None:
+        if report_prepared:
             return _bounded_output(
-                child, request, remaining, preparation_deadline=preparation_deadline
+                child,
+                request,
+                remaining,
+                preparation_deadline=preparation_deadline,
+                execution_timeout=execution_timeout,
             )
         if streaming:
             return _bounded_output(child, request, remaining)
@@ -488,6 +496,7 @@ def _bounded_output(
     timeout: float,
     *,
     preparation_deadline: float | None = None,
+    execution_timeout: float | None = None,
 ) -> _WorkerResponse:
     """Read bounded worker records; kill and reap on an output limit or deadline."""
     records: Queue[str | BaseException | None] = Queue(maxsize=16)
@@ -520,61 +529,94 @@ def _bounded_output(
     reader = Thread(target=transfer, daemon=True)
     deadline = monotonic() + timeout
     reader.start()
-    output: list[str] = []
-    expired = False
-    limited = False
     try:
-        while True:
-            active_deadline = (
-                deadline
-                if preparation_deadline is None
-                else min(deadline, preparation_deadline)
-            )
-            try:
-                now = monotonic()
-                if now >= active_deadline:
-                    raise Empty
-                record = records.get(timeout=active_deadline - now)
-            except Empty:
-                if preparation_deadline is not None and preparation_deadline < deadline:
-                    raise _preparation_expired() from None
-                expired = True
-                break
-            if record is None:
-                break
-            if isinstance(record, BaseException):
-                raise record
-            try:
-                message = worker_loads(record)
-            except ValueError:
-                output.append(record)
-                break
-            if (
-                preparation_deadline is not None
-                and isinstance(message, dict)
-                and message.keys() == {"prepared"}
-                and message["prepared"] is True
-            ):
-                preparation_deadline = None
-                continue
-            output.append(record)
-            limited = isinstance(message, dict) and message.get("output_limit") is True
-            if limited:
-                break
-        # A complete verdict must still leave the worker within its deadline.
-        if not expired and not limited:
-            try:
-                child.wait(timeout=max(0.0, active_deadline - monotonic()))
-            except subprocess.TimeoutExpired:
-                if preparation_deadline is not None and preparation_deadline < deadline:
-                    raise _preparation_expired() from None
-                expired = True
+        return _read_worker_output(
+            child, records, deadline, preparation_deadline, execution_timeout
+        )
     finally:
         stopped.set()
         child.kill()
         child.wait()
         reader.join()
-    return _decode_outcome("".join(output), expired=expired)
+
+
+def _read_worker_output(
+    child: subprocess.Popen[str],
+    records: Queue[str | BaseException | None],
+    deadline: float,
+    preparation_deadline: float | None,
+    execution_timeout: float | None,
+) -> _WorkerResponse:
+    """Read the worker stream under the active phase deadline."""
+    output: list[str] = []
+    expired = False
+    limited = False
+    execution_deadline = None
+    awaiting_prepared = (
+        preparation_deadline is not None or execution_timeout is not None
+    )
+
+    while True:
+        active_deadline = min(
+            phase
+            for phase in (deadline, preparation_deadline, execution_deadline)
+            if phase is not None
+        )
+        try:
+            now = monotonic()
+            if now >= active_deadline:
+                raise Empty
+            record = records.get(timeout=active_deadline - now)
+        except Empty:
+            if preparation_deadline is not None and preparation_deadline < deadline:
+                raise _preparation_expired() from None
+            expired = True
+            break
+        if record is None:
+            break
+        if isinstance(record, BaseException):
+            raise record
+        try:
+            message = worker_loads(record)
+        except ValueError:
+            output.append(record)
+            break
+        if (
+            awaiting_prepared
+            and isinstance(message, dict)
+            and message.keys() == {"prepared"}
+            and message["prepared"] is True
+        ):
+            awaiting_prepared = False
+            preparation_deadline = None
+            if execution_timeout is not None:
+                execution_deadline = monotonic() + execution_timeout
+            continue
+        output.append(record)
+        limited = isinstance(message, dict) and message.get("output_limit") is True
+        if limited:
+            break
+    # A complete verdict must still leave the worker within its deadline.
+    if not expired and not limited:
+        try:
+            child.wait(timeout=max(0.0, active_deadline - monotonic()))
+        except subprocess.TimeoutExpired:
+            if preparation_deadline is not None and preparation_deadline < deadline:
+                raise _preparation_expired() from None
+            expired = True
+    result = _decode_outcome("".join(output), expired=expired)
+    if (
+        expired
+        and execution_deadline is not None
+        and execution_deadline < deadline
+        and isinstance(result, ExecutionOutcome)
+        and isinstance(result.error, exceptions.ExecutionTimeoutError)
+    ):
+        result.error.bound = "execution_timeout"
+        result.error.args = (
+            f"execution exceeded the {execution_timeout}-second timeout",
+        )
+    return result
 
 
 def _source_transport(source: Program) -> dict[str, Any]:
@@ -604,7 +646,6 @@ def _request_wire(
     max_output: int | None = None,
     max_steps: int | None = None,
     termination: bool = False,
-    execution_timeout: float | None = None,
     report_prepared: bool = False,
     catalog: Catalog | None = None,
 ) -> dict[str, Any]:
@@ -634,7 +675,6 @@ def _request_wire(
         "max_steps": hex(max_steps) if max_steps is not None else None,
         "integer_max_steps": max_steps is not None,
         "termination": termination,
-        "execution_timeout": execution_timeout,
         "report_prepared": report_prepared,
     }
 
@@ -648,16 +688,20 @@ def termination_result_isolated(
     settings: DialectSettings | None = None,
     max_output: int | None = None,
     max_memory: int | None = None,
+    max_steps: int | None = None,
+    execution_timeout: float | None = None,
+    preparation_timeout: float | None = None,
     catalog: Catalog | None = None,
 ) -> TerminationResult:
     """Retain worker IO and exact proof evidence; a deadline remains undecided."""
     from esolangs.operations.source import _check_program
     from esolangs.registry._catalog import get_catalog
 
+    started = monotonic()
     catalog = get_catalog(catalog)
     name = catalog.resolve(name)
     _check_worker_runtime(name, catalog)
-    check_memory(max_memory, isolated=True)
+    check_limits(max_output, max_memory, isolated=True)
     retained = effective_settings(name, source, settings, catalog=catalog)
     artifact = _check_program(name, source, stdin, catalog=catalog)
     request = worker_dumps(
@@ -669,12 +713,37 @@ def termination_result_isolated(
             scale=artifact.scale,
             max_output=max_output,
             max_memory=max_memory,
+            max_steps=max_steps,
+            report_prepared=preparation_timeout is not None
+            or execution_timeout is not None,
             termination=True,
             catalog=catalog,
         )
     )
     with _timeout_named(timeout):
-        response = _launch(request, timeout, max_output=max_output)
+        remaining = timeout - (monotonic() - started)
+        preparation_deadline = (
+            None if preparation_timeout is None else started + preparation_timeout
+        )
+        if (
+            preparation_deadline is not None
+            and preparation_deadline < started + timeout
+        ) and monotonic() >= preparation_deadline:
+            raise _preparation_expired()
+        if remaining <= 0:
+            raise exceptions.ExecutionTimeoutError(
+                "execution timed out while loading input"
+            )
+        if preparation_timeout is None and execution_timeout is None:
+            response = _launch(request, remaining, max_output=max_output)
+        else:
+            response = _launch(
+                request,
+                remaining,
+                max_output=max_output,
+                preparation_deadline=preparation_deadline,
+                execution_timeout=execution_timeout,
+            )
         result = (
             response.unwrap() if isinstance(response, ExecutionOutcome) else response
         )
@@ -770,7 +839,6 @@ def _read_request(stream: TextIO) -> dict[str, Any]:
         value = request[key]
         if value is not None and (type(value) is not int or value < 1):
             raise ValueError("invalid worker size")
-    check_timeout(request["execution_timeout"])
     if type(request["report_prepared"]) is not bool:
         raise ValueError("invalid worker preparation flag")
     if request["raster"]:
@@ -806,9 +874,7 @@ def _check_raster_request(runs: Any) -> None:
                 raise ValueError("invalid worker raster pixel")
 
 
-def _failure_wire(
-    error: BaseException, execution_timeout: float | None
-) -> dict[str, Any]:
+def _failure_wire(error: BaseException) -> dict[str, Any]:
     """Encode one retained failure for the worker's validated wire protocol."""
     args: tuple[object, ...] = error.args
     if isinstance(error, exceptions.UnknownLanguageError):
@@ -816,12 +882,6 @@ def _failure_wire(
     elif isinstance(error, exceptions.InputExhaustedError):
         args = (error.reads, error.supplied, error.unit)
     observation = getattr(error, "execution", None)
-    if (
-        isinstance(error, exceptions.ExecutionTimeoutError)
-        and error.bound == "timeout"
-        and execution_timeout is not None
-    ):
-        error.bound = "execution_timeout"
     return {
         "error": type(error).__name__,
         "args": args,
@@ -892,7 +952,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                 }
             )
             return
-        send(_failure_wire(error, request["execution_timeout"]))
+        send(_failure_wire(error))
 
     try:
         if request["max_memory"] is not None:
@@ -922,6 +982,19 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
             settings,
             request["scale"] if request["termination"] else None,
         )
+        prepared = None
+        if request["report_prepared"]:
+            from esolangs.runtime._prepared import prepare_program
+
+            prepared = prepare_program(
+                request["language"],
+                program,
+                settings=settings,
+                scale=request["scale"],
+                catalog=catalog,
+                bind_machine=True,
+            )
+            send({"prepared": True})
         if request["termination"]:
             from esolangs.runtime._termination import _termination_result
 
@@ -930,30 +1003,18 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                 program,
                 request["stdin"],
                 None,
+                max_steps=request["max_steps"],
                 settings=settings,
                 catalog=catalog,
                 io_factory=StreamingIO,
+                prepared=prepared,
             )
             result = proved.observation
         else:
-            prepared = None
-            if request["report_prepared"]:
-                from esolangs.runtime._prepared import prepare_program
-
-                prepared = prepare_program(
-                    request["language"],
-                    program,
-                    settings=settings,
-                    scale=request["scale"],
-                    catalog=catalog,
-                    bind_machine=True,
-                )
-                send({"prepared": True})
             outcome = _execution_operations._execute_invocation(  # noqa: SLF001 - same outcome route as public execute
                 request["language"],
                 program,
                 stdin=request["stdin"],
-                timeout=request["execution_timeout"],
                 seed=int(request["seed"], 16)
                 if request["integer_seed"]
                 else request["seed"],

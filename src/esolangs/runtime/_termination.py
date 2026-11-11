@@ -7,7 +7,11 @@ from typing import cast
 import esolangs.runtime._execution as _execution_runtime
 from esolangs._cycles import _BranchingStepMachine, _halt_or_cycle_result, _unwrap
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
-from esolangs.exceptions import EsolangError, InterpreterLimitError
+from esolangs.exceptions import (
+    EsolangError,
+    ExecutionTimeoutError,
+    InterpreterLimitError,
+)
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
@@ -63,6 +67,7 @@ def _termination_result(
     stdin: str,
     bound: float | None,
     *,
+    max_steps: int | None = None,
     settings: DialectSettings | None = None,
     catalog: "Catalog | None" = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
@@ -81,7 +86,18 @@ def _termination_result(
         )
         machine = factory(name, source, stdin=stdin, prepared=prepared)
         try:
-            decision = _halt_or_cycle_result(machine)
+            try:
+                decision = (
+                    _halt_or_cycle_result(machine)
+                    if max_steps is None
+                    else _halt_or_cycle_result(machine, max_steps)
+                )
+            except ExecutionTimeoutError:
+                raise
+            except TimeoutError as error:
+                failure = ExecutionTimeoutError(str(error))
+                failure.bound = "max_steps"
+                raise failure from error
             try:
                 checked_decision(decision)
             except ValueError:

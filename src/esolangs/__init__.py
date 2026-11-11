@@ -4,6 +4,7 @@ Public operations split by who supplies the program:
 
 * Generator-made: ``generate`` returns a program artifact or template;
   ``instantiate`` fills a template into a runnable artifact.
+  An artifact's ``evaluate`` method executes one Boolean row.
 * Caller-supplied: ``run`` returns output, input consumption and completion
   evidence in an immutable execution result.
   Stepping and debugging live in :mod:`esolangs.debugger`.

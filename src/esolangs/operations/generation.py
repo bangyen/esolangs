@@ -1,5 +1,6 @@
 """Generate and bind explicit program artifacts."""
 
+from dataclasses import replace
 from functools import cache
 from math import isqrt
 from typing import cast
@@ -104,9 +105,7 @@ def generate(
                 catalog=catalog,
             ),
         )
-        return ProgramArtifact(
-            artifact.source.upscaled(scale), artifact.language, settings, scale
-        )
+        return replace(artifact, source=artifact.source.upscaled(scale), scale=scale)
     if balance and width is not None:
         raise with_hint(
             ArgumentError("balance and width are mutually exclusive"),
@@ -146,21 +145,25 @@ def generate(
         raise
     except ValueError as error:
         raise ArgumentError(str(error)) from error
+    inputs = len(truth_table).bit_length() - 1
     if lang.runtime.source_kind is SourceKind.RASTER:
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
-        return ProgramArtifact(generated, resolved, settings, scale=1)
+        return ProgramArtifact(
+            generated, resolved, settings, scale=1, input_arity=inputs
+        )
     if isinstance(generated, CompressedText):
-        return ProgramArtifact(generated.wrapped(width), resolved, settings)
+        return ProgramArtifact(
+            generated.wrapped(width), resolved, settings, input_arity=inputs
+        )
     slots = str(generated)
     if not lang.parameterized:
         program = (
             slots if laid_out else wrap_program(slots, lang.id, width, catalog=catalog)
         )
-        return ProgramArtifact(program, resolved, settings)
+        return ProgramArtifact(program, resolved, settings, input_arity=inputs)
     # The generator spells each input as a run; the public template is
     # that, wrapped with every run whole (see render_template).
-    inputs = len(truth_table).bit_length() - 1
     wrap_to = None if laid_out else width
     text, char, pairs = render_template(
         lang.id, slots, inputs, wrap_to, catalog=catalog
@@ -195,6 +198,7 @@ def _generate_balanced(
     catalog = get_catalog(catalog)
     default = generate(language, truth_table, settings=settings, catalog=catalog)
     source = default.source
+    inputs = len(truth_table).bit_length() - 1
     name = catalog.resolve(language)
     lang = catalog.languages[name]
     backend = lang.backend
@@ -202,7 +206,10 @@ def _generate_balanced(
     balancer = backend.balance
     if isinstance(source, CompressedText):
         return ProgramArtifact(
-            source.wrapped(max(1, isqrt(CELL_ASPECT * len(source)))), name, settings
+            source.wrapped(max(1, isqrt(CELL_ASPECT * len(source)))),
+            name,
+            settings,
+            input_arity=inputs,
         )
     if isinstance(source, Raster):
         if balancer is None:
@@ -214,7 +221,7 @@ def _generate_balanced(
         )
         if not isinstance(balanced, Raster):
             raise ProgramError(f"{name}'s balancer did not return a Raster")
-        return ProgramArtifact(balanced, name, settings, scale=1)
+        return ProgramArtifact(balanced, name, settings, scale=1, input_arity=inputs)
     if balancer is not None:
         text = balancer(
             BalanceRequest(
@@ -228,7 +235,7 @@ def _generate_balanced(
                 lang.id, text, default.bindings.inputs, catalog=catalog
             )
             return TemplateArtifact(text, name, TemplateBindings(char, pairs), settings)
-        return ProgramArtifact(text, name, settings)
+        return ProgramArtifact(text, name, settings, input_arity=inputs)
     if isinstance(default, TemplateArtifact):
         bindings = default.bindings
         marked = mark_runs(default.source, bindings.char, bindings.setters)
@@ -239,7 +246,10 @@ def _generate_balanced(
         )
         return TemplateArtifact(text, name, bindings, settings)
     return ProgramArtifact(
-        balance_program(source, lang.id, catalog=catalog), name, settings
+        balance_program(source, lang.id, catalog=catalog),
+        name,
+        settings,
+        input_arity=inputs,
     )
 
 

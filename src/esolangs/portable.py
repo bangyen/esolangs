@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from os import PathLike
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -116,7 +116,7 @@ def dump_program(
     settings: DialectSettings | None = None,
     catalog: Catalog | None = None,
 ) -> str:
-    """Return version-1 JSON preserving source, choices, and template setters.
+    """Return version-1 JSON preserving source, choices, and Boolean bindings.
 
     Raster pixels are embedded as base64 PNG. Integer choices use hexadecimal
     strings, including values beyond Python's decimal conversion limit.
@@ -158,6 +158,8 @@ def dump_program(
         "language": name,
         "settings": encoded,
     }
+    if isinstance(artifact, ProgramArtifact) and artifact.input_arity is not None:
+        document["input_arity"] = artifact.input_arity
     body = artifact.source
     if isinstance(artifact, TemplateArtifact):
         document.update(
@@ -369,6 +371,8 @@ def load_program(
             fields.add("limits")
         if kind == "template":
             fields |= {"char", "setters"}
+        if kind != "template" and "input_arity" in value:
+            fields.add("input_arity")
         if set(value) != fields:
             raise ValueError("unexpected or missing fields")
         if (
@@ -388,6 +392,11 @@ def load_program(
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
         artifact = _LOADERS[kind](value, name, settings, catalog=catalog)
+        if isinstance(artifact, ProgramArtifact) and "input_arity" in value:
+            arity = value["input_arity"]
+            if type(arity) is not int or arity < 1:
+                raise ValueError("input_arity must be a positive integer")
+            artifact = replace(artifact, input_arity=arity)
         _read_source(name, artifact, catalog=catalog)
         return artifact
     except (ValueError, TypeError) as error:

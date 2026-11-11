@@ -64,9 +64,8 @@ printf '01' | esolangs run Suffolk program.txt
 import esolangs
 
 program = esolangs.generate("brainfuck", "0110")
-stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-result = esolangs.run("brainfuck", program, stdin=stdin, max_steps=10_000)
-assert esolangs.read_answer("brainfuck", result.output) == "1"
+row = program.evaluate([0, 1], limits=esolangs.ExecutionLimits(max_steps=10_000))
+assert row.bit == "1"
 ```
 
 | Call | Does |
@@ -85,7 +84,11 @@ Bound a run with:
   `isolated=True, timeout=5`.
 - `max_output`, and `max_memory` on Linux: need `isolated=True`.
 
-Generated artifacts expose `.source`; templates expose `.fill(bits)`.
+`evaluate` handles stdin encoding, template binding, and answer extraction.
+The row includes an execution observation and, for termination answers,
+a halt or divergence proof. Exhausting a budget raises `ExecutionTimeoutError`.
+Generated artifacts expose `.source` and templates expose `.fill(bits)`.
+For a custom catalog, use `Language.evaluate(artifact, bits)`.
 The [2.0 migration guide](docs/usage.md#compatibility) covers the changed return
 types and migrating 1.x source/output callers.
 

@@ -42,6 +42,18 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
         assert type(restored) is type(program)
         assert esolangs.dump_program(language, restored) == document
         assert _evaluate(language, restored, inputs=1) == "01"
+        if not options:
+            for bit in (0, 1):
+                result = bound.evaluate(restored, [bit])
+                assert result.bit == str(bit)
+                if bound.describe()["answer_mode"] == "termination":
+                    assert result.termination is not None
+                else:
+                    assert result.observation.completion is not None
+                if isinstance(restored, esolangs.TemplateArtifact):
+                    assert result.observation.input_position == 0
+                else:
+                    assert result.observation.input_position > 0
         if isinstance(restored, esolangs.TemplateArtifact):
             with pytest.raises(esolangs.TemplateError):
                 bound.run(restored, max_steps=10)
@@ -50,3 +62,6 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
             assert filled.language == language
         else:
             assert bound.load_program(document) == restored
+            if not options:
+                with pytest.raises(esolangs.ArgumentError, match="expects 1 bits"):
+                    restored.evaluate([0, 1])

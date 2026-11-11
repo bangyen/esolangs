@@ -91,7 +91,9 @@ def read_artifact(
             if not isinstance(source, str):
                 raise TemplateError("template source must be text")
             return TemplateArtifact(source, name, program.bindings, program.settings)
-        return ProgramArtifact(source, name, program.settings, program.scale)
+        return ProgramArtifact(
+            source, name, program.settings, program.scale, program.input_arity
+        )
     value, file = _read_container(program)
     if isinstance(value, bytes) and value.startswith(b"\x89PNG\r\n\x1a\n"):
         record = read_png_artifact(name, value, catalog=catalog)

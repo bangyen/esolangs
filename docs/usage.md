@@ -236,7 +236,7 @@ layout. Rendering more than 2^28 pixels raises `ArgumentError`.
 Functions:
 
 - `esolangs.describe` -- return a structured description of `language`
-- `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and template setters
+- `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and Boolean bindings
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
 - `esolangs.generate` -- return an immutable program or template computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
