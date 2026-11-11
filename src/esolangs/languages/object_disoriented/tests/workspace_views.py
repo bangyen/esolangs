@@ -322,6 +322,7 @@ def prepared_siblings(context):
     factory = context.native.prepare_machine(source, {})
     ports = [context.io(case.stdin) for case in cases]
     machines = [factory(port) for port in ports]
+    assert machines[0].program is machines[1].program
     assert machines[0] is not machines[1]
     assert machines[0].io is ports[0]
     assert machines[1].io is ports[1]

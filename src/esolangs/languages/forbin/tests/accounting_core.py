@@ -179,9 +179,9 @@ class Code:
         self.checked.add(id(actual))
         exact(actual.site, site)
         exact(actual.name, "$globals" if expected is None else expected.name)
-        exact(actual.args, [] if expected is None else list(expected.args))
-        assert type(actual.body) is list
-        assert type(actual.nested) is dict
+        exact(actual.args, () if expected is None else tuple(expected.args))
+        assert type(actual.body) is tuple
+        assert type(actual.nested) is MappingProxyType
         wanted_body = () if expected is None else expected.body
         wanted_nested = () if expected is None else expected.nested
         assert len(actual.body) == len(wanted_body)
@@ -209,7 +209,7 @@ class Code:
         elif kind == "call":
             assert len(actual) == 3
             self.value(actual[1], expected[1])
-            assert type(actual[2]) is list
+            assert type(actual[2]) is tuple
             assert len(actual[2]) == len(expected[2])
             for left, right in zip(actual[2], expected[2], strict=True):
                 self.value(left, right)
@@ -237,8 +237,8 @@ class Code:
         _, names, groups = expected
         assert len(actual) == 3
         exact(actual[0], "iter")
-        exact(actual[1], list(names))
-        assert type(actual[2]) is list
+        exact(actual[1], tuple(names))
+        assert type(actual[2]) is tuple
         assert len(actual[2]) == len(groups)
         for left, right in zip(actual[2], groups, strict=True):
             if len(names) == 1:
@@ -248,7 +248,7 @@ class Code:
                 assert type(left) is tuple
                 assert len(left) == 2
                 exact(left[0], "group")
-                assert type(left[1]) is list
+                assert type(left[1]) is tuple
                 assert len(left[1]) == len(right)
                 for item, wanted in zip(left[1], right, strict=True):
                     self.pattern(item, wanted)
@@ -260,14 +260,14 @@ class Code:
         if expected[0] == "return":
             self.value(actual[1], expected[1])
         elif expected[0] == "assign":
-            exact(actual[1], list(expected[1]))
-            assert type(actual[2]) is list
+            exact(actual[1], tuple(expected[1]))
+            assert type(actual[2]) is tuple
             assert len(actual[2]) == len(expected[2])
             for left, right in zip(actual[2], expected[2], strict=True):
                 self.value(left, right)
         elif expected[0] == "for":
             self.spec(actual[1], expected[1])
-            assert type(actual[2]) is list
+            assert type(actual[2]) is tuple
             assert len(actual[2]) == len(expected[2])
             for left, right in zip(actual[2], expected[2], strict=True):
                 self.statement(left, right)
@@ -452,7 +452,7 @@ def run(records, route, context):
             exact(error_kind, row.error)
             expected = row.machine
             code.checked.clear()
-            assert type(raw.globals) is dict
+            assert type(raw.globals) is MappingProxyType
             exact(list(raw.globals), [function.name for function in program.functions])
             for function in program.functions:
                 code.function(raw.globals[function.name], function)

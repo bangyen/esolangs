@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Literal, NoReturn
 
 from esolangs.runtime.source_hints import syntax_error
@@ -16,38 +18,38 @@ _Lit = tuple[Literal["lit"], int]
 _Not = tuple[Literal["not"], "_ValueNode"]
 _Var = tuple[Literal["var"], str]
 _FnLit = tuple[Literal["fnlit"], "_Function"]
-_CallNode = tuple[Literal["call"], "_ValueNode", list["_ValueNode"]]
+_CallNode = tuple[Literal["call"], "_ValueNode", tuple["_ValueNode", ...]]
 _ValueNode = _Lit | _Not | _Var | _FnLit | _CallNode
 
 # ``*`` is a wildcard standing for both bit values, so it is a bare
 # one-tuple: reading [1] off one is a type error rather than an IndexError.
 _Star = tuple[Literal["*"]]
 _ValuePat = tuple[Literal["value"], _ValueNode]
-_Group = tuple[Literal["group"], list["_Star | _ValuePat"]]
+_Group = tuple[Literal["group"], tuple["_Star | _ValuePat", ...]]
 _Pattern = _Star | _ValuePat | _Group
 
 _Range = tuple[Literal["range"], str, _ValueNode, _ValueNode]
-_Iter = tuple[Literal["iter"], list[str], list[_Pattern]]
+_Iter = tuple[Literal["iter"], tuple[str, ...], tuple[_Pattern, ...]]
 _ForSpec = _Range | _Iter
 
 _Return = tuple[Literal["return"], _ValueNode]
-_Assign = tuple[Literal["assign"], list[str], list[_ValueNode]]
-_For = tuple[Literal["for"], _ForSpec, list["_Statement"]]
+_Assign = tuple[Literal["assign"], tuple[str, ...], tuple[_ValueNode, ...]]
+_For = tuple[Literal["for"], _ForSpec, tuple["_Statement", ...]]
 _Statement = _Return | _Assign | _CallNode | _For
 
 
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Function:
     """A parsed function: name, parameter names, body, nested definitions."""
 
-    __slots__ = ("args", "body", "name", "nested", "site")
-
-    def __init__(self, name: str, args: list[str], *, site: int | None = None) -> None:
-        self.name = name
-        # The source cursor after the header identifies a read-only definition.
-        self.site = site
-        self.args = args
-        self.body: list[_Statement] = []
-        self.nested: dict[str, _Function] = {}
+    name: str
+    args: tuple[str, ...] = ()
+    body: tuple[_Statement, ...] = ()
+    nested: Mapping[str, _Function] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
+    # The source cursor after the header identifies a read-only definition.
+    site: int | None = None
 
 
 class _Parser:
@@ -140,16 +142,16 @@ class _Parser:
                 return ("fnlit", fn)
             self.pos = save
             callee: _Var = ("var", self._ident())
-            return ("call", callee, self._until_close(self._value))
+            return ("call", callee, tuple(self._until_close(self._value)))
         if not self._at_ident():
             self._fail(f"unexpected character {c!r}")
         return ("var", self._ident())
 
     def _function(self, name: str, params: list[str]) -> _Function:
         """Parse the ``{...}`` body of a function named ``name``."""
-        fn = _Function(name, params, site=self.pos)
-        fn.body, fn.nested = self._block()
-        return fn
+        site = self.pos
+        body, nested = self._block()
+        return _Function(name, tuple(params), body, MappingProxyType(nested), site)
 
     def _until_close[T](self, item: Callable[[], T]) -> list[T]:
         """Parse comma-separated ``item``s up to and including ``)``."""
@@ -161,12 +163,12 @@ class _Parser:
         self._expect(")")
         return out
 
-    def _values(self) -> list[_ValueNode]:
+    def _values(self) -> tuple[_ValueNode, ...]:
         values = [self._value()]
         while self._peek() == ",":
             self.pos += 1
             values.append(self._value())
-        return values
+        return tuple(values)
 
     def _semi(self) -> None:
         if self._peek() == ";":
@@ -180,7 +182,7 @@ class _Parser:
 
     def _pattern_group(self) -> _Pattern:
         self._expect("(")
-        return ("group", self._until_close(self._pattern))
+        return ("group", tuple(self._until_close(self._pattern)))
 
     def _for_spec(self) -> _ForSpec:
         if self._peek() == "(":
@@ -196,12 +198,12 @@ class _Parser:
         if self._peek() == "(":
             self.pos += 1
             if len(vars_) > 1 and self._peek() != "(":
-                group: _Group = ("group", self._until_close(self._pattern))
-                iteration: _Iter = ("iter", vars_, [group])
+                group: _Group = ("group", tuple(self._until_close(self._pattern)))
+                iteration: _Iter = ("iter", tuple(vars_), (group,))
                 return iteration
             item = self._pattern if len(vars_) == 1 else self._pattern_group
             items: list[_Pattern] = self._until_close(item)
-            return ("iter", vars_, items)
+            return ("iter", tuple(vars_), tuple(items))
         start = self._value()
         self._skip_ws()
         if not self.text.startswith("..", self.pos):
@@ -224,7 +226,7 @@ class _Parser:
             params.append(self._ident())
         return name, params
 
-    def _block(self) -> tuple[list[_Statement], dict[str, _Function]]:
+    def _block(self) -> tuple[tuple[_Statement, ...], dict[str, _Function]]:
         self._expect("{")
         stmts: list[_Statement] = []
         nested: dict[str, _Function] = {}
@@ -236,7 +238,7 @@ class _Parser:
             if self.text[self.pos] == "}":
                 self.pos += 1
                 self._definition_scopes.pop()
-                return stmts, nested
+                return tuple(stmts), nested
             if self._at_ident():
                 save = self.pos
                 name, params = self._header()
@@ -277,7 +279,7 @@ class _Parser:
             self.pos += 1
             rhs = self._values()
             self._semi()
-            return ("assign", [first[1]], rhs)
+            return ("assign", (first[1],), rhs)
         if self._peek() == ",":
             values = [first]
             while self._peek() == ",":
@@ -295,11 +297,11 @@ class _Parser:
                 names.append(v[1])
             rhs = self._values()
             self._semi()
-            return ("assign", names, rhs)
+            return ("assign", tuple(names), rhs)
         if first[0] not in ("var", "call", "fnlit"):
             self._fail("statement must be a call, assignment, or return")
         args = (
-            self._values() if self._peek() in "01!(_" or self._peek().isalpha() else []
+            self._values() if self._peek() in "01!(_" or self._peek().isalpha() else ()
         )
         self._semi()
         return ("call", first, args)

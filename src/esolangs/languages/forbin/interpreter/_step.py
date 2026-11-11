@@ -137,7 +137,7 @@ def _run(
 
 
 def _run_block(
-    stmts: list[_Statement],
+    stmts: tuple[_Statement, ...],
     frame: _Frame,
     globals_: Mapping[str, _Function],
     ctx: _Ctx,
@@ -148,8 +148,7 @@ def _run_block(
     so direct execution and the resumable machine share one statement
     implementation.
     """
-    block_fn = _Function("$block", [])
-    block_fn.body = stmts
+    block_fn = _Function("$block", body=stmts)
     block_frame = _Frame(block_fn, frame.scope)
     return _run(block_frame, globals_, ctx)
 
@@ -223,7 +222,7 @@ def _for_rows(
     frame: _Frame,
     globals_: Mapping[str, _Function],
     ctx: _Ctx,
-) -> tuple[list[list[object]], list[str], _Ctx]:
+) -> tuple[list[list[object]], tuple[str, ...], _Ctx]:
     """Compute a ``for`` statement's iteration rows and bound variable names."""
     if spec[0] == "range":
         _, name, start_node, end_node = spec
@@ -233,7 +232,7 @@ def _for_rows(
         range_rows: list[list[object]] = (
             [[v] for v in range(lo, hi + 1)] if lo <= hi else []
         )
-        return range_rows, [name], ctx
+        return range_rows, (name,), ctx
     _, names, patterns = spec
     rows: list[list[object]] = []
     for pat in patterns:

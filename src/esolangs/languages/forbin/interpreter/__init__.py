@@ -69,7 +69,7 @@ from esolangs.languages.forbin.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -99,6 +99,20 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+type _Image = tuple[int, Mapping[str, _Function], tuple[_Statement, ...]]
+
+
+def _prepare_source(code: str) -> _Image:
+    parser = _Parser(code)
+    functions = parser.parse()
+    if "main" not in functions:
+        raise syntax_error(
+            "Forbin program has no main function",
+            "define a main function, for example main { return 0; }",
+        )
+    return len(code), MappingProxyType(functions), tuple(parser.initializers)
+
+
 class _Machine:
     """One Forbin run: an explicit stack of resumable call frames.
 
@@ -108,11 +122,12 @@ class _Machine:
     frame is ever touched per ``step()``.
     """
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
         # Where the source ends, kept because ``ip`` still has to report a
         # position once every frame has been popped.
-        self._length = len(code)
+        image = _prepare_source(code) if isinstance(code, str) else code
+        self._length, self.globals, initializers = image
         # First-sight numbering of functions and scopes, so a serial names
         # one of them for the whole run.  A function is keyed by ``id``:
         # parsed functions live as long as the machine.  A scope is keyed by
@@ -121,21 +136,14 @@ class _Machine:
         # program two different snapshot sequences on two runs.
         self._serials: dict[tuple[str, int], int] = {}
         self._next_serial = 0
-        parser = _Parser(code)
-        self.globals = parser.parse()
-        if "main" not in self.globals:
-            raise syntax_error(
-                "Forbin program has no main function",
-                "define a main function, for example main { return 0; }",
-            )
-        global_fn = _Function("$globals", [])
+        global_fn = _Function("$globals")
         global_scope, scopes = _new_scope(
             MappingProxyType({}), global_fn, None, MappingProxyType({})
         )
         self._global_scope = global_scope
         global_frame = _Frame(global_fn, global_scope)
         self.state = _State((), scopes, (), 0)
-        for initializer in parser.initializers:
+        for initializer in initializers:
             self._run_initializer(initializer, global_frame)
         main_fn = self.globals["main"]
         main_locals = dict.fromkeys(main_fn.args, 0)
@@ -166,7 +174,9 @@ class _Machine:
                 tuple(inputs),
             )
             try:
-                _value, ctx = _run_block([initializer], global_frame, self.globals, ctx)
+                _value, ctx = _run_block(
+                    (initializer,), global_frame, self.globals, ctx
+                )
             except _NeedByte:
                 flushed = self._flush(out, flushed)
                 inputs.append(self.io.input_char())
@@ -387,22 +397,18 @@ class _Machine:
         self._flush(out, flushed)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain source preparation and bind fresh execution state."""
     if not isinstance(source, str):
         raise TypeError("Forbin machines require text source")
     if options:
         raise TypeError("Forbin machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Forbin program, calling ``main`` with a dummy argument."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

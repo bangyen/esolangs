@@ -2,6 +2,7 @@
 
 # Raw snapshot tuples deliberately retain the existing six/eight-field wire shape.
 # ruff: noqa: N806, PT017
+from types import MappingProxyType
 from typing import NamedTuple
 from unittest.mock import patch
 
@@ -269,7 +270,7 @@ class Observer:
             "state",
         }
         core.exact(raw._length, len(self.program.source))
-        assert type(raw.globals) is dict
+        assert type(raw.globals) is MappingProxyType
         core.exact(list(raw.globals), [fn.name for fn in self.program.functions])
         self.code.checked.clear()
         for function in self.program.functions:
