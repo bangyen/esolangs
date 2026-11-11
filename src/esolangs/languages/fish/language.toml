@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+constant_vertical_to_fold_floor = { tables = [{ arity = 3, rule = "one" }], benchmark = false, test = "test_boolean_fish.py::test_a_constant_uses_one_column_when_narrow" }
+
 [curation]
 backlinks = 91
 

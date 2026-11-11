@@ -2,6 +2,7 @@
 
 from collections import deque
 from math import factorial
+from unittest.mock import patch
 
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, permute_truth_table
@@ -12,8 +13,9 @@ from esolangs.languages.eval.tests.eval_support import (
     _eval_stack_programs,
 )
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.generator_support import constant_artifacts
+from tests.support.generator_support import assert_saved_rows, constant_artifacts
 from tests.support.witness_tables import row_bits
 
 #: One input's run, as the template spells it.
@@ -186,6 +188,17 @@ class TestEvalBoolean:
 
     def test_two_stack_build_computes_its_table(self) -> None:
         """The new cutoff keeps one-stack n4/5 and two-stack n6/7 correct."""
+        language = esolangs.Language("Eval")
+        for witness in construction_boundaries(language.name)[
+            "one_to_two_stack_lookup_cutoff"
+        ]:
+            n, table = witness.arity, witness.table()
+            with patch.object(boolean, "_eval_dual", wraps=boolean._eval_dual) as dual:
+                artifact = language.generate(table)
+            assert dual.call_count == int(n == 6)
+            assert artifact.source.count(TEMPLATE_CHAR) == (2 if n == 5 else 3) * n
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
         for table in (
             "".join("1" if (i).bit_count() % 2 else "0" for i in range(2**5)),
             "0" * 31 + "1",

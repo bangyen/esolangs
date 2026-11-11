@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+package_name_width_floor = { tables = [{ arity = 3, rule = "dense" }], benchmark = false, test = "test_boolean_packlang.py::test_binary_digits_block_bounds_cost_their_binary_digits" }
 aligned_block_scan_past_four_inputs = { tables = [{ arity = 4, rule = "dense" }, { arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_packlang.py::test_binary_digits_block_bounds_cost_their_binary_digits" }
 
 [curation]

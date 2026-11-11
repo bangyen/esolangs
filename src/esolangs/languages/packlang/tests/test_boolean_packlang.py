@@ -19,7 +19,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import three_input_corpus_size
+from tests.support.generator_support import assert_saved_rows, three_input_corpus_size
 
 
 class TestPacklangPaintedArray:
@@ -167,6 +167,17 @@ def test_binary_digits_small_tables_run(table) -> None:
 def test_binary_digits_block_bounds_cost_their_binary_digits() -> None:
     """Four blocks of 16 rows declare their counters as ``Integer(0,11,...)``."""
     language = esolangs.Language("PackLang")
+    for witness in construction_boundaries(language.name)["package_name_width_floor"]:
+        table = witness.table()
+        floor = len("truthTable")
+        for width in (floor - 1, floor):
+            with patch.object(
+                boolean, "_short_name", wraps=boolean._short_name
+            ) as rename:
+                artifact = language.generate(table, width=width)
+            assert bool(rename.call_count) == (width < floor)
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
     witnesses = construction_boundaries(language.name)[
         "aligned_block_scan_past_four_inputs"
     ]

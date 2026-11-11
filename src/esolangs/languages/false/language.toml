@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+split_search_row_cutoff = { tables = [{ arity = 9, rule = "dense" }, { arity = 10, rule = "dense" }], benchmark = false, test = "test_boolean_false.py::test_false_stores_repeated_halves_and_skips_equal_ones" }
+
 [deep_arities]
 workspace = 9
 

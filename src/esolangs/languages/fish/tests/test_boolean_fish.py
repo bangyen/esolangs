@@ -19,8 +19,14 @@ from esolangs.languages.fish.generator import (
 )
 from esolangs.languages.fish.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
-from tests.support.generator_support import constant_layouts, constant_runs, run_lines
+from tests.support.generator_support import (
+    assert_saved_rows,
+    constant_layouts,
+    constant_runs,
+    run_lines,
+)
 from tests.support.witness_tables import witnesses
 
 
@@ -138,6 +144,16 @@ def test_the_fold_height_reserve_counts_three_literal_cells() -> None:
 
 
 def test_a_constant_uses_one_column_when_narrow() -> None:
+    language = esolangs.Language("Fish")
+    for witness in construction_boundaries(language.name)[
+        "constant_vertical_to_fold_floor"
+    ]:
+        table = witness.table()
+        for width, first_row in ((2, "v"), (3, ">iv")):
+            artifact = language.generate(table, width=width)
+            assert artifact.source.splitlines()[0] == first_row
+            assert_saved_rows(language, artifact, table, range(len(table)))
+
     _check_constants()
     assert fish("00", 1) == "v\ni\n~\n0\nn\n;"
 

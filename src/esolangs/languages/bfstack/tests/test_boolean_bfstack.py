@@ -12,11 +12,13 @@ from esolangs.languages.bfstack.generator import _bfstack_small
 from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
+    assert_saved_rows,
     constant_programs,
 )
 
@@ -85,6 +87,18 @@ class TestBfstack:
     @pytest.mark.medium
     def test_the_last_eight_input_row_does_not_wrap_to_zero(self) -> None:
         """Index 256 previously skipped the decoder's outer loop."""
+        language = esolangs.Language("BFStack")
+        for witness in construction_boundaries(language.name)["byte_index_wrap_cutoff"]:
+            n, table = witness.arity, witness.table()
+            start = boolean._start(table)
+            assert start == (1 if n == 7 else 0)
+            with patch.object(boolean, "_start", wraps=boolean._start) as index:
+                artifact = language.generate(table)
+            index.assert_called_once_with(table)
+            assert_saved_rows(
+                language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
+            )
+
         table = "0" * 255 + "1"
         assert run_bfstack(boolean.bfstack(table), ["1"] * 8) == "1"
 

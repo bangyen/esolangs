@@ -1,6 +1,7 @@
 """false generator tests."""
 
 import random
+from unittest.mock import patch
 
 import pytest
 
@@ -9,11 +10,16 @@ from esolangs import run as execute
 from esolangs.languages.false.generator import _shared, false
 from esolangs.languages.false.interpreter import run
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.plain_oracles import separated_tree_text
 from tests.generators.reader_support import assert_emissions_grow_by_a_line
 from tests.generators.sample_tables import five_input_sample
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.generator_support import assert_constant_roots, verify_generated
+from tests.support.generator_support import (
+    assert_constant_roots,
+    assert_saved_rows,
+    verify_generated,
+)
 from tests.support.witness_tables import witnesses
 
 
@@ -121,6 +127,7 @@ def false_plain(truth_table: str, n: int) -> str:
 
 
 def _check_lookup_and_cached_formula() -> None:
+    from esolangs.languages.false import generator
     from esolangs.languages.false.descriptor import LANGUAGE
     from esolangs.languages.false.generator import (
         _balance,
@@ -129,6 +136,24 @@ def _check_lookup_and_cached_formula() -> None:
         _lookup,
         _splits,
     )
+
+    language = esolangs.Language("FALSE")
+    observed = {}
+
+    def splits(table, positions):
+        choices = _splits(table, positions)
+        observed.setdefault(len(table), set()).add(len(choices))
+        return choices
+
+    for witness in construction_boundaries(language.name)["split_search_row_cutoff"]:
+        n, table = witness.arity, witness.table()
+        observed.clear()
+        with patch.object(generator, "_splits", side_effect=splits):
+            artifact = language.generate(table)
+        assert observed[len(table)] == {n if n == 9 else 1}
+        assert_saved_rows(
+            language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
+        )
 
     assert tuple(_splits("0" * 512, tuple(range(9)))) == tuple(range(9))
     assert _splits("0" * 1024, tuple(range(10))) == (0,)

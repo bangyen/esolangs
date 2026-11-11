@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+byte_index_wrap_cutoff = { tables = [{ arity = 7, rule = "dense" }, { arity = 8, rule = "dense" }], benchmark = false, test = "test_boolean_bfstack.py::TestBfstack::test_the_last_eight_input_row_does_not_wrap_to_zero" }
+
 [deep_arities]
 workspace = 9
 
