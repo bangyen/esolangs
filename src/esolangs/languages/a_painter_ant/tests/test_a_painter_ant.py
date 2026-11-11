@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
+from esolangs.languages.a_painter_ant import interpreter as native_interpreter
 from esolangs.languages.a_painter_ant.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -47,12 +48,37 @@ class TestPaintingAndLoop:
     def test_diamond_example(self) -> None:
         assert run_program("PnPwPsPe", 3) == ".##\n###\n##.\n.#o"
 
-    def test_run_finds_the_first_repeated_pass(self) -> None:
+    def test_run_finds_the_first_repeated_pass(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """``run`` renders at the first pass boundary whose state repeats."""
         io = ScriptedIO()
         run("NPsP", io)
         assert io.getvalue() == run_program("NPsP", 2)
         assert io.getvalue() != run_program("NPsP", 1)
+
+        language = esolangs.Language("A Painter Ant")
+        source = "N P\nsP"
+        expected = language.run(source)
+        calls = []
+        parse = native_interpreter._prepare_source
+
+        def counted(code):
+            calls.append(code)
+            return parse(code)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(native_interpreter, "_prepare_source", counted)
+            prepared = language.prepare(source)
+            first, second = prepared.make_vm(), prepared.make_vm()
+            before = second.snapshot()
+            first.step()
+            first.step()
+            assert first.snapshot() != before
+            assert second.snapshot() == before
+            assert prepared.run() == expected
+            assert prepared.execute().unwrap() == expected
+            assert calls == [source]
 
         from .oracle_checks import _check
 

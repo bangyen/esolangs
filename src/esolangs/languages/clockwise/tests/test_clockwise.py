@@ -4,6 +4,7 @@ from typing import ClassVar
 
 import pytest
 
+from esolangs.languages.clockwise import interpreter as native
 from esolangs.languages.clockwise.interpreter import (
     _Machine,
     move,
@@ -17,6 +18,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_lines
+from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import raises_message
 
 run_and_capture = run_lines(run)
@@ -41,10 +43,20 @@ class TestClockwise:
         """``.`` puts the bit *into* the accumulator, sign and all."""
         assert run_and_capture([".+?", "R R"], inputs=["A"]) == ""
 
-    def test_every_input_character_contributes_its_bits(self) -> None:
+    def test_every_input_character_contributes_its_bits(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """The bits of a second character are appended, not substituted."""
         code = ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"]
         assert run_and_capture(code, inputs=["AB"]) == "AB"
+        check_image_reuse(
+            "Clockwise",
+            "\n".join(code),
+            native,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("AB", "AB"), ("AZ", "AZ"), ("QR", "QR")),
+        )
 
     def test_a_bang_turns_when_the_accumulator_is_zero(self) -> None:
         """``!`` is the inverse of ``?``, and no program here used one."""

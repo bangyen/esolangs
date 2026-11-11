@@ -19,15 +19,14 @@ Errors:
 """
 
 from collections.abc import Mapping
-from functools import partial
 from types import MappingProxyType
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from esolangs.languages.a_painter_ant.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive_periodic
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -95,6 +94,21 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _SourceImage(NamedTuple):
+    commands: str
+
+
+def _prepare_source(code: str) -> _SourceImage:
+    commands = "".join(c for c in code if not c.isspace())
+    for c in commands:
+        if c not in _INSTRUCTIONS:
+            raise syntax_error(
+                f"unknown instruction {c!r}",
+                "use only n/e/s/w or N/E/S/W to move, and p/P to paint",
+            )
+    return _SourceImage(commands)
+
+
 class _Machine:
     """Per-run A Painter Ant state.
 
@@ -112,7 +126,7 @@ class _Machine:
 
     def __init__(
         self,
-        code: str,
+        code: str | _SourceImage,
         io: IO | None = None,
     ) -> None:
         """Validate ``code`` and reset the machine to the origin.
@@ -124,13 +138,8 @@ class _Machine:
         # Not in ``snapshot``: the dump is bookkeeping, not machine state.
         self._interrupted = False
         self._dumped = False
-        self.prog = "".join(c for c in code if not c.isspace())
-        for c in self.prog:
-            if c not in _INSTRUCTIONS:
-                raise syntax_error(
-                    f"unknown instruction {c!r}",
-                    "use only n/e/s/w or N/E/S/W to move, and p/P to paint",
-                )
+        image = code if isinstance(code, _SourceImage) else _prepare_source(code)
+        self.prog = image.commands
         self.grid: dict[tuple[int, int], int] = {}
         self._view = MappingProxyType(self.grid)
         # ``snapshot``'s grid, rebuilt only after a paint changes a cell: past
@@ -243,18 +252,18 @@ class _Machine:
         return "#" if white else "."
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines; a_painter_ant has no runtime options."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain prepared source and allocate state per invocation."""
     if not isinstance(source, str):
         raise TypeError("a_painter_ant machines require text source")
     if options:
         raise TypeError("a_painter_ant machines accept no runtime options")
-    return partial(_Machine, source)
+
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _SourceImage, io: IO) -> CompletionReport:
     """Return completion after rendering a repeated pass boundary.
 
     Once ``snapshot()`` repeats at a pass start every later pass is

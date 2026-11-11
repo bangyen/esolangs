@@ -178,6 +178,8 @@ These language-owned plans retain parsed source:
 - Dig: padded initial grid with per-run writes.
 - Fish: initial codebox with per-run writes.
 - Super SNUSP, thisthat and LaserFuck: grid and entry points.
+- Clockwise: padded source and input detection.
+- A Painter Ant: normalized instructions for periodic execution.
 
 `Language` also binds `instantiate`; use package functions across languages.
 

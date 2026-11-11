@@ -20,14 +20,14 @@ Errors:
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, NamedTuple
 
 from esolangs.exceptions import InputExhaustedError
 from esolangs.languages.clockwise.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -121,6 +121,22 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+class _SourceImage(NamedTuple):
+    rows: tuple[str, ...]
+    reads_input: bool
+
+
+def _prepare_source(code: list[str]) -> _SourceImage:
+    if not code:
+        raise syntax_error(
+            "Clockwise program cannot be empty",
+            "provide a nonempty ring of cells with R turns at its corners",
+        )
+    size = max(len(lne) for lne in code)
+    rows = tuple(c.ljust(size) for c in code)
+    return _SourceImage(rows, any("." in line for line in rows))
+
+
 class _Machine:
     """Per-run Clockwise state: position, heading, accumulator, pending bits.
 
@@ -128,19 +144,14 @@ class _Machine:
     heading arm there is a guard, since :func:`move` refuses ``(0, -1)``.
     """
 
-    def __init__(self, code: list[str], io: IO) -> None:
+    def __init__(self, code: list[str] | _SourceImage, io: IO) -> None:
         """Pad ``code`` and read the input bits up front, like :func:`run`."""
-        if not code:
-            raise syntax_error(
-                "Clockwise program cannot be empty",
-                "provide a nonempty ring of cells with R turns at its corners",
-            )
+        image = code if isinstance(code, _SourceImage) else _prepare_source(code)
         self.io = io
-        size = max(len(lne) for lne in code)
-        self.code = tuple(c.ljust(size) for c in code)
+        self.code = image.rows
 
         bits: list[str] = []
-        if any("." in line for line in self.code):
+        if image.reads_input:
             for k in io.input_all():
                 bits += format(ord(k), f"0{_BYTE_BITS}b")
         self.state: _State = (0, 0, 0, 0, (), tuple(bits))
@@ -238,23 +249,18 @@ class _Machine:
             self.io.print_char(chr(byte))
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain prepared source and allocate state per invocation."""
     if not isinstance(source, list):
         raise TypeError("clockwise machines require split text source")
     if options:
         raise TypeError("clockwise machines accept no runtime options")
-    code = tuple(source)
 
-    def build(io: IO) -> _Machine:
-        return _Machine(list(code), io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: list[str], io: IO) -> CompletionReport:
+def _execute(code: list[str] | _SourceImage, io: IO) -> CompletionReport:
     """Run a Clockwise program, reading input bits when the ring reads ``.``."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)
