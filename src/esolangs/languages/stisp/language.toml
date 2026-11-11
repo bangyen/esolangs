@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+constant_scalar_to_list_head = { tables = [{ arity = 1, rule = "zero" }, { arity = 2, rule = "zero" }], benchmark = false, test = "test_boolean_stisp.py::test_the_and_template_is_the_documented_one" }
+
 [curation]
 backlinks = 1
 admitted = 2026-10-20T08:45:53-04:00

@@ -26,6 +26,7 @@ qualification = "complete residual folds with counted atomic definitions or the 
 evidence = "docs/proofs/circuit-diagram-sharing.md"
 
 [construction_boundaries]
+narrow_output_margin_retry = { tables = [{ arity = 3, rule = "and" }], benchmark = false, test = "test_boolean_circuit_diagram.py::TestCircuitDiagramLayoutGuards::test_narrow_gate_groups_preserve_every_small_table" }
 default_model_race_cutoff = { tables = [{ arity = 3, rule = "dense" }, { arity = 4, rule = "dense" }], benchmark = false, test = "test_boolean_circuit_diagram.py::test_balance_matches_the_every_width_sweep" }
 balanced_h_and_pool_admission = { tables = [{ arity = 7, rule = "dense" }, { arity = 8, rule = "dense" }, { arity = 9, rule = "dense" }], benchmark = false, test = "test_boolean_circuit_diagram.py::test_balance_matches_the_every_width_sweep" }
 single_atom_to_prefix_pool = { tables = [{ arity = 8, rule = "dense" }, { arity = 9, rule = "dense" }], benchmark = false, test = "test_boolean_circuit_diagram_pool.py::test_public_dense_candidates_beat_minterms_without_relaxing_contracts" }

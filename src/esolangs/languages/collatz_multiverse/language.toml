@@ -3,7 +3,7 @@
 
 [construction_boundaries]
 width_rotation_order_cutoff = { tables = [{ arity = 2, rule = "and" }, { arity = 3, rule = "and" }], benchmark = false, test = "test_boolean_collatz_multiverse.py::TestCollatzMultiverse::test_numbered_constants_narrow_complete_statements" }
-endpoint_chunk_width = { tables = [{ arity = 6, rule = "and" }, { arity = 7, rule = "and" }], benchmark = false, test = "test_boolean_collatz_multiverse.py::test_named_routes_improve_the_four_row_lookup" }
+endpoint_chunk_width = { tables = [{ arity = 6, rule = "and" }, { arity = 7, rule = "and" }, { arity = 7, rule = "majority" }], benchmark = false, test = "test_boolean_collatz_multiverse.py::test_named_routes_improve_the_four_row_lookup" }
 
 [curation]
 backlinks = 2

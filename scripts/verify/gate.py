@@ -71,6 +71,7 @@ MANUAL_ONLY = frozenset(
         "generated docs",
         "dead definitions",
         "generator size baseline",
+        "construction witnesses",
         "deep proofs (verify band)",
         "exception leaks",
     }
@@ -111,6 +112,7 @@ STEPS = [
     # the collection's claims rest on, and until this step nothing measured
     # them outside a hand-run `just benchmark`.  192 measurements, ~3s.
     ("generator size baseline", [*PY, "checks/check_generator_sizes.py"]),
+    ("construction witnesses", [*PY, "-m", "checks.check_construction_witnesses"]),
     (
         "deep proofs (verify band)",
         [*PY, "-m", "tests.proofs.deep", "verify"],

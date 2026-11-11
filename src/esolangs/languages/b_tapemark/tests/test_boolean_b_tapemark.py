@@ -1,6 +1,7 @@
 """Execution tests for the B-tapemark boolean generator."""
 
 import random
+from dataclasses import replace
 from itertools import product
 from unittest.mock import patch
 
@@ -296,6 +297,8 @@ def test_balance_of_a_three_ones_n8_table_is_exact() -> None:
 
 @pytest.mark.parametrize(("copy", "run"), [(1, 1), (5, 3), (16, 40)])
 def test_folded_copy_and_runs_keep_the_walk(copy: int, run: int) -> None:
+    if (copy, run) == (1, 1):
+        _check_old_folded_segments()
     # The second input is ignored, so its stage crosses no run.
     table = "".join(
         str((i >> 4) ^ (i & 1) ^ (i >> 1) & (i >> 2) & 1) for i in range(32)
@@ -305,6 +308,20 @@ def test_folded_copy_and_runs_keep_the_walk(copy: int, run: int) -> None:
     # A positive control: flipping one copied digit flips some answer.
     mutant = program.replace("|0*", "|1*", 1)
     assert _evaluate("B-tapemark", mutant, inputs=5) != table
+
+
+def _check_old_folded_segments() -> None:
+    language = esolangs.Language("B-tapemark")
+    records = construction_boundaries(language.name)
+    settings = language.settings(swap_marker="old")
+    for witness in records["old_folded_run_segments"]:
+        table = witness.table()
+        artifact = language.generate(table, settings=settings)
+        for run_width in (1, 1 << witness.arity):
+            source = _b_tapemark_folded(table, 5, run_width, "old")
+            assert_saved_rows(
+                language, replace(artifact, source=source), table, range(len(table))
+            )
 
 
 def test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms() -> None:

@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+narrow_literal_chunk_cutoff = { tables = [{ arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_alight.py::test_flat_lookup_packs_pairs_at_six_essential_inputs" }
 flat_lookup_pair_packing = { tables = [{ arity = 5, rule = "dense" }, { arity = 6, rule = "dense" }], benchmark = false, test = "test_boolean_alight.py::test_flat_lookup_packs_pairs_at_six_essential_inputs" }
 
 [curation]

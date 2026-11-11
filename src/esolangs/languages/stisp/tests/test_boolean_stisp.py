@@ -7,9 +7,14 @@ from esolangs import run
 from esolangs.languages.stisp.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from scripts.docs.resource_evidence import resource_bounds
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.generator_support import constant_artifacts, three_input_corpus_size
+from tests.support.generator_support import (
+    assert_saved_rows,
+    constant_artifacts,
+    three_input_corpus_size,
+)
 
 #: Every one- and two-input table; a diagram's folding bugs show here first.
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -51,6 +56,14 @@ def test_the_and_template_is_the_documented_one() -> None:
     assert esolangs.generate("Stisp", "0001").source == (
         "(l h)->s[0]=l;(l h)->s[1]=h;c->s[x]=c;(0 (0 1))->s[$]->s[$]"
     )
+
+    language = esolangs.Language("Stisp")
+    records = construction_boundaries(language.name)
+    for witness in records["constant_scalar_to_list_head"]:
+        table = witness.table()
+        artifact = language.generate(table)
+        assert ("($ $)" in artifact.source) == (witness.arity == 2)
+        assert_saved_rows(language, artifact, table, range(len(table)))
 
 
 def test_an_ignored_input_still_selects_one_of_two_identical_children() -> None:

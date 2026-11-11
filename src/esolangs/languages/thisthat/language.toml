@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+tiny_stream_arity_cutoff = { tables = [{ arity = 2, rule = "dense" }, { arity = 3, rule = "dense" }], benchmark = false, test = "test_boolean_thisthat.py::test_narrow_strip_counts_kept_inputs" }
 narrow_strip_essential_arity_cutoff = { tables = [{ arity = 3, rule = "dense" }, { arity = 4, rule = "dense" }], benchmark = false, test = "test_boolean_thisthat.py::test_narrow_strip_counts_kept_inputs" }
 
 [curation]

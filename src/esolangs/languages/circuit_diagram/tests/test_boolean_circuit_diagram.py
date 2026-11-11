@@ -18,7 +18,7 @@ from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import three_input_corpus_size
+from tests.support.generator_support import assert_saved_rows, three_input_corpus_size
 from tests.support.witness_tables import row_bits, witnesses
 
 
@@ -345,6 +345,18 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_narrow_gate_groups_preserve_every_small_table(self) -> None:
         """Compact groups and native XOR gates preserve every small table."""
+
+        language = esolangs.Language("Circuit Diagram")
+        records = construction_boundaries(language.name)
+        for witness in records["narrow_output_margin_retry"]:
+            table = witness.table()
+            for width, routes in ((4, [None, 4]), (5, [None, 5, 3])):
+                with patch.object(
+                    boolean, "_circuit_diagram_at", wraps=boolean._circuit_diagram_at
+                ) as layout:
+                    artifact = language.generate(table, width=width)
+                assert [call.args[1] for call in layout.call_args_list] == routes
+                assert_saved_rows(language, artifact, table, range(len(table)))
 
         program = boolean.circuit_diagram("0110", 1)
         assert max(map(len, program.splitlines())) == 4

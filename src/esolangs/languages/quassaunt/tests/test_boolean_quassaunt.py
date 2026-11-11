@@ -1,18 +1,19 @@
 """Tests for the Quassaunt Boolean generator."""
 
-import random
 from unittest.mock import patch
 
 import pytest
 
 import esolangs
-from esolangs.languages.quassaunt.generator import _balance, quassaunt
+from esolangs.languages.quassaunt import generator
 from esolangs.languages.quassaunt.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_every_row,
+    assert_saved_rows,
     evaluate_generated,
     measure_run,
 )
@@ -29,7 +30,6 @@ def test_every_row_prints_its_answer(table: str) -> None:
 
 def test_equal_subtables_share_one_node() -> None:
     from esolangs.generation.helpers import short_name
-    from esolangs.languages.quassaunt import generator
 
     assert_analysis_complement("Quassaunt", "subtree_ids")
     assert generator.short_name is short_name
@@ -43,24 +43,33 @@ def test_equal_subtables_share_one_node() -> None:
     with pytest.raises(ImportError):
         exec("from esolangs.languages.quassaunt.generator import _short_name")
     # Parity: one node per (level, parity), not one per row prefix.
-    assert quassaunt("0110100110010110").count("%%Ifdisjoint") == 8
+    assert generator.quassaunt("0110100110010110").count("%%Ifdisjoint") == 8
     _check_store_loop()
 
 
 def test_balance_cuts_only_compact_programs() -> None:
     """A compact table's balanced form is narrower than its longest word."""
-    parity = "0110100110010110"
-    default = quassaunt(parity)
-    balanced = _balance(parity, default)
-    assert max(map(len, balanced.splitlines())) < max(map(len, default.split()))
-    wide = format(random.Random(8).getrandbits(1024), "01024b")
-    assert _balance(wide, quassaunt(wide)).split() == quassaunt(wide).split()
+    language = esolangs.Language("Quassaunt")
+    for witness in construction_boundaries(language.name)["compact_balance_word_cut"]:
+        table = witness.table()
+        default = language.generate(table).source
+        with patch.object(generator, "_cut", wraps=generator._cut) as cut:
+            balanced = language.generate(table, balance=True)
+        if witness.rule == "parity":
+            assert cut.called
+            assert max(map(len, balanced.source.splitlines())) < max(
+                map(len, default.split())
+            )
+        else:
+            assert not cut.called
+            assert balanced.source.split() == default.split()
+        assert_saved_rows(language, balanced, table, (0, 1, len(table) - 1))
 
 
 @pytest.mark.parametrize("n", range(1, 13))
 @pytest.mark.parametrize("bit", "01")
 def test_constants_read_every_input(n: int, bit: str) -> None:
-    program = quassaunt(bit * (1 << n))
+    program = generator.quassaunt(bit * (1 << n))
     if n == 8:
         assert len(program) == 116
     for stdin in ("0" * n, "1" * n, ("01" * n)[:n]):
@@ -98,4 +107,4 @@ def _check_store_loop() -> None:
                 assert steps == baseline_steps[row] + 2 * program.split().count(
                     "%%Concatenate"
                 )
-    assert sum(len(quassaunt(f"{v:08b}")) for v in range(256)) == 272196
+    assert sum(len(generator.quassaunt(f"{v:08b}")) for v in range(256)) == 272196

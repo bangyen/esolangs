@@ -80,7 +80,8 @@ def _signature(cmd: list[str]) -> str:
         return found.group(0)
     for flag in ("--directory", "--with", "-m"):
         if flag in cmd:
-            return cmd[cmd.index(flag) + 1].replace("_", "-")
+            target = cmd[cmd.index(flag) + 1]
+            return "pre-commit" if target == "pre_commit" else target
     return cmd[-1]
 
 

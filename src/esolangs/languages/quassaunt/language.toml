@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+compact_balance_word_cut = { tables = [{ arity = 4, rule = "parity" }, { arity = 10, rule = "random", seed = 8 }], benchmark = false, test = "test_boolean_quassaunt.py::test_balance_cuts_only_compact_programs" }
+
 [curation]
 backlinks = 3
 admitted = 2026-10-15T12:24:04-04:00

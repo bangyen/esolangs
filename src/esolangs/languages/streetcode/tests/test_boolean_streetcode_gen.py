@@ -16,7 +16,7 @@ from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
-from tests.support.generator_support import three_input_corpus_size
+from tests.support.generator_support import assert_saved_rows, three_input_corpus_size
 from tests.support.witness_tables import row_bits
 
 run_streetcode = _runner("streetcode", lines=True)
@@ -400,7 +400,9 @@ def test_three_input_corpus_size() -> None:
 
 
 def test_tree_yields_to_shared_kerb() -> None:
-    for witness in construction_boundaries("Streetcode")["tree_to_shared_kerb"]:
+    language = esolangs.Language("Streetcode")
+    records = construction_boundaries(language.name)
+    for witness in records["tree_to_shared_kerb"]:
         n, table = witness.arity, witness.table()
         flat = boolean._streetcode_shared_kerb(boolean._streetcode_flat(table, n))
         candidates = boolean._tree_shapes(table, n, hallway=False)
@@ -412,10 +414,21 @@ def test_tree_yields_to_shared_kerb() -> None:
             assert candidates[-1] == flat
         else:
             assert candidates == [flat]
-        language = esolangs.Language("Streetcode")
         artifact = language.generate(table)
         assert (artifact.source == flat) == (n >= 4)
-        restored = language.load_program(language.dump_program(artifact))
-        prepared = language.prepare(restored)
-        for row in (0, 1, len(table) // 2, len(table) - 1):
-            assert prepared.evaluate(row_bits(row, n)).bit == table[row]
+        assert_saved_rows(
+            language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
+        )
+
+    for witness in records["tree_cache_size_and_flat_area_floor"]:
+        n, table = witness.arity, witness.table()
+        with patch.object(
+            boolean, "_streetcode_tree_memo", wraps=boolean._streetcode_tree_memo
+        ) as memo:
+            artifact = language.generate(table)
+        assert any(args == (table,) for args, _ in memo.call_args_list) == (n == 4)
+        flat = boolean._streetcode_shared_kerb(boolean._streetcode_flat(table, n))
+        assert (artifact.source == flat) == (witness.rule == "dense")
+        assert_saved_rows(
+            language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
+        )

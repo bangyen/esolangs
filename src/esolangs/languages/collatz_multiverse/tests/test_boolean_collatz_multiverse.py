@@ -368,15 +368,13 @@ def _check_endpoint_chunk_cutoff() -> None:
         n, table = witness.arity, witness.table()
         with patch.object(boolean, "_cm_build", wraps=boolean._cm_build) as build:
             artifact = language.generate(table)
+        wide_endpoint = n == 7 and witness.rule == "and"
         assert {call.kwargs["chunk"] for call in build.call_args_list} == {
-            4 if n == 6 else 8
+            8 if wide_endpoint else 4
         }
-        restored = language.load_program(language.dump_program(artifact))
-        prepared = language.prepare(restored)
-        for row in (0, 1, len(table) // 2, len(table) - 1):
-            result = prepared.evaluate(row_bits(row, n))
-            assert result.bit == table[row]
-            assert result.observation.input_reads == n
+        assert_saved_rows(
+            language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
+        )
 
 
 @pytest.mark.parametrize("n", [1, 3, 4, 5, 6, 8, 12])

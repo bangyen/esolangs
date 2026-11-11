@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+old_folded_run_segments = { tables = [{ arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_b_tapemark.py::test_folded_copy_and_runs_keep_the_walk[1-1]" }
 unbounded_closed_form_admission = { tables = [{ arity = 3, rule = "dense" }], benchmark = false, test = "test_boolean_b_tapemark.py::test_the_default_is_the_least_by_area_of_the_strip_and_closed_forms" }
 
 [deep_arities]

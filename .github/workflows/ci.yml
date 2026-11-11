@@ -64,6 +64,9 @@ jobs:
     - name: Check generator sizes against the baseline
       run: uv run python checks/check_generator_sizes.py
 
+    - name: Check declared generator construction witnesses
+      run: uv run python -m checks.check_construction_witnesses
+
     - name: Check the deep proofs that gate
       run: uv run python -m tests.proofs.deep ci
 

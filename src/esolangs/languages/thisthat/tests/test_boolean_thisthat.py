@@ -16,6 +16,7 @@ from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
+    assert_saved_rows,
     assert_shared_program,
     constant_programs,
     evaluate_generated,
@@ -276,12 +277,16 @@ def test_narrow_strip_counts_kept_inputs() -> None:
         with patch.object(boolean, "_strip_tree", wraps=boolean._strip_tree) as strip:
             artifact = language.generate(table, width=1)
         assert strip.call_count == int(n == 3)
-        restored = language.load_program(language.dump_program(artifact))
-        prepared = language.prepare(restored)
-        for row, expected in enumerate(table):
-            result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
-            assert result.bit == expected
-            assert result.observation.input_reads == n
+        assert_saved_rows(language, artifact, table, range(len(table)))
+
+    for witness in construction_boundaries(language.name)["tiny_stream_arity_cutoff"]:
+        table = witness.table()
+        with patch.object(
+            boolean, "_stream_tree", wraps=boolean._stream_tree
+        ) as stream:
+            artifact = language.generate(table, width=1)
+        assert stream.call_count == int(witness.arity == 2)
+        assert_saved_rows(language, artifact, table, range(len(table)))
 
     table = "01101001" * 2  # four inputs, the first ignored
     source = esolangs.generate("thisthat", table, width=1).source

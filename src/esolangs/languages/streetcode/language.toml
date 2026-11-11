@@ -16,6 +16,7 @@ qualification = "the street writes one cell per entry, then each essential input
 [construction_boundaries]
 balanced_stacked_fold_cutoff = { tables = [{ arity = 5, rule = "dense" }, { arity = 6, rule = "dense" }], benchmark = false, test = "test_boolean_streetcode_gen.py::test_balance_fold_target_uses_the_western_margin" }
 tree_to_shared_kerb = { tables = [{ arity = 3, rule = "parity" }, { arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = false, test = "test_boolean_streetcode_gen.py::test_tree_yields_to_shared_kerb" }
+tree_cache_size_and_flat_area_floor = { tables = [{ arity = 4, rule = "and" }, { arity = 5, rule = "and" }, { arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_streetcode_gen.py::test_tree_yields_to_shared_kerb" }
 shared_kerb_controls = { tables = [{ arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = true }
 
 [generator_sizes]

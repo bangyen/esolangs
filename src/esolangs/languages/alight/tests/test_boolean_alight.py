@@ -22,8 +22,10 @@ from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_an_ignored_input_costs
-from tests.support.witness_tables import row_bits
+from tests.support.generator_support import (
+    assert_an_ignored_input_costs,
+    assert_saved_rows,
+)
 
 
 @pytest.mark.medium
@@ -312,16 +314,25 @@ def _check_native_constants(syntax: str, update: str, bit: str) -> None:
 
 def test_flat_lookup_packs_pairs_at_six_essential_inputs() -> None:
     language = esolangs.Language("Alight")
-    for witness in construction_boundaries("Alight")["flat_lookup_pair_packing"]:
+    records = construction_boundaries(language.name)
+    for witness in records["flat_lookup_pair_packing"]:
         n, table = witness.arity, witness.table()
         with patch.object(
             boolean, "_packed_lookup", wraps=boolean._packed_lookup
         ) as pack:
             artifact = language.generate(table)
         assert pack.call_count == int(n == 6)
-        restored = language.load_program(language.dump_program(artifact))
-        prepared = language.prepare(restored)
-        for row in (0, 1, len(table) // 2, len(table) - 1):
-            result = prepared.evaluate(row_bits(row, n))
-            assert result.bit == table[row]
-            assert result.observation.input_position == n
+        assert_saved_rows(
+            language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
+        )
+
+    for witness in records["narrow_literal_chunk_cutoff"]:
+        table = witness.table()
+        for width, entries in ((62, 15), (63, 32)):
+            with patch.object(
+                boolean, "_alight_chunk", wraps=boolean._alight_chunk
+            ) as chunk:
+                artifact = language.generate(table, width=width)
+            chunk.assert_called_once_with(len(table), width)
+            assert _alight_chunk(len(table), width) == entries
+            assert_saved_rows(language, artifact, table, (0, 1, 16, 31))

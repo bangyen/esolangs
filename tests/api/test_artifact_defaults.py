@@ -50,6 +50,14 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
         assert_saved_rows(
             bound, bound.generate(table, **options), table, range(len(table))
         )
+        for bit in "01":
+            constant = bit * len(table)
+            assert_saved_rows(
+                bound,
+                bound.generate(constant, **options),
+                constant,
+                (0, len(constant) - 1),
+            )
         program = esolangs.generate(language, "01", **options)
         assert isinstance(
             program, (esolangs.ProgramArtifact, esolangs.TemplateArtifact)

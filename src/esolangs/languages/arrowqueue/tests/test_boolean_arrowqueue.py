@@ -13,6 +13,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
+from tests.support.generator_support import assert_saved_rows
 from tests.support.witness_tables import row_bits
 
 
@@ -78,6 +79,8 @@ class TestParameterizedArrowQueue:
         """Both routes spell every input as one cell, ``.`` against ``~``."""
         from esolangs.languages.arrowqueue import generator as generators
 
+        if table == "0110":
+            _check_strip_height_cutoff()
         n = len(table).bit_length() - 1
         template = generators.arrowqueue(table)
         setters = (PAIR,) * n
@@ -108,6 +111,26 @@ class TestParameterizedArrowQueue:
             bits = row_bits(combo, n)
             got = self.run_arrowqueue(self.instantiate(template, bits))
             assert got == table[combo], f"inputs {bits}"
+
+
+def _check_strip_height_cutoff() -> None:
+    language = esolangs.Language("ArrowQueue")
+    for witness in construction_boundaries(language.name)["folded_strip_height_cutoff"]:
+        table = witness.table()
+        n = witness.arity
+        # Parity ends in a zero after a one. Its folded tail uses one row per entry.
+        height = 3 + n * len(generator._STAGE) + len(generator._MIDDLE) + len(table)
+        assert generator._folded(table, height) is None
+        folded = generator._folded(table, height - 1)
+        assert folded is not None
+        template = esolangs.TemplateArtifact(
+            folded.source,
+            language.name,
+            esolangs.TemplateBindings(setters=(PAIR,) * n),
+            spans=folded.spans,
+        )
+        assert_saved_rows(language, template, table, range(len(table)))
+        assert_saved_rows(language, language.generate(table), table, range(len(table)))
 
 
 @pytest.mark.medium

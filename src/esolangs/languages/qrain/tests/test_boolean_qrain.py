@@ -1,12 +1,20 @@
 """Tests for the Qrain Boolean generator."""
 
+from unittest.mock import patch
+
 import pytest
 
 import esolangs
+from esolangs.languages.qrain import generator
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
-from tests.support.generator_support import assert_every_row, constant_programs
+from tests.support.generator_support import (
+    assert_every_row,
+    assert_saved_rows,
+    constant_programs,
+)
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
@@ -15,8 +23,24 @@ def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     if table == "00":
         _check_constants()
+        _check_shared_residual_admission()
         assert_analysis_complement("Qrain", "flag_tree_body")
     assert_every_row("Qrain", table)
+
+
+def _check_shared_residual_admission() -> None:
+    language = esolangs.Language("Qrain")
+    records = construction_boundaries(language.name)
+    for witness in records["multiple_shared_residual_admission"]:
+        table = witness.table()
+        with patch.object(
+            generator, "flag_tree_body", wraps=generator.flag_tree_body
+        ) as body:
+            artifact = language.generate(table)
+        assert body.call_args_list[0].kwargs["shared"] is not None
+        banks = [call.kwargs["shared_blocks"] for call in body.call_args_list[1:]]
+        assert [len(bank) for bank in banks] == ([2] if witness.arity == 5 else [])
+        assert_saved_rows(language, artifact, table, range(len(table)))
 
 
 def _check_constants() -> None:

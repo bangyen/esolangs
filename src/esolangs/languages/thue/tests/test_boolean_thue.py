@@ -65,6 +65,18 @@ def test_narrow_sources_execute_every_three_input_table(width: int) -> None:
             assert layouts.call_count == int(witness.arity == 3)
             assert_saved_rows(language, artifact, table, range(len(table)))
 
+        for witness in construction_boundaries(language.name)[
+            "narrow_constant_chunk_cutoff"
+        ]:
+            table = witness.table()
+            with patch.object(
+                boolean, "_chunk_marker", wraps=boolean._chunk_marker
+            ) as marker:
+                artifact = language.generate(table, width=8)
+            assert marker.called == (witness.arity == 7)
+            assert max(map(len, artifact.source.splitlines())) == 8
+            assert_saved_rows(language, artifact, table, (0, len(table) - 1))
+
     for table in witnesses(3):
         floor = max(map(len, thue(table, 1).splitlines()))
         assert max(map(len, thue(table, width).splitlines())) <= max(width, floor)

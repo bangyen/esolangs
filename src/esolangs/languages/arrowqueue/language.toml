@@ -2,6 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
+folded_strip_height_cutoff = { tables = [{ arity = 4, rule = "parity" }], benchmark = false, test = "test_boolean_arrowqueue.py::TestParameterizedArrowQueue::test_every_input_is_the_same_one_cell[0110]" }
 small_to_full_constant_ring = { tables = [{ arity = 2, rule = "one" }, { arity = 3, rule = "one" }], benchmark = false, test = "test_boolean_arrowqueue.py::test_constant_balance_and_setters_off_path" }
 
 [curation]
