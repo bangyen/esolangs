@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from functools import partial
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -29,7 +28,7 @@ from esolangs.languages.ram0.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -139,6 +138,10 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
+def _prepare_source(code: str) -> tuple[str, ...]:
+    return tuple(re.findall(r"[ZANCLS]|\d+", code))
+
+
 class _Machine:
     """A RAM0 run: one immutable ``_State``, rebound per step."""
 
@@ -149,10 +152,10 @@ class _Machine:
     #: its output.
     completion = CAPABILITIES.completion
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | tuple[str, ...], io: IO) -> None:
         """Tokenize ``code`` and start both registers and RAM at zero."""
         self.io = io
-        self.tokens = re.findall(r"[ZANCLS]|\d+", code)
+        self.tokens = _prepare_source(code) if isinstance(code, str) else code
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
@@ -256,18 +259,17 @@ class _Machine:
             self._index[n] = length(ram)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind fresh machines after shared source and option preparation."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the token stream and bind fresh state per run."""
     if not isinstance(source, str):
         raise TypeError("ram0 machines require text source")
     if options:
         raise TypeError("ram0 machines accept no runtime options")
-    return partial(_Machine, source, **options)
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | tuple[str, ...], io: IO) -> CompletionReport:
     """Execute a RAM0 program by parsing commands and running them sequentially."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)
