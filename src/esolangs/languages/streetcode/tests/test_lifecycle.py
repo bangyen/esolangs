@@ -32,6 +32,12 @@ def test_factory_reuses_geometry_with_fresh_run_state(monkeypatch):
     assert second.snapshot() == before
     assert second.io.position() == 0
     assert second.memory == []
+    with pytest.raises(TypeError, match="read-only"):
+        first.grid[0] = "C;"
+    interpreter._Machine._compile.cache_clear()
+    native = ScriptedIO("Z")
+    factory.run(native)
+    assert native.getvalue() == "["
     third = factory(ScriptedIO("Z"))
     assert third.snapshot() == before
     while not second.halted:

@@ -49,10 +49,9 @@ Decisions:
 """
 
 import functools
-from collections.abc import Mapping
-from functools import partial
+from collections.abc import Mapping, Sequence
 from types import MappingProxyType
-from typing import Any, assert_never
+from typing import Any, Literal, NamedTuple, assert_never
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.streetcode.interpreter.geometry import (
@@ -64,14 +63,11 @@ from esolangs.languages.streetcode.interpreter.geometry import (
     _Op,
     _State,
 )
-from esolangs.languages.streetcode.interpreter.validation import (
-    _Edges,
-    validate_street,
-)
+from esolangs.languages.streetcode.interpreter.validation import validate_street
 from esolangs.languages.streetcode.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -156,6 +152,15 @@ def _u_turn(grid: _Grid, state: _State, arrival_cell: int) -> _State:
     return turned
 
 
+type _Graph = Mapping[_State, Mapping[tuple[int, int], _State | Literal["halt"] | None]]
+
+
+class _Image(NamedTuple):
+    grid: _Grid
+    start: _State
+    graph: _Graph | None
+
+
 # Movement is pure and lives in :mod:`.geometry`; the run itself is the pure
 # :func:`_advance`, which takes the whole run and the one input value a step needs and
 # returns the next run and any character to print.  :class:`_Machine` is the shell that
@@ -165,7 +170,7 @@ def _u_turn(grid: _Grid, state: _State, arrival_cell: int) -> _State:
 def _advance(
     run: _Run,
     grid: _Grid,
-    graph: dict[_State, _Edges] | None,
+    graph: _Graph | None,
     value: int | None = None,
 ) -> tuple[_Run, int | None]:
     """Return the run after one cell, and the character ``O`` prints, if any.
@@ -232,28 +237,18 @@ class _Machine:
     is true once ``;`` runs or the car has nowhere to go.
     """
 
-    def __init__(
-        self,
-        code: list[str],
-        io: IO,
-        *,
-        _compiled: tuple[_Grid, _State, dict[_State, _Edges] | None] | None = None,
-    ) -> None:
-        """Locate the single ``C`` and derive the car's initial heading.
-
-        ``_compiled`` is the geometry a cached prototype already validated
-        for identical code -- grid, start state and drive graph -- so this
-        machine skips revalidating and re-searching it.
-        """
-        if not code or not any(line.strip() for line in code):
-            raise syntax_error(
-                "Streetcode program cannot be empty",
-                "draw an enclosed two-cell-wide street containing one C",
-            )
+    def __init__(self, code: Sequence[str] | _Image, io: IO) -> None:
+        """Bind validated geometry or derive it from raw source."""
         self.io = io
-        if _compiled is not None:
-            self.grid, self._state, self._graph = _compiled
+        self._graph: _Graph | None
+        if isinstance(code, _Image):
+            self.grid, self._state, self._graph = code
         else:
+            if not code or not any(line.strip() for line in code):
+                raise syntax_error(
+                    "Streetcode program cannot be empty",
+                    "draw an enclosed two-cell-wide street containing one C",
+                )
             self.grid = _Grid(code)
             starts = [
                 (r, c)
@@ -424,16 +419,22 @@ class _Machine:
 
     @staticmethod
     @functools.lru_cache(maxsize=16)
-    def _compile(
-        code: tuple[str, ...],
-    ) -> tuple[_Grid, _State, dict[_State, _Edges] | None]:
+    def _compile(code: tuple[str, ...]) -> _Image:
         prototype = _Machine(list(code), IO())
-        return prototype.grid, prototype._state, prototype._graph
+        prototype.grid.freeze()
+        graph = prototype._graph
+        return _Image(
+            prototype.grid,
+            prototype._state,
+            None
+            if graph is None
+            else MappingProxyType(
+                {state: MappingProxyType(edges) for state, edges in graph.items()}
+            ),
+        )
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind fresh run state to cached, validated street geometry."""
     if not isinstance(source, list):
         raise TypeError("streetcode machines require split text source")
@@ -441,13 +442,18 @@ def prepare_machine(
         raise TypeError("streetcode machines accept no runtime options")
     code = tuple(source)
     compiled = _Machine._compile(code)  # noqa: SLF001
-    return partial(_Machine, list(code), _compiled=compiled)
+
+    def build(io: IO) -> _Machine:
+        return _Machine(compiled, io)
+
+    return RuntimePlan(
+        build, lambda io: drive(build(io), policy=CAPABILITIES.completion)
+    )
 
 
 def _execute_program(code: list[str], io: IO) -> CompletionReport:
     """Drive a Streetcode car over ``code`` until it halts."""
-    machine = prepare_machine(code, {})(io)
-    return drive(machine, policy=CAPABILITIES.completion)
+    return prepare_machine(code, {}).run(io)
 
 
 def run(code: list[str], io: IO) -> None:

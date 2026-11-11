@@ -1,7 +1,7 @@
 """Streetcode road geometry and pure driving rules."""
 
 import functools
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from typing import Literal, NamedTuple, NewType, cast
 
 # Wall-form alphabet: ``?`` any, ``W`` wall, ``.`` non-wall.  Naming it makes
@@ -204,10 +204,12 @@ class _Grid:
 
     __slots__ = ("_geometry", "_rows", "height", "width")
 
-    def __init__(self, rows: list[str]) -> None:
+    def __init__(self, rows: Sequence[str]) -> None:
         """Square the drawing off, so every row is ``width`` characters."""
         self.width = max(len(row) for row in rows)
-        self._rows = [row.ljust(self.width) for row in rows]
+        self._rows: list[str] | tuple[str, ...] = [
+            row.ljust(self.width) for row in rows
+        ]
         self.height = len(self._rows)
         # Shared geometry memo: the hello fixture makes 3242/12734/5864 calls
         # from 727/1235/702 states.  Redrawing clears it.
@@ -237,11 +239,17 @@ class _Grid:
             return self._rows[row][col]
         return self._rows[cast("int", where)]
 
+    def freeze(self) -> None:
+        """Make the drawing read-only while retaining the geometry memo."""
+        self._rows = tuple(self._rows)
+
     def __setitem__(self, row: int, value: str) -> None:
         """Redraw one row, for the fixtures that build geometry by hand.
 
         Drops the geometry memo: a redrawn row is a different drawing.
         """
+        if not isinstance(self._rows, list):
+            raise TypeError("compiled Streetcode geometry is read-only")
         self._rows[row] = "".join(value).ljust(self.width)
         self._geometry.clear()
 
