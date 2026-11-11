@@ -358,3 +358,5 @@ Width, wrapping and balancing preserve answers and input consumption.
 Exercise constants, ignored inputs and every construction switch on both sides,
 including the supported arity boundary. Keep expensive boundary witnesses in
 language-owned tests; shared small-input checks do not establish their coverage.
+Name their tables in `[construction_boundaries]`. Use `benchmark = true` for
+tables also pinned by the default source-size sweep.

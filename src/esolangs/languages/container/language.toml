@@ -1,6 +1,9 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[construction_boundaries]
+balanced_block_admission = { tables = [{ arity = 3, rule = "parity" }, { arity = 4, rule = "parity" }], benchmark = false }
+
 [deep_arities]
 execution = 6
 

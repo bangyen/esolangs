@@ -14,7 +14,8 @@ labels = ["linear lookup"]
 qualification = "the street writes one cell per entry, then each essential input's mouth forks on its bit (an ignored one is a lone read) and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry"
 
 [construction_boundaries]
-tree_to_shared_kerb = [{ arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }]
+tree_to_shared_kerb = { tables = [{ arity = 3, rule = "parity" }, { arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = false }
+shared_kerb_controls = { tables = [{ arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = true }
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 1224, "1" = 1224, "2" = 1224, "3" = 1224, "4" = 1231, "5" = 1231, "6" = 1238, "7" = 1242 }, source_units = 683 }

@@ -15,8 +15,9 @@ output_size = "Linear"
 evidence = "docs/proofs/index.md#exceptions-and-walls"
 
 [construction_boundaries]
-nibble_index_controls = [{ arity = 2, rule = "parity" }, { arity = 7, rule = "parity" }]
-nibble_to_packed_index = [{ arity = 8, rule = "parity" }, { arity = 9, rule = "parity" }]
+wide_parity_to_mandatory_packing = { tables = [{ arity = 10, rule = "parity" }, { arity = 11, rule = "parity" }], benchmark = false }
+nibble_index_controls = { tables = [{ arity = 2, rule = "parity" }, { arity = 7, rule = "parity" }], benchmark = true }
+nibble_to_packed_index = { tables = [{ arity = 8, rule = "parity" }, { arity = 9, rule = "parity" }], benchmark = true }
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 25 }

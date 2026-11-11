@@ -80,7 +80,9 @@ class TableWitness:
         return "".join(str(int(rule(row.bit_count()))) for row in range(1 << n))
 
 
-def construction_boundaries(language: str) -> dict[str, tuple[TableWitness, ...]]:
+def construction_boundaries(
+    language: str, *, benchmark_only: bool = False
+) -> dict[str, tuple[TableWitness, ...]]:
     """Read named witnesses for construction boundaries from their owner."""
     path = PACKAGES / LANGUAGES[language].id / "language.toml"
     data = tomllib.loads(path.read_text(encoding="utf-8"))
@@ -88,20 +90,30 @@ def construction_boundaries(language: str) -> dict[str, tuple[TableWitness, ...]
     if not isinstance(records, dict):
         raise ValueError(f"{path}: construction boundaries must be named")
     found = {}
-    seen: set[TableWitness] = set()
-    for label, rows in records.items():
-        if not label.isidentifier() or not isinstance(rows, list) or not rows:
+    measured: set[TableWitness] = set()
+    for label, record in records.items():
+        if (
+            not label.isidentifier()
+            or not isinstance(record, dict)
+            or set(record) != {"tables", "benchmark"}
+            or type(record["benchmark"]) is not bool
+            or not isinstance(record["tables"], list)
+            or not record["tables"]
+        ):
             raise ValueError(f"{path}: invalid construction boundary {label!r}")
-        witnesses = []
+        rows = record["tables"]
+        witnesses: list[TableWitness] = []
         for row in rows:
             if not isinstance(row, dict) or set(row) - {"seed"} != {"arity", "rule"}:
                 raise ValueError(f"{path}: invalid boundary witness for {label}")
             witness = TableWitness(row["arity"], row["rule"], row.get("seed"))
-            if witness in seen:
+            if witness in witnesses or (record["benchmark"] and witness in measured):
                 raise ValueError(f"{path}: repeated boundary witness {witness}")
-            seen.add(witness)
             witnesses.append(witness)
-        found[label] = tuple(witnesses)
+        if record["benchmark"]:
+            measured.update(witnesses)
+        if record["benchmark"] or not benchmark_only:
+            found[label] = tuple(witnesses)
     return found
 
 

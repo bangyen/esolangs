@@ -11,6 +11,7 @@ import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.streetcode import generator as boolean
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO
@@ -376,3 +377,25 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
 def test_three_input_corpus_size() -> None:
     assert three_input_corpus_size("Streetcode") == 227464
+
+
+def test_tree_yields_to_shared_kerb() -> None:
+    for witness in construction_boundaries("Streetcode")["tree_to_shared_kerb"]:
+        n, table = witness.arity, witness.table()
+        flat = boolean._streetcode_shared_kerb(boolean._streetcode_flat(table, n))
+        candidates = boolean._tree_shapes(table, n, hallway=False)
+        if n == 3:
+            assert len(candidates) == 1
+            assert flat not in candidates
+        elif n == 4:
+            assert len(candidates) == 2
+            assert candidates[-1] == flat
+        else:
+            assert candidates == [flat]
+        language = esolangs.Language("Streetcode")
+        artifact = language.generate(table)
+        assert (artifact.source == flat) == (n >= 4)
+        restored = language.load_program(language.dump_program(artifact))
+        prepared = language.prepare(restored)
+        for row in (0, 1, len(table) // 2, len(table) - 1):
+            assert prepared.evaluate(row_bits(row, n)).bit == table[row]

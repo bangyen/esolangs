@@ -19,6 +19,7 @@ from esolangs.languages.container.generator import (
     _narrow_rules,
 )
 from esolangs.runtime.io import ScriptedIO
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
 from tests.support.evaluation import _evaluate
@@ -283,6 +284,26 @@ def test_narrow_balance_regime_edge_executes(table) -> None:
     """The smallest tables reaching an otherwise-untaken balance arm."""
     balanced = esolangs.generate("Container", table, balance=True).source
     assert _evaluate("Container", balanced, inputs=len(table).bit_length() - 1) == table
+
+
+def test_balance_admits_blocks_from_four_inputs(monkeypatch) -> None:
+    built = []
+    blocks = boolean._container_blocks
+
+    def observe(table):
+        program = blocks(table)
+        built.append(program)
+        return program
+
+    monkeypatch.setattr(boolean, "_container_blocks", observe)
+    for witness in construction_boundaries("Container")["balanced_block_admission"]:
+        built.clear()
+        table = witness.table()
+        source = esolangs.generate("Container", table, balance=True).source
+        assert len(built) == witness.arity - 3
+        assert _evaluate("Container", source, inputs=witness.arity) == table
+        for candidate in built:
+            assert _evaluate("Container", candidate, inputs=witness.arity) == table
 
 
 @pytest.mark.medium

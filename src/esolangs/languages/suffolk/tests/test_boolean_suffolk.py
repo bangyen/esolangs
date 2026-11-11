@@ -7,6 +7,7 @@ from esolangs.languages.suffolk import generator as boolean
 from esolangs.languages.suffolk.tests.lookup_support import _suffolk_lookup
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.witness_tables import row_bits
@@ -27,7 +28,6 @@ class TestSuffolk:
     def test_constant_tables_collapse_but_still_read(self) -> None:
         """Constants print after n reads, then stop at the first EOF probe."""
         _check_stored_input_records()
-        _check_reader_cutoff()
 
         from esolangs.languages.suffolk.interpreter import _Machine
 
@@ -127,11 +127,11 @@ def _check_stored_input_records() -> None:
                 assert io.input_char() == ord("Q")
 
 
-def _check_reader_cutoff() -> None:
+def test_countdown_reader_cutoff() -> None:
     from esolangs.languages.suffolk.interpreter import _Machine
 
-    for n in (10, 11):
-        table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+    for witness in construction_boundaries("Suffolk")["stored_inputs_to_countdown"]:
+        n, table = witness.arity, witness.table()
         program = _suffolk_lookup(table)
         assert program.index(",") + 1 == (51 if n == 10 else 153)
         records = (0, (1 << n) - 1, (1 << n) // 3)

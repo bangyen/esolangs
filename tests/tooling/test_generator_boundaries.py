@@ -1,4 +1,4 @@
-"""Every row executes on both sides of the named layout switches."""
+"""Every row executes for the benchmarked construction controls."""
 
 import pytest
 

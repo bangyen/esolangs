@@ -71,7 +71,9 @@ SCHEMA = 4
 
 # Each named construction owns its witnesses alongside the measured pins.
 BOUNDARIES = {
-    name: cases for name in LANGUAGES if (cases := construction_boundaries(name))
+    name: cases
+    for name in LANGUAGES
+    if (cases := construction_boundaries(name, benchmark_only=True))
 }
 
 

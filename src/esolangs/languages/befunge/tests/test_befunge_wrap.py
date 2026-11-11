@@ -20,7 +20,9 @@ from esolangs.languages.befunge.generator import (
 )
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.generator_support import constant_layouts, constant_runs
+from tests.support.witness_tables import row_bits
 
 
 @pytest.mark.parametrize("inputs", [1, 4, 13])
@@ -119,6 +121,23 @@ def test_packed_ascii_lookup_controls_and_balance(inputs: int, kind: str) -> Non
             run("Befunge", program, stdin=stdin, max_steps=500).output.strip()
             == table[row]
         )
+
+
+def test_width_one_and_balance_cross_the_packing_cutoff() -> None:
+    for witness in construction_boundaries("Befunge")[
+        "wide_parity_to_mandatory_packing"
+    ]:
+        n, table = witness.arity, witness.table()
+        language = esolangs.Language("Befunge")
+        for options in ({"width": 1}, {"balance": True}):
+            artifact = language.generate(table, **options)
+            # Parity can use a one-column sum through ten inputs only.
+            assert (max(map(len, artifact.source.splitlines())) == 1) == (n == 10)
+            restored = language.load_program(language.dump_program(artifact))
+            prepared = language.prepare(restored)
+            for row in (0, 5, 6, 479, 480, len(table) - 1):
+                result = prepared.evaluate(row_bits(row, n))
+                assert result.bit == table[row]
 
 
 def test_befunge_balance_rejects_oversized_table() -> None:

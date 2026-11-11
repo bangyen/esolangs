@@ -19,6 +19,7 @@ from esolangs.languages.circuit_diagram.generator.hpool import (
 from esolangs.languages.circuit_diagram.interpreter import _compile, _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from scripts.docs.evidence import construction_boundaries
 from tests.support.screen_support import ignore
 from tests.support.witness_tables import dense
 
@@ -71,14 +72,33 @@ def _execute(table, code, rows=None):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [8, 9])
-def test_public_dense_candidates_beat_minterms_without_relaxing_contracts(n) -> None:
-    table = dense(n)
-    model = _large_pool_layout(table)
+@pytest.mark.parametrize(
+    "witness",
+    construction_boundaries("Circuit Diagram")["single_atom_to_prefix_pool"],
+    ids=lambda witness: f"n{witness.arity}",
+)
+def test_public_dense_candidates_beat_minterms_without_relaxing_contracts(
+    witness, monkeypatch
+) -> None:
+    from esolangs.languages.circuit_diagram.generator import hpool
+
+    table = witness.table()
+    routed = []
+    finish = hpool._finish_pool
+
+    def observe(build):
+        routed.append(build)
+        return finish(build)
+
+    with monkeypatch.context() as scope:
+        scope.setattr(hpool, "_finish_pool", observe)
+        model = _large_pool_layout(table)
+    assert len(routed) == int(witness.arity == 9)
+    if routed:
+        _execute(table, model.render(), (0, 1, 128, 255, 256, 511))
     code = circuit_diagram(table)
     lines = code.splitlines()
     assert len(lines) * max(map(len, lines)) <= prod(model.bounds())
-    assert len(code) == {8: 52_057, 9: 106_751}[n]
     assert prod(model.bounds()) < prod(_h_term_layout(table).bounds())
     _execute(table, code)
 
