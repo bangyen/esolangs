@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-stored_inputs_to_countdown = { tables = [{ arity = 10, rule = "parity" }, { arity = 11, rule = "parity" }], benchmark = false }
+stored_inputs_to_countdown = { tables = [{ arity = 10, rule = "parity" }, { arity = 11, rule = "parity" }], benchmark = false, test = "test_boolean_suffolk.py::test_countdown_reader_cutoff" }
 
 [curation]
 backlinks = 5

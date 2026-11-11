@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-doubling_to_paired_lookup = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false }
+doubling_to_paired_lookup = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false, test = "test_boolean_sonata.py::test_pair_table_prints_its_answer" }
 
 [curation]
 backlinks = 2

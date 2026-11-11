@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-loaded_tree_to_inline_fallback = { tables = [{ arity = 5, rule = "dense" }, { arity = 6, rule = "dense" }], benchmark = false }
+loaded_tree_to_inline_fallback = { tables = [{ arity = 5, rule = "dense" }, { arity = 6, rule = "dense" }], benchmark = false, test = "test_boolean_line_streaming.py::test_default_reader_layout_boundaries" }
 
 [deep_arities]
 # Line uses the default twelve for linearity: the six-input cap mixed

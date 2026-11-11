@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-individual_to_batched_input_reader = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false }
+individual_to_batched_input_reader = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_circlefuck.py::test_constant_reads_into_spent_code_and_prints_a_literal_tail" }
 
 [deep_arities]
 workspace = 6

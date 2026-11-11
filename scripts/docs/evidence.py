@@ -83,10 +83,28 @@ class TableWitness:
         return "".join(str(int(rule(row.bit_count()))) for row in range(1 << n))
 
 
+@dataclass(frozen=True)
+class ConstructionBoundary:
+    """A construction's tables and its owned pytest node, if any."""
+
+    witnesses: tuple[TableWitness, ...]
+    benchmark: bool
+    test: str | None
+
+
 def construction_boundaries(
     language: str, *, benchmark_only: bool = False
 ) -> dict[str, tuple[TableWitness, ...]]:
-    """Read named witnesses for construction boundaries from their owner."""
+    """Read named witnesses, optionally retaining only benchmark controls."""
+    return {
+        label: record.witnesses
+        for label, record in construction_records(language).items()
+        if not benchmark_only or record.benchmark
+    }
+
+
+def construction_records(language: str) -> dict[str, ConstructionBoundary]:
+    """Read a language's construction witnesses and their executable checks."""
     path = PACKAGES / LANGUAGES[language].id / "language.toml"
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     records = data.get("construction_boundaries", {})
@@ -98,12 +116,17 @@ def construction_boundaries(
         if (
             not label.isidentifier()
             or not isinstance(record, dict)
-            or set(record) != {"tables", "benchmark"}
+            or set(record) - {"test"} != {"tables", "benchmark"}
             or type(record["benchmark"]) is not bool
             or not isinstance(record["tables"], list)
             or not record["tables"]
         ):
             raise ValueError(f"{path}: invalid construction boundary {label!r}")
+        test = (
+            _owned_boundary_test(path, label, record.get("test"))
+            if "test" in record or not record["benchmark"]
+            else None
+        )
         rows = record["tables"]
         witnesses: list[TableWitness] = []
         for row in rows:
@@ -115,9 +138,26 @@ def construction_boundaries(
             witnesses.append(witness)
         if record["benchmark"]:
             measured.update(witnesses)
-        if record["benchmark"] or not benchmark_only:
-            found[label] = tuple(witnesses)
+        found[label] = ConstructionBoundary(tuple(witnesses), record["benchmark"], test)
     return found
+
+
+def _owned_boundary_test(fragment: Path, label: str, reference: object) -> str:
+    if isinstance(reference, str):
+        filename, separator, selector = reference.partition("::")
+        relative = Path(filename)
+        owner = fragment.parent / "tests"
+        if (
+            separator
+            and selector
+            and not relative.is_absolute()
+            and ".." not in relative.parts
+            and relative.suffix == ".py"
+            and (owner / relative).is_file()
+        ):
+            root = PACKAGES.parents[2]
+            return f"{(owner / relative).relative_to(root).as_posix()}::{selector}"
+    raise ValueError(f"{fragment}: boundary {label!r} needs an owned pytest node")
 
 
 @dataclass(frozen=True)

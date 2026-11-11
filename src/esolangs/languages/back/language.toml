@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-comb_to_fold_race = { tables = [{ arity = 5, rule = "dense" }, { arity = 6, rule = "dense" }], benchmark = false }
+comb_to_fold_race = { tables = [{ arity = 5, rule = "dense" }, { arity = 6, rule = "dense" }], benchmark = false, test = "test_boolean_back.py::TestParameterizedBack::test_area_is_linear_where_the_comb_is_not" }
 
 [curation]
 backlinks = 1

@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-balanced_block_admission = { tables = [{ arity = 3, rule = "parity" }, { arity = 4, rule = "parity" }], benchmark = false }
+balanced_block_admission = { tables = [{ arity = 3, rule = "parity" }, { arity = 4, rule = "parity" }], benchmark = false, test = "test_boolean_container.py::test_balance_admits_blocks_from_four_inputs" }
 
 [deep_arities]
 execution = 6

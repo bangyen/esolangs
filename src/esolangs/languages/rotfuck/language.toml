@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-biased_to_raw_index_digits = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false }
+biased_to_raw_index_digits = { tables = [{ arity = 6, rule = "dense" }, { arity = 7, rule = "dense" }], benchmark = false, test = "test_boolean_rotfuck.py::TestRotfuck::test_raw_digits_shed_the_bias_once_per_digit_from_n_7" }
 
 [deep_arities]
 workspace = 6

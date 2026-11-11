@@ -14,7 +14,7 @@ labels = ["linear lookup"]
 qualification = "the street writes one cell per entry, then each essential input's mouth forks on its bit (an ignored one is a lone read) and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry"
 
 [construction_boundaries]
-tree_to_shared_kerb = { tables = [{ arity = 3, rule = "parity" }, { arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = false }
+tree_to_shared_kerb = { tables = [{ arity = 3, rule = "parity" }, { arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = false, test = "test_boolean_streetcode_gen.py::test_tree_yields_to_shared_kerb" }
 shared_kerb_controls = { tables = [{ arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = true }
 
 [generator_sizes]

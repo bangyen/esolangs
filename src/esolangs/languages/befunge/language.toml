@@ -15,8 +15,8 @@ output_size = "Linear"
 evidence = "docs/proofs/index.md#exceptions-and-walls"
 
 [construction_boundaries]
-torus_input_cap = { tables = [{ arity = 13, rule = "dense" }, { arity = 14, rule = "dense" }], benchmark = false }
-wide_parity_to_mandatory_packing = { tables = [{ arity = 10, rule = "parity" }, { arity = 11, rule = "parity" }], benchmark = false }
+torus_input_cap = { tables = [{ arity = 13, rule = "dense" }, { arity = 14, rule = "dense" }], benchmark = false, test = "test_befunge_wrap.py::test_befunge_refuses_a_table_larger_than_the_torus" }
+wide_parity_to_mandatory_packing = { tables = [{ arity = 10, rule = "parity" }, { arity = 11, rule = "parity" }], benchmark = false, test = "test_befunge_wrap.py::test_width_one_and_balance_cross_the_packing_cutoff" }
 nibble_index_controls = { tables = [{ arity = 2, rule = "parity" }, { arity = 7, rule = "parity" }], benchmark = true }
 nibble_to_packed_index = { tables = [{ arity = 8, rule = "parity" }, { arity = 9, rule = "parity" }], benchmark = true }
 

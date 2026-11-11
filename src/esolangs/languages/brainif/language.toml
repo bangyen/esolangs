@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-tree_to_width_lookup = { tables = [{ arity = 4, rule = "dense" }, { arity = 5, rule = "dense" }], benchmark = false }
+tree_to_width_lookup = { tables = [{ arity = 4, rule = "dense" }, { arity = 5, rule = "dense" }], benchmark = false, test = "test_boolean_brainif.py::test_brainif_unpruned_large_tree_uses_spatial_fallback" }
 
 [curation]
 backlinks = 5

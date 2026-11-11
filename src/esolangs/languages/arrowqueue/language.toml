@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-small_to_full_constant_ring = { tables = [{ arity = 2, rule = "one" }, { arity = 3, rule = "one" }], benchmark = false }
+small_to_full_constant_ring = { tables = [{ arity = 2, rule = "one" }, { arity = 3, rule = "one" }], benchmark = false, test = "test_boolean_arrowqueue.py::test_constant_balance_and_setters_off_path" }
 
 [curation]
 backlinks = 3

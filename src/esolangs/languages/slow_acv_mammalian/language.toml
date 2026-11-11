@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-mod255_tree_to_chain = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false }
+mod255_tree_to_chain = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_slow_acv_mammalian.py::test_coprime_chain_generates_asymmetric_tables" }
 
 [deep_arities]
 # SLOW ACV MAMMALIAN's increments track per-level residues, not T: a
