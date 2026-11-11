@@ -67,6 +67,7 @@ PUBLIC_MEMBERS = {
         "settings",
         "fill",
         "evaluate",
+        "spans",
     },
     esolangs.TemplateBindings: {"char", "setters", "inputs", "fill"},
     esolangs.Language: {

@@ -20,24 +20,26 @@ Size:
 from collections.abc import Sequence
 
 from esolangs.generation.helpers import (
-    TEMPLATE_CHAR,
     _validate_truth_table,
-    in_input_order,
     subtree_ids,
     subtree_slot,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.template import (
+    InputSlot,
+    TemplateLayout,
+    TemplateToken,
+    layout_tokens,
+)
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import _join_tokens, wrap_space_delimited
 from esolangs.languages.ram0.descriptor import PAIR as PAIR
-from esolangs.runtime._program import Program
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.
 #: RAM0 has no input command, so each input run is a fixed-length ``Z``,
 #: ``Z``/``A`` unit independent of the incoming register (``Z`` resets
 #: absolutely); a variable-length setter would shift the absolute ``goto``
 #: operands.
-_RAM0_INPUT = TEMPLATE_CHAR * len(PAIR[0])
+_RAM0_INPUT = InputSlot(len(PAIR[0]))
 
 
 def ram0(truth_table: str, width: int | None = None) -> str:
@@ -45,18 +47,20 @@ def ram0(truth_table: str, width: int | None = None) -> str:
 
     Only final ``z`` is the answer. Constants execute every setter, then reset z.
     """
+    return _layout(truth_table, width).source
+
+
+def _layout(truth_table: str, width: int | None = None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if truth_table == truth_table[0] * len(truth_table):
-        tokens = ["Z", _RAM0_INPUT] * n + ["Z"]
+        setter: list[TemplateToken] = ["Z", _RAM0_INPUT]
+        tokens = setter * n + ["Z"]
         if truth_table[0] == "1":
             tokens.append("A")
-        return (
-            wrap_space_delimited(" ".join(tokens), width) if width else " ".join(tokens)
-        )
+        return layout_tokens(tokens, width)
     if width == 1 and len(truth_table) <= 8:  # three inputs
-        return wrap_space_delimited(_ram0_nand(truth_table), width)
-    program = in_input_order(truth_table, _ram0_shared)
-    return program if width is None else wrap_space_delimited(program, width)
+        return layout_tokens(_ram0_nand(truth_table), width)
+    return layout_tokens(_ram0_ordered(truth_table, tuple(range(n)), share=True), width)
 
 
 def _address(k: int, op: str) -> list[str]:
@@ -64,12 +68,12 @@ def _address(k: int, op: str) -> list[str]:
     return ["Z", *["A"] * k, op]
 
 
-def _ram0_nand(truth_table: str) -> str:
+def _ram0_nand(truth_table: str) -> list[TemplateToken]:
     """Build small Shannon circuits using unary addresses and NAND stores."""
     n = _validate_truth_table(truth_table)
     # RAM[0:2] implements NOT. A NAND writes NOT b to RAM[2+a], with
     # RAM[3] reset to 1: reading RAM[3] then returns NOT(a AND b).
-    tokens = ["Z", "N", "A", "S"]
+    tokens: list[TemplateToken] = ["Z", "N", "A", "S"]
 
     def address_op(address: int, op: str) -> None:
         tokens.extend(_address(address, op))
@@ -134,17 +138,12 @@ def _ram0_nand(truth_table: str) -> str:
     # A unary address would cost O(T squared) at unrestricted arity;
     # the three-input cap keeps this fallback uniformly O(T).
     load(tree(0, 0))
-    return " ".join(tokens)
-
-
-def _ram0_shared(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one order's shared tree; see :func:`_ram0_ordered`."""
-    return _ram0_ordered(truth_table, perm, share=True)
+    return tokens
 
 
 def _ram0_ordered(
     truth_table: str, perm: tuple[int, ...], *, share: bool = False
-) -> str:
+) -> list[TemplateToken]:
     """Emit one input order's RAM0 template; see :func:`ram0`.
 
     ``truth_table`` is already permuted, so every row index here is in the
@@ -159,7 +158,7 @@ def _ram0_ordered(
     # known once the tree is laid out.  The leading "C" skips its operand
     # while z is still zero, so the operand doubles as the halt trampoline:
     # a leaf's goto 2 lands on "goto end" and halts with z as the answer.
-    tokens = ["C", "END@"]
+    tokens: list[TemplateToken] = ["C", "END@"]
 
     # Store the deepest, most repeated test at address zero.  Placeholders
     # remain in input-name order; only their destination cell changes.
@@ -176,7 +175,8 @@ def _ram0_ordered(
     emitter.emit(0, 0)
     tokens += emitter.tree
     end = emitter.addr()  # 1-based goto operand just past the last command
-    return " ".join(str(end) if t == "END@" else t for t in tokens)
+    tokens[1] = str(end)
+    return tokens
 
 
 class _TreeEmitter:
@@ -255,20 +255,21 @@ class _TreeEmitter:
         self.tree[at : at + len(head) + 1] = [*head, str(one)]
 
 
-def _balance(_table: str, default: str) -> str:
-    """Return the operand row fit; the default and width-one NAND never won."""
-    tokens = default.split()
-    width = balanced_token_width(tokens, " ")
-    return _join_tokens(tokens, width, " ")
-
-
-def ram0_request(request: GenerationRequest) -> Program:
+def ram0_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return ram0(request.table, request.width)
-    return ram0(request.table)
+    return _layout(request.table, request.width)
 
 
-def ram0_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+def ram0_balance_request(request: BalanceRequest) -> TemplateLayout:
+    """Balance whole tokens, retaining the input slots across row breaks."""
+    if not isinstance(request.source, TemplateLayout):
+        raise TypeError("RAM0 balancing needs a rendered template with slots")
+    tokens = list(request.source.tokens())
+    width = balanced_token_width(
+        [
+            " " * len(token) if isinstance(token, InputSlot) else token
+            for token in tokens
+        ],
+        " ",
+    )
+    return layout_tokens(tokens, width)

@@ -20,7 +20,13 @@ from esolangs.generation.helpers import (
     same_up_to_wrapping,
     unmark,
 )
-from esolangs.generation.requests import BalanceRequest, GenerationRequest, Options
+from esolangs.generation.requests import (
+    BalanceRequest,
+    GeneratedProgram,
+    GenerationRequest,
+    Options,
+)
+from esolangs.generation.template import TemplateLayout
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_program, wrap_program
 from esolangs.raster import Raster
@@ -146,6 +152,15 @@ def generate(
     except ValueError as error:
         raise ArgumentError(str(error)) from error
     inputs = len(truth_table).bit_length() - 1
+    if isinstance(generated, TemplateLayout):
+        return _structured_template(
+            generated,
+            lang.id,
+            resolved,
+            inputs,
+            settings,
+            catalog,
+        )
     if lang.runtime.source_kind is SourceKind.RASTER:
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
@@ -181,6 +196,23 @@ def _backend_options(
     schema = catalog.languages[catalog.resolve(language)].runtime.dialect_schema
     return Options(
         tuple(((schema.defaults if schema is not None else {}) | options).items())
+    )
+
+
+def _structured_template(
+    layout: TemplateLayout,
+    language_id: str,
+    name: str,
+    inputs: int,
+    settings: DialectSettings | None,
+    catalog: Catalog,
+) -> TemplateArtifact:
+    """Preserve the backend's slot positions alongside its rendered source."""
+    text, char, pairs = render_template(
+        language_id, layout.source, inputs, catalog=catalog
+    )
+    return TemplateArtifact(
+        text, name, TemplateBindings(char, pairs), settings, spans=layout.spans
     )
 
 
@@ -223,11 +255,20 @@ def _generate_balanced(
             raise ProgramError(f"{name}'s balancer did not return a Raster")
         return ProgramArtifact(balanced, name, settings, scale=1, input_arity=inputs)
     if balancer is not None:
+        balance_source: GeneratedProgram = source
+        if isinstance(default, TemplateArtifact) and default.spans is not None:
+            balance_source = TemplateLayout(default.source, default.spans)
         text = balancer(
             BalanceRequest(
-                truth_table, source, _backend_options(lang.id, options, catalog=catalog)
+                truth_table,
+                balance_source,
+                _backend_options(lang.id, options, catalog=catalog),
             )
         )
+        if isinstance(text, TemplateLayout) and isinstance(default, TemplateArtifact):
+            return _structured_template(
+                text, lang.id, name, default.bindings.inputs, settings, catalog
+            )
         if not isinstance(text, str):
             raise ProgramError(f"{name}'s balancer did not return text")
         if isinstance(default, TemplateArtifact):

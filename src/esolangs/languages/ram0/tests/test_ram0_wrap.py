@@ -1,5 +1,7 @@
 """RAM0's unary NAND circuit fits one column without changing wider layouts."""
 
+import json
+
 import pytest
 
 import esolangs
@@ -22,9 +24,27 @@ def test_one_column_circuits_execute_every_small_table(n: int) -> None:
 
 @pytest.mark.parametrize("table", ["0110", "01101001", "01101001" * 4])
 @pytest.mark.parametrize("width", [1, 2, 5])
-def test_saved_templates_preserve_exact_provenance(table: str, width: int) -> None:
-    template = esolangs.generate("RAM0", table, width=width)
-    template = esolangs.load_program("RAM0", esolangs.dump_program("RAM0", template))
+def test_saved_templates_preserve_exact_provenance(
+    table: str, width: int, monkeypatch
+) -> None:
+    def unexpected_scan(*_args):
+        raise AssertionError("structured layout rediscovered its slots")
+
+    with monkeypatch.context() as patch:
+        patch.setattr("esolangs.artifacts.runs", unexpected_scan)
+        original = esolangs.generate("RAM0", table, width=width)
+        balanced = esolangs.generate("RAM0", table, balance=True)
+        document = esolangs.dump_program("RAM0", original)
+        template = esolangs.load_program("RAM0", document)
+    assert original == template
+    assert balanced.spans is not None
+    legacy = json.loads(document)
+    del legacy["spans"]
+    assert esolangs.load_program("RAM0", json.dumps(legacy)) == template
+    damaged = json.loads(document)
+    damaged["spans"][0][0] += 1
+    with pytest.raises(esolangs.ProgramError, match="invalid template span"):
+        esolangs.load_program("RAM0", json.dumps(damaged))
     bits = [0] * (len(table).bit_length() - 1)
     source = esolangs.instantiate("RAM0", template, bits, truth_table=table)
     assert esolangs.read_answer("RAM0", run("RAM0", source).output) == table[0]

@@ -45,7 +45,7 @@
   "Raster.from_png": "(cls, data: 'bytes') -> 'Raster'",
   "Raster.to_png": "(self) -> 'bytes'",
   "Raster.upscaled": "(self, scale: 'int') -> 'Raster'",
-  "TemplateArtifact.__init__": "(self, source: 'str', language: 'str', bindings: 'TemplateBindings', settings: 'DialectSettings | None' = None) -> None",
+  "TemplateArtifact.__init__": "(self, source: 'str', language: 'str', bindings: 'TemplateBindings', settings: 'DialectSettings | None' = None, *, spans: 'tuple[tuple[int, int], ...] | None' = None) -> None",
   "TemplateArtifact.evaluate": "(self, bits: 'list[int] | tuple[int, ...]', *, limits: 'ExecutionLimits | None' = None) -> 'BooleanEvaluation'",
   "TemplateArtifact.fill": "(self, bits: 'Sequence[int]') -> 'ProgramArtifact[str]'",
   "TemplateBindings.__init__": "(self, char: 'str' = '$', setters: 'Setters' = ()) -> None",

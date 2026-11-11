@@ -26,6 +26,7 @@ from esolangs.generation.helpers import (
     fill_runs,
 )
 from esolangs.generation.requests import GenerationRequest, Options
+from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import DEFAULT_WIDTH, wrap_program
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, Language, canonical_id, example_stems, resolve
@@ -169,9 +170,10 @@ class BooleanExample:
         assert backend is not None
         schema = language.runtime.dialect_schema
         options = Options(tuple(schema.defaults.items())) if schema else Options()
-        return self.generator(
+        generated = self.generator(
             GenerationRequest(table, width if backend.layout_width else None, options)
         )
+        return generated.source if isinstance(generated, TemplateLayout) else generated
 
     @property
     def stdin(self) -> str:

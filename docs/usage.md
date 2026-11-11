@@ -198,7 +198,9 @@ to bound acquisition, worker startup and the source preparation hook independent
 of execution. It selects isolation when source needs preparing. A total deadline,
 output cap or memory cap also selects isolation. In-process `PreparedProgram.execute`
 uses the existing preparation. An isolated call prepares again in its worker.
-Cooperative execution deadlines cannot interrupt a single command.
+An execution deadline with a step budget is cooperative when running in-process.
+A deadline without a step budget selects isolation. Cooperative deadlines are
+checked between commands.
 An isolated call without an explicit total deadline retains the 30-second default.
 
 `Catalog` owns immutable declarations and lookup indexes. Construct one from
@@ -372,6 +374,8 @@ answer bit.
 Some languages embed their inputs in the program. For these, `generate`
 returns a template with one ordered `$` run per input, exactly as long as
 its replacement. Fill it with `esolangs.instantiate(language, template, bits)`.
+Portable JSON stores each slot's start and end offsets alongside its setters.
+Older JSON without offsets is restored from the placeholder runs.
 Running a `TemplateArtifact` is refused until it is filled. Literal source is
 interpreted directly, including placeholder-like characters.
 `esolangs list --details` marks these languages `tmpl`.

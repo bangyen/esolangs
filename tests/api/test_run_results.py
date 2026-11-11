@@ -113,6 +113,8 @@ def _replay_periodic(name, source, stdin, native):
     assert not debugger.halted
     assert debugger.result == native._replace(output="", completion=None, steps=end)
     assert native.output
+    bounded = esolangs.run(name, source, stdin=stdin, max_steps=end)
+    assert bounded == native._replace(steps=end)
 
 
 def test_periodic_result_retains_cycle_evidence_in_a_worker():

@@ -273,12 +273,19 @@ def _execute_outcome(
     if not isinstance(selected, ExecutionLimits):
         raise ArgumentError("limits must be ExecutionLimits or None")
     check_flag(isolated, "isolated")
-    use_worker = isolated or any(
-        value is not None
-        for value in (
-            selected.total_timeout,
-            selected.max_output,
-            selected.max_memory,
+    hard_execution_deadline = (
+        selected.execution_timeout is not None and selected.max_steps is None
+    )
+    use_worker = (
+        isolated
+        or hard_execution_deadline
+        or any(
+            value is not None
+            for value in (
+                selected.total_timeout,
+                selected.max_output,
+                selected.max_memory,
+            )
         )
     )
     preparation_timeout = selected.preparation_timeout

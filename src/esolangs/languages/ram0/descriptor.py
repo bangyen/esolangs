@@ -15,14 +15,14 @@ PAIR = ("Z", "A")
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import wrap_space_delimited
     from esolangs.registry._backend import BooleanBackend, TemplateSpec
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
-    from esolangs.runtime._program import Program
 
     return BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
+        entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.ram0.generator", "ram0_request"
         ),
         layout_width=True,
@@ -34,7 +34,7 @@ def _backend() -> BackendDefinition:
         # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
         # only safe break.
         wrap=wrap_space_delimited,
-        balance=OperationRef[BalanceRequest, Program](
+        balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.ram0.generator", "ram0_balance_request"
         ),
         template=TemplateSpec(pair=PAIR),

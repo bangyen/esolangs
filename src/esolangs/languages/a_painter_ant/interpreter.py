@@ -153,6 +153,11 @@ class _Machine:
         self.ip = 0
 
     @property
+    def commands_per_pass(self) -> int:
+        """Return the command stride between cycle checkpoints."""
+        return len(self.prog)
+
+    @property
     def halted(self) -> bool:
         """The implicit loop never halts; only a repeated state proves a loop."""
         return False
@@ -274,7 +279,9 @@ def _execute(code: str | _SourceImage, io: IO) -> CompletionReport:
     picture by then.
     """
     machine = _Machine(code, io)
-    cycle = drive_periodic(machine, len(machine.prog), policy=CAPABILITIES.completion)
+    cycle = drive_periodic(
+        machine, machine.commands_per_pass, policy=CAPABILITIES.completion
+    )
     return CompletionReport(CAPABILITIES.completion, cycle)
 
 

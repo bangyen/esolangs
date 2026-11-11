@@ -43,7 +43,6 @@ def evaluate(
             program,
             stdin=stdin,
             limits=limits,
-            isolated=limits is not None and limits.execution_timeout is not None,
             catalog=catalog,
         ).unwrap()
         return BooleanEvaluation(

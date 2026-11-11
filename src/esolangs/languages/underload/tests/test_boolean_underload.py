@@ -155,7 +155,11 @@ def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         esolangs.instantiate(
             "Underload",
-            replace(template, source=template.source.replace("(0)", "(0\n)")),
+            replace(
+                template,
+                source=template.source.replace("(0)", "(0\n)"),
+                spans=None,
+            ),
             [0, 1],
             truth_table="0000",
         )

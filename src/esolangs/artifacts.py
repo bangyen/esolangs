@@ -12,6 +12,7 @@ from esolangs._bindings import (
     check_setters,
     fill_runs,
     runs,
+    validate_spans,
 )
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, ProgramError, TemplateError
@@ -144,8 +145,7 @@ class TemplateArtifact:
     language: str
     bindings: TemplateBindings
     settings: DialectSettings | None = None
-    # Re-parsing immutable spans added 20-26% to fills at n=2/4/6.
-    _spans: tuple[tuple[int, int], ...] = field(init=False, repr=False, compare=False)
+    spans: tuple[tuple[int, int], ...] | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         """Require every placeholder to belong to an input."""
@@ -155,11 +155,15 @@ class TemplateArtifact:
             raise TemplateError("template needs text source and TemplateBindings")
         object.__setattr__(self, "language", _origin(self.language, self.settings))
         try:
-            object.__setattr__(
-                self,
-                "_spans",
-                tuple(runs(self.source, self.bindings.char, self.bindings.setters)),
-            )
+            if self.spans is None:
+                spans = tuple(
+                    runs(self.source, self.bindings.char, self.bindings.setters)
+                )
+                object.__setattr__(self, "spans", spans)
+            else:
+                validate_spans(
+                    self.source, self.bindings.char, self.bindings.setters, self.spans
+                )
         except (TypeError, ValueError) as error:
             raise TemplateError(str(error)) from error
 
@@ -177,7 +181,7 @@ class TemplateArtifact:
     def fill(self, bits: Sequence[int]) -> ProgramArtifact[str]:
         """Bind inputs without rescanning the immutable template's runs."""
         return ProgramArtifact(
-            self.bindings.fill(self.source, bits, spans=self._spans),
+            self.bindings.fill(self.source, bits, spans=self.spans),
             self.language,
             self.settings,
         )

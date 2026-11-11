@@ -13,6 +13,7 @@ from esolangs.vm import (
     VM,
     _capture_observation,
     _capture_result,
+    _DelegatingVM,
     complete_vm,
     run_until_halt,
 )
@@ -188,9 +189,33 @@ class ExecutionController:
             return "breakpoint"
         return "max_steps"
 
+    def _periodic_execution(
+        self, vm: _DelegatingVM, max_steps: int, timeout: float | None
+    ) -> ExecutionOutcome:
+        deadline = None if timeout is None else monotonic() + timeout
+
+        def step() -> None:
+            if deadline is not None and monotonic() >= deadline:
+                raise ExecutionTimeoutError(
+                    f"execution exceeded the {timeout}-second timeout"
+                )
+            if self._steps >= max_steps:
+                error = ExecutionTimeoutError(
+                    "execution stopped at the max_steps bound"
+                )
+                error.bound = "max_steps"
+                raise error
+            self.step()
+
+        report = vm._complete_periodic(step)  # noqa: SLF001
+        result = _capture_observation(vm, report)._replace(steps=self._steps)
+        return ExecutionOutcome("completed", result)
+
     def _execute(self, *, max_steps: int, timeout: float | None) -> ExecutionOutcome:
         """Finish a non-interactive invocation, retaining faults and bound stops."""
         try:
+            if isinstance(self.vm, _DelegatingVM) and not self.steppable_to_answer:
+                return self._periodic_execution(self.vm, max_steps, timeout)
             reason = self.run(max_steps=max_steps, timeout=timeout)
         except EsolangError as fault:
             fault.partial_output = self.output

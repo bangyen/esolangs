@@ -4,8 +4,11 @@ from dataclasses import dataclass
 
 from esolangs._dialect import Scalar
 from esolangs.exceptions import ArgumentError, ProgramError
+from esolangs.generation.template import TemplateLayout
 from esolangs.raster import Raster
 from esolangs.runtime._program import Program
+
+type GeneratedProgram = Program | TemplateLayout
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,11 +46,13 @@ class BalanceRequest:
     """A table and emitted source to lay out under the same dialect choices."""
 
     table: str
-    source: Program
+    source: GeneratedProgram
     options: Options = Options()
 
     def text_source(self) -> str:
         """Return text for a declared text balancer."""
+        if isinstance(self.source, TemplateLayout):
+            return self.source.source
         if not isinstance(self.source, str):
             raise ProgramError("text layout requires text source")
         return self.source

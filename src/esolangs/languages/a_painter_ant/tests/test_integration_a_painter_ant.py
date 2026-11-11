@@ -147,10 +147,16 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
         esolangs.run("A Painter Ant", "P")
 
 
-def test_a_step_bound_does_not_claim_periodic_completion():
+def test_a_step_bound_requires_a_periodic_witness():
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         _execution_operations._execute_bounded(
-            "A Painter Ant", "P", max_steps=3
+            "A Painter Ant", "P", max_steps=1
         ).unwrap()
     assert caught.value.bound == "max_steps"
     assert caught.value.partial_output == ""
+    assert caught.value.execution.steps == 1
+    assert caught.value.execution.completion is None
+    result = esolangs.run("A Painter Ant", "P", max_steps=2, isolated=True)
+    assert result.output == "@"
+    assert result.steps == 2
+    assert result.completion.kind is Completion.PERIODIC

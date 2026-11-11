@@ -99,6 +99,35 @@ def runs(text: str, char: str, setters: Setters) -> list[tuple[int, int]]:
     return spans
 
 
+def validate_spans(
+    text: str,
+    char: str,
+    setters: Setters,
+    spans: tuple[tuple[int, int], ...],
+) -> None:
+    """Check ordered, fixed-width source slots supplied by a renderer or file."""
+    if not isinstance(spans, tuple) or len(spans) != len(setters):
+        raise ValueError("template needs one span per input")
+    position = covered = 0
+    for span, (zero, _) in zip(spans, setters, strict=True):
+        if not isinstance(span, tuple) or len(span) != 2:
+            raise ValueError("template spans must be pairs of offsets")
+        start, end = span
+        width = len(zero)
+        if (
+            type(start) is not int
+            or type(end) is not int
+            or not position <= start <= end <= len(text)
+            or end - start != width
+            or text[start:end] != char * width
+        ):
+            raise ValueError(f"invalid template span {span!r}")
+        position = end
+        covered += width
+    if text.count(char) != covered:
+        raise ValueError("template has an unbound placeholder")
+
+
 def fill_runs(
     text: str,
     char: str,

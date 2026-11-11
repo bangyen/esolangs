@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs.generation.helpers import TEMPLATE_CHAR, runs
+from esolangs.generation.template import layout_tokens
 from esolangs.languages.ram0 import generator as boolean
 from esolangs.languages.ram0.generator import PAIR as RAM0_PAIR
 from esolangs.languages.ram0.generator import _ram0_ordered
@@ -74,7 +75,7 @@ class TestParameterizedRam0:
         tokens = generators.ram0("01101001").split()
         assert tokens[0] == "C"
         assert tokens.count("2") == 2
-        plain = _ram0_ordered("01101001", (0, 1, 2)).split()
+        plain = layout_tokens(_ram0_ordered("01101001", (0, 1, 2))).source.split()
         assert plain.count("2") == 8
 
     @staticmethod
@@ -84,7 +85,11 @@ class TestParameterizedRam0:
 
         before = after = 0
         for table in tables:
-            old = len(_ram0_ordered(table, tuple(range(len(table).bit_length() - 1))))
+            old = len(
+                layout_tokens(
+                    _ram0_ordered(table, tuple(range(len(table).bit_length() - 1)))
+                ).source
+            )
             new = len(generators.ram0(table))
             before, after = before + old, after + new
         return before, after

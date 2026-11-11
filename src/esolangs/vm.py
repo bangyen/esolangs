@@ -46,7 +46,7 @@ from esolangs.exceptions import EsolangError as _EsolangError
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as IpShape
-from esolangs.runtime._drive import finalize
+from esolangs.runtime._drive import PeriodicMachine, drive_periodic, finalize
 from esolangs.runtime._execution import (
     check_seed_for,
     interpreter_errors,
@@ -85,6 +85,14 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
         else Completion.HALTED,
     )
     return vm.output
+
+
+@runtime_checkable
+class _PassMachine(PeriodicMachine, Protocol):
+    """A machine that declares its cycle-checkpoint stride."""
+
+    @property
+    def commands_per_pass(self) -> int: ...
 
 
 class _DelegatingVM:
@@ -168,6 +176,25 @@ class _DelegatingVM:
                 language=self.language,
             ):
                 raise
+
+    def _complete_periodic(self, step: Callable[[], None]) -> CompletionReport:
+        """Finalize at the same pass boundary as the native driver."""
+        machine = self._machine
+        if not isinstance(machine, _PassMachine):
+            raise ArgumentError("periodic execution requires a declared pass stride")
+        with interpreter_errors(
+            f"the {self.language} interpreter recursed deeper than "
+            "CPython's stack limit allows on this program",
+            self._io,
+            language=self.language,
+        ):
+            cycle = drive_periodic(
+                machine,
+                machine.commands_per_pass,
+                policy=Completion.PERIODIC,
+                step=step,
+            )
+        return CompletionReport(Completion.PERIODIC, cycle)
 
     def snapshot(self) -> Hashable:
         """Return the underlying machine's complete state."""

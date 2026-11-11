@@ -1,6 +1,6 @@
 """Shared driving and output finalization for interpreter shells and VMs."""
 
-from collections.abc import Hashable
+from collections.abc import Callable, Hashable
 from typing import Protocol, runtime_checkable
 
 from esolangs.runtime._lifecycle import (
@@ -72,11 +72,13 @@ def drive_periodic(
     commands_per_pass: int,
     *,
     policy: Completion,
+    step: Callable[[], None] | None = None,
 ) -> BoundaryCycle:
     """Detect a boundary cycle with Brent's rule; the stride is one whole pass."""
     check_whole(commands_per_pass, "commands_per_pass")
     if policy is not Completion.PERIODIC:
         raise ValueError("periodic driving requires periodic completion")
+    take_step = machine.step if step is None else step
     anchor = machine.snapshot()
     first_pass = 0
     repeat_pass = 0
@@ -84,7 +86,7 @@ def drive_periodic(
     passes = 0
     while True:
         for _ in range(commands_per_pass):
-            machine.step()
+            take_step()
         passes += 1
         repeat_pass += 1
         state = machine.snapshot()

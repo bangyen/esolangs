@@ -20,6 +20,7 @@ def generator_for(language: str):
     from functools import wraps
 
     from esolangs.generation.requests import GenerationRequest, Options
+    from esolangs.generation.template import TemplateLayout
     from esolangs.registry import LANGUAGES
 
     lang = LANGUAGES[resolve(language)]
@@ -30,7 +31,8 @@ def generator_for(language: str):
 
     @wraps(operation)
     def emit(table: str):
-        return operation(GenerationRequest(table, options=options))
+        program = operation(GenerationRequest(table, options=options))
+        return program.source if isinstance(program, TemplateLayout) else program
 
     return emit
 

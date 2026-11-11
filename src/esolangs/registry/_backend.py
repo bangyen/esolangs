@@ -7,13 +7,16 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from esolangs.generation.helpers import TEMPLATE_CHAR, Setters, check_setters
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import (
+    BalanceRequest,
+    GeneratedProgram,
+    GenerationRequest,
+)
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._operations import OperationRef
-from esolangs.runtime._program import Program
 
-Generator = Callable[[GenerationRequest], Program]
-Balancer = Callable[[BalanceRequest], Program]
+Generator = Callable[[GenerationRequest], GeneratedProgram]
+Balancer = Callable[[BalanceRequest], GeneratedProgram]
 
 
 class Shape(StrEnum):
@@ -56,7 +59,7 @@ class TemplateSpec:
 class BooleanBackend:
     """Generator, accepted tables, input binding and source layout rules."""
 
-    entrypoint: OperationRef[GenerationRequest, Program] | Generator
+    entrypoint: OperationRef[GenerationRequest, GeneratedProgram] | Generator
     layout_width: bool = False
     template: TemplateSpec | None = None
     max_inputs: int | None = None
@@ -75,7 +78,7 @@ class BooleanBackend:
     #: default: equal up to wrapping newlines.
     same_layout: Callable[[str, str, Callable[[int], str]], bool] | None = None
     #: ``balance(table, default)``: the squarest layout a reflow cannot find.
-    balance: OperationRef[BalanceRequest, Program] | Balancer | None = None
+    balance: OperationRef[BalanceRequest, GeneratedProgram] | Balancer | None = None
 
     @property
     def generate(self) -> Generator:

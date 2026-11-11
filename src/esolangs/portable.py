@@ -167,6 +167,7 @@ def dump_program(
             source=artifact.source,
             char=artifact.bindings.char,
             setters=artifact.bindings.setters,
+            spans=artifact.spans,
         )
     elif isinstance(body, Raster):
         document.update(
@@ -316,8 +317,23 @@ def _load_template(
         for pair in pairs
     ):
         raise ValueError("setters must be pairs of strings")
+    spans = None
+    if "spans" in value:
+        raw = value["spans"]
+        if not isinstance(raw, list) or any(
+            not isinstance(span, list)
+            or len(span) != 2
+            or any(type(offset) is not int for offset in span)
+            for span in raw
+        ):
+            raise ValueError("template spans must be pairs of offsets")
+        spans = tuple((start, end) for start, end in raw)
     return TemplateArtifact(
-        value["source"], name, TemplateBindings(value["char"], tuple(pairs)), settings
+        value["source"],
+        name,
+        TemplateBindings(value["char"], tuple(pairs)),
+        settings,
+        spans=spans,
     )
 
 
@@ -371,7 +387,9 @@ def load_program(
             fields.add("limits")
         if kind == "template":
             fields |= {"char", "setters"}
-        if kind != "template" and "input_arity" in value:
+            if "spans" in value:
+                fields.add("spans")
+        elif "input_arity" in value:
             fields.add("input_arity")
         if set(value) != fields:
             raise ValueError("unexpected or missing fields")
