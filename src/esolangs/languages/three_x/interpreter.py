@@ -27,6 +27,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from fractions import Fraction
+from types import MappingProxyType
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -34,7 +35,7 @@ from esolangs.languages.three_x.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
@@ -68,25 +69,36 @@ type _State = tuple[
 _NEEDS = {"x": 3, "v": 2, "#": 2, "!": 1, "^": 1, "(": 1, ")": 1}
 
 
-def _forward(code: str, ind: int) -> int | None:
-    """Return the position of the ``)`` matching the ``(`` at ``ind``.
+_STRUCTURE = re.compile(r"[\[()]")
 
-    ``None`` when unmatched; the caller raises :class:`HaltError`.  A
-    ``[...]`` literal is text, so its brackets are skipped as ``[`` skips
-    them when it runs.
-    """
-    num = 1
-    while num > 0:
-        ind += 1
-        if ind >= len(code):
-            return None
-        if code[ind] == "[" and (close := code.find("]", ind + 1)) != -1:
-            ind = close
-        elif code[ind] == "(":
-            num += 1
-        elif code[ind] == ")":
-            num -= 1
-    return ind
+
+type _Image = tuple[str, Mapping[int, int]]
+
+
+def _prepare_source(code: str) -> _Image:
+    """Index the ends of literals and loops without raising on missing ends."""
+    ends: dict[int, int] = {}
+    stack: list[int] = []
+    at = 0
+    can_close_literal = True
+    while mark := _STRUCTURE.search(code, at):
+        index = mark.start()
+        at = mark.end()
+        char = mark[0]
+        if char == "[":
+            if can_close_literal:
+                close = code.find("]", at)
+                if close == -1:
+                    # Later literal openers cannot have a closer either.
+                    can_close_literal = False
+                else:
+                    ends[index] = close
+                    at = close + 1
+        elif char == "(":
+            stack.append(index)
+        elif stack:
+            ends[stack.pop()] = index
+    return code, MappingProxyType(ends)
 
 
 def _stored(
@@ -123,13 +135,14 @@ _WORKSPACE_MODEL = WorkspaceModel(
 class _Machine:
     """Per-run 3x state: the code, stack, jump stack, variables, and cursor."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Image, io: IO) -> None:
         """Store ``code`` and start with an empty stack and no variables."""
         self.io = io
-        self.code = code
+        self.code, ends = (code, None) if isinstance(code, str) else code
+        self.ends: Mapping[int, int] | None = ends
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
-        self.size = len(code)
+        self.size = len(self.code)
         self.state: _State = (0, (), (), ())
 
     # The language's own names.  They are views on the current state rather
@@ -211,11 +224,14 @@ class _Machine:
             # Matchedness is settled on entry, whichever way the top goes:
             # a loop entered on a nonzero top otherwise ran off the end of
             # the code and halted as if its body had finished.
-            match = _forward(self.code, ind)
+            # One-shot runs can print literals without building an index.
+            if self.ends is None:
+                _, self.ends = _prepare_source(self.code)
+            match = self.ends.get(ind)
             if match is None:
                 # The original's scan walked the cursor to the end before
                 # noticing, so a caller catching the error sees that.
-                self.state = (len(self.code), stack, jumps, variables)
+                self.state = (self.size, stack, jumps, variables)
                 raise HaltError(
                     "unmatched (",
                     hint="pair each loop or group opener with its corresponding closer",
@@ -242,13 +258,17 @@ class _Machine:
             else:
                 self.io.print_str(str(top))
         elif char == "[":
-            close = self.code.find("]", ind + 1)
-            self.io.print_str("" if close == -1 else self.code[ind + 1 : close])
+            if self.ends is None:
+                close = self.code.find("]", ind + 1)
+                target = None if close == -1 else close
+            else:
+                target = self.ends.get(ind)
+            self.io.print_str("" if target is None else self.code[ind + 1 : target])
         self.state = _advance(self.state, self.code, value, target)
 
 
 # :func:`_advance` is a pure, total transition over an immutable ``_State``; ``_NEEDS``
-# and :func:`_forward` let the shell reject underflow and unmatched brackets first, and
+# and the source index let the shell reject underflow and unmatched brackets first, and
 # the shell checks the zero divisor.  :class:`_Machine` rebinds one state per
 # ``step()``.
 def _advance(
@@ -260,7 +280,7 @@ def _advance(
     """Return the state after executing the command at the cursor.
 
     Total: the shell has rejected every error case, read ``?``'s ``value``
-    and resolved forward jumps.  ``)`` on a nonzero top jumps to the
+    and resolved forward jumps and literal ends.  ``)`` on a nonzero top jumps to the
     matching ``(``'s index so the shared increment lands on the body.
     """
     ind, stack, jumps, variables = state
@@ -291,29 +311,23 @@ def _advance(
             ind = jumps[-1]
         elif jumps:
             jumps = jumps[:-1]
-    elif char == "[":
-        close = code.find("]", ind + 1)
-        if close != -1:
-            ind = close
+    elif char == "[" and target is not None:
+        ind = target
     return (ind + 1, stack, jumps, variables)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain source and bracket offsets for each invocation."""
     if not isinstance(source, str):
         raise TypeError("three_x machines require text source")
     if options:
         raise TypeError("three_x machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    image = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a 3x program."""
     machine = _Machine(code, io)
     return drive(machine, policy=CAPABILITIES.completion)

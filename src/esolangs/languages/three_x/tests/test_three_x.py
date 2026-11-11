@@ -107,6 +107,21 @@ class Test3x:
         assert run_program("333x([(]3!)3!") == "3"
         assert run_program("333x([)]3!)3!") == "3"
 
+    def test_prepared_program_reuses_loop_and_literal_offsets(
+        self, monkeypatch
+    ) -> None:
+        from esolangs.languages.three_x import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "3x",
+            "?([)]!?)?!",
+            interpreter,
+            "_prepare_source",
+            monkeypatch,
+            cases=(("0 7", "7"), ("1 0 7", ")17"), ("2 0 7", ")27")),
+        )
+
     def test_error_unmatched_bracket(self) -> None:
         with pytest.raises(HaltError):
             run_program("333x(")
