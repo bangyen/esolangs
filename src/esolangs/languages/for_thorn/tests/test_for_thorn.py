@@ -47,7 +47,9 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert list(machine.frames) == []
 
-    def test_nested_scope_pushes_a_frame_and_aborts_discard_the_error(self) -> None:
+    def test_nested_scope_pushes_a_frame_and_aborts_discard_the_error(
+        self, monkeypatch
+    ) -> None:
         machine = _Machine("1{/}1;", ScriptedIO())
         for _ in range(4):  # 1 {/} 1 ; -> the ; pushes the "/" scope
             machine.step()
@@ -56,12 +58,27 @@ class TestStepMachine:
         assert machine.halted
         assert machine.error is False  # the nested error is discarded
 
+        # A closer in the caller cannot close a bracket in the stored body.
+        assert run_program("1{(};)2.") == "\x02"
+
+        from esolangs.languages.for_thorn import interpreter
+        from tests.support.prepared_support import check_image_reuse
+
+        check_image_reuse(
+            "Forþ", ",1{(.)};", interpreter, "_prepare_source", monkeypatch
+        )
+
     def test_a_top_level_abort_raises_from_step(self) -> None:
         """A stepped run fails as ``run`` does, not as a quiet halt."""
         machine = _Machine("0/", ScriptedIO())
         machine.step()
         with pytest.raises(HaltError, match="top-level scope aborted"):
             machine.step()
+
+        machine = _Machine("(2)", ScriptedIO())
+        with pytest.raises(HaltError, match="stack is empty"):
+            machine.step()
+        assert machine.ip == (3,)
 
     def test_the_wrap_folds_at_exactly_two_to_the_thirty_first(self) -> None:
         """2**31 is the first value that wraps, and it lands on the floor."""
@@ -159,3 +176,4 @@ def test_workspace_scope_values_survive_backing_root_moves():
     assert dict(machine.table.items()) == {1: "x", 2: "b"}
     assert machine.workspace_snapshot().parts[1] == frozenset({(1, "x"), (2, "b")})
     assert saved.parts[1] == frozenset({(1, "a")})
+    assert machine.table.delta(first_table) == ([(2, "b"), (1, "x")], [(1, "a")])

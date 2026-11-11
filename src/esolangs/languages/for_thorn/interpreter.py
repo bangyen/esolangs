@@ -34,9 +34,10 @@ Decisions:
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Hashable, Iterator, Mapping
-from dataclasses import dataclass
 from operator import add, mul, sub
+from types import MappingProxyType
 from typing import Any, NamedTuple, final
 
 from esolangs.exceptions import HaltError
@@ -44,7 +45,7 @@ from esolangs.languages.for_thorn.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._snapshot import SnapshotCodec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
@@ -60,13 +61,33 @@ _BINARY: dict[str, Callable[[int, int], int]] = {
 }
 
 
-@dataclass(frozen=True, slots=True)
-class _Frame:
+class _Frame(NamedTuple):
     """One active scope: its code, cursor, and whether it is a ``[`` loop body."""
 
     code: str
     pc: int = 0
     loop: bool = False
+    offset: int = 0
+    ends: Mapping[int, int] = MappingProxyType({})
+
+
+_EMPTY_FRAME = _Frame("")
+_OPEN = {")": "(", "]": "[", "}": "{"}
+_DELIMITER = re.compile(r"[()\[\]{}]")
+
+
+def _prepare_source(code: str) -> _Frame:
+    """Pair each delimiter kind independently for all slices of the source."""
+    stacks: dict[str, list[int]] = {opener: [] for opener in _OPEN.values()}
+    ends: dict[int, int] = {}
+    for match in _DELIMITER.finditer(code):
+        char = match[0]
+        at = match.start()
+        if char in stacks:
+            stacks[char].append(at)
+        elif pending := stacks[_OPEN[char]]:
+            ends[pending.pop()] = at + 1
+    return _Frame(code, ends=MappingProxyType(ends))
 
 
 type _Frames = tuple[_Frame, ...]
@@ -98,14 +119,14 @@ class _Scopes(Mapping[int, str]):
 
     def __init__(self) -> None:
         """Make the empty table."""
-        self.data: dict[int, str] | None = {}
+        self.data: dict[int, _Frame] | None = {}
         self.total = 0
         self.size = 0
         self.link: _Scopes | None = None
         self.key = 0
         self.old: object = _ABSENT
 
-    def _root(self) -> dict[int, str]:
+    def _root(self) -> dict[int, _Frame]:
         """Return the dict holding this version, moving it here if elsewhere."""
         if self.data is not None:
             return self.data
@@ -129,20 +150,20 @@ class _Scopes(Mapping[int, str]):
             node = older
         return node.data  # type: ignore[return-value]
 
-    def store(self, key: int, scope: str) -> _Scopes:
+    def store(self, key: int, scope: _Frame) -> _Scopes:
         """Return the table with ``key`` bound to ``scope``."""
         data = self._root()
         old = data.get(key, _ABSENT)
-        if old == scope:
+        if isinstance(old, _Frame) and old.code == scope.code:
             return self
         new = _Scopes.__new__(_Scopes)
         new.data, new.link, new.old = data, None, _ABSENT
-        new.total = (self.total + _entry_hash(key, scope)) & _HASH_MASK
+        new.total = (self.total + _entry_hash(key, scope.code)) & _HASH_MASK
         new.size = self.size
-        if old is _ABSENT:
-            new.size += 1
+        if isinstance(old, _Frame):
+            new.total = (new.total - _entry_hash(key, old.code)) & _HASH_MASK
         else:
-            new.total = (new.total - _entry_hash(key, old)) & _HASH_MASK
+            new.size += 1
         data[key] = scope
         self.data, self.link, self.key, self.old = None, new, key, old
         return new
@@ -166,20 +187,22 @@ class _Scopes(Mapping[int, str]):
         gained, lost = [], []
         for key, before in touched.items():
             now = data.get(key, _ABSENT)
-            if now != before:
-                if before is not _ABSENT:
-                    lost.append((key, before))
-                if now is not _ABSENT:
-                    gained.append((key, now))
-        return gained, lost  # type: ignore[return-value]
+            old_code = before.code if isinstance(before, _Frame) else None
+            new_code = now.code if isinstance(now, _Frame) else None
+            if old_code != new_code:
+                if old_code is not None:
+                    lost.append((key, old_code))
+                if new_code is not None:
+                    gained.append((key, new_code))
+        return gained, lost
 
     def __getitem__(self, key: int) -> str:
         """Return the scope stored under ``key``."""
-        return self._root()[key]
+        return self._root()[key].code
 
-    def get(self, key: int, default: str = "") -> str:  # type: ignore[override]
-        """Return the scope stored under ``key``, else ``default``."""
-        return self._root().get(key, default)
+    def frame(self, key: int) -> _Frame:
+        """Return the initial frame under ``key``, or an empty frame."""
+        return self._root().get(key, _EMPTY_FRAME)
 
     def __iter__(self) -> Iterator[int]:
         """Iterate the stored keys."""
@@ -199,12 +222,12 @@ class _Scopes(Mapping[int, str]):
             return True
         if not isinstance(other, _Scopes):
             if isinstance(other, Mapping):
-                return dict(self._root()) == dict(other)
+                return dict(self.items()) == dict(other)
             return NotImplemented
         if self.total != other.total or self.size != other.size:
             return False
-        mine = dict(self._root())
-        return mine == other._root()
+        mine = {key: frame.code for key, frame in self._root().items()}
+        return mine == {key: frame.code for key, frame in other._root().items()}
 
 
 # The frames are the reason this is a stack rather than a cursor: ``;``
@@ -240,7 +263,7 @@ def _top(stack: tuple[int, ...]) -> int:
 
 def _at(frame: _Frame, pc: int) -> _Frame:
     """Return ``frame`` with its cursor moved to ``pc``."""
-    return _Frame(frame.code, pc, frame.loop)
+    return _Frame(frame.code, pc, frame.loop, frame.offset, frame.ends)
 
 
 def _finalize(state: _State) -> _State:
@@ -253,9 +276,7 @@ def _finalize(state: _State) -> _State:
     while frames and frames[-1].pc >= len(frames[-1].code):
         frame = frames[-1]
         if frame.loop and _top(state.stack) != 0:
-            return state._replace(
-                frames=(*frames[:-1], _Frame(frame.code, 0, loop=True))
-            )
+            return state._replace(frames=(*frames[:-1], _at(frame, 0)))
         frames = frames[:-1]
     return state._replace(frames=frames)
 
@@ -273,27 +294,11 @@ def _abort(state: _State) -> _State:
     return finalized._replace(error=finalized.error or len(frames) == 1)
 
 
-#: Each block opener's closer.
-_CLOSER = {"(": ")", "[": "]", "{": "}"}
-
-
-def _scan(frame: _Frame, opener: str, closer: str) -> tuple[str, int] | None:
-    """Return a bracket's body and the cursor past it, or ``None`` if open."""
-    start = frame.pc - 1
-    pc = frame.pc
-    match = 1
-    code = frame.code
-    while pc < len(code):
-        inner = code[pc]
-        pc += 1
-        if inner == opener:
-            match += 1
-        elif inner == closer:
-            match -= 1
-            # Tested after the advance, so the cursor ends one *past* the
-            # closing bracket rather than on it.
-            if match == 0:
-                return (code[start + 1 : pc - 1], pc)
+def _bracket_end(frame: _Frame, at: int) -> int | None:
+    """Return the local cursor after the closer, if it is in this frame."""
+    end = frame.ends.get(frame.offset + at)
+    if end is not None and end <= frame.offset + len(frame.code):
+        return end - frame.offset
     return None
 
 
@@ -354,8 +359,8 @@ def _transfer_step(step: _Step) -> _State | None:
         read = tuple(ord(ch) for ch in (step.line or ""))
         return state._replace(stack=(*stack, *read))
     if char == ";":
-        scope = state.table.get(_top(stack), "")
-        return state._replace(stack=stack[:-1], frames=(*step.frames, _Frame(scope)))
+        scope = state.table.frame(_top(stack))
+        return state._replace(stack=stack[:-1], frames=(*step.frames, scope))
     return None
 
 
@@ -364,21 +369,24 @@ def _bracket_step(step: _Step) -> _State | None:
     char, state, stack = step.char, step.state, step.stack
     if char not in "([{":
         return None
-    found = _scan(step.frame, char, _CLOSER[char])
-    if found is None:
-        # The scan walked to the end without closing, and the original
-        # left the cursor there before aborting.
-        ended = (*step.frames[:-1], _at(step.frame, len(step.frame.code)))
+    frame = step.frame
+    end = _bracket_end(frame, frame.pc - 1)
+    if end is None:
+        ended = (*step.frames[:-1], _at(frame, len(frame.code)))
         return _abort(state._replace(frames=ended))
-    scope, pc = found
-    frames = (*step.frames[:-1], _at(step.frame, pc))
+    frames = (*step.frames[:-1], _at(frame, end))
     state = state._replace(frames=frames)
-    if char in "([":
-        if _top(stack):
-            body = _Frame(scope, loop=char == "[")
-            return state._replace(frames=(*frames, body))
+    if char in "([" and not _top(stack):
         return state
-    table = state.table.store(_top(stack), scope)
+    body = _Frame(
+        frame.code[frame.pc : end - 1],
+        loop=char == "[",
+        offset=frame.offset + frame.pc,
+        ends=frame.ends,
+    )
+    if char in "([":
+        return state._replace(frames=(*frames, body))
+    table = state.table.store(_top(stack), body)
     return state._replace(table=table)
 
 
@@ -450,17 +458,18 @@ class _Machine:
     hang detector can prove.
     """
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str | _Frame, io: IO) -> None:
         """Start with the top-level ``code`` as the only frame."""
         self.io = io
         self.stack: tuple[int, ...] = ()
         self.table = _Scopes()
-        self.frames: tuple[_Frame, ...] = (_Frame(code),)
+        frame = _prepare_source(code) if isinstance(code, str) else code
+        self.frames: tuple[_Frame, ...] = (frame,)
         self._input_reads = 0
         self.error = False  # the top-level scope aborted (status 3)
         # Where the top-level frame ends, kept because ``ip`` still has to
         # report a position after that frame has been popped.
-        self._length = len(code)
+        self._length = len(frame.code)
 
     @property
     def halted(self) -> bool:
@@ -551,12 +560,14 @@ class _Machine:
         # condition is tested, so a raise afterwards leaves the cursor past
         # the whole body.
         if frames and frames[-1].pc < len(frames[-1].code):
-            char = frames[-1].code[frames[-1].pc]
-            frame = _at(frames[-1], frames[-1].pc + 1)
+            frame = frames[-1]
+            char = frame.code[frame.pc]
             if char in "([{":
-                found = _scan(frame, char, _CLOSER[char])
-                frame = _at(frame, found[1] if found else len(frame.code))
-            frames = (*frames[:-1], frame)
+                end = _bracket_end(frame, frame.pc)
+                cursor = len(frame.code) if end is None else end
+            else:
+                cursor = frame.pc + 1
+            frames = (*frames[:-1], _at(frame, cursor))
         self._restore(state._replace(frames=frames))
 
         line = None
@@ -579,22 +590,18 @@ class _Machine:
             )
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
-    """Bind source; each IO-bound construction owns fresh runtime state."""
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
+    """Retain the source and delimiter index across calls and invocations."""
     if not isinstance(source, str):
         raise TypeError("for_thorn machines require text source")
     if options:
         raise TypeError("for_thorn machines accept no runtime options")
 
-    def build(io: IO) -> _Machine:
-        return _Machine(source, io)
-
-    return build
+    frame = _prepare_source(source)
+    return RuntimePlan(lambda io: _Machine(frame, io), lambda io: _execute(frame, io))
 
 
-def _execute(code: str, io: IO) -> CompletionReport:
+def _execute(code: str | _Frame, io: IO) -> CompletionReport:
     """Run a Forþ program."""
     return drive(_Machine(code, io), policy=CAPABILITIES.completion)
 
@@ -619,7 +626,7 @@ def _scope_restore(payload: Hashable) -> _Scopes:
         raise TypeError("invalid scope snapshot")
     scopes = _Scopes()
     for key, code in payload:
-        scopes = scopes.store(key, code)
+        scopes = scopes.store(key, _prepare_source(code))
     return scopes
 
 
