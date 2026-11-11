@@ -87,6 +87,10 @@ class TestFrames:
         state.step()  # `!` pushes the nested program
         assert state.ip[0] == 2, "the nested program is a frame of its own"
 
+        assert run_and_capture('"`hello`."!') == "hello"
+        assert run_and_capture('"`tail"!.') == "tail"
+        assert run_and_capture('0?"a"b".') == "b"
+
     def test_endless_recursion_is_proved_rather_than_crashing(self) -> None:
         """A self-referential program is decided by the ancestor check."""
         looping = _Machine('"0+.^!"^0+?!0.', ScriptedIO(""))

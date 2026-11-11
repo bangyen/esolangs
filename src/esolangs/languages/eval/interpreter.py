@@ -166,11 +166,13 @@ def _iterate(
             raise _Fault
         call = value
     elif char in "\"'":
-        # A literal runs to the next quote, or to the end of the program
-        # when there is none -- which is what ``partition`` returns either
-        # way, with no unmatched case to fall back on.
-        text = sym[ind + 1 :].partition('"')[0].replace("`", '"')
-        ind += len(text) + 1
+        # Search the current frame in place; copying its entire suffix
+        # for each literal makes a sequence of short literals quadratic.
+        end = sym.find('"', ind + 1)
+        if end == -1:
+            end = len(sym)
+        text = sym[ind + 1 : end].replace("`", '"')
+        ind = end
         core = _pushed(core, f'"{text}"' if char == "'" else text)
     return core, ind + 1, output, call
 
