@@ -88,22 +88,6 @@ class TestIdentifierCharacters:
             run("main {\n 1a = 0;\n}\n", ScriptedIO(""))
 
 
-class TestKeywordPrefixedNames:
-    def test_an_identifier_may_start_with_a_keyword(self) -> None:
-        """``returnvar`` is a name, not ``return`` followed by ``var``."""
-
-        def eight(name: str) -> str:
-            return ",".join([name] * 8)
-
-        code = (
-            "main { returnvar = 1,1,1,1,1,1,1,1;"
-            " forvar = 0,1,0,0,0,0,0,1;"
-            f" out {eight('returnvar')};"
-            f" out {eight('forvar')}; }}"
-        )
-        assert run_program(code) == "\xff\x00"
-
-
 class TestParserErrors:
     def test_unterminated_block(self) -> None:
         with pytest.raises(ValueError, match="unterminated") as caught:

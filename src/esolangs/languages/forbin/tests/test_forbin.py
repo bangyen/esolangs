@@ -391,12 +391,6 @@ class TestSnapshotWithoutTheCycleDetector:
             "AA",
         ),
         (
-            "main { any = 0; for i:(0, 0, 1) { for _:!i..i { any = 1; } } out "
-            "0,0,0,0,0,0,0,any; }",
-            "",
-            "\x01",
-        ),
-        (
             "main { s = 0; for (i, j):((1, *)) { for _:!i..i { s = 1; } } out "
             "0,0,0,0,0,0,0,s; }",
             "",

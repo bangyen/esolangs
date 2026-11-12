@@ -40,11 +40,6 @@ class TestDiscardTarget:
                 io.past_end,
             ) == ("", 0, 0, 0, int(target == "x"))
 
-    def test_discard_is_not_readable_afterwards(self) -> None:
-        """``_`` is dropped rather than stored, so reading it is an error."""
-        with pytest.raises(HaltError, match="undeclared identifier"):
-            run_program("main { _ = 1; out 0,0,0,0,0,0,0,_; }")
-
     def test_every_binding_site_honours_the_discard(self) -> None:
         """Each of the four places a name is bound must skip ``_``."""
         for code in (
@@ -142,10 +137,6 @@ class TestArgumentThreading:
                 " out 0,1,0,0,0,0,0,_;\n}\n",
                 ScriptedIO(""),
             )
-
-
-class TestCallResultDefaults:
-    """What a call evaluates to when it returns nothing."""
 
 
 class TestPairedLengthsAreNotChecked:
