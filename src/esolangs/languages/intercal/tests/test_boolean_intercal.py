@@ -10,6 +10,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
 )
+from esolangs.generation.template import TemplateLayout
 from esolangs.languages.intercal import generator
 from esolangs.languages.intercal.descriptor import PAIR, TEMPLATE_CHAR
 from esolangs.languages.intercal.generator import (
@@ -20,7 +21,7 @@ from esolangs.languages.intercal.generator import (
     _program,
     _reference,
     _spill,
-    _wrap_intercal,
+    _wrap_layout,
     intercal,
 )
 from esolangs.languages.intercal.interpreter import _Machine, run
@@ -253,7 +254,7 @@ def _check_emitted_resource_routes() -> None:
         template = _program(n, assigned, result, width).source
         for layout in (
             template,
-            _wrap_intercal(template, 12),
+            _wrap_layout(TemplateLayout(template, ()), 12).source,
             _pack_rows(template, 1000),
         ):
             assert layout.count(TEMPLATE_CHAR) == 2 * n

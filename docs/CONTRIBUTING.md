@@ -128,7 +128,7 @@ load unchanged payloads from their group's pinned `archive_revision`; context
 and source citations remain checked.
 
 `Language` records names, interpreter, source shape, optional generator and
-typed I/O contract. `resolve` normalizes names; `RUNNERS` selects whole-source
+typed I/O contract. `resolve` normalizes names; `Catalog.runners` selects whole-source
 or split-line input. Each language declares `LANGUAGE = Language(...)` in its `descriptor.py`,
 including interpreter-only entries. Callable references load implementations
 on use; generators import only descriptor definitions they use.

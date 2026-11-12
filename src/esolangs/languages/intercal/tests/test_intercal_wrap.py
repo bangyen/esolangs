@@ -7,10 +7,11 @@ import pytest
 import esolangs
 from esolangs import run
 from esolangs.generation.helpers import grid_width
+from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.intercal.generator import (
     _intercal_tokens,
-    _wrap_intercal,
+    _wrap_layout,
     intercal,
 )
 from tests.support.evaluation import _evaluate
@@ -63,7 +64,10 @@ def _fit_width_oracle(default: str) -> int:
                 widths.add(used)
     return min(
         balance_score(layout)[0]
-        for layout in [default, *(_wrap_intercal(default, w) for w in widths)]
+        for layout in [
+            default,
+            *(_wrap_layout(TemplateLayout(default, ()), w).source for w in widths),
+        ]
     )
 
 

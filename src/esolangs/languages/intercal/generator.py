@@ -120,7 +120,7 @@ def _intercal_tokens(program: str) -> list[str]:
 def balance_intercal(default: TemplateLayout) -> TemplateLayout:
     """Return the lowest-``balance_score`` of four packed wraps of ``default``.
 
-    Statements are token-wrapped (:func:`_wrap_intercal`), then consecutive
+    Statements are token-wrapped (:func:`_wrap_layout`), then consecutive
     lines share a row up to the width: a line break is a token boundary
     and a statement starts at ``DO`` or ``PLEASE``, so short statements
     no longer cost a row each.  The square width is about 1.2-1.3 times
@@ -150,12 +150,9 @@ def _pack_rows(program: str, width: int) -> str:
     return "\n".join(rows)
 
 
-def _wrap_intercal(program: str, width: int) -> str:
-    """Break over-wide statements only at C-INTERCAL token boundaries."""
-    return _wrap_layout(TemplateLayout(program, ()), width).source
-
-
 def _wrap_layout(program: TemplateLayout, width: int) -> TemplateLayout:
+    """Break over-wide statements only at C-INTERCAL token boundaries."""
+
     def parts() -> Iterator[TemplateToken]:
         for i, line in enumerate(program.lines()):
             if i:

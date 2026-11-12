@@ -21,7 +21,6 @@ __all__ = [
     "CATALOG",
     "INTERPRETERS",
     "LANGUAGES",
-    "RUNNERS",
     "SUGGESTION_CUTOFF",
     "Catalog",
     "Generator",
@@ -46,7 +45,6 @@ if TYPE_CHECKING:
     from esolangs.registry._table import LANGUAGES as LANGUAGES
 
     BY_BOOLEAN: Mapping[str, Language]
-    RUNNERS: Mapping[str, tuple[str, bool]]
     INTERPRETERS: Mapping[str, str]
 
 
@@ -57,13 +55,12 @@ def __getattr__(name: str) -> Any:
         from esolangs.registry._backend import Generator
 
         value = Generator
-    elif name in {"CATALOG", "LANGUAGES", "BY_BOOLEAN", "RUNNERS", "INTERPRETERS"}:
+    elif name in {"CATALOG", "LANGUAGES", "BY_BOOLEAN", "INTERPRETERS"}:
         catalog = get_catalog()
         value = {
             "CATALOG": catalog,
             "LANGUAGES": catalog.languages,
             "BY_BOOLEAN": catalog.by_boolean,
-            "RUNNERS": catalog.runners,
             "INTERPRETERS": catalog.interpreters,
         }[name]
     else:
