@@ -28,7 +28,7 @@ class LanguageInfo(TypedDict):
     id: str
     source_kind: SourceForm
     state_model: StateModel
-    shape: GeneratorShape | None
+    generator_shape: GeneratorShape | None
     generator_max_inputs: int | None
     generator_restrictions: str | None
     generator_scaling: str | None

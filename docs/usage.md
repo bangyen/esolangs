@@ -276,9 +276,9 @@ Exceptions:
 
 - `esolangs.ArgumentError(EsolangError, ValueError)` -- an argument's value is outside what the call accepts
 - `esolangs.EsolangError(Exception)` -- base class for errors from the esolangs package
-- `esolangs.ExecutionTimeoutError(HaltError, TimeoutError)` -- a run hit its `timeout` or `max_steps` bound before the program ended
+- `esolangs.ExecutionTimeoutError(HaltError, TimeoutError)` -- a time or step budget ran out before the program ended; `bound` names it
 - `esolangs.GeneratorCapError(EsolangError, ValueError)` -- a boolean generator, such as a prime-based one, refusing too big a table
-- `esolangs.HaltError(EsolangError)` -- an interpreter halted on an invalid operation
+- `esolangs.HaltError(EsolangError)` -- a program stopped without completing: an invalid operation or a limit
 - `esolangs.InputExhaustedError(EsolangError, EOFError)` -- a program read past the end of its input
 - `esolangs.InterpreterLimitError(HaltError)` -- an interpreter hit an implementation limit running a program
 - `esolangs.MissingDependencyError(EsolangError, ImportError)` -- an optional dependency required by one language is not installed
@@ -558,7 +558,7 @@ shows the `gen`, `tmpl`, and `ex` markers. Fields include:
 | --- | --- |
 | `source_kind` | `"text"`, or `"raster"` for an image |
 | `state_model` | its category: register, tape, stack, grid, queue, program, variables or other |
-| `shape` | its generator’s construction growth: tree, reducing or lookup; None without a generator |
+| `generator_shape` | its generator’s construction growth: tree, reducing or lookup; None without a generator |
 | `input_shape`, `input_encoding` | how input is fed; None unless `reads_input` |
 | `answer_mode`, `answer_encoding` | where the answer lands (`"output"`, `"dump"` or `"termination"`) and its `(zero, one)` form |
 | `width_effect` | what `width` does: `"layout"`, `"wrap"` or `"none"` |

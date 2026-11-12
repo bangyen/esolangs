@@ -39,7 +39,9 @@ Releases before 0.10.0 are described on the
 - **Breaking:** `save_program` takes the language first, as every other
   operation does, and refuses another language's artifact;
   `Language.save_program` binds it. Raw Whitespace text saved with
-  `normalize=True` no longer gains a trailing newline.
+  `normalize=True` no longer gains a trailing newline.  It now loads bytes, paths and streams as `run` and `dump_program` do.
+- **Breaking:** `describe()`'s `shape` key is `generator_shape`, beside the
+  other `generator_*` facts; `list --json --details` follows.
 - **Breaking:** Raw `Raster` and `CompressedText` payloads no longer carry
   language, dialect or scale metadata; retain their enclosing artifact.
 - **Breaking:** Whitespace numeric input reads one whole line, as the

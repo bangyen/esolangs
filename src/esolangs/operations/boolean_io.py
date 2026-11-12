@@ -31,8 +31,8 @@ def encode_inputs(
 
     Args:
         bits: One integer 0 or 1 per input.
-        truth_table: Needed only where the encoding depends on arity; when
-            given, ``bits`` must match its input count.
+        truth_table: Optional check, as for :func:`instantiate`: ``bits``
+            must match its input count.  The encoding never depends on it.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.

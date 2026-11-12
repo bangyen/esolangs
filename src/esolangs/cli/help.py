@@ -151,7 +151,7 @@ examples:
   esolangs list --generator --details
   esolangs list --source-kind text --input-shape char_stream --answer-mode output
   esolangs list --inputs 8 --proof-status linear --details
-  esolangs list --json --details | jq -r '.[] | select(.shape == "lookup") | .name'
+  esolangs list --json --details | jq -r '.[]|select(.generator_shape=="lookup").name'
 """,
     "generate": """usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]

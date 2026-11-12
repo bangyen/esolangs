@@ -111,9 +111,9 @@ class Language:
         settings: DialectSettings | None = None,
         scale: int | None = None,
     ) -> PreparedProgram:
-        """Load reusable source; arguments and errors follow :func:`esolangs.run`.
+        """Load reusable source; each run or VM owns fresh IO, state and randomness.
 
-        Each run or VM owns fresh IO, machine state and randomness.
+        Arguments and errors: :func:`esolangs.run`.
         """
         return prepare_program(
             self.name,
@@ -154,7 +154,14 @@ class Language:
         *,
         limits: ExecutionLimits | None = None,
     ) -> BooleanEvaluation:
-        """Evaluate a generated row within this language's catalog."""
+        """Run one Boolean row and return its answer and execution evidence.
+
+        Raises:
+            ProgramError: ``artifact`` is not an artifact, or belongs to
+                another language.
+            ArgumentError: ``bits`` is not one 0 or 1 per input.
+            EsolangError: Any error :func:`esolangs.run` raises for the row.
+        """
         from esolangs.exceptions import ProgramError
         from esolangs.operations.evaluation import evaluate
 
@@ -190,7 +197,7 @@ class Language:
         )
 
     def dump_program(
-        self, program: Program | Artifact, *, settings: DialectSettings | None = None
+        self, program: ProgramSource, *, settings: DialectSettings | None = None
     ) -> str:
         """Return portable JSON retaining source and dialect choices.
 
@@ -209,7 +216,7 @@ class Language:
 
     def save_program(
         self,
-        program: Program | Artifact,
+        program: ProgramSource,
         path: str | PathLike[str],
         *,
         gzip: bool = False,
@@ -244,6 +251,10 @@ class Language:
         Total deadlines and output/memory caps select isolation. Execution
         deadlines exclude source acquisition; total deadlines include it.
         Use outcome.unwrap() for the exception-raising result convention.
+
+        Raises nothing deliberate: each package error is the outcome's
+        ``error``, with status ``rejected``, ``input_exhausted``, ``limit``
+        or ``fault``.
         """
         from esolangs.operations.execution import _execute_outcome
 

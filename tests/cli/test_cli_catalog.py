@@ -81,7 +81,7 @@ def test_invalid_filters_are_usage_errors(capsys) -> None:
 _DETAILED = {
     "source_kind",
     "state_model",
-    "shape",
+    "generator_shape",
     "answer_mode",
     "input_shape",
     "random",

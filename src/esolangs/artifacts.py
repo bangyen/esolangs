@@ -123,7 +123,7 @@ class TemplateBindings:
     def fill(
         self,
         source: str,
-        bits: Sequence[int],
+        bits: list[int] | tuple[int, ...],
         *,
         spans: Sequence[tuple[int, int]] | None = None,
     ) -> str:
@@ -178,7 +178,7 @@ class TemplateArtifact:
 
         return evaluate(self, bits, limits=limits)
 
-    def fill(self, bits: Sequence[int]) -> ProgramArtifact[str]:
+    def fill(self, bits: list[int] | tuple[int, ...]) -> ProgramArtifact[str]:
         """Bind inputs without rescanning the immutable template's runs."""
         return ProgramArtifact(
             self.bindings.fill(self.source, bits, spans=self.spans),

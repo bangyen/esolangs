@@ -202,7 +202,7 @@ def _list(rest: list[str]) -> None:
                         "proof_status": facts["proof_status"],
                         "source_kind": facts["source_kind"],
                         "state_model": facts["state_model"],
-                        "shape": facts["shape"],
+                        "generator_shape": facts["generator_shape"],
                         "answer_mode": facts["answer_mode"],
                         "input_shape": facts["input_shape"],
                         "random": facts["random"],

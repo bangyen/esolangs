@@ -129,6 +129,12 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     ),
     (
         "save_program",
+        x.ProgramNotFoundError,
+        lambda: esolangs.save_program("Brainfuck", _MISSING, _MISSING),
+        None,
+    ),
+    (
+        "save_program",
         x.ArgumentError,
         lambda: esolangs.save_program("Brainfuck", "", ".", gzip=1),
         None,

@@ -337,9 +337,9 @@ def _make_vm(
     program: ProgramSource,
     *,
     stdin: InputSource = "",
-    scale: int | None = None,
-    settings: DialectSettings | None = None,
     seed: int | None = None,
+    settings: DialectSettings | None = None,
+    scale: int | None = None,
     catalog: Catalog | None = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     prepared: PreparedProgram | None = None,
@@ -383,22 +383,27 @@ def make_vm(
     program: ProgramSource,
     *,
     stdin: InputSource = "",
-    scale: int | None = None,
-    settings: DialectSettings | None = None,
     seed: int | None = None,
+    settings: DialectSettings | None = None,
+    scale: int | None = None,
     catalog: Catalog | None = None,
 ) -> _VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
     ``stdin`` is consumed verbatim using the language's input unit. The name
     resolves case-insensitively via
-    :func:`~esolangs.registry.resolve`.  A name outside the registry raises
-    :class:`UnknownLanguageError`. Text and raster use the same step interface. The
-    program, ``stdin``, ``scale`` and ``settings`` are checked as
-    :func:`esolangs.run` checks them. TemplateArtifact must be filled first;
+    :func:`~esolangs.registry.resolve`. Text and raster use the same step
+    interface. TemplateArtifact must be filled first;
     literal text is interpreted without template guessing. A seed overrides
     reproducible stepping's language default;
     the checked value is what reaches the interpreter.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ProgramError: The program does not load, as for :func:`esolangs.run`.
+        TemplateError: ``program`` is an unfilled template.
+        ArgumentError: ``stdin``, ``seed``, ``scale`` or ``settings`` is
+            invalid, as :func:`esolangs.run` checks them.
     """
     return _make_vm(
         language,

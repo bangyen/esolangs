@@ -166,7 +166,7 @@ def test_describe_structured_summary() -> None:
     info = esolangs.describe(REFERENCE)
     assert info["name"] == REFERENCE
     assert info["state_model"] == "tape"
-    assert info["shape"] == "tree"
+    assert info["generator_shape"] == "tree"
     assert info["boolean_generator"] is True
     assert info["wiki_url"] == "https://esolangs.org/wiki/brainfuck"
 
@@ -193,11 +193,11 @@ def test_shape_is_the_generator_axis() -> None:
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
         if facts["boolean_generator"]:
-            assert facts["shape"] in {"tree", "reducing", "lookup"}, name
+            assert facts["generator_shape"] in {"tree", "reducing", "lookup"}, name
         else:
-            assert facts["shape"] is None, name
+            assert facts["generator_shape"] is None, name
     shapes = {
-        esolangs.describe(n)["shape"]
+        esolangs.describe(n)["generator_shape"]
         for n in esolangs.list_languages()
         if esolangs.describe(n)["boolean_generator"]
     }

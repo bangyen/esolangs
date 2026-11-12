@@ -22,7 +22,7 @@ from esolangs.raster import Raster, png
 from esolangs.registry import template_char
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._json import unique_object
-from esolangs.runtime._program import Program
+from esolangs.runtime._source import ProgramSource
 from esolangs.settings import (
     DialectSettings,
     _settings_for,
@@ -35,7 +35,7 @@ _FORMAT = "esolangs.program"
 
 def save_program(
     language: str,
-    program: Program | Artifact,
+    program: ProgramSource,
     path: str | PathLike[str],
     *,
     gzip: bool = False,
@@ -56,8 +56,9 @@ def save_program(
     Raises:
         UnknownLanguageError: ``language`` is not registered.
         ArgumentError: ``gzip`` or ``normalize`` is not a Boolean flag.
+        ProgramNotFoundError: ``program`` is a Path that does not exist.
         ProgramError: The record belongs to another language, or the source
-            cannot be encoded or the file cannot be written.
+            cannot be read or encoded or the file cannot be written.
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
     from esolangs.registry._catalog import get_catalog
@@ -67,7 +68,7 @@ def save_program(
         raise ArgumentError("gzip must be a boolean")
     if type(normalize) is not bool:
         raise ArgumentError("normalize must be a boolean")
-    from esolangs.operations.source import check_origin
+    from esolangs.operations.source import check_origin, read_artifact
 
     # The language decides the file terminator and PNG metadata; without it,
     # normalize appended "\n" even where a trailing newline is code.
@@ -80,6 +81,10 @@ def save_program(
         )
         if record is not None:
             check_origin(origin, record.language, catalog=catalog)
+            program = record.source
+        elif not isinstance(program, (str, Raster, CompressedText)):
+            # Bytes, paths and streams load as run() loads them.
+            record = read_artifact(origin, program, catalog=catalog)
             program = record.source
         if isinstance(program, CompressedText):
             source = program.to_gzip()
@@ -118,7 +123,7 @@ def save_program(
 
 def dump_program(
     language: str,
-    program: Program | Artifact,
+    program: ProgramSource,
     *,
     settings: DialectSettings | None = None,
     catalog: Catalog | None = None,

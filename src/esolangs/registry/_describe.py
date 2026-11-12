@@ -48,8 +48,7 @@ _STATE_MODELS: dict[str, StateModel] = {
     "other": "other",
 }
 
-#: The ``state_model`` labels (the language's category) and generator shapes;
-#: the CLI's ``--state-model`` and ``--shape`` filters accept exactly these.
+#: The ``state_model`` labels (the language's category) and generator shapes.
 STATE_MODELS: tuple[str, ...] = tuple(_STATE_MODELS.values())
 SHAPES: tuple[str, ...] = get_args(GeneratorShape.__value__)
 #: The ``width_effect`` labels.
@@ -70,7 +69,7 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
         - Generation: ``boolean_generator``; ``generator_max_inputs``, an
           explicit arity cap (None: none declared, or no generator);
           ``generator_restrictions``, further table-dependent budgets (None:
-          none); ``shape``, the construction growth class ``"tree"``,
+          none); ``generator_shape``, the construction growth class ``"tree"``,
           ``"reducing"`` or ``"lookup"`` (None without a generator);
           ``parameterized``, a template filled by :func:`instantiate`
           (``reads_input`` false).
@@ -131,7 +130,7 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
         "id": lang.id,
         "source_kind": lang.runtime.source_kind.value,
         "state_model": _STATE_MODELS[lang.runtime.category],
-        "shape": backend.shape.value if backend is not None else None,
+        "generator_shape": backend.shape.value if backend is not None else None,
         "boolean_generator": generates,
         "generator_scaling": scaling,
         "proof_status": _proof_status(scaling) if scaling is not None else None,

@@ -267,20 +267,22 @@ def make_debugger(
     program: ProgramSource,
     *,
     stdin: InputSource = "",
-    scale: int | None = None,
-    settings: DialectSettings | None = None,
     seed: int | None = None,
+    settings: DialectSettings | None = None,
+    scale: int | None = None,
     catalog: Catalog | None = None,
 ) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
-    ``stdin`` is consumed using the language's input unit. An unknown name raises
-    :class:`UnknownLanguageError`.  A malformed program raises
-    :class:`~esolangs.exceptions.ProgramError`, and on a language that
-    reads its whole input while the machine is built -- an underfed stdin
-    raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
-    than at :meth:`Debugger.run`.  ``scale``, ``seed`` and ``settings`` are checked
-    as :func:`esolangs.run` checks them.
+    ``stdin`` is consumed using the language's input unit.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ProgramError: The program is malformed.
+        InputExhaustedError: A language that reads its whole input while the
+            machine is built got too little; here, not at :meth:`Debugger.run`.
+        ArgumentError: ``scale``, ``seed`` or ``settings`` is invalid, as
+            :func:`esolangs.run` checks them.
     """
     return Debugger(
         make_vm(

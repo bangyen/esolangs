@@ -24,7 +24,7 @@ class EsolangError(Exception):
 
 
 class HaltError(EsolangError):
-    """An interpreter halted on an invalid operation.
+    """A program stopped without completing: an invalid operation or a limit.
 
     Raised bare it carries :data:`DEFAULT`, deliberately weak.
     """
@@ -40,7 +40,7 @@ class HaltError(EsolangError):
 
 
 class ExecutionTimeoutError(HaltError, TimeoutError):
-    """A run hit its ``timeout`` or ``max_steps`` bound before the program ended.
+    """A time or step budget ran out before the program ended; ``bound`` names it.
 
     Its own subclass of :class:`HaltError`, because some languages answer by
     terminating: running out of time is no answer.
