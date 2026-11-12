@@ -66,7 +66,7 @@ Releases before 0.10.0 are described on the
 - `make_vm` and `make_debugger` accept `seed=`; `Debugger.observation` returns
   the `ExecutionResult` so far.
 - Add `run --max-steps N` to the CLI; exit status 124 now means the time or
-  step budget ran out. `list --proof-status` accepts `T-log-T`.
+  step budget ran out. `list --proof-status` accepts `t-log-t`.
 - Add optional gzip text export through `save_program(..., gzip=True)` and
   `generate --gzip`. Raster exports retain PNG; compressed bytes do not redefine
   expanded program size or workspace accounting.

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 type ProofStatus = Literal[
-    "linear", "linear-time-n-log", "T-log-T", "measured", "open", "lower-bound"
+    "linear", "linear-time-n-log", "t-log-t", "measured", "open", "lower-bound"
 ]
 
 type AnswerMode = Literal["output", "dump", "termination"]

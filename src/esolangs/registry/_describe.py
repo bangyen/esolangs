@@ -206,8 +206,8 @@ def list_languages(*, catalog: "Catalog | None" = None) -> list[str]:
 
 
 def _proof_status(scaling: str) -> ProofStatus:
-    """Return the ledger category without its argument."""
+    """Return the ledger category without its argument, lowercase like every enum."""
     return cast(
         ProofStatus,
-        scaling.partition(":")[0].replace(", ", "-").replace(" ", "-"),
+        scaling.partition(":")[0].replace(", ", "-").replace(" ", "-").lower(),
     )

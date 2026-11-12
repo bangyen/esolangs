@@ -141,7 +141,7 @@ options:
   --inputs N  generators whose declared cap permits N inputs (N >= 0);
               table-dependent restrictions can still refuse generation
   --proof-status STATUS
-              linear, linear-time-n-log, T-log-T, measured, open, or lower-bound;
+              linear, linear-time-n-log, t-log-t, measured, open, or lower-bound;
               describes size and generation time, not totality
   --grep REGEX
               select languages whose spec (`describe --spec`) matches,
