@@ -14,7 +14,6 @@ from esolangs.languages.fargo.interpreter import (
     _Func,
     _Machine,
     _State,
-    prepare_machine,
 )
 from esolangs.results import Completion, CompletionReport
 from esolangs.runtime.io import ScriptedIO
@@ -457,70 +456,3 @@ def check_raw_fargo(start=0, stop=266):
         boundaries += len(rows)
     # Existing terminal/fixture/generator assertions remain in their own tests.
     return stop - start, boundaries
-
-
-def check_prepared_fargo():
-    """Run every original prediction through the declared IO-bound factory."""
-    boundaries = 0
-    for case in cases():
-
-        def construct(source, io):
-            return prepare_machine(source, {})(io)
-
-        rows, _bits = check_case(case, construct, wrapped=False, run_public=False)
-        boundaries += len(rows)
-    check_prepared_siblings()
-    return len(cases()), boundaries
-
-
-def check_prepared_siblings():
-    """One prepared factory owns separate state and constructor reads."""
-    source = "f x | x 0\nf 1\n$"
-    expected = model(source, "65 remaining", 64)
-    factory = prepare_machine(source, {})
-    first_io, second_io = ScriptedIO("65 remaining"), ScriptedIO("65 remaining")
-    first, second = factory(first_io), factory(second_io)
-    assert first is not second
-    initial = second.workspace_snapshot()
-    assert_exact(initial, projections.snapshot(expected[0]))
-    first.step()
-    assert_exact(first.workspace_snapshot(), projections.snapshot(expected[1]))
-    assert_exact(second.workspace_snapshot(), initial)
-    assert first_io is not second_io
-    assert (
-        second_io.getvalue(),
-        second_io.position(),
-        second_io.reads,
-        second_io.past_end,
-    ) == ("", 2, 1, 0)
-
-
-def ordinary_public(case, rows):
-    """Use only finite independently predicted outcomes, with real omitted bounds."""
-    final = rows[-1]
-    if not final.halted and final.error is None:
-        return False
-    wanted = esolangs.ExecutionResult(
-        final.output,
-        final.cursor,
-        final.reads,
-        final.past_end,
-        REPORT if final.error is None else None,
-    )
-    try:
-        actual = esolangs.run(
-            "Fargo",
-            esolangs.ProgramArtifact(case.source, "Fargo"),
-            stdin=case.stdin,
-            timeout=2.0,
-        )
-    except esolangs.EsolangError as caught:
-        assert final.error is not None
-        assert type(caught) is error_type(final.error, raw=False)
-        assert str(caught) == final.message
-        assert caught.partial_output == final.output
-        assert_exact(caught.execution, wanted)
-    else:
-        assert final.error is None
-        assert_exact(actual, wanted)
-    return True

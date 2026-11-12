@@ -26,4 +26,4 @@ def check_accounting_object_disoriented(table):
     )
     for index, case in enumerate(full_oracle.cases()):
         if index % 23 == bucket:
-            workspace_views.trace(case, "raw", context)
+            workspace_views.trace(case, context)

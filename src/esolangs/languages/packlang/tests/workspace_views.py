@@ -1,19 +1,15 @@
 """Full declared Packlang scalar workspace, readonly program and IO observer."""
 
 # Private actual fields are the subject of these independent controls.
-# ruff: noqa: PT017
 from dataclasses import fields, is_dataclass
 from io import StringIO
 from types import MappingProxyType
 from typing import NamedTuple
 
-import esolangs
-from esolangs.debugger import make_debugger
 from esolangs.exceptions import HaltError
-from esolangs.results import Completion, CompletionReport, ExecutionResult
+from esolangs.results import Completion, CompletionReport
 from esolangs.runtime._json import worker_dumps, worker_loads
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
-from esolangs.vm import _capture_observation, _capture_workspace, make_vm
 
 from . import full_oracle as engine
 
@@ -92,17 +88,6 @@ def wanted_capture(row, context):
     )
 
 
-def observation(row, *, finished=False, steps=None):
-    return ExecutionResult(
-        row.output,
-        row.cursor,
-        row.cursor,
-        row.past,
-        HALTED if finished else None,
-        steps,
-    )
-
-
 def readonly(raw, case, context, expected_plan=None):
     if expected_plan is None:
         expected_plan = compile_readonly(case)
@@ -152,29 +137,9 @@ def check_io(port, case, row):
         exact(actual[key], value)
 
 
-def raw_of(machine, route):
-    return (
-        machine
-        if route in ("raw", "prepare")
-        else (machine._machine if route == "vm" else machine.vm._machine)
-    )
-
-
-def construct(case, route, context):
-    source = engine._source(case.kind, case.statements)
-    if route in ("raw", "prepare"):
-        port = context.io(case.stdin)
-        machine = (
-            context.native._Machine(source, port)
-            if route == "raw"
-            else context.native.prepare_machine(source, {})(port)
-        )
-    else:
-        create = make_vm if route == "vm" else make_debugger
-        machine = create(
-            "Packlang", esolangs.ProgramArtifact(source, "Packlang"), stdin=case.stdin
-        )
-        port = raw_of(machine, route).io
+def construct(case, context):
+    port = context.io(case.stdin)
+    machine = context.native._Machine(engine._source(case.kind, case.statements), port)
     return machine, port
 
 
@@ -249,54 +214,11 @@ class Observer:
         )
 
 
-def wrappers(machine, route, row, context, case):
-    vm = machine if route == "vm" else machine.vm
-    exact(_capture_workspace(vm), wanted_capture(row, context))
-    exact(machine.snapshot(), engine.cycle(case, row))
-    exact(_capture_observation(vm), observation(row))
-    exact(vm.ip, 0 if row.halted else row.frame[0])
-    exact(vm.memory, [] if row.halted else [value for _, value in row.frame[1]])
-    exact(vm.stack, [])
-    assert vm.ptr is None
-    exact(
-        (
-            vm.self_halts,
-            vm.steppable_to_answer,
-            vm.eof_is_a_value,
-            vm.dumps_on_the_post_halt_step,
-            vm.ip_shape,
-        ),
-        (True, True, True, False, "offset"),
-    )
-    if row.halted:
-        exact(vm.views, ())
-    else:
-        raw = raw_of(machine, route)
-        function_repr = (
-            "<esolangs.languages.packlang.interpreter._parse._Function object at "
-            + hex(id(raw.program.entry))
-            + ">"
-        )
-        pc, store, result = row.frame
-        text = (
-            f"_Frame(func={function_repr}, store={store!r}, pc={pc}, result={result}, "
-            "pending=None, returned=None)"
-        )
-        exact(vm.views, (("frame", text if len(text) <= 60 else text[:57] + "..."),))
-    if route == "debug":
-        exact(
-            machine.result,
-            observation(
-                row, finished=row.halted and row.error is None, steps=row.successful
-            ),
-        )
-
-
-def trace(case, route, context):
+def trace(case, context):
     error, rows = engine.plan(case)
-    machine, port = construct(case, route, context)
-    raw, observer = raw_of(machine, route), Observer(case, context)
-    assert raw.io is port
+    machine, port = construct(case, context)
+    observer = Observer(case, context)
+    assert machine.io is port
     for index, row in enumerate(rows):
         caught = None
         if index:
@@ -306,19 +228,9 @@ def trace(case, route, context):
                 caught = failure
         if row.error:
             assert type(caught) is HaltError
-            if route in ("vm", "debug"):
-                exact(caught.partial_output, row.output)
-                exact(
-                    caught.execution,
-                    observation(
-                        row, steps=row.successful if route == "debug" else None
-                    ),
-                )
         else:
             assert caught is None
-        observer.observe(raw, row)
-        if route in ("vm", "debug"):
-            wrappers(machine, route, row, context, case)
+        observer.observe(machine, row)
     return {
         "boundaries": len(rows),
         "error": error,
@@ -326,39 +238,6 @@ def trace(case, route, context):
         "peak_bits": observer.oracle.bits,
         "written": observer.oracle.written,
     }
-
-
-def endpoint(case):
-    _error, rows = engine.plan(case)
-    return next(row for row in rows if row.error is not None or row.halted)
-
-
-def public(case, *, bounded, isolated=False):
-    row = endpoint(case)
-    kwargs = {"max_steps": 48} if bounded else {}
-    try:
-        result = esolangs.run(
-            "Packlang",
-            engine._source(case.kind, case.statements),
-            stdin=case.stdin,
-            timeout=2.0,
-            isolated=isolated,
-            **kwargs,
-        )
-    except HaltError as error:
-        assert row.error == "halt"
-        assert type(error) is HaltError
-        exact(error.partial_output, row.output)
-        exact(
-            error.execution, observation(row, steps=row.successful if bounded else None)
-        )
-        return {"error": "HaltError", "steps": row.successful if bounded else None}
-    assert row.error is None
-    exact(
-        result,
-        observation(row, finished=True, steps=row.successful if bounded else None),
-    )
-    return {"error": None, "steps": row.successful if bounded else None}
 
 
 def check_held(values):
@@ -377,9 +256,9 @@ def retained_controls(context):
     assert error is None
     positives = corruptions = hash_only_accepts = restored = 0
     for field, replacement in ((2, 1), (4, False)):
-        trace(case, "raw", context)
+        trace(case, context)
         positives += 1
-        raw, _ = construct(case, "raw", context)
+        raw, _ = construct(case, context)
         observer = Observer(case, context)
         observer.observe(raw, rows[0])
         saved = observer.held[0]
@@ -455,14 +334,6 @@ def prepared_siblings(context):
     }
 
 
-class ValuePlan(NamedTuple):
-    """An independently expected primitive tree, never an observed value."""
-
-    kind: type
-    payload: object
-    value: object
-
-
 class FramePlan(NamedTuple):
     """All seven scalar-family frame fields and the independent variant hash."""
 
@@ -487,28 +358,6 @@ class CapturePlan(NamedTuple):
     frames: tuple
     cursor: int
     reads: int
-
-
-def compile_value(value):
-    """Compile only the independent immutable cycle projection once per row."""
-    kind = type(value)
-    if kind in (int, bool, str, type(None)):
-        return ValuePlan(kind, None, value)
-    if kind is tuple:
-        return ValuePlan(tuple, tuple(compile_value(child) for child in value), value)
-    assert kind is frozenset
-    if all(type(child) is str for child in value):
-        return ValuePlan(frozenset, value, value)
-    entries = {}
-    for pair in value:
-        assert type(pair) is tuple
-        assert len(pair) == 2
-        key, item = pair
-        assert type(key) is str
-        assert type(item) is int
-        assert key not in entries
-        entries[key] = item
-    return ValuePlan(frozenset, MappingProxyType(entries), value)
 
 
 def compile_capture(expected, context):

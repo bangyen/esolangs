@@ -26,4 +26,4 @@ def check_accounting_thisthat(bucket):
     for index, case in enumerate(records):
         selected = 1 if index == 65 else index % 9
         if selected == bucket:
-            workspace_views.trace(case, "raw", context, history="final", wire=False)
+            workspace_views.trace(case, context, history="final", wire=False)

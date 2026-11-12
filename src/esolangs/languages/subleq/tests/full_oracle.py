@@ -37,23 +37,6 @@ class Row:
         state = None if self.memory is None else (self.memory, self.pc)
         return state, self.halted, self.output, self.cursor, self.cursor
 
-    def io_fields(self, stdin):
-        """Predict all eleven ordinary ScriptedIO storage fields."""
-        return {
-            "_source": stdin,
-            "_supplied": stdin.count("\n")
-            + int(bool(stdin) and not stdin.endswith("\n")),
-            "_offset": self.cursor,
-            "_line_reads": 0,
-            "_character_reads": self.character_reads,
-            "_past_end": self.past_end,
-            "_pending": "",
-            "_reads": self.reads,
-            "_consumed": self.cursor,
-            "_newline": self.newline,
-            "_buffer": (self.output, "\n", len(self.output), None),
-        }
-
 
 def predict(source, stdin, cap=CAP):
     """Replay every prefix of the SAME old oracle; no second transition engine."""
@@ -127,30 +110,3 @@ def legacy_prediction(source, stdin):
     """Preserve the complete observer protocol and its200-command cap."""
     error, rows = predict(source, stdin)
     return error, [row.legacy for row in rows]
-
-
-def refusal_history(source, stdin, *, provider, partial=False):
-    """Insert one precommit IO refusal, then replay the genuine retry/idle path."""
-    error, rows = predict(source, stdin)
-    assert error is None
-    if provider:
-        at = next(
-            index
-            for index in range(1, len(rows))
-            if rows[index].cursor != rows[index - 1].cursor
-        )
-    else:
-        at = next(
-            index
-            for index in range(1, len(rows))
-            if rows[index].output != rows[index - 1].output
-        )
-    before = rows[at - 1]
-    prefix = "" if provider or not partial else rows[at].output[len(before.output) :]
-    assert len(prefix) <= 1
-    failed = replace(before, output=before.output + prefix)
-    suffix = [
-        replace(row, output=before.output + prefix + row.output[len(before.output) :])
-        for row in rows[at:]
-    ]
-    return at, (*rows[:at], failed, *suffix)

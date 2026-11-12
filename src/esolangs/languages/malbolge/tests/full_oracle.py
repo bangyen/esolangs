@@ -44,53 +44,6 @@ def _image(code):
     return tuple(memory)
 
 
-def _projection(a, c, d, halted, memory):
-    addresses = sorted({0, 1, 2, c, d, 59048, (c - 1) % _WORDS, (d - 1) % _WORDS})
-    return (a, c, d, halted, tuple(memory[address] for address in addresses))
-
-
-def _model(code, stdin):
-    try:
-        memory = list(_image(code))
-    except ValueError:
-        return ("syntax", [(None, False, "", 0, 0)])
-    a = c = d = cursor = 0
-    output = ""
-    halted = False
-    trace = []
-    for _ in range(129):
-        trace.append(
-            (_projection(a, c, d, halted, memory), halted, output, cursor, cursor)
-        )
-        if halted:
-            return (None, trace + [trace[-1]] * 3)
-        word = memory[c]
-        operation = _OPS.get((word + c) % 94)
-        if not 33 <= word <= 126 or operation == "stop":
-            halted = True
-            continue
-        match operation:
-            case "jump":
-                c = memory[d]
-            case "seek":
-                d = memory[d]
-            case "rotate":
-                low = memory[d] % 3
-                a = memory[d] = low * 19683 + memory[d] // 3
-            case "mix":
-                a = memory[d] = _mix(a, memory[d])
-            case "in":
-                a = ord(stdin[cursor]) if cursor < len(stdin) else 59048
-                cursor += cursor < len(stdin)
-            case "out":
-                output += chr(a % 256)
-        word = memory[c]
-        if 33 <= word <= 126:
-            memory[c] = ord(_CIPHER[word - 33])
-        c, d = ((c + 1) % _WORDS, (d + 1) % _WORDS)
-    return (None, trace)
-
-
 class _PagedWords:
     """Pure reference store; only independently changed pages are rebuilt."""
 
@@ -116,19 +69,6 @@ class _PagedWords:
 
 def _full_projection(a, c, d, halted, memory):
     return (a, c, d, halted, memory.capture())
-
-
-def small_view(row):
-    registers, halted, output, cursor, progress = row
-    a, c, d, stopped, pages = registers
-    addresses = sorted({0, 1, 2, c, d, 59048, (c - 1) % 59049, (d - 1) % 59049})
-    return (
-        (a, c, d, stopped, tuple(pages[at // 64][at % 64] for at in addresses)),
-        halted,
-        output,
-        cursor,
-        progress,
-    )
 
 
 def _full_model(code, stdin):

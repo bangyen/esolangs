@@ -1,6 +1,6 @@
 """Complete buffered-bit boundaries from the unchanged old independent engine."""
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import NamedTuple
 
 from tests.interpreters.semantic_oracles import Observation, bracket_pairs
@@ -108,42 +108,10 @@ class Row:
         return self.control, self.ones, self.cursor
 
     @property
-    def memory(self):
-        """Trim only zeros beyond pointer and origin."""
-        if self.control is None:
-            return None
-        occupied = self.ones | {0, self.control[1]}
-        return tuple(
-            int(at in self.ones) for at in range(min(occupied), max(occupied) + 1)
-        )
-
-    @property
-    def pc(self):
-        """Expose the independently stepped source offset."""
-        return None if self.control is None else self.control[0]
-
-    @property
     def legacy(self):
         """Keep the shared observer tuple unchanged."""
         state = None if self.control is None else (self.control, self.ones)
         return state, self.halted, self.output, self.cursor, self.cursor
-
-    def io_fields(self, stdin):
-        """Predict all11 ScriptedIO fields; exhausted byte reads preserve newline."""
-        return {
-            "_source": stdin,
-            "_supplied": stdin.count("\n")
-            + int(bool(stdin) and not stdin.endswith("\n")),
-            "_offset": self.cursor,
-            "_line_reads": 0,
-            "_character_reads": self.character_reads,
-            "_past_end": self.past_end,
-            "_pending": "",
-            "_reads": self.reads,
-            "_consumed": self.cursor,
-            "_newline": self.newline,
-            "_buffer": (self.output, "\n", len(self.output), None),
-        }
 
 
 def predict(source, stdin, cap=200):
@@ -209,38 +177,3 @@ def legacy_prediction(source, stdin, cap=200):
     """Retain complete observer shape and caller's exact old bound."""
     error, rows = predict(source, stdin, cap)
     return error, [row.legacy for row in rows]
-
-
-def refusal_history(source, stdin, *, provider, partial=False):
-    """Model the two write commit phases without inventing a retry after halt."""
-    error, rows = predict(source, stdin)
-    assert error is None
-    at = next(
-        index
-        for index in range(1, len(rows))
-        if (
-            rows[index].bit_at != rows[index - 1].bit_at
-            if provider
-            else rows[index].output != rows[index - 1].output
-        )
-    )
-    before, after = rows[at - 1], rows[at]
-    prefix = "" if provider or not partial else after.output[len(before.output) :]
-    assert len(prefix) <= 1
-    if not provider and after.halted and after.outgoing:
-        pending = sum(bit * 2**i for i, bit in enumerate(after.outgoing))
-        control = (*after.control[:4], pending, len(after.outgoing))
-        failed = replace(
-            after,
-            control=control,
-            output=before.output + prefix,
-            newline=before.newline,
-            steps=before.steps,
-        )
-        return at, (*rows[:at], failed, failed, failed, failed)
-    failed = replace(before, output=before.output + prefix)
-    suffix = [
-        replace(row, output=before.output + prefix + row.output[len(before.output) :])
-        for row in rows[at:]
-    ]
-    return at, (*rows[:at], failed, *suffix)

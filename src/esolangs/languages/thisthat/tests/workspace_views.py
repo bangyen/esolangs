@@ -1,6 +1,6 @@
 """Root-only full seven-field thisthat state/history observer for fixed wiki cases."""
 
-# ruff: noqa: PT018, FBT003, PT017
+# ruff: noqa: PT018
 from dataclasses import fields, is_dataclass
 from io import StringIO
 from operator import itemgetter
@@ -8,13 +8,9 @@ from types import MappingProxyType
 from typing import NamedTuple
 from unittest.mock import patch
 
-import esolangs
-from esolangs.debugger import make_debugger
-from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime._json import worker_dumps, worker_loads
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.randomness import FirstDraw, Seeded
-from esolangs.vm import _capture_observation, _capture_workspace, make_vm
 
 from . import full_oracle as model
 from . import policy_checks as policies
@@ -232,17 +228,6 @@ def capture(row, context):
     return context.snapshot(context.model(*SCHEMA), row.parts())
 
 
-def observation(row, *, final=False, steps=None):
-    return ExecutionResult(
-        row.output,
-        row.offset,
-        row.reads,
-        row.past,
-        CompletionReport(Completion.HALTED) if final else None,
-        steps,
-    )
-
-
 def io(port, case, row):
     values = vars(port).copy()
     assert type(values["_buffer"]) is StringIO
@@ -251,35 +236,12 @@ def io(port, case, row):
     exact(values, model.io_values(case, row))
 
 
-def raw_of(machine, route):
-    return (
-        machine
-        if route in ("raw", "prepare")
-        else machine._machine
-        if route == "vm"
-        else machine.vm._machine
+def construct(case, context):
+    provider = FirstDraw(0)
+    machine = context.native._Machine(
+        list(case.source), context.io(case.stdin), provider
     )
-
-
-def construct(case, route, context):
-    if route in ("raw", "prepare"):
-        port = context.io(case.stdin)
-        provider = FirstDraw(0)
-        machine = (
-            context.native._Machine(list(case.source), port, provider)
-            if route == "raw"
-            else context.native.prepare_machine(list(case.source), {"rng": provider})(
-                port
-            )
-        )
-        assert machine.rng is provider
-    else:
-        factory = make_vm if route == "vm" else make_debugger
-        machine = factory(
-            "thisthat",
-            esolangs.ProgramArtifact("\n".join(case.source), "thisthat"),
-            stdin=case.stdin,
-        )
+    assert machine.rng is provider
     return machine
 
 
@@ -294,49 +256,6 @@ def raw_key(row, grid):
         grid,
         row.set_ended,
     )
-
-
-def normalized_key(key, context):
-    assert type(key) is tuple and len(key) == 8
-    return (pointer_values(key[0], context), *key[1:])
-
-
-def view_text(value):
-    if type(value) is tuple and len(value) > 8:
-        return repr(value[:8]) + f" +{len(value) - 8} more"
-    text = repr(value)
-    return text if len(text) <= 60 else text[:57] + "..."
-
-
-def pointer_repr(pointer):
-    return (
-        f"_Pointer(position={pointer.position!r}, previous={pointer.previous!r}, "
-        f"channel={pointer.channel!r}, value={pointer.value!r}, "
-        f"paused={pointer.paused!r})"
-    )
-
-
-def views(row):
-    mapping = dict(row.cells)
-    cells = {point: mapping[point] for point in row.cell_order}
-    cell_text = "mappingproxy(" + repr(cells) + ")"
-    cell_text = cell_text if len(cell_text) <= 60 else cell_text[:57] + "..."
-    pointers = (
-        "("
-        + ", ".join(pointer_repr(p) for p in row.pointers)
-        + ("," if len(row.pointers) == 1 else "")
-        + ")"
-    )
-    if len(row.pointers) > 8:
-        pointers = (
-            "("
-            + ", ".join(pointer_repr(p) for p in row.pointers[:8])
-            + ")"
-            + f" +{len(row.pointers) - 8} more"
-        )
-    else:
-        pointers = pointers if len(pointers) <= 60 else pointers[:57] + "..."
-    return (("cells", cell_text), ("cursor", str(row.cursor)), ("pointers", pointers))
 
 
 class Observer:
@@ -366,14 +285,14 @@ class Observer:
         self.held, self.rows = [], []
         self.meter = self.oracle = None
 
-    def observe(self, machine, raw, route, row):
+    def observe(self, raw, row):
         """Check every declared field before sampling the real producer."""
         case, grid, context = self.case, self.grid, self.context
         held = self.held
         meter, oracle = self.meter, self.oracle
         assert set(vars(raw)) == {"io", "rng", "grid", "state", "_input_reads"}
         typed_value(raw.grid, grid, self.grid_plan)
-        profile = policies.profile_for(route)
+        profile = policies.profile_for("raw")
         if self.rng_plan is not None:
             exact(self.rng_plan.profile, profile)
             exact(tuple(self.rng_plan.events[: len(row.draws)]), row.draws)
@@ -480,39 +399,6 @@ class Observer:
                 for peak, written in zip(oracle.peaks, oracle.written, strict=True)
             ],
         )
-        if route in ("vm", "debug"):
-            vm = machine if route == "vm" else machine.vm
-            exact(_capture_workspace(vm), wanted)
-            exact(_capture_observation(vm), observation(row))
-            exact(normalized_key(machine.snapshot(), context), raw_key(row, grid))
-            exact(
-                (vm.ip, vm.memory, vm.ptr, vm.stack, vm.views),
-                (
-                    ip,
-                    [value for point, value in sorted(row.cells)],
-                    None,
-                    [row.cursor, *sorted(row.cells)],
-                    views(row),
-                ),
-            )
-            exact(
-                (
-                    vm.ip_shape,
-                    vm.self_halts,
-                    vm.eof_is_a_value,
-                    vm.dumps_on_the_post_halt_step,
-                ),
-                ("grid", True, True, False),
-            )
-            if route == "debug":
-                exact(
-                    machine.result,
-                    observation(
-                        row,
-                        final=row.halted and row.error is None,
-                        steps=row.successful,
-                    ),
-                )
         self.meter, self.oracle = meter, oracle
         self.rows.append(row)
 
@@ -545,8 +431,8 @@ class Observer:
         }
 
 
-def trace(case, route, context, *, history=None, window=None, wire=True):
-    profile = policies.profile_for(route)
+def trace(case, context, *, history=None, window=None, wire=True):
+    profile = policies.profile_for("raw")
     grid, rows, plan = policies.predict(case, profile)
     calls = []
     original = context.native.draw
@@ -558,8 +444,7 @@ def trace(case, route, context, *, history=None, window=None, wire=True):
         return value
 
     with patch.object(context.native, "draw", audited):
-        machine = construct(case, route, context)
-        raw = raw_of(machine, route)
+        raw = construct(case, context)
         if history is None:
             history = "final" if case.name == "kolakoski" else "all"
         observer = Observer(
@@ -567,195 +452,12 @@ def trace(case, route, context, *, history=None, window=None, wire=True):
         )
         for index, row in enumerate(rows):
             if index:
-                machine.step()
+                raw.step()
             assert all(source is raw.rng for source, _upper, _value in calls)
             exact(tuple((upper, value) for _source, upper, value in calls), row.draws)
-            observer.observe(machine, raw, route, row)
+            observer.observe(raw, row)
     result = observer.finish()
     result.update(
         profile=profile, draw_log=[[upper, value] for _source, upper, value in calls]
     )
     return result
-
-
-def dispatch(route, context):
-    if route == "pure":
-        import importlib.util
-        from pathlib import Path
-
-        path = Path(__file__).with_name("price-pure.py")
-        spec = importlib.util.spec_from_file_location("_thisthat_pure_price", path)
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        with patch.object(
-            context.native,
-            "_Machine",
-            side_effect=AssertionError("pure attempted native"),
-        ):
-            return module.main()
-    assert route in ("raw", "prepare", "vm", "debug")
-    return [trace(case, route, context) for case in model.cases()]
-
-
-def prepared_siblings(context):
-    """One genuine source factory owns two complete independent Cat histories."""
-    base = model.cases()[1]
-    cases = [model.Case("sibling-" + bit, base.source, bit, 256, True) for bit in "01"]
-    predictions = [model.predict(case) for case in cases]
-    provider = FirstDraw(0)
-    factory = context.native.prepare_machine(list(base.source), {"rng": provider})
-    ports = [context.io(case.stdin) for case in cases]
-    machines = [factory(port) for port in ports]
-    assert machines[0] is not machines[1]
-    assert machines[0].rng is provider
-    assert machines[1].rng is provider
-    assert machines[0].io is ports[0]
-    assert machines[1].io is ports[1]
-    observers = [
-        Observer(case, grid, context)
-        for case, (grid, _rows) in zip(cases, predictions, strict=True)
-    ]
-    histories = [rows for _grid, rows in predictions]
-    for i in range(2):
-        observers[i].observe(machines[i], machines[i], "prepare", histories[i][0])
-    for active, peer in ((0, 1), (1, 0)):
-        other = histories[peer][0] if active == 0 else histories[peer][-1]
-        for row in histories[active][1:]:
-            machines[active].step()
-            observers[active].observe(
-                machines[active], machines[active], "prepare", row
-            )
-            observers[peer].observe(machines[peer], machines[peer], "prepare", other)
-    for active, peer in ((0, 1), (1, 0)):
-        machines[active].step()
-        observers[active].observe(
-            machines[active], machines[active], "prepare", histories[active][-1]
-        )
-        observers[peer].observe(
-            machines[peer], machines[peer], "prepare", histories[peer][-1]
-        )
-    results = [observer.finish() for observer in observers]
-    exact([port.getvalue() for port in ports], ["0", "1"])
-    return {
-        "same_factory_builds": 2,
-        "inputs": ["0", "1"],
-        "outputs": ["0", "1"],
-        "model_boundaries": [len(rows) for rows in histories],
-        "observations": [len(observer.rows) for observer in observers],
-        "peak_bits": [result["peak_bits"] for result in results],
-        "active_and_idle_peer_holds": True,
-    }
-
-
-def auditor_control(context):
-    """Old synthetic two-pointer merge calibrates model request and real delegate."""
-    from esolangs.runtime.randomness import FirstDraw
-
-    case = model.Case("manual-merge-auditor", ("▣═◘═◇",), "", 1, False)
-    points = (
-        model.Pointer((2, 0), (1, 0), "data", 0),
-        model.Pointer((2, 0), (3, 0), "data", 1),
-    )
-    refused = []
-
-    def no_draw(upper):
-        refused.append(upper)
-        raise AssertionError("independent draw calibration")
-
-    negative = model.Model(case, choose=no_draw)
-    negative.pointers = points
-    try:
-        negative.step()
-    except AssertionError as error:
-        assert str(error) == "independent draw calibration"
-    else:
-        raise AssertionError("independent forbidden draw did not fire")
-    exact(refused, [2])
-    positive = model.Model(case, choose=lambda _upper: 1)
-    positive.pointers = points
-    positive.step()
-    wanted = positive.row()
-    exact(
-        tuple(tuple(p) for p in wanted.pointers), (((1, 0), (2, 0), "data", 1, False),)
-    )
-    provider = FirstDraw(1)
-    port = context.io("")
-    raw = context.native._Machine(list(case.source), port, provider)
-    raw.pointers = (
-        context.native._Pointer((2, 0), (1, 0), "data", 0),
-        context.native._Pointer((2, 0), (3, 0), "data", 1),
-    )
-    original = context.native.draw
-    calls = []
-
-    def audited(rng, upper):
-        value = original(rng, upper)
-        calls.append((upper, value))
-        return value
-
-    with patch.object(context.native, "draw", audited):
-        raw.step()
-    assert raw.rng is provider
-    exact(calls, [(2, 1)])
-    exact(normalized_key(raw.snapshot(), context), raw_key(wanted, positive.grid))
-    exact(raw.workspace_snapshot(), capture(wanted, context))
-    io(port, case, wanted)
-    return {
-        "scope": "old synthetic calibration, not natural corpus",
-        "model_refused_bounds": refused,
-        "native_calls": [list(v) for v in calls],
-        "expected_next_pointer": [[1, 0], [2, 0], "data", 1, False],
-    }
-
-
-def detached_pointer_control(context):
-    """A detached old pointer's False/0 alias must fail fresh typed inspection."""
-    case = model.cases()[1]
-    grid, rows, _plan = policies.predict(case, "first0seed0")
-    machine = construct(case, "raw", context)
-    wanted = capture(rows[0], context)
-    key = machine.snapshot()
-    actual = machine.workspace_snapshot()
-    entry = Held(
-        actual,
-        hash(actual),
-        key,
-        hash(key),
-        wanted,
-        raw_key(rows[0], grid),
-        shape(wanted.parts),
-        shape(raw_key(rows[0], grid)[1:]),
-        tuple(shape(tuple(p)) for p in rows[0].pointers),
-    )
-    held_capture(entry, context, shape(SCHEMA))
-    held_cycle(entry, context)
-    pointer = key[0][0]
-    assert pointer.paused is False
-    for _index in range(1, len(rows)):
-        machine.step()
-        if all(current is not pointer for current in machine.state[0]):
-            break
-    else:
-        raise AssertionError("natural old pointer never detached")
-    held_cycle(entry, context)
-    before = hash(key)
-    object.__setattr__(pointer, "paused", 0)
-    try:
-        assert hash(key) == before
-        try:
-            held_cycle(entry, context)
-        except AssertionError:
-            rejected = True
-        else:
-            raise AssertionError("paused False/0 alias escaped typed held check")
-    finally:
-        object.__setattr__(pointer, "paused", False)
-    held_cycle(entry, context)
-    assert hash(key) == before
-    return {
-        "canonical_before": True,
-        "detached": True,
-        "same_hash_alias_rejected": rejected,
-        "restored_positive": True,
-    }

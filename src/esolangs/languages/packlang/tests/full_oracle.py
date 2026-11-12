@@ -251,14 +251,6 @@ def program_key(case):
     )
 
 
-def cycle(case, row):
-    frames = ()
-    if not row.halted:
-        pc, store, result = row.frame
-        frames = ((("scope", "main", pc, store, result), "None", None),)
-    return (frames, row.cursor, row.reads, program_key(case))
-
-
 def io_values(case, row):
     return {
         "_source": case.stdin,

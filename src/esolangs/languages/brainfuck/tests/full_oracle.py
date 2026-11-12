@@ -1,6 +1,6 @@
 """Complete bounded state from the unchanged old independent byte-tape rules."""
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import NamedTuple
 
 from tests.interpreters.semantic_oracles import bracket_pairs
@@ -86,32 +86,10 @@ class Row:
         return self.pc, self.ptr, self.tape, self.cursor
 
     @property
-    def memory(self):
-        """Expose all allocated cells, including visited zero extents."""
-        return self.tape
-
-    @property
     def legacy(self):
         """Retain the generic observer's original full-state tuple."""
         state = None if self.pc is None else (self.pc, self.ptr, self.tape)
         return state, self.halted, self.output, self.cursor, self.cursor
-
-    def io_fields(self, stdin):
-        """Preserve every ScriptedIO field and full output buffer state."""
-        return {
-            "_source": stdin,
-            "_supplied": stdin.count("\n")
-            + int(bool(stdin) and not stdin.endswith("\n")),
-            "_offset": self.cursor,
-            "_line_reads": 0,
-            "_character_reads": self.character_reads,
-            "_past_end": self.past_end,
-            "_pending": "",
-            "_reads": self.reads,
-            "_consumed": self.cursor,
-            "_newline": self.newline,
-            "_buffer": (self.output, "\n", len(self.output), None),
-        }
 
 
 def predict(source, stdin, cap=200):
@@ -172,27 +150,3 @@ def legacy_prediction(source, stdin, cap=200):
     """Keep all fields and the old observer's explicit error classification."""
     error, rows = predict(source, stdin, cap)
     return error, [row.legacy for row in rows]
-
-
-def refusal_history(source, stdin, *, provider, partial=False):
-    """Both raw input and character writes fail before the state commit."""
-    error, rows = predict(source, stdin)
-    assert error is None
-    at = next(
-        i
-        for i in range(1, len(rows))
-        if (
-            rows[i].cursor != rows[i - 1].cursor
-            if provider
-            else rows[i].output != rows[i - 1].output
-        )
-    )
-    before, after = rows[at - 1], rows[at]
-    prefix = "" if provider or not partial else after.output[len(before.output) :]
-    assert len(prefix) <= 1
-    failed = replace(before, output=before.output + prefix)
-    suffix = [
-        replace(row, output=before.output + prefix + row.output[len(before.output) :])
-        for row in rows[at:]
-    ]
-    return at, (*rows[:at], failed, *suffix)

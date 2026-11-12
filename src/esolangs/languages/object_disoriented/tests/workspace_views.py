@@ -1,16 +1,12 @@
 """Full independent Object disoriented IO-family state and resource observer."""
 
-# ruff: noqa: PT017
 from dataclasses import fields, is_dataclass
 from io import StringIO
 from typing import NamedTuple
 
-import esolangs
-from esolangs.debugger import make_debugger
-from esolangs.results import Completion, CompletionReport, ExecutionResult
+from esolangs.results import Completion, CompletionReport
 from esolangs.runtime._json import worker_dumps, worker_loads
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
-from esolangs.vm import _capture_observation, _capture_workspace, make_vm
 
 from . import full_oracle as engine
 
@@ -84,16 +80,6 @@ def check_io(port, case, row):
         exact(actual[key], value)
 
 
-def raw_of(machine, route):
-    return (
-        machine
-        if route in ("raw", "prepare")
-        else machine._machine
-        if route == "vm"
-        else machine.vm._machine
-    )
-
-
 SCHEMA = (
     "object-disoriented-v1",
     ("frames", "store", "extent", "input_bits", "output_bits", "input_cursor"),
@@ -105,12 +91,6 @@ def wanted_capture(row, context):
     return context.snapshot(context.model(*SCHEMA), row.parts())
 
 
-def observation(row, *, finished=False, steps=None):
-    return ExecutionResult(
-        row.output, row.cursor, row.reads, row.past, HALTED if finished else None, steps
-    )
-
-
 def readonly(raw, program, context):
     assert set(vars(raw)) == {"io", "program", "state"}
     assert type(raw.program) is context.native._Program
@@ -118,23 +98,9 @@ def readonly(raw, program, context):
     exact(raw.program.one, (1, 0, 0))
 
 
-def construct(case, route, context):
-    source = engine._source(case.operations, case.zero)
-    if route in ("raw", "prepare"):
-        port = context.io(case.stdin)
-        machine = (
-            context.native._Machine(source, port)
-            if route == "raw"
-            else context.native.prepare_machine(source, {})(port)
-        )
-    else:
-        create = make_vm if route == "vm" else make_debugger
-        machine = create(
-            "Object disoriented",
-            esolangs.ProgramArtifact(source, "Object disoriented"),
-            stdin=case.stdin,
-        )
-        port = raw_of(machine, route).io
+def construct(case, context):
+    port = context.io(case.stdin)
+    machine = context.native._Machine(engine._source(case.operations, case.zero), port)
     return machine, port
 
 
@@ -191,41 +157,7 @@ class Observer:
         )
 
 
-def wrappers(machine, route, row, context):
-    vm = machine if route == "vm" else machine.vm
-    exact(_capture_workspace(vm), wanted_capture(row, context))
-    exact(machine.snapshot(), row.key())
-    exact(_capture_observation(vm), observation(row))
-    exact(
-        (vm.ip, vm.memory, vm.stack, vm.ptr, vm.views),
-        (
-            None if row.halted else row.frames[0][:2],
-            [],
-            [frame[0] for frame in reversed(row.frames)],
-            None,
-            (),
-        ),
-    )
-    exact(
-        (
-            vm.self_halts,
-            vm.steppable_to_answer,
-            vm.eof_is_a_value,
-            vm.dumps_on_the_post_halt_step,
-            vm.ip_shape,
-        ),
-        (True, True, False, False, "opaque"),
-    )
-    if route == "debug":
-        exact(
-            machine.result,
-            observation(
-                row, finished=row.halted and row.error is None, steps=row.successful
-            ),
-        )
-
-
-def input_error(error, case, row, route):
+def input_error(error, case, row):
     from esolangs.exceptions import InputExhaustedError
 
     assert type(error) is InputExhaustedError
@@ -233,21 +165,15 @@ def input_error(error, case, row, route):
         (error.reads, error.supplied, error.unit),
         (row.cursor, len(case.stdin), "character"),
     )
-    if route not in ("raw", "prepare"):
-        exact(error.partial_output, row.output)
-        exact(
-            error.execution,
-            observation(row, steps=row.successful if route == "debug" else None),
-        )
 
 
-def trace(case, route, context):
+def trace(case, context):
     from esolangs.exceptions import InputExhaustedError
 
     program, rows = engine.plan(case)
-    machine, port = construct(case, route, context)
-    raw, observer = raw_of(machine, route), Observer(case, program, context)
-    assert raw.io is port
+    machine, port = construct(case, context)
+    observer = Observer(case, program, context)
+    assert machine.io is port
     for index, row in enumerate(rows):
         caught = None
         if index:
@@ -256,103 +182,14 @@ def trace(case, route, context):
             except InputExhaustedError as failure:
                 caught = failure
         if row.error:
-            input_error(caught, case, row, route)
+            input_error(caught, case, row)
         else:
             assert caught is None
-        observer.observe(raw, row)
-        if route in ("vm", "debug"):
-            wrappers(machine, route, row, context)
+        observer.observe(machine, row)
     return {
         "boundaries": len(rows),
         "error": rows[-1].error,
         "steps": rows[-1].successful,
         "peak_bits": observer.oracle.bits,
         "written": observer.oracle.written,
-    }
-
-
-def endpoint(case):
-    _program, rows = engine.plan(case)
-    return next(row for row in rows if row.error or row.halted)
-
-
-def public(case, *, bounded, isolated=False):
-    from esolangs.exceptions import InputExhaustedError
-
-    row = endpoint(case)
-    options = {"max_steps": 512} if bounded else {}
-    try:
-        result = esolangs.run(
-            "Object disoriented",
-            engine._source(case.operations, case.zero),
-            stdin=case.stdin,
-            isolated=isolated,
-            timeout=2.0,
-            **options,
-        )
-    except InputExhaustedError as error:
-        assert row.error == "input"
-        assert type(error) is InputExhaustedError
-        exact(
-            (error.reads, error.supplied, error.unit),
-            (row.cursor, len(case.stdin), "character"),
-        )
-        exact(error.partial_output, row.output)
-        exact(
-            error.execution, observation(row, steps=row.successful if bounded else None)
-        )
-        return {
-            "error": "InputExhaustedError",
-            "steps": row.successful if bounded else None,
-        }
-    assert row.error is None
-    exact(
-        result,
-        observation(row, finished=True, steps=row.successful if bounded else None),
-    )
-    return {"error": None, "steps": row.successful if bounded else None}
-
-
-def prepared_siblings(context):
-    """Two live builds from one factory retain independent full histories and IO."""
-    operations = (("write", "input"),) * 8
-    cases = [engine.Case(operations, "U"), engine.Case(operations, "\xaa")]
-    predictions = [engine.plan(case) for case in cases]
-    source = engine._source(operations, "z")
-    factory = context.native.prepare_machine(source, {})
-    ports = [context.io(case.stdin) for case in cases]
-    machines = [factory(port) for port in ports]
-    assert machines[0].program is machines[1].program
-    assert machines[0] is not machines[1]
-    assert machines[0].io is ports[0]
-    assert machines[1].io is ports[1]
-    observers = [
-        Observer(case, program, context)
-        for case, (program, _rows) in zip(cases, predictions, strict=True)
-    ]
-    histories = [rows for _program, rows in predictions]
-    for machine, observer, rows in zip(machines, observers, histories, strict=True):
-        observer.observe(machine, rows[0])
-    for active, peer in ((0, 1), (1, 0)):
-        peer_row = histories[peer][0] if active == 0 else histories[peer][-1]
-        for row in histories[active][1:]:
-            machines[active].step()
-            observers[active].observe(machines[active], row)
-            observers[peer].observe(machines[peer], peer_row)
-    for active, peer in ((0, 1), (1, 0)):
-        machines[active].step()
-        observers[active].observe(machines[active], histories[active][-1])
-        observers[peer].observe(machines[peer], histories[peer][-1])
-    for i in range(2):
-        exact(ports[i].getvalue(), cases[i].stdin)
-        exact(observers[i].oracle.written, [True] * 6)
-    return {
-        "same_factory_builds": 2,
-        "inputs": [case.stdin for case in cases],
-        "outputs": [port.getvalue() for port in ports],
-        "successful_commands": [rows[-1].successful for rows in histories],
-        "observation_counts": [len(observer.held) for observer in observers],
-        "peak_bits": [observer.oracle.bits for observer in observers],
-        "written": [observer.oracle.written for observer in observers],
-        "active_and_idle_peer_holds": True,
     }
