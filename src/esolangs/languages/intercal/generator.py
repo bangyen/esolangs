@@ -8,7 +8,7 @@ the result (:func:`_intercal_shared`).
 
 Size:
     O(T) for dense tables;
-    n=8 constant zero: 129 chars; n=10 parity: 810 chars,
+    n=8 zero: 129 chars; n=10 parity: 810 chars,
     n=10 random 1847: 3,338 chars.
 
 Decisions:

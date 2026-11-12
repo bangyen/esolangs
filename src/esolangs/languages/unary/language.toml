@@ -82,6 +82,14 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.unary.generator:unary_request"
 
+[[evidence.anchors]]
+arity = 1
+rule = "one"
+size = 6903
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.unary.generator:unary_request"
+
 [[evidence.raises]]
 error = "GeneratorCapError"
 when = "the zero count passes 256 Mi (n=2's ``0110``)."

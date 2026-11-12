@@ -12,7 +12,7 @@ subtrees are one leaf and a repeated subtree at its level is reached by
 
 Size:
     O(n) for parity and and, O(T) for dense tables;
-    n=8 constant zero: 136 chars; n=10 parity: 580 chars,
+    n=8 zero: 136 chars; n=10 parity: 580 chars,
     n=10 and: 441 chars, n=10 random 1847: 5,470 chars.
 
 Decisions:

@@ -94,10 +94,11 @@ def check_timeout(timeout: object) -> None:
             ("set a timeout in seconds, for example timeout=5.0"),
         )
     if timeout > _TIMEOUT_CEILING:
-        # The CLI's source read joins a thread with this bound, and
-        # ``Thread.join(1e10)`` raised ``OverflowError: timestamp out of range
-        # for C PyTime_t`` (``threading.TIMEOUT_MAX`` is about 9.2e9).  Worker
-        # deadlines took 1e300; a bound that long is not one anybody wants.
+        # Thread waits take this bound: the CLI's source read joins with it
+        # and a worker reads records with ``Queue.get``.  Both raised
+        # ``OverflowError: timestamp out of range for C PyTime_t`` past
+        # ``threading.TIMEOUT_MAX`` (about 9.2e9) -- ``join(1e10)`` and
+        # ``get(timeout=1e300)``; a bound that long is not one anybody wants.
         raise with_hint(
             ArgumentError(
                 f"timeout must be at most {_TIMEOUT_CEILING} seconds, got "

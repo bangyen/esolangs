@@ -66,6 +66,14 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.pointless.generator:pointless_request"
 
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 156
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.pointless.generator:pointless_request"
+
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.pointless.generator:pointless_request"

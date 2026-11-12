@@ -77,6 +77,14 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.bitdeque.generator:bitdeque_request"
 
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 136
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bitdeque.generator:bitdeque_request"
+
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.bitdeque.generator:bitdeque_request"

@@ -18,7 +18,7 @@ grew as T^2 (74x105 at n=10).
 
 Size:
     O(T) characters; whole constants use one byte and n reads;
-    n=8 constant zero: 166 chars; n=8 and: 659 chars, n=10 and: 796 chars,
+    n=8 zero: 166 chars; n=8 and: 659 chars, n=10 and: 796 chars,
     n=10 random 1847: 6,677 chars.
 
 Decisions:

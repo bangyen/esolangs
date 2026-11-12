@@ -10,7 +10,7 @@ entries directly. Ignored inputs are read and popped before output.
 Size:
     Worst case: 6T+28n+21 chars at n=2..4, 3T+28n+144 at n=5;
     from n=6, T/2+O(n²) chars including decimal weights.
-    n=8 constant zero: 138 chars; n=10 random 1847: 1,165 chars,
+    n=8 zero: 138 chars; n=10 random 1847: 1,165 chars,
     n=12 random 1847: 2,804 chars.
 
 Decisions:

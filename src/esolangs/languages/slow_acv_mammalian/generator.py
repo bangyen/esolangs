@@ -20,7 +20,7 @@ chunk window's end (:func:`_merge_address`); ballast is a division
 (:func:`_ballast`).
 
 Size:
-    O(T) size and build; n=8 constant zero: 119 chars.
+    O(T) size and build; n=8 zero: 119 chars.
     n=10 random 1847: 126,380 chars, n=12 random 1847: 323,670 chars.
     Executed evidence: every table through ``n == 3``, plus sampled rows of
     dense tables through ``n == 12``.

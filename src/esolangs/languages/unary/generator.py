@@ -15,7 +15,7 @@ Size:
     Each command multiplies the count by eight, so growth is exponential
     in the command count.  n=1 parity: 887 chars, n=2 and: 27,452,351
     chars (n=2's ``0001``), n=2 random 1847: 109 chars.
-    n=1 constant one: 6,903 chars.
+    n=1 one: 6,903 chars.
 
 Raises:
     GeneratorCapError: the zero count passes 256 Mi (n=2's ``0110``).

@@ -88,6 +88,14 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.packlang.generator:packlang_request"
 
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 166
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.packlang.generator:packlang_request"
+
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.packlang.generator:packlang_request"

@@ -12,7 +12,7 @@ one no-op; copying its increasing counter to cell 1 always resets the pair.
 
 Size:
     O(T): 4 commands a row plus 6 an input; n=4 parity: 772 chars.
-    Constants use 2n + 3 commands; n=8: 179 chars.
+    Constants use 2n + 3 commands; n=8 zero: 179 chars.
 
 Decisions:
     The offset 44 keeps every first-line value off 42, which the page

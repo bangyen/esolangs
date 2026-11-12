@@ -72,6 +72,14 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.quassaunt.generator:quassaunt_request"
 
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 116
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.quassaunt.generator:quassaunt_request"
+
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.quassaunt.generator:quassaunt_request"

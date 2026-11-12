@@ -11,7 +11,7 @@ of singleton ``%%Concatenateall`` calls. Constants read and print directly.
 Size:
     O(T) size and construction: O(T/log T) residuals with logarithmic names.
     n=10 random 1847: 33,170 chars, n=10 parity: 3,062 chars.
-    Constants use 12n + 20 chars and n + 2 commands; n=8: 116 chars.
+    Constants use 12n + 20 chars and n + 2 commands; n=8 zero: 116 chars.
 
 Decisions:
     The store loop trades more executed words and workspace for source size

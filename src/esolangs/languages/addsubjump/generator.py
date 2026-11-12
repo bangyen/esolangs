@@ -8,7 +8,7 @@ over essential inputs, which indexes ``m``-bit cells; the shorter ships.
 Size:
     Packed uses O(T/log T) integer cells and O(T) characters; n=4 parity: 614 chars,
     n=10 random 1847: 1,272 chars, n=10 and: 1,076 chars.
-    Constants: 4n+6 cells, n+1 commands; n=8: 101 chars.
+    Constants: 4n+6 cells, n+1 commands; n=8 zero: 101 chars.
 
 Decisions:
     Interning equal packed cells saves 0.00% at n=8: a running operand reads

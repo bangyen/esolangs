@@ -80,6 +80,14 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.modulous.generator:modulous_request"
 
+[[evidence.anchors]]
+arity = 8
+rule = "zero"
+size = 138
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.modulous.generator:modulous_request"
+
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.modulous.generator:modulous_request"
