@@ -1,6 +1,6 @@
 # Changelog
 
-Breaking changes are listed first. Before 1.0 a minor release may break the
+Breaking changes are listed first. Before 2.0 a minor release may break the
 public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
@@ -10,26 +10,32 @@ Releases before 0.10.0 are described on the
 - **Breaking:** `generate`, `instantiate` and `load_program` return explicit
   program/template artifacts. Use `.source` for native code; retain the artifact
   when binding inputs or executing to preserve provenance and dialect settings.
-- **Breaking:** Portable template records require `spans`; gzip records require
-  `limits` (which may be null); unknown PNG metadata versions are rejected.
-- **Breaking:** A timed `run` uses a worker instead of a Unix signal, including
-  when combined with a step bound; it works from worker threads and pays worker
-  startup on each call. Use `max_steps` alone for an in-process bound.
 - **Breaking:** `run` returns `ExecutionResult`; use `.output` for printed text.
 - **Breaking:** Unfilled templates require explicit bindings and cannot execute.
   Tagged-string wrappers, inferred bindings and temporary compatibility aliases
   are removed. Fill a template with `template.fill(bits)` or `instantiate`.
   Use `dump_program` to save dialect settings and template bindings.
+- **Breaking:** Portable template records require `spans`, so template JSON
+  written by 1.x no longer loads; regenerate it. Gzip records require `limits`
+  (which may be null); unknown PNG metadata versions are rejected. Other
+  version-1 JSON, PNG and native source files written by 1.x still load.
 - **Breaking:** Strings passed to `run` are literal source. Pass a `Path` or
   use `Language.from_file(path)` to load a file. Both preserve decoded text,
   including line endings. `save_program` preserves text by default too.
   Pass `normalize=True` to `from_file` for native newline handling or to
   `save_program` to append a native terminator where permitted. The CLI
   selects native file handling.
+- **Breaking:** A timed `run` uses a worker instead of a Unix signal, including
+  when combined with a step bound; it works from worker threads and pays worker
+  startup on each call. Use `max_steps` alone for an in-process bound.
 - **Breaking:** Construct dialect overrides with `Language(name).settings(...)`;
   settings are immutable and validated against that language's schema.
 - **Breaking:** Raw `Raster` and `CompressedText` payloads no longer carry
   language, dialect or scale metadata; retain their enclosing artifact.
+- **Breaking:** Whitespace numeric input reads one whole line, as the
+  reference `getLine` does; a blank line, several values or trailing text
+  raise `ArgumentError`. Whitespace character output emits Unicode code points
+  (0..0x10FFFF) instead of a byte, and Super SNUSP's emits the cell modulo 256.
 - Add immutable `Catalog` scopes through `catalog=` and `Language` bindings.
   Subprocess isolation requires runtime declarations matching the installed
   catalog; native and cooperative execution use the supplied declarations.
@@ -41,21 +47,38 @@ Releases before 0.10.0 are described on the
   observation. `ExecutionLimits.execution_timeout` budgets execution.
   `total_timeout` includes acquisition and worker startup. Bounded runs
   and the debugger share execution control.
-- Declare interpreter lifecycle, source-loading, dialect and accounting
-  capabilities independently of generator implementations.
-- Tighten worker, snapshot and persistence validation. Supported version-1
-  JSON/PNG formats with these required fields and ordinary native source files
-  remain readable.
-- Correct missing native completion-phase accounting in affected languages.
-- Complete bounded lifecycle and workspace-accounting acceptance for all 117
-  languages on Python 3.12–3.15.
-- Preserve large numeric inputs and deep cycle evidence across execution modes.
-- Fix strict balanced-growth construction for REFRACTRAN and Circuit Diagram.
+- Add `Language.evaluate(artifact, bits)`, returning `BooleanEvaluation`: the
+  answer bit with its execution evidence. Add `Language.from_source`.
+- Every `EsolangError` carries `execution`, the observation up to the failure
+  where one exists.
+- `make_vm` and `make_debugger` accept `seed=`; `Debugger.result` returns the
+  `ExecutionResult` so far.
+- Add `run --max-steps N` to the CLI; exit status 124 now means the time or
+  step budget ran out. `list --proof-status` accepts `T-log-T`.
 - Add optional gzip text export through `save_program(..., gzip=True)` and
   `generate --gzip`. Raster exports retain PNG; compressed bytes do not redefine
   expanded program size or workspace accounting.
 - Standalone text interpreter entry points also accept gzip with their original
   newline handling.
+- Fix generated programs:
+  - Befunge programs at widths 10-11 compute every row of eight-input tables.
+  - SLOW ACV MAMMALIAN programs no longer loop forever on some eight-input
+    rows.
+  - Bleh programs reject missing input instead of printing a valid-looking
+    answer, and no longer emit a duplicate `main`.
+  - REFRACTRAN and Circuit Diagram meet their strict balanced-growth
+    construction.
+- DINAC keeps a variable's declared type across `snuval` assignments; later
+  same-type assignments and input no longer raise `HaltError`.
+- Preserve large numeric inputs and deep cycle evidence across execution modes.
+- Correct missing native completion-phase accounting in affected languages.
+- Tighten worker, snapshot and persistence validation.
+- `read-answer` accepts an answer that is a single space; an unknown language
+  in `--set` exits 2 instead of reporting an internal error.
+- Generated programs change:
+  - Basicfuck programs are up to 51% smaller for some tables.
+  - Blindfolded Arithmetic programs are 6 characters smaller (1-5%).
+  - Bleh programs are 20 characters larger (2-29%), for the input check.
 
 ## 1.6.0
 
