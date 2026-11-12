@@ -26,43 +26,6 @@ def check_setters(setters: Sequence[tuple[str, str]]) -> Setters:
 TEMPLATE_CHAR = "$"
 
 
-#: The first of the private-use characters a template is spelled with
-#: while it is wrapped: input ``i`` is a run of ``chr(MARK + i)``, so a
-#: wrapper sees every input as its own unbreakable token, even beside the
-#: next, and the marks become the language's character afterwards.
-MARK = 0xE000
-
-#: The most inputs a template can carry marks for.
-MOST_INPUTS = 64
-
-
-def mark(i: int) -> str:
-    """Return the character input ``i`` is spelled with while wrapping."""
-    return chr(MARK + i)
-
-
-def mark_runs(template: str, char: str, setters: Setters) -> str:
-    """Return the template as a wrapper is handed it.
-
-    Runs of ``char`` are each as long as their input's setters, so no
-    separator is needed; each is re-spelled as its own :func:`mark`, the form
-    a wrapper keeps whole.  ``char`` is the *language's* template character
-    and cannot default to :data:`TEMPLATE_CHAR`: a language may embed on a
-    character the global template uses, so scanning for the global one
-    found an operator and read it as a one-character run.
-    """
-    out, position = [], 0
-    for i, (start, end) in enumerate(runs(template, char, setters)):
-        out.append(template[position:start] + mark(i) * (end - start))
-        position = end
-    return "".join(out) + template[position:]
-
-
-def unmark(text: str, char: str, inputs: int) -> str:
-    """Return ``text`` with every input's mark replaced by ``char``."""
-    return text.translate({MARK + i: char for i in range(inputs)})
-
-
 def runs(text: str, char: str, setters: Setters) -> list[tuple[int, int]]:
     """Return the ``[start, end)`` of each input's run in ``text``.
 

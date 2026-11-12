@@ -15,7 +15,6 @@ from typing import Protocol, cast
 
 import esolangs
 import esolangs.operations.source as _source_operations
-from esolangs._bindings import MOST_INPUTS
 from esolangs.artifacts import Artifact, TemplateArtifact
 from esolangs.exceptions import (
     ArgumentError,
@@ -77,6 +76,10 @@ _TERMINATION_TIMEOUT = 5.0
 #: to hold anything to a schedule.
 _ROW_TIMEOUT = 30.0
 _DEFAULT_MAX_ROWS = 1_048_576
+
+
+#: The widest row this harness evaluates.
+MOST_INPUTS = 64
 
 
 def _remaining(deadline: float | None, bound: float | None) -> float | None:

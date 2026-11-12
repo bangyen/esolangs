@@ -9,7 +9,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
-from esolangs._bindings import Setters, mark_runs, unmark
+from esolangs._bindings import Setters
 from esolangs.exceptions import TemplateError, UnknownLanguageError
 from esolangs.registry._catalog import Catalog, get_catalog
 from esolangs.registry._language import Language
@@ -141,32 +141,17 @@ def render_template(
     language_id: str,
     slots: str,
     n: int,
-    width: int | None = None,
     *,
     catalog: Catalog | None = None,
 ) -> tuple[str, str, Setters]:
-    """Return the public template for a generator's slot-marked output.
-
-    ``(text, char, setters)``: each input a run of the language's character
-    as long as its setter.  With a ``width`` each input is marked and the
-    wrapper breaks every run of the same length the same way, so the wrapped
-    template is the wrapped form of every program it fills to.
-    """
+    """Return ``(text, char, setters)`` for a generator's laid-out slots."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
     char = template_char(language_id, catalog=catalog)
     if char is None:
         raise _reads_inputs(language_id)
-    setters = template_setters(language_id, slots, n, catalog=catalog)
-    if width is None:
-        return slots, char, setters
-    from esolangs.generation.wrap import wrap_program
-
-    wrapped = wrap_program(
-        mark_runs(slots, char, setters), language_id, width, catalog=catalog
-    )
-    return unmark(wrapped, char, n), char, setters
+    return slots, char, template_setters(language_id, slots, n, catalog=catalog)
 
 
 def parameterized_ids(*, catalog: Catalog | None = None) -> frozenset[str]:

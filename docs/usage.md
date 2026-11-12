@@ -376,7 +376,6 @@ Some languages embed their inputs in the program. For these, `generate`
 returns a template with one ordered `$` run per input, exactly as long as
 its replacement. Fill it with `esolangs.instantiate(language, template, bits)`.
 Portable JSON stores each slot's start and end offsets alongside its setters.
-Older JSON without offsets is restored from the placeholder runs.
 Running a `TemplateArtifact` is refused until it is filled. Literal source is
 interpreted directly, including placeholder-like characters.
 `esolangs list --details` marks these languages `tmpl`.

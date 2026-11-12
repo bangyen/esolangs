@@ -19,7 +19,6 @@ from dataclasses import dataclass
 from math import isqrt
 from typing import TYPE_CHECKING
 
-from esolangs._bindings import MARK, MOST_INPUTS, mark
 from esolangs.generation.template import (
     InputSlot,
     TemplateLayout,
@@ -118,24 +117,16 @@ def _span(length: int, cell: int) -> int:
     return max(1, cells)
 
 
-#: One input's mark run (:func:`~esolangs._bindings.mark`), one token:
-#: a break inside would land inside the setter.  Adjacent runs are two tokens.
-_RUN = "|".join(f"{re.escape(mark(i))}+" for i in range(MOST_INPUTS))
-
-
 def _tokens(program: str, pattern: str) -> list[str]:
-    """Split ``program`` into tokens, trying a template run ahead of ``pattern``."""
-    return re.findall(f"{_RUN}|{pattern}", program)
-
-
-_MARK_PATTERN = re.compile(f"[{chr(MARK)}-{chr(MARK + MOST_INPUTS - 1)}]")
+    """Split ``program`` into the matches of ``pattern``."""
+    return re.findall(pattern, program)
 
 
 def wrap_tokens(program: str, width: int, pattern: str) -> str:
     """Wrap a program whose tokens are the matches of ``pattern``.
 
     ``pattern`` must tile the program exactly; one that does not is returned
-    unwrapped.  A :data:`_RUN` is tried ahead of ``pattern``.
+    unwrapped.
     """
     tokens = _tokens(program, pattern)
     if "".join(tokens) != program:
@@ -144,13 +135,8 @@ def wrap_tokens(program: str, width: int, pattern: str) -> str:
 
 
 def wrap_chars(program: str, width: int) -> str:
-    """Wrap a program whose every character is its own token.
-
-    Any position is a legal break, except inside a template's :data:`_RUN`.
-    """
-    if not _MARK_PATTERN.search(program):
-        return "\n".join(program[i : i + width] for i in range(0, len(program), width))
-    return _join_tokens(_tokens(program, r"[\s\S]"), width, separator="")
+    """Wrap a program whose every character is its own token."""
+    return "\n".join(program[i : i + width] for i in range(0, len(program), width))
 
 
 def wrap_character_slots(layout: TemplateLayout, width: int) -> TemplateLayout:
@@ -379,8 +365,6 @@ def _balance_line(
         return _token_fit(program, program.split(), " ")
     if isinstance(wrapper, TokenWrapper):
         return _token_fit(program, _tokens(program, wrapper.pattern))
-    if wrapper is wrap_chars and _MARK_PATTERN.search(program):
-        return _token_fit(program, _tokens(program, r"[\s\S]"))
     if wrapper is wrap_grid:
         tokens = program.split()
         if not tokens:

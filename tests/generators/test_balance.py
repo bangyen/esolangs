@@ -3,7 +3,6 @@
 import pytest
 
 import esolangs
-from esolangs._bindings import mark
 from esolangs.exceptions import ArgumentError
 from esolangs.generation.wrap import (
     balance_program,
@@ -97,9 +96,6 @@ def test_character_balance() -> None:
     assert balance_program("+" * 100, REFERENCE) == "\n".join(
         ["+" * 15] * 6 + ["+" * 10]
     )
-    marker = mark(0) * 100
-    # The 100-wide marker row fixes the side; the fewest rows are shortest.
-    assert balance_program(marker + "+" * 100, REFERENCE) == marker + "\n" + "+" * 100
 
 
 def test_cli_balance(capsys: pytest.CaptureFixture[str]) -> None:

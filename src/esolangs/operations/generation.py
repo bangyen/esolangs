@@ -6,7 +6,6 @@ from functools import cache
 from math import isqrt
 from typing import cast
 
-from esolangs._bindings import mark_runs, unmark
 from esolangs._dialect import Scalar
 from esolangs.artifacts import (
     Artifact,
@@ -188,13 +187,7 @@ def generate(
             slots if laid_out else wrap_program(slots, lang.id, width, catalog=catalog)
         )
         return ProgramArtifact(program, resolved, settings, input_arity=inputs)
-    # The generator spells each input as a run; the public template is
-    # that, wrapped with every run whole (see render_template).
-    wrap_to = None if laid_out else width
-    text, char, pairs = render_template(
-        lang.id, slots, inputs, wrap_to, catalog=catalog
-    )
-    return TemplateArtifact(text, resolved, TemplateBindings(char, pairs), settings)
+    raise ProgramError(f"{resolved}'s template generator did not return slots")
 
 
 def _backend_options(
@@ -280,19 +273,15 @@ def _generate_balanced(
             return _structured_template(
                 text, lang.id, name, default.bindings.inputs, settings, catalog
             )
+        if isinstance(default, TemplateArtifact):
+            raise ProgramError(f"{name}'s template balancer did not return slots")
         if not isinstance(text, str):
             raise ProgramError(f"{name}'s balancer did not return text")
-        if isinstance(default, TemplateArtifact):
-            text, char, pairs = render_template(
-                lang.id, text, default.bindings.inputs, catalog=catalog
-            )
-            return TemplateArtifact(text, name, TemplateBindings(char, pairs), settings)
         return ProgramArtifact(text, name, settings, input_arity=inputs)
     if isinstance(default, TemplateArtifact):
         return _balance_template(
             default,
-            lang.id,
-            catalog,
+            name,
             wrapper=None if backend.wrap_balance is not None else backend.wrap,
         )
     return ProgramArtifact(
@@ -312,13 +301,11 @@ def _character_slots(layout: TemplateLayout) -> bool:
 
 def _balance_template(
     template: TemplateArtifact,
-    language_id: str,
-    catalog: Catalog,
+    name: str,
     *,
     wrapper: Callable[[str, int], str] | None,
 ) -> TemplateArtifact:
-    """Balance source using positional slots when the wrapper supports them."""
-    bindings = template.bindings
+    """Balance source by moving positional slots with a slot-aware wrapper."""
     if template.spans and "\n" not in template.source:
         layout = TemplateLayout(template.source, template.spans)
         if wrapper is wrap_chars and _character_slots(layout):
@@ -327,13 +314,7 @@ def _balance_template(
         if isinstance(wrapper, TokenWrapper):
             balanced = wrapper.balance_template(layout)
             return replace(template, source=balanced.source, spans=balanced.spans)
-    marked = mark_runs(template.source, bindings.char, bindings.setters)
-    text = unmark(
-        balance_program(marked, language_id, catalog=catalog),
-        bindings.char,
-        bindings.inputs,
-    )
-    return replace(template, source=text, spans=None)
+    raise ProgramError(f"{name} requires a slot-aware balancer")
 
 
 def _is_template_for(

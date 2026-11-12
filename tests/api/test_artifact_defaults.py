@@ -40,8 +40,6 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
             raise AssertionError("catalog generation rediscovered input slots")
 
         monkeypatch.setattr("esolangs.artifacts.runs", rediscovered)
-        monkeypatch.setattr("esolangs.operations.generation.mark_runs", rediscovered)
-        monkeypatch.setattr("esolangs.registry.mark_runs", rediscovered)
     controls = load_certification(declaration).benchmark_tables
     # The three coordinates have distinct effects. A language with a proved
     # cap supplies its own admitted benchmark controls.

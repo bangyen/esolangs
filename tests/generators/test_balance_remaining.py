@@ -5,7 +5,6 @@ import random
 import pytest
 
 import esolangs
-from esolangs._bindings import mark_runs, unmark
 from esolangs.generation import wrap as _wrap
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_chars, wrap_program
@@ -83,14 +82,8 @@ def _width_layouts(language, table, default, widths):
     native = lang.backend.layout_width
     yield default.source
     for width in widths:
-        if native:
+        if native or isinstance(default, esolangs.TemplateArtifact):
             yield esolangs.generate(language, table, width=width).source
-        elif isinstance(default, esolangs.TemplateArtifact):
-            bindings = default.bindings
-            marked = mark_runs(default.source, bindings.char, bindings.setters)
-            yield unmark(
-                wrap_program(marked, lang.id, width), bindings.char, bindings.inputs
-            )
         else:
             yield wrap_program(default.source, lang.id, width)
 
