@@ -18,7 +18,7 @@ from checks.check_generator_sizes import (
 )
 from esolangs.registry._certification import load as load_certification
 from scripts import benchmark as b
-from tests.support.pick import languages
+from tests.support.pick import spread
 from tests.support.reference import REFERENCE
 
 RECORD = {
@@ -220,7 +220,18 @@ def test_executed_artifact_and_provenance() -> None:
     )
 
 
-@pytest.mark.parametrize("language", languages(boolean_generator=True))
+# One language per artifact route: the measurement path branches on these
+# facts, not the language, and CI's size baseline measures every generator.
+@pytest.mark.parametrize(
+    "language",
+    spread(
+        "source_kind",
+        "parameterized",
+        "answer_mode",
+        "input_shape",
+        boolean_generator=True,
+    ),
+)
 @pytest.mark.usefixtures("retired_source_adapters")
 def test_benchmark_uses_artifacts_without_source_facades(language):
     generated = esolangs.generate(language, "01")

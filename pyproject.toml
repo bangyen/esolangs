@@ -210,8 +210,8 @@ addopts = [
     # A hang never reaches the duration policy, so every test also carries a
     # hard stop: `conftest.py` sets it per band from
     # `tests.support.duration_policy.HARD_CEILINGS`.  The thread method, not the
-    # signal one: `esolangs.run` owns SIGALRM and ITIMER_REAL and a test
-    # asserts the timer is disarmed after it.  A stuck test therefore takes
+    # signal one: the test-support alarm guard owns SIGALRM and ITIMER_REAL
+    # and a test asserts the timer is disarmed after it.  A stuck test therefore takes
     # its xdist worker down, and the report names it, rather than the job's
     # 15-minute limit killing the whole run without a name.
     "--timeout-method=thread",

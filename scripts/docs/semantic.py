@@ -83,50 +83,46 @@ def verify(language: str, scratch: Path) -> tuple[int, int]:
     """Require clean checks and an assertion detecting an actually injected fault."""
     record = load(language)
     start = time.monotonic()
-    reports = []
     scratch.mkdir(parents=True, exist_ok=True)
     env = os.environ | {"PYTHONPATH": str(ROOT / "src"), "PYTEST_ADDOPTS": ""}
     env.pop("PYTEST_CURRENT_TEST", None)
-    for fault in (False, True):
-        label = "fault" if fault else "baseline"
-        log = scratch / f"{label}.json"
-        request = json.dumps(
-            {
-                "language": language,
-                "kind": record.kind,
-                "contract": record.contract,
-                "tests": record.tests,
-                "fault": fault,
-            }
+    log = scratch / "probe.json"
+    request = json.dumps(
+        {
+            "language": language,
+            "kind": record.kind,
+            "contract": record.contract,
+            "tests": record.tests,
+            "faults": [False, True],
+        }
+    )
+    with log.open("w") as output:
+        process = subprocess.Popen(
+            [sys.executable, str(ROOT / "scripts/semantic_probe.py")],
+            cwd=ROOT,
+            env=env,
+            stdin=subprocess.PIPE,
+            stdout=output,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
         )
-        with log.open("w") as output:
-            process = subprocess.Popen(
-                [sys.executable, str(ROOT / "scripts/semantic_probe.py")],
-                cwd=ROOT,
-                env=env,
-                stdin=subprocess.PIPE,
-                stdout=output,
-                stderr=subprocess.STDOUT,
-                text=True,
-                start_new_session=True,
-            )
-            try:
-                process.communicate(
-                    request, timeout=max(0.01, 60 - (time.monotonic() - start))
-                )
-            except subprocess.TimeoutExpired as error:
-                stop_process_tree(process)
-                raise AssertionError(
-                    f"{language}: semantic checks exceeded 60s; {log}"
-                ) from error
         try:
-            report = json.loads(log.read_text())
-        except (ValueError, OSError) as error:
+            process.communicate(
+                request, timeout=max(0.01, 60 - (time.monotonic() - start))
+            )
+        except subprocess.TimeoutExpired as error:
+            stop_process_tree(process)
             raise AssertionError(
-                f"{language}: invalid semantic probe report; {log}"
+                f"{language}: semantic checks exceeded 60s; {log}"
             ) from error
-        assert process.returncode == 0, (language, label, report)
-        reports.append(report)
+    try:
+        reports = json.loads(log.read_text())
+    except (ValueError, OSError) as error:
+        raise AssertionError(
+            f"{language}: invalid semantic probe report; {log}"
+        ) from error
+    assert process.returncode == 0, (language, reports)
     baseline, faulted = reports
     assert baseline["status"] == 0, (language, "baseline", baseline)
     assert baseline["passed"] > 0, (language, "no checks executed", baseline)

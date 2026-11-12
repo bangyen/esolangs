@@ -1,4 +1,4 @@
-"""Run declared raw-program checks in a fresh process, optionally injecting a fault."""
+"""Run declared raw-program checks in fresh processes, clean and with a fault."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import contextlib
 import importlib
 import io
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -79,11 +80,10 @@ def inject(name: str, result: Results) -> None:
     setattr(module, entry, native)
 
 
-def main() -> None:
-    """Emit one machine-readable report; retain pytest diagnostics on failure."""
-    request = json.load(sys.stdin)
+def check(request: dict[str, Any], *, fault: bool) -> dict[str, Any]:
+    """Return one run's report; retain pytest diagnostics on failure."""
     result = Results()
-    if request["fault"]:
+    if fault:
         inject(request["language"], result)
     captured = io.StringIO()
     with contextlib.redirect_stdout(captured), contextlib.redirect_stderr(captured):
@@ -99,14 +99,42 @@ def main() -> None:
                 "--tb=short",
                 # Expected trace mismatches took >30s in Python 3.12 difflib.
                 "--assert=plain",
-                *(["-x"] if request["fault"] else []),
+                *(["-x"] if fault else []),
                 *request["tests"],
             ],
             plugins=[result],
         )
-    print(
-        json.dumps({"status": int(status), **vars(result), "log": captured.getvalue()})
-    )
+    return {"status": int(status), **vars(result), "log": captured.getvalue()}
+
+
+def main() -> None:
+    """Emit one report per requested run, each from a fork before test imports.
+
+    The fault must be injected before the declared tests import the
+    interpreter, so the runs cannot share a process; forking after the
+    package and pytest imports saves a process start and those imports per
+    run (test_semantic_evidence on four workers: 35.2 s -> 26.7 s).
+    """
+    request = json.load(sys.stdin)
+    reports = []
+    for fault in request["faults"]:
+        read, write = os.pipe()
+        pid = os.fork()
+        if pid == 0:  # pragma: no cover - the child reports through the pipe
+            os.close(read)
+            try:
+                payload = check(request, fault=fault)
+            except BaseException as error:
+                payload = {"status": -1, "log": repr(error)}
+            with os.fdopen(write, "w") as output:
+                output.write(json.dumps(payload))
+            os._exit(0)
+        os.close(write)
+        with os.fdopen(read) as received:
+            text = received.read()
+        os.waitpid(pid, 0)
+        reports.append(json.loads(text))
+    print(json.dumps(reports))
 
 
 if __name__ == "__main__":

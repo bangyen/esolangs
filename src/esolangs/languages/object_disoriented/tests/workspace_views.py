@@ -134,13 +134,6 @@ class Observer:
         self.held.append(
             Held(capture, hash(capture), key, hash(key), expected, row.key())
         )
-        for held in self.held:
-            exact(held.capture, held.expected_capture)
-            exact(held.cycle, held.expected_cycle)
-        assert all(
-            hash(h.capture) == h.capture_hash and hash(h.cycle) == h.cycle_hash
-            for h in self.held
-        )
         if self.meter is None:
             self.meter, self.oracle = context.written(capture), context.oracle(expected)
         else:
@@ -154,6 +147,19 @@ class Observer:
                 p if w else 0
                 for p, w in zip(self.oracle.peaks, self.oracle.written, strict=True)
             ],
+        )
+
+    def finish(self):
+        """Require every held capture and key unchanged by later steps."""
+        # Once per trajectory: re-checking every held value at each step was
+        # quadratic, 117,084 comparisons and 9 s profiled for table 0011; a
+        # later step's mutation persists to the end, where this catches it.
+        for held in self.held:
+            exact(held.capture, held.expected_capture)
+            exact(held.cycle, held.expected_cycle)
+        assert all(
+            hash(h.capture) == h.capture_hash and hash(h.cycle) == h.cycle_hash
+            for h in self.held
         )
 
 
@@ -186,6 +192,7 @@ def trace(case, context):
         else:
             assert caught is None
         observer.observe(machine, row)
+    observer.finish()
     return {
         "boundaries": len(rows),
         "error": rows[-1].error,
