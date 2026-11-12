@@ -106,9 +106,9 @@ def _termination_result(
                 _observe_branch_path(machine, decision.branches)
             return TerminationResult(_capture_observation(machine), decision)
         except EsolangError as error:
-            if error.execution is None:
-                error.execution = _capture_observation(machine)
-            error.partial_output = error.execution.output
+            if error.observation is None:
+                error.observation = _capture_observation(machine)
+            error.partial_output = error.observation.output
             raise
 
     argument = (
@@ -127,6 +127,6 @@ def _termination_result(
         if isinstance(verdict, TerminationResult) and isinstance(
             verdict.observation, ExecutionResult
         ):
-            failure.execution = verdict.observation._replace(completion=None)
-            failure.partial_output = failure.execution.output
+            failure.observation = verdict.observation._replace(completion=None)
+            failure.partial_output = failure.observation.output
         raise failure from error

@@ -113,7 +113,7 @@ def test_a_program_error_echoing_the_digit_cap_text_stays_a_program_error() -> N
                             error = esolangs.ProgramError("wrapped digit cap")
                             if supplied is not None:
                                 error.partial_output = port.getvalue()
-                                error.execution = supplied
+                                error.observation = supplied
                             raise error from digit_error
                         raise
             except esolangs.InterpreterLimitError as error:
@@ -134,9 +134,9 @@ def test_a_program_error_echoing_the_digit_cap_text_stays_a_program_error() -> N
         assert type(limited.value) is esolangs.InterpreterLimitError
         assert limited.value is normalized[0]
         assert limited.value.partial_output == "A"
-        assert limited.value.execution == ExecutionResult("A", 0, 0, 0)
+        assert limited.value.observation == ExecutionResult("A", 0, 0, 0)
         if reported:
-            assert limited.value.execution is supplied
+            assert limited.value.observation is supplied
 
 
 def test_worker_budgets_validate_before_acquisition_and_keep_output_limits():

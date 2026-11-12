@@ -20,7 +20,7 @@ class EsolangError(Exception):
     partial_output: str = ""
 
     #: Unfinished execution observation; None when execution was not observed.
-    execution: ExecutionResult | None = None
+    observation: ExecutionResult | None = None
 
 
 class HaltError(EsolangError):

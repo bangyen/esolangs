@@ -74,7 +74,7 @@ def test_rng_binding_draws_only_during_execution():
         native = esolangs.run("Interprogck8", source, seed=seed)
         debug = make_debugger("Interprogck8", source, seed=seed)
         assert debug.run(max_steps=3) == "halted"
-        assert debug.result == native._replace(steps=3)
+        assert debug.observation == native._replace(steps=3)
         assert esolangs.run("Interprogck8", source, seed=seed, isolated=True) == native
 
 

@@ -43,7 +43,7 @@ def test_declared_runner_requires_a_report_and_keeps_partial_output():
         outcome.unwrap()
     assert caught.value is outcome.error
     assert caught.value.partial_output == "prefix"
-    assert caught.value.execution == ExecutionResult("prefix", 0, 0, 0)
+    assert caught.value.observation == ExecutionResult("prefix", 0, 0, 0)
 
 
 @pytest.mark.parametrize("kind", [Completion.HALTED, Completion.POST_HALT])

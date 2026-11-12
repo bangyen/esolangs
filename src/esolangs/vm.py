@@ -123,7 +123,7 @@ class _DelegatingVM:
         except Exception as error:
             # Initializers can print/read before construction fails.
             # Refusals with no observed IO keep their unavailable observation.
-            if isinstance(error, _EsolangError) and error.execution is not None:
+            if isinstance(error, _EsolangError) and error.observation is not None:
                 raise
             observed = _DelegatingVM._result(self, None)
             if (

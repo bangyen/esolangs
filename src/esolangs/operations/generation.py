@@ -41,7 +41,12 @@ from esolangs.registry import (
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._validate import check_bits, check_flag, check_scale, check_width
 from esolangs.runtime.source_hints import with_hint
-from esolangs.settings import DialectSettings, dialect_options, effective_settings
+from esolangs.settings import (
+    DialectSettings,
+    _settings_for,
+    dialect_options,
+    effective_settings,
+)
 
 
 def generate(
@@ -92,6 +97,11 @@ def generate(
 
     catalog = get_catalog(catalog)
     options = dialect_options(language, settings, catalog=catalog)
+    schema = catalog.languages[catalog.resolve(language)].runtime.dialect_schema
+    if settings is None and schema is not None and schema.defaults:
+        # Record the dialect the source was written in.  A retained None reads
+        # as "unknown", so explicit settings could otherwise misread it.
+        settings = _settings_for(language, dict(schema.defaults), catalog=catalog)
     check_scale(scale)
     check_flag(balance, "balance")
     if scale != 1:

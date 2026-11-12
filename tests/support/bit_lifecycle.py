@@ -13,14 +13,14 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
         for _ in range(bits + 1):
             debug.step()
         assert not debug.halted
-        assert debug.result.completion is None
-        assert debug.result.steps == bits + 1
-        assert debug.result.output == ("\xff" if bits >= 8 else "")
+        assert debug.observation.completion is None
+        assert debug.observation.steps == bits + 1
+        assert debug.observation.output == ("\xff" if bits >= 8 else "")
         debug.step()
         expected = ("\xff" if bits >= 8 else "") + (
             chr((1 << (bits % 8)) - 1) if bits % 8 else ""
         )
-        result, snapshot = debug.result, debug.snapshot()
+        result, snapshot = debug.observation, debug.snapshot()
         assert result.output == expected
         assert result.completion is not None
         assert result.completion.kind is Completion.HALTED
@@ -30,7 +30,7 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
         assert esolangs.run(name, source, isolated=True) == native
         debug.step()
         assert debug.run(max_steps=0) == "halted"
-        assert (debug.result, debug.snapshot()) == (result, snapshot)
+        assert (debug.observation, debug.snapshot()) == (result, snapshot)
     retained = set_command == "1"
     cases = [
         (set_command + ",;", "", chr(int(retained)), 0, 0, 1),
@@ -42,5 +42,5 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
         assert native[:4] == (output, position, reads, past_end)
         debug = make_debugger(name, source, stdin=stdin)
         assert debug.run(max_steps=100) == "halted"
-        assert debug.result == native._replace(steps=debug.result.steps)
+        assert debug.observation == native._replace(steps=debug.observation.steps)
         assert esolangs.run(name, source, stdin=stdin, isolated=True) == native

@@ -68,7 +68,7 @@ def test_termination_returns_without_evidence_abort(monkeypatch, verdict):
     ) as caught:
         _termination._termination_result(REFERENCE, ",.", "A")
     assert caught.value.partial_output == "A"
-    assert caught.value.execution == ExecutionResult("A", 1, 1, 0)
+    assert caught.value.observation == ExecutionResult("A", 1, 1, 0)
 
 
 def test_a_driver_that_never_ran_does_not_prove_divergence(monkeypatch):

@@ -16,18 +16,18 @@ def test_mammalian_rejects_unknown_words_before_output(word) -> None:
 
 
 def test_partial_overrides_merge_and_validate() -> None:
-    settings = esolangs.Language("SLOW ACV MAMMALIAN").settings(
-        cell_modulus=256, io_modulus=255
-    )
+    language = esolangs.Language("SLOW ACV MAMMALIAN")
+    settings = language.settings(cell_modulus=256)
     source = esolangs.ProgramArtifact(
         "SEED " * 255 + "DIGEST PRONOUNCE", "SLOW ACV MAMMALIAN", settings
     )
     assert run("SLOW ACV MAMMALIAN", source).output == chr(0)
+    # A choice the artifact does not retain merges in; one it does is fixed.
     assert run(
-        "SLOW ACV MAMMALIAN",
-        source,
-        settings=esolangs.Language("SLOW ACV MAMMALIAN").settings(io_modulus=256),
+        "SLOW ACV MAMMALIAN", source, settings=language.settings(io_modulus=256)
     ).output == chr(255)
+    with pytest.raises(esolangs.ProgramError, match="cell_modulus=256, not 255"):
+        run("SLOW ACV MAMMALIAN", source, settings=language.settings(cell_modulus=255))
     assert source.settings is settings
     with pytest.raises(esolangs.ArgumentError):
         run(

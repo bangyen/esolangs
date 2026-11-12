@@ -300,8 +300,8 @@ def _check_writer_phase():
             assert all((saved == expected for saved, expected in captured))
             captured.append((snapshot, reference))
             if route == "debug":
-                assert machine.result.steps == min(index, failed_at - 1)
-                assert machine.result.completion is None
+                assert machine.observation.steps == min(index, failed_at - 1)
+                assert machine.observation.completion is None
 
 
 class _Capture(NamedTuple):
@@ -593,8 +593,8 @@ def _check_physical_write():
                     _check_capture(_captured(raw, [], []), row, witness, held)
                     assert raw.io._newline is False
                     if route == "debug":
-                        assert machine.result.steps == min(index, failed_at - 1)
-                        assert machine.result.completion is None
+                        assert machine.observation.steps == min(index, failed_at - 1)
+                        assert machine.observation.completion is None
                 assert writes == ["[3]"]
             witness.finish()
 
@@ -653,8 +653,8 @@ def _check_provider_refusal():
                 assert raw._rng is provider
                 assert raw.io._newline is False
                 if route == "debug":
-                    assert machine.result.steps == min(index, failed_at - 1)
-                    assert machine.result.completion is None
+                    assert machine.observation.steps == min(index, failed_at - 1)
+                    assert machine.observation.completion is None
             assert bounds == [2]
         witness.finish()
 

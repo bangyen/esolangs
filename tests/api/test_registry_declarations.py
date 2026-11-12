@@ -40,11 +40,11 @@ def _check_scoped_catalogs():
     assert len(snapshot.languages) == len(LANGUAGES) > 100
     for index in (
         snapshot.languages,
-        snapshot.by_id,
-        snapshot.by_folded,
-        snapshot.by_boolean,
-        snapshot.runners,
-        snapshot.interpreters,
+        snapshot._by_id,
+        snapshot._by_folded,
+        snapshot._by_boolean,
+        snapshot._runners,
+        snapshot._interpreters,
     ):
         with pytest.raises(TypeError):
             index["unregistered"] = None

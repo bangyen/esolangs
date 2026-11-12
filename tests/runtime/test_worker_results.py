@@ -269,7 +269,7 @@ def test_worker_refuses_corrupt_counters_and_retains_output(counter, failure):
 def test_step_bound_retains_an_unfinished_observation(isolated):
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         run_observed(REFERENCE, "+[.]", max_steps=4, isolated=isolated)
-    assert caught.value.execution == ExecutionResult("\x01", 0, 0, 0, steps=4)
+    assert caught.value.observation == ExecutionResult("\x01", 0, 0, 0, steps=4)
     assert caught.value.partial_output == "\x01"
 
 
@@ -526,7 +526,7 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
         _decode(json.dumps(payload), expired=False)
     assert caught.value.bound == "max_steps"
     assert caught.value.__notes__ == ["row 1"]
-    assert caught.value.execution is None
+    assert caught.value.observation is None
     for key in ("execution", "notes", "output_limit", "bound", "obsolete"):
         with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
             _decode(

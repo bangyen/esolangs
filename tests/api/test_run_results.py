@@ -111,7 +111,9 @@ def _replay_periodic(name, source, stdin, native):
         debugger.step()
     assert debugger.snapshot() == first_state == cycle.state
     assert not debugger.halted
-    assert debugger.result == native._replace(output="", completion=None, steps=end)
+    assert debugger.observation == native._replace(
+        output="", completion=None, steps=end
+    )
     assert native.output
     bounded = esolangs.run(name, source, stdin=stdin, max_steps=end)
     assert bounded == native._replace(steps=end)
@@ -178,7 +180,7 @@ def test_result_failures_still_raise_with_partial_output(route, source, stdin):
     with pytest.raises(esolangs.InputExhaustedError) as caught:
         esolangs.run(REFERENCE, source, stdin=stdin, **route)
     assert caught.value.partial_output == stdin
-    assert caught.value.execution == ExecutionResult(
+    assert caught.value.observation == ExecutionResult(
         stdin,
         len(stdin),
         len(stdin),

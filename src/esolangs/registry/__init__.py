@@ -60,8 +60,8 @@ def __getattr__(name: str) -> Any:
         value = {
             "CATALOG": catalog,
             "LANGUAGES": catalog.languages,
-            "BY_BOOLEAN": catalog.by_boolean,
-            "INTERPRETERS": catalog.interpreters,
+            "BY_BOOLEAN": catalog._by_boolean,  # noqa: SLF001
+            "INTERPRETERS": catalog._interpreters,  # noqa: SLF001
         }[name]
     else:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
@@ -112,7 +112,7 @@ def _template(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    name = catalog.by_id.get(language_id)
+    name = catalog._by_id.get(language_id)  # noqa: SLF001
     if name is None:
         return None
     backend = catalog.languages[name].backend

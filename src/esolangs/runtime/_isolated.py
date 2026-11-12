@@ -157,8 +157,8 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
             raise ValueError("invalid timeout bound")
         error.bound = result["bound"]
     if result["execution"] is not None:
-        error.execution = decode_result(partial, result["execution"])
-        if error.execution.completion is not None:
+        error.observation = decode_result(partial, result["execution"])
+        if error.observation.completion is not None:
             raise ValueError("failed execution cannot declare completion")
     return error
 
@@ -881,7 +881,7 @@ def _failure_wire(error: BaseException) -> dict[str, Any]:
         args = (error.language, error.suggestions)
     elif isinstance(error, exceptions.InputExhaustedError):
         args = (error.reads, error.supplied, error.unit)
-    observation = getattr(error, "execution", None)
+    observation = getattr(error, "observation", None)
     return {
         "error": type(error).__name__,
         "args": args,

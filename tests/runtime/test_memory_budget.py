@@ -58,7 +58,7 @@ def test_worker_memory_failure_retains_protocol(
     _worker()
     with pytest.raises(esolangs.InterpreterLimitError, match=message) as caught:
         _decode(capsys.readouterr().out, expired=False)
-    assert caught.value.execution is None
+    assert caught.value.observation is None
 
 
 def test_cli_invalid_budget_precedes_path_reads(capsys) -> None:

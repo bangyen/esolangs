@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, TypedDict
 
 from esolangs._dialect import DialectSchema, Scalar
 from esolangs._dialect import DialectSettings as DialectSettings
-from esolangs.exceptions import ArgumentError
+from esolangs.exceptions import ArgumentError, ProgramError
 
 if TYPE_CHECKING:
     from esolangs.registry._catalog import Catalog
@@ -87,9 +87,26 @@ def effective_settings(
         return settings
     if settings is None:
         return retained
-    # Validate the combined choices after explicit fields replace retained fields.
     retained_values = dict(retained._items)  # noqa: SLF001
     explicit_values = dict(settings._items)  # noqa: SLF001
+    # A retained choice is how the source was written; contradicting it reads
+    # the same text as a different program, the refusal check_origin makes for
+    # a foreign language.  Explicit choices may only add what was not retained.
+    conflicts = sorted(
+        key
+        for key, value in explicit_values.items()
+        if key in retained_values and retained_values[key] != value
+    )
+    if conflicts:
+        detail = ", ".join(
+            f"{key}={retained_values[key]!r}, not {explicit_values[key]!r}"
+            for key in conflicts
+        )
+        raise ProgramError(
+            f"this program was written with {detail}; reading it otherwise "
+            "may well run, and answer nonsense -- pass its .source to drop "
+            "the retained settings"
+        )
     merged = _settings_for(language, retained_values | explicit_values, catalog=catalog)
     dialect_options(language, merged, catalog=catalog)
     return merged

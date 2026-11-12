@@ -253,6 +253,38 @@ def test_default_pickle_has_no_retained_choices() -> None:
     assert esolangs.run(REFERENCE, restored, stdin="1").output == "1"
 
 
+def _contradicted() -> list[tuple[str, str, int | str]]:
+    """Each generator's first dialect setting with a non-default choice."""
+    cases = []
+    for name in esolangs.list_languages():
+        info = esolangs.describe(name)
+        if not info["boolean_generator"] or not info["dialect_settings"]:
+            continue
+        key, item = next(iter(info["dialect_settings"].items()))
+        other = next(value for value in item["choices"] if value != item["default"])
+        cases.append((name, key, other))
+    return cases
+
+
+@pytest.mark.parametrize(("language", "key", "other"), _contradicted())
+def test_generated_programs_refuse_a_contradicting_dialect(
+    language: str, key: str, other: int | str
+) -> None:
+    """An infix Alight program run as postfix misparsed instead of refusing."""
+    artifact = esolangs.generate(language, "0110")
+    choices = settings_api.dialect_choices(language)
+    defaults = {k: v["default"] for k, v in choices.items()}
+    assert artifact.settings == esolangs.Language(language).settings(**defaults)
+    contrary = esolangs.Language(language).settings(**{key: other})
+    for operation in (
+        lambda: esolangs.run(language, artifact, settings=contrary),
+        lambda: esolangs.Language(language).prepare(artifact, settings=contrary),
+        lambda: esolangs.dump_program(language, artifact, settings=contrary),
+    ):
+        with pytest.raises(esolangs.ProgramError, match=f"{key}="):
+            operation()
+
+
 def test_every_reported_default_and_choice_is_accepted(monkeypatch) -> None:
     def forbidden(*_args):
         raise AssertionError("dialect discovery reached")

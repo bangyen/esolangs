@@ -163,11 +163,11 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     assert not debug.self_halts
     assert debug.steppable_to_answer
     assert debug.run(max_steps=3) == "max_steps"
-    assert debug.result.completion is None
-    assert debug.result.steps == 3
+    assert debug.observation.completion is None
+    assert debug.observation.steps == 3
     eof = debugger_api.make_debugger("Suffolk", ",")
     assert eof.run(max_steps=1) == "halted"
-    assert eof.result == ended._replace(steps=1)
+    assert eof.observation == ended._replace(steps=1)
     monkeypatch.setattr(interpreter, "_execute", lambda *_args: POST_HALT_REPORT)
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
         esolangs.run("Suffolk", "<")

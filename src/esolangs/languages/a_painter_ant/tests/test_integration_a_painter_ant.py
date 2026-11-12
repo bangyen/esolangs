@@ -138,8 +138,8 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
     assert not debug.steppable_to_answer
     assert debug.run(max_steps=3) == "max_steps"
     assert debug.output == ""
-    assert debug.result.completion is None
-    assert debug.result.steps == 3
+    assert debug.observation.completion is None
+    assert debug.observation.steps == 3
     with pytest.raises(esolangs.ArgumentError, match="self-halts"):
         vm.complete_vm(debug.vm, max_steps=0)
     monkeypatch.setattr(interpreter, "_execute", lambda *_args: HALTED_REPORT)
@@ -154,8 +154,8 @@ def test_a_step_bound_requires_a_periodic_witness():
         ).unwrap()
     assert caught.value.bound == "max_steps"
     assert caught.value.partial_output == ""
-    assert caught.value.execution.steps == 1
-    assert caught.value.execution.completion is None
+    assert caught.value.observation.steps == 1
+    assert caught.value.observation.completion is None
     result = esolangs.run("A Painter Ant", "P", max_steps=2, isolated=True)
     assert result.output == "@"
     assert result.steps == 2

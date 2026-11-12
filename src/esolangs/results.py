@@ -19,7 +19,7 @@ class ExecutionResult(NamedTuple):
     Completion is absent before output finalization.
     Steps count completed cooperative commands, excluding a faulting command
     and post-halt output finalization; None when the runner does not count.
-    Runtime failures retain an unfinished observation on EsolangError.execution.
+    Runtime failures retain an unfinished observation on EsolangError.observation.
     """
 
     output: str

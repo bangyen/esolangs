@@ -267,4 +267,6 @@ def check_raw_dig():
         assert usage == (len(token), len(token), 1, 0)
         with pytest.raises(public) as caught:
             esolangs.run("Dig", "\n".join(lines), stdin=token)
-        assert caught.value.execution == esolangs.ExecutionResult("", len(token), 1, 0)
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "", len(token), 1, 0
+        )

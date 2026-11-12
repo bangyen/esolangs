@@ -29,7 +29,10 @@ Releases before 0.10.0 are described on the
   when combined with a step bound; it works from worker threads and pays worker
   startup on each call. Use `max_steps` alone for an in-process bound.
 - **Breaking:** Construct dialect overrides with `Language(name).settings(...)`;
-  settings are immutable and validated against that language's schema.
+  settings are immutable and validated against that language's schema. A
+  generated artifact retains its settings, defaults included; explicit
+  settings may add a choice it does not retain, but contradicting a retained
+  one raises `ProgramError`.
 - **Breaking:** Raw `Raster` and `CompressedText` payloads no longer carry
   language, dialect or scale metadata; retain their enclosing artifact.
 - **Breaking:** Whitespace numeric input reads one whole line, as the
@@ -49,10 +52,10 @@ Releases before 0.10.0 are described on the
   and the debugger share execution control.
 - Add `Language.evaluate(artifact, bits)`, returning `BooleanEvaluation`: the
   answer bit with its execution evidence. Add `Language.from_source`.
-- Every `EsolangError` carries `execution`, the observation up to the failure
-  where one exists.
-- `make_vm` and `make_debugger` accept `seed=`; `Debugger.result` returns the
-  `ExecutionResult` so far.
+- Every `EsolangError` carries `observation`, the `ExecutionResult` up to the
+  failure where one exists.
+- `make_vm` and `make_debugger` accept `seed=`; `Debugger.observation` returns
+  the `ExecutionResult` so far.
 - Add `run --max-steps N` to the CLI; exit status 124 now means the time or
   step budget ran out. `list --proof-status` accepts `T-log-T`.
 - Add optional gzip text export through `save_program(..., gzip=True)` and

@@ -226,17 +226,17 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             else:
                 raise AssertionError(f"{name}: sample exceeded the source-step budget")
             assert debug.output == ""
-            assert debug.result.completion is None
-            steps = debug.result.steps
+            assert debug.observation.completion is None
+            steps = debug.observation.steps
             assert "incidental_view" not in dict(debug.views)
             debug.step()
-            result, snapshot = debug.result, debug.snapshot()
+            result, snapshot = debug.observation, debug.snapshot()
             assert result == native._replace(steps=steps)
             debug.step()
-            assert debug.result == result
+            assert debug.observation == result
             assert debug.snapshot() == snapshot
             assert debug.run(max_steps=0) == "halted"
-            assert debug.result == result
+            assert debug.observation == result
             assert esolangs.run(name, source, stdin=stdin, seed=seed) == native
             control.setattr(
                 module,
@@ -390,13 +390,13 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             assert debug.eof_is_a_value == caps.eof_is_a_value
             assert "incidental_view" not in dict(debug.views)
             assert debug.run(max_steps=1000) == "halted"
-            result, snapshot = debug.result, debug.snapshot()
+            result, snapshot = debug.observation, debug.snapshot()
             assert result == native._replace(steps=result.steps)
             debug.step()
-            assert debug.result == result
+            assert debug.observation == result
             assert debug.snapshot() == snapshot
             assert debug.run(max_steps=0) == "halted"
-            assert debug.result == result
+            assert debug.observation == result
             assert esolangs.run(name, source, stdin=stdin, seed=seed) == native
             control.setattr(
                 module,

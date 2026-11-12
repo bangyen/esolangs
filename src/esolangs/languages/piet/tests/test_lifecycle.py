@@ -71,7 +71,7 @@ def test_scale_binding_eof_and_unicode_match_all_routes():
         assert debug.ip_shape == "grid"
         assert debug.eof_is_a_value
         assert debug.run(max_steps=20) == "halted"
-        result, snapshot = debug.result, debug.snapshot()
+        result, snapshot = debug.observation, debug.snapshot()
         assert result == native._replace(steps=result.steps)
         assert (
             esolangs.run("Piet", source, stdin=stdin, scale=scale, isolated=True)
@@ -79,7 +79,7 @@ def test_scale_binding_eof_and_unicode_match_all_routes():
         )
         debug.step()
         assert debug.run(max_steps=0) == "halted"
-        assert (debug.result, debug.snapshot()) == (result, snapshot)
+        assert (debug.observation, debug.snapshot()) == (result, snapshot)
 
 
 def test_factory_rejects_unprepared_source_and_options():

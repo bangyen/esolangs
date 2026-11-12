@@ -50,25 +50,25 @@ def _replay_termination(name, source, stdin, result):
         assert not debugger.halted
         debugger.step()
     assert debugger.halted is decision.halts
-    assert debugger.result.steps == decision.commands
+    assert debugger.observation.steps == decision.commands
     assert _capture_observation(debugger.vm) == result.observation
     assert result.observation.completion is None
     if decision.cycle is not None:
         assert decision.cycle.commands_per_pass == 1
         assert decision.cycle.repeat_pass == decision.commands
         assert debugger.snapshot() == retained == decision.cycle.state
-        assert debugger.result.completion is None
+        assert debugger.observation.completion is None
     else:
         # A halting proof has not requested a post-halt output dump.
         assert (
-            debugger.result.completion is None
+            debugger.observation.completion is None
         ) is debugger.dumps_on_the_post_halt_step
         native = run_observed(name, source, stdin=stdin, timeout=5)
         debugger.step()
-        completed = debugger.result
+        completed = debugger.observation
         assert completed == native._replace(steps=decision.commands)
         debugger.step()
-        assert debugger.result == completed
+        assert debugger.observation == completed
 
 
 @pytest.mark.medium
@@ -190,11 +190,11 @@ def test_proof_deadlines_keep_output_without_claiming_divergence():
     with pytest.raises(esolangs.ExecutionTimeoutError) as native:
         termination_observed(REFERENCE, source, "A", 0.01)
     assert native.value.partial_output == "A"
-    assert native.value.execution == ExecutionResult("A", 1, 1, 0)
+    assert native.value.observation == ExecutionResult("A", 1, 1, 0)
     with pytest.raises(esolangs.ExecutionTimeoutError) as worker:
         termination_result_isolated(REFERENCE, source, "A", 1, max_output=1)
     assert worker.value.partial_output == "A"
-    assert worker.value.execution is None
+    assert worker.value.observation is None
 
 
 def test_wire_decisions_require_proof_and_matching_counts():

@@ -171,7 +171,7 @@ def test_errors() -> None:
             assert type(public.value) is HaltError
             assert str(public.value) == message
             assert public.value.partial_output == ""
-            assert public.value.execution == ExecutionResult(
+            assert public.value.observation == ExecutionResult(
                 "", len(text), 1, 0, None, steps=None if bound is None else 0
             )
     text = "0" * 5000 + "65"

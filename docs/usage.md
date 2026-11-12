@@ -203,9 +203,9 @@ An execution deadline selects isolation, including with a step budget, so it
 can interrupt an individual step.
 An isolated call without an explicit total deadline retains the 30-second default.
 
-`Catalog` owns immutable declarations and lookup indexes. Construct one from
-`esolangs.registry.CATALOG.languages.values()`; `with_language(record)` returns
-a new scope. Use `catalog.bind(name)` or `Language(name, catalog=catalog)`.
+`Catalog` owns immutable declarations. Build a narrower scope from the
+records in an existing one, such as `Language("Brainfuck").catalog.languages`;
+`with_language(record)` returns a new scope with one more of those records. Use `catalog.bind(name)` or `Language(name, catalog=catalog)`.
 Package operations and VM/debugger factories also accept `catalog=`.
 Subprocess isolation requires runtime declarations matching the installed
 catalog; native and cooperative execution use the supplied declarations.
@@ -289,7 +289,8 @@ Exceptions:
 <!-- PUBLIC-API:END -->
 
 Every `EsolangError` carries `partial_output`, the output written before
-the raise (empty when the program never ran). Some add fields:
+the raise (empty when the program never ran), and `observation`, the
+`ExecutionResult` up to the failure (None when execution was not observed). Some add fields:
 
 | Exception | Attributes |
 | --- | --- |
@@ -408,8 +409,11 @@ defaults. Create overrides with
 them as `settings=` to `generate`, `run` or `make_debugger`. On the CLI, use
 `--settings JSON` or the repeatable `--set KEY=VALUE`.
 
-A generated program retains its settings. Plain text saved to a file does
-not, so `run` needs them again; `dump_program` keeps them.
+A generated program retains its settings, defaults included. Plain text
+saved to a file does not, so `run` needs them again; `dump_program` keeps
+them. Explicit `settings=` may add a choice an artifact does not retain, but
+contradicting a retained one raises `ProgramError`: the same source read in
+another dialect is another program. Pass `.source` to drop retained settings.
 
 ## Bounded execution
 
@@ -594,7 +598,7 @@ Within a major release, compatibility covers:
   ones keyword-only), and deliberate `EsolangError` exceptions;
 - CLI command names, JSON field meanings, and exit statuses: 0 success,
   1 the program broke, 2 the ask was wrong, 70 internal error, 120 stdout
-  closed early, 124 the timeout ran out, 130 interrupted;
+  closed early, 124 a time or step budget ran out, 130 interrupted;
 - existing `describe()` fields and their value types (an absent value is
   `None`; `examples` are paths relative to the package);
 - interpreter semantics for valid programs, including I/O and answers;

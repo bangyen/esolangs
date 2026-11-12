@@ -62,7 +62,7 @@ def test_native_driver_reports_completion(language):
 
     debugger = make_debugger(language, source, **options)
     reason = debugger.run(max_steps=1)
-    expected = debugger.result
+    expected = debugger.observation
     for isolated in (False, True):
         with guarded_worker() if isolated else nullcontext():
             if reason == "halted":
@@ -78,6 +78,6 @@ def test_native_driver_reports_completion(language):
                         language, source, max_steps=1, isolated=isolated, **options
                     )
                 assert caught.value.bound == "max_steps"
-                assert caught.value.execution == expected
+                assert caught.value.observation == expected
                 assert expected.completion is None
                 assert caught.value.partial_output == expected.output

@@ -55,7 +55,7 @@ class ExecutionController:
         return self.vm.output
 
     @property
-    def result(self) -> ExecutionResult:
+    def observation(self) -> ExecutionResult:
         """Current output and input usage, with completion only after finalization.
 
         Steps count successful calls through this controller while active;
@@ -122,7 +122,7 @@ class ExecutionController:
         except EsolangError as exc:
             self._faulted = True
             exc.partial_output = self.output
-            exc.execution = self.result._replace(completion=None)
+            exc.observation = self.observation._replace(completion=None)
             raise
         if active:
             self._faulted = False
@@ -177,7 +177,7 @@ class ExecutionController:
                 except EsolangError as exc:
                     self._faulted = True
                     exc.partial_output = self.output
-                    exc.execution = self.result._replace(completion=None)
+                    exc.observation = self.observation._replace(completion=None)
                     raise
                 self._record()
                 if self._accept_stop():
@@ -213,8 +213,8 @@ class ExecutionController:
             reason = self.run(max_steps=max_steps)
         except EsolangError as fault:
             fault.partial_output = self.output
-            observation = fault.execution or _capture_observation(self.vm)
-            fault.execution = observation._replace(steps=self._steps)
+            observation = fault.observation or _capture_observation(self.vm)
+            fault.observation = observation._replace(steps=self._steps)
             return _failed_outcome(fault)
         if reason == "halted":
             return ExecutionOutcome(
@@ -225,7 +225,7 @@ class ExecutionController:
         error = ExecutionTimeoutError(f"execution stopped at the {reason} bound")
         error.partial_output = self.output
         error.bound = "max_steps"
-        error.execution = _capture_observation(self.vm)._replace(steps=self._steps)
+        error.observation = _capture_observation(self.vm)._replace(steps=self._steps)
         return _failed_outcome(error)
 
     def _stop(self, deadline: float | None) -> bool:

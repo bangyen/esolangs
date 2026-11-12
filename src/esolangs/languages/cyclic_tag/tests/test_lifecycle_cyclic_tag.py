@@ -46,14 +46,14 @@ assert module in sys.modules, 'loading control did not fire'
             debug.step()
         assert debug.halted
         assert debug.output == ""
-        assert debug.result.completion is None
-        assert debug.result.steps == steps
+        assert debug.observation.completion is None
+        assert debug.observation.steps == steps
         debug.step()
-        finalized = debug.result
+        finalized = debug.observation
         snapshot = debug.snapshot()
         assert finalized == native._replace(steps=steps)
         debug.step()
-        assert debug.result == finalized
+        assert debug.observation == finalized
         assert debug.snapshot() == snapshot
     monkeypatch.setattr(
         interpreter,

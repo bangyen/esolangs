@@ -75,12 +75,12 @@ def _check_row(name: str, artifact: esolangs.Artifact, table: str, row: int) -> 
     )
     debugger = debugger_api.make_debugger(name, program, stdin=stdin, seed=seed)
     assert debugger.run(max_steps=steps) == "halted", (name, table, row, steps)
-    assert debugger.result == want._replace(steps=steps), (
+    assert debugger.observation == want._replace(steps=steps), (
         "source steps",
         name,
         table,
         row,
-        debugger.result,
+        debugger.observation,
         steps,
     )
     assert esolangs.read_answer(name, got.output) == table[row], (name, table, row)
@@ -158,14 +158,16 @@ class TestSteppingReachesTheSameAnswer:
             control.setattr(sys.modules[__name__], "_capture_result", corrupt_reads)
             with pytest.raises(AssertionError, match="execution observations"):
                 _check_row(REFERENCE, esolangs.generate(REFERENCE, "01"), "01", 1)
-        result_property = debugger_api.Debugger.result
+        result_property = debugger_api.Debugger.observation
 
         def corrupt_steps(debugger):
             result = result_property.__get__(debugger)
             return result._replace(steps=result.steps + 1)
 
         with monkeypatch.context() as control:
-            control.setattr(debugger_api.Debugger, "result", property(corrupt_steps))
+            control.setattr(
+                debugger_api.Debugger, "observation", property(corrupt_steps)
+            )
             with pytest.raises(AssertionError, match="source steps"):
                 _check_row(REFERENCE, esolangs.generate(REFERENCE, "01"), "01", 1)
         with monkeypatch.context() as control:

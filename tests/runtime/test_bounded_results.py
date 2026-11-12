@@ -58,16 +58,16 @@ def test_debugger_observations_follow_steps_and_failures():
     from esolangs.debugger import make_debugger
 
     debugger = make_debugger(REFERENCE, ",.,", stdin="é")
-    assert debugger.result == esolangs.ExecutionResult("", 0, 0, 0, steps=0)
+    assert debugger.observation == esolangs.ExecutionResult("", 0, 0, 0, steps=0)
     debugger.step()
-    assert debugger.result.steps == 1
-    assert debugger.result.completion is None
+    assert debugger.observation.steps == 1
+    assert debugger.observation.completion is None
     debugger.step()
-    assert debugger.result.output == "é"
+    assert debugger.observation.output == "é"
     with pytest.raises(esolangs.InputExhaustedError) as caught:
         debugger.step()
-    assert caught.value.execution == debugger.result
-    assert debugger.result == esolangs.ExecutionResult("é", 1, 1, 1, steps=2)
+    assert caught.value.observation == debugger.observation
+    assert debugger.observation == esolangs.ExecutionResult("é", 1, 1, 1, steps=2)
 
 
 def test_debugger_completion_does_not_count_idle_steps():
@@ -75,12 +75,12 @@ def test_debugger_completion_does_not_count_idle_steps():
 
     debugger = make_debugger(REFERENCE, "+.")
     assert debugger.run(max_steps=2) == "halted"
-    result = debugger.result
+    result = debugger.observation
     assert result.steps == 2
     assert result.completion.kind is Completion.HALTED
     debugger.step()
     assert debugger.run(max_steps=0) == "halted"
-    assert debugger.result == result
+    assert debugger.observation == result
 
 
 def test_post_halt_completion_stays_pending_until_dump():
@@ -98,12 +98,12 @@ def test_post_halt_completion_stays_pending_until_dump():
     # Stop at halt before the completion step.
     while not debugger.halted:
         debugger.step()
-    before = debugger.result
+    before = debugger.observation
     assert before.completion is None
     debugger.step()
-    assert debugger.result.steps == before.steps
-    assert debugger.result.completion.kind is Completion.POST_HALT
-    assert esolangs.read_answer(name, debugger.result.output) == "1"
+    assert debugger.observation.steps == before.steps
+    assert debugger.observation.completion.kind is Completion.POST_HALT
+    assert esolangs.read_answer(name, debugger.observation.output) == "1"
 
 
 def test_debugger_does_not_invent_periodic_completion():
@@ -118,7 +118,7 @@ def test_debugger_does_not_invent_periodic_completion():
         def step(self):
             pass
 
-    result = Debugger(Interrupted()).result
+    result = Debugger(Interrupted()).observation
     assert result.output == "unproven"
     assert result.completion is None
     assert result.input_position is None
@@ -140,9 +140,9 @@ def test_failed_dump_remains_unfinished_and_can_be_retried(monkeypatch, drive):
     debugger = make_debugger(name, source)
     assert debugger.run(max_steps=0) == "max_steps"
     while not debugger.halted:
-        assert debugger.result.steps < 10000
+        assert debugger.observation.steps < 10000
         debugger.step()
-    steps = debugger.result.steps
+    steps = debugger.observation.steps
     original = debugger.vm.step
 
     def fail():
@@ -151,19 +151,19 @@ def test_failed_dump_remains_unfinished_and_can_be_retried(monkeypatch, drive):
     monkeypatch.setattr(debugger.vm, "step", fail)
     with pytest.raises(esolangs.HaltError, match="dump failed") as caught:
         getattr(debugger, drive)()
-    assert caught.value.execution == debugger.result
-    assert debugger.result.completion is None
-    assert debugger.result.steps == steps
+    assert caught.value.observation == debugger.observation
+    assert debugger.observation.completion is None
+    assert debugger.observation.steps == steps
     monkeypatch.setattr(debugger.vm, "step", original)
     assert debugger.run(max_steps=0) == "halted"
-    assert debugger.result.completion.kind is Completion.POST_HALT
-    assert debugger.result.steps == steps
-    assert esolangs.read_answer(name, debugger.result.output) == "1"
+    assert debugger.observation.completion.kind is Completion.POST_HALT
+    assert debugger.observation.steps == steps
+    assert esolangs.read_answer(name, debugger.observation.output) == "1"
 
 
-def test_error_execution_annotation_resolves_public_result_type():
+def test_error_observation_annotation_resolves_public_result_type():
     from typing import get_type_hints
 
-    assert get_type_hints(esolangs.EsolangError)["execution"] == (
+    assert get_type_hints(esolangs.EsolangError)["observation"] == (
         esolangs.ExecutionResult | None
     )

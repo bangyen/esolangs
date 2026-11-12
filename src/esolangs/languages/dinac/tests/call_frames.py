@@ -280,7 +280,7 @@ def _stepped(case, debug):
         return _capture_workspace(vm)
 
     def observation():
-        return machine.result if debug else _capture_observation(vm)
+        return machine.observation if debug else _capture_observation(vm)
 
     _check_trace(
         case,
@@ -299,7 +299,7 @@ def _stepped(case, debug):
             if failure
             else next(i for i, row in enumerate(rows) if not row[0])
         )
-        assert machine.result.steps == commands
+        assert machine.observation.steps == commands
 
 
 def _execution(case, *, isolated):
@@ -315,7 +315,7 @@ def _execution(case, *, isolated):
     if failure:
         with pytest.raises(esolangs.HaltError) as caught:
             esolangs.run("DINAC", code, stdin=stdin, isolated=isolated)
-        assert caught.value.execution == expected
+        assert caught.value.observation == expected
         assert caught.value.partial_output == text
     else:
         assert esolangs.run("DINAC", code, stdin=stdin, isolated=isolated) == expected

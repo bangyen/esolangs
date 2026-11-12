@@ -113,7 +113,7 @@ def _check_worker_proof_scale(image: Raster) -> None:
         assert not debugger.halted
         debugger.step()
     assert debugger.halted
-    assert debugger.result.steps == scaled.decision.commands
+    assert debugger.observation.steps == scaled.decision.commands
     assert _capture_observation(debugger.vm) == scaled.observation
     with pytest.raises(esolangs.ProgramError, match="generated for Piet"):
         termination_result_isolated(REFERENCE, explicit, "", 5)

@@ -16,11 +16,6 @@ SIGNATURES: dict[str, str] = json.loads(
 PUBLIC_MEMBERS = {
     esolangs.Catalog: {
         "languages",
-        "by_id",
-        "by_folded",
-        "by_boolean",
-        "runners",
-        "interpreters",
         "resolve",
         "bind",
         "with_language",
@@ -111,7 +106,7 @@ PUBLIC_MEMBERS = {
         "memory",
         "output",
         "ptr",
-        "result",
+        "observation",
         "run",
         "self_halts",
         "snapshot",

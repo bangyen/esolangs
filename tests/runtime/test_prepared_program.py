@@ -55,7 +55,7 @@ def _check_prepared_failures_retain_partial_observations():
         with pytest.raises(esolangs.InputExhaustedError) as caught:
             prepared.run(**options)
         assert caught.value.partial_output == "\x00"
-        observed = caught.value.execution
+        observed = caught.value.observation
         assert observed.output == "\x00"
         assert observed.input_reads == 0
         assert observed.input_past_end == 1
@@ -334,7 +334,7 @@ def _check_outcomes_are_the_internal_boundary(monkeypatch):
 
     fault = esolangs.HaltError("same fault", hint="retain this note")
     observed = esolangs.ExecutionResult("prefix", 1, 1, 0, steps=2)
-    fault.execution, fault.partial_output = observed, observed.output
+    fault.observation, fault.partial_output = observed, observed.output
     from esolangs.outcomes import _failed_outcome
 
     failed = _failed_outcome(fault)
@@ -349,4 +349,4 @@ def _check_outcomes_are_the_internal_boundary(monkeypatch):
     assert response.status == "limit"
     assert response.observation == esolangs.ExecutionResult("prefix", None, None, None)
     assert response.observation.completion is None
-    assert response.error.execution is None
+    assert response.error.observation is None

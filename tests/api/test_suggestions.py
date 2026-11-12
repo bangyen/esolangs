@@ -11,7 +11,7 @@ from esolangs.cli.hints import _did_you_mean
 from esolangs.registry import CATALOG, SUGGESTION_CUTOFF, canonical_id
 from tests.support.reference import REFERENCE
 
-_BY_ID = CATALOG.by_id
+_BY_ID = CATALOG._by_id
 
 
 class TestPackageEntryPoint:

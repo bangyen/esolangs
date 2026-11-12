@@ -160,12 +160,12 @@ for name in esolangs.list_languages():
     if debugger.steppable_to_answer:
         assert debugger.run(max_steps=100_000) == 'halted', name
         stepped += 1
-        observed = debugger.result
+        observed = debugger.observation
         assert observed.steps > 0, name
         assert observed == result._replace(steps=observed.steps), (
             name, observed, result)
         debugger.step()
-        assert debugger.result == observed, name
+        assert debugger.observation == observed, name
     else:
         periodic += 1
         cycle = result.completion.cycle
@@ -174,7 +174,7 @@ for name in esolangs.list_languages():
         for _ in range(steps):
             debugger.step()
         assert debugger.snapshot() == cycle.state, name
-        assert debugger.result.completion is None, name
+        assert debugger.observation.completion is None, name
     executed.add(name)
 assert generated == sum(lang.backend is not None for lang in LANGUAGES.values()) > 0
 assert executed == set(LANGUAGES)
@@ -204,7 +204,7 @@ with patch.object(_isolated.subprocess, 'Popen', guarded_popen):
             try:
                 esolangs.run(sys.argv[1], source, isolated=isolated, **options)
             except error_type as error:
-                assert error.execution == expected, (isolated, error.execution)
+                assert error.observation == expected, (isolated, error.observation)
                 assert error.partial_output == expected.output
             else:
                 raise AssertionError('failure witness completed')

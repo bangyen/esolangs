@@ -75,7 +75,7 @@ def check_phases():
                 )
                 assert str(caught) == marker
                 if route:
-                    seen = caught.execution
+                    seen = caught.observation
                     assert caught.partial_output == prior.output
                     assert seen is not None
                     checker.assert_exact(
@@ -111,7 +111,7 @@ def check_phases():
             assert len(writes) == before
             counts["writer_routes"] += 1
         checker.assert_exact(
-            debugger.result,
+            debugger.observation,
             checker.esolangs.ExecutionResult(
                 prior.output,
                 landed.cursor,
@@ -136,7 +136,7 @@ def check_phases():
             assert str(caught) == marker
             assert caught.partial_output == prior.output
             checker.assert_exact(
-                caught.execution,
+                caught.observation,
                 checker.esolangs.ExecutionResult(
                     prior.output, landed.cursor, landed.reads, landed.past_end, None
                 )._replace(steps=at - 1),

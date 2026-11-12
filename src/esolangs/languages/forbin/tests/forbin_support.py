@@ -85,7 +85,7 @@ def check_constructor_error_observations() -> None:
         if route == "debug":
             debugger = make_debugger("Forbin", artifact, stdin="")
             assert debugger.run(max_steps=64) == "halted"
-            return debugger.result
+            return debugger.observation
         isolated = route.startswith("isolated-")
         return esolangs.run(
             "Forbin",
@@ -110,7 +110,7 @@ def check_constructor_error_observations() -> None:
                 ) == (0, 0, "character")
                 if route == "native":
                     assert caught.value.partial_output == ""
-                    assert caught.value.execution is None
+                    assert caught.value.observation is None
                     assert (
                         ports[-1].getvalue(),
                         ports[-1].position(),
@@ -120,7 +120,7 @@ def check_constructor_error_observations() -> None:
                 else:
                     steps = 0 if name == "step-output-eof" and counted else None
                     assert caught.value.partial_output == output
-                    assert caught.value.execution == ExecutionResult(
+                    assert caught.value.observation == ExecutionResult(
                         output, 0, 0, 1, None, steps
                     )
             else:
@@ -135,11 +135,11 @@ def check_constructor_error_observations() -> None:
                 create("Forbin", artifact, stdin="")
             assert type(caught.value) is ProgramError
             assert caught.value.partial_output == ""
-            assert caught.value.execution is None
+            assert caught.value.observation is None
         with pytest.raises(ProgramError) as caught:
             esolangs.run("Forbin", artifact, max_steps=64)
         assert caught.value.partial_output == ""
-        assert caught.value.execution is None
+        assert caught.value.observation is None
     # A successful IO-free construction still has no completion observation.
     artifact = esolangs.ProgramArtifact("main { }", "Forbin")
     vm = make_vm("Forbin", artifact, stdin="λ")
@@ -160,7 +160,7 @@ def check_constructor_error_observations() -> None:
             make_vm("Forbin", artifact, stdin="λ")
         assert str(caught.value) == "preparation refusal"
         assert caught.value.partial_output == ""
-        assert caught.value.execution is None
+        assert caught.value.observation is None
     # A factory's existing truthful observation must not be replaced either.
     declared = []
 
@@ -169,10 +169,10 @@ def check_constructor_error_observations() -> None:
             port.print_str("A")
             error = ProgramError("reported refusal")
             error.partial_output = port.getvalue()
-            error.execution = ExecutionResult(
+            error.observation = ExecutionResult(
                 port.getvalue(), port.position(), port.reads, port.past_end
             )
-            declared.append(error.execution)
+            declared.append(error.observation)
             raise error
 
         return build
@@ -185,4 +185,4 @@ def check_constructor_error_observations() -> None:
         with pytest.raises(ProgramError) as caught:
             make_vm("Forbin", artifact)
         assert caught.value.partial_output == "A"
-        assert caught.value.execution is declared[0]
+        assert caught.value.observation is declared[0]

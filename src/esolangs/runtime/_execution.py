@@ -40,7 +40,7 @@ def interpreter_module(name: str, *, catalog: Catalog | None = None) -> ModuleTy
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    return importlib.import_module(catalog.interpreters[name])
+    return importlib.import_module(catalog._interpreters[name])  # noqa: SLF001
 
 
 @_capture_outcome
@@ -274,7 +274,7 @@ def interpreter_errors(
                 error.add_note(note)
         if error is not original and isinstance(original, EsolangError):
             error.partial_output = original.partial_output
-            error.execution = original.execution
+            error.observation = original.observation
         if isinstance(original, ValueError) and not any(
             note.startswith("hint:") for note in getattr(error, "__notes__", ())
         ):
@@ -283,7 +283,7 @@ def interpreter_errors(
         if io_obj is not None:
             written = io_obj.getvalue()
             error.partial_output = written
-            error.execution = ExecutionResult(
+            error.observation = ExecutionResult(
                 written, io_obj.position(), io_obj.reads, io_obj.past_end
             )
             if written:

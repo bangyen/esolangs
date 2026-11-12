@@ -204,12 +204,12 @@ def public(case, rows, *, isolated=False, cap=None):
         else:
             assert caught.bound == "max_steps"
         if constructor:
-            assert caught.execution is None
+            assert caught.observation is None
             assert caught.partial_output == ""
         else:
             assert caught.partial_output == row.output
             assert_exact(
-                caught.execution,
+                caught.observation,
                 esolangs.ExecutionResult(
                     row.output, row.cursor, row.reads, row.past_end, None
                 )._replace(steps=steps),
@@ -218,7 +218,7 @@ def public(case, rows, *, isolated=False, cap=None):
             type(caught).__name__,
             str(caught),
             caught.partial_output,
-            caught.execution,
+            caught.observation,
         )
     assert kind is None
     assert_exact(
@@ -240,7 +240,7 @@ def advance_machines(machines, row, successful, routes):
             assert type(caught) is error_type(row.error, route == 0)
             assert str(caught) == row.message
             if route:
-                seen = caught.execution
+                seen = caught.observation
                 assert caught.partial_output == row.output
                 assert seen is not None
                 assert_exact(
@@ -287,7 +287,7 @@ def check_case(
                 assert type(caught) is error_type(rows[0].error, route == 0)
                 assert str(caught) == rows[0].message
                 if route:
-                    assert caught.execution is None
+                    assert caught.observation is None
                     assert caught.partial_output == ""
             else:
                 raise AssertionError("invalid definitions read input or constructed")
@@ -406,7 +406,7 @@ def check_case(
             )
             if route == 2:
                 assert_exact(
-                    wrapped_machine.result,
+                    wrapped_machine.observation,
                     esolangs.ExecutionResult(
                         row.output,
                         row.cursor,

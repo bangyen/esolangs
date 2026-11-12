@@ -36,7 +36,7 @@ def test_timeout_retains_streamed_output() -> None:
         esolangs.run(REFERENCE, "+.[]", timeout=1, isolated=True)
     assert caught.value.partial_output == "\x01"
     assert esolangs.run(REFERENCE, "++.", isolated=True).output == "\x02"
-    assert caught.value.execution is None
+    assert caught.value.observation is None
 
 
 @pytest.mark.medium
@@ -46,7 +46,7 @@ def test_input_error_retains_counts_and_output() -> None:
     assert caught.value.reads == 0
     assert caught.value.supplied == 0
     assert caught.value.partial_output == "\x01"
-    assert caught.value.execution == ExecutionResult("\x01", 0, 0, 1)
+    assert caught.value.observation == ExecutionResult("\x01", 0, 0, 1)
 
 
 @pytest.mark.parametrize("timeout", [0, float("inf")])
@@ -69,7 +69,7 @@ def test_decode_missing_result_and_notes() -> None:
     with pytest.raises(esolangs.ProgramError) as caught:
         _decode(json.dumps(payload), expired=False)
     assert caught.value.__notes__ == ["row 1"]
-    assert caught.value.execution is None
+    assert caught.value.observation is None
 
     for text in ("\ud800\udfff", "\ud800", "\udfff", "\U000103ff"):
         packet = {
@@ -201,7 +201,7 @@ def test_decode_truncated_write_on_timeout() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         _decode('{"output": "done"}\n{"output": "unfinished', expired=True)
     assert caught.value.partial_output == "done"
-    assert caught.value.execution is None
+    assert caught.value.observation is None
 
 
 def test_cancellation_kills_and_reaps_child(monkeypatch) -> None:

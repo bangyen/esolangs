@@ -127,7 +127,9 @@ def _check_proof_read_failure() -> None:
         termination_result_isolated("Forþ", ",.,", "A", 5)
     assert local.value.partial_output == worker.value.partial_output == "A"
     assert (
-        local.value.execution == worker.value.execution == ExecutionResult("A", 1, 1, 1)
+        local.value.observation
+        == worker.value.observation
+        == ExecutionResult("A", 1, 1, 1)
     )
 
 

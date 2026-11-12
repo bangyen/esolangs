@@ -32,7 +32,7 @@ def test_steps_match_an_independently_driven_machine(source, isolated):
 def test_zero_budget_performs_no_command(isolated):
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         esolangs.run(REFERENCE, "+.", max_steps=0, isolated=isolated)
-    assert caught.value.execution == ExecutionResult("", 0, 0, 0, steps=0)
+    assert caught.value.observation == ExecutionResult("", 0, 0, 0, steps=0)
 
 
 @pytest.mark.parametrize("isolated", [False, True])

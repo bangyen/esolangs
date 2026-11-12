@@ -20,11 +20,11 @@ class Catalog:
     """Own a frozen declaration set; derived indexes share the same scope."""
 
     languages: Mapping[str, Language]
-    by_id: Mapping[str, str]
-    by_folded: Mapping[str, str]
-    by_boolean: Mapping[str, Language]
-    runners: Mapping[str, tuple[str, bool]]
-    interpreters: Mapping[str, str]
+    _by_id: Mapping[str, str]
+    _by_folded: Mapping[str, str]
+    _by_boolean: Mapping[str, Language]
+    _runners: Mapping[str, tuple[str, bool]]
+    _interpreters: Mapping[str, str]
 
     def __init__(self, declarations: Iterable[Language]) -> None:
         try:
@@ -51,16 +51,16 @@ class Catalog:
                     raise ArgumentError("catalog aliases must have one owner")
                 folded[key] = language.name
         object.__setattr__(self, "languages", MappingProxyType(languages))
-        object.__setattr__(self, "by_id", MappingProxyType(ids))
-        object.__setattr__(self, "by_folded", MappingProxyType(folded))
+        object.__setattr__(self, "_by_id", MappingProxyType(ids))
+        object.__setattr__(self, "_by_folded", MappingProxyType(folded))
         object.__setattr__(
             self,
-            "by_boolean",
+            "_by_boolean",
             MappingProxyType({lang.id: lang for lang in records if lang.has_backend}),
         )
         object.__setattr__(
             self,
-            "runners",
+            "_runners",
             MappingProxyType(
                 {
                     lang.name: (lang.runtime.interpreter, lang.runtime.split)
@@ -71,7 +71,7 @@ class Catalog:
         )
         object.__setattr__(
             self,
-            "interpreters",
+            "_interpreters",
             MappingProxyType(
                 {
                     lang.name: f"esolangs.languages.{lang.id}.interpreter"
@@ -116,26 +116,26 @@ class Catalog:
             )
         if name in self.languages:
             return name
-        match = self.by_folded.get(name.strip().casefold())
+        match = self._by_folded.get(name.strip().casefold())
         if match is not None:
             return match
-        match = self.by_id.get(canonical_id(name))
+        match = self._by_id.get(canonical_id(name))
         if match is not None:
             own = _symbols(match, *self.languages[match].aliases)
             if not _symbols(name) - own:
                 return match
         close = difflib.get_close_matches(
-            canonical_id(name), self.by_id, n=2, cutoff=SUGGESTION_CUTOFF
+            canonical_id(name), self._by_id, n=2, cutoff=SUGGESTION_CUTOFF
         )
         if not close:
             # A head of a long name is too far for difflib: "lol" scores 0.18
             # against lol_waht_i_cant_edit_talk_pages.  Suggest, never resolve:
             # a head unique today turns ambiguous when a language is added.
             head = canonical_id(name).replace("_", "")
-            starts = [i for i in self.by_id if i.replace("_", "").startswith(head)]
+            starts = [i for i in self._by_id if i.replace("_", "").startswith(head)]
             close = starts if len(head) >= 3 and len(starts) <= 2 else []
         raise UnknownLanguageError(
-            name, suggestions=tuple(self.by_id[c] for c in close)
+            name, suggestions=tuple(self._by_id[c] for c in close)
         )
 
 

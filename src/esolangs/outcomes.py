@@ -86,7 +86,7 @@ class ExecutionOutcome:
 
 def _failed_outcome(error: EsolangError) -> ExecutionOutcome:
     """Retain the original error and its unfinished execution observation."""
-    observation = error.execution
+    observation = error.observation
     if observation is None:
         observation = ExecutionResult(error.partial_output, None, None, None)
     return ExecutionOutcome(_failure_status(error), observation, error)
