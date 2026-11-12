@@ -38,9 +38,9 @@ _ORACLE = re.compile(
     r"oracle|accounting|workspace_(views|checks)|_model\.py$"
     r"|resource_checks|capture_comparison"
 )
-#: Oracle lines when the line budget returned (user, 2026-11-11): 2026-11-08
+#: Oracle line ceiling (user, 2026-11-11); lower it as oracles shrink. 2026-11-08
 #: dropped the tests < src rule; oracles then grew 17k lines, the rest 6k.
-MAX_ORACLE_LINES = 37_000
+MAX_ORACLE_LINES = 35_700
 
 
 def _category(name: str) -> str:

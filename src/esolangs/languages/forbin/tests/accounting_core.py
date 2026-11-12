@@ -1,16 +1,12 @@
 """Root-only finite Forbin workspace preflight; exact cycle wire remains pending."""
 
 # Actual private records/callbacks are deliberate observer and corruption controls.
-# ruff: noqa: N806, PT017
-from copy import deepcopy
+# ruff: noqa: N806
 from io import StringIO
 from types import MappingProxyType
 from typing import NamedTuple
-from unittest.mock import patch
 
-from .accounting_grammar import Reader
-from .accounting_model import Closure, Machine, Port
-from .accounting_projections import io_blueprint
+from .accounting_model import Closure
 
 
 class Context(NamedTuple):
@@ -367,270 +363,57 @@ def check_state(actual, expected, code, scope_types):
     return len(pending)
 
 
-def predict(record):
-    """Finish independent bounded prediction before native construction."""
-    program, port = Reader(record["source"]).program(), Port(record["stdin"])
-    machine, rows = None, []
-    try:
-        machine = Machine(program, port)
-    except EOFError:
-        exact(port.output, record["output"])
-        return program, [Row(None, deepcopy(port), "EOFError")]
-    rows.append(Row(deepcopy(machine), deepcopy(port), None))
-    for _ in range(200):
-        if machine.halted:
-            break
-        try:
-            machine.step()
-        except EOFError:
-            rows.append(Row(deepcopy(machine), deepcopy(port), "EOFError"))
-            break
-        rows.append(Row(deepcopy(machine), deepcopy(port), None))
-    else:
-        raise AssertionError(("unproved finite fixture", record))
-    if machine.halted:
-        for _ in range(3):
-            machine.step()
-            rows.append(Row(deepcopy(machine), deepcopy(port), None))
-    exact(port.output, record["output"])
-    return program, rows
-
-
-def run(records, route, context):
-    """Run one raw/prepared leaf; context is bound after guarded target import."""
-    native, ScriptedIO, Variant, Snapshot, Model, InputEOF, Written, Oracle = context
-    from esolangs.languages.forbin.interpreter._parse import _Function
-    from esolangs.languages.forbin.interpreter._scope import (
-        _Closure,
-        _Frame,
-        _Scope,
-        _State,
+def io_blueprint(port):
+    """Replay actual independent IO effects into all ScriptedIO storage fields."""
+    output, cursor, reads, past, character, newline = "", 0, 0, 0, False, False
+    for event in port.events:
+        kind = event[0]
+        if kind == "read":
+            byte = event[1]
+            assert cursor < len(port.text)
+            assert ord(port.text[cursor]) == byte
+            cursor += 1
+            reads += 1
+            character = True
+            newline = False
+        elif kind == "eof":
+            assert cursor == len(port.text)
+            character = True
+            past += 1
+        elif kind == "write":
+            char = event[1]
+            assert type(char) is str
+            assert len(char) == 1
+            output += char
+            newline = char != "\n"
+        elif kind == "refuse_write":
+            char, partial = event[1:]
+            assert type(char) is str
+            assert len(char) == 1
+            assert type(partial) is bool
+            if partial:
+                output += char
+            # Refusal is inside _write: outer print_char has not committed its flag.
+        elif kind != "refuse_read":
+            raise ValueError(("unknown independent IO event", event))
+    assert (output, cursor, reads, past, newline) == (
+        port.output,
+        port.position,
+        port.reads,
+        port.past_end,
+        port.newline,
     )
-
-    assert route in ("raw", "prepare")
-    schema = Model(
-        "forbin-v1",
-        ("frames", "scopes", "input_cursor", "buffered_bits", "input_reads"),
-    )
-    details, all_held = [], []
-    for record in records:
-        program, rows = predict(record)
-        if "name" in record:
-            exact(rows[-1].error, record.get("error"))
-        port = ScriptedIO(record["stdin"])
-        raw, constructor_error = None, None
-        try:
-            raw = (
-                native._Machine(record["source"], port)
-                if route == "raw"
-                else native.prepare_machine(record["source"], {})(port)
-            )
-        except InputEOF as error:
-            assert type(error) is InputEOF
-            constructor_error = "EOFError"
-        if rows[0].machine is None:
-            assert constructor_error == rows[0].error
-            check_io(port, rows[0].port)
-            details.append({"boundaries": 0, "constructor_error": constructor_error})
-            continue
-        assert constructor_error is None
-        assert raw is not None
-        code = Code(_Function)
-        exact(list(raw.globals), [function.name for function in program.functions])
-        for function in program.functions:
-            code.function(raw.globals[function.name], function)
-        meter, oracle, held = None, None, []
-        reachable = 0
-        for index, row in enumerate(rows):
-            error_kind = None
-            if index:
-                try:
-                    raw.step()
-                except InputEOF as error:
-                    assert type(error) is InputEOF
-                    error_kind = "EOFError"
-            exact(error_kind, row.error)
-            expected = row.machine
-            code.checked.clear()
-            assert type(raw.globals) is MappingProxyType
-            exact(list(raw.globals), [function.name for function in program.functions])
-            for function in program.functions:
-                code.function(raw.globals[function.name], function)
-            assert set(vars(raw)) == {
-                "io",
-                "_length",
-                "_serials",
-                "_next_serial",
-                "globals",
-                "_global_scope",
-                "state",
-            }
-            assert raw.io is port
-            exact(raw._length, len(record["source"]))
-            # This observer deliberately never invokes snapshot/_render.
-            assert raw._serials == {}
-            assert type(raw._serials) is dict
-            exact(raw._next_serial, 0)
-            exact(raw.halted, expected.halted)
-            reachable = max(
-                reachable,
-                check_state(
-                    raw, expected, code, NativeTypes(_State, _Frame, _Scope, _Closure)
-                ),
-            )
-            check_io(port, row.port)
-            exact(
-                raw.ip,
-                tuple(frame.position for frame in expected.state.frames)
-                or (len(record["source"]),),
-            )
-            wanted_memory = (
-                []
-                if expected.halted
-                else [
-                    v
-                    for v in expected.state.environments[
-                        expected.state.frames[-1].environment
-                    ].values.values()
-                    if type(v) is int
-                ]
-            )
-            exact(raw.memory, wanted_memory)
-            wanted = Snapshot(schema, expected_parts(expected.parts(), Variant))
-            capture = raw.workspace_snapshot()
-            assert type(capture) is Snapshot
-            assert type(capture.model) is Model
-            exact(capture.model.name, schema.name)
-            exact(capture.model.components, schema.components)
-            check_parts(capture.parts, wanted.parts, Variant)
-            held.append(Held(capture, hash(capture)))
-            assert all(hash(item.capture) == item.digest for item in held)
-            if meter is None:
-                meter, oracle = Written(capture), Oracle(wanted)
-            else:
-                meter.sample(capture)
-                oracle.sample(wanted)
-            exact(meter.bits, oracle.bits)
-            exact(meter._written, oracle.written)
-            exact(
-                meter._peaks,
-                [
-                    peak if written else 0
-                    for peak, written in zip(oracle.peaks, oracle.written, strict=True)
-                ],
-            )
-        all_held.extend(held)
-        assert all(hash(item.capture) == item.digest for item in all_held)
-        details.append(
-            {
-                "boundaries": len(rows),
-                "constructor_error": None,
-                "reachable_environments": reachable,
-                "peak_bits": oracle.bits,
-                "written": oracle.written,
-                "populated_closures": len(code.closures),
-                "function_identities": len(code.by_identity),
-            }
-        )
     return {
-        "route": route,
-        "records": len(records),
-        "details": details,
-        "raw_cycle_wire_verified": False,
-        "all78_owners": False,
-        "accounting_closure": False,
-    }
-
-
-def controls(context, anchor):
-    """Natural populated state and actual-producer/code/IO mutation positives."""
-    native, scripted, _variant, snapshot, _, _, _, _ = context
-    _, rows = predict(anchor)
-    initial = rows[0].machine.parts()
-    assert all(
-        any(row.machine.parts()[field] != initial[field] for row in rows)
-        for field in range(5)
-    )
-    positives, erasures, io_controls, readonly_controls = [], 0, 0, 0
-    for route in ("raw", "prepare"):
-        positive = run([anchor], route, context)
-        assert positive["details"][0]["populated_closures"] > 0
-        assert positive["details"][0]["function_identities"] > 1
-        assert positive["details"][0]["written"] == [True] * 5
-        positives.append(positive)
-        original = native._Machine.workspace_snapshot
-        for field in range(5):
-            saved = []
-
-            def frozen_part(machine, field=field, saved=saved, original=original):
-                captured = original(machine)
-                if not saved:
-                    saved.append(captured.parts[field])
-                parts = list(captured.parts)
-                parts[field] = saved[0]
-                return snapshot(captured.model, tuple(parts))
-
-            with patch.object(native._Machine, "workspace_snapshot", frozen_part):
-                try:
-                    run([anchor], route, context)
-                except AssertionError:
-                    erasures += 1
-                else:
-                    raise AssertionError(
-                        ("semantic capture control did not fire", field)
-                    )
-
-        source = "main { x=(in 0); }"
-        port = scripted("A")
-        raw = (
-            native._Machine(source, port)
-            if route == "raw"
-            else native.prepare_machine(source, {})(port)
-        )
-        expected = Machine(Reader(source).program(), Port("A"))
-        raw.step()
-        expected.step()
-        check_io(port, expected.port)
-        saved_reads = port._reads
-        exact(saved_reads, 1)
-        port._reads = True
-        try:
-            check_io(port, expected.port)
-        except AssertionError:
-            io_controls += 1
-        else:
-            raise AssertionError("bool/int IO corruption was accepted")
-        finally:
-            port._reads = saved_reads
-        check_io(port, expected.port)
-
-        source = "main { out 0,0,0,0,0,0,0,0; }"
-        port = scripted("")
-        raw = (
-            native._Machine(source, port)
-            if route == "raw"
-            else native.prepare_machine(source, {})(port)
-        )
-        expected = Reader(source).program()
-        code = Code(type(raw.globals["main"]))
-        code.function(raw.globals["main"], expected.functions[0])
-        raw.globals["main"].body[0][2][-1] = ("lit", 1)
-        code.checked.clear()
-        try:
-            code.function(raw.globals["main"], expected.functions[0])
-        except AssertionError:
-            readonly_controls += 1
-        else:
-            raise AssertionError("readonly future mutation was accepted")
-        raw.step()
-        exact(port.getvalue(), "\x01")
-    exact((erasures, io_controls, readonly_controls), (10, 2, 2))
-    return {
-        "positive_trajectories": positives,
-        "actual_capture_erasures": erasures,
-        "typed_io_controls": io_controls,
-        "readonly_future_controls": readonly_controls,
-        "raw_cycle_wire_verified": False,
-        "all78_owners": False,
-        "accounting_closure": False,
+        "_supplied": port.text.count("\n")
+        + int(bool(port.text) and not port.text.endswith("\n")),
+        "_source": port.text,
+        "_offset": cursor,
+        "_line_reads": 0,
+        "_character_reads": character,
+        "_past_end": past,
+        "_pending": "",
+        "_reads": reads,
+        "_consumed": cursor,
+        "_newline": newline,
+        "_buffer": (output, "\n", len(output), None),
     }

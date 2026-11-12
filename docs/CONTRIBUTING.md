@@ -48,7 +48,7 @@ CI; `test-full` runs them locally. Delete unused helpers or move test-only
 helpers under `tests/`. Tests enforce a 1,200-line file cap, fewer than
 10,000 non-contract cases, and test code below its source: `tests/` +
 `src/**/tests` < `src`, `tests/tooling` < `scripts`. Per-language oracle and
-accounting modules count apart under a fixed 37,000-line ceiling.
+accounting modules count apart under a ceiling that only drops.
 
 Tests have scheduling bands: fast (default), medium, slow and weekly. Every
 run retains hard hang deadlines. `just test-costs` checks the existing 1 s

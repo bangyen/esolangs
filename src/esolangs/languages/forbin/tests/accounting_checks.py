@@ -26,4 +26,4 @@ def check_accounting_forbin():
     records = cases()
     assert len(records) == 343
     for record in records:
-        trace(record, "raw", context)
+        trace(record, context)
