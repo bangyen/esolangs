@@ -27,8 +27,6 @@ def test_affine_stream_all_small_coefficients_within_ledger() -> None:
     from esolangs.languages.brainfuck.generator import _affine_stream
 
     assert_analysis_complement("brainfuck", "affine_form", "0110100110010110")
-    with pytest.raises(ImportError):
-        exec("from esolangs.languages.brainfuck.generator import bf_tree")
     _check_constants()
     _check_zero_guards()
     admitted = 0

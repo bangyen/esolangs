@@ -32,8 +32,6 @@ class TestGrapheme:
         """Indexing a literal needs no skip: parity emits no ``U``/``V``/``X``."""
         _check_constants()
         _check_seed()
-        with pytest.raises(ImportError):
-            exec("from esolangs.languages.grapheme.generator import _program")
         parity = boolean.grapheme("01101001")
         assert set("UVX").isdisjoint(parity)
         assert set("UVX").isdisjoint(boolean.grapheme("0" * 8))

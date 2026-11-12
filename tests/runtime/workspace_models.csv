@@ -1,0 +1,118 @@
+language,boolean_backend,workspace,workspace_model
+///,yes,owned-adapter,slashes-v1
+1 + i,yes,owned-adapter,one-i-v2
+3x,yes,owned-adapter,three-x-v1
+6-5,yes,owned-adapter,six-five-v1
+A Painter Ant,yes,owned-adapter,a-painter-ant-v2
+ABCDirection,yes,owned-adapter,abcdirection-v1
+AddSubJump,yes,owned-adapter,addsubjump-v1
+Algebraic Programming Language,yes,owned-adapter,algebraic-programming-language-v1
+Alight,yes,owned-adapter,alight-v1
+Aprknia,yes,owned-adapter,aprknia-v1
+ArrowQueue,yes,owned-adapter,arrowqueue-v2
+Ascenic,yes,owned-adapter,ascenic-v1
+B-tapemark,yes,owned-adapter,b-tapemark-v1
+Back,yes,owned-adapter,back-v2
+Balik,yes,owned-adapter,balik-v1
+BASICER,yes,owned-adapter,basicer-v1
+Basicfuck,yes,owned-adapter,basicfuck-v1
+Befunge,yes,owned-adapter,befunge-v1
+Between,yes,owned-adapter,between-v1
+BFStack,yes,owned-adapter,bfstack-v1
+Bitdeque,yes,owned-adapter,bitdeque-v2
+Bitwise Cyclic Tag,yes,owned-adapter,bitwise-cyclic-tag-v2
+bit~,yes,owned-adapter,bit-tilde-v1
+Bleh,yes,owned-adapter,bleh-v1
+Blindfolded Arithmetic,yes,owned-adapter,blindfolded-arithmetic-v1
+Boolfuck,yes,inherited-adapter,boolfuck-v1
+brainfuck,yes,owned-adapter,brainfuck-v1
+BrainIf,yes,owned-adapter,brainif-v1
+Caballo,yes,owned-adapter,caballo-v1
+CARP,yes,owned-adapter,carp-v1
+Chicken,yes,owned-adapter,chicken-v2
+Circlefuck,yes,owned-adapter,circlefuck-v1
+Circuit Diagram,yes,owned-adapter,circuit-diagram-v1
+Clockwise,yes,owned-adapter,clockwise-v1
+Codesick,yes,owned-adapter,codesick-v1
+Collatz Multiverse,yes,owned-adapter,collatz-multiverse-v1
+Container,yes,owned-adapter,container-v1
+CreativeScript v2,yes,owned-adapter,creativescript-v2-v1
+Crement,yes,owned-adapter,crement-v1
+CV(N)(C),yes,owned-adapter,cvnc-v1
+Cyclic tag,yes,owned-adapter,cyclic-tag-v1
+Deadfish,no,owned-adapter,deadfish-v1
+Decleq,yes,owned-adapter,decleq-v1
+Dig,yes,owned-adapter,dig-v2
+Dimensional,yes,owned-adapter,dimensional-v1
+DINAC,yes,owned-adapter,dinac-v1
+EGL,yes,owned-adapter,egl-v1
+Eval,yes,owned-adapter,eval-v1
+Fackward,yes,owned-adapter,fackward-v1
+FALSE,yes,owned-adapter,false-v1
+Fargo,yes,owned-adapter,fargo-v1
+Fish,yes,owned-adapter,fish-v1
+Flowchart,yes,owned-adapter,flowchart-v1
+Forbin,yes,owned-adapter,forbin-v1
+Forþ,yes,owned-adapter,for-thorn-v1
+FRACTRAN,yes,owned-adapter,fractran-v1
+Freestajlo,yes,owned-adapter,freestajlo-v1
+Grapheme,yes,owned-adapter,grapheme-v1
+Home Row,yes,owned-adapter,home-row-v1
+Hot,yes,owned-adapter,hot-v1
+HQ9+,no,owned-adapter,hq9-v1
+HQ9+ with headers,yes,owned-adapter,hq9-with-headers-v1
+IEBEL,yes,owned-adapter,iebel-v1
+Inject,yes,owned-adapter,inject-v1
+INTERCAL,yes,owned-adapter,intercal-v1
+Interprogck8,yes,owned-adapter,interprogck8-v1
+Kiss,yes,owned-adapter,kiss-v1
+LaserFuck,yes,owned-adapter,laserfuck-v2
+Line,yes,owned-adapter,line-v1
+lol waht i cant edit talk pages,yes,owned-adapter,lol-waht-i-cant-edit-talk-pages-v1
+Malbolge,yes,owned-adapter,malbolge-v1
+Minsky Swap,yes,owned-adapter,minsky-swap-v2
+Modulous,yes,owned-adapter,modulous-v1
+Monotonic Boolfuck,yes,inherited-adapter,monotonic-boolfuck-v1
+Movesum,yes,owned-adapter,movesum-v1
+Nandypants,yes,owned-adapter,nandypants-v1
+Nope.,no,owned-adapter,nope-v1
+NOR machine,yes,owned-adapter,nor-machine-v1
+NQ,yes,owned-adapter,nq-v1
+Object disoriented,yes,owned-adapter,object-disoriented-v1
+Packlang,yes,owned-adapter,packlang-v1
+Painfuck,yes,owned-adapter,painfuck-v1
+Parenthesys,yes,owned-adapter,parenthesys-v1
+Piet,yes,owned-adapter,piet-v1
+Pilas,yes,owned-adapter,pilas-v1
+Pointless,yes,owned-adapter,pointless-v1
+Qoibl,yes,owned-adapter,qoibl-v1
+Qrain,yes,owned-adapter,qrain-v1
+Quassaunt,yes,owned-adapter,quassaunt-v1
+RAM0,yes,owned-adapter,ram0-v2
+REFRACTRAN,yes,owned-adapter,refractran-v1
+Retrograde,yes,owned-adapter,retrograde-v1
+ROTfuck,yes,owned-adapter,rotfuck-v1
+Rubic,yes,owned-adapter,rubic-v1
+S*bleq,yes,owned-adapter,s-bleq-v1
+SendStuff,yes,owned-adapter,sendstuff-v1
+Shakespeare,yes,owned-adapter,shakespeare-v1
+SLOW ACV MAMMALIAN,yes,owned-adapter,slow-acv-mammalian-v1
+Smallfuck,yes,owned-adapter,smallfuck-v2
+Smu,yes,owned-adapter,smu-v1
+Sonata,yes,owned-adapter,sonata-v1
+SStack,yes,owned-adapter,sstack-v1
+Stisp,yes,owned-adapter,stisp-v1
+Streetcode,yes,owned-adapter,streetcode-v1
+Subleq,yes,owned-adapter,subleq-v1
+Suffolk,yes,owned-adapter,suffolk-v1
+Super SNUSP,yes,owned-adapter,super-snusp-v1
+SwitchCase,yes,owned-adapter,switchcase-v1
+Taglate,yes,owned-adapter,taglate-v1
+thisthat,yes,owned-adapter,thisthat-v1
+Thue,yes,owned-adapter,thue-v1
+Unary,yes,inherited-adapter,brainfuck-v1
+Underload,yes,owned-adapter,underload-v1
+Unlambda,yes,owned-adapter,unlambda-v1
+Unsquare,yes,owned-adapter,unsquare-v1
+What!?,yes,owned-adapter,what-v1
+Whitespace,yes,owned-adapter,whitespace-v1

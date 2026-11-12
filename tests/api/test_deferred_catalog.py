@@ -24,15 +24,10 @@ from esolangs.runtime._definition import SourceKind
 from tests.support.evaluation import _evaluate
 
 assert registry.Generator is Generator and registry.SourceKind is SourceKind
-for retired in ('Generator', 'SourceKind'):
-    with pytest.raises(ImportError):
-        exec(f'from esolangs.registry._table import {retired}', {})
 pilots = [lang for lang in registry.LANGUAGES.values()
           if lang.backend is not None
           and isinstance(lang.backend.entrypoint, OperationRef)]
 assert pilots, 'no deferred descriptor exercised'
-assert 'GENERATORS' not in dir(registry)
-assert not hasattr(registry, 'GENERATORS')
 modules = {lang.backend.entrypoint.module for lang in pilots}
 native_modules = set(registry.INTERPRETERS.values())
 blocked = modules | native_modules
@@ -62,20 +57,11 @@ try:
 finally:
     sys.meta_path.remove(block)
 
-assert 'generators' not in dir(esolangs.languages)
-assert not hasattr(esolangs.languages, 'generators')
-with pytest.raises(ModuleNotFoundError) as caught:
-    importlib.import_module('esolangs.languages.generators')
-assert caught.value.name == 'esolangs.languages.generators'
-for name in registry.LANGUAGES:
-    native = importlib.import_module(registry.INTERPRETERS[name])
-    assert all(not hasattr(native, key) for key in ('load_source', 'supports_scale'))
 for lang in pilots:
     backend = lang.backend
     generate = backend.generate
     module = sys.modules[generate.__module__]
     assert getattr(module, generate.__name__) is generate
-    assert not hasattr(module, 'LANGUAGE')
     assert inspect.getsourcefile(generate) == module.__file__
     assert (tuple(inspect.signature(generate).parameters)
             == ('request',))

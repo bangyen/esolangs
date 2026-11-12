@@ -272,7 +272,7 @@ def test_an_invalid_owned_adapter_cannot_fall_back(monkeypatch):
 
 
 def _declared_boolean_models():
-    ledger = Path(__file__).resolve().parents[2] / "docs/migration-status.csv"
+    ledger = Path(__file__).with_name("workspace_models.csv")
     with ledger.open() as source:
         rows = list(csv.DictReader(source))
     assert {row["language"] for row in rows} == LANGUAGES.keys()

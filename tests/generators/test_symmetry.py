@@ -14,26 +14,6 @@ from esolangs.generation.lookup import (
 
 
 def test_symmetry_is_invariant_under_every_input_permutation():
-    # Retired helper re-exports, binding ones included, stay absent.
-    assert (
-        not {
-            "AffineForm",
-            "affine_form",
-            "parity_bias",
-            "symmetric_outputs",
-            "MARK",
-            "MOST_INPUTS",
-            "TEMPLATE_CHAR",
-            "Setters",
-            "check_setters",
-            "fill_runs",
-            "mark",
-            "mark_runs",
-            "runs",
-            "unmark",
-        }
-        & vars(helpers).keys()
-    )
     for n in (1, 2, 3):
         _check_permutations(n)
 

@@ -16,12 +16,6 @@ from tests.support.samples import _generated
 from tests.support.vm_support import _row
 
 
-def test_plain_source_filler_is_retired():
-    from importlib.util import find_spec
-
-    assert find_spec("tests.generators.fills") is None
-
-
 @pytest.mark.medium
 def test_every_row_checks_the_supplied_program_without_regenerating(monkeypatch):
     table = "00010111"

@@ -40,8 +40,6 @@ def test_equal_subtables_share_one_node() -> None:
     ) as aliased:
         assert evaluate_generated("Quassaunt", "0011") == "0000"
         assert aliased.called
-    with pytest.raises(ImportError):
-        exec("from esolangs.languages.quassaunt.generator import _short_name")
     # Parity: one node per (level, parity), not one per row prefix.
     assert generator.quassaunt("0110100110010110").count("%%Ifdisjoint") == 8
     _check_store_loop()

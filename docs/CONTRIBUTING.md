@@ -173,7 +173,9 @@ Start from `src/esolangs/runtime/_template.py`. Every interpreter:
   (`grapheme/interpreter.py`).
   Choose backing storage per interpreter. Require equivalent traces, isolated
   captures and resource peaks, plus native, cycle-snapshot and accounting
-  timings under the existing gates; see the [storage decision](migration-ledger.md).
+  timings under the existing 0.9 gate: Brainfuck's mutable tape reached 2.38x
+  native but 0.54x with cycle snapshots, Boolfuck's immutable set the reverse
+  (3.74x / 0.47x), so both keep their stores.
 - Follows explicit spec rules. Examples resolve omissions only consistently
   with those rules; internal consistency does not establish author intent.
   Record contradictions, justify interpretations of conflicting rules, and
