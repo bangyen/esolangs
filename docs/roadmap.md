@@ -71,6 +71,7 @@ Next experiments; budgets are wall time, not permission for an unpriced search.
 | --- | --- | --- | --- |
 | Unreached code | Triage new gaps from the weekly scan; the current baseline records invariant-backed unreachable arms | Executed witness, invariant, or byte-identical removal; confirm scoped gaps against whole-tree coverage before updating the baseline | 60 s per scoped scan; price whole-tree coverage separately |
 | Timing regressions | Inspect weekly environment-matched timing report | Reproduce persistent increases locally before changing code | Existing weekly sweep; no extra generation runs |
+| Ledger growth classes | Split the scaling class into evidence (proved, measured, lower bound) and growth (linear, T log T); 6-5's "time n log" qualifies generation time, not size | `docs/proofs/index.md` regenerates with both columns and the deep linearity, execution and workspace bands still pass; decide Unary's class and the unused `open` | Half a day; no new proof runs |
 
 A removal must leave the generated corpus byte-identical, including tiled,
 constant and ignored-input tables. The completed constant-table audit is in
