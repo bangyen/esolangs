@@ -1,4 +1,4 @@
-"""Cap files and keep the suite under its case-count budget."""
+"""Cap files, keep tests below their sources, and keep the suite under budget."""
 
 import pathlib
 import re
@@ -29,6 +29,57 @@ def test_no_file_is_over_the_cap() -> None:
     """A file over the cap must be split."""
     over = {name: lines for name, lines in _sizes().items() if lines > MAX_LINES}
     assert not over, f"over {MAX_LINES} lines: {over}. Split the file."
+
+
+#: A per-language helper module under ``src/**/tests`` with a name like this
+#: is an independent oracle or accounting model: migration-acceptance evidence
+#: with its own ceiling, not regression tests.  ``test_*`` files never match.
+_ORACLE = re.compile(
+    r"oracle|accounting|workspace_(views|checks)|_model\.py$"
+    r"|resource_checks|capture_comparison"
+)
+#: Oracle lines when the line budget returned (user, 2026-11-11): 2026-11-08
+#: dropped the tests < src rule; oracles then grew 17k lines, the rest 6k.
+MAX_ORACLE_LINES = 37_000
+
+
+def _category(name: str) -> str:
+    """Return which line budget the repo-relative ``name`` counts toward."""
+    parts = name.split("/")
+    if parts[0] == "scripts":
+        return "scripts"
+    if name.startswith("tests/tooling/"):
+        return "tooling"
+    if parts[0] == "src" and "tests" not in parts:
+        return "source"
+    if (
+        parts[0] == "src"
+        and not parts[-1].startswith("test_")
+        and _ORACLE.search(parts[-1])
+    ):
+        return "oracle"
+    return "tests"
+
+
+def test_tests_stay_below_their_sources() -> None:
+    """Test code stays below the code it tests; oracles have their own ceiling.
+
+    ``tests/`` + ``src/**/tests`` < ``src``, and ``tests/tooling`` < ``scripts``.
+    """
+    lines: dict[str, int] = defaultdict(int)
+    for name, count in _sizes().items():
+        lines[_category(name)] += count
+    assert lines["tests"] > 10_000, "test files were not found"
+    assert lines["oracle"] > 1_000, "oracle files were not found"
+    assert lines["tests"] < lines["source"], (
+        f"tests: {lines['tests']} lines, src: {lines['source']}; prune, don't offset"
+    )
+    assert lines["oracle"] < MAX_ORACLE_LINES, (
+        f"oracles: {lines['oracle']} lines, ceiling {MAX_ORACLE_LINES}; condense"
+    )
+    assert 0 < lines["tooling"] < lines["scripts"], (
+        f"tests/tooling: {lines['tooling']}, scripts: {lines['scripts']}"
+    )
 
 
 #: Collected tests outside the registry contracts (user budget, 2026-10-05).

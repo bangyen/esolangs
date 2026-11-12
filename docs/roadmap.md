@@ -68,9 +68,8 @@ check or weakening a contract.
 The earlier incremental migrations met their scoped acceptance criteria, not a repository-wide
 compatibility-removal goal. Independent descriptors cover all 117 languages;
 artifacts, shared results, construction analyses, structured evidence and semantic
-accounting are integrated at differing scopes. File-size, case-count, duration
-and purity gates remain in force; regression coverage needs no test/source
-line-ratio offset.
+accounting are integrated at differing scopes. Existing line, case, duration and
+purity gates remain in force.
 
 Finish the rollouts below, then delete their legacy API, import and protocol
 adapters. Price each batch within the standing compute budget. Review active
@@ -136,8 +135,8 @@ require a versioned cutover and caller migration; moving adapters into
 Remaining closure work (track evidence in the ledger and CSV, not declarations alone):
 
 Prioritize concrete failures, then pending runtimes with complex state,
-randomness, finalization, dialects or worker transport. Add focused regressions;
-avoid unrelated refactors solely to offset test lines. Reuse acceptance evidence
+randomness, finalization, dialects or worker transport. Add focused regressions
+within the line budgets. Reuse acceptance evidence
 only where source hashes and scope still match. Validate one integrated wheel
 through API/CLI generation, binding, persistence, execution and failure routes
 on Python 3.12–3.15. Keep lower-priority gaps explicit; priority alone closes no row.
