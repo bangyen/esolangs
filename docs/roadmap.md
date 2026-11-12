@@ -95,10 +95,19 @@ history at `f35aa4023`.
   non-product or non-uniform relations, unpriced, or a term
   exhibiting the contrary.  See
   [limitations](limitations.md#searches).
-- **Wiki candidate screening:** continue the 2026-11-01 API screen: 2,537
-  language pages outside `Implemented` and `Unimplemented`, 2,248 after the
-  interpreter-link filter. Refresh categories and specs for the next batch.
-  Missing links do not establish first-implementation eligibility: check
-  public implementations, fixed core semantics and an executed loop-less
-  O(T) Boolean construction under [curation](limitations.md#curation).
-  Record candidates and rejection reasons.
+- **Wiki candidate screening:** the 2026-11-12 refresh has 2,555 language
+  pages outside `Implemented` and `Unimplemented`; a screen of 803 left ten
+  candidates, none run through an interpreter yet.
+  - *Shortlist:* Bifunge and BracketOnly (each passed in a scratch
+    simulator); Help., Onecode (Fergusq), ALEFL, NB, Nybbleist and
+    GolferDream (XOR hand-traced); Flump (input encoding unstated);
+    Portable Minsky Machine Notation (ais523 wrote it as a compiler target
+    in 2015, so an outside implementation is likely; check first).
+  - *Unscreened:* 277 parked pages, 629 flagged for review and 835 removed
+    by a keyword prefilter (under 800 characters, a joke or stub template,
+    no output or branch vocabulary, or a new page linking an implementation).
+  - *Admission:* missing links do not establish first-implementation
+    eligibility: check public implementations, fixed core semantics and an
+    executed loop-less O(T) Boolean construction under
+    [curation](limitations.md#curation). Record candidates and rejection
+    reasons.
