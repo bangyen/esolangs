@@ -33,7 +33,7 @@ def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
     path = tmp_path / "source"
     if gzip and esolangs.describe(name)["source_kind"] == "raster":
         with pytest.raises(esolangs.ProgramError, match="rasters use PNG"):
-            esolangs.save_program(program, path, gzip=True)
+            esolangs.save_program(name, program, path, gzip=True)
         assert not path.exists()
         return
     inputs = len(table).bit_length() - 1
@@ -53,14 +53,14 @@ def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in reversed(range(inputs))]
             esolangs.save_program(
-                esolangs.instantiate(name, restored, bits), path, gzip=gzip
+                name, esolangs.instantiate(name, restored, bits), path, gzip=gzip
             )
             loaded = esolangs.Language(name).from_file(
                 path, settings=program.settings, normalize=True
             )
             assert answer(loaded, "", 30) == expected
         return
-    esolangs.save_program(program, path, gzip=gzip)
+    esolangs.save_program(name, program, path, gzip=gzip)
     assert _evaluate(name, path, inputs=inputs) == table
 
 

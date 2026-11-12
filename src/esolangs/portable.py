@@ -34,6 +34,7 @@ _FORMAT = "esolangs.program"
 
 
 def save_program(
+    language: str,
     program: Program | Artifact,
     path: str | PathLike[str],
     *,
@@ -53,8 +54,10 @@ def save_program(
     preserves dialect settings and template setters.
 
     Raises:
+        UnknownLanguageError: ``language`` is not registered.
         ArgumentError: ``gzip`` or ``normalize`` is not a Boolean flag.
-        ProgramError: The source cannot be encoded or the file cannot be written.
+        ProgramError: The record belongs to another language, or the source
+            cannot be encoded or the file cannot be written.
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
     from esolangs.registry._catalog import get_catalog
@@ -64,14 +67,19 @@ def save_program(
         raise ArgumentError("gzip must be a boolean")
     if type(normalize) is not bool:
         raise ArgumentError("normalize must be a boolean")
+    from esolangs.operations.source import check_origin
+
+    # The language decides the file terminator and PNG metadata; without it,
+    # normalize appended "\n" even where a trailing newline is code.
+    origin = catalog.resolve(language)
     try:
         record = (
             program
             if isinstance(program, (ProgramArtifact, TemplateArtifact))
             else None
         )
-        origin = record.language if record is not None else None
         if record is not None:
+            check_origin(origin, record.language, catalog=catalog)
             program = record.source
         if isinstance(program, CompressedText):
             source = program.to_gzip()
@@ -80,15 +88,14 @@ def save_program(
                 raise ProgramError("gzip export requires text; rasters use PNG")
             source = png.write_source(
                 program.rows,
-                record.language if record is not None else None,
+                origin,
                 record.settings if record is not None else None,
                 record.scale if isinstance(record, ProgramArtifact) else None,
             )
         elif isinstance(program, str):
             ending = (
                 "\n"
-                if normalize
-                and (origin is None or catalog.languages[origin].runtime.file_newline)
+                if normalize and catalog.languages[origin].runtime.file_newline
                 else ""
             )
             source = (

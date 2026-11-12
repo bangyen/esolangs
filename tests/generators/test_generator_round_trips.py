@@ -100,7 +100,7 @@ def test_saved_program_executes_in_a_fresh_process(language, tmp_path) -> None:
             == table
         )
         return
-    esolangs.save_program(source, path)
+    esolangs.save_program(language, source, path)
     assert (
         _evaluate(language, path, inputs=len(table).bit_length() - 1, isolated=True)
         == table

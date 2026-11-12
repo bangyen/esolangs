@@ -88,11 +88,13 @@ def test_artifact_persistence_executes_the_same_table(
         assert _evaluate(language, restored, inputs=inputs) == table
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in reversed(range(inputs))]
-            esolangs.save_program(esolangs.instantiate(language, restored, bits), path)
+            esolangs.save_program(
+                language, esolangs.instantiate(language, restored, bits), path
+            )
             result = esolangs.run(language, path, settings=source.settings)
             assert esolangs.read_answer(language, result.output) == expected
         return
-    esolangs.save_program(source, path)
+    esolangs.save_program(language, source, path)
     assert _evaluate(language, path, inputs=inputs) == table
 
 
@@ -229,7 +231,7 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
     assert language.run(source) == language.run(artifact)
     restored = language.load_program(language.dump_program(artifact))
     path = tmp_path / "source.txt"
-    esolangs.save_program(artifact, path)
+    language.save_program(artifact, path)
     loaded = language.from_file(str(path))
     assert artifact == restored == loaded
     for program in (artifact, restored, loaded):

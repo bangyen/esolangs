@@ -52,10 +52,10 @@ def test_reads_bytes(tmp_path, monkeypatch) -> None:
     native = api.from_file(path, normalize=True)
     assert native.source == source
     assert api.run(native, stdin="A").output == "A"
-    esolangs.save_program(api.from_source(source), path)
+    api.save_program(api.from_source(source), path)
     assert path.read_bytes() == source.encode()
     assert api.run(path, stdin="A").output == "A"
-    esolangs.save_program(api.from_source(source), path, normalize=True)
+    api.save_program(api.from_source(source), path, normalize=True)
     assert path.read_bytes() == (source + "\n").encode()
 
     from esolangs.languages.pilas import interpreter

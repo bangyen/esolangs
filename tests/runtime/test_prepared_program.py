@@ -350,3 +350,18 @@ def _check_outcomes_are_the_internal_boundary(monkeypatch):
     assert response.observation == esolangs.ExecutionResult("prefix", None, None, None)
     assert response.observation.completion is None
     assert response.error.observation is None
+
+
+@pytest.mark.medium
+def test_an_execution_budget_outlasts_the_default_total() -> None:
+    """``run(timeout=33)`` stopped at the flat 30-second total, worded "30.0"."""
+    from esolangs.operations import execution
+
+    with patch.object(execution, "_ISOLATED_TIMEOUT", 3.0):
+        stopped = esolangs.Language(REFERENCE).execute(
+            "+[]", limits=esolangs.ExecutionLimits(execution_timeout=4.0)
+        )
+        assert stopped.bound == "execution_timeout"
+        with pytest.raises(esolangs.ExecutionTimeoutError, match=r"4\.0-second") as e:
+            esolangs.run(REFERENCE, "+[]", timeout=4.0, isolated=True)
+        assert e.value.bound == "timeout"

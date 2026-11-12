@@ -92,10 +92,11 @@ Both carry explicit `.source`, language and dialect settings; raster programs
 also retain scale. `TemplateArtifact.fill(bits)` returns a runnable record.
 `run`, `instantiate`, `dump_program` and `save_program` accept records;
 `load_program` restores them, including template bindings. Template artifacts
-must be filled before execution. `Language` binds language-specific operations;
-saving uses the top-level `save_program` function.
+must be filled before execution. An artifact's `fill` and `evaluate` are
+`instantiate` and `Language.evaluate` with its own language and the installed
+catalog.
 
-`save_program(record, path, gzip=True)` compresses native text exports;
+`save_program(language, record, path, gzip=True)` compresses native text exports;
 `generate --gzip` does the same on the CLI. API exports are lossless by default;
 CLI generation uses native file terminators.
 Use `dump_program` to preserve dialect settings and template bindings on disk.
@@ -201,7 +202,8 @@ uses the existing preparation. An isolated call prepares again in its worker.
 `PreparedProgram.evaluate(bits)` can reuse a generated stdin program across rows.
 An execution deadline selects isolation, including with a step budget, so it
 can interrupt an individual step.
-An isolated call without an explicit total deadline retains the 30-second default.
+Without a total deadline, a worker gets 30 seconds plus any execution deadline.
+`run(timeout=t)` is `execution_timeout=t`, isolated or not.
 
 `Catalog` owns immutable declarations. Build a narrower scope from the
 records in an existing one, such as `Language("Brainfuck").catalog.languages`;

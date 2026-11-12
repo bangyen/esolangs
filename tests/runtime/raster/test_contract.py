@@ -83,7 +83,7 @@ def test_every_raster_language_runs_its_png(language: str, tmp_path: Path) -> No
     program = esolangs.generate(language, "01")
     assert isinstance(program.source, Raster)
     path = tmp_path / f"{language.lower()}.png"
-    esolangs.save_program(program, path)
+    esolangs.save_program(language, program, path)
     assert esolangs.run(language, path, stdin="0\n").output == "0"
 
 

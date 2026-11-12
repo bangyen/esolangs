@@ -14,7 +14,8 @@ class ExecutionLimits:
     preparation hook. It selects isolation when source needs preparing.
     Execution deadlines select isolation even with a step limit. Total, output
     and memory limits also select isolation. Memory limits require Linux. An
-    isolated invocation without total_timeout retains the 30s default.
+    isolated invocation without total_timeout gets 30 seconds plus any
+    execution_timeout.  ``run(timeout=t)`` is ``execution_timeout=t``.
     """
 
     execution_timeout: float | None = None

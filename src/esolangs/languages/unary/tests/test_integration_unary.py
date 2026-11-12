@@ -28,7 +28,7 @@ def test_compressed_and_plain_sources_share_execution(tmp_path) -> None:
     assert len(program.source) == 27_452_351
     assert len(program.source.to_gzip()) == 26_712
     path = tmp_path / "and.txt.gz"
-    esolangs.save_program(program, path)
+    esolangs.save_program("Unary", program, path)
     for source in (program, program.source.to_gzip(), path, str(program.source)):
         assert run("Unary", source, stdin="\x00\xff", max_steps=20).output == ""
     restored = esolangs.load_program("Unary", esolangs.dump_program("Unary", program))

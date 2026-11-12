@@ -28,11 +28,18 @@ Releases before 0.10.0 are described on the
 - **Breaking:** A timed `run` uses a worker instead of a Unix signal, including
   when combined with a step bound; it works from worker threads and pays worker
   startup on each call. Use `max_steps` alone for an in-process bound.
+  `run(timeout=)` budgets execution, as `ExecutionLimits.execution_timeout`
+  does; with `isolated=True` it used to bound the whole call. Without a total
+  deadline, a worker gets 30 seconds plus the execution budget.
 - **Breaking:** Construct dialect overrides with `Language(name).settings(...)`;
   settings are immutable and validated against that language's schema. A
   generated artifact retains its settings, defaults included; explicit
   settings may add a choice it does not retain, but contradicting a retained
   one raises `ProgramError`.
+- **Breaking:** `save_program` takes the language first, as every other
+  operation does, and refuses another language's artifact;
+  `Language.save_program` binds it. Raw Whitespace text saved with
+  `normalize=True` no longer gains a trailing newline.
 - **Breaking:** Raw `Raster` and `CompressedText` payloads no longer carry
   language, dialect or scale metadata; retain their enclosing artifact.
 - **Breaking:** Whitespace numeric input reads one whole line, as the

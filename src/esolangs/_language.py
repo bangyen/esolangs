@@ -33,7 +33,7 @@ class Language:
     Methods follow the package split by who supplies the program:
     ``generate``/``instantiate`` are generator-made, ``run`` executes
     caller-supplied source, ``encode_inputs``/``read_answer`` and
-    ``dump_program``/``load_program`` are contract adapters, and
+    ``dump_program``/``load_program``/``save_program`` are contract adapters, and
     ``describe`` is catalog. ``evaluate`` runs one Boolean row.
     """
 
@@ -206,6 +206,27 @@ class Language:
         Arguments and errors: :func:`esolangs.load_program`.
         """
         return esolangs.load_program(self.name, document, catalog=self.catalog)
+
+    def save_program(
+        self,
+        program: Program | Artifact,
+        path: str | PathLike[str],
+        *,
+        gzip: bool = False,
+        normalize: bool = False,
+    ) -> None:
+        """Write a program as a native source file.
+
+        Arguments and errors: :func:`esolangs.save_program`.
+        """
+        esolangs.save_program(
+            self.name,
+            program,
+            path,
+            gzip=gzip,
+            normalize=normalize,
+            catalog=self.catalog,
+        )
 
     def execute(
         self,

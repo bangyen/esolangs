@@ -20,7 +20,7 @@ _RASTERS = languages(source_kind="raster", boolean_generator=True)
 def _native_bytes(program, tmp_path: Path) -> bytes:
     if isinstance(program.source, esolangs.Raster):
         path = tmp_path / "source.png"
-        esolangs.save_program(program, path)
+        esolangs.save_program(program.language, program, path)
         restored = esolangs.Language(program.language).from_file(path)
         assert (restored.language, restored.settings, restored.scale) == (
             program.language,
@@ -127,7 +127,7 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
     api = esolangs.Language(REFERENCE)
     assert api.from_file(path).source == "+,\r\n.\r\n"
     assert api.from_file(path, normalize=True).source == "+,\n."
-    esolangs.save_program(api.from_file(path), path)
+    api.save_program(api.from_file(path), path)
     assert path.read_bytes() == b"+,\r\n.\r\n"
     assert _check_program(REFERENCE, path).source == "+,\r\n.\r\n"
     assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
@@ -183,7 +183,13 @@ def test_isolated_deadline_bounds_stream_acquisition(
     stdin: Any = Stream() if blocked == "stdin" else "A"
     try:
         with pytest.raises(esolangs.ExecutionTimeoutError, match="loading input"):
-            esolangs.run(REFERENCE, program, stdin=stdin, isolated=True, timeout=0.1)
+            # run(timeout=) budgets execution only; the total covers loading.
+            esolangs.Language(REFERENCE).execute(
+                program,
+                stdin=stdin,
+                isolated=True,
+                limits=esolangs.ExecutionLimits(total_timeout=0.1),
+            ).unwrap()
         assert entered.is_set()
         assert not finished.is_set()
     finally:

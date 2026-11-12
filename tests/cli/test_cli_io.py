@@ -135,7 +135,7 @@ class TestReadingTheProgramFileIsBounded:
     def test_an_ordinary_program_still_reads(self, tmp_path: Path) -> None:
         """The guard is worth nothing if it costs the normal path."""
         path = tmp_path / "p.txt"
-        esolangs.save_program(esolangs.generate(REFERENCE, "0110"), path)
+        esolangs.save_program(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
         result = run_cli("run", REFERENCE, str(path), stdin="10")
         assert result.returncode == 0
         assert result.stdout.strip() == "1"

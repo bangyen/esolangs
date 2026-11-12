@@ -86,7 +86,7 @@ class TestRoundSixQol:
     ) -> None:
         """The pipeline the help now recommends, at an odd arity."""
         path = tmp_path / "tg.txt"
-        esolangs.save_program(esolangs.generate(stream, "10010110"), path)
+        esolangs.save_program(stream, esolangs.generate(stream, "10010110"), path)
         got = ""
         for row in range(8):
             stdin = call_main(["encode", stream, f"{row:03b}"], capsys)

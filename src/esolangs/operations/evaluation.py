@@ -75,6 +75,7 @@ def evaluate(
             prepared=prepared,
         )
     else:
+        from esolangs.operations.execution import default_total
         from esolangs.runtime._isolated import termination_result_isolated
 
         try:
@@ -82,7 +83,7 @@ def evaluate(
                 name,
                 program,
                 stdin,
-                30.0 if selected.total_timeout is None else selected.total_timeout,
+                default_total(selected.total_timeout, selected.execution_timeout),
                 max_steps=selected.max_steps,
                 max_output=selected.max_output,
                 max_memory=selected.max_memory,

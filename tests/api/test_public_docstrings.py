@@ -123,14 +123,20 @@ type _Probe = tuple[Callable[[], object], _Setup | None]
 TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]] = [
     (
         "save_program",
+        x.UnknownLanguageError,
+        lambda: esolangs.save_program("No Such Language", "", "."),
+        None,
+    ),
+    (
+        "save_program",
         x.ArgumentError,
-        lambda: esolangs.save_program("", ".", gzip=1),
+        lambda: esolangs.save_program("Brainfuck", "", ".", gzip=1),
         None,
     ),
     (
         "save_program",
         x.ProgramError,
-        lambda: esolangs.save_program("+.", _MISSING),
+        lambda: esolangs.save_program("Brainfuck", "+.", _MISSING),
         None,
     ),
     (
@@ -138,7 +144,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         x.MissingDependencyError,
         lambda: _without_pillow(
             lambda: esolangs.save_program(
-                esolangs.generate(_first("raster"), "01"), _MISSING
+                _first("raster"), esolangs.generate(_first("raster"), "01"), _MISSING
             )
         ),
         None,

@@ -30,6 +30,17 @@ from esolangs.vm import _make_vm
 _ISOLATED_TIMEOUT = 30.0
 
 
+def default_total(total: float | None, execution: float | None) -> float:
+    """Return the worker's whole-invocation deadline.
+
+    Absent a total, loading gets 30 seconds on top of the execution budget; a
+    flat 30 cut ``run(timeout=33)`` short at 30.0 seconds.
+    """
+    if total is not None:
+        return total
+    return _ISOLATED_TIMEOUT + (0.0 if execution is None else execution)
+
+
 @_capture_outcome
 def _execute_bounded(
     language: str,
@@ -74,10 +85,10 @@ def run(
     seed: int | None = None,
     isolated: bool = False,
     max_steps: int | None = None,
-    scale: int | None = None,
     max_output: int | None = None,
     max_memory: int | None = None,
     settings: DialectSettings | None = None,
+    scale: int | None = None,
     catalog: "Catalog | None" = None,
 ) -> ExecutionResult:
     """Execute ``program`` and return output, input usage and completion evidence.
@@ -92,18 +103,16 @@ def run(
             Boolean validation; binary is decoded as UTF-8.  Build a
             Boolean-generated program's stdin with :func:`encode_inputs`,
             which validates the bits.
-        timeout: Wall-clock seconds (None: unbounded). Without ``isolated``,
-            bounds execution in a worker, with a 30-second total deadline; the
-            catalog must match installed runtimes. With ``isolated``, bounds the
-            whole worker invocation, including acquisition and startup.
+        timeout: Wall-clock seconds of execution (None: unbounded), run in a
+            worker: ``ExecutionLimits.execution_timeout``.  Loading gets 30
+            seconds on top.  The catalog must match installed runtimes.
         seed: Integer fixing the languages that draw
             (``describe(language)["random"]``); the rest refuse it.
         isolated: Run in a subprocess whose deadline covers startup and
-            loading (``timeout``, or 30 seconds when None); works on Windows
+            loading (30 seconds plus any ``timeout``); works on Windows
             and in worker threads. Can combine with ``max_steps``.
         max_steps: Cooperative stepping bound, for text and raster programs;
             with ``timeout``, a worker also enforces the execution deadline.
-        scale: Raster scale factor; detected when None.
         max_output: Isolated output cap in Unicode characters (zero allowed);
             the prefix is kept.
         max_memory: Linux worker virtual address space cap in bytes, including
@@ -111,6 +120,7 @@ def run(
             parent is not capped.
         settings: Dialect choices.  Artifacts retain their own; these
             override individual ones.  Plain source uses these.
+        scale: Raster scale factor; detected when None.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
@@ -133,20 +143,29 @@ def run(
         MissingDependencyError: The language needs an uninstalled extra
             (``esolangs[image]`` for PNG).
     """
-    return _execute_invocation(
+    check_timeout(timeout)
+    # timeout is ExecutionLimits.execution_timeout under its short name; with
+    # isolated, it used to bound the whole invocation instead.
+    outcome = _execute_invocation(
         language,
         program,
         stdin=stdin,
-        timeout=timeout,
+        execution_timeout=timeout,
         seed=seed,
-        isolated=isolated,
+        isolated=isolated or timeout is not None,
         max_steps=max_steps,
         scale=scale,
         max_output=max_output,
         max_memory=max_memory,
         settings=settings,
         catalog=catalog,
-    ).unwrap()
+    )
+    if (
+        isinstance(outcome.error, ExecutionTimeoutError)
+        and outcome.bound == "execution_timeout"
+    ):
+        outcome.error.bound = "timeout"
+    return outcome.unwrap()
 
 
 @_capture_outcome
@@ -185,16 +204,13 @@ def _execute_invocation(
     check_limits(max_output, max_memory, isolated=isolated)
     if max_steps is not None:
         check_whole(max_steps, "max_steps")
-    timed_worker = timeout is not None and not isolated
-    if timed_worker:
-        execution_timeout, timeout, isolated = timeout, None, True
     if isolated:
         if io_factory is not ScriptedIO:
             raise ArgumentError("custom I/O factories require in-process execution")
-        deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
+        deadline = default_total(timeout, execution_timeout)
         # Every option defaults to None, so passing them unconditionally
         # matches the old per-combination cascade exactly.
-        outcome = _execute_isolated(
+        return _execute_isolated(
             language,
             program,
             stdin,
@@ -209,10 +225,6 @@ def _execute_invocation(
             preparation_timeout=preparation_timeout,
             catalog=catalog,
         )
-        if timed_worker and outcome.bound == "execution_timeout":
-            assert isinstance(outcome.error, ExecutionTimeoutError)
-            outcome.error.bound = "timeout"
-        return outcome
     if max_steps is not None:
         return _execute_bounded(
             language,

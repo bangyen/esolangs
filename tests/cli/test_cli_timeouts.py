@@ -38,7 +38,7 @@ class TestTimeoutValuesAreCheckedOnce:
     ) -> None:
         """Between the floor and the ceiling, nothing changes."""
         path = tmp_path / "p.txt"
-        esolangs.save_program(esolangs.generate(REFERENCE, "0110"), path)
+        esolangs.save_program(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
         out = call_main(
             ["run", "--timeout", "100000", REFERENCE, str(path)],
             capsys,
