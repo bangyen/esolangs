@@ -7,7 +7,6 @@ import argparse
 import random
 import sys
 
-from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.languages.arrowqueue.generator import _DRAINED_RING, _STAGE, arrowqueue
 from esolangs.languages.arrowqueue.interpreter import _advance, _Machine
 from esolangs.languages.arrowqueue.tests.test_boolean_arrowqueue import (
@@ -64,7 +63,11 @@ def check_s_stage() -> None:
     for m in range(40):
         for bit in (0, 1):
             cases += 1
-            rows = [row.replace(TEMPLATE_CHAR, "~" if bit else ".") for row in _STAGE]
+            fill = "~" if bit else "."
+            rows = [
+                "".join(t if isinstance(t, str) else fill for t in row)
+                for row in _STAGE
+            ]
             row, col, d, queue, _done = _run_block(rows, (0, 3, 1, (*([1] * m), 0)))
             if (row, col, d) != (len(rows), 3, 1) or queue != (
                 *([1] * (2 * m + bit)),

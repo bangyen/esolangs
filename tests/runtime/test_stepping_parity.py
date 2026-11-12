@@ -59,11 +59,20 @@ def _check_row(name: str, artifact: esolangs.Artifact, table: str, row: int) -> 
         stdin = esolangs.encode_inputs(name, bits, truth_table=table)
     runtime = LANGUAGES[name].runtime
     seed = runtime.reproducible_seed if runtime.random else None
-    want = esolangs.run(name, program, stdin=stdin, seed=seed, timeout=30)
+    want = esolangs.run(name, program, stdin=stdin, seed=seed, max_steps=_STEP_BUDGET)
     vm = debugger_api.make_vm(name, program, stdin=stdin, seed=seed)
     steps = _drive_steps(vm)
     got = _capture_result(vm)
-    assert got == want, ("execution observations", name, table, row, got, want)
+    # A step-bounded run reports its count; the stepped capture does not, and
+    # the debugger check below pins the count against the stepper's.
+    assert got == want._replace(steps=None), (
+        "execution observations",
+        name,
+        table,
+        row,
+        got,
+        want,
+    )
     debugger = debugger_api.make_debugger(name, program, stdin=stdin, seed=seed)
     assert debugger.run(max_steps=steps) == "halted", (name, table, row, steps)
     assert debugger.result == want._replace(steps=steps), (
