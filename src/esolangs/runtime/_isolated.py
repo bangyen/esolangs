@@ -1002,7 +1002,6 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                 request["language"],
                 program,
                 request["stdin"],
-                None,
                 max_steps=request["max_steps"],
                 settings=settings,
                 catalog=catalog,

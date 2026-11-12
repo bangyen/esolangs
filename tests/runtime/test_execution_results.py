@@ -19,7 +19,7 @@ def test_result_retains_character_cursor_reads_and_caught_eof():
             io.input_char()
         return report
 
-    result = execute_prepared(REFERENCE, execute, "", ScriptedIO("é"), None).unwrap()
+    result = execute_prepared(REFERENCE, execute, "", ScriptedIO("é")).unwrap()
     assert result[:4] == ("é", 1, 1, 1)
     assert result.completion is report
     with pytest.raises(AttributeError):
@@ -29,14 +29,14 @@ def test_result_retains_character_cursor_reads_and_caught_eof():
 @pytest.mark.parametrize("value", [None, Completion.HALTED, True])
 def test_a_return_without_a_report_is_not_completion(value):
     with pytest.raises(InterpreterLimitError, match="no completion report"):
-        execute_prepared(REFERENCE, lambda *_: value, "", ScriptedIO(), None).unwrap()
+        execute_prepared(REFERENCE, lambda *_: value, "", ScriptedIO()).unwrap()
 
 
 def test_declared_runner_requires_a_report_and_keeps_partial_output():
     def execute(_source, io):
         io.print_str("prefix")
 
-    outcome = execute_prepared(REFERENCE, execute, "", ScriptedIO(), None)
+    outcome = execute_prepared(REFERENCE, execute, "", ScriptedIO())
     assert outcome.status == "limit"
     assert outcome.observation.completion is None
     with pytest.raises(InterpreterLimitError, match="no completion report") as caught:

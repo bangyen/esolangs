@@ -13,9 +13,8 @@ from typing import Any
 
 import esolangs
 from esolangs.artifacts import Artifact
-from esolangs.runtime._termination import _termination_result
 from scripts import benchmark
-from tests.support.execution import run_observed
+from tests.support.execution import run_observed, termination_observed
 
 #: Step cap for a candidate row, matching the removed screen's.
 CAP = 10**7
@@ -99,7 +98,7 @@ def execute(
             stdin = esolangs.encode_inputs(name, bits, truth_table=table)
         if facts["answer_mode"] == "termination":
             encoding = facts["answer_encoding"]
-            proof = _termination_result(name, source, stdin, 2, settings=settings)
+            proof = termination_observed(name, source, stdin, 2, settings=settings)
             actual = str(
                 encoding.index("halts" if proof.decision.halts else "diverges")
             )

@@ -15,7 +15,6 @@ from typing import Protocol, cast
 
 import esolangs
 import esolangs.operations.source as _source_operations
-import esolangs.runtime._execution as _execution_runtime
 from esolangs._bindings import MOST_INPUTS
 from esolangs.artifacts import Artifact, TemplateArtifact
 from esolangs.exceptions import (
@@ -36,11 +35,11 @@ from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._prepared import PreparedProgram, prepare_program
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, check_scale_for
-from esolangs.runtime._termination import _termination_result
-from esolangs.runtime._validate import _TIMEOUT_FLOOR, check_timeout, check_whole
+from esolangs.runtime._validate import check_timeout, check_whole
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
+from tests.support.execution import TIMEOUT_FLOOR, run_guard, termination_observed
 
 
 class _Default:
@@ -85,7 +84,7 @@ def _remaining(deadline: float | None, bound: float | None) -> float | None:
     if deadline is None:
         return bound
     remaining = deadline - monotonic()
-    if remaining < _TIMEOUT_FLOOR:
+    if remaining < TIMEOUT_FLOOR:
         raise ExecutionTimeoutError("evaluation exceeded its total deadline")
     return remaining if bound is None else min(bound, remaining)
 
@@ -111,7 +110,7 @@ def _prepare[T](call: Callable[[], T], deadline: float | None, *, isolated: bool
         if reader.is_alive():
             raise ExecutionTimeoutError("evaluation timed out during preparation")
     else:
-        _execution_runtime.run_guard(capture, "", ScriptedIO(""), bound)
+        run_guard(capture, "", ScriptedIO(""), bound)
     _remaining(deadline, None)
     if errors:
         raise errors[0]
@@ -352,9 +351,7 @@ def _row_answerer(
                     )
 
                 result = (
-                    call()
-                    if isolated
-                    else _execution_runtime.run_guard(call, "", ScriptedIO(""), bound)
+                    call() if isolated else run_guard(call, "", ScriptedIO(""), bound)
                 )
             else:
                 result = run_observed(
@@ -394,7 +391,7 @@ def _row_answerer(
                 max_memory=max_memory,
             )
         else:
-            proof = _termination_result(
+            proof = termination_observed(
                 name,
                 source,
                 stdin,

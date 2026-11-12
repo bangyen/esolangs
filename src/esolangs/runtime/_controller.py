@@ -190,15 +190,9 @@ class ExecutionController:
         return "max_steps"
 
     def _periodic_execution(
-        self, vm: _DelegatingVM, max_steps: int, timeout: float | None
+        self, vm: _DelegatingVM, max_steps: int
     ) -> ExecutionOutcome:
-        deadline = None if timeout is None else monotonic() + timeout
-
         def step() -> None:
-            if deadline is not None and monotonic() >= deadline:
-                raise ExecutionTimeoutError(
-                    f"execution exceeded the {timeout}-second timeout"
-                )
             if self._steps >= max_steps:
                 error = ExecutionTimeoutError(
                     "execution stopped at the max_steps bound"
@@ -211,12 +205,12 @@ class ExecutionController:
         result = _capture_observation(vm, report)._replace(steps=self._steps)
         return ExecutionOutcome("completed", result)
 
-    def _execute(self, *, max_steps: int, timeout: float | None) -> ExecutionOutcome:
+    def _execute(self, *, max_steps: int) -> ExecutionOutcome:
         """Finish a non-interactive invocation, retaining faults and bound stops."""
         try:
             if isinstance(self.vm, _DelegatingVM) and not self.steppable_to_answer:
-                return self._periodic_execution(self.vm, max_steps, timeout)
-            reason = self.run(max_steps=max_steps, timeout=timeout)
+                return self._periodic_execution(self.vm, max_steps)
+            reason = self.run(max_steps=max_steps)
         except EsolangError as fault:
             fault.partial_output = self.output
             observation = fault.execution or _capture_observation(self.vm)
@@ -228,13 +222,9 @@ class ExecutionController:
             )
         if reason == "breakpoint":
             raise ArgumentError("invocation execution cannot stop at a breakpoint")
-        error = ExecutionTimeoutError(
-            f"execution exceeded the {timeout}-second timeout"
-            if reason == "timeout"
-            else f"execution stopped at the {reason} bound"
-        )
+        error = ExecutionTimeoutError(f"execution stopped at the {reason} bound")
         error.partial_output = self.output
-        error.bound = "timeout" if reason == "timeout" else "max_steps"
+        error.bound = "max_steps"
         error.execution = _capture_observation(self.vm)._replace(steps=self._steps)
         return _failed_outcome(error)
 

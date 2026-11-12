@@ -17,10 +17,9 @@ _BAD_TIMEOUTS = [
     # A forgotten number blamed the positional it had swallowed.
     ("--timeout brainfuck", "--timeout must be a number"),
     ("--timeout -inf brainfuck", "must be finite"),
-    # 1e9 gave ``ItimerError`` and 1e10 ``OverflowError``, both raw.
+    # 1e10 overflowed the source read's thread wait as a raw OverflowError.
     ("--timeout 1e9 brainfuck", "--timeout must be at most"),
     ("--timeout 1e10 brainfuck", "--timeout must be at most"),
-    ("--timeout 0.0001 brainfuck", "--timeout must be at least"),
     *[(f"--timeout {v} brainfuck", "--timeout") for v in ("0", "abc", "inf", "nan")],
 ]
 

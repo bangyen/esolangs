@@ -11,7 +11,8 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.operations.source import _check_program
-from esolangs.runtime._execution import run_guard as _run
+from tests.support.execution import run_guard as _run
+from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import first, languages, one
 from tests.support.reference import REFERENCE
@@ -237,12 +238,12 @@ class TestReadAnswerExplainsInWords:
 
 
 class TestATimeoutCannotKillTheProcess:
-    """The long-running defect, and the second thing it turned into."""
+    """The test-only alarm guard's defects; public ``run`` uses a worker."""
 
     def test_a_bound_too_short_to_service_is_refused(self) -> None:
         """The floor, which is what makes restoring the disposition safe."""
         with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
-            esolangs.run(REFERENCE, "+.", stdin="", timeout=0.0001)
+            run_observed(REFERENCE, "+.", stdin="", timeout=0.0001)
 
     @pytest.mark.parametrize(
         "handler",
@@ -256,7 +257,7 @@ class TestATimeoutCannotKillTheProcess:
         try:
             program = esolangs.generate(REFERENCE, "0110")
             stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
-            esolangs.run(REFERENCE, program, stdin=stdin, timeout=5)
+            run_observed(REFERENCE, program, stdin=stdin, timeout=5)
             assert signal.getsignal(signal.SIGALRM) is handler
         finally:
             signal.signal(signal.SIGALRM, previous)
@@ -269,7 +270,7 @@ class TestATimeoutCannotKillTheProcess:
         stdin = esolangs.encode_inputs(REFERENCE, [0, 1], truth_table="0110")
         for bound in (10, 0.001):
             with contextlib.suppress(esolangs.ExecutionTimeoutError):
-                esolangs.run(REFERENCE, program, stdin=stdin, timeout=bound)
+                run_observed(REFERENCE, program, stdin=stdin, timeout=bound)
             assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
 
     @pytest.mark.slow
@@ -283,7 +284,7 @@ class TestATimeoutCannotKillTheProcess:
         try:
             for _ in range(400):
                 with contextlib.suppress(esolangs.ExecutionTimeoutError):
-                    esolangs.run(REFERENCE, program, stdin=stdin, timeout=0.001)
+                    run_observed(REFERENCE, program, stdin=stdin, timeout=0.001)
                 assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
                 assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
         finally:
@@ -291,7 +292,7 @@ class TestATimeoutCannotKillTheProcess:
 
 
 class TestEvaluateCanRunOffTheMainThread:
-    """The wall-clock guard is a signal, and there was no way to opt out."""
+    """The wall-clock guard was a signal, and there was no way to opt out."""
 
     @pytest.mark.medium
     def test_an_explicit_none_means_unbounded(self) -> None:
@@ -413,7 +414,8 @@ def test_default_caller_alarm_keeps_its_termination_behavior() -> None:
     code = """
 import signal
 import time
-from esolangs.runtime._execution import run_guard as _run
+from tests.support.execution import run_guard as _run
+from tests.support.execution import run_observed
 from esolangs.runtime.io import ScriptedIO
 signal.signal(signal.SIGALRM, signal.SIG_DFL)
 signal.setitimer(signal.ITIMER_REAL, 0.02)

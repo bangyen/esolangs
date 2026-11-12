@@ -116,7 +116,6 @@ class PreparedProgram:
         self,
         stdin: InputSource,
         *,
-        timeout: float | None,
         seed: int | None,
         io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     ) -> ExecutionOutcome:
@@ -138,7 +137,6 @@ class PreparedProgram:
             runner,
             code,
             io_factory(stdin),
-            timeout,
             catalog=self.catalog,
         )
 

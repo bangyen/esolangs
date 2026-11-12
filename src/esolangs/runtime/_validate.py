@@ -10,12 +10,8 @@ _ADDRESS = re.compile(r" at 0x[0-9a-fA-F]+(?=>)")
 
 _INFINITE = (float("inf"), float("-inf"))
 
-#: The shortest wall-clock bound the ``SIGALRM`` guard can service.  See
-#: :func:`check_timeout` for the measurement behind the number.
-_TIMEOUT_FLOOR = 0.001
-
-#: The longest one it can take.  ``setitimer``'s interval is a C type and
-#: a large enough float overflows it; see :func:`check_timeout`.
+#: The longest wall-clock bound; a thread wait overflows past
+#: ``threading.TIMEOUT_MAX``; see :func:`check_timeout`.
 _TIMEOUT_CEILING = 2_592_000.0
 
 
@@ -98,32 +94,15 @@ def check_timeout(timeout: object) -> None:
             ("set a timeout in seconds, for example timeout=5.0"),
         )
     if timeout > _TIMEOUT_CEILING:
-        # ``setitimer`` takes a C interval, and a big enough float does not
-        # fit one: 1e9 came back as ``ItimerError: [Errno 22] Invalid
-        # argument`` and 1e10 as ``OverflowError: timestamp out of range``,
-        # both as raw tracebacks.  Zero, negatives, ``inf`` and ``nan`` were
-        # all refused cleanly; only the large finite case fell through, and
-        # a bound that long is not one anybody wants anyway.
+        # The CLI's source read joins a thread with this bound, and
+        # ``Thread.join(1e10)`` raised ``OverflowError: timestamp out of range
+        # for C PyTime_t`` (``threading.TIMEOUT_MAX`` is about 9.2e9).  Worker
+        # deadlines took 1e300; a bound that long is not one anybody wants.
         raise with_hint(
             ArgumentError(
                 f"timeout must be at most {_TIMEOUT_CEILING} seconds, got "
                 f"{_argument_repr(timeout)}; a longer one does not fit "
-                "the wall-clock timer"
-            ),
-            ("set a timeout in seconds, for example timeout=5.0"),
-        )
-    if timeout < _TIMEOUT_FLOOR:
-        # Measured: below about a millisecond the alarm lands inside the
-        # guard's own teardown -- 19 of 20 processes hammering a
-        # 100-microsecond bound were killed outright, none at a millisecond
-        # or above (4000 runs each).  The shortest bound this package uses
-        # is five seconds.
-        raise with_hint(
-            ArgumentError(
-                f"timeout must be at least {_TIMEOUT_FLOOR} seconds, got "
-                f"{_argument_repr(timeout)}; the wall-clock guard is a signal "
-                "and cannot be "
-                f"taken down reliably faster than that"
+                "a thread wait"
             ),
             ("set a timeout in seconds, for example timeout=5.0"),
         )

@@ -70,7 +70,6 @@ def evaluate(
             name,
             program,
             stdin,
-            None,
             max_steps=selected.max_steps,
             catalog=catalog,
             prepared=prepared,

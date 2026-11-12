@@ -10,6 +10,7 @@ import esolangs.runtime._execution as _execution_runtime
 from esolangs.results import ExecutionResult
 from esolangs.runtime import _termination
 from esolangs.runtime.io import ScriptedIO
+from tests.support.execution import run_guard
 from tests.support.reference import REFERENCE
 
 _ALARM = pytest.mark.skipif(not hasattr(signal, "SIGALRM"), reason="requires SIGALRM")
@@ -26,7 +27,7 @@ def test_return_identity_and_io_survive_the_guard(bound, value):
         channel.print_char(chr(channel.input_char()))
         return value
 
-    assert _execution_runtime.run_guard(call, "source", io, bound) is value
+    assert run_guard(call, "source", io, bound) is value
     assert io.getvalue() == "x"
     assert io.position() == 1
     assert io.reads == 1
@@ -40,7 +41,7 @@ def test_a_guard_does_not_replace_a_runner_fault(bound):
         raise fault
 
     with pytest.raises(ValueError, match="runner fault") as caught:
-        _execution_runtime.run_guard(call, "", ScriptedIO(), bound)
+        run_guard(call, "", ScriptedIO(), bound)
     assert caught.value is fault
 
 
@@ -51,7 +52,7 @@ def test_an_expired_call_does_not_return_a_false_verdict():
         return False
 
     with pytest.raises(esolangs.ExecutionTimeoutError):
-        _execution_runtime.run_guard(call, "", ScriptedIO(), 0.01)
+        run_guard(call, "", ScriptedIO(), 0.01)
 
 
 @pytest.mark.parametrize("verdict", [None, False, True])
@@ -65,12 +66,12 @@ def test_termination_returns_without_evidence_abort(monkeypatch, verdict):
     with pytest.raises(
         esolangs.InterpreterLimitError, match="no decision evidence"
     ) as caught:
-        _termination._termination_result(REFERENCE, ",.", "A", None)
+        _termination._termination_result(REFERENCE, ",.", "A")
     assert caught.value.partial_output == "A"
     assert caught.value.execution == ExecutionResult("A", 1, 1, 0)
 
 
 def test_a_driver_that_never_ran_does_not_prove_divergence(monkeypatch):
-    monkeypatch.setattr(_execution_runtime, "run_guard", lambda *_args: None)
+    monkeypatch.setattr(_execution_runtime, "invoke", lambda *_args: None)
     with pytest.raises(esolangs.InterpreterLimitError, match="no decision evidence"):
-        _termination._termination_result(REFERENCE, "", "", None)
+        _termination._termination_result(REFERENCE, "", "")

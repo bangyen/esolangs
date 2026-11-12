@@ -12,7 +12,7 @@ from esolangs.runtime._termination import _termination_result
 @pytest.mark.medium
 def test_a_large_integer_cycle_retains_declared_record_types():
     source = "+J 0 " + "1" + "0" * 5000
-    native = _termination_result("Crement", source, "", None)
+    native = _termination_result("Crement", source, "")
     assert native.decision.halts is False
     assert native.decision.commands == 1
     encoded = json.loads(json.dumps(encode_decision(native.decision)))

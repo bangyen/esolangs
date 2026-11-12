@@ -275,7 +275,7 @@ def test_loading_errors_keep_their_public_type_under_a_deadline(isolated) -> Non
         _evaluate(REFERENCE, b"\xff", inputs=1, isolated=isolated, total_timeout=5)
 
 
-@pytest.mark.parametrize("budget", [0, True, float("inf"), 0.00001])
+@pytest.mark.parametrize("budget", [0, True, float("inf")])
 def test_invalid_total_deadlines(budget) -> None:
     with pytest.raises(esolangs.ArgumentError):
         _evaluate(REFERENCE, ",.", inputs=1, total_timeout=budget)

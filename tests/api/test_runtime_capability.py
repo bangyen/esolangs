@@ -185,7 +185,7 @@ for steps in (None, 20):
 contract = replace(LANGUAGE.contract, note='local')
 record = replace(LANGUAGE, backend=None, contract=contract)
 catalog = esolangs.Catalog([record])
-assert _termination_result(record.name, '$io', '', 5, catalog=catalog) == (
+assert _termination_result(record.name, '$io', '', catalog=catalog) == (
     termination_result_isolated(record.name, '$io', '', 5, catalog=catalog)
 )
 
@@ -200,7 +200,7 @@ for isolated in (False, True):
     assert outcome.status == 'limit' and outcome.observation.steps == 20
 
 for name, source, halts in (('Piet', loop, False), (LANGUAGE.name, '$io', True)):
-    local = _termination_result(name, source, '', 5)
+    local = _termination_result(name, source, '')
     worker = termination_result_isolated(name, source, '', 5)
     assert local == worker
     assert worker.decision.halts is halts and worker.decision.commands > 0

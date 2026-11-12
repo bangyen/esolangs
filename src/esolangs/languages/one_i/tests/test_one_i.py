@@ -11,12 +11,13 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.one_i.interpreter import _Machine, _text, run
 from esolangs.languages.one_i.tests.oracle_checks import _text as reference_text
-from esolangs.runtime import _isolated, _termination
+from esolangs.runtime import _isolated
 from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.interpreters.runner import native_runner
 from tests.support.certification_barrier import guarded_worker
+from tests.support.execution import termination_observed
 
 TRUTH = "[$$[(:p)i?]i?][$$p]C:)ii*+?"
 
@@ -181,7 +182,7 @@ def test_mixing_an_inexact_number_with_an_exact_one() -> None:
         assert written.bits == 131
         assert machine.io.getvalue() == f"{angle}i"
     assert keys[0] != keys[1]
-    proof = _termination._termination_result("1 + i", "ie[i?]i?", "", 5)
+    proof = termination_observed("1 + i", "ie[i?]i?", "", 5)
     assert not proof.decision.halts
     assert proof.decision.commands == 9
     with guarded_worker():

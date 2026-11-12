@@ -317,9 +317,9 @@ def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float 
     The *value* checks are the private stdin check's neighbour
     :func:`esolangs.runtime._validate.check_timeout`, not a second copy: this had
     its own rules for zero, negatives and non-finite values, and the
-    library then grew a floor and a ceiling that this did not know about.
-    A ``--timeout 1e10`` therefore got past here and overflowed the C
-    timer three calls later, as a raw ``OverflowError``.
+    library then grew a ceiling that this did not know about.
+    A ``--timeout 1e10`` therefore got past here and overflowed a C
+    wait later, as a raw ``OverflowError``.
     """
     if option not in options:
         return None

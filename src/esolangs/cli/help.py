@@ -234,11 +234,11 @@ bug in esolangs), 120 stdout closed early, 124 time/step budget exhausted,
 130 interrupted.
 
 options:
-  --isolated         run in a subprocess; portable deadline, default 30 seconds.
+  --isolated         run in a subprocess, by default with a 30-second deadline.
   --max-output N     cap isolated output in Unicode characters (including zero).
   --max-memory BYTES cap Linux worker address space; requires --isolated.
   --max-steps N      bound commands cooperatively; combines with isolation and seed.
-  --timeout SECONDS  stop the run after this long rather than hanging.
+  --timeout SECONDS  stop the run after this long, in a worker subprocess.
                      Unbounded by default.
   --scale N          override detected raster scale; 1 preserves native pixels.
   -s, --settings JSON    dialect overrides; describe lists supported settings.

@@ -25,7 +25,7 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
         def explode(*_args: object, **_kwargs: object) -> None:
             raise RecursionError("maximum recursion depth exceeded")
 
-        monkeypatch.setattr(_execution_runtime, "run_guard", explode)
+        monkeypatch.setattr(_execution_runtime, "invoke", explode)
         with pytest.raises(esolangs.EsolangError) as caught:
             run(REFERENCE, "+.", stdin="")
         assert isinstance(caught.value, esolangs.InterpreterLimitError)
@@ -40,7 +40,7 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
         def explode(*_args: object, **_kwargs: object) -> None:
             raise MemoryError
 
-        monkeypatch.setattr(_execution_runtime, "run_guard", explode)
+        monkeypatch.setattr(_execution_runtime, "invoke", explode)
         with pytest.raises(esolangs.InterpreterLimitError, match="out of memory"):
             run(REFERENCE, "+.", stdin="")
 

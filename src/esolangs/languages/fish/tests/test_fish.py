@@ -11,6 +11,7 @@ from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
 from tests.support.certification_barrier import guarded_worker
+from tests.support.execution import termination_observed
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_halts_with_hint
 
@@ -154,7 +155,7 @@ def test_branching_protocol_covers_random_input_plain_and_halted_states(
     halted.step()
 
     for source, halts in [('"A"o;', True), ('"A"o>', False)]:
-        result = _termination._termination_result("Fish", source, "", 5)
+        result = termination_observed("Fish", source, "", 5)
         assert result.observation.output == "A"
         assert result.observation.completion is None
         assert result.decision.halts is halts
@@ -162,12 +163,7 @@ def test_branching_protocol_covers_random_input_plain_and_halted_states(
             assert termination_result_isolated("Fish", source, "", 5) == result
         with monkeypatch.context() as fault:
             fault.setattr(_termination, "_observe_branch_path", lambda *_: None)
-            assert (
-                _termination._termination_result(
-                    "Fish", source, "", 5
-                ).observation.output
-                == ""
-            )
+            assert termination_observed("Fish", source, "", 5).observation.output == ""
 
 
 def test_errors_are_fishy() -> None:

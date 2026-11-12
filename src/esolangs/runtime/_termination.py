@@ -66,7 +66,6 @@ def _termination_result(
     name: str,
     source: Program | Artifact,
     stdin: str,
-    bound: float | None,
     *,
     max_steps: int | None = None,
     settings: DialectSettings | None = None,
@@ -117,7 +116,7 @@ def _termination_result(
         if isinstance(source, (ProgramArtifact, TemplateArtifact))
         else source
     )
-    verdict = _execution_runtime.run_guard(_drive, argument, ScriptedIO(""), bound)
+    verdict = _execution_runtime.invoke(_drive, argument, ScriptedIO(""))
     try:
         return checked_termination(verdict)
     except ValueError as error:

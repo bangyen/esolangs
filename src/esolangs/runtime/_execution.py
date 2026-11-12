@@ -5,17 +5,14 @@ from __future__ import annotations
 import importlib
 import re
 import shlex
-import signal
-import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from types import ModuleType
-from typing import Any, cast
+from typing import Any
 
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
-    ExecutionTimeoutError,
     InterpreterLimitError,
     ProgramError,
 )
@@ -31,81 +28,11 @@ from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import dialect_options
 
 
-def run_under_alarm[T](
-    run_fn: Callable[..., T],
-    program: RunnerProgram,
-    io_obj: ScriptedIO,
-    timeout: float,
+def invoke[T](
+    run_fn: Callable[..., T], program: RunnerProgram, io_obj: ScriptedIO
 ) -> T:
-    """Return the call's result under a ``SIGALRM`` guard (main thread only)."""
-    # The handler fires between any two bytecodes, including the cleanup's;
-    # raising into its own teardown left the timer armed and the default
-    # SIGALRM disposition killed one run in three.  Clearing this is one store.
-    armed = True
-    old = signal.getsignal(signal.SIGALRM)
-    started = time.monotonic()
-    pending, interval = signal.getitimer(signal.ITIMER_REAL)
-    caller_deadline = started + pending if pending else None
-    deadline = started + timeout
-
-    def _timeout_handler(_signum: int, _frame: object) -> None:
-        nonlocal caller_deadline
-        # coverage cannot trace a raise inside a signal handler
-        if not armed:  # pragma: no cover - a late alarm, not an overrun
-            return
-        now = time.monotonic()
-        if caller_deadline is not None and now >= caller_deadline:
-            caller_deadline = (
-                caller_deadline
-                + (int((now - caller_deadline) // interval) + 1) * interval
-                if interval
-                else None
-            )
-            if callable(old):
-                old(_signum, cast("Any", _frame))
-            elif old == signal.SIG_DFL:
-                signal.signal(signal.SIGALRM, old)
-                signal.raise_signal(signal.SIGALRM)
-            now = time.monotonic()
-            if now < deadline:
-                next_deadline = (
-                    min(deadline, caller_deadline)
-                    if caller_deadline is not None
-                    else deadline
-                )
-                signal.setitimer(
-                    signal.ITIMER_REAL, max(0.000001, next_deadline - time.monotonic())
-                )
-                return
-        raise ExecutionTimeoutError(
-            f"execution exceeded the {timeout}-second timeout"
-        )  # pragma: no cover
-
-    # Dispatch the earlier deadline: replacing a caller's timer let a nested
-    # 0.05-second guard return successfully after 0.159 seconds.
-    signal.signal(signal.SIGALRM, _timeout_handler)
-    try:
-        # Armed inside the ``try``: a 1 ms alarm can fire before it is entered.
-        signal.setitimer(
-            signal.ITIMER_REAL, min(timeout, pending) if pending else timeout
-        )
-        return run_fn(program, io_obj)
-    finally:
-        armed = False
-        # Ignore first, then disarm, then restore: an alarm in flight after
-        # ``old`` (the default disposition) is restored terminates the
-        # process -- exit 142, one run in ten.  ``SIG_IGN`` is C-level.
-        # An alarm between ``run_fn`` returning and here still raises a
-        # timeout; closing that needs a flag read from a handler, not worth it.
-        signal.signal(signal.SIGALRM, signal.SIG_IGN)
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        signal.signal(signal.SIGALRM, old)
-        if caller_deadline is not None:
-            signal.setitimer(
-                signal.ITIMER_REAL,
-                max(0.000001, caller_deadline - time.monotonic()),
-                interval,
-            )
+    """Call one prepared runner; faults raised here reach public translation."""
+    return run_fn(program, io_obj)
 
 
 def interpreter_module(name: str, *, catalog: Catalog | None = None) -> ModuleType:
@@ -122,7 +49,6 @@ def execute_prepared(
     run_fn: Callable[..., Any],
     program: RunnerProgram,
     io_obj: ScriptedIO,
-    timeout: float | None,
     *,
     catalog: Catalog | None = None,
 ) -> ExecutionOutcome:
@@ -138,7 +64,7 @@ def execute_prepared(
         io_obj,
         language=name,
     ):
-        value = run_guard(run_fn, program, io_obj, timeout)
+        value = invoke(run_fn, program, io_obj)
         if not isinstance(value, CompletionReport):
             raise InterpreterLimitError(
                 "completion runner returned no completion report",
@@ -365,15 +291,3 @@ def interpreter_errors(
         if error is original:
             raise
         raise error from original
-
-
-def run_guard[T](
-    run_fn: Callable[..., T],
-    program: RunnerProgram,
-    io_obj: ScriptedIO,
-    timeout: float | None,
-) -> T:
-    """Return ``run_fn``'s result, applying the wall-clock guard when set."""
-    if timeout is None:
-        return run_fn(program, io_obj)
-    return run_under_alarm(run_fn, program, io_obj, timeout)

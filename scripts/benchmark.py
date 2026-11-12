@@ -27,12 +27,12 @@ from operator import is_not
 from pathlib import Path
 from typing import Any, BinaryIO, cast
 
-import esolangs.runtime._execution as _execution_runtime
-
 # scripts/ holds the sibling `verify` package. Redundant when run as
 # `python scripts/benchmark.py` (the script's directory is already first),
 # but required when imported as `scripts.benchmark`, e.g. by tests.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+# The repository root, for the test-support alarm guard.
+sys.path.insert(1, str(Path(__file__).resolve().parents[1]))
 
 from source_units import source_units
 from verify.process import (
@@ -60,6 +60,7 @@ from esolangs.vm import (
     complete_vm,
     run_until_halt_or_cycle,
 )
+from tests.support.execution import run_guard
 
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
@@ -494,7 +495,7 @@ def _execute(
 
     try:
         # Cover VM construction too: a step cap cannot bound factoring.
-        _execution_runtime.run_guard(drive, source.source, ScriptedIO(stdin), timeout)
+        run_guard(drive, source.source, ScriptedIO(stdin), timeout)
     except esolangs.ExecutionTimeoutError:
         result["execution_status"] = "timeout"
     except TimeoutError:

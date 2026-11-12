@@ -101,7 +101,7 @@ def test_worker_reports_a_translated_memory_error_as_the_cap(
     def explode(*_args: object, **_kwargs: object) -> None:
         raise MemoryError
 
-    monkeypatch.setattr(_execution_runtime, "run_guard", explode)
+    monkeypatch.setattr(_execution_runtime, "invoke", explode)
     monkeypatch.setattr(
         sys,
         "stdin",

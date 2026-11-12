@@ -106,13 +106,11 @@ def test_deliberate_error_keeps_partial_output(monkeypatch: pytest.MonkeyPatch) 
 
     error = EsolangError("stop")
 
-    def stop(
-        _runner: object, _program: object, io: ScriptedIO, _timeout: object
-    ) -> None:
+    def stop(_runner: object, _program: object, io: ScriptedIO) -> None:
         io.print_str("before")
         raise error
 
-    monkeypatch.setattr(_execution_runtime, "run_guard", stop)
+    monkeypatch.setattr(_execution_runtime, "invoke", stop)
     with pytest.raises(EsolangError) as caught:
         esolangs.run(REFERENCE, "+")
     assert caught.value is error

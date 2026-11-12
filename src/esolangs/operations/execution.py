@@ -38,7 +38,6 @@ def _execute_bounded(
     *,
     max_steps: int,
     settings: DialectSettings | None = None,
-    timeout: float | None = None,
     scale: int | None = None,
     seed: int | None = None,
     catalog: "Catalog | None" = None,
@@ -50,7 +49,6 @@ def _execute_bounded(
 
     catalog = get_catalog(catalog)
     check_whole(max_steps, "max_steps")
-    check_timeout(timeout)
     controller = ExecutionController(
         _make_vm(
             language,
@@ -64,7 +62,7 @@ def _execute_bounded(
             prepared=prepared,
         )
     )
-    return controller._execute(max_steps=max_steps, timeout=timeout)  # noqa: SLF001
+    return controller._execute(max_steps=max_steps)  # noqa: SLF001
 
 
 def run(
@@ -221,7 +219,6 @@ def _execute_invocation(
             program,
             stdin,
             max_steps=max_steps,
-            timeout=timeout,
             scale=scale,
             settings=settings,
             seed=seed,
@@ -242,7 +239,7 @@ def _execute_invocation(
 
     check_input(stdin)
     return prepared._execute_native(  # noqa: SLF001
-        stdin, timeout=timeout, seed=seed, io_factory=io_factory
+        stdin, seed=seed, io_factory=io_factory
     )
 
 

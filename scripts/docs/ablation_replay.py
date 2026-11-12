@@ -23,10 +23,10 @@ from esolangs.portable import decode_settings
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, template_char
 from esolangs.results import ExecutionResult
-from esolangs.runtime._execution import run_guard as _run
 from esolangs.runtime._source import text_source
-from esolangs.runtime._termination import _termination_result
 from esolangs.runtime.io import ScriptedIO
+from tests.support.execution import run_guard as _run
+from tests.support.execution import termination_observed
 
 from .evidence import TableWitness
 
@@ -346,7 +346,7 @@ def _observe(
         stdin = esolangs.encode_inputs(language, bits, truth_table=table)
     bound = min(5.0, _remaining(deadline))
     if lang.contract.answer_mode == "termination":
-        proof = _termination_result(language, program, stdin, bound)
+        proof = termination_observed(language, program, stdin, bound)
         result = proof.observation
         answer = str(
             lang.contract.answer_values.index(

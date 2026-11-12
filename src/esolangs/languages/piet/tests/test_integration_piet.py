@@ -11,6 +11,7 @@ from esolangs.exceptions import TemplateError
 from esolangs.operations.source import _check_program
 from esolangs.registry import CATALOG, LANGUAGES
 from tests.support.evaluation import _evaluate
+from tests.support.execution import termination_observed
 from tests.support.input_convention import assert_reads_tokens_on_one_line
 from tests.support.pick import languages
 from tests.support.witness_tables import XOR
@@ -95,14 +96,13 @@ def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
 def _check_worker_proof_scale(image: Raster) -> None:
     from esolangs.debugger import make_debugger
     from esolangs.runtime._isolated import termination_result_isolated
-    from esolangs.runtime._termination import _termination_result
     from esolangs.vm import _capture_observation
     from tests.support.certification_barrier import guarded_worker
     from tests.support.reference import REFERENCE
 
     explicit = esolangs.ProgramArtifact(image, "Piet", scale=1)
-    default = _termination_result("Piet", image, "", 5)
-    scaled = _termination_result("Piet", explicit, "", 5)
+    default = termination_observed("Piet", image, "", 5)
+    scaled = termination_observed("Piet", explicit, "", 5)
     assert (default.observation.output, scaled.observation.output) == ("2", "8")
     with guarded_worker(expected=2):
         assert termination_result_isolated("Piet", image, "", 5) == default

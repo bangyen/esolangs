@@ -20,6 +20,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program as _run_program
+from tests.support.execution import termination_observed
 
 run_program = partial(_run_program, run, suppress_eof=False)
 
@@ -119,10 +120,9 @@ def _check_proof_read_failure() -> None:
     from esolangs.exceptions import InputExhaustedError
     from esolangs.results import ExecutionResult
     from esolangs.runtime._isolated import termination_result_isolated
-    from esolangs.runtime._termination import _termination_result
 
     with pytest.raises(InputExhaustedError) as local:
-        _termination_result("Forþ", ",.,", "A", 5)
+        termination_observed("Forþ", ",.,", "A", 5)
     with pytest.raises(InputExhaustedError) as worker:
         termination_result_isolated("Forþ", ",.,", "A", 5)
     assert local.value.partial_output == worker.value.partial_output == "A"

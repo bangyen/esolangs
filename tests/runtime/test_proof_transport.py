@@ -19,10 +19,9 @@ from esolangs.runtime._result_wire import (
     encode_decision,
     encode_result,
 )
-from esolangs.runtime._termination import _termination_result
 from esolangs.vm import _capture_observation, make_vm
 from tests.support.certification_barrier import guarded_worker
-from tests.support.execution import run_observed
+from tests.support.execution import run_observed, termination_observed
 from tests.support.reference import REFERENCE
 from tests.support.worker_response import _decode
 
@@ -102,7 +101,7 @@ def test_actual_termination_workers_retain_every_halt_and_cycle():
                     if lang.parameterized
                     else esolangs.encode_inputs(name, bits, truth_table=table)
                 )
-                native = _termination_result(name, source, stdin, 5)
+                native = termination_observed(name, source, stdin, 5)
                 assert native.decision.halts is (
                     lang.contract.answer_values[int(answer)] == "halts"
                 )
@@ -160,7 +159,7 @@ def test_actual_branch_workers_retain_the_complete_graph():
             continue
         source, stdin = _request(name, 1)
         try:
-            native = _termination_result(name, source, stdin, 5)
+            native = termination_observed(name, source, stdin, 5)
         except TimeoutError as error:
             if "cannot be safely forked" not in str(error):
                 raise
@@ -189,7 +188,7 @@ def test_actual_branch_workers_retain_the_complete_graph():
 def test_proof_deadlines_keep_output_without_claiming_divergence():
     source = ",.+[>+]"
     with pytest.raises(esolangs.ExecutionTimeoutError) as native:
-        _termination_result(REFERENCE, source, "A", 0.01)
+        termination_observed(REFERENCE, source, "A", 0.01)
     assert native.value.partial_output == "A"
     assert native.value.execution == ExecutionResult("A", 1, 1, 0)
     with pytest.raises(esolangs.ExecutionTimeoutError) as worker:

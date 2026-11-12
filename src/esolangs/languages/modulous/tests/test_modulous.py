@@ -26,6 +26,7 @@ from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_lines
 from tests.support.certification_barrier import guarded_worker
+from tests.support.execution import termination_observed
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import (
     assert_halts_with_hint,
@@ -417,7 +418,7 @@ def test_modulous_forks_every_value_rnd_could_draw(monkeypatch) -> None:
         quiet.branching_successors(quiet.branching_snapshot(), 100)
 
     source = "[RND 2][POP][PSH INT 65][PRT STR][RST]"
-    result = _termination._termination_result("Modulous", source, "", 5)
+    result = termination_observed("Modulous", source, "", 5)
     assert result.observation.output == "A"
     assert result.observation.completion is None
     assert result.decision.halts is False
@@ -426,12 +427,7 @@ def test_modulous_forks_every_value_rnd_could_draw(monkeypatch) -> None:
         assert termination_result_isolated("Modulous", source, "", 5) == result
     with monkeypatch.context() as fault:
         fault.setattr(_termination, "_observe_branch_path", lambda *_: None)
-        assert (
-            _termination._termination_result(
-                "Modulous", source, "", 5
-            ).observation.output
-            == ""
-        )
+        assert termination_observed("Modulous", source, "", 5).observation.output == ""
     from esolangs.languages.modulous import interpreter
     from tests.support.prepared_support import check_random_plan_reuse
 
