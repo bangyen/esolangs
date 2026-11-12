@@ -68,7 +68,7 @@ test-full *args:
 [no-exit-message]
 [positional-arguments]
 test-quick *args:
-    PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly'" {{PYTHON}} scripts/verify/gate.py --quiet --only pre-commit,pytest "$@"
+    VERIFY_PYTEST_MARKS="not slow and not medium and not weekly" {{PYTHON}} scripts/verify/gate.py --quiet --skip "mypy (src + scripts)" "$@"
 
 # pytest fast and medium bands only; use just test before a commit
 [group('test')]

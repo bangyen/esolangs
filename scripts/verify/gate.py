@@ -635,9 +635,11 @@ def _pytest_cmd(cmd: list[str], *, full: bool, changed: list[str]) -> list[str]:
     #
     # Appended to argv rather than set in `addopts`, because pytest
     # *prepends* addopts: a default there would sit before the
-    # caller's own `-m` and lose to it. `just test-quick` supplies its
-    # own expression excluding all three deferred bands.
-    cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else LOCAL_PYTEST_MARKS]
+    # caller's own `-m` and lose to it. `just test-quick` narrows the local
+    # band through VERIFY_PYTEST_MARKS, so it keeps branch scoping, which
+    # an `--only` would drop (whole tree: 11,381 tests, 62 s, 2026-11-12).
+    local = os.environ.get("VERIFY_PYTEST_MARKS", LOCAL_PYTEST_MARKS)
+    cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else local]
     if full:
         directory = ROOT / "notes/verification"
         directory.mkdir(parents=True, exist_ok=True)
