@@ -32,6 +32,9 @@ def test_false_tests_the_low_bit_and_splits_every_node() -> None:
     assert _shared("0001", 2) == "^1&$[^1&$[1.]?0=[0.]?]?0=[^%0.]?"
     total = sum(len(false_plain(f"{value:08b}", 3)) for value in range(256))
     assert total == 18528
+    # The shipped build prices ``+b&`` (complementary halves) at five chars; a
+    # mispriced option grew 126 of 403 sampled tables with no other test red.
+    assert sum(len(false(f"{value:08b}")) for value in range(256)) == 7523
 
 
 def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:

@@ -30,6 +30,7 @@ from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hi
         pytest.param(
             "1 99:", "26 variable references", id="a_bad_variable_reference_halts"
         ),
+        pytest.param("1 26:", "26 variable references", id="the_index_past_z_halts"),
         pytest.param(
             "1 2?",
             "the top of the stack is a number",
