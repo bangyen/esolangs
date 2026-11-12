@@ -376,8 +376,3 @@ stdin = ""
 expect = "output"
 output = "0 "
 claim = "g outside the grid pushes 0"
-
-[[generator_triggers]]
-table = "n=14 zero"
-expect = "GeneratorCapError"
-claim = "more than thirteen inputs"

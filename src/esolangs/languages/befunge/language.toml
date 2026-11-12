@@ -95,6 +95,11 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.befunge.generator:befunge_request"
 
+[[evidence.raises]]
+error = "GeneratorCapError"
+when = "more than thirteen inputs, past the 80x25 grid."
+table = "n=14 zero"
+
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.befunge.generator:befunge_request"

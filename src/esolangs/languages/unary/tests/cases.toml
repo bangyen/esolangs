@@ -41,8 +41,3 @@ stdin = ""
 expect = "output"
 output = ""
 claim = "',' at EOF stores zero, no error (13 zeros decode to ',')"
-
-[[generator_triggers]]
-table = "n=2 parity"
-expect = "GeneratorCapError"
-claim = "the zero count passes 256 Mi"

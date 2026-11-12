@@ -64,6 +64,11 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.carp.generator:carp_request"
 
+[[evidence.raises]]
+error = "GeneratorCapError"
+when = "more than fourteen inputs (registers r1..r14)."
+table = "n=15 zero"
+
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.carp.generator:carp_request"

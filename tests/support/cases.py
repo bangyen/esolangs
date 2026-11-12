@@ -2,9 +2,9 @@
 
 One file per language, so its cases leave with it.  Keys: ``language`` and
 ``oldid`` (the cited wiki revision) with ``[[examples]]``; ``[[spec_triggers]]``
-and ``[spec_untriggerable]`` for the interpreter's ``Errors:``;
-``[[generator_triggers]]`` and ``[generator_untriggerable]`` for the
-generator's ``Raises:``.  A ``*_file`` value is relative to ``tests/``.
+and ``[spec_untriggerable]`` for the interpreter's ``Errors:``.  A generator's
+``Raises:`` lives in ``language.toml``.  A ``*_file`` value is relative to
+``tests/``.
 """
 
 import tomllib

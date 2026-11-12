@@ -11,13 +11,8 @@ from tests.interpreters.spec_sections import section
 #: The sections, in the order a docstring gives them; ``Size:`` is required.
 SECTIONS = ("Size", "Raises", "Decisions")
 
-#: What ``esolangs.generate`` raises beyond the shared table check.
-PUBLIC_ERRORS = frozenset({"GeneratorCapError", "ArgumentError"})
-
 #: Short integers such as n=10 are parameters, not measured figures.
 FIGURE = re.compile(r"\d+(?:\.\d+)?%|\d+\.\d+|\d{1,3}(?:,\d{3})+|\d{3,}")
-
-_ENTRY = re.compile(r"^    (\w+):")
 
 
 def figures(text: str) -> set[str]:
@@ -51,8 +46,3 @@ def anchors(doc: str) -> list[tuple[int, str, int, str]]:
             " ".join(line.strip() for line in section(doc, "Size"))
         )
     ]
-
-
-def raises_entries(doc: str) -> set[str]:
-    """Return the exception names ``Raises:`` lists."""
-    return {m[1] for line in section(doc, "Raises") if (m := _ENTRY.match(line))}

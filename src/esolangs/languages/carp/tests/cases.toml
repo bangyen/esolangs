@@ -21,8 +21,3 @@ program = "INP r1 0"
 stdin = "16"
 expect = "HaltError"
 claim = "an input that does not fit a nibble"
-
-[[generator_triggers]]
-table = "n=15 zero"
-expect = "GeneratorCapError"
-claim = "more than fourteen inputs"

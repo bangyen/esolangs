@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import random
 import re
+import textwrap
 import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -22,6 +23,12 @@ SOURCE_ANCHOR = re.compile(
     r"([\d,]+)\s+(chars|codels|pixels)"
 )
 _UNITS = frozenset({"chars", "codels", "pixels"})
+
+#: What ``esolangs.generate`` raises beyond the shared table check.
+PUBLIC_ERRORS = frozenset({"GeneratorCapError", "ArgumentError"})
+
+#: A docstring's ``Raises:`` body: indented lines after the header.
+_RAISES = re.compile(r"\nRaises:\n((?:    [^\n]*\n)+)")
 
 
 def dense(n: int, key: bytes | None = None) -> str:
@@ -179,7 +186,7 @@ def parse_anchors(language: str, data: dict[str, Any]) -> tuple[SourceAnchor, ..
     """Validate versioned measurement records; refuse unknown fields."""
     if (
         not isinstance(data, dict)
-        or set(data) != {"version", "anchors"}
+        or set(data) - {"raises"} != {"version", "anchors"}
         or type(data["version"]) is not int
     ):
         raise ValueError("evidence requires version and anchors")
@@ -220,6 +227,97 @@ def parse_anchors(language: str, data: dict[str, Any]) -> tuple[SourceAnchor, ..
     return tuple(found)
 
 
+@dataclass(frozen=True)
+class GeneratorRaise:
+    """A documented refusal and the call that shows it, or why none can."""
+
+    error: str
+    when: str
+    table: str | None = None
+    untriggerable: str | None = None
+
+    @property
+    def text(self) -> str:
+        """Return the docstring's ``Raises:`` entry."""
+        return textwrap.fill(
+            f"{self.error}: {self.when}",
+            width=79,
+            initial_indent="    ",
+            subsequent_indent="        ",
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+
+
+def parse_raises(rows: object) -> tuple[GeneratorRaise, ...]:
+    """Validate refusal records: a public error, prose, and one witness."""
+    if not isinstance(rows, list):
+        raise ValueError("evidence raises must be a list")
+    found = []
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or not {"error", "when"}
+            <= set(row)
+            <= {"error", "when", "table", "untriggerable"}
+            or len(set(row) & {"table", "untriggerable"}) != 1
+        ):
+            raise ValueError("a raise needs error, when, and a table or untriggerable")
+        if not all(isinstance(value, str) and value.strip() for value in row.values()):
+            raise ValueError("raise fields must be nonempty text")
+        if row["error"] not in PUBLIC_ERRORS:
+            raise ValueError(f"raise names a non-public error: {row['error']}")
+        found.append(GeneratorRaise(**row))
+    if len({r.error for r in found}) != len(found):
+        raise ValueError("each raised error is declared once")
+    return tuple(found)
+
+
+def generator_raises(language: str) -> tuple[GeneratorRaise, ...]:
+    """Read the language's declared refusals, independent of prose."""
+    path = PACKAGES / LANGUAGES[language].id / "language.toml"
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    return parse_raises(data["evidence"].get("raises", []))
+
+
+def render_raises(source: str, raises: tuple[GeneratorRaise, ...]) -> str:
+    """Rewrite a module docstring's ``Raises:`` body from declared refusals.
+
+    The header's placement stays authored; refuse a header without records or
+    records without a header rather than manufacturing either.
+    """
+    token, start, end = _docstring(source)
+    match = _RAISES.search(token)
+    if match is None:
+        if raises:
+            raise ValueError("declared raises need a Raises: section")
+        return source
+    if not raises:
+        raise ValueError("a Raises: section needs declared raises")
+    body = "".join(entry.text + "\n" for entry in raises)
+    refreshed = token[: match.start(1)] + body + token[match.end(1) :]
+    return source[:start] + refreshed + source[end:]
+
+
+def _docstring(source: str) -> tuple[str, int, int]:
+    """Return the module docstring token and its character offsets."""
+    import ast
+    import tokenize
+    from io import StringIO
+
+    if not ast.get_docstring(ast.parse(source)):
+        raise ValueError("source anchors require a module docstring")
+    token = next(
+        t
+        for t in tokenize.generate_tokens(StringIO(source).readline)
+        if t.type == tokenize.STRING
+    )
+    lines = source.splitlines(keepends=True)
+    start = sum(map(len, lines[: token.start[0] - 1])) + token.start[1]
+    end = sum(map(len, lines[: token.end[0] - 1])) + token.end[1]
+    return token.string, start, end
+
+
 def source_anchors(language: str) -> tuple[SourceAnchor, ...]:
     """Read the language's structured measurements, independent of prose."""
     path = PACKAGES / LANGUAGES[language].id / "language.toml"
@@ -233,18 +331,7 @@ def render_source_anchors(source: str, anchors: tuple[SourceAnchor, ...]) -> str
     Witness names, units and construction prose remain authored. Refuse absent,
     duplicated or undeclared witnesses instead of manufacturing an anchor.
     """
-    import ast
-    import tokenize
-    from io import StringIO
-
-    parsed = ast.parse(source)
-    if not ast.get_docstring(parsed):
-        raise ValueError("source anchors require a module docstring")
-    token = next(
-        t
-        for t in tokenize.generate_tokens(StringIO(source).readline)
-        if t.type == tokenize.STRING
-    )
+    token, start, end = _docstring(source)
     expected = {(a.witness.arity, a.witness.name, a.unit): a for a in anchors}
     seen = set()
 
@@ -260,12 +347,9 @@ def render_source_anchors(source: str, anchors: tuple[SourceAnchor, ...]) -> str
             + match[0][end - match.start() :]
         )
 
-    refreshed = SOURCE_ANCHOR.sub(replace, token.string)
+    refreshed = SOURCE_ANCHOR.sub(replace, token)
     if seen != set(expected):
         raise ValueError(f"missing source anchors: {set(expected) - seen}")
-    lines = source.splitlines(keepends=True)
-    start = sum(map(len, lines[: token.start[0] - 1])) + token.start[1]
-    end = sum(map(len, lines[: token.end[0] - 1])) + token.end[1]
     return source[:start] + refreshed + source[end:]
 
 
@@ -280,7 +364,10 @@ def update_source_anchors(*, root: Path = PACKAGES, check: bool = False) -> bool
         if not path.is_file():
             path = package / "generator" / "__init__.py"
         source = path.read_text(encoding="utf-8")
-        rendered = render_source_anchors(source, source_anchors(language))
+        rendered = render_raises(
+            render_source_anchors(source, source_anchors(language)),
+            generator_raises(language),
+        )
         if source != rendered:
             changes.append((path, rendered))
     # Validate every view before changing any file.

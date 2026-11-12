@@ -1,9 +1,9 @@
 """Every generator docstring follows the template, and its claims run.
 
-Each ``Size:`` anchor is regenerated and measured; each ``Raises:`` entry
-needs a ``[[generator_triggers]]`` entry in ``languages/<id>/tests/cases.toml``: a table
-(a string or an anchor's ``n=14 parity``), ``generate`` options, and the
-exception.  ``untriggerable`` maps an entry no call reaches to the reason.
+Each ``Size:`` anchor is regenerated and measured; each ``Raises:`` entry is
+rendered from ``[[evidence.raises]]`` in ``language.toml``, whose ``table`` (a
+string or an anchor's ``n=14 parity``) must raise it, or whose
+``untriggerable`` gives the reason no call reaches it.
 """
 
 import ast
@@ -19,19 +19,21 @@ import esolangs
 from esolangs import exceptions
 from esolangs.registry import LANGUAGES
 from scripts.docs.ablations import load as load_ablations
-from scripts.docs.evidence import source_anchors
+from scripts.docs.evidence import (
+    GeneratorRaise,
+    generator_raises,
+    source_anchors,
+    update_source_anchors,
+)
 from scripts.new_language import _GENERATOR, PLACEHOLDER
 from tests.generators.generator_sections import (
-    PUBLIC_ERRORS,
     SECTIONS,
     anchors,
     figures,
     measured,
     named_table,
-    raises_entries,
 )
 from tests.interpreters.spec_sections import headers, section
-from tests.support.cases import cases
 
 pytestmark = pytest.mark.medium
 
@@ -67,7 +69,7 @@ def _capped(name: str) -> bool:
     )
 
 
-def _doc_issues(doc: str, *, capped: bool = False) -> list[str]:
+def _doc_issues(doc: str) -> list[str]:
     """Return violations of the generator template."""
     issues = []
     found = headers(doc)
@@ -85,11 +87,6 @@ def _doc_issues(doc: str, *, capped: bool = False) -> list[str]:
         issues.append("no construction prose before the sections")
     if not anchors(doc):
         issues.append("Size: gives no measured anchor (n=8 parity: 1,186 chars)")
-    entries = raises_entries(doc)
-    if entries - PUBLIC_ERRORS:
-        issues.append(f"Raises: names non-public {sorted(entries - PUBLIC_ERRORS)}")
-    if capped and "GeneratorCapError" not in entries:
-        issues.append("can refuse a table but Raises: omits GeneratorCapError")
     if PLACEHOLDER in doc:
         issues.append("template placeholder left in")
     return issues
@@ -99,48 +96,48 @@ _GOOD = "A.\n\nB.\n\nSize:\n    O(T); n=2 parity: 9 chars"
 
 
 @pytest.mark.parametrize(
-    ("doc", "capped", "expected"),
+    ("doc", "expected"),
     [
-        (_GOOD + "\n\nNotes:\n    x", False, "outside the template"),
-        (
-            _GOOD + "\n\nDecisions:\n    x\n\nRaises:\n    ArgumentError: y",
-            False,
-            "order",
-        ),
-        ("A.\n\nSize:\nn=2 parity: 9 chars", False, "not indented"),
-        ("A.\nSize:\n    n=2 parity: 9 chars", False, "no construction prose"),
-        ("A.\n\nSize:\n    O(T), about 9 chars", False, "no measured anchor"),
-        (_GOOD + "\n\nRaises:\n    ValueError: x", False, "non-public"),
-        (_GOOD, True, "omits GeneratorCapError"),
-        (_GOOD + "\n\nDecisions:\n    <describe x>", False, "placeholder"),
+        (_GOOD + "\n\nNotes:\n    x", "outside the template"),
+        (_GOOD + "\n\nDecisions:\n    x\n\nRaises:\n    ArgumentError: y", "order"),
+        ("A.\n\nSize:\nn=2 parity: 9 chars", "not indented"),
+        ("A.\nSize:\n    n=2 parity: 9 chars", "no construction prose"),
+        ("A.\n\nSize:\n    O(T), about 9 chars", "no measured anchor"),
+        (_GOOD + "\n\nDecisions:\n    <describe x>", "placeholder"),
     ],
 )
-def test_the_docstring_check_catches_each_violation(
-    doc: str, *, capped: bool, expected: str
-) -> None:
+def test_the_docstring_check_catches_each_violation(doc: str, expected: str) -> None:
     """Positive control: each rule fires on a docstring that breaks it."""
-    assert any(expected in issue for issue in _doc_issues(doc, capped=capped))
+    assert any(expected in issue for issue in _doc_issues(doc))
 
 
 def test_the_docstring_check_passes_the_template_shape() -> None:
     """Negative control: a conforming docstring raises nothing."""
     doc = _GOOD + "\n\nRaises:\n    GeneratorCapError: x\n\nDecisions:\n    y"
-    assert _doc_issues(doc, capped=True) == []
+    assert _doc_issues(doc) == []
 
 
 def test_the_stub_is_the_template() -> None:
     """``new_language.py``'s stub fails only for what a writer must fill in."""
     stub = _GENERATOR.format(name="X", slug="x", category="c")
-    issues = _doc_issues(ast.get_docstring(ast.parse(stub)) or "", capped=True)
+    issues = _doc_issues(ast.get_docstring(ast.parse(stub)) or "")
     assert [issue.split(" ")[0] for issue in issues] == ["Size:", "template"]
 
 
 def test_generator_docstrings_follow_the_template() -> None:
     """Every registered generator's module docstring is checked."""
-    failures = {
-        name: _doc_issues(_doc(name), capped=_capped(name)) for name in _generated()
-    }
+    failures = {name: _doc_issues(_doc(name)) for name in _generated()}
     assert {name: issues for name, issues in failures.items() if issues} == {}
+    # A generator that can refuse a table declares the refusal it raises.
+    undeclared = [
+        name
+        for name in _generated()
+        if _capped(name)
+        and "GeneratorCapError" not in {r.error for r in generator_raises(name)}
+    ]
+    assert undeclared == []
+    # Rendered ``Size:`` figures and ``Raises:`` entries match their records.
+    assert not update_source_anchors(check=True), "run `just docs`"
     for name in _generated():
         text = " ".join(" ".join(section(_doc(name), "Size")).split()).replace(",", "")
         for anchor in source_anchors(name):
@@ -376,15 +373,30 @@ def test_the_named_tables_are_the_functions_they_name() -> None:
     ):
         with pytest.raises(ValueError, match=r"witness|anchor|evidence|schema"):
             parse_anchors(REFERENCE, broken)
+    from scripts.docs.evidence import parse_raises, render_raises
 
-
-def triggers_of(name: str) -> dict[str, object]:
-    """Return ``name``'s triggers and untriggerable entries."""
-    data = cases(LANGUAGES[name].id)
-    return {
-        "triggers": data.get("generator_triggers", []),
-        "untriggerable": data.get("generator_untriggerable", {}),
-    }
+    good = {"error": "GeneratorCapError", "when": "x", "table": "0110"}
+    assert parse_raises([good]) == (GeneratorRaise("GeneratorCapError", "x", "0110"),)
+    for rows in (
+        {},
+        [good, good],
+        [good | {"error": "ValueError"}],
+        [good | {"when": " "}],
+        [good | {"untriggerable": "y"}],
+        [{k: v for k, v in good.items() if k != "table"}],
+        [good | {"unexpected": "z"}],
+    ):
+        with pytest.raises(ValueError, match="raise"):
+            parse_raises(rows)
+    declared = parse_raises([good])
+    with pytest.raises(ValueError, match="Raises: section"):
+        render_raises('"""A.\n\nSize:\n    y\n"""\n', declared)
+    with pytest.raises(ValueError, match="declared raises"):
+        render_raises('"""A.\n\nRaises:\n    GeneratorCapError: y\n"""\n', ())
+    assert (
+        render_raises('"""A.\n\nRaises:\n    ArgumentError: old\n"""\n', declared)
+        == '"""A.\n\nRaises:\n    GeneratorCapError: x\n"""\n'
+    )
 
 
 def _table(spec: str) -> str:
@@ -395,34 +407,22 @@ def _table(spec: str) -> str:
 
 
 _TRIGGERS = [
-    (name, trigger)
+    (name, declared)
     for name in _generated()
-    for trigger in triggers_of(name).get("triggers", [])  # type: ignore[attr-defined]
+    for declared in generator_raises(name)
+    if declared.table is not None
 ]
 
 
 @pytest.mark.parametrize(
-    ("name", "trigger"),
+    ("name", "declared"),
     _TRIGGERS,
-    ids=[f"{name}-{t['expect']}-{i}" for i, (name, t) in enumerate(_TRIGGERS)],
+    ids=[f"{name}-{d.error}" for name, d in _TRIGGERS],
 )
-def test_the_trigger_raises_what_the_docstring_says(
-    name: str, trigger: dict[str, object]
+def test_the_declared_table_raises_what_the_docstring_says(
+    name: str, declared: GeneratorRaise
 ) -> None:
-    """The documented exception is what ``generate`` raises."""
-    options = trigger.get("options", {})
-    assert isinstance(options, dict)
-    with pytest.raises(getattr(exceptions, str(trigger["expect"]))):
-        esolangs.generate(name, _table(str(trigger["table"])), **options)
-
-
-def test_every_raises_entry_has_a_trigger() -> None:
-    """A new ``Raises:`` line cannot land without a call that shows it."""
-    missing = {}
-    for name in _generated():
-        data = triggers_of(name)
-        covered = {t["expect"] for t in data.get("triggers", [])}  # type: ignore[attr-defined]
-        covered |= set(data.get("untriggerable", {}))  # type: ignore[call-overload]
-        if gaps := raises_entries(_doc(name)) - covered:
-            missing[name] = sorted(gaps)
-    assert missing == {}
+    """The declared exception is what ``generate`` raises on its table."""
+    assert declared.table is not None
+    with pytest.raises(getattr(exceptions, declared.error)):
+        esolangs.generate(name, _table(declared.table))

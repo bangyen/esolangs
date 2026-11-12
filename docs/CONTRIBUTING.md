@@ -196,8 +196,9 @@ Generator docstrings use prose, then `Size:`, `Raises:`, `Decisions:`.
 `Size:` needs a measured anchor in the exact machine-read form
 `n=10 random 1847: 1,118 chars` or `n=16 and: 1,443,471 chars`.
 Store figures in `language.toml` evidence; `just docs` renders their docstring
-views. Tests independently regenerate emitted programs and check the figures. List `GeneratorCapError` wherever generation may refuse a table,
-with a `[[generator_triggers]]` case. Do not duplicate docstring figures
+views. Tests independently regenerate emitted programs and check the figures. Declare `GeneratorCapError` wherever generation may refuse a table,
+as `[[evidence.raises]]` with a raising `table` or an `untriggerable` reason;
+`just docs` renders the `Raises:` entry. Do not duplicate docstring figures
 elsewhere in the generator; helper-specific figures belong beside the helper.
 
 ## What makes a generator optimization worth shipping

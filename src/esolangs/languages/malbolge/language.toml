@@ -78,6 +78,11 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.malbolge.generator:malbolge_request"
 
+[[evidence.raises]]
+error = "GeneratorCapError"
+when = "past seventeen inputs, or seventeen in neither family."
+table = "n=17 random 1"
+
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.malbolge.generator:malbolge_request"

@@ -98,6 +98,11 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
 
+[[evidence.raises]]
+error = "GeneratorCapError"
+when = "more than forty inputs; a flight's column must stay below the printers'."
+untriggerable = "forty-one inputs need a 2**41-entry table, a terabyte no generate() call can pass"
+
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.interprogck8.generator:interprogck8_request"
