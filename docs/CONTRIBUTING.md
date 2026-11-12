@@ -316,7 +316,13 @@ steps; bound each piece's upside before choosing it.
    time, as JSON. `just bounds "Name"` prints worst steps and
    written bits and witnesses. “Worst” must be
    exact; otherwise say “at most”.
-4. `just finish-language "Name"` regenerates examples, docs and size baseline,
+4. A first implementation (no outside interpreter) gets a blind
+   reimplementation: a clean-room interpreter written from the wiki page
+   alone, diffed over the generated corpus with live controls. Fix a
+   generator form the page does not license; state a reading the page leaves
+   open in the Decisions, or fence it in [limitations](limitations.md) with
+   its evidence. Record `[audits] blind_reimplementation = <date>`.
+5. `just finish-language "Name"` regenerates examples, docs and size baseline,
    runs the whole-tree `--full` gate, then CI-only checks. Quick tests alone
    do not qualify. Run this minutes-long check in the background; it reruns
    failures alone and identifies load-only failures. Missing checklist items

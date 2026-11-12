@@ -7,7 +7,7 @@ open until its trace, resource, installed-package and retirement evidence is
 checked against the current implementation. Refresh this snapshot after each
 migration batch.
 
-The [roadmap](roadmap.md#architecture-migrations) defines acceptance. The table
+The roadmap's eight workstreams defined acceptance; all closed. The table
 below inventories known retirement families; the final tree-wide audit must
 also catch aliases introduced during migration. Target removal release: 2.0.
 Owners are workstreams, not individual contributors.
