@@ -25,6 +25,7 @@ import pytest
 import esolangs
 from esolangs.exceptions import ExecutionTimeoutError, InputExhaustedError
 from esolangs.vm import complete_vm, make_vm
+from tests.support.execution import run_observed
 
 _DIR = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
 
@@ -75,7 +76,7 @@ def test_wiki_examples(language, page, example, citation) -> None:
     stop = example.get("stop", "halt")
     settings = esolangs.Language(language).settings(**example.get("settings", {}))
     if stop == "halt":
-        output = esolangs.run(
+        output = run_observed(
             language,
             source,
             stdin=stdin,
@@ -89,7 +90,7 @@ def test_wiki_examples(language, page, example, citation) -> None:
     else:
         error = {"steps": ExecutionTimeoutError, "eof": InputExhaustedError}[stop]
         with pytest.raises(error) as info:
-            esolangs.run(
+            run_observed(
                 language,
                 source,
                 stdin=stdin,

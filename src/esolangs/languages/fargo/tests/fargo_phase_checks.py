@@ -129,9 +129,8 @@ def check_phases():
             landed.past_end,
         )
         try:
-            checker.esolangs.run(
-                "Fargo", artifact, stdin=case.stdin, max_steps=64, timeout=5
-            )
+            # In-process: a timeout would move the run out of the patched writer.
+            checker.esolangs.run("Fargo", artifact, stdin=case.stdin, max_steps=64)
         except checker.esolangs.ProgramError as caught:
             assert type(caught) is checker.esolangs.ProgramError
             assert str(caught) == marker

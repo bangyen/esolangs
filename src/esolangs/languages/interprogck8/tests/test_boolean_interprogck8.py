@@ -7,12 +7,12 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import run as execute
 from esolangs.exceptions import GeneratorCapError
 from esolangs.languages.interprogck8 import descriptor, generator
 from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
+from tests.support.execution import run_observed as execute
 from tests.support.generator_support import assert_saved_rows, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 

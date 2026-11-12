@@ -519,12 +519,9 @@ def _check_public_randomness():
             patch.object(native._Machine, "step", step),
             patch.object(randomness.secrets, "randbelow", audit_secret),
         ):
+            # No timeout: a timed run executes in a worker, out of these patches.
             result = run(
-                "Caballo",
-                ProgramArtifact(source, "Caballo"),
-                stdin=stdin,
-                timeout=2.0,
-                **options,
+                "Caballo", ProgramArtifact(source, "Caballo"), stdin=stdin, **options
             )
         assert len(created) == 1
         assert any([capture.row for capture in captures] == rows for rows in expected)

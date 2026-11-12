@@ -20,11 +20,13 @@ def _check_empty_program(language: str) -> None:
         else ""
     )
     isolated = os.name != "posix"
-    options = {
-        "timeout": 3,
-        "isolated": isolated,
-        "max_output": 1024 if isolated else None,
-    }
+    # In-process, a step bound stands in for the timeout, which would start a
+    # worker per language.
+    options = (
+        {"timeout": 3, "isolated": True, "max_output": 1024}
+        if isolated
+        else {"max_steps": 10_000}
+    )
     message = LANGUAGES[language].runtime.empty_program
     if not message:
         try:

@@ -5,13 +5,13 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import run as execute
 from esolangs.languages.super_snusp import generator as boolean
 from esolangs.languages.super_snusp.generator import balance_super_snusp, super_snusp
 from esolangs.runtime.io import ScriptedIO
 from scripts.docs.evidence import construction_boundaries
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
+from tests.support.execution import run_observed as execute
 from tests.support.generator_support import (
     assert_constant_roots,
     assert_saved_rows,

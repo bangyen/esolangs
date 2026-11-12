@@ -3,11 +3,11 @@
 import pytest
 
 import esolangs
-from esolangs import run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import count_steps
+from tests.support.execution import run_observed as run
 from tests.support.generator_support import assert_every_row, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 

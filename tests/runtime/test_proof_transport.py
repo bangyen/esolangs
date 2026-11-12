@@ -22,6 +22,7 @@ from esolangs.runtime._result_wire import (
 from esolangs.runtime._termination import _termination_result
 from esolangs.vm import _capture_observation, make_vm
 from tests.support.certification_barrier import guarded_worker
+from tests.support.execution import run_observed
 from tests.support.reference import REFERENCE
 from tests.support.worker_response import _decode
 
@@ -63,7 +64,7 @@ def _replay_termination(name, source, stdin, result):
         assert (
             debugger.result.completion is None
         ) is debugger.dumps_on_the_post_halt_step
-        native = esolangs.run(name, source, stdin=stdin, timeout=5)
+        native = run_observed(name, source, stdin=stdin, timeout=5)
         debugger.step()
         completed = debugger.result
         assert completed == native._replace(steps=decision.commands)

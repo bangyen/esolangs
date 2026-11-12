@@ -129,29 +129,23 @@ def test_run_timeout_halts_runaway_program() -> None:
 
 
 def test_run_timeout_halts_a_growing_program() -> None:
-    """The signal interrupts a loop whose state never repeats."""
+    """The deadline interrupts a loop whose state never repeats."""
     with pytest.raises(esolangs.ExecutionTimeoutError, match="timeout"):
         esolangs.run(REFERENCE, "+[>+]", timeout=0.01)
 
 
-def test_run_timeout_requires_main_thread() -> None:
-    """The SIGALRM guard needs a Unix main thread; elsewhere timeout is refused."""
-    import threading
+def test_run_timeout_works_off_main_thread(monkeypatch) -> None:
+    """Timed runs use a worker without changing the parent's signals."""
+    import concurrent.futures
+    import signal
 
-    out: list[BaseException | None] = [None]
+    def forbidden(*_args):
+        raise AssertionError("timed run changed a parent signal handler")
 
-    def runner() -> None:
-        try:
-            esolangs.run(REFERENCE, "+", timeout=1)
-        except BaseException as exc:
-            out[0] = exc
-
-    thread = threading.Thread(target=runner)
-    thread.start()
-    thread.join(5)
-    assert isinstance(out[0], ValueError)
-    assert "SIGALRM" in str(out[0])
-    assert "isolated=True" in str(out[0])
+    monkeypatch.setattr(signal, "signal", forbidden)
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        result = pool.submit(esolangs.run, REFERENCE, "+.", timeout=5).result(10)
+    assert result.output == "\x01"
 
 
 def test_a_timeout_names_the_bound_that_fired() -> None:
@@ -162,6 +156,9 @@ def test_a_timeout_names_the_bound_that_fired() -> None:
         esolangs.run(REFERENCE, "+[]", max_steps=100, timeout=30)
     with pytest.raises(esolangs.ExecutionTimeoutError) as timed:
         esolangs.run(REFERENCE, "+[]", timeout=0.05)
+    with pytest.raises(esolangs.ExecutionTimeoutError) as combined:
+        esolangs.run(REFERENCE, "+[]", max_steps=10**9, timeout=0.01)
+    assert combined.value.bound == "timeout"
     for caught, bound in ((stepped, "max_steps"), (timed, "timeout")):
         assert caught.value.bound == bound
         assert pickle.loads(pickle.dumps(caught.value)).bound == bound

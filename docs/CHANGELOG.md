@@ -12,6 +12,9 @@ Releases before 0.10.0 are described on the
   when binding inputs or executing to preserve provenance and dialect settings.
 - **Breaking:** Portable template records require `spans`; gzip records require
   `limits` (which may be null); unknown PNG metadata versions are rejected.
+- **Breaking:** A timed `run` uses a worker instead of a Unix signal, including
+  when combined with a step bound; it works from worker threads and pays worker
+  startup on each call. Use `max_steps` alone for an in-process bound.
 - **Breaking:** `run` returns `ExecutionResult`; use `.output` for printed text.
 - **Breaking:** Unfilled templates require explicit bindings and cannot execute.
   Tagged-string wrappers, inferred bindings and temporary compatibility aliases

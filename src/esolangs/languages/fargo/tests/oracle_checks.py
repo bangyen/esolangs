@@ -192,7 +192,8 @@ def public(case, rows, *, isolated=False, cap=None):
             esolangs.ProgramArtifact(case.source, "Fargo"),
             stdin=case.stdin,
             max_steps=cap,
-            timeout=5,
+            # A timeout selects a worker, which keeps its own digit limit.
+            timeout=5 if isolated else None,
             isolated=isolated,
         )
     except esolangs.EsolangError as caught:

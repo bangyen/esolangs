@@ -10,7 +10,6 @@ from esolangs.results import ExecutionResult
 from esolangs.runtime._controller import ExecutionController
 from esolangs.runtime._execution import (
     check_seed_for,
-    check_signal_timeout,
     interpreter_module,
 )
 from esolangs.runtime._input import InputSource
@@ -95,18 +94,17 @@ def run(
             Boolean validation; binary is decoded as UTF-8.  Build a
             Boolean-generated program's stdin with :func:`encode_inputs`,
             which validates the bits.
-        timeout: Wall-clock seconds (None: unbounded), via ``SIGALRM``, so it
-            needs a Unix main thread; off it, use ``isolated`` or
-            ``max_steps``.
+        timeout: Wall-clock seconds (None: unbounded). Without ``isolated``,
+            bounds execution in a worker, with a 30-second total deadline; the
+            catalog must match installed runtimes. With ``isolated``, bounds the
+            whole worker invocation, including acquisition and startup.
         seed: Integer fixing the languages that draw
             (``describe(language)["random"]``); the rest refuse it.
         isolated: Run in a subprocess whose deadline covers startup and
             loading (``timeout``, or 30 seconds when None); works on Windows
             and in worker threads. Can combine with ``max_steps``.
         max_steps: Cooperative stepping bound, for text and raster programs;
-            ``timeout`` then excludes loading and cannot interrupt a single
-            step. With isolation, the worker also enforces its wall-clock
-            deadline.
+            with ``timeout``, a worker also enforces the execution deadline.
         scale: Raster scale factor; detected when None.
         max_output: Isolated output cap in Unicode characters (zero allowed);
             the prefix is kept.
@@ -189,13 +187,16 @@ def _execute_invocation(
     check_limits(max_output, max_memory, isolated=isolated)
     if max_steps is not None:
         check_whole(max_steps, "max_steps")
+    timed_worker = timeout is not None and not isolated
+    if timed_worker:
+        execution_timeout, timeout, isolated = timeout, None, True
     if isolated:
         if io_factory is not ScriptedIO:
             raise ArgumentError("custom I/O factories require in-process execution")
         deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
         # Every option defaults to None, so passing them unconditionally
         # matches the old per-combination cascade exactly.
-        return _execute_isolated(
+        outcome = _execute_isolated(
             language,
             program,
             stdin,
@@ -210,6 +211,10 @@ def _execute_invocation(
             preparation_timeout=preparation_timeout,
             catalog=catalog,
         )
+        if timed_worker and outcome.bound == "execution_timeout":
+            assert isinstance(outcome.error, ExecutionTimeoutError)
+            outcome.error.bound = "timeout"
+        return outcome
     if max_steps is not None:
         return _execute_bounded(
             language,
@@ -224,19 +229,6 @@ def _execute_invocation(
             io_factory=io_factory,
             prepared=prepared,
         )
-    # Before ``_run``, so every ValueError from the run is the
-    # interpreter's.  The message names both routes out for a worker
-    # thread.  Not a silent fallback to stepping: two paths for one
-    # function is how they diverged (``tests/runtime/test_stepping_parity.py``).
-    check_signal_timeout(
-        timeout,
-        "the timeout guard uses SIGALRM and needs a Unix main thread; "
-        "off it, either pass isolated=True, which times a subprocess, or "
-        "bound the run cooperatively with "
-        "esolangs.debugger.make_debugger(language, program, stdin)"
-        ".run(timeout=...), "
-        "which steps and so needs no signal",
-    )
     if prepared is None:
         prepared = prepare_program(
             language,

@@ -142,14 +142,14 @@ def test_periodic_result_retains_cycle_evidence_in_a_worker():
                         if LANGUAGES[name].parameterized
                         else esolangs.encode_inputs(name, bits, truth_table=table)
                     )
-                    native = esolangs.run(name, source, stdin=stdin, timeout=5)
+                    native = run_observed(name, source, stdin=stdin, timeout=5)
                     assert esolangs.read_answer(name, native.output) == expected
                     _replay_periodic(name, source, stdin, native)
                     cases.append((name, source, stdin, native))
     assert len(cases) == 72
     for name in names:
         source = esolangs.ProgramArtifact("", name)
-        native = esolangs.run(name, source, timeout=5)
+        native = run_observed(name, source, timeout=5)
         assert native.completion.cycle.commands_per_pass == 0
         _replay_periodic(name, source, "", native)
         cases.append((name, source, "", native))

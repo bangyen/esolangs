@@ -10,6 +10,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from tests.support.evaluation import _evaluate
+from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated, probe_table
 from tests.support.pick import first, languages
 from tests.support.reference import REFERENCE
@@ -210,7 +211,7 @@ class TestExamplePathsWorkFromAnywhere:
         """The advertised package resource executes after changing directory."""
         example = files("esolangs") / esolangs.describe(REFERENCE)["examples"][0]
         monkeypatch.chdir(tmp_path)
-        assert esolangs.run(REFERENCE, example, stdin="1\n0\n", timeout=20).output
+        assert run_observed(REFERENCE, example, stdin="1\n0\n", timeout=20).output
 
 
 class TestWhatHappensWhenAProgramIsUnderfed:
@@ -230,7 +231,7 @@ class TestWhatHappensWhenAProgramIsUnderfed:
         n = len(table).bit_length() - 1
         short = esolangs.encode_inputs(name, list(probe[1][: n - 1])) if n > 1 else ""
         try:
-            output = esolangs.run(name, program, stdin=short, timeout=10).output
+            output = run_observed(name, program, stdin=short, timeout=10).output
         except esolangs.InputExhaustedError:
             return "raised", None
         except esolangs.EsolangError:

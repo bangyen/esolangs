@@ -23,6 +23,7 @@ from esolangs.exceptions import (
 )
 from esolangs.operations.source import _check_program
 from esolangs.registry import LANGUAGES
+from tests.support.execution import run_observed
 from tests.support.generator_support import CHECK, evaluate_generated
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -209,7 +210,7 @@ class TestEveryDeliberateErrorIsCatchable:
                 continue  # needs bits embedded, or answers by terminating
             for example in facts["examples"]:
                 try:
-                    esolangs.run(
+                    run_observed(
                         name,
                         esolangs.Language(name).from_file(
                             pathlib.Path(str(files("esolangs") / example)),
@@ -315,7 +316,7 @@ class TestSourceAndPathsAreExplicit:
 
 # 2.2s over 12 tests: runs a diverging program to its bound.
 @pytest.mark.medium
-class TestTheThreadRefusalNamesAWayThrough:
+class TestThreadExecution:
     """A worker thread had two options and no third."""
 
     @staticmethod
@@ -335,14 +336,12 @@ class TestTheThreadRefusalNamesAWayThrough:
         assert not thread.is_alive(), "the worker never finished"
         return box["value"]
 
-    def test_the_message_names_the_debugger_route(self) -> None:
-        """Naming a route is a claim; the test below runs it."""
+    def test_a_timed_run_works_off_thread(self) -> None:
+        """The worker deadline works from a caller's thread."""
         outcome = self._off_thread(
             lambda: esolangs.run(REFERENCE, "+++.", stdin="", timeout=5).output
         )
-        assert isinstance(outcome, esolangs.ArgumentError)
-        message = str(outcome)
-        assert "make_debugger" in message
+        assert outcome == "\x03"
 
     def test_the_debugger_route_bounds_a_diverging_program(self) -> None:
         """The one that matters: a program that never halts, on a thread."""

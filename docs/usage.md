@@ -199,9 +199,8 @@ of execution. It selects isolation when source needs preparing. A total deadline
 output cap or memory cap also selects isolation. In-process `PreparedProgram.execute`
 uses the existing preparation. An isolated call prepares again in its worker.
 `PreparedProgram.evaluate(bits)` can reuse a generated stdin program across rows.
-An execution deadline with a step budget is cooperative when running in-process.
-A deadline without a step budget selects isolation. Cooperative deadlines are
-checked between commands.
+An execution deadline selects isolation, including with a step budget, so it
+can interrupt an individual step.
 An isolated call without an explicit total deadline retains the 30-second default.
 
 `Catalog` owns immutable declarations and lookup indexes. Construct one from
@@ -463,8 +462,10 @@ returns output on halt. When either bound expires it raises
 
 - `max_steps` selects cooperative stepping. It steps all languages on
   Windows and worker threads.
-- Without isolation, deadlines are checked between steps; loading and an
-  individual step cannot be interrupted.
+- A timeout selects a worker and can interrupt an individual step. Without
+  `isolated=True` it bounds execution; with it, it also bounds acquisition and
+  worker startup. Workers require runtime declarations matching the installed
+  catalog; without an explicit total deadline they retain the 30-second default.
 - Text and image-based languages share the VM and debugger.
 - Command bounds combine with isolation, output/memory caps and seeds.
 - A language whose `describe()["steppable_to_answer"]` is false (A Painter

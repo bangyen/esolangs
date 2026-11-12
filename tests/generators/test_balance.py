@@ -15,6 +15,7 @@ from esolangs.generation.wrap import (
 )
 from esolangs.registry import LANGUAGES, SourceKind
 from tests.support.cli_support import call_main
+from tests.support.execution import run_observed
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 from tests.support.witness_tables import row_bits
@@ -80,7 +81,7 @@ def test_balance_executes(name: str, table: str) -> None:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         assert (
             esolangs.read_answer(
-                name, esolangs.run(name, source, stdin=stdin, timeout=10).output
+                name, run_observed(name, source, stdin=stdin, timeout=10).output
             )
             == expected
         )

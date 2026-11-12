@@ -90,18 +90,6 @@ def _cli(args: list[str], stdin: str = "") -> str:
     return result.stdout
 
 
-def _refuses_timeout() -> None:
-
-    import esolangs
-
-    refusal = _refused(
-        esolangs.ArgumentError,
-        lambda: esolangs.run("brainfuck", "+.", timeout=0.1).output,
-        "unsupported signal timeout was accepted",
-    )
-    assert "Unix main thread" in str(refusal)
-
-
 @cache
 def _evaluator() -> Callable[..., str]:
     """Load the checkout's test helpers while importing the installed package."""
@@ -342,7 +330,7 @@ def _smoke_rasters(*, image_extra: bool) -> None:
 
 
 def _smoke_deadlines() -> None:
-    """Check signal, thread and isolated deadlines, and termination answers."""
+    """Check worker deadlines, thread execution and termination answers."""
     import esolangs
 
     _evaluate = _evaluator()
@@ -357,15 +345,18 @@ def _smoke_deadlines() -> None:
             )
             == "0110"
         )
-        _refused(
-            esolangs.ExecutionTimeoutError,
-            lambda: esolangs.run("brainfuck", "+[]", timeout=0.02).output,
-            "signal timeout did not stop a loop",
-        )
-    else:
-        _refuses_timeout()
+    _refused(
+        esolangs.ExecutionTimeoutError,
+        lambda: esolangs.run("brainfuck", "+[]", timeout=0.02).output,
+        "worker timeout did not stop a loop",
+    )
     with ThreadPoolExecutor(max_workers=1) as pool:
-        pool.submit(_refuses_timeout).result(timeout=5)
+        assert (
+            pool.submit(
+                lambda: esolangs.run("brainfuck", "+.", timeout=2).output
+            ).result(timeout=5)
+            == "\x01"
+        )
     # A language never halting by itself, and one answering by termination;
     # each check drops out with the last language of its kind.
     for language in _first_languages(

@@ -3,13 +3,13 @@
 import pytest
 
 import esolangs
-from esolangs import run
 from esolangs.languages.rubic.generator import _OPENING, _TABLE
 from esolangs.languages.rubic.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
+from tests.support.execution import run_observed as run
 from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 

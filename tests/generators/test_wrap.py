@@ -20,6 +20,7 @@ from esolangs.generation.wrap import (
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.registry._backend import BooleanBackend
 from tests.support.divergence import diverges, terminates
+from tests.support.execution import run_observed
 from tests.support.generator_support import CHECK
 from tests.support.witness_tables import parity
 
@@ -264,7 +265,7 @@ def _behaviour(name: str, program: str, stdin: str) -> str:
     if diverges(name, program, stdin):
         return "diverges (cycle proven)"
     try:
-        return esolangs.run(name, program, stdin=stdin, timeout=_RUN_TIMEOUT).output
+        return run_observed(name, program, stdin=stdin, timeout=_RUN_TIMEOUT).output
     except Exception as exc:
         return f"{type(exc).__name__}: {exc}"
 

@@ -13,6 +13,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
 from tests.support.evaluation import _DEFAULT, _Default, _evaluate
 from tests.support.event_io import ReadFirstIO
+from tests.support.execution import run_observed
 from tests.support.witness_tables import parity, row_bits
 
 
@@ -48,7 +49,7 @@ def assert_every_row(
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs(language, bits)
-        got = esolangs.run(language, program, stdin=stdin, timeout=5).output
+        got = run_observed(language, program, stdin=stdin, timeout=5).output
         assert esolangs.read_answer(language, got) == table[row], (table, row)
 
 

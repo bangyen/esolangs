@@ -13,6 +13,7 @@ from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
 from tests.support.cli_support import call_both, call_main
+from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated, overruns
 from tests.support.prepared_support import check_random_plan_reuse
 from tests.support.reference import REFERENCE
@@ -65,7 +66,8 @@ def test_reproducible_vm_accepts_an_opaque_factory(monkeypatch):
 def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit() -> None:
     seeds = [*range(8), 10**5000, -(10**5000)]  # strings are refused now
     direct = [
-        run("LaserFuck", "o+++.\n", seed=seed, timeout=5).output for seed in seeds
+        run_observed("LaserFuck", "o+++.\n", seed=seed, timeout=5).output
+        for seed in seeds
     ]
     isolated = [
         run("LaserFuck", "o+++.\n", seed=seed, timeout=5, isolated=True).output
@@ -123,7 +125,7 @@ class TestASeedMakesARunRepeat:
     def test_a_seeded_run_repeats(self) -> None:
         """Six runs, one answer."""
         answers = {
-            run("LaserFuck", self.PROGRAM, stdin="", timeout=5, seed=0).output
+            run_observed("LaserFuck", self.PROGRAM, stdin="", timeout=5, seed=0).output
             for _ in range(6)
         }
         assert len(answers) == 1
@@ -131,7 +133,9 @@ class TestASeedMakesARunRepeat:
     def test_the_seed_selects_rather_than_fixes_one_outcome(self) -> None:
         """A seed that always gave the same answer would prove nothing."""
         by_seed = {
-            seed: run("LaserFuck", self.PROGRAM, stdin="", timeout=5, seed=seed).output
+            seed: run_observed(
+                "LaserFuck", self.PROGRAM, stdin="", timeout=5, seed=seed
+            ).output
             for seed in range(8)
         }
         assert len(set(by_seed.values())) == 2

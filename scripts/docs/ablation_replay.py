@@ -354,8 +354,14 @@ def _observe(
             )
         )
     else:
-        result = esolangs.run(
-            language, program, stdin=stdin, timeout=bound, seed=record.seed
+        # The in-process guard: a timed public run would start a worker per row.
+        result = _run(
+            lambda *_args: esolangs.run(
+                language, program, stdin=stdin, seed=record.seed
+            ),
+            "",
+            ScriptedIO(""),
+            bound,
         )
         answer = esolangs.read_answer(language, result.output)
     positions = {len(stdin)}

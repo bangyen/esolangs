@@ -10,6 +10,7 @@ import esolangs
 from esolangs.cli.hints import _template_hint
 from esolangs.exceptions import ProgramError, TemplateError
 from tests.support.evaluation import _evaluate
+from tests.support.execution import run_observed
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 from tests.support.witness_tables import XOR, row_bits
@@ -27,7 +28,7 @@ def _rows(language: str, table: str) -> str:
         bits = row_bits(row, inputs)
         stdin = esolangs.encode_inputs(language, bits)
         got += (
-            esolangs.run(language, program, stdin=stdin, timeout=30).output[-1:] or "?"
+            run_observed(language, program, stdin=stdin, timeout=30).output[-1:] or "?"
         )
     return got
 

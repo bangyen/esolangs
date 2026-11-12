@@ -10,6 +10,7 @@ from esolangs.languages.a_painter_ant.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import EmptyProgramContract
+from tests.support.execution import run_observed
 
 
 def run_program(code: str, passes: int = 1) -> str:
@@ -82,7 +83,7 @@ class TestPaintingAndLoop:
 
         from .oracle_checks import _check
 
-        empty = esolangs.run("A Painter Ant", "", timeout=5)
+        empty = run_observed("A Painter Ant", "", timeout=5)
         _check(
             _Machine,
             "",
@@ -100,7 +101,7 @@ class TestPaintingAndLoop:
                 for row in range(len(table)):
                     bits = [int(bit) for bit in f"{row:0{inputs}b}"]
                     source = esolangs.instantiate("A Painter Ant", template, bits)
-                    native = esolangs.run("A Painter Ant", source, timeout=5)
+                    native = run_observed("A Painter Ant", source, timeout=5)
                     cycle = native.completion.cycle
                     _check(
                         _Machine,

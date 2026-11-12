@@ -5,6 +5,8 @@ It is deliberately not exported as public API.  ``esolangs.run`` is reached
 through the package at call time (patchable).
 """
 
+import signal
+import threading
 from collections.abc import Callable, Iterator
 from functools import partial
 from threading import Thread
@@ -28,7 +30,7 @@ from esolangs.operations.boolean_io import (
     read_answer,
 )
 from esolangs.registry import LANGUAGES, resolve
-from esolangs.runtime._execution import check_signal_timeout
+from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._prepared import PreparedProgram, prepare_program
@@ -54,6 +56,18 @@ class _Default:
 
 
 _DEFAULT = _Default()
+
+
+def check_signal_timeout(timeout: float | None, message: str) -> None:
+    """Refuse a signal deadline outside a Unix main thread."""
+    # Only this harness still times rows with ``run_guard``; public ``run``
+    # sends every timeout to a worker.
+    if timeout is not None and not (
+        threading.current_thread() is threading.main_thread()
+        and hasattr(signal, "SIGALRM")
+    ):
+        raise ArgumentError(message)
+
 
 #: A termination-answering language proves a 1 by *not* halting, so
 #:  :func:`_evaluate` pays this once for every such row.  Four languages
@@ -323,16 +337,24 @@ def _row_answerer(
             prepared: PreparedProgram | None = None,
         ) -> str:
             if prepared is None:
-                result = run(
-                    name,
-                    source,
-                    stdin=stdin,
-                    timeout=bound,
-                    isolated=isolated,
-                    scale=scale,
-                    max_output=max_output,
-                    max_memory=max_memory,
-                    settings=settings,
+
+                def call(*_args: object) -> ExecutionResult:
+                    return run(
+                        name,
+                        source,
+                        stdin=stdin,
+                        timeout=bound if isolated else None,
+                        isolated=isolated,
+                        scale=scale,
+                        max_output=max_output,
+                        max_memory=max_memory,
+                        settings=settings,
+                    )
+
+                result = (
+                    call()
+                    if isolated
+                    else _execution_runtime.run_guard(call, "", ScriptedIO(""), bound)
                 )
             else:
                 result = run_observed(

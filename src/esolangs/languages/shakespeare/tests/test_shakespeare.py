@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from esolangs import run as execute
 from esolangs.exceptions import ExecutionTimeoutError, HaltError
 from esolangs.languages.shakespeare._syntax import parse
 from esolangs.languages.shakespeare.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import check_terminal
+from tests.support.execution import run_observed as execute
 
 FIXTURES = Path(__file__).parent / "fixtures"
 HEAD = (

@@ -6,7 +6,6 @@ import importlib
 import re
 import shlex
 import signal
-import threading
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -30,15 +29,6 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import dialect_options
-
-
-def check_signal_timeout(timeout: float | None, message: str) -> None:
-    """Refuse a signal deadline outside a Unix main thread."""
-    if timeout is not None and not (
-        threading.current_thread() is threading.main_thread()
-        and hasattr(signal, "SIGALRM")
-    ):
-        raise ArgumentError(message)
 
 
 def run_under_alarm[T](

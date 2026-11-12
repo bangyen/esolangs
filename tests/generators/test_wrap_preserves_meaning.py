@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES
+from tests.support.execution import run_observed
 from tests.support.witness_tables import row_bits
 
 # Narrow enough to break somewhere in almost every program, and coprime-ish
@@ -42,7 +43,7 @@ def _evaluate(name: str, table: str, width: int | None) -> str:
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         got += (
-            esolangs.run(name, source, stdin=stdin, timeout=30).output.strip()[-1:]
+            run_observed(name, source, stdin=stdin, timeout=30).output.strip()[-1:]
             or "?"
         )
     return got

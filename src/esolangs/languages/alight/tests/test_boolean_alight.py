@@ -6,7 +6,6 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import run
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.alight import generator as boolean
 from esolangs.languages.alight.generator import (
@@ -22,6 +21,7 @@ from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
+from tests.support.execution import run_observed as run
 from tests.support.generator_support import (
     assert_an_ignored_input_costs,
     assert_saved_rows,

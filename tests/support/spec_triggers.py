@@ -5,6 +5,7 @@ from __future__ import annotations
 import esolangs
 from esolangs.registry import LANGUAGES
 from tests.support.cases import cases
+from tests.support.execution import run_observed
 
 
 def _interpreted() -> list[str]:
@@ -47,7 +48,7 @@ def run_trigger(name: str, trigger: dict[str, object]) -> str:
         if isinstance(settings, dict)
         else None
     )
-    return esolangs.run(
+    return run_observed(
         name,
         _program(name, trigger),
         stdin=str(trigger.get("stdin", "")),

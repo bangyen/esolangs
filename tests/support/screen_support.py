@@ -15,6 +15,7 @@ import esolangs
 from esolangs.artifacts import Artifact
 from esolangs.runtime._termination import _termination_result
 from scripts import benchmark
+from tests.support.execution import run_observed
 
 #: Step cap for a candidate row, matching the removed screen's.
 CAP = 10**7
@@ -105,7 +106,7 @@ def execute(
         else:
             actual = esolangs.read_answer(
                 name,
-                esolangs.run(
+                run_observed(
                     name, source, stdin=stdin, timeout=2, settings=settings
                 ).output,
             )
