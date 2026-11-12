@@ -3,7 +3,7 @@
 import json
 import pathlib
 import re
-from typing import cast, get_args
+from typing import get_args
 
 from esolangs.exceptions import ProgramError
 from esolangs.registry import (
@@ -14,7 +14,6 @@ from esolangs.registry import (
 from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import (
     GeneratorShape,
-    ProofStatus,
     StateModel,
     WidthEffect,
 )
@@ -73,9 +72,9 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
           ``"reducing"`` or ``"lookup"`` (None without a generator);
           ``parameterized``, a template filled by :func:`instantiate`
           (``reads_input`` false).
-        - Proof: ``generator_scaling`` is the ledger statement;
-          ``proof_status`` is its category (None without a recorded proof).
-          Linear refers to size and generation time, not totality.
+        - Proof: ``generator_scaling`` is the ledger statement (None without
+          a recorded proof). Linear refers to size and generation time, not
+          totality.
         - Width: ``width_effect`` is ``"layout"`` (a shape built to fit; a
           hint), ``"wrap"`` (reflowed between tokens) or ``"none"`` (newlines
           are semantic).
@@ -133,7 +132,6 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
         "generator_shape": backend.shape.value if backend is not None else None,
         "boolean_generator": generates,
         "generator_scaling": scaling,
-        "proof_status": _proof_status(scaling) if scaling is not None else None,
         "generator_max_inputs": backend.max_inputs if backend is not None else None,
         "generator_restrictions": (backend.restrictions or None)
         if backend is not None
@@ -203,11 +201,3 @@ def list_languages(*, catalog: "Catalog | None" = None) -> list[str]:
 
     catalog = get_catalog(catalog)
     return sorted(catalog.languages)
-
-
-def _proof_status(scaling: str) -> ProofStatus:
-    """Return the ledger category without its argument, lowercase like every enum."""
-    return cast(
-        ProofStatus,
-        scaling.partition(":")[0].replace(", ", "-").replace(" ", "-").lower(),
-    )

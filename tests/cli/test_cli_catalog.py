@@ -2,12 +2,10 @@
 
 import json
 import re
-from typing import get_args
 
 import pytest
 
 import esolangs
-from esolangs.registry._contracts import ProofStatus
 from tests.support.cli_support import call_both
 from tests.support.pick import languages
 
@@ -63,7 +61,6 @@ def test_invalid_filters_are_usage_errors(capsys) -> None:
         (["--source-kind", "grid"], "--source-kind must be one of"),
         (["--answer-mode", "printed"], "--answer-mode must be one of"),
         (["--input-shape", "bits"], "--input-shape must be one of"),
-        (["--proof-status", "proved"], "--proof-status must be one of"),
         (["--inputs", "-1"], "--inputs must be a non-negative integer"),
         (["--inputs", "1.5"], "--inputs must be a non-negative integer"),
         (["--inputs"], "--inputs needs a value"),
@@ -91,7 +88,6 @@ _DETAILED = {
     "generator_max_inputs",
     "generator_restrictions",
     "generator_scaling",
-    "proof_status",
 }
 
 
@@ -100,9 +96,9 @@ def test_details_records_carry_every_class(capsys) -> None:
     for row in rows:
         if row["boolean_generator"]:
             assert row["generator_scaling"]
-            assert row["proof_status"] in get_args(ProofStatus.__value__)
         else:
-            assert row["generator_scaling"] is row["proof_status"] is None
+            assert row["generator_scaling"] is None
+        assert "proof_status" not in row
         facts = esolangs.describe(row["name"])
         assert {field: row[field] for field in _DETAILED} == {
             field: facts[field] for field in _DETAILED
@@ -114,7 +110,6 @@ def test_metadata_filters_have_positive_matches(capsys):
         ("--source-kind", "source_kind", "raster"),
         ("--answer-mode", "answer_mode", "termination"),
         ("--input-shape", "input_shape", "char_stream"),
-        ("--proof-status", "proof_status", "lower-bound"),
     ):
         names = _names([option, value], capsys)
         assert names, option

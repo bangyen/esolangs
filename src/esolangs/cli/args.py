@@ -60,7 +60,6 @@ _VALUE_OPTIONS = {
     "--source-kind",
     "--answer-mode",
     "--input-shape",
-    "--proof-status",
     "--inputs",
 }
 

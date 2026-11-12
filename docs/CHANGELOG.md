@@ -40,6 +40,10 @@ Releases before 0.10.0 are described on the
   operation does, and refuses another language's artifact;
   `Language.save_program` binds it. Raw Whitespace text saved with
   `normalize=True` no longer gains a trailing newline.  It now loads bytes, paths and streams as `run` and `dump_program` do.
+- **Breaking:** `describe()` drops `proof_status` and `list` drops
+  `--proof-status`: the category is proof bookkeeping (109 of 114
+  generators read `linear`), and ledger changes should not change the API.
+  `generator_scaling` keeps the statement itself.
 - **Breaking:** `describe()`'s `shape` key is `generator_shape`, beside the
   other `generator_*` facts; `list --json --details` follows.
 - **Breaking:** Raw `Raster` and `CompressedText` payloads no longer carry
@@ -66,7 +70,7 @@ Releases before 0.10.0 are described on the
 - `make_vm` and `make_debugger` accept `seed=`; `Debugger.observation` returns
   the `ExecutionResult` so far.
 - Add `run --max-steps N` to the CLI; exit status 124 now means the time or
-  step budget ran out. `list --proof-status` accepts `t-log-t`.
+  step budget ran out.
 - Add optional gzip text export through `save_program(..., gzip=True)` and
   `generate --gzip`. Raster exports retain PNG; compressed bytes do not redefine
   expanded program size or workspace accounting.

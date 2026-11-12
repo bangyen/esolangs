@@ -77,7 +77,7 @@ from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError
 from esolangs.raster import png
 from esolangs.registry import LANGUAGES, Language, resolve
-from esolangs.registry._contracts import AnswerMode, InputShape, ProofStatus, SourceForm
+from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
 from esolangs.registry._describe import _spec
 from esolangs.runtime._program import Program
 
@@ -113,12 +113,11 @@ _CATALOG_FILTERS: dict[str, tuple[str, tuple[str, ...]]] = {
     "--source-kind": ("source_kind", get_args(SourceForm.__value__)),
     "--answer-mode": ("answer_mode", get_args(AnswerMode.__value__)),
     "--input-shape": ("input_shape", (*get_args(InputShape.__value__), "template")),
-    "--proof-status": ("proof_status", get_args(ProofStatus.__value__)),
 }
 
 
 def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> bool:
-    """Match declared interfaces, proof categories and arity caps."""
+    """Match declared interfaces and arity caps."""
     declaration = LANGUAGES[name]
     if "--source-kind" in options and options["--source-kind"] != (
         declaration.runtime.source_kind.value
@@ -128,18 +127,13 @@ def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> 
         declaration.contract.answer_mode
     ):
         return False
-    if not options.keys() & {"--input-shape", "--proof-status"} and inputs is None:
+    if "--input-shape" not in options and inputs is None:
         return True
     facts = describe(name)
     if "--input-shape" in options:
         shape = "template" if facts["parameterized"] else facts["input_shape"]
         if shape != options["--input-shape"]:
             return False
-    if (
-        "--proof-status" in options
-        and facts["proof_status"] != options["--proof-status"]
-    ):
-        return False
     if inputs is not None:
         cap = facts["generator_max_inputs"]
         if not facts["boolean_generator"] or (cap is not None and cap < inputs):
@@ -199,7 +193,6 @@ def _list(rest: list[str]) -> None:
                     {
                         "name": name,
                         "generator_scaling": facts["generator_scaling"],
-                        "proof_status": facts["proof_status"],
                         "source_kind": facts["source_kind"],
                         "state_model": facts["state_model"],
                         "generator_shape": facts["generator_shape"],
@@ -248,8 +241,6 @@ def _list(rest: list[str]) -> None:
         suffix = f" max-inputs={limit}" if limit is not None else ""
         if restriction:
             suffix += f" ({restriction})"
-        if facts["proof_status"] is not None:
-            suffix += f" proof={facts['proof_status']}"
         print(f"{name.ljust(width)}  {marks}{suffix}")
 
 

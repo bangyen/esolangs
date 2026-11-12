@@ -115,7 +115,6 @@ class TestPackageSurface:
             "input_shape",
             "name",
             "parameterized",
-            "proof_status",
             "random",
             "reads_input",
             "self_halts",

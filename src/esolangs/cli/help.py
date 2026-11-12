@@ -66,7 +66,7 @@ commands:
   Catalog:
     list [--details] [--json] [--generator | --interpreter-only]
          [--grep REGEX] [--source-kind KIND] [--input-shape SHAPE]
-         [--answer-mode MODE] [--inputs N] [--proof-status STATUS]
+         [--answer-mode MODE] [--inputs N]
                                 list languages matching their capabilities
     describe [--json] [--spec] <language>
                                 print how that language reads its input and
@@ -115,7 +115,7 @@ example:
     "list": """usage: esolangs list [--details] [--json]
                      [--generator | --interpreter-only] [--grep REGEX]
                      [--source-kind KIND] [--input-shape SHAPE]
-                     [--answer-mode MODE] [--inputs N] [--proof-status STATUS]
+                     [--answer-mode MODE] [--inputs N]
 
 List matching languages, one per line. Filters combine with AND; filter on
 other facts with `list --json --details | jq`.
@@ -140,9 +140,6 @@ options:
               output, dump, or termination
   --inputs N  generators whose declared cap permits N inputs (N >= 0);
               table-dependent restrictions can still refuse generation
-  --proof-status STATUS
-              linear, linear-time-n-log, t-log-t, measured, open, or lower-bound;
-              describes size and generation time, not totality
   --grep REGEX
               select languages whose spec (`describe --spec`) matches,
               case-insensitively
@@ -150,7 +147,7 @@ options:
 examples:
   esolangs list --generator --details
   esolangs list --source-kind text --input-shape char_stream --answer-mode output
-  esolangs list --inputs 8 --proof-status linear --details
+  esolangs list --inputs 8 --details
   esolangs list --json --details | jq -r '.[]|select(.generator_shape=="lookup").name'
 """,
     "generate": """usage: esolangs generate [--width [N] | --balance] [--bits BITS]

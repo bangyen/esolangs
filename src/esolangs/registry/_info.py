@@ -6,7 +6,6 @@ from esolangs.registry._contracts import (
     AnswerMode,
     GeneratorShape,
     InputShape,
-    ProofStatus,
     SourceForm,
     StateModel,
     WidthEffect,
@@ -32,7 +31,6 @@ class LanguageInfo(TypedDict):
     generator_max_inputs: int | None
     generator_restrictions: str | None
     generator_scaling: str | None
-    proof_status: ProofStatus | None
     boolean_generator: bool
     parameterized: bool
     reads_input: bool
