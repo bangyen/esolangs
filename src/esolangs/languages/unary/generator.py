@@ -36,7 +36,11 @@ from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
 _MAX_SOURCE = 256 * 1024 * 1024
-_LIMITS = TextLimits(32 * 1024 * 1024, _MAX_SOURCE, 256 * 1024)
+_LIMITS = TextLimits(
+    plain_chars=32 * 1024 * 1024,
+    generation_chars=_MAX_SOURCE,
+    gzip_bytes=256 * 1024,
+)
 
 
 def _decision_body(table: str, n: int) -> tuple[str, int]:

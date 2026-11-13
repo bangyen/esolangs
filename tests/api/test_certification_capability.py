@@ -125,6 +125,7 @@ sys.meta_path.insert(0, barrier)
 import esolangs
 from unittest.mock import patch
 from esolangs.registry import LANGUAGES
+from dataclasses import replace
 from esolangs.debugger import make_debugger
 samples = json.loads(sys.argv[2])
 assert set(samples) == {n for n, l in LANGUAGES.items() if l.backend is None}
@@ -162,7 +163,7 @@ for name in esolangs.list_languages():
         stepped += 1
         observed = debugger.observation
         assert observed.steps > 0, name
-        assert observed == result._replace(steps=observed.steps), (
+        assert observed == replace(result, steps=observed.steps), (
             name, observed, result)
         debugger.step()
         assert debugger.observation == observed, name

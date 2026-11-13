@@ -75,7 +75,7 @@ def test_result_retains_a_caught_eof(route):
     assert (native.input_position, native.input_reads) == (0, 0)
     assert attempts, "the EOF control did not perform a read"
     assert native.input_past_end == len(attempts)
-    assert esolangs.run(name, source, **route)._replace(steps=None) == native
+    assert replace(esolangs.run(name, source, **route), steps=None) == native
 
 
 @pytest.mark.parametrize(
@@ -96,14 +96,18 @@ def test_post_halt_result_includes_the_final_dump(name):
     )
     stdin = "" if LANGUAGES[name].parameterized else esolangs.encode_inputs(name, [1])
     results = [esolangs.run(name, source, stdin=stdin, **route) for route in _ROUTES]
-    assert all(result._replace(steps=None) == results[0] for result in results)
+    assert all(replace(result, steps=None) == results[0] for result in results)
     assert results[1].steps == results[3].steps
     assert results[1].steps is not None
     assert results[0].completion.kind is Completion.POST_HALT
     assert results[0].completion.cycle is None
     assert esolangs.read_answer(name, results[0].output) == "1"
     if LANGUAGES[name].parameterized:
-        assert results[0][1:4] == (0, 0, 0)
+        assert (
+            results[0].input_position,
+            results[0].input_reads,
+            results[0].input_past_end,
+        ) == (0, 0, 0)
 
 
 def _replay_periodic(name, source, stdin, native):
@@ -122,14 +126,14 @@ def _replay_periodic(name, source, stdin, native):
         debugger.step()
     assert debugger.snapshot() == first_state == cycle.state
     assert not debugger.halted
-    assert debugger.observation == native._replace(
-        output="", completion=None, steps=end
+    assert debugger.observation == replace(
+        native, output="", completion=None, steps=end
     )
     assert native.output
     bounded = esolangs.run(
         name, source, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=end)
     )
-    assert bounded == native._replace(steps=end)
+    assert bounded == replace(native, steps=end)
 
 
 def test_periodic_result_retains_cycle_evidence_in_a_worker():
@@ -170,10 +174,11 @@ def test_periodic_result_retains_cycle_evidence_in_a_worker():
         cases.append((name, source, "", native))
     assert len(cases) == 73
     name, source, stdin, native = cases[-1]
-    bad = native._replace(
+    bad = replace(
+        native,
         completion=replace(
             native.completion, cycle=replace(native.completion.cycle, state=("wrong",))
-        )
+        ),
     )
     with pytest.raises(AssertionError):
         _replay_periodic(name, source, stdin, bad)
@@ -211,7 +216,7 @@ def test_bound_language_returns_the_same_record():
         isolated=True,
     )
     assert result.steps == 2
-    assert result._replace(steps=None) == esolangs.run(REFERENCE, ",.", stdin="éNEXT")
+    assert replace(result, steps=None) == esolangs.run(REFERENCE, ",.", stdin="éNEXT")
 
 
 def test_public_record_is_immutable():

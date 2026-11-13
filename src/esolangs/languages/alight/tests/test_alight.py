@@ -1,5 +1,6 @@
 """Unit tests for the Alight interpreter and its generator."""
 
+from dataclasses import replace
 from fractions import Fraction
 from itertools import product
 from operator import add, mul, sub
@@ -713,7 +714,7 @@ def test_at_list_update_and_aliases(
     assert native.output == expected
     debug = make_debugger("Alight", program, settings=settings)
     assert debug.run(max_steps=100) == "halted"
-    assert debug.observation == native._replace(steps=debug.observation.steps)
+    assert debug.observation == replace(native, steps=debug.observation.steps)
     assert run_api("Alight", program, settings=settings, isolated=True) == native
     assert second.snapshot() == before
     assert second.vars == {}

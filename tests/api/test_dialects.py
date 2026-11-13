@@ -112,8 +112,8 @@ def test_every_dialect_declares_its_values() -> None:
         catalog = catalog.with_language(replace(original, runtime=runtime))
     one = esolangs.Language(first, catalog=catalog).settings(mode=2)
     two = esolangs.Language(second, catalog=catalog).settings(mode="right")
-    assert one.options(first) == {"mode": 2}
-    assert two.options(second) == {"mode": "right"}
+    assert one.options() == {"mode": 2}
+    assert two.options() == {"mode": "right"}
     assert entered == [2, "right"]
     for language, value in ((first, "right"), (second, 2)):
         with pytest.raises(esolangs.ArgumentError, match="choices:"):
@@ -136,7 +136,7 @@ def test_every_dialect_declares_its_values() -> None:
             ),
         )
     )
-    assert scoped.bind(first).settings(catalog="right").options(first) == {
+    assert scoped.bind(first).settings(catalog="right").options() == {
         "catalog": "right"
     }
     assert CATALOG.languages[first] is declaration
@@ -296,15 +296,12 @@ def test_every_reported_default_and_choice_is_accepted(monkeypatch) -> None:
     for language in esolangs.list_languages():
         schema = settings_api.dialect_choices(language)
         defaults = {key: item["default"] for key, item in schema.items()}
-        assert (
-            esolangs.Language(language).settings(**defaults).options(language)
-            == defaults
-        )
+        assert esolangs.Language(language).settings(**defaults).options() == defaults
         for key, item in schema.items():
             for value in item["choices"]:
                 selected = defaults | {key: value}
                 assert (
-                    esolangs.Language(language).settings(**selected).options(language)
+                    esolangs.Language(language).settings(**selected).options()
                     == selected
                 )
             choice = item["choices"][-1]

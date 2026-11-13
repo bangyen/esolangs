@@ -538,7 +538,11 @@ def _check_public_randomness():
         witness.finish()
         assert result.output == selected[-1][2]
         assert result.completion.kind.value == "halted"
-        assert result[1:4] == (0, 1, 0)
+        assert (result.input_position, result.input_reads, result.input_past_end) == (
+            0,
+            1,
+            0,
+        )
         assert result.steps == (len(selected) - 1 if "limits" in options else None)
         if options:
             expected_rng = random.Random(options.get("seed", 0))

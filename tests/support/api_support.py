@@ -36,8 +36,6 @@ PUBLIC_MEMBERS = {
         "input_reads",
         "input_past_end",
         "completion",
-        "count",
-        "index",
     },
     esolangs.PreparedProgram: {
         "evaluate",

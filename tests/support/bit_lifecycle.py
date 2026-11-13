@@ -1,5 +1,7 @@
 """Buffered byte boundaries for declared bit-tape machines."""
 
+from dataclasses import replace
+
 import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.runtime._lifecycle import Completion
@@ -26,7 +28,7 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
         assert result.completion.kind is Completion.HALTED
         assert result.steps == bits + 2
         native = esolangs.run(name, source)
-        assert result == native._replace(steps=result.steps)
+        assert result == replace(native, steps=result.steps)
         assert esolangs.run(name, source, isolated=True) == native
         debug.step()
         assert debug.run(max_steps=0) == "halted"
@@ -39,8 +41,13 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
     ]
     for source, stdin, output, position, reads, past_end in cases:
         native = esolangs.run(name, source, stdin=stdin)
-        assert native[:4] == (output, position, reads, past_end)
+        assert (
+            native.output,
+            native.input_position,
+            native.input_reads,
+            native.input_past_end,
+        ) == (output, position, reads, past_end)
         debug = make_debugger(name, source, stdin=stdin)
         assert debug.run(max_steps=100) == "halted"
-        assert debug.observation == native._replace(steps=debug.observation.steps)
+        assert debug.observation == replace(native, steps=debug.observation.steps)
         assert esolangs.run(name, source, stdin=stdin, isolated=True) == native

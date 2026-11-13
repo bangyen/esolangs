@@ -14,6 +14,13 @@ Releases before 0.10.0 are described on the
 - **Breaking:** `ExecutionCapError` is no longer an `InterpreterLimitError`,
   which now means only the interpreter's own limits. `max_output` and
   `max_memory` need `except ExecutionCapError`.
+- **Breaking:** `ExecutionLimits` and `TextLimits` take keyword arguments
+  only.
+- **Breaking:** `ExecutionResult` and `BooleanEvaluation` are frozen
+  dataclasses, not tuples: no unpacking, indexing or `_replace`; use the
+  field names and `dataclasses.replace`.
+- **Breaking:** `CompressedText.save` is `CompressedText.to_file`.
+- **Breaking:** `DialectSettings.options()` takes no language argument.
 - **Breaking:** `bound` is never `"timeout"`: the value is gone from its
   type, and a bare `ExecutionTimeoutError` defaults to `"total_timeout"`.
 - **Breaking:** `run`, `Language.run` and `PreparedProgram.run` take

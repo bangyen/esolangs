@@ -2,6 +2,7 @@
 
 import copy
 import json
+from dataclasses import replace
 from fractions import Fraction
 
 import pytest
@@ -57,8 +58,8 @@ def _assert_catalog_snapshot_round_trips(result, interpreter_only_samples):
                 cycle = BoundaryCycle(vm.snapshot(), 0, 1, step)
                 assert debugger.snapshot() == cycle.state
                 assert debugger.output == vm.output
-                observed = result._replace(
-                    completion=CompletionReport(Completion.PERIODIC, cycle)
+                observed = replace(
+                    result, completion=CompletionReport(Completion.PERIODIC, cycle)
                 )
                 restored = decode_result(
                     observed.output, json.loads(json.dumps(encode_result(observed)))
@@ -126,7 +127,8 @@ def test_immutable_cycle_state_survives_json(interpreter_only_samples):
     assert hash(decode_result(result.output, metadata).completion.cycle.state) == hash(
         state
     )
-    zero = result._replace(
+    zero = replace(
+        result,
         completion=CompletionReport(Completion.PERIODIC, BoundaryCycle(state, 0, 1, 0)),
         steps=0,
     )
@@ -157,7 +159,7 @@ def test_immutable_cycle_state_survives_json(interpreter_only_samples):
         cycle = BoundaryCycle((invalid,), 1, 3, 7)
         with pytest.raises(ValueError, match="non-finite"):
             encode_result(
-                result._replace(completion=CompletionReport(Completion.PERIODIC, cycle))
+                replace(result, completion=CompletionReport(Completion.PERIODIC, cycle))
             )
         broken = copy.deepcopy(metadata)
         broken["completion"]["cycle"]["state"] = {"tuple": [invalid]}

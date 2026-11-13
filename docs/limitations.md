@@ -1396,7 +1396,7 @@ one reading. These are those choices.
   committed AND example stores gzip text; program size counts expanded characters.
   Compression is streamed in 64 KiB chunks; the interpreter counts decompressed
   zeros without retaining expanded source. The default unwrapped AND occupies
-  26,712 gzip bytes. `str(program)` exports plain text; `to_gzip()` and `save()`
+  26,712 gzip bytes. `str(program)` exports plain text; `to_gzip()` and `to_file()`
   export files. The CLI writes gzip by default and `--plain` exports text.
   Decoded Brainfuck uses wrapping bytes, a tape growing in both directions
   and zero at EOF.

@@ -39,7 +39,7 @@ names = esolangs.list_languages()
 assert 'esolangs.registry._table' in sys.modules, 'catalog control did not fire'
 for name in names:
     esolangs.describe(name)
-    esolangs.Language(name).settings().options(name)
+    esolangs.Language(name).settings().options()
 def loaded():
     return sorted(m for m in sys.modules
                   if m.startswith("esolangs.languages.") and ".generator" in m)

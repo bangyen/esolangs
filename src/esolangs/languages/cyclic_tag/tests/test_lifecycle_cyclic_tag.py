@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -51,7 +52,7 @@ assert module in sys.modules, 'loading control did not fire'
         debug.step()
         finalized = debug.observation
         snapshot = debug.snapshot()
-        assert finalized == native._replace(steps=steps)
+        assert finalized == replace(native, steps=steps)
         debug.step()
         assert debug.observation == finalized
         assert debug.snapshot() == snapshot

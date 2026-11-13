@@ -20,7 +20,12 @@ def test_result_retains_character_cursor_reads_and_caught_eof():
         return report
 
     result = execute_prepared(REFERENCE, execute, "", ScriptedIO("é")).unwrap()
-    assert result[:4] == ("é", 1, 1, 1)
+    assert (
+        result.output,
+        result.input_position,
+        result.input_reads,
+        result.input_past_end,
+    ) == ("é", 1, 1, 1)
     assert result.completion is report
     with pytest.raises(AttributeError):
         result.output = "changed"

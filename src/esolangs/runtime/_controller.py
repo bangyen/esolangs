@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from time import monotonic
 from typing import Literal
 
@@ -73,7 +74,7 @@ class ExecutionController:
                 if self.dumps_on_the_post_halt_step
                 else Completion.HALTED
             )
-        return _capture_observation(self.vm, report)._replace(steps=self._steps)
+        return replace(_capture_observation(self.vm, report), steps=self._steps)
 
     @property
     def self_halts(self) -> bool:
@@ -122,7 +123,7 @@ class ExecutionController:
         except EsolangError as exc:
             self._faulted = True
             exc.partial_output = self.output
-            exc.observation = self.observation._replace(completion=None)
+            exc.observation = replace(self.observation, completion=None)
             raise
         if active:
             self._faulted = False
@@ -177,7 +178,7 @@ class ExecutionController:
                 except EsolangError as exc:
                     self._faulted = True
                     exc.partial_output = self.output
-                    exc.observation = self.observation._replace(completion=None)
+                    exc.observation = replace(self.observation, completion=None)
                     raise
                 self._record()
                 if self._accept_stop():
@@ -198,7 +199,7 @@ class ExecutionController:
             self.step()
 
         report = vm._complete_periodic(step)  # noqa: SLF001
-        result = _capture_observation(vm, report)._replace(steps=self._steps)
+        result = replace(_capture_observation(vm, report), steps=self._steps)
         return ExecutionOutcome("completed", result)
 
     def _execute(self, *, max_steps: int) -> ExecutionOutcome:
@@ -210,17 +211,17 @@ class ExecutionController:
         except EsolangError as fault:
             fault.partial_output = self.output
             observation = fault.observation or _capture_observation(self.vm)
-            fault.observation = observation._replace(steps=self._steps)
+            fault.observation = replace(observation, steps=self._steps)
             return _failed_outcome(fault)
         if reason == "halted":
             return ExecutionOutcome(
-                "completed", _capture_result(self.vm)._replace(steps=self._steps)
+                "completed", replace(_capture_result(self.vm), steps=self._steps)
             )
         if reason == "breakpoint":
             raise ArgumentError("invocation execution cannot stop at a breakpoint")
         error = steps_exhausted(f"execution stopped at the {reason} bound")
         error.partial_output = self.output
-        error.observation = _capture_observation(self.vm)._replace(steps=self._steps)
+        error.observation = replace(_capture_observation(self.vm), steps=self._steps)
         return _failed_outcome(error)
 
     def _stop(self, deadline: float | None) -> bool:

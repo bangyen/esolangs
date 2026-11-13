@@ -96,7 +96,7 @@ def test_artifact_and_source_traces_match_for_split_grids():
         capture, record, tracediff.ScriptedIO(), runtime=runtime
     )
     assert body == (record.source.splitlines() if runtime.split else record.source)
-    assert bound == settings.options(name)
+    assert bound == settings.options()
 
 
 def test_a_copy_matches_and_a_mutant_is_caught(tmp_path: Path) -> None:

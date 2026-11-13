@@ -144,8 +144,13 @@ def check_phases():
             checker.assert_exact(
                 caught.observation,
                 checker.esolangs.ExecutionResult(
-                    prior.output, landed.cursor, landed.reads, landed.past_end, None
-                )._replace(steps=at - 1),
+                    prior.output,
+                    landed.cursor,
+                    landed.reads,
+                    landed.past_end,
+                    None,
+                    steps=at - 1,
+                ),
             )
         else:
             raise AssertionError("public writer refusal swallowed")

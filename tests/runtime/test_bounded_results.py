@@ -41,7 +41,10 @@ def test_custom_vm_io_fields_stay_caller_owned():
         _io = object()
 
     result = _capture_result(Custom())
-    assert result[:4] == ("custom", None, None, None)
+    assert result.output == "custom"
+    assert result.input_position is None
+    assert result.input_reads is None
+    assert result.input_past_end is None
     assert result.completion.kind is Completion.HALTED
 
 

@@ -1,5 +1,6 @@
 """Suffolk through the shared API, CLI and machinery."""
 
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -183,7 +184,7 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     assert debug.observation.steps == 3
     eof = debugger_api.make_debugger("Suffolk", ",")
     assert eof.run(max_steps=1) == "halted"
-    assert eof.observation == ended._replace(steps=1)
+    assert eof.observation == replace(ended, steps=1)
     monkeypatch.setattr(interpreter, "_execute", lambda *_args: POST_HALT_REPORT)
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
         esolangs.run("Suffolk", "<")

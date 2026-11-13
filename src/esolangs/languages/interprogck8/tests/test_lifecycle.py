@@ -1,5 +1,7 @@
 """Prepared programs retain private call/reload state and explicit RNG draws."""
 
+from dataclasses import replace
+
 import pytest
 
 import esolangs
@@ -74,7 +76,7 @@ def test_rng_binding_draws_only_during_execution():
         native = esolangs.run("Interprogck8", source, seed=seed)
         debug = make_debugger("Interprogck8", source, seed=seed)
         assert debug.run(max_steps=3) == "halted"
-        assert debug.observation == native._replace(steps=3)
+        assert debug.observation == replace(native, steps=3)
         assert esolangs.run("Interprogck8", source, seed=seed, isolated=True) == native
 
 

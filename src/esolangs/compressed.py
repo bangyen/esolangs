@@ -14,7 +14,7 @@ from pathlib import Path
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class TextLimits:
     """Independent raw-export, generation-work and compressed-file budgets."""
 
@@ -192,7 +192,7 @@ class CompressedText:
         """Return the compressed file bytes."""
         return self.data
 
-    def save(self, path: str | PathLike[str]) -> None:
+    def to_file(self, path: str | PathLike[str]) -> None:
         """Write a gzip source file.
 
         Raises:

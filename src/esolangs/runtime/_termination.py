@@ -1,6 +1,7 @@
 """Observe IO while proving halting or a repeated machine state."""
 
 from collections.abc import Callable
+from dataclasses import replace
 from functools import partial
 from typing import cast
 
@@ -126,6 +127,6 @@ def _termination_result(
         if isinstance(verdict, TerminationResult) and isinstance(
             verdict.observation, ExecutionResult
         ):
-            failure.observation = verdict.observation._replace(completion=None)
+            failure.observation = replace(verdict.observation, completion=None)
             failure.partial_output = failure.observation.output
         raise failure from error

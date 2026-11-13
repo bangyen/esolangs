@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pathlib
 import sys
+from dataclasses import replace
 from importlib.resources import files
 
 import pytest
@@ -71,7 +72,7 @@ def _check_row(name: str, artifact: esolangs.Artifact, table: str, row: int) -> 
     got = _capture_result(vm)
     # A step-bounded run reports its count; the stepped capture does not, and
     # the debugger check below pins the count against the stepper's.
-    assert got == want._replace(steps=None), (
+    assert got == replace(want, steps=None), (
         "execution observations",
         name,
         table,
@@ -81,7 +82,7 @@ def _check_row(name: str, artifact: esolangs.Artifact, table: str, row: int) -> 
     )
     debugger = debugger_api.make_debugger(name, program, stdin=stdin, seed=seed)
     assert debugger.run(max_steps=steps) == "halted", (name, table, row, steps)
-    assert debugger.observation == want._replace(steps=steps), (
+    assert debugger.observation == replace(want, steps=steps), (
         "source steps",
         name,
         table,
@@ -158,7 +159,7 @@ class TestSteppingReachesTheSameAnswer:
 
         def corrupt_reads(vm):
             result = capture(vm)
-            return result._replace(input_reads=(result.input_reads or 0) + 1)
+            return replace(result, input_reads=(result.input_reads or 0) + 1)
 
         with monkeypatch.context() as control:
             control.setattr(sys.modules[__name__], "_capture_result", corrupt_reads)
@@ -168,7 +169,7 @@ class TestSteppingReachesTheSameAnswer:
 
         def corrupt_steps(debugger):
             result = result_property.__get__(debugger)
-            return result._replace(steps=result.steps + 1)
+            return replace(result, steps=result.steps + 1)
 
         with monkeypatch.context() as control:
             control.setattr(

@@ -1,5 +1,7 @@
 """Check retained parse reuse without sharing invocation state."""
 
+from dataclasses import replace
+
 import esolangs
 from esolangs.vm import complete_vm
 
@@ -101,7 +103,7 @@ def check_random_plan_reuse(language, code, module, parser_name, monkeypatch):
             stepped = prepared.run(
                 seed=seed, limits=esolangs.ExecutionLimits(max_steps=1000)
             )
-            assert stepped._replace(steps=None) == want
+            assert replace(stepped, steps=None) == want
             first, second = prepared.make_vm(seed=seed), prepared.make_vm(seed=seed)
             initial = second.snapshot()
             first.step()

@@ -2,7 +2,7 @@
 
 # ruff: noqa: PT017 -- Exact raw/wrapped failure phases share one direct observer.
 
-from dataclasses import fields, is_dataclass
+from dataclasses import fields, is_dataclass, replace
 from io import StringIO
 from types import MappingProxyType
 
@@ -137,7 +137,7 @@ def actual_frame(frame):
 
 def public_type_control(actual):
     if type(actual.input_reads) is int and actual.input_reads == 1:
-        altered = actual._replace(input_reads=True)
+        altered = replace(actual, input_reads=True)
         assert altered == actual
         try:
             assert_exact(altered, actual)
@@ -212,8 +212,8 @@ def public(case, rows, *, isolated=False, cap=None):
             assert_exact(
                 caught.observation,
                 esolangs.ExecutionResult(
-                    row.output, row.cursor, row.reads, row.past_end, None
-                )._replace(steps=steps),
+                    row.output, row.cursor, row.reads, row.past_end, None, steps=steps
+                ),
             )
         return (
             type(caught).__name__,
@@ -225,8 +225,8 @@ def public(case, rows, *, isolated=False, cap=None):
     assert_exact(
         seen,
         esolangs.ExecutionResult(
-            row.output, row.cursor, row.reads, row.past_end, REPORT
-        )._replace(steps=steps),
+            row.output, row.cursor, row.reads, row.past_end, REPORT, steps=steps
+        ),
     )
     public_type_control(seen)
     return seen

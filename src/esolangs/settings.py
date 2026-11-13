@@ -48,7 +48,7 @@ def dialect_options(
         raise ArgumentError(
             f"dialect settings belong to {settings.language}, not {name}"
         )
-    values = settings.options(name)
+    values = settings.options()
     if runtime.dialect is not None:
         try:
             runtime.dialect(**values)

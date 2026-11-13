@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import NamedTuple
 
 from esolangs._bindings import (
     TEMPLATE_CHAR,
@@ -34,7 +33,8 @@ __all__ = [
 from esolangs.settings import DialectSettings
 
 
-class BooleanEvaluation(NamedTuple):
+@dataclass(frozen=True, slots=True)
+class BooleanEvaluation:
     """Answer with the observed IO and, for termination answers, a proof."""
 
     bit: str
@@ -53,7 +53,7 @@ def _origin(language: str, settings: DialectSettings | None) -> str:
             raise ArgumentError(
                 f"dialect settings belong to {settings.language}, not {language}"
             )
-        settings.options(language)
+        settings.options()
     return language
 
 

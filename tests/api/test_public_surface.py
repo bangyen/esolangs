@@ -296,7 +296,7 @@ class TestProgramObjectsRefuseMisuse:
         # save leaked FileNotFoundError and TypeError.
         for path in ("/nonexistent/dir/x.gz", 5):
             with pytest.raises(esolangs.ProgramError):
-                esolangs.CompressedText.repeated("+", 5).save(path)  # type: ignore[arg-type]
+                esolangs.CompressedText.repeated("+", 5).to_file(path)  # type: ignore[arg-type]
         # to_file named its staging file, and "" read as the cwd.
         for target, error, words in (
             (None, esolangs.ArgumentError, "str or PathLike"),

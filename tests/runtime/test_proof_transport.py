@@ -66,7 +66,7 @@ def _replay_termination(name, source, stdin, result):
         native = run_observed(name, source, stdin=stdin, timeout=5)
         debugger.step()
         completed = debugger.observation
-        assert completed == native._replace(steps=decision.commands)
+        assert completed == replace(native, steps=decision.commands)
         debugger.step()
         assert debugger.observation == completed
 
@@ -124,8 +124,8 @@ def test_actual_termination_workers_retain_every_halt_and_cycle():
             decision=result.decision._replace(cycle=replace(cycle, state=("wrong",)))
         ),
         result._replace(
-            observation=result.observation._replace(
-                input_reads=result.observation.input_reads + 1
+            observation=replace(
+                result.observation, input_reads=result.observation.input_reads + 1
             )
         ),
         result._replace(

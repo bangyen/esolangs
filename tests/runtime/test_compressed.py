@@ -20,7 +20,7 @@ def test_streaming_text_round_trip_and_size(tmp_path: Path) -> None:
     assert source_units(program) == len(source)
     assert text_source(program.to_gzip()) == source
     path = tmp_path / "source.gz"
-    program.save(path)
+    program.to_file(path)
     assert text_source(path) == source
     assert program.to_gzip() == CompressedText.from_chunks((source,)).to_gzip()
     empty = CompressedText.from_chunks(("",))
@@ -87,6 +87,8 @@ def test_format_budgets_are_independent_and_survive_wrapping() -> None:
     with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
         program.wrapped(1).wrapped(1)
     with pytest.raises(esolangs.GeneratorCapError, match="file cap"):
-        CompressedText.from_chunks(("x",), limits=TextLimits(10, 10, 1))
+        CompressedText.from_chunks(
+            ("x",), limits=TextLimits(plain_chars=10, generation_chars=10, gzip_bytes=1)
+        )
     with pytest.raises(esolangs.ArgumentError, match="nonnegative"):
-        TextLimits(1, -1, 1)
+        TextLimits(plain_chars=1, generation_chars=-1, gzip_bytes=1)

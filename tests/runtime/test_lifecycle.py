@@ -3,6 +3,7 @@
 import json
 import subprocess
 import sys
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -231,7 +232,7 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             assert "incidental_view" not in dict(debug.views)
             debug.step()
             result, snapshot = debug.observation, debug.snapshot()
-            assert result == native._replace(steps=steps)
+            assert result == replace(native, steps=steps)
             debug.step()
             assert debug.observation == result
             assert debug.snapshot() == snapshot
@@ -391,7 +392,7 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             assert "incidental_view" not in dict(debug.views)
             assert debug.run(max_steps=1000) == "halted"
             result, snapshot = debug.observation, debug.snapshot()
-            assert result == native._replace(steps=result.steps)
+            assert result == replace(native, steps=result.steps)
             debug.step()
             assert debug.observation == result
             assert debug.snapshot() == snapshot

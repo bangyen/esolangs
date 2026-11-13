@@ -130,7 +130,7 @@ Source is a string, `Raster`, or `CompressedText` (Unary).
 
 `str()` of a `Raster` is a summary, not source; of a `CompressedText`, the
 expanded text. A `CompressedText` carries its `limits`, a
-`TextLimits(plain_chars, generation_chars, gzip_bytes)`: past `plain_chars`
+`TextLimits(plain_chars=, generation_chars=, gzip_bytes=)`: past `plain_chars`
 `str()` refuses with `GeneratorCapError` (export the gzip instead), and the
 other two cap the expanded work and the compressed file. `dump_program` and
 `load_program` round-trip all three as text. Without limits nothing is

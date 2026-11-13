@@ -1,5 +1,7 @@
 """Declared raster factories retain cached geometry and isolated run state."""
 
+from dataclasses import replace
+
 import pytest
 
 import esolangs
@@ -76,7 +78,7 @@ def test_scale_binding_preserves_graph_and_raster_execution_paths():
             debug = make_debugger("Line", source, stdin="1", scale=scale)
             assert debug.run(max_steps=1000) == "halted"
             result, snapshot = debug.observation, debug.snapshot()
-            assert result == native._replace(steps=result.steps)
+            assert result == replace(native, steps=result.steps)
             assert esolangs.run("Line", source, stdin="1", scale=scale) == native
             assert (
                 esolangs.run("Line", source, stdin="1", scale=scale, isolated=True)

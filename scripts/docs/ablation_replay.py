@@ -223,6 +223,10 @@ def parse_replay(language: str, data: dict[str, Any]) -> ReplayRecord:
     )
 
 
+def _input_usage(result: ExecutionResult) -> tuple[int | None, ...]:
+    return result.input_position, result.input_reads, result.input_past_end
+
+
 def _remaining(deadline: float) -> float:
     """Fail the declared budget instead of treating an unfinished run as evidence."""
     remaining = deadline - time.monotonic()
@@ -433,7 +437,7 @@ def verify_replay(language: str, record: ReplayRecord, scratch: Path) -> None:
                     )
                     if answer != table[row]:
                         raise AuditError(f"baseline answer differs at row {row}")
-                    if before[1:4] != after[1:4]:
+                    if _input_usage(before) != _input_usage(after):
                         raise AuditError(f"audit input usage differs at row {row}")
             measured = (
                 _source_size(baseline, measurement.unit)

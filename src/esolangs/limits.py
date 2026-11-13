@@ -6,7 +6,7 @@ from esolangs.exceptions import ArgumentError
 from esolangs.runtime._validate import check_timeout, check_whole
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ExecutionLimits:
     """Preparation, execution and whole-invocation budgets.
 
@@ -19,12 +19,12 @@ class ExecutionLimits:
     execution_timeout.
     """
 
+    preparation_timeout: float | None = None
     execution_timeout: float | None = None
     total_timeout: float | None = None
     max_steps: int | None = None
     max_output: int | None = None
     max_memory: int | None = None
-    preparation_timeout: float | None = None
 
     def __post_init__(self) -> None:
         """Refuse invalid budgets before acquiring source or input."""

@@ -1,5 +1,7 @@
 """Prepared codel rows share no mutable stack, direction or input state."""
 
+from dataclasses import replace
+
 import pytest
 
 import esolangs
@@ -64,7 +66,11 @@ def test_scale_binding_eof_and_unicode_match_all_routes():
         assert machine.io.getvalue() == stdin
         native = esolangs.run("Piet", source, stdin=stdin)
         assert native.output == stdin
-        assert native[1:4] == (int(bool(stdin)), int(bool(stdin)), int(not stdin))
+        assert (native.input_position, native.input_reads, native.input_past_end) == (
+            int(bool(stdin)),
+            int(bool(stdin)),
+            int(not stdin),
+        )
         assert esolangs.run("Piet", source, stdin=stdin, scale=scale) == native
         debug = make_debugger("Piet", source, stdin=stdin, scale=scale)
         assert tuple(name for name, _ in debug.views) == ("cc", "current", "dp")
@@ -72,7 +78,7 @@ def test_scale_binding_eof_and_unicode_match_all_routes():
         assert debug.eof_is_a_value
         assert debug.run(max_steps=20) == "halted"
         result, snapshot = debug.observation, debug.snapshot()
-        assert result == native._replace(steps=result.steps)
+        assert result == replace(native, steps=result.steps)
         assert (
             esolangs.run("Piet", source, stdin=stdin, scale=scale, isolated=True)
             == native

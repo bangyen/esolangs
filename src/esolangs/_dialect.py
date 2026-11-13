@@ -118,10 +118,6 @@ class DialectSettings:
         choices = ", ".join(f"{key}={value!r}" for key, value in self._items)
         return f"Language({self.language!r}).settings({choices})"
 
-    def options(self, language: str) -> dict[str, Scalar]:
-        """Return validated overrides for the canonical owner; refuse other scopes."""
-        if language != self.language:
-            raise ArgumentError(
-                f"dialect settings belong to {self.language}, not {language}"
-            )
+    def options(self) -> dict[str, Scalar]:
+        """Return the validated overrides as a new dict."""
         return self._schema.validate(dict(self._items))
