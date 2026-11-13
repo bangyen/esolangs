@@ -213,6 +213,10 @@ def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys) -> No
     output, err = call_both(["run", "--timeout", "5.0", REFERENCE, str(path)], capsys)
     assert output == "\x01"
     assert err == ""
+    # The hint said "the bound" for both; it names the flag that raises it.
+    path.write_text("+[]")
+    _, err = _failure(["run", "--max-steps", "5", REFERENCE, str(path)], capsys, 124)
+    assert err.endswith("blocked input before increasing --max-steps\n")
 
 
 def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes() -> None:

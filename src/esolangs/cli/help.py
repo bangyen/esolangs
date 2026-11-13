@@ -182,8 +182,8 @@ options:
                one dialect override without JSON, repeatable and applied
                after --settings.
   --plain      export compressed text as ordinary source text.  Without it,
-               compressed text is written as gzip and a raster as PNG --
-               binary bytes, so redirect them to a file.
+               compressed text is written as gzip.  A raster is always PNG
+               -- binary bytes, so redirect it to a file.
   --gzip       export any text program as gzip; excludes --plain.
                Raster programs retain PNG and reject this option.
   --balance    pick the layout fitting the smallest on-screen square: text
@@ -235,7 +235,7 @@ bug in esolangs), 120 stdout closed early, 124 time/step budget exhausted,
 options:
   --isolated         run in a subprocess, by default with a 30-second deadline.
   --max-output N     cap isolated output in Unicode characters (including zero).
-  --max-memory BYTES cap Linux worker address space; requires --isolated.
+  --max-memory BYTES cap worker address space (Linux only); requires --isolated.
   --max-steps N      bound commands cooperatively; combines with isolation and seed.
   --timeout SECONDS  stop the run after this long, in a worker subprocess.
                      Unbounded by default.

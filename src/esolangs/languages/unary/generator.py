@@ -128,7 +128,10 @@ def _zeros(brainfuck: str) -> int:
         count = 8 * count + "><+-.,[]".index(command)
         if count > _MAX_SOURCE:
             raise GeneratorCapError(
-                "Unary source exceeds the 256 Mi-character generation-work cap"
+                "Unary source exceeds the 256 Mi-character generation-work cap: "
+                "its length is 8 to the power of this table's Brainfuck "
+                "program length, so only tables with a very short one fit "
+                "(7 of the 16 two-input tables)"
             )
     return count
 

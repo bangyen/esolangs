@@ -47,7 +47,7 @@ from esolangs import (
     list_languages,
     read_answer,
 )
-from esolangs.artifacts import Artifact, ProgramArtifact
+from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli.args import (
     _check_count,
     _errors,
@@ -116,6 +116,11 @@ _CATALOG_FILTERS: dict[str, tuple[str, tuple[str, ...]]] = {
 }
 
 
+def _input_shape(facts: LanguageInfo) -> str | None:
+    """Return the shape ``--input-shape`` filters on: ``template`` included."""
+    return "template" if facts["parameterized"] else facts["input_shape"]
+
+
 def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> bool:
     """Match declared interfaces and arity caps."""
     declaration = LANGUAGES[name]
@@ -130,10 +135,8 @@ def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> 
     if "--input-shape" not in options and inputs is None:
         return True
     facts = describe(name)
-    if "--input-shape" in options:
-        shape = "template" if facts["parameterized"] else facts["input_shape"]
-        if shape != options["--input-shape"]:
-            return False
+    if "--input-shape" in options and _input_shape(facts) != options["--input-shape"]:
+        return False
     if inputs is not None:
         cap = facts["generator_max_inputs"]
         if not facts["boolean_generator"] or (cap is not None and cap < inputs):
@@ -197,7 +200,8 @@ def _list(rest: list[str]) -> None:
                         "state_model": facts["state_model"],
                         "generator_shape": facts["generator_shape"],
                         "answer_mode": facts["answer_mode"],
-                        "input_shape": facts["input_shape"],
+                        # The filter's value, so jq agrees with --input-shape.
+                        "input_shape": _input_shape(facts),
                         "random": facts["random"],
                         "width_effect": facts["width_effect"],
                         # The three the marker column encodes, spelled out.
@@ -358,6 +362,8 @@ def _generate(rest: list[str]) -> None:
             f"{describe(rest[0])['name']} -- "
             f"the generator retains its original layout\n"
         )
+    if "--plain" in flags and isinstance(program, Raster):
+        sys.stderr.write("note: --plain has no effect on a raster; it is PNG\n")
     binary = (
         gzip
         or isinstance(program, Raster)
@@ -373,6 +379,14 @@ def _generate(rest: list[str]) -> None:
         )
     with _errors():  # A raster renders here, and may exceed the pixel limit.
         _emit(artifact, plain="--plain" in flags, gzip=gzip)
+    if isinstance(artifact, TemplateArtifact):
+        # `run` takes the unfilled template as source and answers nonsense
+        # with exit 0, where the API refuses it (dogfood, 2.0.0).
+        sys.stderr.write(
+            f"note: this is a template with unfilled {artifact.bindings.char!r} "
+            f"input slots; fill them with: esolangs generate "
+            f"--bits <bits> {_as_argument(rest[0])} {rest[1]}\n"
+        )
 
 
 def _printable(value: object) -> str:

@@ -103,6 +103,16 @@ gzip input loads as `run` loads it, so `gzip=False` writes it decompressed;
 CLI generation uses native file terminators.
 Use `dump_program` to preserve dialect settings and template bindings on disk.
 
+```python
+from pathlib import Path
+
+esolangs.save_program("brainfuck", program, "xor.bf")  # native source
+esolangs.run("brainfuck", Path("xor.bf"), stdin="01")  # a str would be source
+esolangs.Language("brainfuck").from_file("xor.bf")  # back to an artifact
+text = esolangs.dump_program("brainfuck", program)  # JSON keeps settings
+esolangs.load_program("brainfuck", text)  # takes the JSON text, not a path
+```
+
 `Language.from_source(source)` declares runnable source explicitly, including
 text that resembles a filename. `Language.from_file(path)` preserves decoded text
 exactly and retains embedded dialect settings and scale. Use `normalize=True`

@@ -81,7 +81,9 @@ def test_source_cap_refuses_before_materialization(table: str) -> None:
                 assert unary(candidate)
                 admitted += 1
             else:
-                with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
+                with pytest.raises(
+                    esolangs.GeneratorCapError, match=r"work cap.*7 of the 16 two-input"
+                ):
                     unary(candidate)
                 refused += 1
         assert (admitted, refused) == (7, 9)

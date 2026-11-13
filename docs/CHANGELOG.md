@@ -5,6 +5,19 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## Unreleased
+
+- `esolangs generate` notes on stderr that an unfilled template needs
+  `--bits`, and `esolangs run` notes a template language's unfilled slot
+  character in its source; both still exit 0.
+- `list --json --details` reports `input_shape` as `"template"` for template
+  languages, the value `--input-shape` filters on; `describe` is unchanged.
+- The CLI timeout hint names the flag to raise (`--timeout` or
+  `--max-steps`); `generate --plain` notes it has no effect on a raster.
+- `load_program` given non-JSON points to `Language.from_file`;
+  `read_answer` given an `ExecutionResult` says to pass `.output`; Unary's
+  cap error says which tables fit.
+
 ## 2.0.0
 
 - **Breaking:** `generate`, `instantiate` and `load_program` return explicit

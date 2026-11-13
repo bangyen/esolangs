@@ -13,6 +13,7 @@ from esolangs.exceptions import (
 )
 from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import CHAR_STREAMS
+from esolangs.results import ExecutionResult
 from esolangs.runtime._validate import check_bits
 
 
@@ -113,7 +114,11 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
     if not isinstance(output, str):
-        raise ArgumentError(f"output must be a string, got {type(output).__name__}")
+        # One raise: mypy, seeing ``str``, accepts only that as unreachable.
+        raise ArgumentError(
+            f"output must be a string, got {type(output).__name__}"
+            + ("; pass its .output" if isinstance(output, ExecutionResult) else "")
+        )
     contract = catalog.languages[name].contract
     if contract.answer_mode == "termination":
         raise ArgumentError(

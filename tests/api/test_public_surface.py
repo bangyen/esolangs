@@ -304,6 +304,12 @@ class TestProgramObjectsRefuseMisuse:
         ):
             with pytest.raises(error, match=words):
                 esolangs.save_program(REFERENCE, "+", target)  # type: ignore[arg-type]
+        # The name pairs with save_program, so a path is the usual mistake.
+        with pytest.raises(esolangs.ProgramError, match=r"not a path.*from_file"):
+            esolangs.load_program(REFERENCE, "x.bf")
+        with pytest.raises(esolangs.ProgramError) as caught:
+            esolangs.load_program(REFERENCE, "{}")
+        assert "from_file" not in str(caught.value)
 
     def test_an_alias_tag_is_stored_canonically(self) -> None:
         """Stored as typed, ``run`` refused it under every spelling."""

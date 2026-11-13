@@ -73,6 +73,21 @@ def _template_hint(exc: TemplateError, language: str) -> str:
     )
 
 
+#: The flag that raises each bound ``run`` can report.
+_BOUND_FLAGS = {
+    "timeout": "--timeout",
+    "total_timeout": "--timeout",
+    "max_steps": "--max-steps",
+}
+
+
+def _timeout_text(exc: ExecutionTimeoutError) -> str:
+    """Name the flag to raise; the API's hint says only "the bound"."""
+    text = _cli_error_text(exc)
+    flag = _BOUND_FLAGS.get(exc.bound)
+    return text if flag is None else text.replace("the bound", flag)
+
+
 def _shell_hint(message: str, language: str) -> str:
     """Re-point ``encode``'s refusal at the flag that does the same job.
 

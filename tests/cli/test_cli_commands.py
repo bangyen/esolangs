@@ -65,12 +65,15 @@ class TestJsonOutput:
         """Each row is describe's record, cut down: same keys, same values.
 
         ``has_example`` (a bool) once stood where describe has ``examples``.
+        ``input_shape`` is ``--input-shape``'s value: describe's null for a
+        template made jq find none of the 19 the filter does.
         """
         rows = json.loads(call_both(["list", "--json", "--details"], capsys)[0])
         assert [row["name"] for row in rows] == esolangs.list_languages()
         for row in rows:
             facts = esolangs.describe(row["name"])
-            assert row == {key: facts[key] for key in row}
+            shape = "template" if facts["parameterized"] else facts["input_shape"]
+            assert row == {key: facts[key] for key in row} | {"input_shape": shape}
             assert {"boolean_generator", "parameterized", "examples"} <= set(row)
 
     def test_list_json_agrees_with_the_marker_column(

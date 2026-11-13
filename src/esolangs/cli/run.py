@@ -23,9 +23,11 @@ from esolangs.cli.args import (
 )
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
+    _as_argument,
     _exit_code,
     _stdin_hint,
     _template_hint,
+    _timeout_text,
 )
 from esolangs.cli.io import (
     _emit_partial,
@@ -41,7 +43,7 @@ from esolangs.exceptions import (
     ExecutionTimeoutError,
     TemplateError,
 )
-from esolangs.registry import LANGUAGES, resolve
+from esolangs.registry import LANGUAGES, resolve, template_char
 from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._isolated import check_memory
 from esolangs.settings import dialect_options
@@ -148,7 +150,7 @@ def _run(rest: list[str]) -> None:
         # shared exit 1, which made the termination languages'
         # answer indistinguishable from a crash.
         _emit_partial(exc)
-        _fail(exc, _TIMEOUT_EXIT)
+        _fail(_timeout_text(exc), _TIMEOUT_EXIT)
     except EsolangError as exc:
         # A usage error (an unknown language) is still 2; anything the
         # program itself did is the program's failure, and exits 1.
@@ -160,6 +162,15 @@ def _run(rest: list[str]) -> None:
     if output and not output.endswith("\n") and sys.stdout.isatty():
         sys.stdout.write("\n")
     empty = isinstance(program.source, str) and not program.source.strip()
+    slot = template_char(declaration.id)
+    if slot is not None and isinstance(program.source, str) and slot in program.source:
+        # Hand-written source may use the character; a filled template never
+        # does, and an unfilled one runs as nonsense (dogfood, 2.0.0).
+        _note(
+            f"note: {path} contains {slot!r}, the unfilled input slot of a "
+            f"generated template; fill it with: esolangs generate --bits "
+            f"<bits> {_as_argument(language)} <table>"
+        )
     if empty:
         # Legal, and almost never what was meant: an empty file is what you
         # get from a redirect that failed or a generate that was never run.

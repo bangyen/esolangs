@@ -465,8 +465,11 @@ class TestTheArgumentBoundaryRefusesCleanly:
 
     def test_read_answer_of_a_non_string_is_an_argument_error(self) -> None:
         """Every other wrong-type argument already was."""
-        with pytest.raises(ArgumentError, match="must be a string"):
+        with pytest.raises(ArgumentError, match=r"must be a string, got NoneType$"):
             esolangs.read_answer(REFERENCE, None)  # type: ignore[arg-type]
+        result = esolangs.run(REFERENCE, "+.")
+        with pytest.raises(ArgumentError, match=r"pass its \.output$"):
+            esolangs.read_answer(REFERENCE, result)  # type: ignore[arg-type]
 
     def test_an_unknown_name_of_any_type_renders(self) -> None:
         """``UnknownLanguageError(5)`` raised ``AttributeError`` on ``.strip``."""

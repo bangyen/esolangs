@@ -100,9 +100,10 @@ def test_details_records_carry_every_class(capsys) -> None:
             assert row["generator_scaling"] is None
         assert "proof_status" not in row
         facts = esolangs.describe(row["name"])
+        shape = "template" if facts["parameterized"] else facts["input_shape"]
         assert {field: row[field] for field in _DETAILED} == {
             field: facts[field] for field in _DETAILED
-        }
+        } | {"input_shape": shape}
 
 
 def test_metadata_filters_have_positive_matches(capsys):

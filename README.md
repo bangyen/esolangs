@@ -34,13 +34,10 @@ order. This one is XOR. `generate` wrote a brainfuck program for it, and
 
 | You want | Install |
 |---|---|
-| Text programs and in-memory raster programs | `pip install esolangs` |
+| Text programs, and raster programs kept in memory | `pip install esolangs` |
 | Load or save PNG programs (image-based languages) | `pip install 'esolangs[image]'` |
 
 Image-based programs built in memory need no extra.
-
-Examples reflect this checkout. Use `pip install .` from the repository to try
-unreleased APIs.
 
 ## Command line
 
@@ -72,7 +69,7 @@ assert row.bit == "1"
 |---|---|
 | `generate` | Returns a program artifact or input template for a truth table. |
 | `encode_inputs` | Builds the stdin for one input row; each language reads input its own way. |
-| `run` | Returns output, input consumption, and completion evidence. |
+| `run` | Returns output, input consumption, and completion evidence. A `str` is source; pass a `Path` to run a file. |
 | `read_answer` | Pulls the `0`/`1` answer out of the output. |
 | `describe` | Says how a language takes input and where its answer lands. |
 | `instantiate` | Fills a template: some languages put inputs in the source, so `generate` returns a template instead. |
@@ -88,7 +85,7 @@ The row includes an execution observation and, for termination answers,
 a halt or divergence proof. Exhausting a time or step budget raises `ExecutionTimeoutError`; `max_output`, `InterpreterLimitError`.
 Generated artifacts expose `.source` and templates expose `.fill(bits)`.
 For a custom catalog, use `Language.evaluate(artifact, bits)`.
-The [2.0 migration guide](docs/usage.md#compatibility) covers the changed return
+The [2.0 migration guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#compatibility) covers the changed return
 types and migrating 1.x source/output callers.
 
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)

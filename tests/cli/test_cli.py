@@ -32,13 +32,15 @@ class TestInProcess:
     def test_generating_a_raster_writes_png_bytes(
         self, capsysbinary: pytest.CaptureFixture[bytes]
     ) -> None:
-        """Raster ``generate`` writes the image to the byte stream."""
+        """Raster ``generate`` writes the image; ``--plain`` says it did nothing."""
+        argv = ["esolangs", "generate", "--plain", _RASTER, "0110"]
         with (
-            patch.object(sys, "argv", ["esolangs", "generate", _RASTER, "0110"]),
+            patch.object(sys, "argv", argv),
             patch.object(sys, "stdin", StringIO("")),
         ):
             main()
-        out = capsysbinary.readouterr().out
+        out, err = capsysbinary.readouterr()
+        assert err == b"note: --plain has no effect on a raster; it is PNG\n"
         assert out.startswith(b"\x89PNG\r\n\x1a\n")
         image = esolangs.Raster.from_png(out)
         stdin = esolangs.encode_inputs(_RASTER, [1, 0])
@@ -226,6 +228,16 @@ class TestProgramFailuresAreReported:
         assert result.returncode == 0
         assert result.stdout == "\x01"
         assert result.stderr == ""
+        # A template language's unfilled slot still runs, as the API's
+        # literal source would, but both commands say so on stderr.
+        template = run_cli("generate", TEMPLATED, "0110")
+        assert (
+            "input slots; fill them with: esolangs generate --bits" in template.stderr
+        )
+        path = _program(tmp_path, template.stdout)
+        result = run_cli("run", TEMPLATED, str(path), stdin="")
+        assert result.returncode == 0
+        assert "unfilled input slot" in result.stderr
 
 
 class TestOutputAndAbridging:
