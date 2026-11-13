@@ -1,6 +1,7 @@
 """Execute source through native, cooperative or isolated routes."""
 
 from collections.abc import Callable
+from typing import Any
 
 from esolangs.exceptions import ArgumentError, ExecutionTimeoutError
 from esolangs.limits import ExecutionLimits
@@ -104,9 +105,10 @@ def run(
             Boolean-generated program's stdin with :func:`encode_inputs`,
             which validates the bits.
         timeout: Wall-clock seconds of execution (None: unbounded), run in a
-            worker: ``ExecutionLimits.execution_timeout``.  It bounds loading
-            the program and stdin separately; worker startup gets 30 seconds
-            on top.  The catalog must match installed runtimes.
+            worker: ``ExecutionLimits.execution_timeout``.  It bounds reading
+            the program and stdin separately; worker startup and source
+            preparation get 30 seconds on top.  The catalog must match
+            installed runtimes.
         seed: Integer fixing the languages that draw
             (``describe(language)["random"]``); the rest refuse it.
         isolated: Run in a subprocess whose deadline covers startup and
@@ -144,6 +146,35 @@ def run(
         MissingDependencyError: The language needs an uninstalled extra
             (``esolangs[image]`` for PNG).
     """
+    return _run_result(
+        language,
+        program,
+        stdin=stdin,
+        timeout=timeout,
+        seed=seed,
+        isolated=isolated,
+        max_steps=max_steps,
+        scale=scale,
+        max_output=max_output,
+        max_memory=max_memory,
+        settings=settings,
+        catalog=catalog,
+    )
+
+
+def _run_result(
+    language: str,
+    program: ProgramSource,
+    *,
+    timeout: float | None,
+    isolated: bool,
+    **options: Any,
+) -> ExecutionResult:
+    """Map ``run``'s short options onto an invocation and raise its error.
+
+    Shared with ``PreparedProgram.run``, which kept passing ``timeout`` as the
+    whole-call deadline: ``+[]`` with timeout=0.5 never stopped.
+    """
     check_timeout(timeout)
     # Before the ``or`` below, which turned isolated=[] into a plain False.
     check_flag(isolated, "isolated")
@@ -152,22 +183,18 @@ def run(
     outcome = _execute_invocation(
         language,
         program,
-        stdin=stdin,
         execution_timeout=timeout,
-        seed=seed,
         isolated=isolated or timeout is not None,
-        max_steps=max_steps,
-        scale=scale,
-        max_output=max_output,
-        max_memory=max_memory,
-        settings=settings,
-        catalog=catalog,
+        **options,
     )
-    if (
-        isinstance(outcome.error, ExecutionTimeoutError)
-        and outcome.bound == "execution_timeout"
-    ):
-        outcome.error.bound = "timeout"
+    if isinstance(outcome.error, ExecutionTimeoutError):
+        # The worker's own deadline is the default total, which run(isolated=True)
+        # without a timeout reported as "timeout", a parameter never passed.
+        error = outcome.error
+        if error.bound == "timeout":
+            error.bound = "total_timeout"
+        elif error.bound == "execution_timeout":
+            error.bound = "timeout"
     return outcome.unwrap()
 
 

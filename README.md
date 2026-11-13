@@ -80,7 +80,7 @@ assert row.bit == "1"
 Bound a run with:
 
 - `max_steps`: a command count.
-- `timeout`: wall time for loading and execution, enforced in a worker on all platforms.
+- `timeout`: wall time for reading the program and stdin, and for execution, enforced in a worker on all platforms.
 - `max_output`, and `max_memory` on Linux: need `isolated=True`.
 
 `evaluate` handles stdin encoding, template binding, and answer extraction.

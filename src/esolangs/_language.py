@@ -262,7 +262,8 @@ class Language:
         """Return completion, rejection, input exhaustion, fault or limit evidence.
 
         Total deadlines and output/memory caps select isolation. Execution
-        deadlines exclude source acquisition; total deadlines include it.
+        deadlines bound reading the program and stdin, and execution, each
+        separately; total deadlines also include worker startup.
         Use outcome.unwrap() for the exception-raising result convention.
 
         Raises nothing deliberate: each package error is the outcome's

@@ -374,3 +374,13 @@ def test_an_execution_budget_outlasts_the_default_total() -> None:
         with pytest.raises(esolangs.ExecutionTimeoutError, match=r"4\.0-second") as e:
             esolangs.run(REFERENCE, "+[]", timeout=4.0, isolated=True)
         assert e.value.bound == "timeout"
+        # The default total said "timeout", a parameter never passed.
+        with pytest.raises(esolangs.ExecutionTimeoutError) as e:
+            esolangs.run(REFERENCE, "+[]", isolated=True)
+        assert e.value.bound == "total_timeout"
+    # PreparedProgram.run passed timeout as the whole-call deadline, in process:
+    # this never stopped.
+    stuck = esolangs.Language(REFERENCE).prepare("+[]")
+    with pytest.raises(esolangs.ExecutionTimeoutError, match=r"1\.0-second") as e:
+        stuck.run(timeout=1.0)
+    assert e.value.bound == "timeout"

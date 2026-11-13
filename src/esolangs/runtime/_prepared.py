@@ -187,9 +187,9 @@ class PreparedProgram:
         max_memory: int | None = None,
     ) -> ExecutionResult:
         """Run fresh state; arguments and errors follow :func:`esolangs.run`."""
-        from esolangs.operations.execution import _execute_invocation
+        from esolangs.operations.execution import _run_result
 
-        return _execute_invocation(
+        return _run_result(
             self.language,
             self.artifact,
             stdin=stdin,
@@ -201,7 +201,7 @@ class PreparedProgram:
             max_memory=max_memory,
             catalog=self.catalog,
             prepared=self,
-        ).unwrap()
+        )
 
     def make_vm(self, *, stdin: InputSource = "", seed: int | None = None) -> VM:
         """Create an independent step machine; errors follow debugger.make_vm."""

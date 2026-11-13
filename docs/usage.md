@@ -303,7 +303,7 @@ an `ExecutionOutcome` then holds `partial_output` with unknown counters). Some a
 
 | Exception | Attributes |
 | --- | --- |
-| `ExecutionTimeoutError` | `bound`: the parameter that ran out, as the caller named it: `"timeout"` or `"max_steps"` from `run`; `"execution_timeout"`, `"total_timeout"`, `"preparation_timeout"` or `"max_steps"` from `ExecutionLimits` |
+| `ExecutionTimeoutError` | `bound`: the parameter that ran out, as the caller named it: `"timeout"` or `"max_steps"` from `run`; `"execution_timeout"`, `"total_timeout"`, `"preparation_timeout"` or `"max_steps"` from `ExecutionLimits`; `"total_timeout"` when an isolated call's 30-second default total ran out |
 | `InputExhaustedError` | `reads`, the reads that succeeded; `supplied`, the input units given; `unit`, what one is (`"line"` by default) |
 | `UnknownLanguageError` | `language`, the name asked for; `suggestions`, the close registered names |
 
@@ -434,8 +434,9 @@ can grow faster than any timeout fires. Elsewhere, cap the process yourself.
 
 ### Isolate a run
 
-`run(language, program, stdin=stdin, isolated=True, timeout=30)` bounds loading and execution, not subprocess startup, on Windows and worker
-threads. A timeout kills and reaps the child; errors retain their class and
+`run(language, program, stdin=stdin, isolated=True, timeout=30)` bounds reading
+the program and stdin, and execution, but not subprocess startup; it works on
+Windows and in worker threads. A timeout kills and reaps the child; errors retain their class and
 `partial_output`.
 
 | Bound | Python | CLI | Notes |
@@ -475,7 +476,7 @@ returns output on halt. When either bound expires it raises
 - `max_steps` selects cooperative stepping. It steps all languages on
   Windows and worker threads.
 - A timeout selects a worker and can interrupt an individual step. It bounds
-  acquisition and execution, not worker startup. Workers require runtime declarations matching the installed
+  reading the program and stdin, and execution, not worker startup. Workers require runtime declarations matching the installed
   catalog; without an explicit total deadline they allow 30 seconds plus the
   execution budget.
 - Text and image-based languages share the VM and debugger.

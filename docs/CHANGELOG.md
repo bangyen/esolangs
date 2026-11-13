@@ -28,10 +28,11 @@ Releases before 0.10.0 are described on the
 - **Breaking:** A timed `run` uses a worker instead of a Unix signal, including
   when combined with a step bound; it works from worker threads and pays worker
   startup on each call. Use `max_steps` alone for an in-process bound.
-  `run(timeout=)` budgets execution, as `ExecutionLimits.execution_timeout`
-  does; with `isolated=True` it used to bound the whole call. It still bounds
-  loading the caller's stdin, but not worker startup. Without a total
-  deadline, a worker gets 30 seconds plus the execution budget.
+  `run(timeout=)` (and `Language.run`, `PreparedProgram.run`) budgets
+  execution, as `ExecutionLimits.execution_timeout` does; with `isolated=True`
+  it used to bound the whole call. It still bounds reading the program and
+  stdin, but not worker startup. Without a total deadline, a worker gets 30
+  seconds plus the execution budget, reported as `bound="total_timeout"`.
 - **Breaking:** Construct dialect overrides with `Language(name).settings(...)`;
   settings are immutable and validated against that language's schema. A
   generated artifact retains its settings, defaults included; explicit
