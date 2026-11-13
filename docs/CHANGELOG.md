@@ -29,7 +29,8 @@ Releases before 0.10.0 are described on the
   when combined with a step bound; it works from worker threads and pays worker
   startup on each call. Use `max_steps` alone for an in-process bound.
   `run(timeout=)` budgets execution, as `ExecutionLimits.execution_timeout`
-  does; with `isolated=True` it used to bound the whole call. Without a total
+  does; with `isolated=True` it used to bound the whole call. It still bounds
+  loading the caller's stdin, but not worker startup. Without a total
   deadline, a worker gets 30 seconds plus the execution budget.
 - **Breaking:** Construct dialect overrides with `Language(name).settings(...)`;
   settings are immutable and validated against that language's schema. A
@@ -66,7 +67,8 @@ Releases before 0.10.0 are described on the
   Source decoding is shared; parsing remains language-owned.
 - Use `Language.execute` or `PreparedProgram.execute` for an
   `ExecutionOutcome` that retains the original error and any partial
-  observation. `ExecutionLimits.execution_timeout` budgets execution.
+  observation. `ExecutionLimits.execution_timeout` budgets acquisition and
+  execution.
   `total_timeout` includes acquisition and worker startup. Bounded runs
   and the debugger share execution control.
 - Add `Language.evaluate(artifact, bits)`, returning `BooleanEvaluation`: the

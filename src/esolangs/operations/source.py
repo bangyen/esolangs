@@ -30,9 +30,8 @@ def check_origin(
     canonical = catalog.resolve(origin)
     if canonical != language:
         raise ProgramError(
-            f"this program was generated for {canonical}, so running it as "
-            f"{language} would read it as {language} source -- which may well run, "
-            "and answer nonsense"
+            f"this program was generated for {canonical}, not {language}; read "
+            f"as {language} source it may well run, and answer nonsense"
         )
 
 

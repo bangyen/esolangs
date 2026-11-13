@@ -382,10 +382,14 @@ def _invoke_worker(
     preparation_deadline = (
         None if preparation_timeout is None else started + preparation_timeout
     )
-    acquisition_deadline = (
-        deadline
-        if preparation_deadline is None
-        else min(deadline, preparation_deadline)
+    # The execution budget also bounds acquisition: a caller's blocking stdin
+    # otherwise waited out the 30-second default total (run(timeout=2) took
+    # 32 s), while worker startup stays uncharged.
+    execution_deadline = (
+        None if execution_timeout is None else started + execution_timeout
+    )
+    acquisition_deadline = min(
+        d for d in (deadline, preparation_deadline, execution_deadline) if d is not None
     )
     box: list[str | BaseException] = []
 
@@ -425,11 +429,14 @@ def _invoke_worker(
     reader.join(max(0.0, acquisition_deadline - monotonic()))
     now = monotonic()
     if reader.is_alive() or now >= acquisition_deadline:
-        if preparation_deadline is not None and preparation_deadline < deadline:
+        if preparation_deadline == acquisition_deadline < deadline:
             raise _preparation_expired()
-        raise exceptions.ExecutionTimeoutError(
+        error = exceptions.ExecutionTimeoutError(
             "execution timed out while loading input"
         )
+        if execution_deadline == acquisition_deadline < deadline:
+            error.bound = "execution_timeout"
+        raise error
     request = box[0]
     if isinstance(request, BaseException):
         raise request

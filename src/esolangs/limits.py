@@ -12,7 +12,8 @@ class ExecutionLimits:
 
     A preparation deadline covers acquisition, worker startup and the source
     preparation hook. It selects isolation when source needs preparing.
-    Execution deadlines select isolation even with a step limit. Total, output
+    An execution deadline bounds acquisition and execution, each separately,
+    not worker startup; it selects isolation even with a step limit. Total, output
     and memory limits also select isolation. Memory limits require Linux. An
     isolated invocation without total_timeout gets 30 seconds plus any
     execution_timeout.  ``run(timeout=t)`` is ``execution_timeout=t``.

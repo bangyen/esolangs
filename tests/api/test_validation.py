@@ -78,10 +78,11 @@ class TestTheChecksAreSymmetric:
         with pytest.raises(expected):
             debugger_api.make_debugger(REFERENCE, program, stdin=stdin)
 
-    @pytest.mark.parametrize("text", [None, 5, b"x"])
+    @pytest.mark.parametrize("text", [5, b"x", ""])
     def test_break_on_output_refuses_a_non_string(self, text: object) -> None:
-        """It raised ``'in <string>' requires string`` from the run loop."""
-        with pytest.raises(esolangs.ArgumentError, match="text must be a string"):
+        """It raised ``'in <string>' requires string`` from the run loop; ``""``
+        stopped before the first step."""
+        with pytest.raises(esolangs.ArgumentError, match="text must be a"):
             _debugger().break_on_output(text)
 
     def test_break_when_refuses_a_non_callable(self) -> None:

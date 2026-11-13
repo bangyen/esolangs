@@ -112,7 +112,8 @@ class Debugger(_ExecutionController):
         random-machine cycle proofs require the branching protocol.
 
         The post-halt dump writes output without changing most snapshots
-        (Cyclic tag records the dump in its snapshot).
+        (Cyclic tag records the dump in its snapshot).  Every ``make_vm``
+        machine has one; a hand-written VM needs ``snapshot()`` for this.
         """
         return cast(SnapshotVM, self.vm).snapshot()
 
@@ -175,10 +176,13 @@ class Debugger(_ExecutionController):
     def break_on_output(self, text: str) -> None:
         """Stop once ``text`` has been written so far.
 
-        A non-string is refused here, not from inside the run loop.
+        A non-string or empty ``text`` is refused here, not from inside the run
+        loop; an empty one would stop before the first step.
         """
         if not isinstance(text, str):
             raise ArgumentError(f"text must be a string, got {type(text).__name__}")
+        if not text:
+            raise ArgumentError("text must be a non-empty string")
         self._breakpoints.append(lambda vm: text in vm.output)
 
     def break_when(self, predicate: Callable[[VM], bool]) -> None:

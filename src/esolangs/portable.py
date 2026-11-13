@@ -56,7 +56,8 @@ def save_program(
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
-        ArgumentError: ``gzip`` or ``normalize`` is not a Boolean flag.
+        ArgumentError: ``gzip`` or ``normalize`` is not a Boolean flag, or
+            ``path`` is not a str or PathLike.
         TemplateError: ``program`` is an unfilled template.
         ProgramNotFoundError: ``program`` is a Path that does not exist.
         ProgramError: The record belongs to another language, or the source
@@ -70,6 +71,10 @@ def save_program(
         raise ArgumentError("gzip must be a boolean")
     if type(normalize) is not bool:
         raise ArgumentError("normalize must be a boolean")
+    if not isinstance(path, (str, PathLike)):
+        raise ArgumentError(
+            f"path must be a str or PathLike, got {type(path).__name__}"
+        )
     from esolangs.operations.source import check_origin, read_artifact
 
     # The language decides the file terminator and PNG metadata; without it,
@@ -124,6 +129,9 @@ def save_program(
         else:
             raise ProgramError("expected text, compressed source, or a raster")
         target = Path(path)
+        if target.is_dir():
+            # The staged rename's error named the temporary file instead.
+            raise IsADirectoryError("it is a directory")
         with TemporaryDirectory(dir=target.parent) as temporary:
             staged = Path(temporary) / "source"
             staged.write_bytes(source)

@@ -176,6 +176,8 @@ class TemplateArtifact:
 
     def fill(self, bits: list[int] | tuple[int, ...]) -> ProgramArtifact[str]:
         """Bind inputs without rescanning the immutable template's runs."""
+        bits = check_bits(bits, "bits")
+        check_bit_count(bits, self.bindings.inputs, f"{self.language} template")
         return ProgramArtifact(
             self.bindings.fill(self.source, bits, spans=self.spans),
             self.language,

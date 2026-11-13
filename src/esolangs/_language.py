@@ -41,7 +41,12 @@ class Language:
     catalog: Catalog = field(default_factory=get_catalog, kw_only=True, repr=False)
 
     def __post_init__(self) -> None:
-        """Resolve the supplied name before any operation."""
+        """Resolve the supplied name before any operation.
+
+        Raises:
+            UnknownLanguageError: ``name`` is not registered.
+            ArgumentError: ``name`` is not a string.
+        """
         object.__setattr__(self, "catalog", get_catalog(self.catalog))
         object.__setattr__(self, "name", self.catalog.resolve(self.name))
 

@@ -18,7 +18,8 @@ class ExecutionResult(NamedTuple):
     Counters are None for custom VMs without library-owned IO.
     Completion is absent before output finalization.
     Steps count completed cooperative commands, excluding a faulting command
-    and post-halt output finalization; None when the runner does not count.
+    and post-halt output finalization; None when the runner does not count
+    (``run`` counts only under ``max_steps``).
     Runtime failures retain an unfinished observation on EsolangError.observation.
     """
 

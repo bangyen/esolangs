@@ -98,6 +98,7 @@ must be filled before execution. An artifact's `fill` and `evaluate` are
 catalog.
 
 `save_program(language, record, path, gzip=True)` compresses native text exports;
+gzip input loads as `run` loads it, so `gzip=False` writes it decompressed;
 `generate --gzip` does the same on the CLI. API exports are lossless by default;
 CLI generation uses native file terminators.
 Use `dump_program` to preserve dialect settings and template bindings on disk.
@@ -195,7 +196,8 @@ completed result or raises the original error. Prepared programs also expose
 `execute`. Native, cooperative and worker execution return the same internal
 outcome; `run` raises from it.
 
-`ExecutionLimits.execution_timeout` excludes acquisition; `total_timeout`
+`ExecutionLimits.execution_timeout` bounds acquisition and execution, each
+separately, but not worker startup; `total_timeout`
 includes acquisition, worker startup and execution. Set `preparation_timeout`
 to bound acquisition, worker startup and the source preparation hook independently
 of execution. It selects isolation when source needs preparing. A total deadline,
@@ -432,7 +434,7 @@ can grow faster than any timeout fires. Elsewhere, cap the process yourself.
 
 ### Isolate a run
 
-`run(language, program, stdin=stdin, isolated=True, timeout=30)` bounds subprocess startup, loading and execution on Windows and worker
+`run(language, program, stdin=stdin, isolated=True, timeout=30)` bounds loading and execution, not subprocess startup, on Windows and worker
 threads. A timeout kills and reaps the child; errors retain their class and
 `partial_output`.
 
@@ -472,15 +474,15 @@ returns output on halt. When either bound expires it raises
 
 - `max_steps` selects cooperative stepping. It steps all languages on
   Windows and worker threads.
-- A timeout selects a worker and can interrupt an individual step. Without
-  `isolated=True` it bounds execution; with it, it also bounds acquisition and
-  worker startup. Workers require runtime declarations matching the installed
-  catalog; without an explicit total deadline they retain the 30-second default.
+- A timeout selects a worker and can interrupt an individual step. It bounds
+  acquisition and execution, not worker startup. Workers require runtime declarations matching the installed
+  catalog; without an explicit total deadline they allow 30 seconds plus the
+  execution budget.
 - Text and image-based languages share the VM and debugger.
 - Command bounds combine with isolation, output/memory caps and seeds.
 - A language whose `describe()["steppable_to_answer"]` is false (A Painter
-  Ant) answers only through `run` without `max_steps`; stepped, it never
-  halts.
+  Ant) answers only through `run`, which proves the periodic render (a
+  `max_steps` too small to prove it raises); stepped, it never halts.
 
 ## Debugging
 

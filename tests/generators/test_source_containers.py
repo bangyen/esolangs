@@ -182,14 +182,23 @@ def test_isolated_deadline_bounds_stream_acquisition(
     program: Any = Stream() if blocked == "program" else ",."
     stdin: Any = Stream() if blocked == "stdin" else "A"
     try:
+        # The execution budget bounds acquisition; a blocked stdin waited out
+        # the 30-second default total instead.
+        calls = {
+            "stdin": lambda: esolangs.run(REFERENCE, program, stdin=stdin, timeout=0.1),
+            "program": lambda: (
+                esolangs.Language(REFERENCE)
+                .execute(
+                    program,
+                    stdin=stdin,
+                    isolated=True,
+                    limits=esolangs.ExecutionLimits(total_timeout=0.1),
+                )
+                .unwrap()
+            ),
+        }
         with pytest.raises(esolangs.ExecutionTimeoutError, match="loading input"):
-            # run(timeout=) budgets execution only; the total covers loading.
-            esolangs.Language(REFERENCE).execute(
-                program,
-                stdin=stdin,
-                isolated=True,
-                limits=esolangs.ExecutionLimits(total_timeout=0.1),
-            ).unwrap()
+            calls[blocked]()
         assert entered.is_set()
         assert not finished.is_set()
     finally:
