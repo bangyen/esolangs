@@ -22,7 +22,6 @@ definitions = ["P = the program's leaves, each k and s counted twice", "S = the 
 "1101001101101101" = { commands_by_row = { "0" = 269, "1" = 269, "2" = 294, "3" = 294, "4" = 269, "5" = 269, "6" = 269, "7" = 269, "8" = 294, "9" = 294, "10" = 302, "11" = 304, "12" = 269, "13" = 269, "14" = 294, "15" = 294 }, source_units = 233 }
 "11111110" = { commands_by_row = { "0" = 131, "1" = 131, "2" = 131, "3" = 131, "4" = 192, "5" = 192, "6" = 227, "7" = 227 }, source_units = 104 }
 
-
 [ablations]
 archive_refs = [
     "subtree_binding",

@@ -148,6 +148,7 @@ def _execute(code: str, io: IO) -> CompletionReport:
 
 
 def run(code: str, io: IO) -> None:
+    """Run ``code`` to completion on ``io``."""
     _execute(code, io)
 
 

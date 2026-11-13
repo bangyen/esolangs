@@ -23,7 +23,6 @@ qualification = "the table is the starting state, one character an entry, and th
 "1101001101101101" = { commands_by_row = { "0" = 42, "1" = 42, "2" = 42, "3" = 42, "4" = 42, "5" = 42, "6" = 42, "7" = 42, "8" = 42, "9" = 42, "10" = 42, "11" = 42, "12" = 42, "13" = 42, "14" = 42, "15" = 42 }, source_units = 203 }
 "11111110" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23 }, source_units = 195 }
 
-
 [ablations]
 archive_refs = [
     "queued_projection",

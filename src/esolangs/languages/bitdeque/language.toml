@@ -20,7 +20,6 @@ definitions = ["S = nodes and repeated zero-edge pointers before the final level
 "1101001101101101" = { commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 32, "4" = 28, "5" = 28, "6" = 28, "7" = 28, "8" = 32, "9" = 34, "10" = 30, "11" = 32, "12" = 32, "13" = 32, "14" = 32, "15" = 34 }, source_units = 344 }
 "11111110" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 23, "5" = 23, "6" = 20, "7" = 22 }, source_units = 171 }
 
-
 [ablations]
 archive_refs = [
     "subtree_sharing",

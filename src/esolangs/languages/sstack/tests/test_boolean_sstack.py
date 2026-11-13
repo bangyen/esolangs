@@ -413,7 +413,14 @@ def test_binary_bank_refuses_a_drifted_inline_builder(monkeypatch) -> None:
 
 def test_check_runs_the_formula_case_bounds_measures() -> None:
     nodes = new_language.quick_tests("SStack")
-    assert nodes[-1].endswith("formulas_hold[SStack-1]")
+    # The per-push cases: n <= 2 and the first arity above it.
+    assert [
+        node.rpartition("formulas_hold")[2] for node in nodes if "formulas_hold" in node
+    ] == [
+        "[SStack-1]",
+        "[SStack-2]",
+        "[SStack-3]",
+    ]
     assert new_language.bounds("SStack", range(1, 2))[0][:4] == (1, 9, 23, 19)
 
 

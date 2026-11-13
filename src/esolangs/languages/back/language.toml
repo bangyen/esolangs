@@ -28,7 +28,6 @@ qualification = "last tested bit held in cell n; equal halves pass; pair finishe
 "1101001101101101" = { commands_by_row = { "0" = 40, "1" = 41, "2" = 40, "3" = 40, "4" = 42, "5" = 43, "6" = 45, "7" = 46, "8" = 43, "9" = 43, "10" = 46, "11" = 46, "12" = 48, "13" = 49, "14" = 48, "15" = 48 }, source_units = 426 }
 "11111110" = { commands_by_row = { "0" = 25, "1" = 28, "2" = 25, "3" = 29, "4" = 26, "5" = 29, "6" = 26, "7" = 29 }, source_units = 183 }
 
-
 [ablations]
 archive_refs = [
     "fall_through_sharing",

@@ -276,13 +276,53 @@ def _registered_generator(name: str) -> bool:
     return lang is not None and lang.backend is not None
 
 
-def _template(section_name: str) -> str:
-    """Point at the reference language's filled-in ``section_name`` to copy."""
-    from esolangs.registry import LANGUAGES
-    from tests.support.reference import REFERENCE
+#: The smallest section each evidence parser accepts.  Copying an existing
+#: language's instead carried its pinned archive revisions (2026-11-13).
+_SKELETONS = {
+    "evidence": """[evidence]
+version = 1
 
-    path = f"src/esolangs/languages/{LANGUAGES[REFERENCE].id}/language.toml"
-    return f"; copy its [{section_name}] section from {path} and edit it"
+# One per `Size:` figure in the generator docstring.
+[[evidence.anchors]]
+arity = FILL
+rule = "FILL"  # parity, and, random (add seed = 1847), ...
+size = FILL
+unit = "chars"
+scale = 1
+construction = "{construction}"
+""",
+    "ablations": """[ablations]
+version = 1
+archive_context = {{}}
+
+[ablations.FILL_name]
+kind = "measurement"
+witness = {{ arity = FILL, rule = "FILL" }}
+source = {{ value = FILL, unit = "chars" }}
+budget = 30
+band = "fast"
+scale = 1
+audited = FILL  # the date, as 2026-11-13
+construction = "{construction}"
+notes = "FILL: what the measurement shows"
+""",
+    "semantic_evidence": """[semantic_evidence]
+version = 1
+kind = "examples"  # "model" once an independent model checks it
+contract = "interpreter.py"
+tests = ["src/esolangs/languages/{id}/tests/test_{id}.py::FILL"]
+""",
+}
+
+
+def _template(section_name: str, language_id: str) -> str:
+    """Return a paste-ready ``section_name`` skeleton for ``language_id``."""
+    construction = f"esolangs.languages.{language_id}.generator:{language_id}_request"
+    skeleton = _SKELETONS[section_name].format(
+        construction=construction, id=language_id
+    )
+    indented = "\n".join("    " + line for line in skeleton.splitlines())
+    return f"; paste this and replace each FILL:\n{indented}"
 
 
 def _workspace_row(name: str) -> list[Gap]:
@@ -406,7 +446,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         gaps.append(
             Gap(
                 str(metadata.relative_to(ROOT)),
-                f"record source evidence: {error}{_template('evidence')}",
+                f"record source evidence: {error}{_template('evidence', lang.id)}",
             )
         )
     try:
@@ -415,7 +455,8 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         gaps.append(
             Gap(
                 str(metadata.relative_to(ROOT)),
-                f"record measured audit evidence: {error}{_template('ablations')}",
+                "record measured audit evidence: "
+                f"{error}{_template('ablations', lang.id)}",
             )
         )
     if source.exists() and PLACEHOLDER in source.read_text(encoding="utf-8"):
@@ -504,7 +545,7 @@ def check(name: str) -> list[Gap]:
             Gap(
                 f"src/esolangs/languages/{lang.id}/language.toml",
                 "record bounded independent semantic checks: "
-                f"{error}{_template('semantic_evidence')}",
+                f"{error}{_template('semantic_evidence', lang.id)}",
             )
         )
     if lang.backend is not None:
@@ -547,6 +588,9 @@ def quick_tests(name: str) -> list[str]:
         # Kiss/Sonata/SwitchCase first failed all of these inside finish's
         # 250 s gate (2026-10-21).
         "tests/interpreters/test_spec_triggers.py",
+        # A bare machine factory instead of a RuntimePlan failed only in finish.
+        "tests/runtime/test_lifecycle.py"
+        "::test_every_runtime_declares_preparation_and_capabilities",
         "tests/api/test_language_coupling.py::test_no_file_cites_another_language",
         "tests/api/test_catalog_contracts.py::TestTheSpecIsReachable",
         "tests/interpreters/test_transition_purity.py"
@@ -595,16 +639,21 @@ def quick_tests(name: str) -> list[str]:
             "tests/interpreters/test_input_convention.py"
             f"::test_running_out_of_input_reaches_the_caller[{stem}]"
         )
-    arities = []
+    # The per-push formula cases: n <= 2 and each ledger's first arity above
+    # it.  The smallest alone passed while n = 3 needed a witnesses module
+    # that finish then demanded (2026-11-13).
+    arities: set[int] = set()
     for table in ("execution", "workspace"):
         formulas = importlib.import_module(f"tests.proofs.{table}").FORMULAS
         if name in formulas:
-            arities.append(min(formulas[name][2]))
-    if arities:
-        nodes.append(
-            "tests/proofs/test_workspace_formulas.py::"
-            f"test_execution_and_workspace_formulas_hold[{name}-{min(arities)}]"
-        )
+            declared = formulas[name][2]
+            arities |= {n for n in declared if n <= 2}
+            arities |= {min((n for n in declared if n > 2), default=min(declared))}
+    nodes += [
+        "tests/proofs/test_workspace_formulas.py::"
+        f"test_execution_and_workspace_formulas_hold[{name}-{n}]"
+        for n in sorted(arities)
+    ]
     return _escaped(nodes)
 
 
@@ -754,6 +803,8 @@ def _curation(name: str) -> dict[str, Any]:
 _CI_ONLY = (
     "generated docs",
     "dead definitions",
+    # ~40 s; a renamed test left four witnesses pointing nowhere (2026-11-13).
+    "construction witnesses",
     "exception leaks",
     "deep proofs (verify band)",
 )
@@ -835,7 +886,10 @@ def _lint(name: str) -> bool:
         cmd = [sys.executable, "-m", "ruff", *args, package]
         print("+ ruff", " ".join(args), package, flush=True)
         if subprocess.run(cmd, cwd=ROOT, check=False).returncode:
-            print(f"{name}: fix the lint above (`ruff format {package}` formats)")
+            print(
+                f"{name}: fix the lint above; `ruff check --fix {package}` and "
+                f"`ruff format {package}` repair some, docstrings need writing"
+            )
             return False
     return True
 
@@ -903,6 +957,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(str(exc))
     for path in paths:
         print(f"created {path.relative_to(ROOT)}")
+    # The templates are text, not formatted code: leave the stubs as lint
+    # will want them, so the first finding is the contributor's own.
+    package = paths[0].parent
+    for flags in (["check", "--fix", "--quiet"], ["format", "--quiet"]):
+        cmd = [sys.executable, "-m", "ruff", *flags, str(package)]
+        subprocess.run(cmd, cwd=ROOT, check=False)
     implementation = (
         "interpreter" if args.interpreter_only else "interpreter and generator"
     )

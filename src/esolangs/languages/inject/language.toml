@@ -22,7 +22,6 @@ qualification = "one table block halved by `O(n)` conditional substitutions"
 "1101001101101101" = { commands_by_row = { "0" = 31, "1" = 31, "2" = 34, "3" = 33, "4" = 30, "5" = 30, "6" = 31, "7" = 31, "8" = 33, "9" = 32, "10" = 33, "11" = 34, "12" = 33, "13" = 33, "14" = 36, "15" = 35 }, source_units = 316 }
 "11111110" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 24, "5" = 24, "6" = 27, "7" = 27 }, source_units = 166 }
 
-
 [ablations]
 archive_refs = [
     "subtree_sharing",

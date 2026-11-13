@@ -23,7 +23,6 @@ definitions = ["G = peak loop cursor width at depth max(n-3,0)"]
 "1101001101101101" = { commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4, "4" = 4, "5" = 4, "6" = 4, "7" = 4, "8" = 4, "9" = 4, "10" = 4, "11" = 4, "12" = 4, "13" = 4, "14" = 4, "15" = 4 }, source_units = 246 }
 "11111110" = { commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 190 }
 
-
 [schemes]
 folds_without_tree = true
 

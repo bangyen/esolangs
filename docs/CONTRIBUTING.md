@@ -39,7 +39,7 @@ are subcommands of `scripts/new_language.py`.
 | --- | --- |
 | `just test-quick` | inner loop |
 | `just test` | required before committing; branch-scoped gate |
-| `just test-full` | whole tree, slow tests and every local gate step; release-scale changes |
+| `just test-full` | whole tree and slow tests; release-scale changes |
 | `just test-py` | pytest, including weekly probes when selected; also scheduled in CI |
 | `just examples` / `just docs` | regenerate committed examples / generated documentation |
 
@@ -47,8 +47,10 @@ Audit archives and replays pin earlier commits. Use a full Git checkout;
 extend a shallow clone with `git fetch --unshallow`.
 
 The gate checks generated docs, pre-commit, mypy, pytest, dead definitions,
-size baselines, deep proofs and exception leaks. Out-of-scope steps stay in
-CI; `test-full` runs them locally. Delete unused helpers or move test-only
+size baselines, deep proofs and exception leaks. Generated docs, dead
+definitions, size baseline, construction witnesses, deep proofs and exception
+leaks run in CI, not in `just test` or `test-full`; run one locally with
+`uv run python scripts/verify/gate.py --only "<step>"`. Delete unused helpers or move test-only
 helpers under `tests/`. Tests enforce a 1,200-line file cap, fewer than
 10,000 non-contract cases, and test code below its source: `tests/` +
 `src/**/tests` < `src`, `tests/tooling` < `scripts`. Per-language oracle and

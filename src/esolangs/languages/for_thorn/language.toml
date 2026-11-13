@@ -19,7 +19,6 @@ qualification = "the tree tests the essential inputs; an ignored one is read and
 "1101001101101101" = { commands_by_row = { "0" = 87, "1" = 86, "2" = 90, "3" = 95, "4" = 86, "5" = 94, "6" = 91, "7" = 86, "8" = 87, "9" = 86, "10" = 90, "11" = 95, "12" = 86, "13" = 94, "14" = 91, "15" = 86 }, source_units = 159 }
 "11111110" = { commands_by_row = { "0" = 37, "1" = 44, "2" = 37, "3" = 45, "4" = 37, "5" = 44, "6" = 37, "7" = 45 }, source_units = 58 }
 
-
 [ablations]
 archive_refs = [
     "input_projection",
