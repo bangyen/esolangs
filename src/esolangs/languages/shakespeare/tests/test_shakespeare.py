@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.exceptions import ExecutionTimeoutError, HaltError
+from esolangs.exceptions import ExecutionCapError, HaltError
 from esolangs.languages.shakespeare._syntax import parse
 from esolangs.languages.shakespeare.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -66,7 +66,7 @@ def test_the_page_fragment_prints_minus_two_then_hamlet_plus_two() -> None:
 def test_truth_machine_halts_on_zero_and_repeats_one() -> None:
     source = (FIXTURES / "truth_machine.spl").read_text()
     assert execute("Shakespeare", source, stdin="0\n", timeout=10).output == "0"
-    with pytest.raises(ExecutionTimeoutError) as info:
+    with pytest.raises(ExecutionCapError) as info:
         execute("Shakespeare", source, stdin="1\n", max_steps=100)
     assert info.value.partial_output.startswith("1111")
 

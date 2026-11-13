@@ -56,7 +56,12 @@ def test_worker_memory_failure_retains_protocol(
         ),
     )
     _worker()
-    with pytest.raises(esolangs.InterpreterLimitError, match=message) as caught:
+    expected = (
+        esolangs.ExecutionCapError
+        if error is MemoryError
+        else esolangs.InterpreterLimitError
+    )
+    with pytest.raises(expected, match=message) as caught:
         _decode(capsys.readouterr().out, expired=False)
     assert caught.value.observation is None
     # Only the cap running out is a budget; failing to install it is not.

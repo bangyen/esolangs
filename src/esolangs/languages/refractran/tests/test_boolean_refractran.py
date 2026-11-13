@@ -209,7 +209,7 @@ def _check_marked_paths() -> None:
                 template.fill(bits),
                 limits=esolangs.ExecutionLimits(max_steps=2 * len(broken) + 1),
             )
-        except esolangs.ExecutionTimeoutError:
+        except esolangs.ExecutionCapError:
             caught = True
         else:
             caught |= esolangs.read_answer("REFRACTRAN", result.output) != table[row]

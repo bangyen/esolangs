@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs.exceptions import ExecutionTimeoutError, InputExhaustedError
+from esolangs.exceptions import ExecutionCapError, InputExhaustedError
 from esolangs.vm import complete_vm, make_vm
 from tests.support.execution import run_observed
 
@@ -88,7 +88,7 @@ def test_wiki_examples(language, page, example, citation) -> None:
             vm = make_vm(language, source, stdin=stdin, settings=settings)
             assert complete_vm(vm, max_steps=None) == output, "stepping parity"
     else:
-        error = {"steps": ExecutionTimeoutError, "eof": InputExhaustedError}[stop]
+        error = {"steps": ExecutionCapError, "eof": InputExhaustedError}[stop]
         with pytest.raises(error) as info:
             run_observed(
                 language,

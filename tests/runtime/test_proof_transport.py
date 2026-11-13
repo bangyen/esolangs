@@ -160,7 +160,7 @@ def test_actual_branch_workers_retain_the_complete_graph():
         source, stdin = _request(name, 1)
         try:
             native = termination_observed(name, source, stdin, 5)
-        except TimeoutError as error:
+        except esolangs.ExecutionCapError as error:
             if "cannot be safely forked" not in str(error):
                 raise
             refused += 1

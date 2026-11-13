@@ -168,7 +168,7 @@ def error_type(kind, raw):
         "syntax": ValueError if raw else esolangs.ProgramError,
         "halt": esolangs.HaltError,
         "limit": ValueError if raw else esolangs.InterpreterLimitError,
-        "bounded": esolangs.ExecutionTimeoutError,
+        "bounded": esolangs.ExecutionCapError,
     }[kind]
 
 

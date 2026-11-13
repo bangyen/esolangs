@@ -123,13 +123,14 @@ def run(
         InputExhaustedError: A read past the end of ``stdin``.  Languages with
             ``describe(language).eof_is_a_value`` supply a value instead,
             and some halt.
-        ExecutionTimeoutError: A deadline elapsed or ``max_steps`` ran out.
-            Also a :class:`TimeoutError` and a ``HaltError``; catch it, not the
-            base.
-        InterpreterLimitError: ``max_output`` was exceeded, or the interpreter
-            hit another implementation limit.
-        HaltError: The program halted on an invalid operation (base of the two
-            above).
+        ExecutionTimeoutError: A deadline elapsed.  Also a :class:`TimeoutError`.
+        ExecutionCapError: ``max_steps``, ``max_output`` or ``max_memory`` ran
+            out.
+        ExecutionBudgetError: Base of the two above; ``bound`` names the
+            budget.
+        InterpreterLimitError: The interpreter hit an implementation limit.
+        HaltError: The program halted on an invalid operation (base of the
+            three above).
         MissingDependencyError: The language needs an uninstalled extra
             (``esolangs[image]`` for PNG).
     """

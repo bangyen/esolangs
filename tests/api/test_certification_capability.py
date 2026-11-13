@@ -197,7 +197,7 @@ with patch.object(_isolated.subprocess, 'Popen', guarded_popen):
     steps = {'limits': esolangs.ExecutionLimits(max_steps=4)}
     for isolated in (False, True):
         for source, options, error_type, expected in (
-            ('+[.]', steps, esolangs.ExecutionTimeoutError,
+            ('+[.]', steps, esolangs.ExecutionCapError,
              esolangs.ExecutionResult('\\x01', 0, 0, 0, steps=4)),
             (',.,', {'stdin': 'é'} | steps, esolangs.InputExhaustedError,
              esolangs.ExecutionResult('é', 1, 1, 1, steps=2)),

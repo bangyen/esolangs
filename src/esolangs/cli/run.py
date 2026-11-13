@@ -40,7 +40,7 @@ from esolangs.cli.io import (
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
-    ExecutionTimeoutError,
+    ExecutionBudgetError,
     TemplateError,
 )
 from esolangs.registry import LANGUAGES, resolve, template_char
@@ -142,7 +142,7 @@ def _run(rest: list[str]) -> None:
             ).output
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
-    except ExecutionTimeoutError as exc:
+    except ExecutionBudgetError as exc:
         # Distinct from a program error's 1, following timeout(1), so a
         # script can tell "ran out of time" from "the program broke".  Those
         # shared exit 1, which made the termination languages'

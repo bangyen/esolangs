@@ -141,8 +141,7 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
         args, options = [_counter(args[0]), _counter(args[1])], {"unit": args[2]}
     error: exceptions.EsolangError = cls(*args, **options)
     if result["output_limit"] != (
-        isinstance(error, exceptions.InterpreterLimitError)
-        and str(error) == _OUTPUT_LIMIT
+        isinstance(error, exceptions.ExecutionCapError) and str(error) == _OUTPUT_LIMIT
     ):
         raise ValueError("inconsistent isolated output-limit marker")
     error.partial_output = partial
@@ -150,7 +149,6 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
     if isinstance(error, exceptions.ExecutionTimeoutError):
         if result["bound"] not in (
             "timeout",
-            "max_steps",
             "execution_timeout",
             "total_timeout",
         ):
@@ -158,8 +156,8 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
         error.bound = result["bound"]
     elif isinstance(error, exceptions.ExecutionCapError):
         # The marker and the bound are two spellings of one fact.
-        if result["bound"] != (
-            "max_output" if result["output_limit"] else "max_memory"
+        if result["bound"] not in (
+            ("max_output",) if result["output_limit"] else ("max_memory", "max_steps")
         ):
             raise ValueError("invalid cap bound")
         error.bound = result["bound"]
@@ -912,7 +910,7 @@ def _failure_wire(error: BaseException) -> dict[str, Any]:
             if isinstance(error, exceptions.ExecutionBudgetError)
             else {}
         ),
-        "output_limit": isinstance(error, exceptions.InterpreterLimitError)
+        "output_limit": isinstance(error, exceptions.ExecutionCapError)
         and str(error) == _OUTPUT_LIMIT,
     }
 

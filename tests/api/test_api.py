@@ -159,7 +159,7 @@ def test_a_timeout_names_the_bound_that_fired() -> None:
     """Both bounds raise one class; ``bound`` separates them, pickled too."""
     import pickle
 
-    with pytest.raises(esolangs.ExecutionTimeoutError) as stepped:
+    with pytest.raises(esolangs.ExecutionCapError) as stepped:
         esolangs.run(
             REFERENCE,
             "+[]",
@@ -349,7 +349,7 @@ def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path) -> N
 
 def test_bound_execution_keeps_partial_output_on_step_exhaustion() -> None:
     language = esolangs.Language(REFERENCE)
-    with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+    with pytest.raises(esolangs.ExecutionCapError) as caught:
         language.run(
             "+.[]",
             limits=esolangs.ExecutionLimits(max_steps=10, execution_timeout=1),

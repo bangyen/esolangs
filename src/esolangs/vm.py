@@ -43,7 +43,7 @@ from esolangs._cycles import (
 from esolangs._cycles import (
     run_until_halt_or_value_growth as run_until_halt_or_value_growth,
 )
-from esolangs.exceptions import ArgumentError, ExecutionTimeoutError
+from esolangs.exceptions import ArgumentError, steps_exhausted
 from esolangs.exceptions import EsolangError as _EsolangError
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
@@ -78,11 +78,8 @@ def complete_vm(vm: _VM, max_steps: int | None = 100_000) -> str:
     if not vm.self_halts and not vm.halted:
         raise ArgumentError("completion requires a machine that self-halts")
     if not run_until_halt(vm, max_steps):
-        # The class and bound ``run(max_steps=...)`` raises; this was the one
-        # step bound reported as an InterpreterLimitError.
-        error = ExecutionTimeoutError("VM completion exhausted max_steps")
-        error.bound = "max_steps"
-        raise error
+        # The class and bound ``run`` raises for the same cap.
+        raise steps_exhausted("VM completion exhausted max_steps")
     # Public VMs declare the boolean trait; other attributes are caller-owned.
     finalize(
         vm,

@@ -4,7 +4,7 @@ import pytest
 
 from esolangs import ExecutionLimits
 from esolangs import run as run_public
-from esolangs.exceptions import ExecutionTimeoutError, HaltError
+from esolangs.exceptions import ExecutionCapError, HaltError
 from esolangs.languages.bfstack.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -64,7 +64,7 @@ class TestBFStack:
                 ).output
                 == text
             )
-        with pytest.raises(ExecutionTimeoutError):
+        with pytest.raises(ExecutionCapError):
             run_public(
                 "BFStack",
                 "\ud800\udfff>",

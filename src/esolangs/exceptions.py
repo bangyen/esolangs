@@ -39,6 +39,10 @@ class HaltError(EsolangError):
             self.add_note(f"hint: {hint}")
 
 
+#: Said for a deadline and a step cap alike: either may mean a loop.
+_BOUND_HINT = "check loop termination and blocked input before increasing the bound"
+
+
 class ExecutionBudgetError(HaltError):
     """A caller-set budget ran out before the program ended; ``bound`` names it.
 
@@ -59,12 +63,11 @@ class ExecutionBudgetError(HaltError):
 
 
 class ExecutionTimeoutError(ExecutionBudgetError, TimeoutError):
-    """A time or step budget ran out before the program ended; ``bound`` names it."""
+    """A deadline elapsed before the program ended; ``bound`` names it."""
 
-    #: The wall-clock phase or command budget that ended the invocation.
+    #: The wall-clock phase that ended the invocation.
     bound: Literal[
         "timeout",
-        "max_steps",
         "preparation_timeout",
         "execution_timeout",
         "total_timeout",
@@ -72,10 +75,7 @@ class ExecutionTimeoutError(ExecutionBudgetError, TimeoutError):
 
     def __init__(self, *args: object) -> None:
         """Keep the timeout diagnostic and suggest checking termination first."""
-        super().__init__(
-            *args,
-            hint="check loop termination and blocked input before increasing the bound",
-        )
+        super().__init__(*args, hint=_BOUND_HINT)
 
 
 class UnknownLanguageError(EsolangError, ValueError):
@@ -202,10 +202,18 @@ class InterpreterLimitError(HaltError):
     """
 
 
-class ExecutionCapError(ExecutionBudgetError, InterpreterLimitError):
-    """An isolated run exceeded ``max_output`` or ``max_memory``; ``bound`` names it.
+class ExecutionCapError(ExecutionBudgetError):
+    """A step, output or memory cap ran out; ``bound`` names it.
 
-    Still an :class:`InterpreterLimitError`, the class both caps raised bare.
+    Not a :class:`TimeoutError`, as no clock ran out, and not an
+    :class:`InterpreterLimitError`, which is the interpreter's own limit.
     """
 
-    bound: Literal["max_output", "max_memory"] = "max_output"
+    bound: Literal["max_steps", "max_output", "max_memory"] = "max_output"
+
+
+def steps_exhausted(message: str) -> ExecutionCapError:
+    """Return the error for a ``max_steps`` bound that ran out."""
+    error = ExecutionCapError(message, hint=_BOUND_HINT)
+    error.bound = "max_steps"
+    return error

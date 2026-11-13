@@ -17,7 +17,7 @@ def test_step_exhaustion_does_not_publish_a_completed_result(monkeypatch):
         raise AssertionError("bounded execution must not construct a debugger")
 
     monkeypatch.setattr(Debugger, "__init__", refuse_debugger)
-    with pytest.raises(esolangs.ExecutionTimeoutError, match="max_steps") as caught:
+    with pytest.raises(esolangs.ExecutionCapError, match="max_steps") as caught:
         _execution_operations._execute_bounded(REFERENCE, "+.[]", max_steps=10).unwrap()
     assert caught.value.partial_output == "\x01"
     assert caught.value.bound == "max_steps"

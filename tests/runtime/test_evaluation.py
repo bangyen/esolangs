@@ -104,7 +104,7 @@ def test_isolated_row_output_limit_resets_per_row(streaming) -> None:
 
 @pytest.mark.medium
 def test_evaluation_output_overflow_retains_partial_output_and_row() -> None:
-    with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
+    with pytest.raises(esolangs.ExecutionCapError, match="output limit") as caught:
         _evaluate(REFERENCE, "+" * 48 + "..", inputs=1, isolated=True, max_output=1)
     assert caught.value.partial_output == "0"
     assert any("row 0" in note for note in caught.value.__notes__)
@@ -119,7 +119,7 @@ def test_termination_output_limit_is_not_a_divergence_verdict() -> None:
         source = esolangs.generate(name, "01")
         try:
             answer = _evaluate(name, source, inputs=1, isolated=True, max_output=0)
-        except esolangs.InterpreterLimitError as error:
+        except esolangs.ExecutionCapError as error:
             outcomes.add(str(error).split(":")[0])
         else:
             assert answer == "01"
@@ -130,7 +130,7 @@ def test_termination_output_limit_is_not_a_divergence_verdict() -> None:
             ]
             assert [result.bit for result in decisions] == ["0", "1"]
             assert {result.termination.halts for result in decisions} == {False, True}
-            with pytest.raises(esolangs.ExecutionTimeoutError) as stopped:
+            with pytest.raises(esolangs.ExecutionCapError) as stopped:
                 source.evaluate([1], limits=esolangs.ExecutionLimits(max_steps=0))
             assert stopped.value.bound == "max_steps"
             assert stopped.value.observation is not None

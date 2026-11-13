@@ -82,7 +82,7 @@ Bound a run with `limits=esolangs.ExecutionLimits(...)`:
 
 `evaluate` handles stdin encoding, template binding, and answer extraction.
 The row includes an execution observation and, for termination answers,
-a halt or divergence proof. Exhausting a time or step budget raises `ExecutionTimeoutError`; `max_output`, `InterpreterLimitError`.
+a halt or divergence proof. A deadline raises `ExecutionTimeoutError`; `max_steps`, `max_output` or `max_memory` raises `ExecutionCapError`. Both are `ExecutionBudgetError`s.
 Generated artifacts expose `.source` and templates expose `.fill(bits)`.
 For a custom catalog, use `Language.evaluate(artifact, bits)`.
 The [2.0 migration guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#compatibility) covers the changed return

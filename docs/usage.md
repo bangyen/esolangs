@@ -293,8 +293,8 @@ Exceptions:
 - `esolangs.ArgumentError(EsolangError, ValueError)` -- an argument's value is outside what the call accepts
 - `esolangs.EsolangError(Exception)` -- base class for errors from the esolangs package
 - `esolangs.ExecutionBudgetError(HaltError)` -- a caller-set budget ran out before the program ended; `bound` names it
-- `esolangs.ExecutionCapError(ExecutionBudgetError, InterpreterLimitError)` -- an isolated run exceeded `max_output` or `max_memory`; `bound` names it
-- `esolangs.ExecutionTimeoutError(ExecutionBudgetError, TimeoutError)` -- a time or step budget ran out before the program ended; `bound` names it
+- `esolangs.ExecutionCapError(ExecutionBudgetError)` -- a step, output or memory cap ran out; `bound` names it
+- `esolangs.ExecutionTimeoutError(ExecutionBudgetError, TimeoutError)` -- a deadline elapsed before the program ended; `bound` names it
 - `esolangs.GeneratorCapError(EsolangError, ValueError)` -- a boolean generator, such as a prime-based one, refusing too big a table
 - `esolangs.HaltError(EsolangError)` -- a program stopped without completing: an invalid operation or a limit
 - `esolangs.InputExhaustedError(EsolangError, EOFError)` -- a program read past the end of its input
@@ -315,8 +315,8 @@ an `ExecutionOutcome` then holds `partial_output` with unknown counters). Some a
 
 | Exception | Attributes |
 | --- | --- |
-| `ExecutionCapError` | `bound`: `"max_output"` or `"max_memory"` |
-| `ExecutionTimeoutError` | `bound`: the `ExecutionLimits` field that ran out: `"execution_timeout"`, `"total_timeout"`, `"preparation_timeout"` or `"max_steps"`; `"total_timeout"` when an isolated call's 30-second default total ran out |
+| `ExecutionCapError` | `bound`: `"max_steps"`, `"max_output"` or `"max_memory"` |
+| `ExecutionTimeoutError` | `bound`: the `ExecutionLimits` field that ran out: `"execution_timeout"`, `"total_timeout"` or `"preparation_timeout"`; `"total_timeout"` when an isolated call's 30-second default total ran out |
 | `InputExhaustedError` | `reads`, the reads that succeeded; `supplied`, the input units given; `unit`, what one is (`"line"` by default) |
 | `UnknownLanguageError` | `language`, the name asked for; `suggestions`, the close registered names |
 
@@ -465,8 +465,8 @@ Windows and in worker threads. A timeout kills and reaps the child; errors retai
   raises `ExecutionCapError`, never a Boolean answer; a worker killed
   before it can report raises a bare `InterpreterLimitError`.
 - Exceeding `max_output` raises `ExecutionCapError` with the retained
-  prefix in `partial_output`. Both are `InterpreterLimitError`s, and with
-  `ExecutionTimeoutError` share the base `ExecutionBudgetError`. Zero permits no output; halting at exactly the
+  prefix in `partial_output`. It shares the base `ExecutionBudgetError` with
+  `ExecutionTimeoutError`, and is not an `InterpreterLimitError`. Zero permits no output; halting at exactly the
   cap succeeds.
 
 ```python
@@ -477,7 +477,7 @@ try:
         stdin="y",
         limits=esolangs.ExecutionLimits(execution_timeout=3, max_output=12),
     )
-except esolangs.InterpreterLimitError as exc:
+except esolangs.ExecutionCapError as exc:
     assert exc.partial_output == "y" * 12
 ```
 
@@ -489,9 +489,10 @@ bound separately.
 
 `run(language, program, stdin=stdin,
 limits=ExecutionLimits(max_steps=100_000, execution_timeout=1))`
-returns output on halt. When either bound expires it raises
-`ExecutionTimeoutError` with `partial_output`; its `bound` is `"execution_timeout"` or
-`"max_steps"`, the field that ran out.
+returns output on halt. When a bound expires it raises an
+`ExecutionBudgetError` with `partial_output`: `ExecutionTimeoutError` with
+`bound` `"execution_timeout"`, or `ExecutionCapError` with `bound`
+`"max_steps"`.
 
 - `max_steps` selects cooperative stepping. It steps all languages on
   Windows and worker threads.

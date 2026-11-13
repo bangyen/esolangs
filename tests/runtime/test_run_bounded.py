@@ -36,7 +36,7 @@ def test_bounded_run_matches_whole_program_execution(language: str) -> None:
 
 def test_step_exhaustion_keeps_partial_output() -> None:
     for isolated in (False, True):
-        with pytest.raises(esolangs.ExecutionTimeoutError, match="max_steps") as caught:
+        with pytest.raises(esolangs.ExecutionCapError, match="max_steps") as caught:
             esolangs.run(
                 REFERENCE,
                 "+.[]",
@@ -116,7 +116,7 @@ def test_raster_execution_obeys_the_step_bound(language: str) -> None:
         language, source, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=1000)
     ).output
     assert esolangs.read_answer(language, out) == "1"
-    with pytest.raises(esolangs.ExecutionTimeoutError):
+    with pytest.raises(esolangs.ExecutionCapError):
         esolangs.run(
             language, source, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=0)
         )
@@ -194,7 +194,7 @@ def test_worker_budgets_validate_before_acquisition_and_keep_output_limits():
                 isolated=True,
                 limits=esolangs.ExecutionLimits(max_steps=max_steps),
             )
-    with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
+    with pytest.raises(esolangs.ExecutionCapError, match="output limit") as caught:
         esolangs.run(
             REFERENCE,
             "+..",

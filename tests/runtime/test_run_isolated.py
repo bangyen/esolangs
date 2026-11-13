@@ -260,7 +260,7 @@ def test_unknown_error_reconstructs_suggestions() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("limit", [0, 1, 4097])
 def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned) -> None:
-    with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
+    with pytest.raises(esolangs.ExecutionCapError, match="output limit") as caught:
         esolangs.run(
             REFERENCE,
             "+[.]",
@@ -290,7 +290,7 @@ def test_an_output_cap_selects_isolation_on_every_route(spawned) -> None:
             limits=esolangs.ExecutionLimits(max_output=1)
         ),
     ):
-        with pytest.raises(esolangs.InterpreterLimitError) as caught:
+        with pytest.raises(esolangs.ExecutionCapError) as caught:
             call()
         assert str(caught.value) == str(outcome.error)
         assert caught.value.bound == outcome.bound == "max_output"

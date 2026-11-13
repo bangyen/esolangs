@@ -77,7 +77,7 @@ def test_native_driver_reports_completion(language):
                     == expected
                 )
             else:
-                with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+                with pytest.raises(esolangs.ExecutionCapError) as caught:
                     esolangs.run(
                         language,
                         source,

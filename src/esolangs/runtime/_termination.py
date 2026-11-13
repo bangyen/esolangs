@@ -11,6 +11,7 @@ from esolangs.exceptions import (
     EsolangError,
     ExecutionTimeoutError,
     InterpreterLimitError,
+    steps_exhausted,
 )
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
@@ -95,9 +96,7 @@ def _termination_result(
             except ExecutionTimeoutError:
                 raise
             except TimeoutError as error:
-                failure = ExecutionTimeoutError(str(error))
-                failure.bound = "max_steps"
-                raise failure from error
+                raise steps_exhausted(str(error)) from error
             try:
                 checked_decision(decision)
             except ValueError:

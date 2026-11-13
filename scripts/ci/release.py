@@ -221,7 +221,7 @@ def _smoke_install(package: Path) -> None:
         == "\x01"
     )
     _refused(
-        esolangs.ExecutionTimeoutError,
+        esolangs.ExecutionCapError,
         lambda: (
             esolangs.run(
                 "brainfuck", "+[]", limits=esolangs.ExecutionLimits(max_steps=10)

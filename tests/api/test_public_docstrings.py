@@ -69,12 +69,15 @@ def _over_cap(generate=esolangs.generate) -> object:
     return generate(name, "01" * 2**cap)
 
 
+def _spec_trigger(expect: str) -> str:
+    """Run the first spec trigger documented to raise ``expect``."""
+    name, trigger = next((n, t) for n, t in all_triggers() if t["expect"] == expect)
+    return run_trigger(name, trigger)
+
+
 def _halting_trigger() -> str:
     """Run the first spec trigger documented to raise HaltError."""
-    name, trigger = next(
-        (n, t) for n, t in all_triggers() if t["expect"] == "HaltError"
-    )
-    return run_trigger(name, trigger)
+    return _spec_trigger("HaltError")
 
 
 def _template() -> esolangs.Artifact:
@@ -246,7 +249,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     ),
     (
         "run",
-        x.ExecutionTimeoutError,
+        x.ExecutionCapError,
         lambda: (
             esolangs.run(
                 R, "+[]", limits=esolangs.ExecutionLimits(max_steps=100)
@@ -256,7 +259,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     ),
     (
         "run",
-        x.InterpreterLimitError,
+        x.ExecutionCapError,
         lambda: (
             esolangs.run(
                 R,
@@ -265,6 +268,12 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
                 limits=esolangs.ExecutionLimits(execution_timeout=5, max_output=10),
             ).output
         ),
+        None,
+    ),
+    (
+        "run",
+        x.InterpreterLimitError,
+        lambda: _spec_trigger("InterpreterLimitError"),
         None,
     ),
     ("run", x.HaltError, _halting_trigger, None),

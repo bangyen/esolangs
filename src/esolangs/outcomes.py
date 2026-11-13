@@ -11,7 +11,6 @@ from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
     ExecutionBudgetError,
-    ExecutionTimeoutError,
     InputExhaustedError,
     InterpreterLimitError,
     MissingDependencyError,
@@ -27,7 +26,7 @@ OutcomeStatus = Literal["completed", "rejected", "input_exhausted", "limit", "fa
 def _failure_status(error: EsolangError) -> OutcomeStatus:
     if isinstance(error, InputExhaustedError):
         return "input_exhausted"
-    if isinstance(error, (ExecutionTimeoutError, InterpreterLimitError)):
+    if isinstance(error, (ExecutionBudgetError, InterpreterLimitError)):
         return "limit"
     if isinstance(
         error,

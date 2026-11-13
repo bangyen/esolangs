@@ -9,7 +9,6 @@ from esolangs import LanguageInfo
 from esolangs.exceptions import (
     EsolangError,
     ExecutionBudgetError,
-    ExecutionTimeoutError,
     TemplateError,
 )
 from esolangs.registry import SUGGESTION_CUTOFF, Language
@@ -88,7 +87,7 @@ _BOUND_FLAGS = {
 }
 
 
-def _timeout_text(exc: ExecutionTimeoutError) -> str:
+def _timeout_text(exc: ExecutionBudgetError) -> str:
     """Name the flag to raise; the API's hint says only "the bound"."""
     text = _cli_error_text(exc)
     flag = _BOUND_FLAGS.get(exc.bound)

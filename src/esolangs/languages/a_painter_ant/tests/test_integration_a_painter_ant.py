@@ -148,7 +148,7 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
 
 
 def test_a_step_bound_requires_a_periodic_witness():
-    with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+    with pytest.raises(esolangs.ExecutionCapError) as caught:
         _execution_operations._execute_bounded(
             "A Painter Ant", "P", max_steps=1
         ).unwrap()

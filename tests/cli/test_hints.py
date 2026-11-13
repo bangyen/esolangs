@@ -109,8 +109,8 @@ def test_input_exhaustion_keeps_counts_and_one_hint(isolated) -> None:
 
 
 @pytest.mark.medium
-def test_timeout_hint_preserves_the_timeout_class() -> None:
-    with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+def test_a_step_cap_carries_the_termination_hint() -> None:
+    with pytest.raises(esolangs.ExecutionCapError) as caught:
         esolangs.run(REFERENCE, "+[]", limits=esolangs.ExecutionLimits(max_steps=3))
     assert "check loop termination" in caught.value.__notes__[0]
     assert "before increasing" in caught.value.__notes__[0]

@@ -5,7 +5,7 @@ from __future__ import annotations
 from time import monotonic
 from typing import Literal
 
-from esolangs.exceptions import ArgumentError, EsolangError, ExecutionTimeoutError
+from esolangs.exceptions import ArgumentError, EsolangError, steps_exhausted
 from esolangs.outcomes import ExecutionOutcome, _failed_outcome
 from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime._validate import _argument_repr, check_timeout, check_whole
@@ -194,11 +194,7 @@ class ExecutionController:
     ) -> ExecutionOutcome:
         def step() -> None:
             if self._steps >= max_steps:
-                error = ExecutionTimeoutError(
-                    "execution stopped at the max_steps bound"
-                )
-                error.bound = "max_steps"
-                raise error
+                raise steps_exhausted("execution stopped at the max_steps bound")
             self.step()
 
         report = vm._complete_periodic(step)  # noqa: SLF001
@@ -222,9 +218,8 @@ class ExecutionController:
             )
         if reason == "breakpoint":
             raise ArgumentError("invocation execution cannot stop at a breakpoint")
-        error = ExecutionTimeoutError(f"execution stopped at the {reason} bound")
+        error = steps_exhausted(f"execution stopped at the {reason} bound")
         error.partial_output = self.output
-        error.bound = "max_steps"
         error.observation = _capture_observation(self.vm)._replace(steps=self._steps)
         return _failed_outcome(error)
 

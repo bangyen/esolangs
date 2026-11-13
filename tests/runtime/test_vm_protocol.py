@@ -241,7 +241,7 @@ def test_completion_agrees_with_running(name) -> None:
 @pytest.mark.medium
 def test_exhaustion_keeps_partial_state_and_can_resume() -> None:
     vm = make_vm(REFERENCE, "+.")
-    with pytest.raises(esolangs.ExecutionTimeoutError) as stopped:
+    with pytest.raises(esolangs.ExecutionCapError) as stopped:
         complete_vm(vm, max_steps=1)
     assert stopped.value.bound == "max_steps"
     assert vm.output == ""

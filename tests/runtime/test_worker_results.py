@@ -267,7 +267,7 @@ def test_worker_refuses_corrupt_counters_and_retains_output(counter, failure):
 
 @pytest.mark.parametrize("isolated", [False, True])
 def test_step_bound_retains_an_unfinished_observation(isolated):
-    with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+    with pytest.raises(esolangs.ExecutionCapError) as caught:
         run_observed(REFERENCE, "+[.]", max_steps=4, isolated=isolated)
     assert caught.value.observation == ExecutionResult("\x01", 0, 0, 0, steps=4)
     assert caught.value.partial_output == "\x01"
@@ -515,14 +515,14 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
 
 def test_worker_error_requires_explicit_unavailable_observation_and_options():
     payload = {
-        "error": "ExecutionTimeoutError",
-        "args": ["deadline"],
+        "error": "ExecutionCapError",
+        "args": ["stopped"],
         "execution": None,
         "notes": ["row 1"],
         "output_limit": False,
         "bound": "max_steps",
     }
-    with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+    with pytest.raises(esolangs.ExecutionCapError) as caught:
         _decode(json.dumps(payload), expired=False)
     assert caught.value.bound == "max_steps"
     assert caught.value.__notes__ == ["row 1"]
@@ -553,7 +553,7 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
         (
             "InterpreterLimitError",
             ["other limit"],
-            [["isolated output limit exceeded"]],
+            [],
         ),
         (
             "UnknownLanguageError",
@@ -588,6 +588,10 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
         _decode(json.dumps(cap), expired=False)
     assert capped.value.bound == "max_memory"
     # The bound must agree with the output marker, and be a cap's.
-    for bound in ("max_output", "max_steps"):
+    for change in (
+        {"bound": "max_output"},
+        {"bound": "execution_timeout"},
+        {"args": ["isolated output limit exceeded"]},
+    ):
         with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
-            _decode(json.dumps({**cap, "bound": bound}), expired=False)
+            _decode(json.dumps({**cap, **change}), expired=False)

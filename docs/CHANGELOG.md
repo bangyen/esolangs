@@ -7,6 +7,13 @@ Releases before 0.10.0 are described on the
 
 ## Unreleased
 
+- **Breaking:** `max_steps` running out raises `ExecutionCapError`, not
+  `ExecutionTimeoutError`, so it is no longer a `TimeoutError`.
+  `ExecutionTimeoutError` now means a deadline elapsed. Catch
+  `ExecutionBudgetError` for either.
+- **Breaking:** `ExecutionCapError` is no longer an `InterpreterLimitError`,
+  which now means only the interpreter's own limits. `max_output` and
+  `max_memory` need `except ExecutionCapError`.
 - **Breaking:** `run`, `Language.run` and `PreparedProgram.run` take
   `limits=ExecutionLimits(...)`, as `execute` and `evaluate` do, in place of
   `timeout`, `max_steps`, `max_output` and `max_memory`. `timeout=t` is
@@ -20,8 +27,8 @@ Releases before 0.10.0 are described on the
 - **Breaking:** `esolangs run` exits 124, not 1, when `--max-output` or
   `--max-memory` runs out, as it does for `--timeout` and `--max-steps`.
   A worker killed before it reports the memory cap still exits 1.
-- `max_output` and `max_memory` raise `ExecutionCapError`, still an
-  `InterpreterLimitError`, with `bound` naming the cap. It shares the new
+- `max_output` and `max_memory` raise `ExecutionCapError`, with `bound`
+  naming the cap. It shares the new
   base `ExecutionBudgetError` with `ExecutionTimeoutError`, and
   `ExecutionOutcome.bound` now names every caller-set budget.
 - `run(max_output=...)` and `run(max_memory=...)` select isolation, as
