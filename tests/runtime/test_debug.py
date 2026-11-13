@@ -40,7 +40,7 @@ _DUMPERS = [
 def _runnable(name: str, table: str = "0110") -> tuple[esolangs.ProgramArtifact, str]:
     """Return a filled program and the stdin to drive it with."""
     program = esolangs.generate(name, table)
-    if esolangs.describe(name)["parameterized"]:
+    if esolangs.describe(name).parameterized:
         return esolangs.instantiate(name, program, [0, 0]), ""
     return program, esolangs.encode_inputs(name, [0, 0])
 
@@ -61,14 +61,22 @@ class TestABreakpointAtTheHaltIsReported:
     @pytest.mark.parametrize("name", _DUMPERS)
     def test_the_answer_is_never_stranded_by_that_stop(self, name: str) -> None:
         """A stop before the dump must not cost the caller the answer."""
-        assert esolangs.describe(name)["dumps_on_the_post_halt_step"]
+        assert esolangs.describe(name).dumps_on_the_post_halt_step
         program, stdin = _runnable(name)
         dbg = debugger_api.make_debugger(name, program, stdin=stdin)
         dbg.break_when(lambda vm: vm.halted and vm.output == "")
         assert dbg.run(max_steps=300_000) == "breakpoint"
         assert dbg.output == ""
         assert dbg.run(max_steps=300_000) == "halted"
-        assert dbg.output == esolangs.run(name, program, stdin=stdin, timeout=30).output
+        assert (
+            dbg.output
+            == esolangs.run(
+                name,
+                program,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(execution_timeout=30),
+            ).output
+        )
 
     @pytest.mark.parametrize("name", _DUMPERS)
     def test_the_dump_step_is_taken_once_not_once_per_run(self, name: str) -> None:

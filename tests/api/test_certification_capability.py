@@ -194,11 +194,12 @@ def guarded_popen(command, **kwargs):
 with patch.object(_isolated.subprocess, 'Popen', guarded_popen):
     assert esolangs.run(sys.argv[1], '+.') == esolangs.run(
         sys.argv[1], '+.', isolated=True)
+    steps = {'limits': esolangs.ExecutionLimits(max_steps=4)}
     for isolated in (False, True):
         for source, options, error_type, expected in (
-            ('+[.]', {'max_steps': 4}, esolangs.ExecutionTimeoutError,
+            ('+[.]', steps, esolangs.ExecutionTimeoutError,
              esolangs.ExecutionResult('\\x01', 0, 0, 0, steps=4)),
-            (',.,', {'stdin': 'é', 'max_steps': 4}, esolangs.InputExhaustedError,
+            (',.,', {'stdin': 'é'} | steps, esolangs.InputExhaustedError,
              esolangs.ExecutionResult('é', 1, 1, 1, steps=2)),
         ):
             try:

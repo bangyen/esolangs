@@ -50,12 +50,12 @@ def _step_row(
     """Steps and written bits for one named row, on a freshly parsed VM."""
     facts = esolangs.describe(name)
     halts = None
-    if facts["answer_mode"] == "termination":
-        halts = str(list(facts["answer_encoding"]).index("halts"))
+    if facts.answer_mode == "termination":
+        halts = str(list(facts.answer_encoding).index("halts"))
         assert table[row] == halts, f"{name} row {row}: a diverging row has no answer"
     n = len(table).bit_length() - 1
     bits = row_bits(row, n)
-    if facts["parameterized"]:
+    if facts.parameterized:
         source, stdin = esolangs.instantiate(name, program, bits), ""
     else:
         source, stdin = program, esolangs.encode_inputs(name, bits, truth_table=table)

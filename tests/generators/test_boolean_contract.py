@@ -298,7 +298,7 @@ def test_dense_source_stays_under_the_catalog_ceiling() -> None:
         for name in esolangs.list_languages()
         if LANGUAGES[name].backend is not None
         and not load_certification(LANGUAGES[name]).benchmark_tables
-        and esolangs.describe(name)["source_kind"] == "text"
+        and esolangs.describe(name).source_kind == "text"
     )
     # language-owners: ["Boolfuck", "SLOW ACV MAMMALIAN", "thisthat"]
     # thisthat leads at 114637 characters; SLOW ACV MAMMALIAN led at 115707

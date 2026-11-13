@@ -20,7 +20,7 @@ _RASTERS = languages(source_kind="raster", boolean_generator=True)
 def _native_bytes(program, tmp_path: Path) -> bytes:
     if isinstance(program.source, esolangs.Raster):
         path = tmp_path / "source.png"
-        esolangs.save_program(program.language, program, path)
+        esolangs.to_file(program.language, program, path)
         restored = esolangs.Language(program.language).from_file(path)
         assert (restored.language, restored.settings, restored.scale) == (
             program.language,
@@ -127,7 +127,7 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
     api = esolangs.Language(REFERENCE)
     assert api.from_file(path).source == "+,\r\n.\r\n"
     assert api.from_file(path, normalize=True).source == "+,\n."
-    api.save_program(api.from_file(path), path)
+    api.to_file(api.from_file(path), path)
     assert path.read_bytes() == b"+,\r\n.\r\n"
     assert _check_program(REFERENCE, path).source == "+,\r\n.\r\n"
     assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
@@ -137,7 +137,7 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
 def test_stream_failures_keep_public_error_types(mode: str) -> None:
     bounds: dict[str, Any] = {}
     if mode == "steps":
-        bounds["max_steps"] = 100
+        bounds["limits"] = esolangs.ExecutionLimits(max_steps=100)
     elif mode == "isolated":
         bounds["isolated"] = True
 
@@ -185,7 +185,12 @@ def test_isolated_deadline_bounds_stream_acquisition(
         # The execution budget bounds acquisition; a blocked stdin waited out
         # the 30-second default total instead.
         calls = {
-            "stdin": lambda: esolangs.run(REFERENCE, program, stdin=stdin, timeout=0.1),
+            "stdin": lambda: esolangs.run(
+                REFERENCE,
+                program,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(execution_timeout=0.1),
+            ),
             "program": lambda: (
                 esolangs.Language(REFERENCE)
                 .execute(

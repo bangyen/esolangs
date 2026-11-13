@@ -50,7 +50,7 @@ VM_LANGUAGE = {
 HALT_CONVENTION = {
     stem
     for stem in BOOLEAN_GENERATED
-    if esolangs.describe(canonical_id(stem.replace("-", " ")))["answer_mode"]
+    if esolangs.describe(canonical_id(stem.replace("-", " "))).answer_mode
     == "termination"
 }
 
@@ -70,7 +70,7 @@ REGENERATE = "`uv run python scripts/docs/generate.py examples`"
 def test_boolean_example_matches_generator(name: str) -> None:
     """Each committed boolean program is what its generator produces today."""
     example = BOOLEAN_GENERATED[name]
-    path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(name).examples[0]
     program = example.build(balance=True).source
     stale = f"{path.relative_to(BASE_DIR)} is stale; run {REGENERATE}"
     if isinstance(program, CompressedText):
@@ -150,7 +150,7 @@ def test_boolean_examples_cover_every_committed_file() -> None:
 @pytest.mark.parametrize("name", sorted(HALT_CONVENTION))
 def test_halt_convention_examples_halt(name: str) -> None:
     """The committed program of a halt-convention language terminates."""
-    path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(name).examples[0]
     program = (
         CompressedText(path.read_bytes())
         if path.suffix == ".gz"
@@ -212,7 +212,7 @@ def _prove_halt(vm: object) -> bool:
 @pytest.mark.medium
 def test_boolean_example(name: str) -> None:
     _module, _inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
-    path = BASE_DIR / "src/esolangs" / esolangs.describe(name)["examples"][0]
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(name).examples[0]
     stdin = BOOLEAN_GENERATED[name].stdin
     program = esolangs.Language(name).from_file(path, normalize=True).source
     if isinstance(program, Raster):
@@ -304,7 +304,7 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         stem = next(
             stem
             for stem in BOOLEAN_GENERATED
-            if canonical_id(stem.replace("-", " ")) == painted["id"]
+            if canonical_id(stem.replace("-", " ")) == painted.id
         )
         program = BOOLEAN_GENERATED[stem].build(balance=True)
         raster = Raster.from_png(program.source.to_png())

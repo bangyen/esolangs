@@ -61,7 +61,12 @@ class TestErrorsSurviveAProcessBoundary:
 
         program = esolangs.generate(REFERENCE, "10010110")
         with pytest.raises(esolangs.InputExhaustedError) as caught:
-            esolangs.run(REFERENCE, program, stdin="10", timeout=10)
+            esolangs.run(
+                REFERENCE,
+                program,
+                stdin="10",
+                limits=esolangs.ExecutionLimits(execution_timeout=10),
+            )
         restored = pickle.loads(pickle.dumps(caught.value))
         assert str(restored) == str(caught.value)
         assert restored.reads == caught.value.reads
@@ -141,7 +146,7 @@ class TestASurroundingSpaceResolves:
     def test_every_language_tolerates_surrounding_space(self, pad: str) -> None:
         """All of them, because the one that failed was not the obvious one."""
         for name in esolangs.list_languages():
-            assert esolangs.describe(pad.format(name))["name"] == name
+            assert esolangs.describe(pad.format(name)).name == name
 
 
 class TestABadStdinIsAnArgumentFault:
@@ -181,7 +186,10 @@ class TestRawInputKeepsItsNativeMeaning:
         program = esolangs.generate(REFERENCE, "00011011")
         assert (
             esolangs.run(
-                REFERENCE, program, stdin="1\n1\n0\n0\n1\n1\n", timeout=10
+                REFERENCE,
+                program,
+                stdin="1\n1\n0\n0\n1\n1\n",
+                limits=esolangs.ExecutionLimits(execution_timeout=10),
             ).output
             == "0"
         )
@@ -195,8 +203,8 @@ class TestReadAnswerExplainsInWords:
         [
             name
             for name in languages(answer_mode="dump")
-            if esolangs.describe(name)["answer_pattern"]
-            and esolangs.describe(name)["answer_convention"]
+            if esolangs.describe(name).answer_pattern
+            and esolangs.describe(name).answer_convention
         ],
     )
     def test_the_note_leads_and_the_pattern_follows(self, name: str) -> None:
@@ -204,8 +212,8 @@ class TestReadAnswerExplainsInWords:
         with pytest.raises(esolangs.ProgramError) as caught:
             esolangs.read_answer(name, "garbage")
         message = str(caught.value)
-        note = str(esolangs.describe(name)["answer_convention"])
-        pattern = str(esolangs.describe(name)["answer_pattern"])
+        note = str(esolangs.describe(name).answer_convention)
+        pattern = str(esolangs.describe(name).answer_pattern)
         assert note in message
         # The pattern is rendered with !r, so a backslash in it is doubled.
         assert repr(pattern) in message
@@ -229,11 +237,11 @@ class TestReadAnswerExplainsInWords:
         """The general claim, not the two cases that prompted it."""
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
-            if facts["answer_mode"] != "dump":
+            if facts.answer_mode != "dump":
                 continue
             with pytest.raises(esolangs.ProgramError) as caught:
                 esolangs.read_answer(name, "garbage")
-            note = facts["answer_convention"]
+            note = facts.answer_convention
             assert note is None or str(note) in str(caught.value), name
 
 

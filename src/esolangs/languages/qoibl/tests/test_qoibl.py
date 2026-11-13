@@ -325,9 +325,12 @@ class TestTheTokenizerCarriesItsOwnStack:
         previous = sys.getrecursionlimit()
         try:
             sys.setrecursionlimit(live + 200)
-            assert execute("Qoibl", program, stdin=stdin, timeout=120).output.endswith(
-                "0"
-            )
+            assert execute(
+                "Qoibl",
+                program,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(execution_timeout=120),
+            ).output.endswith("0")
         finally:
             sys.setrecursionlimit(previous)
 

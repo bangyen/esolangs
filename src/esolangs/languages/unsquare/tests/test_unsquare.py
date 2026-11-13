@@ -214,7 +214,7 @@ class TestTheSpecIsReachable:
     def test_it_is_the_interpreter_that_is_read(self) -> None:
         """Read, not stored, so it cannot drift from what it describes."""
         module = interpreter_module("Unsquare")
-        spec = esolangs.describe("Unsquare")["spec"]
+        spec = esolangs.describe("Unsquare").spec
         doc = (module.__doc__ or "").strip()
         # The spec renders Sphinx roles, so the headline paragraph is what
         # both share verbatim.

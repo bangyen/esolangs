@@ -16,13 +16,18 @@ class TestEveryDumpSaysWhereTheAnswerIs:
 
     def test_bitdeques_note_is_true(self) -> None:
         """It claims the whole dump is the answer bit.  Check that, do not trust it."""
-        note = str(esolangs.describe("Bitdeque")["answer_convention"])
+        note = str(esolangs.describe("Bitdeque").answer_convention)
         assert "the whole dump is the answer" in note
         template = esolangs.generate("Bitdeque", "0110")
         for combo in range(4):
             bits = [(combo >> (1 - i)) & 1 for i in range(2)]
             program = esolangs.instantiate("Bitdeque", template, bits)
-            dump = run("Bitdeque", program, stdin="", timeout=10).output
+            dump = run(
+                "Bitdeque",
+                program,
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=10),
+            ).output
             assert dump == "0110"[combo], bits
             assert len(dump) == 1, dump
 

@@ -16,7 +16,7 @@ class TestNameResolutionIsTrulyCaseInsensitive:
     )
     def test_the_overridden_name_folds_too(self, spelling: str) -> None:
         """Its id came from an exact-key override, so only one case matched."""
-        assert esolangs.describe(spelling)["name"] == "CV(N)(C)"
+        assert esolangs.describe(spelling).name == "CV(N)(C)"
 
 
 class TestPathAndTextTrailingNewline:
@@ -26,8 +26,24 @@ class TestPathAndTextTrailingNewline:
         path = tmp_path / "c.txt"
         path.write_text(esolangs.generate("CV(N)(C)", "0110", width=3).source + "\n")
         stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], truth_table="0110")
-        assert run("CV(N)(C)", path, stdin=stdin, timeout=5).output == "0"
-        assert run("CV(N)(C)", path.read_text(), stdin=stdin, timeout=5).output == "0"
+        assert (
+            run(
+                "CV(N)(C)",
+                path,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            ).output
+            == "0"
+        )
+        assert (
+            run(
+                "CV(N)(C)",
+                path.read_text(),
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            ).output
+            == "0"
+        )
 
     def test_they_agree_without_one(self, tmp_path: Path) -> None:
         """The difference is the newline and nothing else."""
@@ -35,12 +51,22 @@ class TestPathAndTextTrailingNewline:
         path.write_text(esolangs.generate("CV(N)(C)", "0110").source)
         stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], truth_table="0110")
         assert (
-            run("CV(N)(C)", path, stdin=stdin, timeout=5).output
-            == run("CV(N)(C)", path.read_text(), stdin=stdin, timeout=5).output
+            run(
+                "CV(N)(C)",
+                path,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            ).output
+            == run(
+                "CV(N)(C)",
+                path.read_text(),
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            ).output
         )
 
 
 @pytest.mark.parametrize("name", ["CV(N)(C)"])
 def test_the_override_name_specifically(name: str) -> None:
     """Named, so a future override cannot quietly reintroduce the gap."""
-    assert esolangs.describe(f" {name} ")["name"] == name
+    assert esolangs.describe(f" {name} ").name == name

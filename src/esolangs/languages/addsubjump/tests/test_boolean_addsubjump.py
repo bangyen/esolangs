@@ -233,7 +233,7 @@ def test_sharing_boundaries(n: int) -> None:
             "AddSubJump",
             program,
             stdin=esolangs.encode_inputs("AddSubJump", bits),
-            timeout=None,
+            limits=esolangs.ExecutionLimits(execution_timeout=None),
         ).output
         assert esolangs.read_answer("AddSubJump", output) == expected
 
@@ -265,7 +265,7 @@ def test_packed_cells_execute(n: int) -> None:
                 "AddSubJump",
                 program,
                 stdin=esolangs.encode_inputs("AddSubJump", bits),
-                timeout=None,
+                limits=esolangs.ExecutionLimits(execution_timeout=None),
             ).output
             assert esolangs.read_answer("AddSubJump", output) == table[row]
 

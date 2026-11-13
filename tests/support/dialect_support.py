@@ -17,7 +17,7 @@ def foreign_settings(language: str = REFERENCE) -> DialectSettings:
     for name in esolangs.list_languages():
         if name == owner:
             continue
-        for key, option in esolangs.describe(name)["dialect_settings"].items():
+        for key, option in esolangs.describe(name).dialect_settings.items():
             return esolangs.Language(name).settings(**{key: option["default"]})
     pytest.skip("no registered foreign dialect choice")
 
@@ -37,7 +37,7 @@ def integer_setting() -> str:
 
 def _chosen(name: str) -> DialectSettings:
     """Every setting off its default, where the generator targets that."""
-    schema = esolangs.describe(name)["dialect_settings"]
+    schema = esolangs.describe(name).dialect_settings
     off = {
         k: next(c for c in i["choices"] if c != i["default"]) for k, i in schema.items()
     }
@@ -53,7 +53,7 @@ def _chosen(name: str) -> DialectSettings:
 CASES = [
     (name, _chosen(name))
     for name in languages()
-    if esolangs.describe(name)["dialect_settings"]
+    if esolangs.describe(name).dialect_settings
 ]
 
 

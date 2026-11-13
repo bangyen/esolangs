@@ -12,7 +12,11 @@ from esolangs import run
 @pytest.mark.parametrize("word", ["comment", "seed"])
 def test_mammalian_rejects_unknown_words_before_output(word) -> None:
     with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
-        run("SLOW ACV MAMMALIAN", f"PRONOUNCE {word}", timeout=1)
+        run(
+            "SLOW ACV MAMMALIAN",
+            f"PRONOUNCE {word}",
+            limits=esolangs.ExecutionLimits(execution_timeout=1),
+        )
 
 
 def test_partial_overrides_merge_and_validate() -> None:

@@ -33,7 +33,7 @@ class Language:
     Methods follow the package split by who supplies the program:
     ``generate``/``instantiate`` are generator-made, ``run`` executes
     caller-supplied source, ``encode_inputs``/``read_answer`` and
-    ``dump_program``/``load_program``/``save_program`` are contract adapters, and
+    ``dump_program``/``load_program``/``to_file`` are contract adapters, and
     ``describe`` is catalog. ``evaluate`` runs one Boolean row.
     """
 
@@ -229,7 +229,7 @@ class Language:
         """
         return esolangs.load_program(self.name, document, catalog=self.catalog)
 
-    def save_program(
+    def to_file(
         self,
         program: ProgramSource,
         path: str | PathLike[str],
@@ -239,9 +239,9 @@ class Language:
     ) -> None:
         """Write a program as a native source file.
 
-        Arguments and errors: :func:`esolangs.save_program`.
+        Arguments and errors: :func:`esolangs.to_file`.
         """
-        esolangs.save_program(
+        esolangs.to_file(
             self.name,
             program,
             path,
@@ -291,12 +291,9 @@ class Language:
         program: ProgramSource,
         *,
         stdin: InputSource = "",
-        timeout: float | None = None,
+        limits: ExecutionLimits | None = None,
         seed: int | None = None,
         isolated: bool = False,
-        max_steps: int | None = None,
-        max_output: int | None = None,
-        max_memory: int | None = None,
         settings: DialectSettings | None = None,
         scale: int | None = None,
     ) -> ExecutionResult:
@@ -308,12 +305,9 @@ class Language:
             self.name,
             program,
             stdin=stdin,
-            timeout=timeout,
+            limits=limits,
             seed=seed,
             isolated=isolated,
-            max_steps=max_steps,
-            max_output=max_output,
-            max_memory=max_memory,
             settings=settings,
             scale=scale,
             catalog=self.catalog,

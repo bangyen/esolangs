@@ -34,7 +34,7 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
         inspect.signature(backend.entrypoint)
     assert not hasattr(wrap, "takes_width")
     assert not hasattr(esolangs, "_takes_width")
-    if bound.describe()["parameterized"]:
+    if bound.describe().parameterized:
 
         def rediscovered(*_args):
             raise AssertionError("catalog generation rediscovered input slots")
@@ -70,7 +70,7 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
             for bit in (0, 1):
                 result = bound.evaluate(restored, [bit])
                 assert result.bit == str(bit)
-                if bound.describe()["answer_mode"] == "termination":
+                if bound.describe().answer_mode == "termination":
                     assert result.termination is not None
                 else:
                     assert result.observation.completion is not None
@@ -80,7 +80,7 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
                     assert result.observation.input_position > 0
         if isinstance(restored, esolangs.TemplateArtifact):
             with pytest.raises(esolangs.TemplateError):
-                bound.run(restored, max_steps=10)
+                bound.run(restored, limits=esolangs.ExecutionLimits(max_steps=10))
             filled = bound.instantiate(restored, [0])
             assert isinstance(filled, esolangs.ProgramArtifact)
             assert filled.language == language

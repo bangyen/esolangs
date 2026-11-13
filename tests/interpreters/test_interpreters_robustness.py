@@ -23,9 +23,12 @@ def _check_empty_program(language: str) -> None:
     # In-process, a step bound stands in for the timeout, which would start a
     # worker per language.
     options = (
-        {"timeout": 3, "isolated": True, "max_output": 1024}
+        {
+            "limits": esolangs.ExecutionLimits(execution_timeout=3, max_output=1024),
+            "isolated": True,
+        }
         if isolated
-        else {"max_steps": 10_000}
+        else {"limits": esolangs.ExecutionLimits(max_steps=10_000)}
     )
     message = LANGUAGES[language].runtime.empty_program
     if not message:

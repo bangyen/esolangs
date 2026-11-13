@@ -41,13 +41,13 @@ def test_filters_match_in_every_output_format(capsys) -> None:
 def test_grep_searches_the_spec_case_insensitively(capsys) -> None:
     # Positive control: a spec's own headline, upper-cased, finds that spec.
     first = esolangs.list_languages()[0]
-    headline = esolangs.describe(first)["spec"].splitlines()[0]
+    headline = esolangs.describe(first).spec.splitlines()[0]
     names = _names(["--grep", re.escape(headline.upper())], capsys)
     assert first in names
     assert names == [
         name
         for name in esolangs.list_languages()
-        if headline.lower() in esolangs.describe(name)["spec"].lower()
+        if headline.lower() in esolangs.describe(name).spec.lower()
     ]
     assert _names(["--grep", "zzz-no-spec-says-this"], capsys) == []
 
@@ -100,9 +100,9 @@ def test_details_records_carry_every_class(capsys) -> None:
             assert row["generator_scaling"] is None
         assert "proof_status" not in row
         facts = esolangs.describe(row["name"])
-        shape = "template" if facts["parameterized"] else facts["input_shape"]
+        shape = "template" if facts.parameterized else facts.input_shape
         assert {field: row[field] for field in _DETAILED} == {
-            field: facts[field] for field in _DETAILED
+            field: getattr(facts, field) for field in _DETAILED
         } | {"input_shape": shape}
 
 
@@ -117,7 +117,7 @@ def test_metadata_filters_have_positive_matches(capsys):
         assert names == [
             name
             for name in esolangs.list_languages()
-            if esolangs.describe(name)[field] == value
+            if getattr(esolangs.describe(name), field) == value
         ], option
 
 
@@ -130,12 +130,10 @@ def test_templates_and_combined_filters(capsys):
     assert names
     for name in names:
         facts = esolangs.describe(name)
-        assert facts["source_kind"] == "text"
-        assert facts["answer_mode"] == "output"
-        assert facts["boolean_generator"]
-        assert (
-            facts["generator_max_inputs"] is None or facts["generator_max_inputs"] >= 8
-        )
+        assert facts.source_kind == "text"
+        assert facts.answer_mode == "output"
+        assert facts.boolean_generator
+        assert facts.generator_max_inputs is None or facts.generator_max_inputs >= 8
     assert _names(["--interpreter-only", "--inputs", "0"], capsys) == []
     rows = _names([*filters, "--details"], capsys)
     assert [row["name"] for row in rows] == names
@@ -143,9 +141,9 @@ def test_templates_and_combined_filters(capsys):
     assert (text.splitlines(), error) == (names, "")
 
     capped = next(
-        (name, esolangs.describe(name)["generator_max_inputs"])
+        (name, esolangs.describe(name).generator_max_inputs)
         for name in esolangs.list_languages()
-        if esolangs.describe(name)["generator_max_inputs"] is not None
+        if esolangs.describe(name).generator_max_inputs is not None
     )
     name, cap = capped
     assert name in _names(["--inputs", str(cap)], capsys)

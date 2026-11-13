@@ -74,8 +74,8 @@ def _written(name: str, table: str) -> int | None:
     """Worst sampled halting row's peak written bits, or ``None``."""
     facts = describe(name)
     halts = None
-    if facts["answer_mode"] == "termination":
-        halts = str(list(facts["answer_encoding"]).index("halts"))
+    if facts.answer_mode == "termination":
+        halts = str(list(facts.answer_encoding).index("halts"))
     inputs = len(table).bit_length() - 1
     program = generate(name, table, width=None)
     worst: int | None = None
@@ -86,7 +86,7 @@ def _written(name: str, table: str) -> int | None:
     # written state every step, and seven rows put the band at 126s.
     for row in sorted({sampled[0], sampled[len(sampled) // 2], sampled[-1]}):
         bits = row_bits(row, inputs)
-        if facts["parameterized"]:
+        if facts.parameterized:
             source, stdin = instantiate(name, program, bits, width=None), ""
         else:
             source, stdin = program, encode_inputs(name, bits, truth_table=table)

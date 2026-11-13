@@ -55,7 +55,7 @@ def test_native_driver_reports_completion(language):
     else:
         expected = (
             Completion.POST_HALT
-            if esolangs.describe(language)["dumps_on_the_post_halt_step"]
+            if esolangs.describe(language).dumps_on_the_post_halt_step
             else Completion.HALTED
         )
         assert result.completion.kind is expected
@@ -68,14 +68,22 @@ def test_native_driver_reports_completion(language):
             if reason == "halted":
                 assert (
                     esolangs.run(
-                        language, source, max_steps=1, isolated=isolated, **options
+                        language,
+                        source,
+                        limits=esolangs.ExecutionLimits(max_steps=1),
+                        isolated=isolated,
+                        **options,
                     )
                     == expected
                 )
             else:
                 with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
                     esolangs.run(
-                        language, source, max_steps=1, isolated=isolated, **options
+                        language,
+                        source,
+                        limits=esolangs.ExecutionLimits(max_steps=1),
+                        isolated=isolated,
+                        **options,
                     )
                 assert caught.value.bound == "max_steps"
                 assert caught.value.observation == expected

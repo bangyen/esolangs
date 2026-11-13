@@ -59,7 +59,13 @@ def _check_row(name: str, artifact: esolangs.Artifact, table: str, row: int) -> 
         stdin = esolangs.encode_inputs(name, bits, truth_table=table)
     runtime = LANGUAGES[name].runtime
     seed = runtime.reproducible_seed if runtime.random else None
-    want = esolangs.run(name, program, stdin=stdin, seed=seed, max_steps=_STEP_BUDGET)
+    want = esolangs.run(
+        name,
+        program,
+        stdin=stdin,
+        seed=seed,
+        limits=esolangs.ExecutionLimits(max_steps=_STEP_BUDGET),
+    )
     vm = debugger_api.make_vm(name, program, stdin=stdin, seed=seed)
     steps = _drive_steps(vm)
     got = _capture_result(vm)
@@ -94,7 +100,7 @@ class TestTheTraitsAreReportedBeforeAMachineExists:
     )
     def test_describe_carries_each_trait(self, key: str) -> None:
         """They were VM properties only, so seventeen needed bits to read one."""
-        assert all(key in esolangs.describe(n) for n in esolangs.list_languages())
+        assert key in esolangs.LanguageInfo.__dataclass_fields__
 
     def test_describe_agrees_with_the_machine(self) -> None:
         """The class attribute and the live wrapper must not drift apart."""
@@ -102,7 +108,7 @@ class TestTheTraitsAreReportedBeforeAMachineExists:
         for name in [*names, first(self_halts=False)]:
             facts = esolangs.describe(name)
             for key, value in machine_traits(name).items():
-                assert facts[key] == value, (name, key)
+                assert getattr(facts, key) == value, (name, key)
 
 
 def _steppable_languages() -> list[str]:
@@ -110,9 +116,9 @@ def _steppable_languages() -> list[str]:
     return [
         name
         for name in esolangs.list_languages()
-        if esolangs.describe(name)["boolean_generator"]
-        and esolangs.describe(name)["steppable_to_answer"]
-        and esolangs.describe(name)["answer_mode"] != "termination"
+        if esolangs.describe(name).boolean_generator
+        and esolangs.describe(name).steppable_to_answer
+        and esolangs.describe(name).answer_mode != "termination"
     ]
 
 
@@ -186,11 +192,11 @@ class TestStepPastHaltIsSafeEverywhere:
         checked = eligible = 0
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
-            if not facts["boolean_generator"]:
+            if not facts.boolean_generator:
                 continue
-            if not facts["steppable_to_answer"] or not facts["self_halts"]:
+            if not facts.steppable_to_answer or not facts.self_halts:
                 continue
-            if facts["answer_mode"] == "termination":
+            if facts.answer_mode == "termination":
                 continue
             eligible += 1
             program, stdin = _row(name, "0110", [0, 1])
@@ -221,7 +227,7 @@ class TestTheConstructorsTakeWhatRunTakes:
     ) -> None:
         """It validated the file's contents, then passed the Path itself on."""
         example = pathlib.Path(
-            str(files("esolangs") / esolangs.describe(REFERENCE)["examples"][0])
+            str(files("esolangs") / esolangs.describe(REFERENCE).examples[0])
         )
         machine = build(REFERENCE, example, stdin="1\n0\n")
         assert machine.halted is False
@@ -229,7 +235,7 @@ class TestTheConstructorsTakeWhatRunTakes:
     def test_the_path_and_the_source_build_the_same_machine(self) -> None:
         """Reading it here must match what a caller reading it gets."""
         example = pathlib.Path(
-            str(files("esolangs") / esolangs.describe(REFERENCE)["examples"][0])
+            str(files("esolangs") / esolangs.describe(REFERENCE).examples[0])
         )
         source = example.read_text().rstrip("\n")
         from_path = _drive(debugger_api.make_vm(REFERENCE, example, stdin="1\n0\n"))

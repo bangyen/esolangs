@@ -7,6 +7,16 @@ Releases before 0.10.0 are described on the
 
 ## Unreleased
 
+- **Breaking:** `run`, `Language.run` and `PreparedProgram.run` take
+  `limits=ExecutionLimits(...)`, as `execute` and `evaluate` do, in place of
+  `timeout`, `max_steps`, `max_output` and `max_memory`. `timeout=t` is
+  `ExecutionLimits(execution_timeout=t)`, and its `bound` is
+  `"execution_timeout"`, not `"timeout"`.
+- **Breaking:** `describe` returns a frozen `LanguageInfo` dataclass, not a
+  dict: `describe(name).answer_mode`. `dataclasses.asdict` gives the record
+  `describe --json` prints, which is unchanged.
+- **Breaking:** `save_program` is `to_file`, the inverse of
+  `Language.from_file`; `load_program` reads `dump_program` JSON.
 - **Breaking:** `esolangs run` exits 124, not 1, when `--max-output` or
   `--max-memory` runs out, as it does for `--timeout` and `--max-steps`.
   A worker killed before it reports the memory cap still exits 1.

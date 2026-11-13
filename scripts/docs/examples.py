@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
 from esolangs.generation.examples import BOOLEAN_EXAMPLES, BooleanExample
-from esolangs.portable import save_program
+from esolangs.portable import to_file
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.runtime._program import Program
@@ -182,7 +182,7 @@ def write_set(name: str) -> None:
         existing = path.read_bytes() if path.exists() else None
         with TemporaryDirectory(dir=directory) as temporary:
             staged = pathlib.Path(temporary) / path.name
-            save_program(generated.language, generated, staged, normalize=True)
+            to_file(generated.language, generated, staged, normalize=True)
             if not _same_program(existing, staged.read_bytes(), generated):
                 staged.replace(path)
                 print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")

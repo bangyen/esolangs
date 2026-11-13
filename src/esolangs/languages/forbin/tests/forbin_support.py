@@ -2,6 +2,7 @@
 
 import contextlib
 
+from esolangs import ExecutionLimits
 from esolangs.generation.helpers import _validate_truth_table, input_weights
 from esolangs.languages.forbin.generator import _build_projected
 from esolangs.languages.forbin.interpreter import run
@@ -91,9 +92,11 @@ def check_constructor_error_observations() -> None:
             "Forbin",
             artifact,
             stdin="",
-            max_steps=64 if route in ("bounded", "isolated-bounded") else None,
+            limits=ExecutionLimits(
+                max_steps=64 if route in ("bounded", "isolated-bounded") else None,
+                execution_timeout=2.0 if isolated else None,
+            ),
             isolated=isolated,
-            timeout=2.0 if isolated else None,
         )
 
     for name, source, output, fails in cases:
@@ -137,7 +140,7 @@ def check_constructor_error_observations() -> None:
             assert caught.value.partial_output == ""
             assert caught.value.observation is None
         with pytest.raises(ProgramError) as caught:
-            esolangs.run("Forbin", artifact, max_steps=64)
+            esolangs.run("Forbin", artifact, limits=ExecutionLimits(max_steps=64))
         assert caught.value.partial_output == ""
         assert caught.value.observation is None
     # A successful IO-free construction still has no completion observation.

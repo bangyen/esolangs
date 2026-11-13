@@ -74,10 +74,10 @@ assert row.bit == "1"
 | `describe` | Says how a language takes input and where its answer lands. |
 | `instantiate` | Fills a template: some languages put inputs in the source, so `generate` returns a template instead. |
 
-Bound a run with:
+Bound a run with `limits=esolangs.ExecutionLimits(...)`:
 
 - `max_steps`: a command count.
-- `timeout`: wall time for reading the program and stdin, and for execution, enforced in a worker on all platforms.
+- `execution_timeout`: wall time for reading the program and stdin, and for execution, enforced in a worker on all platforms.
 - `max_output`, and `max_memory` on Linux: each selects isolation.
 
 `evaluate` handles stdin encoding, template binding, and answer extraction.

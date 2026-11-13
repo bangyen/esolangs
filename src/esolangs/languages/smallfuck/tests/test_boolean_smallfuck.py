@@ -102,7 +102,12 @@ def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
     for row, expected in enumerate(table):
         bits = [int(bit) for bit in format(row, "06b")]
         program = esolangs.instantiate("Smallfuck", template, bits)
-        assert execute("Smallfuck", program, max_steps=10_000).output == expected
+        assert (
+            execute(
+                "Smallfuck", program, limits=esolangs.ExecutionLimits(max_steps=10_000)
+            ).output
+            == expected
+        )
 
 
 @pytest.mark.medium

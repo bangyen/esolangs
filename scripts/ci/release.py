@@ -12,11 +12,15 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from itertools import islice
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from esolangs import LanguageInfo
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -153,9 +157,7 @@ def _refused(
     raise AssertionError(failure)
 
 
-def _first_languages(
-    wanted: Callable[[Mapping[str, object]], object], count: int
-) -> list[str]:
+def _first_languages(wanted: Callable[[LanguageInfo], object], count: int) -> list[str]:
     """Return the first ``count`` boolean-generator languages ``wanted`` accepts."""
     import esolangs
 
@@ -164,7 +166,7 @@ def _first_languages(
             (
                 name
                 for name in esolangs.list_languages()
-                if (facts := esolangs.describe(name))["boolean_generator"]
+                if (facts := esolangs.describe(name)).boolean_generator
                 and wanted(facts)
             ),
             count,
@@ -203,11 +205,28 @@ def _smoke_install(package: Path) -> None:
         bound.read_answer(bound.run(program, stdin=bound.encode_inputs([0, 1])).output)
         == "1"
     )
-    assert esolangs.run("brainfuck", "+.", max_steps=2).output == "\x01"
-    assert esolangs.run("brainfuck", "+.", timeout=1, isolated=True).output == "\x01"
+    assert (
+        esolangs.run(
+            "brainfuck", "+.", limits=esolangs.ExecutionLimits(max_steps=2)
+        ).output
+        == "\x01"
+    )
+    assert (
+        esolangs.run(
+            "brainfuck",
+            "+.",
+            limits=esolangs.ExecutionLimits(execution_timeout=1),
+            isolated=True,
+        ).output
+        == "\x01"
+    )
     _refused(
         esolangs.ExecutionTimeoutError,
-        lambda: esolangs.run("brainfuck", "+[]", max_steps=10).output,
+        lambda: (
+            esolangs.run(
+                "brainfuck", "+[]", limits=esolangs.ExecutionLimits(max_steps=10)
+            ).output
+        ),
         "the bounded runner accepted a diverging program",
     )
     executable = Path(sys.executable).with_name(
@@ -229,13 +248,13 @@ def _smoke_generators(package: Path, *, image_extra: bool) -> None:
 
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
-        if facts["boolean_generator"]:
+        if facts.boolean_generator:
             _generator_process(name, image_extra=image_extra)
-            assert facts["examples"], name
-            for filename in facts["examples"]:
+            assert facts.examples, name
+            for filename in facts.examples:
                 assert not Path(filename).is_absolute(), filename
                 assert (package / filename).is_file(), filename
-    examples = esolangs.describe("brainfuck")["examples"]
+    examples = esolangs.describe("brainfuck").examples
     assert examples
     example = package / examples[0]
     assert (
@@ -299,7 +318,7 @@ def _smoke_rasters(*, image_extra: bool) -> None:
     import esolangs
 
     rasters = _first_languages(
-        lambda facts: facts["source_kind"] == "raster" and not facts["parameterized"],
+        lambda facts: facts.source_kind == "raster" and not facts.parameterized,
         2,
     )
     for language in rasters:
@@ -347,20 +366,32 @@ def _smoke_deadlines() -> None:
         )
     _refused(
         esolangs.ExecutionTimeoutError,
-        lambda: esolangs.run("brainfuck", "+[]", timeout=0.02).output,
+        lambda: (
+            esolangs.run(
+                "brainfuck",
+                "+[]",
+                limits=esolangs.ExecutionLimits(execution_timeout=0.02),
+            ).output
+        ),
         "worker timeout did not stop a loop",
     )
     with ThreadPoolExecutor(max_workers=1) as pool:
         assert (
             pool.submit(
-                lambda: esolangs.run("brainfuck", "+.", timeout=2).output
+                lambda: (
+                    esolangs.run(
+                        "brainfuck",
+                        "+.",
+                        limits=esolangs.ExecutionLimits(execution_timeout=2),
+                    ).output
+                )
             ).result(timeout=5)
             == "\x01"
         )
     # A language never halting by itself, and one answering by termination;
     # each check drops out with the last language of its kind.
     for language in _first_languages(
-        lambda facts: not facts["self_halts"] and facts["reads_input"], 1
+        lambda facts: not facts.self_halts and facts.reads_input, 1
     ):
         with ThreadPoolExecutor(max_workers=1) as pool:
             assert (
@@ -373,9 +404,7 @@ def _smoke_deadlines() -> None:
                 ).result(timeout=30)
                 == "0110"
             )
-    terminating = _first_languages(
-        lambda facts: facts["answer_mode"] == "termination", 1
-    )
+    terminating = _first_languages(lambda facts: facts.answer_mode == "termination", 1)
     for language in terminating:
         assert (
             _evaluate(
@@ -388,7 +417,14 @@ def _smoke_deadlines() -> None:
         )
     _refused(
         esolangs.ExecutionTimeoutError,
-        lambda: esolangs.run("brainfuck", "+[]", timeout=0.5, isolated=True).output,
+        lambda: (
+            esolangs.run(
+                "brainfuck",
+                "+[]",
+                limits=esolangs.ExecutionLimits(execution_timeout=0.5),
+                isolated=True,
+            ).output
+        ),
         "isolated timeout did not stop a loop",
     )
     for language in terminating:

@@ -28,7 +28,7 @@ _PILOTS = [
 ] + [
     (language, "01")
     for language in one_where(
-        lambda info: LANGUAGES[info["name"]].runtime.compressed_source,
+        lambda info: LANGUAGES[info.name].runtime.compressed_source,
         boolean_generator=True,
     )
 ]
@@ -64,13 +64,16 @@ def test_artifact_persistence_executes_the_same_table(
             for isolated, max_steps in ((False, None), (False, 10_000), (True, 10_000)):
                 with pytest.raises(esolangs.TemplateError):
                     esolangs.run(
-                        language, restored, isolated=isolated, max_steps=max_steps
+                        language,
+                        restored,
+                        isolated=isolated,
+                        limits=esolangs.ExecutionLimits(max_steps=max_steps),
                     )
                 result = esolangs.run(
                     language,
                     restored.fill([0, 1]),
                     isolated=isolated,
-                    max_steps=max_steps,
+                    limits=esolangs.ExecutionLimits(max_steps=max_steps),
                 )
                 assert result.output == "1"
         if isinstance(restored.source, esolangs.Raster):
@@ -88,13 +91,13 @@ def test_artifact_persistence_executes_the_same_table(
         assert _evaluate(language, restored, inputs=inputs) == table
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in reversed(range(inputs))]
-            esolangs.save_program(
+            esolangs.to_file(
                 language, esolangs.instantiate(language, restored, bits), path
             )
             result = esolangs.run(language, path, settings=source.settings)
             assert esolangs.read_answer(language, result.output) == expected
         return
-    esolangs.save_program(language, source, path)
+    esolangs.to_file(language, source, path)
     assert _evaluate(language, path, inputs=inputs) == table
 
 
@@ -233,12 +236,16 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
     assert language.run(source) == language.run(artifact)
     restored = language.load_program(language.dump_program(artifact))
     path = tmp_path / "source.txt"
-    language.save_program(artifact, path)
+    language.to_file(artifact, path)
     loaded = language.from_file(str(path))
     assert artifact == restored == loaded
     for program in (artifact, restored, loaded):
         for isolated, max_steps in ((False, None), (False, 100), (True, 100)):
-            result = language.run(program, isolated=isolated, max_steps=max_steps)
+            result = language.run(
+                program,
+                isolated=isolated,
+                limits=esolangs.ExecutionLimits(max_steps=max_steps),
+            )
             assert result.output == "\x00"
             assert result.input_position == 0
             assert result.completion is not None

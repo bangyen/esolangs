@@ -499,8 +499,8 @@ def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
 
 
 def test_internal_route_budget_is_not_a_generator_restriction() -> None:
-    assert esolangs.describe("6-5")["generator_restrictions"] is None
-    assert esolangs.describe("6-5")["generator_max_inputs"] is None
+    assert esolangs.describe("6-5").generator_restrictions is None
+    assert esolangs.describe("6-5").generator_max_inputs is None
 
     language = esolangs.Language("6-5")
     records = construction_boundaries(language.name)

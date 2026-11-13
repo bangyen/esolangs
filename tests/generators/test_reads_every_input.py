@@ -1,5 +1,7 @@
 """Every generated program reads all n inputs, then prints; ignored ones are dropped."""
 
+from dataclasses import replace
+
 import pytest
 
 import esolangs
@@ -65,7 +67,7 @@ def _audit(
     rows = unread = past = 0
     for row in range(1 << n) if selected is None else selected:
         stdin = esolangs.encode_inputs(name, [row >> s & 1 for s in reversed(range(n))])
-        if INFOS[name]["answer_mode"] != "termination":
+        if INFOS[name].answer_mode != "termination":
             output = run_observed(
                 name, program, stdin=stdin, timeout=10, io_factory=new
             ).output
@@ -97,9 +99,7 @@ def _audit(
     return rows, unread, past, len(set(early))
 
 
-GENERATED = [
-    n for n, i in INFOS.items() if i["boolean_generator"] and not i["parameterized"]
-]
+GENERATED = [n for n, i in INFOS.items() if i.boolean_generator and not i.parameterized]
 
 
 @pytest.mark.medium
@@ -114,7 +114,7 @@ def test_the_audit_sees_early_output(monkeypatch) -> None:
 
 @pytest.mark.medium
 def test_the_audit_checks_cycling_answers(monkeypatch) -> None:
-    info = {**INFOS[REFERENCE], "answer_mode": "termination"}
+    info = replace(INFOS[REFERENCE], answer_mode="termination")
     monkeypatch.setitem(INFOS, REFERENCE, info)
     assert _audit(REFERENCE, ",[]", 1, monkeypatch) == (2, 0, 0, 0)
 
@@ -148,7 +148,7 @@ def test_the_audit_rejects_a_crash_after_the_final_read(monkeypatch, table, fail
         (name, path)
         for path in ({}, {"width": 1}, {"balance": True})
         for name in GENERATED
-        if "width" not in path or INFOS[name]["width_effect"] != "none"
+        if "width" not in path or INFOS[name].width_effect != "none"
     ],
     ids=str,
 )
@@ -159,7 +159,7 @@ def test_every_input_is_read(monkeypatch, name, path) -> None:
         assert_proved_resource_cap(name)
     for table in dict.fromkeys((*IGNORING, *controls)):
         n = (len(table) - 1).bit_length()
-        if n <= (INFOS[name]["generator_max_inputs"] or 6):
+        if n <= (INFOS[name].generator_max_inputs or 6):
             try:
                 program = esolangs.generate(name, table, **path)
             except esolangs.GeneratorCapError:
@@ -220,7 +220,7 @@ def _audit_tables(monkeypatch, name, n, tables):
         (name, n)
         for name in GENERATED
         for n in sorted(
-            {min(arity, INFOS[name]["generator_max_inputs"] or 6) for arity in (4, 6)}
+            {min(arity, INFOS[name].generator_max_inputs or 6) for arity in (4, 6)}
         )
     ],
 )
@@ -241,7 +241,7 @@ def test_the_audit_rejects_wrong_input_order(monkeypatch) -> None:
     [
         (name, n)
         for name in GENERATED
-        if (cap := INFOS[name]["generator_max_inputs"])
+        if (cap := INFOS[name].generator_max_inputs)
         for n in (cap - 1, cap)
     ],
 )
@@ -264,7 +264,7 @@ def test_arity_audits_report_complete_refusal(monkeypatch, audit):
     name = next(
         n for n in GENERATED if load_certification(LANGUAGES[n]).benchmark_tables
     )
-    n = INFOS[name]["generator_max_inputs"]
+    n = INFOS[name].generator_max_inputs
     refused = []
 
     def decline(*_args, **_options):

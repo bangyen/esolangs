@@ -23,7 +23,12 @@ def test_bound_template_language_runs_each_input_row() -> None:
         bits = tuple(map(int, format(row, "02b")))
         program = language.instantiate(template, bits, width=1, truth_table="0110")
         assert (
-            language.read_answer(language.run(program, max_steps=1000).output) == answer
+            language.read_answer(
+                language.run(
+                    program, limits=esolangs.ExecutionLimits(max_steps=1000)
+                ).output
+            )
+            == answer
         )
 
 
@@ -131,7 +136,9 @@ def test_a_dump_is_reachable_without_touching_the_wrapped_vm() -> None:
 def test_read_answer_finds_a_dumped_answer(capsys: pytest.CaptureFixture[str]) -> None:
     """RAM0's answer is its `z` register, three lines from the end."""
     program = esolangs.instantiate("RAM0", esolangs.generate("RAM0", "0110"), [0, 1])
-    output = run("RAM0", program, timeout=20).output
+    output = run(
+        "RAM0", program, limits=esolangs.ExecutionLimits(execution_timeout=20)
+    ).output
     assert call_main(["read-answer", "RAM0"], capsys, stdin=output).strip() == "1"
 
 

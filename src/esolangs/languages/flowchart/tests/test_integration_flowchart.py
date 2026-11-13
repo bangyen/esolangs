@@ -10,7 +10,12 @@ from tests.support.vm_support import _run_all, assert_starts_downward
 class TestDebuggerInputAndHalting:
     def test_underfed_input_matches_run(self) -> None:
         program = esolangs.generate("Flowchart", "0110")
-        output = run("Flowchart", program, stdin="1\n", timeout=10).output
+        output = run(
+            "Flowchart",
+            program,
+            stdin="1\n",
+            limits=esolangs.ExecutionLimits(execution_timeout=10),
+        ).output
         debugger = debugger_api.make_debugger("Flowchart", program, stdin="1\n")
         assert debugger.run(timeout=10) == "halted"
         assert debugger.vm.output == output

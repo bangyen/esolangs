@@ -76,7 +76,16 @@ def test_fixed_input_does_not_make_branch_input_forkable() -> None:
     )
     assert "seeded single-path run" in caught.value.__notes__[0]
     assert "does not decide all random paths" in caught.value.__notes__[0]
-    assert run("Modulous", source, stdin="42\n", seed=1, timeout=1).output == "42"
+    assert (
+        run(
+            "Modulous",
+            source,
+            stdin="42\n",
+            seed=1,
+            limits=esolangs.ExecutionLimits(execution_timeout=1),
+        ).output
+        == "42"
+    )
 
 
 # 2.0s over 21 tests: drives the CLI as a subprocess.
@@ -106,7 +115,12 @@ class TestOutputSurvivesAFailure:
     def test_a_timeout_carries_it(self) -> None:
         """The case that matters most: a loop you meant to be finite."""
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            run("Modulous", self.LOOPS_PRINTING, stdin="", timeout=0.01)
+            run(
+                "Modulous",
+                self.LOOPS_PRINTING,
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=0.01),
+            )
         assert caught.value.partial_output.startswith("999")
 
     def test_an_error_before_the_run_carries_nothing(self) -> None:

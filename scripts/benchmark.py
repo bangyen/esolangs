@@ -409,8 +409,8 @@ def _execute(
             program,
             esolangs.encode_inputs(language, bits, truth_table=table),
         )
-    supported = facts["steppable_to_answer"]
-    if track_store and facts["answer_mode"] == "termination":
+    supported = facts.steppable_to_answer
+    if track_store and facts.answer_mode == "termination":
         raise ValueError("store tracking requires a halting-answer language")
     result: dict[str, Any] = {
         "artifact_sha256": source_digest
@@ -441,13 +441,13 @@ def _execute(
             result["actual_answer"] = esolangs.read_answer(language, output)
             return
         vm = debugger_api.make_vm(language, source, stdin=stdin)
-        terminating = facts["answer_mode"] == "termination"
+        terminating = facts.answer_mode == "termination"
         if terminating:
             halted = run_until_halt_or_cycle(vm, limit=cap)
             if not halted:
                 result["execution_status"] = "cycle"
                 result["actual_answer"] = str(
-                    list(facts["answer_encoding"]).index("diverges")
+                    list(facts.answer_encoding).index("diverges")
                 )
                 return
             # The detector unwraps the VM; replay a halt to retain the
@@ -466,7 +466,7 @@ def _execute(
                 result["peak_stack_items"] = max(
                     result["peak_stack_items"] or 0, len(vm.stack)
                 )
-                profile = _payload_profile(str(facts["name"]), vm)
+                profile = _payload_profile(str(facts.name), vm)
                 if profile is not None:
                     for key, value in profile.items():
                         result[key] = max(result[key] or 0, value)
@@ -484,7 +484,7 @@ def _execute(
             result["execution_status"] = "step_cap"
         elif terminating:
             result["execution_status"] = "halted"
-            result["actual_answer"] = str(list(facts["answer_encoding"]).index("halts"))
+            result["actual_answer"] = str(list(facts.answer_encoding).index("halts"))
         else:
             try:
                 output = complete_vm(vm, max_steps=0)
@@ -558,7 +558,7 @@ def _measure(
                 timeout,
                 track_store=track_store,
                 facts=facts,
-                source_digest=None if facts["parameterized"] else digest,
+                source_digest=None if facts.parameterized else digest,
             )
         )
     selected = next(item for item in executions if item["row"] == row)
@@ -575,10 +575,10 @@ def _measure(
             "generated_artifact_sha256": digest,
         },
         "track_store": track_store,
-        "language": facts["name"],
+        "language": facts.name,
         "truth_table": table,
         "inputs": len(table).bit_length() - 1,
-        "source_kind": facts["source_kind"],
+        "source_kind": facts.source_kind,
         "source_units": source_units(program.source),
         "source_utf8_bits": _utf8_bits(program.source),
         "generation_ns_best": min(timings),

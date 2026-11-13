@@ -50,7 +50,7 @@ def _row_for(
         if width is None
         else esolangs.generate(name, table, width=width)
     )
-    if esolangs.describe(name)["parameterized"]:
+    if esolangs.describe(name).parameterized:
         return esolangs.instantiate(name, program, [0, 0]), ""
     return program, esolangs.encode_inputs(name, [0, 0], truth_table=table)
 
@@ -129,7 +129,7 @@ def _row(
     name: str, table: str, bits: list[int]
 ) -> tuple[esolangs.ProgramArtifact[esolangs.Program], str]:
     """Return the ``(program, stdin)`` for one row, without naming a language."""
-    if esolangs.describe(name)["parameterized"]:
+    if esolangs.describe(name).parameterized:
         return esolangs.instantiate(name, esolangs.generate(name, table), bits), ""
     return esolangs.generate(name, table), esolangs.encode_inputs(
         name, bits, truth_table=table

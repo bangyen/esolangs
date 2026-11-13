@@ -35,7 +35,12 @@ class TestNameResolution:
 
     def test_case_is_ignored(self) -> None:
         """The registry mixes conventions, so a caller cannot guess one."""
-        assert esolangs.run("BRAINFUCK", "+.", timeout=5).output == "\x01"
+        assert (
+            esolangs.run(
+                "BRAINFUCK", "+.", limits=esolangs.ExecutionLimits(execution_timeout=5)
+            ).output
+            == "\x01"
+        )
 
     def test_a_near_miss_is_named(self) -> None:
         """A misspelling is a spelling problem; answer it with the spelling."""
@@ -140,8 +145,8 @@ class TestDescribe:
         missing = [
             name
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["boolean_generator"]
-            and not esolangs.describe(name)["examples"]
+            if esolangs.describe(name).boolean_generator
+            and not esolangs.describe(name).examples
         ]
         assert not missing, f"{missing} report no examples; {CHECK}"
 
@@ -150,7 +155,7 @@ class TestDescribe:
         aware = {
             name
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["width_effect"] == "layout"
+            if esolangs.describe(name).width_effect == "layout"
         }
         signature = {
             name
@@ -178,10 +183,10 @@ class TestConventionsAreDiscoverable:
     )
     def test_a_language_that_needs_explaining_explains_itself(self, name: str) -> None:
         """Termination-as-answer and integer row indices are not guessable."""
-        assert esolangs.describe(name)["answer_convention"]
+        assert esolangs.describe(name).answer_convention
 
     def test_a_plain_printer_needs_no_note(self) -> None:
-        assert esolangs.describe(REFERENCE)["answer_convention"] is None
+        assert esolangs.describe(REFERENCE).answer_convention is None
 
 
 class TestEveryDeliberateErrorIsCatchable:
@@ -192,7 +197,9 @@ class TestEveryDeliberateErrorIsCatchable:
 
         ``assert_rejected_with_hint`` checks each language's own."""
         with pytest.raises(ProgramError) as exc:
-            esolangs.run(REFERENCE, "[[[", timeout=5)
+            esolangs.run(
+                REFERENCE, "[[[", limits=esolangs.ExecutionLimits(execution_timeout=5)
+            )
         assert isinstance(exc.value, EsolangError)
         assert str(exc.value)
 
@@ -206,9 +213,9 @@ class TestEveryDeliberateErrorIsCatchable:
         failures = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
-            if facts["parameterized"] or facts["answer_convention"]:
+            if facts.parameterized or facts.answer_convention:
                 continue  # needs bits embedded, or answers by terminating
-            for example in facts["examples"]:
+            for example in facts.examples:
                 try:
                     run_observed(
                         name,
@@ -231,11 +238,26 @@ class TestAMissingFileIsAFileNotFoundError:
         """Ours for callers who catch ours, the stdlib's for the rest."""
         missing = tmp_path / "absent.bf"
         with pytest.raises(FileNotFoundError):
-            esolangs.run(REFERENCE, missing, stdin="", timeout=5)
+            esolangs.run(
+                REFERENCE,
+                missing,
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            )
         with pytest.raises(esolangs.EsolangError):
-            esolangs.run(REFERENCE, missing, stdin="", timeout=5)
+            esolangs.run(
+                REFERENCE,
+                missing,
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            )
         with pytest.raises(esolangs.ProgramError):
-            esolangs.run(REFERENCE, missing, stdin="", timeout=5)
+            esolangs.run(
+                REFERENCE,
+                missing,
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            )
 
     def test_an_unreadable_file_is_still_a_plain_program_error(
         self, tmp_path: Path
@@ -244,7 +266,12 @@ class TestAMissingFileIsAFileNotFoundError:
         blocked = tmp_path / "blocked.bf"
         blocked.write_bytes(b"\xff\xfe\x00")
         with pytest.raises(esolangs.ProgramError) as caught:
-            esolangs.run(REFERENCE, blocked, stdin="", timeout=5)
+            esolangs.run(
+                REFERENCE,
+                blocked,
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            )
         assert not isinstance(caught.value, FileNotFoundError)
 
     def test_a_directory_is_an_os_error_not_a_decode_error(
@@ -252,7 +279,12 @@ class TestAMissingFileIsAFileNotFoundError:
     ) -> None:
         """The third clause: an ``OSError`` that is not ``FileNotFoundError``."""
         with pytest.raises(esolangs.ProgramError) as caught:
-            esolangs.run(REFERENCE, tmp_path, stdin="", timeout=5)
+            esolangs.run(
+                REFERENCE,
+                tmp_path,
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            )
         assert not isinstance(caught.value, FileNotFoundError)
         assert "cannot read" in str(caught.value)
 
@@ -296,7 +328,15 @@ class TestSourceAndPathsAreExplicit:
 
     def test_a_real_program_is_untouched(self) -> None:
         """A guard that refuses real programs is worse than the bug."""
-        assert esolangs.run(REFERENCE, "+++.", stdin="", timeout=5).output == "\x03"
+        assert (
+            esolangs.run(
+                REFERENCE,
+                "+++.",
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            ).output
+            == "\x03"
+        )
 
     def test_file_bytes_are_source_without_spelling_rules(self, tmp_path) -> None:
         path = tmp_path / "source.txt"
@@ -309,9 +349,22 @@ class TestSourceAndPathsAreExplicit:
         """A Path was always correct, and stays the way to say "this file"."""
         path = tmp_path / "p.txt"
         path.write_text("+++.")
-        assert esolangs.run(REFERENCE, path, stdin="", timeout=5).output == "\x03"
+        assert (
+            esolangs.run(
+                REFERENCE,
+                path,
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            ).output
+            == "\x03"
+        )
         with pytest.raises(FileNotFoundError):
-            esolangs.run(REFERENCE, tmp_path / "absent.txt", stdin="", timeout=5)
+            esolangs.run(
+                REFERENCE,
+                tmp_path / "absent.txt",
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            )
 
 
 # 2.2s over 12 tests: runs a diverging program to its bound.
@@ -339,7 +392,14 @@ class TestThreadExecution:
     def test_a_timed_run_works_off_thread(self) -> None:
         """The worker deadline works from a caller's thread."""
         outcome = self._off_thread(
-            lambda: esolangs.run(REFERENCE, "+++.", stdin="", timeout=5).output
+            lambda: (
+                esolangs.run(
+                    REFERENCE,
+                    "+++.",
+                    stdin="",
+                    limits=esolangs.ExecutionLimits(execution_timeout=5),
+                ).output
+            )
         )
         assert outcome == "\x03"
 
@@ -413,7 +473,12 @@ class TestSourceSpellingDoesNotSelectAContainer:
     @pytest.mark.parametrize("program", [".", ".."])
     def test_a_real_program_still_runs(self, program: str) -> None:
         """``.`` and ``..`` are legal brainfuck and must not be mistaken."""
-        esolangs.run(REFERENCE, program, stdin="", timeout=5)
+        esolangs.run(
+            REFERENCE,
+            program,
+            stdin="",
+            limits=esolangs.ExecutionLimits(execution_timeout=5),
+        )
 
     @pytest.mark.parametrize("program", ["~~", "-", "a/b/c", "/", "./", "1.5"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:

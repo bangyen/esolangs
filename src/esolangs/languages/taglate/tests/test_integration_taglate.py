@@ -11,7 +11,7 @@ class TestAnswerMode:
     """The structured counterpart to the ``answer_convention`` prose."""
 
     def test_every_language_declares_one_of_three_modes(self) -> None:
-        modes = {esolangs.describe(n)["answer_mode"] for n in esolangs.list_languages()}
+        modes = {esolangs.describe(n).answer_mode for n in esolangs.list_languages()}
         assert modes == {"output", "termination", "dump"}
 
     @pytest.mark.slow
@@ -20,9 +20,9 @@ class TestAnswerMode:
         wrong = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
-            if not facts["boolean_generator"]:
+            if not facts.boolean_generator:
                 continue
-            if facts["parameterized"] or facts["answer_mode"] != "output":
+            if facts.parameterized or facts.answer_mode != "output":
                 continue
             program = esolangs.generate(name, XOR)
             got = "".join(
@@ -32,7 +32,7 @@ class TestAnswerMode:
                         name,
                         program,
                         stdin=esolangs.encode_inputs(name, [(row >> 1) & 1, row & 1]),
-                        timeout=30,
+                        limits=esolangs.ExecutionLimits(execution_timeout=30),
                     ).output,
                 )
                 for row in range(4)

@@ -204,7 +204,7 @@ def native_png(tmp_path: Path):
 
     def encode(program):
         path = tmp_path / "source.png"
-        esolangs.save_program(program.language, program, path)
+        esolangs.to_file(program.language, program, path)
         return path.read_bytes()
 
     return encode

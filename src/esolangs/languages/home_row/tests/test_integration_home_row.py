@@ -17,7 +17,7 @@ def test_a_wrapped_instantiation_still_computes_the_table() -> None:
         run(
             "Home Row",
             esolangs.instantiate("Home Row", template, [a, b], width=10),
-            timeout=30,
+            limits=esolangs.ExecutionLimits(execution_timeout=30),
         ).output
         for a in (0, 1)
         for b in (0, 1)
@@ -27,4 +27,4 @@ def test_a_wrapped_instantiation_still_computes_the_table() -> None:
 
 def test_internal_spacing_is_still_normalized() -> None:
     """The strip must not have replaced the rule that was already working."""
-    assert esolangs.describe("Home  Row")["name"] == "Home Row"
+    assert esolangs.describe("Home  Row").name == "Home Row"

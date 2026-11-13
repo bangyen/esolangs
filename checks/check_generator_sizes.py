@@ -117,7 +117,7 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
             )
             # An interpreter-only language has no generated size to record.
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["boolean_generator"]
+            if esolangs.describe(name).boolean_generator
             for table in control_tables(name)
         ]
         # A layout switch's parity table can coincide with one of the

@@ -146,16 +146,16 @@ def _commands(name: str, table: str) -> int | None:
     """Worst sampled row's command count, or ``None`` if none finished."""
     facts = describe(name)
     halts = None
-    if facts["answer_mode"] == "termination":
+    if facts.answer_mode == "termination":
         # Which bit the language spells by terminating, read rather than
         # assumed: it is ("halts", "diverges") for all four today.
-        halts = str(list(facts["answer_encoding"]).index("halts"))
+        halts = str(list(facts.answer_encoding).index("halts"))
     inputs = len(table).bit_length() - 1
     program = generate(name, table, width=None)
     worst: int | None = None
     for row in _rows(table, halts):
         bits = row_bits(row, inputs)
-        if facts["parameterized"]:
+        if facts.parameterized:
             source, stdin = instantiate(name, program, bits, width=None), ""
         else:
             source, stdin = program, encode_inputs(name, bits, truth_table=table)

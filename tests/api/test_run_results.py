@@ -19,14 +19,25 @@ from tests.support.reference import REFERENCE
 pytestmark = pytest.mark.medium
 _ROUTES = [
     {},
-    {"max_steps": 10000},
+    {"limits": esolangs.ExecutionLimits(max_steps=10000)},
     {"isolated": True},
-    {"isolated": True, "max_steps": 10000},
+    {"isolated": True, "limits": esolangs.ExecutionLimits(max_steps=10000)},
 ]
 
 
+def _stepped(route: dict) -> bool:
+    """Whether ``route`` carries a step bound."""
+    return "limits" in route and route["limits"].max_steps is not None
+
+
+def _capped(route: dict) -> dict:
+    """Return ``route`` with a one-character output cap added."""
+    limits = route.get("limits", esolangs.ExecutionLimits())
+    return route | {"limits": replace(limits, max_output=1)}
+
+
 @pytest.mark.parametrize(
-    "route", [*_ROUTES, *(r | {"max_output": 1} for r in _ROUTES if r.get("isolated"))]
+    "route", [*_ROUTES, *(_capped(r) for r in _ROUTES if r.get("isolated"))]
 )
 def test_result_counts_unicode_characters_and_preserves_unread_input(route):
     result = esolangs.run(REFERENCE, ",.", stdin="éNEXT", **route)
@@ -36,7 +47,7 @@ def test_result_counts_unicode_characters_and_preserves_unread_input(route):
         1,
         0,
         CompletionReport(Completion.HALTED),
-        2 if "max_steps" in route else None,
+        2 if _stepped(route) else None,
     )
 
 
@@ -70,7 +81,7 @@ def test_result_retains_a_caught_eof(route):
 @pytest.mark.parametrize(
     "name",
     one_where(
-        lambda info: info["answer_mode"] != "termination",
+        lambda info: info.answer_mode != "termination",
         boolean_generator=True,
         dumps_on_the_post_halt_step=True,
         steppable_to_answer=True,
@@ -115,7 +126,9 @@ def _replay_periodic(name, source, stdin, native):
         output="", completion=None, steps=end
     )
     assert native.output
-    bounded = esolangs.run(name, source, stdin=stdin, max_steps=end)
+    bounded = esolangs.run(
+        name, source, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=end)
+    )
     assert bounded == native._replace(steps=end)
 
 
@@ -185,14 +198,17 @@ def test_result_failures_still_raise_with_partial_output(route, source, stdin):
         len(stdin),
         len(stdin),
         1,
-        steps=2 * len(stdin) if "max_steps" in route else None,
+        steps=2 * len(stdin) if _stepped(route) else None,
     )
 
 
 def test_bound_language_returns_the_same_record():
     bound = esolangs.Language(REFERENCE)
     result = bound.run(
-        ",.", stdin="éNEXT", max_steps=2, isolated=True, max_output=1, timeout=5
+        ",.",
+        stdin="éNEXT",
+        limits=esolangs.ExecutionLimits(max_steps=2, max_output=1, execution_timeout=5),
+        isolated=True,
     )
     assert result.steps == 2
     assert result._replace(steps=None) == esolangs.run(REFERENCE, ",.", stdin="éNEXT")

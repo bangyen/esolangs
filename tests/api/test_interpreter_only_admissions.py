@@ -48,7 +48,7 @@ def test_every_first_implementation_was_one_when_admitted() -> None:
                 assert when != admitted, f"{name}: same day; record the time"
             assert when > admitted, f"{name}: implemented elsewhere first"
         # Interpreter-only is the fame route's alone.
-        assert esolangs.describe(name)["boolean_generator"], name
+        assert esolangs.describe(name).boolean_generator, name
 
 
 @pytest.mark.parametrize("language", languages(boolean_generator=False))
@@ -63,6 +63,6 @@ def test_api_and_vm(language: str) -> None:
     final = vm.snapshot()
     vm.step()
     assert vm.snapshot() == final
-    assert esolangs.describe(language)["boolean_generator"] is False
+    assert esolangs.describe(language).boolean_generator is False
     with pytest.raises(ValueError, match="no boolean generator"):
         esolangs.generate(language, "01")

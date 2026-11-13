@@ -179,29 +179,14 @@ class PreparedProgram:
         self,
         *,
         stdin: InputSource = "",
-        timeout: float | None = None,
+        limits: ExecutionLimits | None = None,
         seed: int | None = None,
         isolated: bool = False,
-        max_steps: int | None = None,
-        max_output: int | None = None,
-        max_memory: int | None = None,
     ) -> ExecutionResult:
         """Run fresh state; arguments and errors follow :func:`esolangs.run`."""
-        from esolangs.operations.execution import _run_result
-
-        return _run_result(
-            self.language,
-            self.artifact,
-            stdin=stdin,
-            timeout=timeout,
-            seed=seed,
-            isolated=isolated,
-            max_steps=max_steps,
-            max_output=max_output,
-            max_memory=max_memory,
-            catalog=self.catalog,
-            prepared=self,
-        )
+        return self.execute(
+            stdin=stdin, limits=limits, seed=seed, isolated=isolated
+        ).unwrap()
 
     def make_vm(self, *, stdin: InputSource = "", seed: int | None = None) -> VM:
         """Create an independent step machine; errors follow debugger.make_vm."""

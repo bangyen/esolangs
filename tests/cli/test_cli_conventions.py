@@ -92,18 +92,18 @@ class TestExamplesShipWithThePackage:
         populated = [
             name
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["examples"]
+            if esolangs.describe(name).examples
         ]
         assert set(populated) == {
             name
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["boolean_generator"]
+            if esolangs.describe(name).boolean_generator
         }
 
     def test_every_reported_path_exists(self) -> None:
         """A path reported and absent is worse than none reported."""
         for name in esolangs.list_languages():
-            for path in esolangs.describe(name)["examples"]:
+            for path in esolangs.describe(name).examples:
                 assert not pathlib.Path(path).is_absolute(), (name, path)
                 assert (files("esolangs") / path).is_file(), (name, path)
 
@@ -131,21 +131,21 @@ class TestWikiUrlsAreUsable:
         slug = wiki_url("Þorn").rsplit("/", 1)[1]
         assert slug == "%C3%9Eorn"
         for name in esolangs.list_languages():
-            assert esolangs.describe(name)["wiki_url"] == wiki_url(name)
+            assert esolangs.describe(name).wiki_url == wiki_url(name)
 
     @pytest.mark.parametrize(
         "name", [n for n in esolangs.list_languages() if set(n) & set("()*~ ")]
     )
     def test_the_readable_ones_stay_readable(self, name: str) -> None:
         """Parentheses and ``*`` are legal in a path and all answer 200."""
-        assert esolangs.describe(name)["wiki_url"] == (
+        assert esolangs.describe(name).wiki_url == (
             f"https://esolangs.org/wiki/{name.replace(' ', '_')}"
         )
 
     def test_every_url_is_a_valid_path(self) -> None:
         """No unescaped ``%`` or ``^`` anywhere in the language, which is the rule."""
         for name in esolangs.list_languages():
-            url = str(esolangs.describe(name)["wiki_url"])
+            url = str(esolangs.describe(name).wiki_url)
             slug = url.removeprefix("https://esolangs.org/wiki/")
             assert "^" not in slug, name
             assert re.fullmatch(r"[^%]*(%[0-9A-Fa-f]{2}[^%]*)*", slug), (name, slug)
@@ -228,11 +228,6 @@ class TestDescribeHidesInputFieldsWithNoInput:
         out = call_main(["describe", first(input_shape="row_index")], capsys)
         assert "input_shape" in out
         assert "row_index" in out
-
-    def test_the_api_keeps_every_key(self) -> None:
-        """Uniform keys are what a zero-branch caller iterates."""
-        keys = {frozenset(esolangs.describe(n)) for n in esolangs.list_languages()}
-        assert len(keys) == 1
 
 
 class TestVersion:

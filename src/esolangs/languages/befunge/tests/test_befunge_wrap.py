@@ -126,7 +126,12 @@ def test_packed_ascii_lookup_answers_every_row(inputs: int, width: int | None) -
         bits = [int(bit) for bit in f"{row:0{inputs}b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
         assert (
-            run("Befunge", program, stdin=stdin, max_steps=500).output.strip()
+            run(
+                "Befunge",
+                program,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(max_steps=500),
+            ).output.strip()
             == expected
         )
 
@@ -146,7 +151,12 @@ def test_packed_ascii_lookup_controls_and_balance(inputs: int, kind: str) -> Non
         bits = [int(bit) for bit in f"{row:0{inputs}b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
         assert (
-            run("Befunge", program, stdin=stdin, max_steps=500).output.strip()
+            run(
+                "Befunge",
+                program,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(max_steps=500),
+            ).output.strip()
             == table[row]
         )
 
@@ -269,7 +279,12 @@ def test_a_width_beyond_the_torus_still_fits_it(width: int) -> None:
         bits = [int(bit) for bit in f"{row:011b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
         assert (
-            run("Befunge", program, stdin=stdin, max_steps=500).output.strip()
+            run(
+                "Befunge",
+                program,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(max_steps=500),
+            ).output.strip()
             == table[row]
         )
 

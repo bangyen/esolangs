@@ -198,4 +198,9 @@ class TestNegativeWriteIndex:
 def test_a_huge_address_is_refused_before_allocating() -> None:
     """A store grown to whatever the program named thrashed the machine."""
     with pytest.raises(esolangs.InterpreterLimitError, match="grow its store"):
-        execute("Decleq", "1 100000000000000000000", stdin="", timeout=2)
+        execute(
+            "Decleq",
+            "1 100000000000000000000",
+            stdin="",
+            limits=esolangs.ExecutionLimits(execution_timeout=2),
+        )

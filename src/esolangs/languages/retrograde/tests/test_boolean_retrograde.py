@@ -70,7 +70,12 @@ def check_boolean_tables() -> None:
     )
     at = source.source.index("/")
     broken = source.source[:at] + "\\" + source.source[at + 1 :]
-    assert execute("Retrograde", broken, max_steps=1000).output != "0"
+    assert (
+        execute(
+            "Retrograde", broken, limits=esolangs.ExecutionLimits(max_steps=1000)
+        ).output
+        != "0"
+    )
 
 
 def _check_constants() -> None:

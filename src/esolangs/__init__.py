@@ -10,7 +10,7 @@ Public operations split by who supplies the program:
   Stepping and debugging live in :mod:`esolangs.debugger`.
 * Contract adapters: ``encode_inputs`` spells input bits as stdin,
   ``read_answer`` extracts an answer bit from output,
-  ``save_program`` writes native source files, and
+  ``to_file`` writes native source files, and
   ``dump_program``/``load_program`` preserve source in portable JSON.
 * Catalog: ``describe`` and ``list_languages`` provide registry facts.
 
@@ -67,7 +67,7 @@ _LAZY = {
     "instantiate": "esolangs.operations.generation",
     "dump_program": "esolangs.portable",
     "load_program": "esolangs.portable",
-    "save_program": "esolangs.portable",
+    "to_file": "esolangs.portable",
     "LanguageInfo": "esolangs.registry._info",
     "describe": "esolangs.registry._describe",
     "list_languages": "esolangs.registry._describe",
@@ -85,7 +85,7 @@ if TYPE_CHECKING:
     from esolangs.operations.generation import instantiate as instantiate
     from esolangs.portable import dump_program as dump_program
     from esolangs.portable import load_program as load_program
-    from esolangs.portable import save_program as save_program
+    from esolangs.portable import to_file as to_file
     from esolangs.registry._catalog import Catalog as Catalog
     from esolangs.registry._describe import describe as describe
     from esolangs.registry._describe import list_languages as list_languages
@@ -159,7 +159,7 @@ __all__ = [
     "load_program",
     "read_answer",
     "run",
-    "save_program",
+    "to_file",
 ]
 
 

@@ -47,10 +47,10 @@ class TestTheProseMatchesTheData:
         expected = {}
         for name in esolangs.list_languages():
             record = esolangs.describe(name)
-            if not record["reads_input"]:
+            if not record.reads_input:
                 continue
-            shape = record["input_shape"]
-            alphabet = tuple(record["input_encoding"])
+            shape = record.input_shape
+            alphabet = tuple(record.input_encoding)
             if shape == "char_stream" and alphabet == ("0", "1"):
                 continue
             stdin = esolangs.encode_inputs(name, _SAMPLE_BITS)
@@ -190,16 +190,17 @@ class TestExamplePathsWorkFromAnywhere:
     def test_they_are_package_relative(self) -> None:
         """Absolute paths froze the install location into ``describe()``."""
         for name in esolangs.list_languages():
-            for example in esolangs.describe(name)["examples"]:
-                assert example.startswith(
-                    f"languages/{esolangs.describe(name)['id']}/"
-                ), (name, example)
+            for example in esolangs.describe(name).examples:
+                assert example.startswith(f"languages/{esolangs.describe(name).id}/"), (
+                    name,
+                    example,
+                )
 
     def test_the_advertised_recipe_runs_from_another_directory(
         self, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The advertised package resource executes after changing directory."""
-        example = files("esolangs") / esolangs.describe(REFERENCE)["examples"][0]
+        example = files("esolangs") / esolangs.describe(REFERENCE).examples[0]
         monkeypatch.chdir(tmp_path)
         assert run_observed(REFERENCE, example, stdin="1\n0\n", timeout=20).output
 
@@ -226,7 +227,7 @@ class TestWhatHappensWhenAProgramIsUnderfed:
             return "raised", None
         except esolangs.EsolangError:
             return "language error", None
-        if esolangs.describe(name)["answer_mode"] == "termination":
+        if esolangs.describe(name).answer_mode == "termination":
             # A halt is the answer, with no output to read: Unary's EOF zero
             # passed as "unreadable" while it answered another row.
             return "answered", "0"
@@ -241,21 +242,21 @@ class TestWhatHappensWhenAProgramIsUnderfed:
         mismatched = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
-            if not facts["boolean_generator"]:
+            if not facts.boolean_generator:
                 continue
-            if facts["parameterized"]:
+            if facts.parameterized:
                 continue  # no stdin to underfeed
-            if facts["input_shape"] == "char_stream_cyclic":
+            if facts.input_shape == "char_stream_cyclic":
                 # Underfeeding a one-line language gives it a *shorter
                 # string*, not a read past an end, so there is no EOF to
                 # declare and nothing that could detect it.  Exempted by
                 # its shape rather than by its name.
                 continue
-            if facts["input_shape"] == "row_number":
+            if facts.input_shape == "row_number":
                 # The row is one integer: ``1 0`` encodes as row 2's ``3``,
                 # a whole token, so the read never reaches EOF.
                 continue
-            declared = bool(facts["eof_is_a_value"])
+            declared = bool(facts.eof_is_a_value)
             for probe in self.PROBES:
                 outcome, _answer = self._underfed(name, probe)
                 if outcome == "answered" and not declared:
@@ -357,7 +358,7 @@ class TestWidthEffects:
         """A guard over a field with one value in practice guards nothing."""
         counts: dict[str, int] = {}
         for name in esolangs.list_languages():
-            effect = str(esolangs.describe(name)["width_effect"])
+            effect = str(esolangs.describe(name).width_effect)
             counts[effect] = counts.get(effect, 0) + 1
         assert set(counts) == {"none", "wrap", "layout"}
         assert min(counts.values()) > 1, counts

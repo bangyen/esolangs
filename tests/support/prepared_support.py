@@ -39,7 +39,12 @@ def check_image_reuse(
         assert complete_vm(first) == first_out
         assert complete_vm(second) == second_out
         assert prepared.run(stdin=first_in).output == first_out
-        assert prepared.run(stdin=second_in, max_steps=100).output == second_out
+        assert (
+            prepared.run(
+                stdin=second_in, limits=esolangs.ExecutionLimits(max_steps=100)
+            ).output
+            == second_out
+        )
         assert prepared.execute(stdin=third_in).unwrap().output == third_out
         assert calls == [source]
 
@@ -93,7 +98,9 @@ def check_random_plan_reuse(language, code, module, parser_name, monkeypatch):
         for seed, want in expected.items():
             assert prepared.run(seed=seed) == want
             assert prepared.run(seed=seed) == want
-            stepped = prepared.run(seed=seed, max_steps=1000)
+            stepped = prepared.run(
+                seed=seed, limits=esolangs.ExecutionLimits(max_steps=1000)
+            )
             assert stepped._replace(steps=None) == want
             first, second = prepared.make_vm(seed=seed), prepared.make_vm(seed=seed)
             initial = second.snapshot()

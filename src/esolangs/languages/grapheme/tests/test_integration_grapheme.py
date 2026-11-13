@@ -20,7 +20,12 @@ class TestGraphemeReadsWhatTheDocsNowSay:
         program = esolangs.generate("Grapheme", "01")
         answers = {}
         for line in ("A", "%", "0", "1", "x", " "):
-            output = run("Grapheme", program, stdin=line + "\n", timeout=10).output
+            output = run(
+                "Grapheme",
+                program,
+                stdin=line + "\n",
+                limits=esolangs.ExecutionLimits(execution_timeout=10),
+            ).output
             answers[line] = esolangs.read_answer("Grapheme", output)
         assert answers == {
             "A": "1",
@@ -126,7 +131,7 @@ def test_prose_conversion_at_six_inputs() -> None:
 
 
 def test_metadata() -> None:
-    settings = esolangs.describe("Grapheme")["dialect_settings"]
+    settings = esolangs.describe("Grapheme").dialect_settings
     assert settings["integer_conversion"]["default"] == "between_letters"
     assert settings["integer_conversion"]["choices"] == (
         "between_letters",
@@ -206,13 +211,13 @@ class TestRawInputKeepsItsNativeMeaning:
 
 def test_grapheme_names_its_input_alphabet() -> None:
     """Digits are read as truthy, so 0/1 lines answer the wrong row."""
-    assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
-    assert esolangs.describe(REFERENCE)["input_encoding"] == ("0", "1")
+    assert esolangs.describe("Grapheme").input_encoding == ("%", "A")
+    assert esolangs.describe(REFERENCE).input_encoding == ("0", "1")
 
 
 def test_the_named_alphabet_is_the_one_that_works() -> None:
     """The point of the key: using it reproduces the truth table."""
-    zero, one = esolangs.describe("Grapheme")["input_encoding"]
+    zero, one = esolangs.describe("Grapheme").input_encoding
     program = esolangs.generate("Grapheme", XOR)
     got = "".join(
         run("Grapheme", program, stdin=f"{[zero, one][a]}\n{[zero, one][b]}\n").output
@@ -224,7 +229,15 @@ def test_the_named_alphabet_is_the_one_that_works() -> None:
 
 def test_digit_lines_are_read_as_zero() -> None:
     program = esolangs.generate("Grapheme", "0110")
-    assert run("Grapheme", program, stdin="0\n1\n", timeout=10).output == "0"
+    assert (
+        run(
+            "Grapheme",
+            program,
+            stdin="0\n1\n",
+            limits=esolangs.ExecutionLimits(execution_timeout=10),
+        ).output
+        == "0"
+    )
 
 
 def test_a_zero_line_reads_as_true_so_zero_is_percent() -> None:

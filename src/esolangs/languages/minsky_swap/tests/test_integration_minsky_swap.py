@@ -16,7 +16,7 @@ class TestARunFinishesTheDump:
         return [
             name
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["dumps_on_the_post_halt_step"]
+            if esolangs.describe(name).dumps_on_the_post_halt_step
         ]
 
     def test_a_breakpoint_can_fire_on_the_dump_step_itself(self) -> None:
@@ -37,7 +37,7 @@ class TestARunFinishesTheDump:
         mode = {
             n
             for n in esolangs.list_languages()
-            if esolangs.describe(n)["answer_mode"] == "dump"
+            if esolangs.describe(n).answer_mode == "dump"
         }
         assert "Minsky Swap" in mode
         assert mode != set(self._dumping())
@@ -47,14 +47,20 @@ class TestARunFinishesTheDump:
         empty = []
         for name in self._dumping():
             program = esolangs.generate(name, "0110")
-            if esolangs.describe(name)["parameterized"]:
+            if esolangs.describe(name).parameterized:
                 program, stdin = esolangs.instantiate(name, program, [0, 0]), ""
             else:
                 stdin = esolangs.encode_inputs(name, [0, 0], truth_table="0110")
             debugger = debugger_api.make_debugger(name, program, stdin=stdin)
             assert debugger.run(timeout=30) == "halted"
             assert (
-                debugger.output == run(name, program, stdin=stdin, timeout=30).output
+                debugger.output
+                == run(
+                    name,
+                    program,
+                    stdin=stdin,
+                    limits=esolangs.ExecutionLimits(execution_timeout=30),
+                ).output
             ), name
             if not debugger.output:
                 empty.append(name)

@@ -49,10 +49,10 @@ def _raises(name: str) -> set[str]:
 def _first(trait: str) -> str:
     """Return the first language with ``trait``, read off ``describe``."""
     tests = {
-        "parameterized": lambda d: d["parameterized"],
-        "no generator": lambda d: not d["boolean_generator"],
-        "termination": lambda d: d["answer_mode"] == "termination",
-        "raster": lambda d: d["source_kind"] == "raster" and d["boolean_generator"],
+        "parameterized": lambda d: d.parameterized,
+        "no generator": lambda d: not d.boolean_generator,
+        "termination": lambda d: d.answer_mode == "termination",
+        "raster": lambda d: d.source_kind == "raster" and d.boolean_generator,
     }
     return next(
         n for n in esolangs.list_languages() if tests[trait](esolangs.describe(n))
@@ -62,9 +62,9 @@ def _first(trait: str) -> str:
 def _over_cap(generate=esolangs.generate) -> object:
     """Generate one input past the smallest declared arity cap."""
     cap, name = min(
-        (d["generator_max_inputs"], n)
+        (d.generator_max_inputs, n)
         for n in esolangs.list_languages()
-        if (d := esolangs.describe(n))["generator_max_inputs"]
+        if (d := esolangs.describe(n)).generator_max_inputs
     )
     return generate(name, "01" * 2**cap)
 
@@ -122,15 +122,15 @@ type _Probe = tuple[Callable[[], object], _Setup | None]
 #: ``(function, exception, call, setup)``: ``call`` must raise ``exception``.
 TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]] = [
     (
-        "save_program",
+        "to_file",
         x.UnknownLanguageError,
-        lambda: esolangs.save_program("No Such Language", "", "."),
+        lambda: esolangs.to_file("No Such Language", "", "."),
         None,
     ),
     (
-        "save_program",
+        "to_file",
         x.TemplateError,
-        lambda: esolangs.save_program(
+        lambda: esolangs.to_file(
             _first("parameterized"),
             esolangs.generate(_first("parameterized"), "0110"),
             _MISSING,
@@ -138,28 +138,28 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         None,
     ),
     (
-        "save_program",
+        "to_file",
         x.ProgramNotFoundError,
-        lambda: esolangs.save_program("Brainfuck", _MISSING, _MISSING),
+        lambda: esolangs.to_file("Brainfuck", _MISSING, _MISSING),
         None,
     ),
     (
-        "save_program",
+        "to_file",
         x.ArgumentError,
-        lambda: esolangs.save_program("Brainfuck", "", ".", gzip=1),
+        lambda: esolangs.to_file("Brainfuck", "", ".", gzip=1),
         None,
     ),
     (
-        "save_program",
+        "to_file",
         x.ProgramError,
-        lambda: esolangs.save_program("Brainfuck", "+.", _MISSING),
+        lambda: esolangs.to_file("Brainfuck", "+.", _MISSING),
         None,
     ),
     (
-        "save_program",
+        "to_file",
         x.MissingDependencyError,
         lambda: _without_pillow(
-            lambda: esolangs.save_program(
+            lambda: esolangs.to_file(
                 _first("raster"), esolangs.generate(_first("raster"), "01"), _MISSING
             )
         ),
@@ -219,7 +219,9 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "run",
         x.ArgumentError,
-        lambda: esolangs.run(R, "", max_steps=-1).output,
+        lambda: (
+            esolangs.run(R, "", limits=esolangs.ExecutionLimits(max_steps=-1)).output
+        ),
         None,
     ),
     ("run", x.ArgumentError, lambda: esolangs.run(R, "", seed=1).output, None),
@@ -235,19 +237,34 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "run",
         x.ExecutionTimeoutError,
-        lambda: esolangs.run(R, "+[]", timeout=0.2).output,
+        lambda: (
+            esolangs.run(
+                R, "+[]", limits=esolangs.ExecutionLimits(execution_timeout=0.2)
+            ).output
+        ),
         None,
     ),
     (
         "run",
         x.ExecutionTimeoutError,
-        lambda: esolangs.run(R, "+[]", max_steps=100).output,
+        lambda: (
+            esolangs.run(
+                R, "+[]", limits=esolangs.ExecutionLimits(max_steps=100)
+            ).output
+        ),
         None,
     ),
     (
         "run",
         x.InterpreterLimitError,
-        lambda: esolangs.run(R, "+[.]", isolated=True, timeout=5, max_output=10).output,
+        lambda: (
+            esolangs.run(
+                R,
+                "+[.]",
+                isolated=True,
+                limits=esolangs.ExecutionLimits(execution_timeout=5, max_output=10),
+            ).output
+        ),
         None,
     ),
     ("run", x.HaltError, _halting_trigger, None),
@@ -421,7 +438,7 @@ def test_the_documented_error_is_raised(
 
 
 def test_describe_returns_documents_every_key() -> None:
-    """``describe``'s ``Returns:`` names each key the dict carries."""
+    """``describe``'s ``Returns:`` names each field."""
     doc = inspect.getdoc(esolangs.describe) or ""
     named = set(re.findall(r"``(\w+)``", "\n".join(section(doc, "Returns"))))
-    assert set(esolangs.describe(REFERENCE)) - named == set()
+    assert set(esolangs.LanguageInfo.__dataclass_fields__) - named == set()

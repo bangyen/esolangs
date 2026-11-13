@@ -53,7 +53,11 @@ class TestTheChecksAreSymmetric:
     @pytest.mark.parametrize("timeout", ["5", float("inf"), float("nan"), True, 0])
     def test_both_runs_refuse_the_same_timeout(self, timeout: object) -> None:
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
-            esolangs.run(REFERENCE, "+.", timeout=timeout)
+            esolangs.run(
+                REFERENCE,
+                "+.",
+                limits=esolangs.ExecutionLimits(execution_timeout=timeout),
+            )
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
             _debugger().run(timeout=timeout)
 
@@ -106,11 +110,11 @@ class TestTerminationPolarityIsData:
     @pytest.mark.parametrize("name", languages(answer_mode="termination"))
     def test_the_polarity_is_reported(self, name: str) -> None:
         facts = esolangs.describe(name)
-        assert facts["answer_mode"] == "termination"
-        assert facts["answer_encoding"] == ("halts", "diverges")
+        assert facts.answer_mode == "termination"
+        assert facts.answer_encoding == ("halts", "diverges")
 
     def test_a_printing_language_still_reports_digits(self) -> None:
-        assert esolangs.describe(REFERENCE)["answer_encoding"] == ("0", "1")
+        assert esolangs.describe(REFERENCE).answer_encoding == ("0", "1")
 
 
 @pytest.mark.parametrize("method", ["break_at", "break_on_cell"])

@@ -28,5 +28,10 @@ def terminates(name: str, source: str, stdin: str, timeout: float) -> bool:
     proven = diverges(name, source, stdin)
     if proven is not None:
         return not proven
-    esolangs.run(name, source, stdin=stdin, timeout=timeout)
+    esolangs.run(
+        name,
+        source,
+        stdin=stdin,
+        limits=esolangs.ExecutionLimits(execution_timeout=timeout),
+    )
     return True

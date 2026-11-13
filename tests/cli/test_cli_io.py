@@ -18,7 +18,7 @@ from tests.support.pick import languages, one_where
 from tests.support.reference import REFERENCE
 
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
-_SPELLED = one_where(lambda d: d["input_encoding"] != ("0", "1"), reads_input=True)
+_SPELLED = one_where(lambda d: d.input_encoding != ("0", "1"), reads_input=True)
 
 
 class TestTheStdinReaderInProcess:
@@ -138,7 +138,7 @@ class TestReadingTheProgramFileIsBounded:
     def test_an_ordinary_program_still_reads(self, tmp_path: Path) -> None:
         """The guard is worth nothing if it costs the normal path."""
         path = tmp_path / "p.txt"
-        esolangs.save_program(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
+        esolangs.to_file(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
         result = run_cli("run", REFERENCE, str(path), stdin="10")
         assert result.returncode == 0
         assert result.stdout.strip() == "1"
@@ -346,14 +346,14 @@ class TestProgramFilesLoad:
             for name in languages(
                 source_kind="text", parameterized=False, answer_mode="output"
             )
-            if esolangs.describe(name)["examples"]
+            if esolangs.describe(name).examples
         ],
     )
     def test_the_committed_examples_run(
         self, name: str, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Three once failed on the newline their own file ends with."""
-        path = PACKAGE / esolangs.describe(name)["examples"][0]
+        path = PACKAGE / esolangs.describe(name).examples[0]
         stdin = esolangs.encode_inputs(name, [0, 1])
         assert call_main(["run", name, str(path)], capsys, stdin=stdin)
 

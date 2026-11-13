@@ -60,7 +60,7 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
     """Return a structured description of ``language``.
 
     Returns:
-        A :class:`~esolangs.registry._info.LanguageInfo` dict with these keys:
+        A :class:`~esolangs.registry._info.LanguageInfo` with these fields:
 
         - Identity: ``name``, ``id``, ``source_kind``, ``state_model`` (the
           registry's category), ``wiki_url``, ``spec`` (the interpreter
@@ -122,41 +122,41 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
     backend = lang.backend
     generates = backend is not None
     reads_input = generates and not parameterized
-    return {
-        "name": name,
-        "dialect_settings": dialect_choices(name, catalog=catalog),
-        "spec": _spec(name, catalog=catalog),
-        "id": lang.id,
-        "source_kind": lang.runtime.source_kind.value,
-        "state_model": _STATE_MODELS[lang.runtime.category],
-        "generator_shape": backend.shape.value if backend is not None else None,
-        "boolean_generator": generates,
-        "generator_scaling": scaling,
-        "generator_max_inputs": backend.max_inputs if backend is not None else None,
-        "generator_restrictions": (backend.restrictions or None)
+    return _LanguageInfo(
+        name=name,
+        dialect_settings=dialect_choices(name, catalog=catalog),
+        spec=_spec(name, catalog=catalog),
+        id=lang.id,
+        source_kind=lang.runtime.source_kind.value,
+        state_model=_STATE_MODELS[lang.runtime.category],
+        generator_shape=backend.shape.value if backend is not None else None,
+        boolean_generator=generates,
+        generator_scaling=scaling,
+        generator_max_inputs=backend.max_inputs if backend is not None else None,
+        generator_restrictions=(backend.restrictions or None)
         if backend is not None
         else None,
-        "parameterized": parameterized,
-        "reads_input": reads_input,
-        "width_effect": width_effect,
+        parameterized=parameterized,
+        reads_input=reads_input,
+        width_effect=width_effect,
         # Defaults leaked here as facts: Deadfish "read" ``line_per_bit``.
-        "input_encoding": contract.alphabet if reads_input else None,
-        "input_shape": contract.input_shape if reads_input else None,
-        "answer_mode": contract.answer_mode,
-        "answer_pattern": contract.answer_pattern or None,
-        "answer_encoding": contract.answer_values,
-        "answer_convention": contract.note or None,
-        # Not ``**machine_traits(name)``: a TypedDict cannot check a
+        input_encoding=contract.alphabet if reads_input else None,
+        input_shape=contract.input_shape if reads_input else None,
+        answer_mode=contract.answer_mode,
+        answer_pattern=contract.answer_pattern or None,
+        answer_encoding=contract.answer_values,
+        answer_convention=contract.note or None,
+        # Not ``**machine_traits(name)``: mypy cannot check a
         # ``dict[str, bool]`` expansion, so a renamed trait would pass.
         # ``test_describe_agrees_with_the_machine`` keeps the four in step.
-        "self_halts": traits["self_halts"],
-        "dumps_on_the_post_halt_step": traits["dumps_on_the_post_halt_step"],
-        "steppable_to_answer": traits["steppable_to_answer"],
-        "eof_is_a_value": traits["eof_is_a_value"],
-        "random": lang.runtime.random,
-        "examples": examples,
-        "wiki_url": wiki_url(name),
-    }
+        self_halts=traits["self_halts"],
+        dumps_on_the_post_halt_step=traits["dumps_on_the_post_halt_step"],
+        steppable_to_answer=traits["steppable_to_answer"],
+        eof_is_a_value=traits["eof_is_a_value"],
+        random=lang.runtime.random,
+        examples=examples,
+        wiki_url=wiki_url(name),
+    )
 
 
 def _width_effect(lang: Language) -> WidthEffect:

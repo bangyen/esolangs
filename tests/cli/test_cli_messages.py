@@ -16,7 +16,7 @@ from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
 
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
-_SPELLED = one_where(lambda d: d["input_encoding"] != ("0", "1"), reads_input=True)
+_SPELLED = one_where(lambda d: d.input_encoding != ("0", "1"), reads_input=True)
 _STREAM = one(input_shape="char_stream")
 
 
@@ -77,7 +77,7 @@ class TestRoundSixQol:
     ) -> None:
         """`run --help` used to answer this with a `python -c` incantation."""
         for name in _SPELLED:
-            zero, one = esolangs.describe(name)["input_encoding"]
+            zero, one = esolangs.describe(name).input_encoding
             assert call_main(["encode", name, "10"], capsys) == f"{one}\n{zero}\n"
 
     @pytest.mark.parametrize("stream", _STREAM)
@@ -86,7 +86,7 @@ class TestRoundSixQol:
     ) -> None:
         """The pipeline the help now recommends, at an odd arity."""
         path = tmp_path / "tg.txt"
-        esolangs.save_program(stream, esolangs.generate(stream, "10010110"), path)
+        esolangs.to_file(stream, esolangs.generate(stream, "10010110"), path)
         got = ""
         for row in range(8):
             stdin = call_main(["encode", stream, f"{row:03b}"], capsys)

@@ -326,12 +326,6 @@ def _row_answerer(
     if not terminating:
         from tests.support.execution import run_observed
 
-        run = (
-            esolangs.run
-            if io_factory is ScriptedIO
-            else partial(run_observed, io_factory=io_factory)
-        )
-
         def output_answer(
             source: Program | Artifact,
             stdin: str,
@@ -341,15 +335,30 @@ def _row_answerer(
             if prepared is None:
 
                 def call(*_args: object) -> ExecutionResult:
-                    return run(
+                    if io_factory is not ScriptedIO:
+                        return run_observed(
+                            name,
+                            source,
+                            stdin=stdin,
+                            timeout=bound if isolated else None,
+                            isolated=isolated,
+                            scale=scale,
+                            max_output=max_output,
+                            max_memory=max_memory,
+                            settings=settings,
+                            io_factory=io_factory,
+                        )
+                    return esolangs.run(
                         name,
                         source,
                         stdin=stdin,
-                        timeout=bound if isolated else None,
+                        limits=esolangs.ExecutionLimits(
+                            execution_timeout=bound if isolated else None,
+                            max_output=max_output,
+                            max_memory=max_memory,
+                        ),
                         isolated=isolated,
                         scale=scale,
-                        max_output=max_output,
-                        max_memory=max_memory,
                         settings=settings,
                     )
 

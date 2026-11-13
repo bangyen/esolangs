@@ -906,7 +906,12 @@ def test_canonical_classifiers_drive_native_output(monkeypatch) -> None:
             fault.setattr(owner, name, broken)
             program = esolangs.generate("Circuit Diagram", table)
         n = len(table).bit_length() - 1
-        result = esolangs.run("Circuit Diagram", program, stdin="0" * n, max_steps=100)
+        result = esolangs.run(
+            "Circuit Diagram",
+            program,
+            stdin="0" * n,
+            limits=esolangs.ExecutionLimits(max_steps=100),
+        )
         assert (result.output, result.input_position, result.input_past_end) == (
             "1",
             n,

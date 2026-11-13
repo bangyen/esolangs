@@ -57,7 +57,9 @@ def test_bad_png_hint_survives_exception_translation() -> None:
 @pytest.mark.medium
 def test_text_encoding_hint_is_available_before_interpreter_loading() -> None:
     with pytest.raises(esolangs.ProgramError, match="invalid UTF-8") as caught:
-        esolangs.run(REFERENCE, b"\xff", timeout=1)
+        esolangs.run(
+            REFERENCE, b"\xff", limits=esolangs.ExecutionLimits(execution_timeout=1)
+        )
     assert caught.value.__notes__ == [
         "hint: save the text program as UTF-8 before running it"
     ]
@@ -93,7 +95,12 @@ def test_truncated_png_header_has_a_recovery_hint() -> None:
 def test_input_exhaustion_keeps_counts_and_one_hint(isolated) -> None:
     with pytest.raises(esolangs.InputExhaustedError) as caught:
         # 10s: an isolated spawn under a loaded full run took over 2s.
-        esolangs.run(REFERENCE, "+.,", timeout=10, isolated=isolated)
+        esolangs.run(
+            REFERENCE,
+            "+.,",
+            limits=esolangs.ExecutionLimits(execution_timeout=10),
+            isolated=isolated,
+        )
     assert caught.value.partial_output == "\x01"
     assert caught.value.reads == caught.value.supplied == 0
     hints = [note for note in caught.value.__notes__ if note.startswith("hint:")]
@@ -104,7 +111,7 @@ def test_input_exhaustion_keeps_counts_and_one_hint(isolated) -> None:
 @pytest.mark.medium
 def test_timeout_hint_preserves_the_timeout_class() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run(REFERENCE, "+[]", max_steps=3)
+        esolangs.run(REFERENCE, "+[]", limits=esolangs.ExecutionLimits(max_steps=3))
     assert "check loop termination" in caught.value.__notes__[0]
     assert "before increasing" in caught.value.__notes__[0]
 

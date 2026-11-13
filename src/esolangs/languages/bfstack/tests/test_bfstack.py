@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs import ExecutionLimits
 from esolangs import run as run_public
 from esolangs.exceptions import ExecutionTimeoutError, HaltError
 from esolangs.languages.bfstack.interpreter import _Machine, run
@@ -64,7 +65,12 @@ class TestBFStack:
                 == text
             )
         with pytest.raises(ExecutionTimeoutError):
-            run_public("BFStack", "\ud800\udfff>", isolated=True, max_steps=2)
+            run_public(
+                "BFStack",
+                "\ud800\udfff>",
+                isolated=True,
+                limits=ExecutionLimits(max_steps=2),
+            )
 
     def test_input_adds_a_cell_rather_than_overwriting_one(self, monkeypatch) -> None:
         """``,`` pushes, so what was on top before is still underneath."""

@@ -37,6 +37,7 @@ import re
 import sys
 from collections.abc import Callable, Mapping
 from contextlib import suppress
+from dataclasses import asdict
 from itertools import pairwise
 from typing import cast, get_args
 
@@ -119,7 +120,7 @@ _CATALOG_FILTERS: dict[str, tuple[str, tuple[str, ...]]] = {
 
 def _input_shape(facts: LanguageInfo) -> str | None:
     """Return the shape ``--input-shape`` filters on: ``template`` included."""
-    return "template" if facts["parameterized"] else facts["input_shape"]
+    return "template" if facts.parameterized else facts.input_shape
 
 
 def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> bool:
@@ -139,8 +140,8 @@ def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> 
     if "--input-shape" in options and _input_shape(facts) != options["--input-shape"]:
         return False
     if inputs is not None:
-        cap = facts["generator_max_inputs"]
-        if not facts["boolean_generator"] or (cap is not None and cap < inputs):
+        cap = facts.generator_max_inputs
+        if not facts.boolean_generator or (cap is not None and cap < inputs):
             return False
     return True
 
@@ -196,21 +197,21 @@ def _list(rest: list[str]) -> None:
                 [
                     {
                         "name": name,
-                        "generator_scaling": facts["generator_scaling"],
-                        "source_kind": facts["source_kind"],
-                        "state_model": facts["state_model"],
-                        "generator_shape": facts["generator_shape"],
-                        "answer_mode": facts["answer_mode"],
+                        "generator_scaling": facts.generator_scaling,
+                        "source_kind": facts.source_kind,
+                        "state_model": facts.state_model,
+                        "generator_shape": facts.generator_shape,
+                        "answer_mode": facts.answer_mode,
                         # The filter's value, so jq agrees with --input-shape.
                         "input_shape": _input_shape(facts),
-                        "random": facts["random"],
-                        "width_effect": facts["width_effect"],
+                        "random": facts.random,
+                        "width_effect": facts.width_effect,
                         # The three the marker column encodes, spelled out.
-                        "boolean_generator": facts["boolean_generator"],
-                        "parameterized": facts["parameterized"],
-                        "generator_max_inputs": facts["generator_max_inputs"],
-                        "generator_restrictions": facts["generator_restrictions"],
-                        "examples": facts["examples"],
+                        "boolean_generator": facts.boolean_generator,
+                        "parameterized": facts.parameterized,
+                        "generator_max_inputs": facts.generator_max_inputs,
+                        "generator_restrictions": facts.generator_restrictions,
+                        "examples": facts.examples,
                     }
                     for name, facts in zip(names, map(describe, names), strict=True)
                 ],
@@ -235,14 +236,14 @@ def _list(rest: list[str]) -> None:
             filter(
                 None,
                 (
-                    "gen" if facts["boolean_generator"] else "int",
-                    "tmpl" if facts["parameterized"] else "",
-                    "ex" if facts["examples"] else "",
+                    "gen" if facts.boolean_generator else "int",
+                    "tmpl" if facts.parameterized else "",
+                    "ex" if facts.examples else "",
                 ),
             )
         )
-        limit = facts["generator_max_inputs"]
-        restriction = facts["generator_restrictions"]
+        limit = facts.generator_max_inputs
+        restriction = facts.generator_restrictions
         suffix = f" max-inputs={limit}" if limit is not None else ""
         if restriction:
             suffix += f" ({restriction})"
@@ -267,7 +268,7 @@ def _eaten_width_note(before: list[str]) -> str:
 def _layout_ignored(language: str, *, balance: bool) -> bool:
     """Whether ``--width``/``--balance`` cannot change ``language``'s layout."""
     backend = LANGUAGES[resolve(language)].backend
-    return describe(language)["width_effect"] == "none" and not (
+    return describe(language).width_effect == "none" and not (
         balance and backend is not None and backend.balance is not None
     )
 
@@ -360,7 +361,7 @@ def _generate(rest: list[str]) -> None:
     ):
         sys.stderr.write(
             f"note: {'--balance' if balance else '--width'} has no effect on "
-            f"{describe(rest[0])['name']} -- "
+            f"{describe(rest[0]).name} -- "
             f"the generator retains its original layout\n"
         )
     if "--plain" in flags and isinstance(program, Raster):
@@ -373,7 +374,7 @@ def _generate(rest: list[str]) -> None:
     if binary and sys.stdout.isatty():
         # Unary's gzip once landed on a terminal unannounced.
         _fail(
-            f"{describe(rest[0])['name']} generates "
+            f"{describe(rest[0]).name} generates "
             f"{'a PNG' if isinstance(program, Raster) else 'gzip'}; "
             f"redirect stdout to a file"
             + ("" if isinstance(program, Raster) else " or pass --plain")
@@ -401,38 +402,38 @@ def _printable(value: object) -> str:
 
 def _answer_sentence(facts: LanguageInfo) -> str:
     """State where the answer bit lives, in the terms a shell user needs."""
-    zero, one = map(_printable, facts["answer_encoding"])
-    mode = facts["answer_mode"]
+    zero, one = map(_printable, facts.answer_encoding)
+    mode = facts.answer_mode
     if mode == "termination":
         text = f"termination ({zero} for 0, {one} for 1)"
     elif mode == "dump":
         text = f"final-state dump ({zero} for 0, {one} for 1)"
     else:
         text = f"printed output ({zero} for 0, {one} for 1)"
-    if facts["answer_convention"]:
-        text += f"; {facts['answer_convention']}"
+    if facts.answer_convention:
+        text += f"; {facts.answer_convention}"
     return text
 
 
 def _generator_sentence(facts: LanguageInfo) -> str:
     """State what generation offers before the reader reaches the fields."""
-    if not facts["boolean_generator"]:
+    if not facts.boolean_generator:
         return "none (interpreter only)"
     parts = ["yes"]
-    if facts["parameterized"]:
+    if facts.parameterized:
         parts.append("template; fill inputs with generate --bits")
-    elif facts["reads_input"]:
+    elif facts.reads_input:
         parts.append("reads input bits from stdin")
-    if facts["generator_max_inputs"] is not None:
-        parts.append(f"max {facts['generator_max_inputs']} inputs")
-    if facts["generator_restrictions"]:
-        parts.append(str(facts["generator_restrictions"]))
+    if facts.generator_max_inputs is not None:
+        parts.append(f"max {facts.generator_max_inputs} inputs")
+    if facts.generator_restrictions:
+        parts.append(str(facts.generator_restrictions))
     return "; ".join(parts)
 
 
 def _settings_sentence(facts: LanguageInfo) -> str:
     """Spell dialect choices as names and defaults, not a Python dict."""
-    settings = facts["dialect_settings"]
+    settings = facts.dialect_settings
     if not settings:
         return "none"
     rendered = []
@@ -488,19 +489,19 @@ def _describe(rest: list[str]) -> None:
         # Verbatim, including the keys the reading layout hides: a caller
         # asking for JSON is not reading it, and a field that vanishes when
         # it is empty is the thing that makes a schema unusable.
-        print(json.dumps(facts, indent=2))
+        print(json.dumps(asdict(facts), indent=2))
         return
     # The contract first: how bits go in, where the answer comes out, and
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
-    name = str(facts["name"])
+    name = str(facts.name)
     print(name)
-    if facts["parameterized"]:
+    if facts.parameterized:
         print(
             "input: none -- this generator embeds the bits in the program: "
             f"esolangs generate --bits <bits> {_as_argument(name)} <table>"
         )
-    elif not facts["reads_input"]:
+    elif not facts.reads_input:
         print("input: none -- this language reads no stdin")
     else:
         print(f"input: {_input_sentence(facts)}")
@@ -511,8 +512,8 @@ def _describe(rest: list[str]) -> None:
     print()
     print("details:")
     shown_facts: dict[str, object] = {
-        **facts,
-        "examples": f"{len(facts['examples'])} committed (paths in --json)",
+        **asdict(facts),
+        "examples": f"{len(facts.examples)} committed (paths in --json)",
     }
     details = [(key, shown_facts[key]) for key in _DETAIL_KEYS]
     width = max(len(key) for key, _value in details)

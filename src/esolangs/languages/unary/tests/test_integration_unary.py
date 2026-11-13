@@ -16,8 +16,8 @@ def test_describe_writes_no_raw_nul(capsys: pytest.CaptureFixture[str]) -> None:
 
 def test_unary_generator_declares_byte_inputs_and_termination_answers() -> None:
     description = esolangs.describe("Unary")
-    assert description["input_encoding"] == ("\x00", "\xff")
-    assert description["answer_mode"] == "termination"
+    assert description.input_encoding == ("\x00", "\xff")
+    assert description.answer_mode == "termination"
     assert esolangs.encode_inputs("Unary", (0, 1)) == "\x00\xff"
     assert len(esolangs.generate("Unary", "01").source) == 887
 
@@ -28,15 +28,30 @@ def test_compressed_and_plain_sources_share_execution(tmp_path) -> None:
     assert len(program.source) == 27_452_351
     assert len(program.source.to_gzip()) == 26_712
     path = tmp_path / "and.txt.gz"
-    esolangs.save_program("Unary", program, path)
+    esolangs.to_file("Unary", program, path)
     for source in (program, program.source.to_gzip(), path, str(program.source)):
-        assert run("Unary", source, stdin="\x00\xff", max_steps=20).output == ""
+        assert (
+            run(
+                "Unary",
+                source,
+                stdin="\x00\xff",
+                limits=esolangs.ExecutionLimits(max_steps=20),
+            ).output
+            == ""
+        )
     restored = esolangs.load_program("Unary", esolangs.dump_program("Unary", program))
     assert isinstance(restored, esolangs.ProgramArtifact)
     assert isinstance(restored.source, esolangs.CompressedText)
     assert restored == program
     assert (
-        run("Unary", program, stdin="\x00\xff", isolated=True, timeout=5).output == ""
+        run(
+            "Unary",
+            program,
+            stdin="\x00\xff",
+            isolated=True,
+            limits=esolangs.ExecutionLimits(execution_timeout=5),
+        ).output
+        == ""
     )
 
 

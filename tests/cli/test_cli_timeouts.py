@@ -38,7 +38,7 @@ class TestTimeoutValuesAreCheckedOnce:
     ) -> None:
         """Between the floor and the ceiling, nothing changes."""
         path = tmp_path / "p.txt"
-        esolangs.save_program(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
+        esolangs.to_file(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
         out = call_main(
             ["run", "--timeout", "100000", REFERENCE, str(path)],
             capsys,
@@ -87,11 +87,11 @@ def test_run_states_no_boolean_verdict(
     """run takes any program; the halt/diverge contract is a generated one's."""
     language = languages(answer_mode="termination", boolean_generator=True)[0]
     facts = esolangs.describe(language)
-    bits = ["--bits", "1"] if facts["parameterized"] else []
+    bits = ["--bits", "1"] if facts.parameterized else []
     source, _ = call_both(["generate", *bits, language, "00"], capsys)
     path = tmp_path / "zero.txt"
     path.write_text(source)
-    stdin = esolangs.encode_inputs(language, [1]) if facts["reads_input"] else ""
+    stdin = esolangs.encode_inputs(language, [1]) if facts.reads_input else ""
     _, error = call_both(["run", "--timeout", "20", language, str(path)], capsys, stdin)
     assert "answer" not in error.lower()
     assert "termination" not in error.lower()

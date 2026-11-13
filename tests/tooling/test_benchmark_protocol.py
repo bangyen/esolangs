@@ -139,9 +139,9 @@ def _check_store_sampling(monkeypatch) -> None:
         name
         for name, language in LANGUAGES.items()
         if language.backend is not None
-        and esolangs.describe(name)["dumps_on_the_post_halt_step"]
-        and esolangs.describe(name)["steppable_to_answer"]
-        and esolangs.describe(name)["answer_mode"] != "termination"
+        and esolangs.describe(name).dumps_on_the_post_halt_step
+        and esolangs.describe(name).steppable_to_answer
+        and esolangs.describe(name).answer_mode != "termination"
     ]
     assert len(cohort) == 9
     completion_gains = active_gains = 0

@@ -205,7 +205,9 @@ def _check_marked_paths() -> None:
     for row, bits in enumerate(product((0, 1), repeat=3)):
         try:
             result = run(
-                "REFRACTRAN", template.fill(bits), max_steps=2 * len(broken) + 1
+                "REFRACTRAN",
+                template.fill(bits),
+                limits=esolangs.ExecutionLimits(max_steps=2 * len(broken) + 1),
             )
         except esolangs.ExecutionTimeoutError:
             caught = True

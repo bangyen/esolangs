@@ -37,7 +37,7 @@ def test_the_input_is_the_row_number() -> None:
         assert parity.call_count == int(n == 4)
         assert_saved_rows(language, artifact, table, range(len(table)))
 
-    assert esolangs.describe("Blindfolded Arithmetic")["input_shape"] == "row_number"
+    assert esolangs.describe("Blindfolded Arithmetic").input_shape == "row_number"
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [0, 0]) == "1\n"
     assert esolangs.encode_inputs("Blindfolded Arithmetic", [1, 0]) == "3\n"
     assert_analysis_complement("Blindfolded Arithmetic", "read_at")

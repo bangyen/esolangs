@@ -33,7 +33,12 @@ def test_generated_xor_runs_every_row_in_a_worker(language) -> None:
 @pytest.mark.medium
 def test_timeout_retains_streamed_output() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run(REFERENCE, "+.[]", timeout=1, isolated=True)
+        esolangs.run(
+            REFERENCE,
+            "+.[]",
+            limits=esolangs.ExecutionLimits(execution_timeout=1),
+            isolated=True,
+        )
     assert caught.value.partial_output == "\x01"
     assert esolangs.run(REFERENCE, "++.", isolated=True).output == "\x02"
     assert caught.value.observation is None
@@ -52,7 +57,12 @@ def test_input_error_retains_counts_and_output() -> None:
 @pytest.mark.parametrize("timeout", [0, float("inf")])
 def test_refuses_an_invalid_deadline(timeout) -> None:
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run(REFERENCE, "", timeout=timeout, isolated=True)
+        esolangs.run(
+            REFERENCE,
+            "",
+            limits=esolangs.ExecutionLimits(execution_timeout=timeout),
+            isolated=True,
+        )
 
 
 def test_decode_missing_result_and_notes() -> None:
@@ -251,7 +261,12 @@ def test_unknown_error_reconstructs_suggestions() -> None:
 @pytest.mark.parametrize("limit", [0, 1, 4097])
 def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned) -> None:
     with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
-        esolangs.run(REFERENCE, "+[.]", isolated=True, max_output=limit)
+        esolangs.run(
+            REFERENCE,
+            "+[.]",
+            isolated=True,
+            limits=esolangs.ExecutionLimits(max_output=limit),
+        )
     assert caught.value.partial_output == "\x01" * limit
     # A budget the caller named, but no clock ran out.
     assert isinstance(caught.value, esolangs.ExecutionBudgetError)
@@ -268,8 +283,12 @@ def test_an_output_cap_selects_isolation_on_every_route(spawned) -> None:
     limits = esolangs.ExecutionLimits(max_output=1)
     outcome = language.execute("+[.]", limits=limits)
     for call in (
-        lambda: esolangs.run(REFERENCE, "+[.]", max_output=1),
-        lambda: language.prepare("+[.]").run(max_output=1),
+        lambda: esolangs.run(
+            REFERENCE, "+[.]", limits=esolangs.ExecutionLimits(max_output=1)
+        ),
+        lambda: language.prepare("+[.]").run(
+            limits=esolangs.ExecutionLimits(max_output=1)
+        ),
     ):
         with pytest.raises(esolangs.InterpreterLimitError) as caught:
             call()
@@ -278,13 +297,18 @@ def test_an_output_cap_selects_isolation_on_every_route(spawned) -> None:
         assert caught.value.partial_output == outcome.observation.output == "\x01"
     assert len(spawned) == 3
     with pytest.raises(esolangs.ArgumentError, match="max_memory must be a positive"):
-        esolangs.run(REFERENCE, "+", max_memory=0)
+        esolangs.run(REFERENCE, "+", limits=esolangs.ExecutionLimits(max_memory=0))
 
 
 @pytest.mark.medium
 def test_output_limit_beyond_the_decimal_rendering_limit_accepts_small_output() -> None:
     assert (
-        esolangs.run(REFERENCE, "++.", isolated=True, max_output=10**5000).output
+        esolangs.run(
+            REFERENCE,
+            "++.",
+            isolated=True,
+            limits=esolangs.ExecutionLimits(max_output=10**5000),
+        ).output
         == "\x02"
     )
 
@@ -292,7 +316,12 @@ def test_output_limit_beyond_the_decimal_rendering_limit_accepts_small_output() 
 @pytest.mark.medium
 def test_capped_timeout_retains_output_and_reaps(spawned) -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run(REFERENCE, "+.[]", timeout=1, isolated=True, max_output=10)
+        esolangs.run(
+            REFERENCE,
+            "+.[]",
+            limits=esolangs.ExecutionLimits(execution_timeout=1, max_output=10),
+            isolated=True,
+        )
     assert caught.value.partial_output == "\x01"
     assert spawned[0].poll() is not None
 
@@ -300,7 +329,12 @@ def test_capped_timeout_retains_output_and_reaps(spawned) -> None:
 @pytest.mark.parametrize("limit", [-1, True, 1.5, "1"])
 def test_refuses_invalid_output_limits(limit) -> None:
     with pytest.raises(esolangs.ArgumentError, match="max_output"):
-        esolangs.run(REFERENCE, "", isolated=True, max_output=limit)
+        esolangs.run(
+            REFERENCE,
+            "",
+            isolated=True,
+            limits=esolangs.ExecutionLimits(max_output=limit),
+        )
 
 
 def test_capped_worker_splits_and_truncates_a_single_large_write(
@@ -328,7 +362,12 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(
 @pytest.mark.medium
 def test_capped_input_error_retains_public_class_and_prefix() -> None:
     with pytest.raises(esolangs.InputExhaustedError) as caught:
-        esolangs.run(REFERENCE, "+.,", isolated=True, max_output=2)
+        esolangs.run(
+            REFERENCE,
+            "+.,",
+            isolated=True,
+            limits=esolangs.ExecutionLimits(max_output=2),
+        )
     assert caught.value.partial_output == "\x01"
     assert caught.value.reads == 0
     assert caught.value.supplied == 0
@@ -575,9 +614,14 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
         termination=True,
     )
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
-    ordinary = esolangs.run(REFERENCE, "+.", max_steps=2)
+    ordinary = esolangs.run(
+        REFERENCE, "+.", limits=esolangs.ExecutionLimits(max_steps=2)
+    )
     _worker()
-    assert esolangs.run(REFERENCE, "+.", max_steps=2) == ordinary
+    assert (
+        esolangs.run(REFERENCE, "+.", limits=esolangs.ExecutionLimits(max_steps=2))
+        == ordinary
+    )
     assert not hasattr(_execution_operations, "io_factory")
     assert not hasattr(vm, "io_factory")
     assert _decode(capsys.readouterr().out, expired=False).decision.halts is True

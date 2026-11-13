@@ -38,7 +38,7 @@ def test_every_row_checks_the_supplied_program_without_regenerating(monkeypatch)
 def test_verification_helpers_retain_artifacts(language):
     program, _stdin = _row(language, "01", [1])
     assert isinstance(program, esolangs.ProgramArtifact)
-    assert program.language == esolangs.describe(language)["name"]
+    assert program.language == esolangs.describe(language).name
     sample, _sample_stdin = _generated(language)
     assert isinstance(sample, (str, esolangs.Raster, esolangs.CompressedText))
     assert evaluate_generated(language, "01") == "01"

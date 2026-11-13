@@ -25,7 +25,7 @@ RASTER_LANGUAGES = [
 @pytest.mark.medium
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 def test_committed_png_computes_every_row(language: str) -> None:
-    examples = esolangs.describe(language)["examples"]
+    examples = esolangs.describe(language).examples
     assert len(examples) == 1
     path = Path(str(files("esolangs") / examples[0]))
     assert _evaluate(language, path, inputs=2) == "0001"
@@ -64,7 +64,7 @@ def test_every_raster_language_generates_shared_source(language: str) -> None:
     assert isinstance(program.source, Raster)
     assert program.source.rows
     assert program.source.rows[0]
-    assert esolangs.describe(language)["source_kind"] == "raster"
+    assert esolangs.describe(language).source_kind == "raster"
     assert esolangs.run(language, program, stdin="1\n").output == "1"
 
 
@@ -83,7 +83,7 @@ def test_every_raster_language_runs_its_png(language: str, tmp_path: Path) -> No
     program = esolangs.generate(language, "01")
     assert isinstance(program.source, Raster)
     path = tmp_path / f"{language.lower()}.png"
-    esolangs.save_program(language, program, path)
+    esolangs.to_file(language, program, path)
     assert esolangs.run(language, path, stdin="0\n").output == "0"
 
 
@@ -155,7 +155,13 @@ def test_bounded_raster_run_preserves_explicit_scale(language: str, native_png) 
         Raster.from_png(native_png(source))
     )
     assert (
-        esolangs.run(language, source, stdin="1\n", scale=2, max_steps=1000).output
+        esolangs.run(
+            language,
+            source,
+            stdin="1\n",
+            scale=2,
+            limits=esolangs.ExecutionLimits(max_steps=1000),
+        ).output
         == "1"
     )
     vm = make_vm(language, source, stdin="0\n", scale=2)
@@ -165,7 +171,7 @@ def test_bounded_raster_run_preserves_explicit_scale(language: str, native_png) 
     debugger = make_debugger(language, source, stdin="1\n", scale=2)
     assert debugger.run(max_steps=1000) == "halted"
     assert debugger.output == "1"
-    assert esolangs.describe(language)["state_model"] in {"tape", "stack"}
+    assert esolangs.describe(language).state_model in {"tape", "stack"}
 
 
 @pytest.mark.parametrize("channel", [True, 1.0])
@@ -294,7 +300,11 @@ def test_png_settings_retain_integer_choices(native_png) -> None:
 def test_png_language_tag_refuses_cross_language_execution(native_png) -> None:
     source = esolangs.generate(RASTER_LANGUAGES[0], "01")
     with pytest.raises(esolangs.ProgramError, match="generated for"):
-        esolangs.run(RASTER_LANGUAGES[1], native_png(source), max_steps=1000)
+        esolangs.run(
+            RASTER_LANGUAGES[1],
+            native_png(source),
+            limits=esolangs.ExecutionLimits(max_steps=1000),
+        )
 
 
 def test_tagging_unknown_pixels_preserves_automatic_scale_detection() -> None:
@@ -327,7 +337,7 @@ def test_explicit_scale_overrides_png_metadata(
         native_png(changed),
         stdin=esolangs.encode_inputs(language, [1]),
         scale=2,
-        max_steps=1000,
+        limits=esolangs.ExecutionLimits(max_steps=1000),
     )
     assert esolangs.read_answer(language, result.output) == "1"
     spec = LANGUAGES[language]

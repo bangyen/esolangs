@@ -4,6 +4,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import ExecutionLimits
 from esolangs import run as run_public
 from esolangs.exceptions import HaltError
 from esolangs.languages.between.interpreter import run
@@ -43,7 +44,10 @@ def test_apostrophes_in_strings() -> None:
     for text in ("\ud800\udfff", "\ud800", "\udfff", "\U000103ff"):
         assert (
             run_public(
-                "Between", f"'{text}'p.", isolated=True, max_output=len(text)
+                "Between",
+                f"'{text}'p.",
+                isolated=True,
+                limits=ExecutionLimits(max_output=len(text)),
             ).output
             == text
         )

@@ -63,7 +63,7 @@ def test_line_is_a_public_raster_language() -> None:
     program = esolangs.generate("Line", "01")
     assert isinstance(program, esolangs.ProgramArtifact)
     assert isinstance(program.source, Raster)
-    assert esolangs.describe("Line")["source_kind"] == "raster"
+    assert esolangs.describe("Line").source_kind == "raster"
     assert run("Line", program, stdin="1\n").output == "1"
 
 
@@ -73,7 +73,7 @@ def test_public_run_loads_line_png(tmp_path: Path) -> None:
     assert isinstance(program, esolangs.ProgramArtifact)
     assert isinstance(program.source, Raster)
     path = tmp_path / "line.png"
-    esolangs.save_program("Line", program, path)
+    esolangs.to_file("Line", program, path)
     assert run("Line", path, stdin="0\n").output == "0"
 
 

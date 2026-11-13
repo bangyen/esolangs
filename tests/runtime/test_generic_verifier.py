@@ -46,15 +46,18 @@ def _verify(name: str, table: str) -> str:
     got = ""
     for row in range(len(table)):
         bits = row_bits(row, inputs)
-        if facts["parameterized"]:
+        if facts.parameterized:
             source, stdin = esolangs.instantiate(name, program, bits), ""
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
-        if facts["answer_mode"] == "termination":
+        if facts.answer_mode == "termination":
             got += _terminates(name, source, stdin)
         else:
             output = esolangs.run(
-                name, source, stdin=stdin, timeout=_RUN_TIMEOUT
+                name,
+                source,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(execution_timeout=_RUN_TIMEOUT),
             ).output
             got += esolangs.read_answer(name, output)
     return got
@@ -66,7 +69,7 @@ def test_every_language_verifies_with_no_per_language_knowledge(table: str) -> N
     """Every language, driven only by what the API reports about each."""
     wrong = {}
     for name in esolangs.list_languages():
-        if not esolangs.describe(name)["boolean_generator"]:
+        if not esolangs.describe(name).boolean_generator:
             continue
         selected = probe_table(name, table)
         got = _verify(name, selected)
@@ -84,8 +87,8 @@ class TestTheFactsThatMakeItPossible:
     def test_a_dump_says_where_its_answer_is(self) -> None:
         """``answer_mode`` said a language dumps, never where to look."""
         infos = [esolangs.describe(name) for name in languages(answer_mode="dump")]
-        assert any(info["answer_pattern"] for info in infos)
-        assert any(info["answer_encoding"] != ("0", "1") for info in infos)
+        assert any(info.answer_pattern for info in infos)
+        assert any(info.answer_encoding != ("0", "1") for info in infos)
 
     def test_a_termination_language_refuses_to_be_read(self) -> None:
         """Its output is not the answer, so inventing one would be a lie."""
@@ -95,6 +98,10 @@ class TestTheFactsThatMakeItPossible:
     def test_a_timeout_is_distinguishable_from_a_faulting_halt(self) -> None:
         """``except HaltError`` would score an invalid-op halt as a 1."""
         with pytest.raises(esolangs.ExecutionTimeoutError) as exc:
-            esolangs.run(REFERENCE, "+[]", timeout=0.01)
+            esolangs.run(
+                REFERENCE,
+                "+[]",
+                limits=esolangs.ExecutionLimits(execution_timeout=0.01),
+            )
         assert isinstance(exc.value, esolangs.HaltError)
         assert isinstance(exc.value, TimeoutError)

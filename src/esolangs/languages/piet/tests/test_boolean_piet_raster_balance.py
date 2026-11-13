@@ -53,7 +53,10 @@ def test_dense_bends_and_final_halt_execute(width: int) -> None:
     for row in range(8):
         assert (
             run(
-                "Piet", program, stdin="\n".join(f"{row:03b}") + "\n", max_steps=1000
+                "Piet",
+                program,
+                stdin="\n".join(f"{row:03b}") + "\n",
+                limits=esolangs.ExecutionLimits(max_steps=1000),
             ).output
             == table[row]
         )
@@ -75,7 +78,7 @@ def test_tight_routing_never_grows_and_executes(width: int) -> None:
                         "Piet",
                         program,
                         stdin="\n".join(f"{row:0{inputs}b}") + "\n",
-                        max_steps=2000,
+                        limits=esolangs.ExecutionLimits(max_steps=2000),
                     ).output
                     == table[row]
                 )
@@ -106,7 +109,7 @@ def test_white_bridge_lanes_execute_exhaustively(
                         "Piet",
                         program,
                         stdin="\n".join(f"{row:0{inputs}b}") + "\n",
-                        max_steps=3000,
+                        limits=esolangs.ExecutionLimits(max_steps=3000),
                     ).output
                     == table[row]
                 )
@@ -144,7 +147,7 @@ def test_white_bridge_turn_colors_and_halt_execute(table: str) -> None:
                 "Piet",
                 program,
                 stdin="\n".join(f"{row:0{inputs}b}") + "\n",
-                max_steps=10000,
+                limits=esolangs.ExecutionLimits(max_steps=10000),
             ).output
             == table[row]
         )

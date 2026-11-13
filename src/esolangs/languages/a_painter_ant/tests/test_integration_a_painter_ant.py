@@ -54,7 +54,7 @@ def test_a_painter_ant_is_the_one_that_cannot_be_stepped() -> None:
     unsteppable = [
         n
         for n in esolangs.list_languages()
-        if not esolangs.describe(n)["steppable_to_answer"]
+        if not esolangs.describe(n).steppable_to_answer
     ]
     assert unsteppable == ["A Painter Ant"]
 
@@ -156,7 +156,12 @@ def test_a_step_bound_requires_a_periodic_witness():
     assert caught.value.partial_output == ""
     assert caught.value.observation.steps == 1
     assert caught.value.observation.completion is None
-    result = esolangs.run("A Painter Ant", "P", max_steps=2, isolated=True)
+    result = esolangs.run(
+        "A Painter Ant",
+        "P",
+        limits=esolangs.ExecutionLimits(max_steps=2),
+        isolated=True,
+    )
     assert result.output == "@"
     assert result.steps == 2
     assert result.completion.kind is Completion.PERIODIC

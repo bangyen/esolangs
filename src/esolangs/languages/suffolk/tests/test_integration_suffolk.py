@@ -42,7 +42,7 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
         assert "does not promise" in doc
         # The fact lives on Suffolk, not in the shared VM docstring.
         assert "Suffolk" not in doc
-        assert "does not promise" in esolangs.describe("Suffolk")["spec"]
+        assert "does not promise" in esolangs.describe("Suffolk").spec
 
 
 def test_isolated_evaluation_requires_a_deadline() -> None:
@@ -89,7 +89,15 @@ def test_documented_eof_halts_with_the_answer() -> None:
 
     program = esolangs.generate("Suffolk", "0110")
     stdin = esolangs.encode_inputs("Suffolk", [1, 0], truth_table="0110")
-    assert run("Suffolk", program, stdin=stdin, timeout=20).output == "1"
+    assert (
+        run(
+            "Suffolk",
+            program,
+            stdin=stdin,
+            limits=esolangs.ExecutionLimits(execution_timeout=20),
+        ).output
+        == "1"
+    )
 
 
 def test_suffolk_no_longer_disagrees_with_itself() -> None:
@@ -97,7 +105,15 @@ def test_suffolk_no_longer_disagrees_with_itself() -> None:
     table = "0110"
     for bits, want in (([0, 0], "0"), ([0, 1], "1"), ([1, 0], "1"), ([1, 1], "0")):
         program, stdin = _row("Suffolk", table, bits)
-        assert run("Suffolk", program, stdin=stdin, timeout=20).output == want
+        assert (
+            run(
+                "Suffolk",
+                program,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(execution_timeout=20),
+            ).output
+            == want
+        )
         debugger = debugger_api.make_debugger("Suffolk", program, stdin=stdin)
         assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
         assert debugger.output == want

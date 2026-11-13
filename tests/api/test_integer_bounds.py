@@ -10,10 +10,23 @@ from tests.support.reference import REFERENCE
 @pytest.mark.parametrize(
     "operation",
     [
-        lambda huge: esolangs.run(REFERENCE, "", timeout=huge).output,
-        lambda huge: esolangs.run(REFERENCE, "", timeout=-huge).output,
         lambda huge: (
-            esolangs.run(REFERENCE, "", isolated=True, max_output=-huge).output
+            esolangs.run(
+                REFERENCE, "", limits=esolangs.ExecutionLimits(execution_timeout=huge)
+            ).output
+        ),
+        lambda huge: (
+            esolangs.run(
+                REFERENCE, "", limits=esolangs.ExecutionLimits(execution_timeout=-huge)
+            ).output
+        ),
+        lambda huge: (
+            esolangs.run(
+                REFERENCE,
+                "",
+                isolated=True,
+                limits=esolangs.ExecutionLimits(max_output=-huge),
+            ).output
         ),
         lambda huge: esolangs.generate(REFERENCE, "01", width=-huge),
         lambda huge: esolangs.encode_inputs(REFERENCE, [huge]),
@@ -25,7 +38,13 @@ from tests.support.reference import REFERENCE
                 scale=-huge,
             ).output
         ),
-        lambda huge: esolangs.run(REFERENCE, "", timeout={"value": huge}).output,
+        lambda huge: (
+            esolangs.run(
+                REFERENCE,
+                "",
+                limits=esolangs.ExecutionLimits(execution_timeout={"value": huge}),
+            ).output
+        ),
     ],
 )
 def test_oversized_integer_arguments_keep_public_errors(operation) -> None:

@@ -46,16 +46,16 @@ def test_reads_bytes(tmp_path, monkeypatch) -> None:
     path.write_bytes((source + "\r\n").encode())
     assert api.from_file(path).source == source + "\r\n"
     for program in (source + "\r\n", path):
-        for options in ({}, {"max_steps": 100}):
+        for options in ({}, {"limits": esolangs.ExecutionLimits(max_steps=100)}):
             with pytest.raises(esolangs.ProgramError, match="lines"):
                 api.run(program, stdin="A", **options)
     native = api.from_file(path, normalize=True)
     assert native.source == source
     assert api.run(native, stdin="A").output == "A"
-    api.save_program(api.from_source(source), path)
+    api.to_file(api.from_source(source), path)
     assert path.read_bytes() == source.encode()
     assert api.run(path, stdin="A").output == "A"
-    api.save_program(api.from_source(source), path, normalize=True)
+    api.to_file(api.from_source(source), path, normalize=True)
     assert path.read_bytes() == (source + "\n").encode()
 
     from esolangs.languages.pilas import interpreter

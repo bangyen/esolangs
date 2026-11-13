@@ -33,13 +33,13 @@
   "Language.load_program": "(self, document: 'str') -> 'Artifact'",
   "Language.prepare": "(self, program: 'ProgramSource', *, settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> 'PreparedProgram'",
   "Language.read_answer": "(self, output: 'str') -> 'str'",
-  "Language.run": "(self, program: 'ProgramSource', *, stdin: 'InputSource' = '', timeout: 'float | None' = None, seed: 'int | None' = None, isolated: 'bool' = False, max_steps: 'int | None' = None, max_output: 'int | None' = None, max_memory: 'int | None' = None, settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> 'ExecutionResult'",
+  "Language.run": "(self, program: 'ProgramSource', *, stdin: 'InputSource' = '', limits: 'ExecutionLimits | None' = None, seed: 'int | None' = None, isolated: 'bool' = False, settings: 'DialectSettings | None' = None, scale: 'int | None' = None) -> 'ExecutionResult'",
   "Language.settings": "(self, **choices: 'int | str') -> 'DialectSettings'",
   "PreparedProgram.__init__": "(self, artifact: 'ProgramArtifact[Program]', catalog: 'Catalog', _module: 'ModuleType') -> None",
   "PreparedProgram.evaluate": "(self, bits: 'list[int] | tuple[int, ...]', *, limits: 'ExecutionLimits | None' = None) -> 'BooleanEvaluation'",
   "PreparedProgram.execute": "(self, *, stdin: 'InputSource' = '', limits: 'ExecutionLimits | None' = None, seed: 'int | None' = None, isolated: 'bool' = False) -> 'ExecutionOutcome'",
   "PreparedProgram.make_vm": "(self, *, stdin: 'InputSource' = '', seed: 'int | None' = None) -> 'VM'",
-  "PreparedProgram.run": "(self, *, stdin: 'InputSource' = '', timeout: 'float | None' = None, seed: 'int | None' = None, isolated: 'bool' = False, max_steps: 'int | None' = None, max_output: 'int | None' = None, max_memory: 'int | None' = None) -> 'ExecutionResult'",
+  "PreparedProgram.run": "(self, *, stdin: 'InputSource' = '', limits: 'ExecutionLimits | None' = None, seed: 'int | None' = None, isolated: 'bool' = False) -> 'ExecutionResult'",
   "ProgramArtifact.__init__": "(self, source: 'Source', language: 'str', settings: 'DialectSettings | None' = None, scale: 'int | None' = None, input_arity: 'int | None' = None) -> None",
   "ProgramArtifact.evaluate": "(self, bits: 'list[int] | tuple[int, ...]', *, limits: 'ExecutionLimits | None' = None) -> 'BooleanEvaluation'",
   "Raster.__init__": "(self, rows: 'Rows') -> 'None'",
@@ -61,7 +61,7 @@
   "esolangs.list_languages": "(*, catalog: 'Catalog | None' = None) -> list[str]",
   "esolangs.load_program": "(language: 'str', document: 'str', *, catalog: 'Catalog | None' = None) -> 'Artifact'",
   "esolangs.read_answer": "(language: str, output: str, *, catalog: 'Catalog | None' = None) -> str",
-  "esolangs.run": "(language: str, program: ProgramSource, *, stdin: InputSource = '', timeout: float | None = None, seed: int | None = None, isolated: bool = False, max_steps: int | None = None, max_output: int | None = None, max_memory: int | None = None, settings: esolangs._dialect.DialectSettings | None = None, scale: int | None = None, catalog: 'Catalog | None' = None) -> esolangs.results.ExecutionResult",
-  "esolangs.save_program": "(language: 'str', program: 'ProgramSource', path: 'str | PathLike[str]', *, gzip: 'bool' = False, normalize: 'bool' = False, catalog: 'Catalog | None' = None) -> 'None'",
-  "Language.save_program": "(self, program: 'ProgramSource', path: 'str | PathLike[str]', *, gzip: 'bool' = False, normalize: 'bool' = False) -> 'None'"
+  "esolangs.run": "(language: str, program: ProgramSource, *, stdin: InputSource = '', limits: esolangs.limits.ExecutionLimits | None = None, seed: int | None = None, isolated: bool = False, settings: esolangs._dialect.DialectSettings | None = None, scale: int | None = None, catalog: 'Catalog | None' = None) -> esolangs.results.ExecutionResult",
+  "esolangs.to_file": "(language: 'str', program: 'ProgramSource', path: 'str | PathLike[str]', *, gzip: 'bool' = False, normalize: 'bool' = False, catalog: 'Catalog | None' = None) -> 'None'",
+  "Language.to_file": "(self, program: 'ProgramSource', path: 'str | PathLike[str]', *, gzip: 'bool' = False, normalize: 'bool' = False) -> 'None'"
 }

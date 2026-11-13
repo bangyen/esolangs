@@ -27,7 +27,7 @@ def _out_of_range() -> list[tuple[str, str, int | str]]:
     """A choice outside each dialect setting of every language."""
     cases = []
     for name in esolangs.list_languages():
-        for key, item in esolangs.describe(name)["dialect_settings"].items():
+        for key, item in esolangs.describe(name).dialect_settings.items():
             choice = item["choices"][-1]
             cases.append(
                 (name, key, choice + 1 if isinstance(choice, int) else "bogus")
@@ -176,9 +176,9 @@ def test_settings_require_the_public_object(operation, capsys) -> None:
     assert _settings_of(
         {"--settings": '{"cell_modulus":255}'},
         ["cell_modulus=256"],
-        language=one_where(lambda info: "cell_modulus" in info["dialect_settings"])[0],
+        language=one_where(lambda info: "cell_modulus" in info.dialect_settings)[0],
     ) == esolangs.Language(
-        one_where(lambda info: "cell_modulus" in info["dialect_settings"])[0]
+        one_where(lambda info: "cell_modulus" in info.dialect_settings)[0]
     ).settings(cell_modulus=256)
 
 
@@ -234,7 +234,7 @@ def test_inherited_choices_are_checked_before_input() -> None:
     [
         esolangs.Language("brainfuck").settings(),
         esolangs.Language(
-            one_where(lambda info: "expression_syntax" in info["dialect_settings"])[0]
+            one_where(lambda info: "expression_syntax" in info.dialect_settings)[0]
         ).settings(expression_syntax="postfix"),
     ],
 )
@@ -259,9 +259,9 @@ def _contradicted() -> list[tuple[str, str, int | str]]:
     cases = []
     for name in esolangs.list_languages():
         info = esolangs.describe(name)
-        if not info["boolean_generator"] or not info["dialect_settings"]:
+        if not info.boolean_generator or not info.dialect_settings:
             continue
-        key, item = next(iter(info["dialect_settings"].items()))
+        key, item = next(iter(info.dialect_settings.items()))
         other = next(value for value in item["choices"] if value != item["default"])
         cases.append((name, key, other))
     return cases

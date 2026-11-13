@@ -194,7 +194,7 @@ Start from `src/esolangs/runtime/_template.py`. Every interpreter:
 - B-tapemark receives whole source.
 - EGL receives whole source.
 
-The interpreter module docstring is `describe()["spec"]`: prose, then
+The interpreter module docstring is `describe().spec`: prose, then
 `Commands:`, `Input/output:`, `Errors:`, `Decisions:`. `Errors:` names public
 exceptions, not internal builtins. Each needs a `[[spec_triggers]]` program
 and expected exception in `tests/cases.toml`. Convention and trigger tests
@@ -319,7 +319,8 @@ steps; bound each piece's upside before choosing it.
    while model coverage remains open. Purity and snapshot gates still apply.
    Optional published examples belong in `tests/cases.toml` as `[[examples]]`
    with stated output (schema: `tests/interpreters/test_published_programs.py`).
-   Bound potentially looping programs with `max_steps=10_000` or `timeout=5`.
+   Bound potentially looping programs with `ExecutionLimits(max_steps=10_000)` or
+   `ExecutionLimits(execution_timeout=5)`.
 3. `just benchmark "Name" TABLE` records source units and commands, not wall
    time, as JSON. `just bounds "Name"` prints worst steps and
    written bits and witnesses. “Worst” must be

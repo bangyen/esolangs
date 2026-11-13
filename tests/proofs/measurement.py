@@ -42,8 +42,8 @@ def measure(
     """Most commands and optional written-state bits over halting rows."""
     facts = esolangs.describe(name)
     halts = None
-    if facts["answer_mode"] == "termination":
-        halts = str(list(facts["answer_encoding"]).index("halts"))
+    if facts.answer_mode == "termination":
+        halts = str(list(facts.answer_encoding).index("halts"))
     n = len(table).bit_length() - 1
     if program is None:
         program = esolangs.generate(name, table)
@@ -52,7 +52,7 @@ def measure(
         if halts is not None and table[row] != halts:
             continue
         bits = row_bits(row, n)
-        if facts["parameterized"]:
+        if facts.parameterized:
             source, stdin = esolangs.instantiate(name, program, bits), ""
         else:
             source, stdin = (

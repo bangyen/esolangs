@@ -467,12 +467,12 @@ def _public_prediction(source, stdin, options):
 
 
 def _check_public_randomness():
-    from esolangs import ProgramArtifact, run
+    from esolangs import ExecutionLimits, ProgramArtifact, run
     from esolangs.languages.caballo import interpreter as native
     from esolangs.runtime import randomness
 
     source, stdin = "(i+i+ii)", ""
-    for options in ({}, {"seed": 1}, {"max_steps": 256}):
+    for options in ({}, {"seed": 1}, {"limits": ExecutionLimits(max_steps=256)}):
         expected = _public_prediction(source, stdin, options)
         created, captures, bounds, draws = [], [], [], []
         original_init, original_step = native._Machine.__init__, native._Machine.step
@@ -539,7 +539,7 @@ def _check_public_randomness():
         assert result.output == selected[-1][2]
         assert result.completion.kind.value == "halted"
         assert result[1:4] == (0, 1, 0)
-        assert result.steps == (len(selected) - 1 if "max_steps" in options else None)
+        assert result.steps == (len(selected) - 1 if "limits" in options else None)
         if options:
             expected_rng = random.Random(options.get("seed", 0))
             for capture, row in zip(captures, selected, strict=True):

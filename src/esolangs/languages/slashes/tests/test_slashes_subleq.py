@@ -84,7 +84,12 @@ def test_slashes_trailing_escape() -> None:
 
 def test_slashes_literal_dollar_and_serialized_template() -> None:
     assert esolangs.run("///", "/a/$/a").output == "$"
-    assert esolangs.run("Slashalash", "$", max_steps=20).output == "$"
+    assert (
+        esolangs.run(
+            "Slashalash", "$", limits=esolangs.ExecutionLimits(max_steps=20)
+        ).output
+        == "$"
+    )
     template = esolangs.generate("///", "01")
     restored = esolangs.load_program("///", esolangs.dump_program("///", template))
     with pytest.raises(TemplateError, match="fill the template"):

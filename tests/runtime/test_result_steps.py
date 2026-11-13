@@ -22,7 +22,12 @@ def test_steps_match_an_independently_driven_machine(source, isolated):
         vm.step()
         steps += 1
     native = esolangs.run(REFERENCE, source, isolated=isolated)
-    bounded = esolangs.run(REFERENCE, source, isolated=isolated, max_steps=steps)
+    bounded = esolangs.run(
+        REFERENCE,
+        source,
+        isolated=isolated,
+        limits=esolangs.ExecutionLimits(max_steps=steps),
+    )
     assert native.output == bounded.output == vm.output
     assert native.steps is None
     assert bounded.steps == steps
@@ -31,14 +36,19 @@ def test_steps_match_an_independently_driven_machine(source, isolated):
 @pytest.mark.parametrize("isolated", [False, True])
 def test_zero_budget_performs_no_command(isolated):
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.run(REFERENCE, "+.", max_steps=0, isolated=isolated)
+        esolangs.run(
+            REFERENCE,
+            "+.",
+            limits=esolangs.ExecutionLimits(max_steps=0),
+            isolated=isolated,
+        )
     assert caught.value.observation == ExecutionResult("", 0, 0, 0, steps=0)
 
 
 @pytest.mark.parametrize("isolated", [False, True])
 def test_final_dump_is_outside_the_command_budget(isolated):
     name = one_where(
-        lambda info: info["answer_mode"] != "termination",
+        lambda info: info.answer_mode != "termination",
         boolean_generator=True,
         parameterized=True,
         dumps_on_the_post_halt_step=True,
@@ -52,7 +62,12 @@ def test_final_dump_is_outside_the_command_budget(isolated):
         vm.step()
         steps += 1
     output = complete_vm(vm, max_steps=0)
-    result = esolangs.run(name, source, max_steps=steps, isolated=isolated)
+    result = esolangs.run(
+        name,
+        source,
+        limits=esolangs.ExecutionLimits(max_steps=steps),
+        isolated=isolated,
+    )
     assert result.steps == steps
     assert result.output == output
     assert esolangs.read_answer(name, result.output) == "1"

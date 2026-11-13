@@ -34,7 +34,7 @@ from esolangs.settings import (
 _FORMAT = "esolangs.program"
 
 
-def save_program(
+def to_file(
     language: str,
     program: ProgramSource,
     path: str | PathLike[str],
@@ -451,8 +451,7 @@ def load_program(
         _read_source(name, artifact, catalog=catalog)
         return artifact
     except (ValueError, TypeError) as error:
-        # A path or native source here is the usual mistake: the name pairs
-        # with save_program, which writes native files (dogfood, 2.0.0).
+        # A path or native source here is the usual mistake (dogfood, 2.0.0).
         hint = (
             "; load_program reads dump_program JSON text, not a path; "
             "load a native file with Language(name).from_file(path)"

@@ -5,6 +5,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import ExecutionLimits
 from esolangs.languages.brainfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle, run_until_halt_or_growth
@@ -185,7 +186,10 @@ def _check_lazy_native_plan(monkeypatch):
         for value in ("A", "Z", "Q"):
             assert prepared.run(stdin=value).output == value
         assert matched == compiled == [code]
-        assert prepared.run(stdin="B", max_steps=1000).output == "B"
+        assert (
+            prepared.run(stdin="B", limits=ExecutionLimits(max_steps=1000)).output
+            == "B"
+        )
         assert matched == compiled == [code]
     program = bf._Program.parse(code)
     with pytest.raises(TypeError):

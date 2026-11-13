@@ -126,4 +126,4 @@ def test_list_exposes_limits_in_both_formats(capsys) -> None:
     for row in json.loads(out):
         facts = esolangs.describe(row["name"])
         for field in ("generator_max_inputs", "generator_restrictions"):
-            assert row[field] == facts[field]
+            assert row[field] == getattr(facts, field)

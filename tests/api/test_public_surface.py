@@ -66,7 +66,7 @@ class TestPackageSurface:
             "load_program",
             "read_answer",
             "run",
-            "save_program",
+            "to_file",
         ]
 
     def test_the_signatures_are_pinned(self) -> None:
@@ -297,7 +297,7 @@ class TestProgramObjectsRefuseMisuse:
         for path in ("/nonexistent/dir/x.gz", 5):
             with pytest.raises(esolangs.ProgramError):
                 esolangs.CompressedText.repeated("+", 5).save(path)  # type: ignore[arg-type]
-        # save_program named its staging file, and "" read as the cwd.
+        # to_file named its staging file, and "" read as the cwd.
         for target, error, words in (
             (None, esolangs.ArgumentError, "str or PathLike"),
             ("", esolangs.ArgumentError, "empty"),
@@ -305,8 +305,8 @@ class TestProgramObjectsRefuseMisuse:
             (tmp_path, esolangs.ProgramError, "is a directory$"),
         ):
             with pytest.raises(error, match=words):
-                esolangs.save_program(REFERENCE, "+", target)  # type: ignore[arg-type]
-        # The name pairs with save_program, so a path is the usual mistake.
+                esolangs.to_file(REFERENCE, "+", target)  # type: ignore[arg-type]
+        # A path is the usual mistake.
         with pytest.raises(esolangs.ProgramError, match=r"not a path.*from_file"):
             esolangs.load_program(REFERENCE, "x.bf")
         with pytest.raises(esolangs.ProgramError) as caught:
@@ -403,9 +403,9 @@ class TestProgramObjectsRefuseMisuse:
     def test_memory_is_integer_cells_or_empty(self, name: str) -> None:
         """Three languages exposed tuples and instructions as ``list[int]``."""
         facts = esolangs.describe(name)
-        if not facts["examples"]:
+        if not facts.examples:
             return
-        source = (files("esolangs") / facts["examples"][0]).read_bytes()
+        source = (files("esolangs") / facts.examples[0]).read_bytes()
         try:
             vm = debugger_api.make_vm(name, source.decode())
         except (UnicodeDecodeError, esolangs.EsolangError):
@@ -451,7 +451,11 @@ class TestProgramObjectsRefuseMisuse:
 
     def test_a_stepped_timeout_reads_as_an_unstepped_one(self) -> None:
         with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.2-second"):
-            esolangs.run(REFERENCE, "+[]", timeout=0.2, max_steps=10**9)
+            esolangs.run(
+                REFERENCE,
+                "+[]",
+                limits=esolangs.ExecutionLimits(execution_timeout=0.2, max_steps=10**9),
+            )
 
     def test_settings_need_a_language(self) -> None:
         """Untagged, ``run`` ignored them silently."""
@@ -483,6 +487,11 @@ class TestProgramObjectsRefuseMisuse:
         messages = set()
         for isolated in (False, True):
             with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-                esolangs.run(REFERENCE, "+[]", timeout=0.5, isolated=isolated)
+                esolangs.run(
+                    REFERENCE,
+                    "+[]",
+                    limits=esolangs.ExecutionLimits(execution_timeout=0.5),
+                    isolated=isolated,
+                )
             messages.add(str(caught.value))
         assert messages == {"execution exceeded the 0.5-second timeout"}

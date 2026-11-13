@@ -41,7 +41,7 @@ class TestTheExceptionalLanguages:
         [
             name
             for name in languages(boolean_generator=True, parameterized=False)
-            if esolangs.describe(name)["input_shape"] not in SIMPLE
+            if esolangs.describe(name).input_shape not in SIMPLE
         ],
     )
     @pytest.mark.parametrize("table", [XOR, PARITY3])
@@ -53,7 +53,7 @@ class TestTheExceptionalLanguages:
         """``encode_inputs`` indexes the example table, which must cover all."""
         assert esolangs.encode_inputs(REFERENCE, [1, 0, 1]) == "101"
         for name in languages(boolean_generator=True):
-            if esolangs.describe(name)["parameterized"]:
+            if esolangs.describe(name).parameterized:
                 with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
                     esolangs.encode_inputs(name, [0, 1])
             else:
@@ -105,7 +105,13 @@ class TestEveryDeliberateErrorHasTheBase:
         [
             lambda: esolangs.generate(REFERENCE, XOR, width=0),
             lambda: esolangs.generate(REFERENCE, XOR, width="20"),
-            lambda: esolangs.run(REFERENCE, "+.", timeout=0).output,
+            lambda: (
+                esolangs.run(
+                    REFERENCE,
+                    "+.",
+                    limits=esolangs.ExecutionLimits(execution_timeout=0),
+                ).output
+            ),
             lambda: esolangs.encode_inputs(REFERENCE, [2, 0]),
         ],
     )

@@ -758,7 +758,7 @@ def _print_bounds(name: str, max_n: int) -> None:
     # Steps feed the ledger's Execution cell, bits its Workspace cell
     # (peak written state); chars/row stays flat for an O(T) generator.
     rows = bounds(name, range(1, max_n + 1))
-    units = "pixels" if esolangs.describe(name)["source_kind"] == "raster" else "chars"
+    units = "pixels" if esolangs.describe(name).source_kind == "raster" else "chars"
     print(f"n  Execution  Workspace  {units}/row  witness tables (steps, bits)")
     for n, steps, bits, per_row, by_steps, by_bits in rows:
         print(f"{n:<2} {steps:>9}  {bits:>9}  {per_row:>9}  {by_steps} {by_bits}")

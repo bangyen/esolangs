@@ -1,7 +1,6 @@
 """Execute source through native, cooperative or isolated routes."""
 
 from collections.abc import Callable
-from typing import Any
 
 from esolangs.exceptions import ArgumentError, ExecutionTimeoutError
 from esolangs.limits import ExecutionLimits
@@ -35,7 +34,7 @@ def default_total(total: float | None, execution: float | None) -> float:
     """Return the worker's whole-invocation deadline.
 
     Absent a total, loading gets 30 seconds on top of the execution budget; a
-    flat 30 cut ``run(timeout=33)`` short at 30.0 seconds.
+    flat 30 cut a 33-second execution deadline short at 30.0 seconds.
     """
     if total is not None:
         return total
@@ -82,12 +81,9 @@ def run(
     program: ProgramSource,
     *,
     stdin: InputSource = "",
-    timeout: float | None = None,
+    limits: ExecutionLimits | None = None,
     seed: int | None = None,
     isolated: bool = False,
-    max_steps: int | None = None,
-    max_output: int | None = None,
-    max_memory: int | None = None,
     settings: DialectSettings | None = None,
     scale: int | None = None,
     catalog: "Catalog | None" = None,
@@ -104,23 +100,14 @@ def run(
             Boolean validation; binary is decoded as UTF-8.  Build a
             Boolean-generated program's stdin with :func:`encode_inputs`,
             which validates the bits.
-        timeout: Wall-clock seconds of execution (None: unbounded), run in a
-            worker: ``ExecutionLimits.execution_timeout``.  It bounds reading
-            the program and stdin separately; worker startup and source
-            preparation get 30 seconds on top.  The catalog must match
-            installed runtimes.
+        limits: :class:`ExecutionLimits`; None is unbounded.  Every budget but
+            ``max_steps`` selects isolation.
         seed: Integer fixing the languages that draw
-            (``describe(language)["random"]``); the rest refuse it.
+            (``describe(language).random``); the rest refuse it.
         isolated: Run in a subprocess whose deadline covers startup and
-            loading (30 seconds plus any ``timeout``); works on Windows
-            and in worker threads. Can combine with ``max_steps``.
-        max_steps: Cooperative stepping bound, for text and raster programs;
-            with ``timeout``, a worker also enforces the execution deadline.
-        max_output: Output cap in Unicode characters (zero allowed); the
-            prefix is kept.  Selects isolation.
-        max_memory: Linux worker virtual address space cap in bytes, including
-            Python overhead; other platforms refuse it.  Selects isolation;
-            loading in the parent is not capped.
+            loading (30 seconds plus any ``execution_timeout``); works on
+            Windows and in worker threads.  The catalog must match installed
+            runtimes.
         settings: Dialect choices.  Artifacts retain their own; these
             override individual ones.  Plain source uses these.
         scale: Raster scale factor; detected when None.
@@ -134,9 +121,9 @@ def run(
         TemplateError: ``program`` is an unfilled template; see
             :func:`instantiate`.
         InputExhaustedError: A read past the end of ``stdin``.  Languages with
-            ``describe(language)["eof_is_a_value"]`` supply a value instead,
+            ``describe(language).eof_is_a_value`` supply a value instead,
             and some halt.
-        ExecutionTimeoutError: ``timeout`` elapsed or ``max_steps`` ran out.
+        ExecutionTimeoutError: A deadline elapsed or ``max_steps`` ran out.
             Also a :class:`TimeoutError` and a ``HaltError``; catch it, not the
             base.
         InterpreterLimitError: ``max_output`` was exceeded, or the interpreter
@@ -146,62 +133,17 @@ def run(
         MissingDependencyError: The language needs an uninstalled extra
             (``esolangs[image]`` for PNG).
     """
-    return _run_result(
+    return _execute_outcome(
         language,
         program,
         stdin=stdin,
-        timeout=timeout,
+        limits=limits,
         seed=seed,
         isolated=isolated,
-        max_steps=max_steps,
-        scale=scale,
-        max_output=max_output,
-        max_memory=max_memory,
         settings=settings,
+        scale=scale,
         catalog=catalog,
-    )
-
-
-def _run_result(
-    language: str,
-    program: ProgramSource,
-    *,
-    timeout: float | None,
-    isolated: bool,
-    **options: Any,
-) -> ExecutionResult:
-    """Map ``run``'s short options onto an invocation and raise its error.
-
-    Shared with ``PreparedProgram.run``, which kept passing ``timeout`` as the
-    whole-call deadline: ``+[]`` with timeout=0.5 never stopped.
-    """
-    check_timeout(timeout)
-    # Before the ``or`` below, which turned isolated=[] into a plain False.
-    check_flag(isolated, "isolated")
-    # timeout is ExecutionLimits.execution_timeout under its short name; with
-    # isolated, it used to bound the whole invocation instead.  A cap selects
-    # the worker as it does in ``execute``: run(max_output=0) was refused with
-    # "requires isolated=True" where ExecutionLimits(max_output=0) ran.
-    worker = any(
-        value is not None
-        for value in (timeout, options.get("max_output"), options.get("max_memory"))
-    )
-    outcome = _execute_invocation(
-        language,
-        program,
-        execution_timeout=timeout,
-        isolated=isolated or worker,
-        **options,
-    )
-    if isinstance(outcome.error, ExecutionTimeoutError):
-        # The worker's own deadline is the default total, which run(isolated=True)
-        # without a timeout reported as "timeout", a parameter never passed.
-        error = outcome.error
-        if error.bound == "timeout":
-            error.bound = "total_timeout"
-        elif error.bound == "execution_timeout":
-            error.bound = "timeout"
-    return outcome.unwrap()
+    ).unwrap()
 
 
 @_capture_outcome

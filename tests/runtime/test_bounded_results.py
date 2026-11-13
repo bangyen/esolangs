@@ -91,7 +91,7 @@ def test_post_halt_completion_stays_pending_until_dump():
         for name, lang in LANGUAGES.items()
         if lang.parameterized
         and lang.contract.answer_mode != "termination"
-        and esolangs.describe(name)["dumps_on_the_post_halt_step"]
+        and esolangs.describe(name).dumps_on_the_post_halt_step
     )
     source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
     debugger = make_debugger(name, source)
@@ -130,7 +130,7 @@ def test_failed_dump_remains_unfinished_and_can_be_retried(monkeypatch, drive):
     from tests.support.pick import one_where
 
     name = one_where(
-        lambda info: info["answer_mode"] != "termination",
+        lambda info: info.answer_mode != "termination",
         boolean_generator=True,
         parameterized=True,
         dumps_on_the_post_halt_step=True,

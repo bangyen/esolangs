@@ -24,7 +24,7 @@ _TEXT = [
     for lang in LANGUAGES.values()
     if lang.backend is not None
     and lang.runtime.source_kind is SourceKind.TEXT
-    and esolangs.describe(lang.name)["answer_mode"] == "output"
+    and esolangs.describe(lang.name).answer_mode == "output"
 ]
 # One of each route: the shared character balancer, a grid wrapper with no
 # balancer, a language's own balancer, and a template filled per row.
@@ -74,7 +74,7 @@ def test_balance_executes(name: str, table: str) -> None:
     inputs = len(table).bit_length() - 1
     for row, expected in enumerate(table):
         bits = row_bits(row, inputs)
-        if esolangs.describe(name)["parameterized"]:
+        if esolangs.describe(name).parameterized:
             source, stdin = esolangs.instantiate(name, program, bits), ""
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)

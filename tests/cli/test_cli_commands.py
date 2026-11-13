@@ -1,6 +1,7 @@
 """The subcommands that run a program and judge what it printed."""
 
 import json
+from dataclasses import asdict
 from unittest.mock import patch
 
 import pytest
@@ -21,12 +22,14 @@ from tests.support.reference import REFERENCE
 class TestJsonOutput:
     """The reading layout is lossy, so scripting it meant reparsing prose."""
 
-    def test_describe_json_is_the_dict_exactly(
+    def test_describe_json_is_the_record_exactly(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Not "close to" -- the same keys and the same values."""
         out, _err = call_both(["describe", "--json", REFERENCE], capsys)
-        assert json.loads(out) == json.loads(json.dumps(esolangs.describe(REFERENCE)))
+        assert json.loads(out) == json.loads(
+            json.dumps(asdict(esolangs.describe(REFERENCE)))
+        )
 
     def test_describe_json_keeps_what_the_layout_drops(
         self, capsys: pytest.CaptureFixture[str]
@@ -72,8 +75,10 @@ class TestJsonOutput:
         assert [row["name"] for row in rows] == esolangs.list_languages()
         for row in rows:
             facts = esolangs.describe(row["name"])
-            shape = "template" if facts["parameterized"] else facts["input_shape"]
-            assert row == {key: facts[key] for key in row} | {"input_shape": shape}
+            shape = "template" if facts.parameterized else facts.input_shape
+            assert row == {key: getattr(facts, key) for key in row} | {
+                "input_shape": shape
+            }
             assert {"boolean_generator", "parameterized", "examples"} <= set(row)
 
     def test_list_json_agrees_with_the_marker_column(
@@ -149,20 +154,20 @@ class TestDescribeReadingLayout:
     ) -> None:
         name = first(**facts)
         out = call_main(["describe", name], capsys)
-        assert esolangs.describe(name)["name"] in out
+        assert esolangs.describe(name).name in out
 
     def test_the_cap_restriction_and_settings_sentences(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         names = [
-            *one_where(lambda f: f["generator_max_inputs"] is not None),
-            *one_where(lambda f: f["generator_restrictions"]),
-            *one_where(lambda f: f["dialect_settings"]),
+            *one_where(lambda f: f.generator_max_inputs is not None),
+            *one_where(lambda f: f.generator_restrictions),
+            *one_where(lambda f: f.dialect_settings),
         ]
         assert names, "no language exercises a capability sentence"
         for name in names:
             out = call_main(["describe", name], capsys)
-            assert esolangs.describe(name)["name"] in out
+            assert esolangs.describe(name).name in out
 
 
 class TestTheWidthFlagDoesNotEatTheTable:

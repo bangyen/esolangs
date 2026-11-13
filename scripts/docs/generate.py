@@ -185,7 +185,7 @@ def render_examples_section() -> str:
     generator has its committed file, so the registry is the source that
     cannot drift.
     """
-    count = sum(esolangs.describe(name)["boolean_generator"] for name in LANGUAGES)
+    count = sum(esolangs.describe(name).boolean_generator for name in LANGUAGES)
     return "\n".join(
         [
             f"Ready-to-run programs for each of the {count}",
@@ -214,14 +214,14 @@ def render_boolean_count_section() -> str:
 def _reads_stdin() -> list[str]:
     """Return the languages that take their inputs on stdin, sorted."""
     names = esolangs.list_languages()
-    return sorted(name for name in names if esolangs.describe(name)["reads_input"])
+    return sorted(name for name in names if esolangs.describe(name).reads_input)
 
 
 def _is_exceptional(name: str) -> bool:
     """Return whether the stdin is anything but adjacent ``0``/``1`` characters."""
     record = esolangs.describe(name)
-    shape = record["input_shape"]
-    alphabet = tuple(record["input_encoding"] or ())
+    shape = record.input_shape
+    alphabet = tuple(record.input_encoding or ())
     return shape != "char_stream" or alphabet != ("0", "1")
 
 
@@ -244,14 +244,14 @@ def render_input_shapes_section() -> str:
         record = esolangs.describe(name)
         alphabet = "/".join(
             f"`{c if c.isprintable() else repr(c)[1:-1]}`"
-            for c in record["input_encoding"] or ()
+            for c in record.input_encoding or ()
         )
         stdin = repr(esolangs.encode_inputs(name, _SAMPLE_BITS))
-        rows.append(f"| {name} | `{record['input_shape']}` | {alphabet} | `{stdin}` |")
+        rows.append(f"| {name} | `{record.input_shape}` | {alphabet} | `{stdin}` |")
     default = repr(esolangs.encode_inputs("brainfuck", _SAMPLE_BITS))
-    embedded = sum(1 for name in LANGUAGES if esolangs.describe(name)["parameterized"])
+    embedded = sum(1 for name in LANGUAGES if esolangs.describe(name).parameterized)
     classics = sum(
-        1 for name in LANGUAGES if esolangs.describe(name)["boolean_generator"] is False
+        1 for name in LANGUAGES if esolangs.describe(name).boolean_generator is False
     )
     rows.extend(
         [

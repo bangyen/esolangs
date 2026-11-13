@@ -126,13 +126,13 @@ class TestInProcess:
     def test_spec_json_is_the_spec(self, capsys: pytest.CaptureFixture[str]) -> None:
         """``--spec --json`` printed every fact, ignoring ``--spec``."""
         out = call_main(["describe", "--spec", "--json", REFERENCE], capsys)
-        assert json.loads(out) == esolangs.describe(REFERENCE)["spec"]
+        assert json.loads(out) == esolangs.describe(REFERENCE).spec
 
     def test_run_feeds_stdin(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         program = tmp_path / "prog.txt"
-        esolangs.save_program(REFERENCE, esolangs.generate(REFERENCE, "1101"), program)
+        esolangs.to_file(REFERENCE, esolangs.generate(REFERENCE, "1101"), program)
         stdin = esolangs.encode_inputs(REFERENCE, [1, 0])
         out = call_main(["run", REFERENCE, str(program)], capsys, stdin=stdin)
         assert esolangs.read_answer(REFERENCE, out) == "0"

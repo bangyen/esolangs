@@ -359,7 +359,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
             for example in tomllib.loads(path.read_text()).get("examples", [])
         )
     if language.backend is not None:
-        parameterized = esolangs.describe(name)["parameterized"]
+        parameterized = esolangs.describe(name).parameterized
         for n in range(1, max_n + 1):
             for table in map("".join, itertools.product("01", repeat=1 << n)):
                 for width in (None, 8) if n < 3 else (None,):

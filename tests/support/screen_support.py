@@ -89,15 +89,15 @@ def execute(
     source: esolangs.ProgramArtifact[esolangs.Program]
     for row in rows:
         bits = [int(bit) for bit in format(row, f"0{n}b")]
-        if facts["parameterized"]:
+        if facts.parameterized:
             source = esolangs.instantiate(name, program, bits, settings=settings)
             stdin = ""
         else:
             assert isinstance(program, esolangs.ProgramArtifact)
             source = program
             stdin = esolangs.encode_inputs(name, bits, truth_table=table)
-        if facts["answer_mode"] == "termination":
-            encoding = facts["answer_encoding"]
+        if facts.answer_mode == "termination":
+            encoding = facts.answer_encoding
             proof = termination_observed(name, source, stdin, 2, settings=settings)
             actual = str(
                 encoding.index("halts" if proof.decision.halts else "diverges")

@@ -48,9 +48,9 @@ class TestEveryDumpSaysWhereTheAnswerIs:
         silent = [
             name
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["answer_mode"] == "dump"
-            and not esolangs.describe(name)["answer_pattern"]
-            and not esolangs.describe(name)["answer_convention"]
+            if esolangs.describe(name).answer_mode == "dump"
+            and not esolangs.describe(name).answer_pattern
+            and not esolangs.describe(name).answer_convention
         ]
         assert not silent, (
             f"dump languages that never say where the answer is: {silent}"
@@ -63,12 +63,12 @@ class TestTheSpecIsReachable:
     def test_every_language_has_one(self) -> None:
         """The claim the feature rests on: there is something to show."""
         for name in esolangs.list_languages():
-            assert len(esolangs.describe(name)["spec"]) > 200, name
+            assert len(esolangs.describe(name).spec) > 200, name
 
     def test_no_spec_shows_maintainer_detail(self) -> None:
         """Implementation notes are comments beside the code they explain."""
         leaks = {
-            name: _MAINTAINER.findall(esolangs.describe(name)["spec"])
+            name: _MAINTAINER.findall(esolangs.describe(name).spec)
             for name in esolangs.list_languages()
         }
         leaks = {name: found for name, found in leaks.items() if found}
@@ -89,7 +89,7 @@ class TestTheSpecIsReachable:
             "__doc__",
             "Raises :class:`~esolangs.exceptions.HaltError`; :func:`_advance`.",
         )
-        spec = esolangs.describe(REFERENCE)["spec"]
+        spec = esolangs.describe(REFERENCE).spec
         assert spec == "Raises ``HaltError``; ``_advance``."
         assert _MAINTAINER.findall(spec) == ["``_advance"]
 
@@ -104,8 +104,8 @@ class TestSpecAbortsRatherThanReturningNothing:
         module = interpreter_module(REFERENCE)
         monkeypatch.setattr(module, "__doc__", None)
         with pytest.raises(esolangs.ProgramError, match="-OO"):
-            esolangs.describe(REFERENCE)["spec"]
+            esolangs.describe(REFERENCE)
 
     def test_it_still_returns_the_text_normally(self) -> None:
         """The abort must not have eaten the ordinary path."""
-        assert esolangs.describe(REFERENCE)["spec"].startswith("Interpreter for")
+        assert esolangs.describe(REFERENCE).spec.startswith("Interpreter for")

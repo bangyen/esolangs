@@ -5,6 +5,7 @@ from typing import ClassVar
 
 import pytest
 
+from esolangs import ExecutionLimits
 from esolangs import run as execute_program
 from esolangs.exceptions import HaltError
 from esolangs.languages.taglate.interpreter import run
@@ -223,8 +224,24 @@ class TestTheTwoQueueLanguagesDifferOnPurpose:
 
     def test_taglate_still_skips_a_non_command(self) -> None:
         """Deliberately unchanged, and the docstring now says why."""
-        assert execute_program("Taglate", "1\nix", stdin="", timeout=5).output == "1"
-        assert execute_program("Taglate", "1\ngi", stdin="", timeout=5).output == "1"
+        assert (
+            execute_program(
+                "Taglate",
+                "1\nix",
+                stdin="",
+                limits=ExecutionLimits(execution_timeout=5),
+            ).output
+            == "1"
+        )
+        assert (
+            execute_program(
+                "Taglate",
+                "1\ngi",
+                stdin="",
+                limits=ExecutionLimits(execution_timeout=5),
+            ).output
+            == "1"
+        )
 
     def test_taglate_says_it_skips(self) -> None:
         """A surprising choice is only defensible while it is documented."""

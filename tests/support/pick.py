@@ -12,8 +12,8 @@ def languages(**facts: Any) -> list[str]:
     """Every language whose ``describe()`` has these facts, in list order."""
     found = []
     for name in esolangs.list_languages():
-        described = esolangs.describe(name) if facts else {}
-        if all(described[key] == value for key, value in facts.items()):
+        described = esolangs.describe(name) if facts else None
+        if all(getattr(described, key) == value for key, value in facts.items()):
             found.append(name)
     return found
 
@@ -35,8 +35,8 @@ def one(**facts: Any) -> list[str]:
     return languages(**facts)[:1]
 
 
-def one_where(test: Callable[[dict[str, Any]], bool], **facts: Any) -> list[str]:
-    """:func:`one`, narrowed further by ``test`` on the ``describe()`` dict."""
+def one_where(test: Callable[[esolangs.LanguageInfo], bool], **facts: Any) -> list[str]:
+    """:func:`one`, narrowed further by ``test`` on the ``describe()`` record."""
     return [n for n in languages(**facts) if test(esolangs.describe(n))][:1]
 
 
@@ -50,5 +50,5 @@ def spread(*keys: str, **facts: Any) -> list[str]:
     seen: dict[tuple[object, ...], str] = {}
     for name in languages(**facts):
         described = esolangs.describe(name)
-        seen.setdefault(tuple(described[key] for key in keys), name)
+        seen.setdefault(tuple(getattr(described, key) for key in keys), name)
     return list(seen.values())

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from esolangs import ExecutionLimits
 from esolangs import run as execute
 from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.chicken.interpreter import _Machine, run
@@ -40,14 +41,26 @@ def _go(counts: tuple[int, ...], stdin: str = "") -> str:
 def test_wiki_programs_without_a_stated_output(name, stdin, output) -> None:
     """Outputs the page leaves unstated, checked against the programs' intent."""
     source = (FIXTURES / f"{name}.chicken").read_text()
-    assert execute("Chicken", source, stdin=stdin, timeout=10).output == output
+    assert (
+        execute(
+            "Chicken", source, stdin=stdin, limits=ExecutionLimits(execution_timeout=10)
+        ).output
+        == output
+    )
 
 
 def test_99_chickens_counts_down_from_the_input() -> None:
     source = (FIXTURES / "99_chickens.chicken").read_text()
-    out = execute("Chicken", source, stdin="3", timeout=10).output
+    out = execute(
+        "Chicken", source, stdin="3", limits=ExecutionLimits(execution_timeout=10)
+    ).output
     assert out == "3 chickens\n2 chickens\n1 chicken\nno chickens\n"
-    assert execute("Chicken", source, stdin="99", timeout=10).output.count("\n") == 100
+    assert (
+        execute(
+            "Chicken", source, stdin="99", limits=ExecutionLimits(execution_timeout=10)
+        ).output.count("\n")
+        == 100
+    )
 
 
 def test_empty_program_prints_the_pad() -> None:

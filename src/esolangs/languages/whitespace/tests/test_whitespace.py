@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs import ExecutionLimits
 from esolangs.exceptions import (
     ArgumentError,
     HaltError,
@@ -186,7 +187,7 @@ def _check_lossless_containers(tmp_path):
     source = (push(65) + OUT_CHAR + END).replace("\n", "\r\n")
     path = tmp_path / "source.ws"
     artifact = api.from_source(source)
-    api.save_program(artifact, path)
+    api.to_file(artifact, path)
     assert path.read_bytes() == source.encode()
     assert api.from_file(path).source == source
     assert api.from_file(path, normalize=True).source == source
@@ -201,17 +202,20 @@ def _check_lossless_containers(tmp_path):
         prepared = api.prepare(program)
         assert prepared.artifact.source == source
         assert prepared.run().output == "A"
-        assert prepared.run(max_steps=100).output == "A"
-    assert api.run(path, isolated=True, max_steps=100).output == "A"
+        assert prepared.run(limits=ExecutionLimits(max_steps=100)).output == "A"
+    assert (
+        api.run(path, isolated=True, limits=ExecutionLimits(max_steps=100)).output
+        == "A"
+    )
     assert api.execute(path).unwrap().output == "A"
-    api.save_program(artifact, path, gzip=True)
+    api.to_file(artifact, path, gzip=True)
     assert api.from_file(path).source == source
     assert api.run(path).output == "A"
     # Raw text names no language; normalize appended "\n", which is code here.
-    esolangs.save_program("Whitespace", source, path, normalize=True)
+    esolangs.to_file("Whitespace", source, path, normalize=True)
     assert path.read_bytes() == source.encode()
     with pytest.raises(esolangs.ProgramError, match="Whitespace"):
-        esolangs.save_program("Brainfuck", artifact, path)
+        esolangs.to_file("Brainfuck", artifact, path)
 
 
 def test_numeric_reads_consume_one_complete_line() -> None:

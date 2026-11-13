@@ -123,13 +123,17 @@ def test_run_timeout_halts_runaway_program() -> None:
     from esolangs.exceptions import HaltError
 
     with pytest.raises(HaltError, match="timeout"):
-        esolangs.run(REFERENCE, "+[]", timeout=0.1)
+        esolangs.run(
+            REFERENCE, "+[]", limits=esolangs.ExecutionLimits(execution_timeout=0.1)
+        )
 
 
 def test_run_timeout_halts_a_growing_program() -> None:
     """The deadline interrupts a loop whose state never repeats."""
     with pytest.raises(esolangs.ExecutionTimeoutError, match="timeout"):
-        esolangs.run(REFERENCE, "+[>+]", timeout=0.01)
+        esolangs.run(
+            REFERENCE, "+[>+]", limits=esolangs.ExecutionLimits(execution_timeout=0.01)
+        )
 
 
 def test_run_timeout_works_off_main_thread(monkeypatch) -> None:
@@ -142,7 +146,12 @@ def test_run_timeout_works_off_main_thread(monkeypatch) -> None:
 
     monkeypatch.setattr(signal, "signal", forbidden)
     with concurrent.futures.ThreadPoolExecutor() as pool:
-        result = pool.submit(esolangs.run, REFERENCE, "+.", timeout=5).result(10)
+        result = pool.submit(
+            esolangs.run,
+            REFERENCE,
+            "+.",
+            limits=esolangs.ExecutionLimits(execution_timeout=5),
+        ).result(10)
     assert result.output == "\x01"
 
 
@@ -151,28 +160,38 @@ def test_a_timeout_names_the_bound_that_fired() -> None:
     import pickle
 
     with pytest.raises(esolangs.ExecutionTimeoutError) as stepped:
-        esolangs.run(REFERENCE, "+[]", max_steps=100, timeout=30)
+        esolangs.run(
+            REFERENCE,
+            "+[]",
+            limits=esolangs.ExecutionLimits(max_steps=100, execution_timeout=30),
+        )
     with pytest.raises(esolangs.ExecutionTimeoutError) as timed:
-        esolangs.run(REFERENCE, "+[]", timeout=0.05)
+        esolangs.run(
+            REFERENCE, "+[]", limits=esolangs.ExecutionLimits(execution_timeout=0.05)
+        )
     with pytest.raises(esolangs.ExecutionTimeoutError) as combined:
-        esolangs.run(REFERENCE, "+[]", max_steps=10**9, timeout=0.01)
-    assert combined.value.bound == "timeout"
-    for caught, bound in ((stepped, "max_steps"), (timed, "timeout")):
+        esolangs.run(
+            REFERENCE,
+            "+[]",
+            limits=esolangs.ExecutionLimits(max_steps=10**9, execution_timeout=0.01),
+        )
+    assert combined.value.bound == "execution_timeout"
+    for caught, bound in ((stepped, "max_steps"), (timed, "execution_timeout")):
         assert caught.value.bound == bound
         assert pickle.loads(pickle.dumps(caught.value)).bound == bound
 
 
 def test_describe_structured_summary() -> None:
     info = esolangs.describe(REFERENCE)
-    assert info["name"] == REFERENCE
-    assert info["state_model"] == "tape"
-    assert info["generator_shape"] == "tree"
-    assert info["boolean_generator"] is True
-    assert info["wiki_url"] == "https://esolangs.org/wiki/brainfuck"
+    assert info.name == REFERENCE
+    assert info.state_model == "tape"
+    assert info.generator_shape == "tree"
+    assert info.boolean_generator is True
+    assert info.wiki_url == "https://esolangs.org/wiki/brainfuck"
 
 
 def test_describe_covers_state_models() -> None:
-    models = {esolangs.describe(n)["state_model"] for n in esolangs.list_languages()}
+    models = {esolangs.describe(n).state_model for n in esolangs.list_languages()}
     assert {"stack", "register", "grid", "tape"} <= models
 
 
@@ -180,10 +199,10 @@ def test_input_fields_exist_only_where_stdin_is_read() -> None:
     """Templates and interpreter-only languages reported ``line_per_bit``."""
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
-        has_input = facts["input_shape"] is not None
-        assert has_input is facts["reads_input"], name
-        assert (facts["input_encoding"] is not None) is has_input, name
-        if not facts["boolean_generator"]:
+        has_input = facts.input_shape is not None
+        assert has_input is facts.reads_input, name
+        assert (facts.input_encoding is not None) is has_input, name
+        if not facts.boolean_generator:
             with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
                 esolangs.encode_inputs(name, [1])
 
@@ -192,14 +211,14 @@ def test_shape_is_the_generator_axis() -> None:
     """A generator reports its construction shape; no generator means None."""
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
-        if facts["boolean_generator"]:
-            assert facts["generator_shape"] in {"tree", "reducing", "lookup"}, name
+        if facts.boolean_generator:
+            assert facts.generator_shape in {"tree", "reducing", "lookup"}, name
         else:
-            assert facts["generator_shape"] is None, name
+            assert facts.generator_shape is None, name
     shapes = {
-        esolangs.describe(n)["generator_shape"]
+        esolangs.describe(n).generator_shape
         for n in esolangs.list_languages()
-        if esolangs.describe(n)["boolean_generator"]
+        if esolangs.describe(n).boolean_generator
     }
     assert shapes == {"tree", "reducing", "lookup"}
 
@@ -300,7 +319,7 @@ def test_isolated_worker_requires_a_deadline() -> None:
 def test_bound_language_runs_a_boolean_workflow() -> None:
     language = esolangs.Language(" BRAINFUCK ")
     assert language.name == REFERENCE
-    assert language.describe()["name"] == language.name
+    assert language.describe().name == language.name
     program = language.generate("0110", balance=True)
     stdin = language.encode_inputs([0, 1], truth_table="0110")
     assert _check_program(language.name, program, stdin).source == program.source
@@ -320,11 +339,19 @@ def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path) -> N
         assert table.result(timeout=5) == "01"
     # None is the public default, so under isolation it is the 30-second
     # deadline rather than a refusal.
-    assert language.run(path, isolated=True, timeout=None).output == "\x02"
+    assert (
+        language.run(
+            path, isolated=True, limits=esolangs.ExecutionLimits(execution_timeout=None)
+        ).output
+        == "\x02"
+    )
 
 
 def test_bound_execution_keeps_partial_output_on_step_exhaustion() -> None:
     language = esolangs.Language(REFERENCE)
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        language.run("+.[]", max_steps=10, timeout=1)
+        language.run(
+            "+.[]",
+            limits=esolangs.ExecutionLimits(max_steps=10, execution_timeout=1),
+        )
     assert caught.value.partial_output == "\x01"

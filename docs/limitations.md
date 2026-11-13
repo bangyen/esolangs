@@ -307,7 +307,7 @@ definition was attempted and its preservation form is closed:
 
 ### Largest input counts
 
-`describe(language)["generator_max_inputs"]` names each cap; three
+`describe(language).generator_max_inputs` names each cap; three
 generators have one.
 
 - Befunge: thirteen inputs. A six-bit ASCII lookup fills the 80x25 grid,

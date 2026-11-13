@@ -79,7 +79,12 @@ def assert_analysis_complement(
                 bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
                 assert isinstance(program, esolangs.ProgramArtifact)
                 stdin = esolangs.encode_inputs(name, bits, truth_table=table)
-                result = esolangs.run(name, program, stdin=stdin, max_steps=100000)
+                result = esolangs.run(
+                    name,
+                    program,
+                    stdin=stdin,
+                    limits=esolangs.ExecutionLimits(max_steps=100000),
+                )
                 assert esolangs.read_answer(name, result.output) == expected[row]
                 assert result.input_position == len(stdin)
                 assert result.input_past_end == 0

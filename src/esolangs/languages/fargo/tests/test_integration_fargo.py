@@ -46,7 +46,15 @@ def test_bounded_run_executes_generated_xor() -> None:
     program = esolangs.generate("Fargo", "0110")
     for row, expected in enumerate("0110"):
         stdin = esolangs.encode_inputs("Fargo", tuple(map(int, format(row, "02b"))))
-        assert run("Fargo", program, stdin=stdin, max_steps=1000).output == expected
+        assert (
+            run(
+                "Fargo",
+                program,
+                stdin=stdin,
+                limits=esolangs.ExecutionLimits(max_steps=1000),
+            ).output
+            == expected
+        )
 
     from .oracle_checks import check_raw_fargo
 
@@ -89,7 +97,7 @@ class TestEncodeInputsCanCheckItsArity:
 
 def test_the_input_is_a_row_index() -> None:
     """The claim the prose got wrong, stated as an executable fact."""
-    assert esolangs.describe("Fargo")["input_shape"] == "row_index"
+    assert esolangs.describe("Fargo").input_shape == "row_index"
     assert esolangs.encode_inputs("Fargo", [1, 1, 1, 1]) == "15\n"
 
 
@@ -101,9 +109,14 @@ def test_a_bit_per_line_input_is_the_wrong_row() -> None:
         "Fargo",
         program,
         stdin=esolangs.encode_inputs("Fargo", [1, 1, 1, 1]),
-        timeout=20,
+        limits=esolangs.ExecutionLimits(execution_timeout=20),
     ).output
-    wrong = run("Fargo", program, stdin="1111\n", timeout=20).output
+    wrong = run(
+        "Fargo",
+        program,
+        stdin="1111\n",
+        limits=esolangs.ExecutionLimits(execution_timeout=20),
+    ).output
     assert esolangs.read_answer("Fargo", right) == "1"
     assert esolangs.read_answer("Fargo", wrong) == "0"
 
@@ -112,12 +125,15 @@ def test_missing_stdin_selects_row_zero() -> None:
     """Fargo answered row 0 -- the starkest case, since nothing was fed."""
     assert (
         run(
-            "Fargo", esolangs.generate("Fargo", "10010110"), stdin="", timeout=10
+            "Fargo",
+            esolangs.generate("Fargo", "10010110"),
+            stdin="",
+            limits=esolangs.ExecutionLimits(execution_timeout=10),
         ).output
         == "1"
     )
 
 
 def test_inputs_are_one_number_indexed_by_bit() -> None:
-    assert esolangs.describe("Fargo")["input_shape"] == "row_index"
+    assert esolangs.describe("Fargo").input_shape == "row_index"
     assert esolangs.encode_inputs("Fargo", [1, 0, 1]) == "5\n"

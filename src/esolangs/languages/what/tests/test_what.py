@@ -4,6 +4,7 @@ import sys
 
 import pytest
 
+from esolangs import ExecutionLimits
 from esolangs import run as public_run
 from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.what import interpreter as native
@@ -167,7 +168,12 @@ def test_errors() -> None:
         assert io.input_char() == ord("Q")
         for bound in (None, 2):
             with pytest.raises(HaltError) as public:
-                public_run("What!?", "??", stdin=text + "\nQ", max_steps=bound)
+                public_run(
+                    "What!?",
+                    "??",
+                    stdin=text + "\nQ",
+                    limits=ExecutionLimits(max_steps=bound),
+                )
             assert type(public.value) is HaltError
             assert str(public.value) == message
             assert public.value.partial_output == ""
@@ -177,7 +183,12 @@ def test_errors() -> None:
     text = "0" * 5000 + "65"
     assert _run("??!!", text + "\nQ") == "65"
     for bound in (None, 2):
-        result = public_run("What!?", "??!!", stdin=text + "\nQ", max_steps=bound)
+        result = public_run(
+            "What!?",
+            "??!!",
+            stdin=text + "\nQ",
+            limits=ExecutionLimits(max_steps=bound),
+        )
         assert (
             result.output,
             result.input_position,

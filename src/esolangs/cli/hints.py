@@ -82,7 +82,7 @@ def _template_hint(exc: TemplateError, language: str) -> str:
 
 #: The flag that raises each bound ``run`` can report.
 _BOUND_FLAGS = {
-    "timeout": "--timeout",
+    "execution_timeout": "--timeout",
     "total_timeout": "--timeout",
     "max_steps": "--max-steps",
 }
@@ -157,13 +157,11 @@ def _stdin_hint(language: Language) -> str:
 
 def _input_sentence(facts: LanguageInfo) -> str:
     """Describe this language's stdin in one line, with an example."""
-    if facts["input_encoding"] is None:
+    if facts.input_encoding is None:
         return "none"
     # Escaped: Unary's zero is NUL, written raw into the terminal.
-    zero, one = (
-        c if c.isprintable() else repr(c)[1:-1] for c in facts["input_encoding"]
-    )
-    shape = str(facts["input_shape"])
+    zero, one = (c if c.isprintable() else repr(c)[1:-1] for c in facts.input_encoding)
+    shape = str(facts.input_shape)
     example = f"{one}{zero}"
     if shape == "row_index":
         return 'one decimal row index, e.g. "2" for the bits 10'

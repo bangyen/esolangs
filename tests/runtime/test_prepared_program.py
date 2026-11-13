@@ -28,7 +28,7 @@ def _check_preparation_consumes_source_once_and_keeps_fresh_invocations():
     assert complete_vm(first) == "B"
     assert complete_vm(second) == "["
     assert prepared.run(stdin="A").output == "B"
-    bounded = prepared.run(stdin="Z", max_steps=3)
+    bounded = prepared.run(stdin="Z", limits=esolangs.ExecutionLimits(max_steps=3))
     assert bounded.output == "["
     assert bounded.input_position == bounded.input_reads == 1
     assert bounded.steps == 3
@@ -53,7 +53,7 @@ def _check_prepared_isolation_preserves_the_same_observation():
 
 def _check_prepared_failures_retain_partial_observations():
     prepared = esolangs.Language(REFERENCE).prepare(".,")
-    for options in ({}, {"max_steps": 2}):
+    for options in ({}, {"limits": esolangs.ExecutionLimits(max_steps=2)}):
         with pytest.raises(esolangs.InputExhaustedError) as caught:
             prepared.run(**options)
         assert caught.value.partial_output == "\x00"
@@ -268,7 +268,12 @@ def _check_uniform_outcomes_and_phase_limits():
             esolangs.ExecutionLimits(**kwargs)
     # run said "non-negative" for -1 while refusing 0.
     with pytest.raises(esolangs.ArgumentError, match="max_memory must be a positive"):
-        esolangs.run(REFERENCE, "+", isolated=True, max_memory=-1)
+        esolangs.run(
+            REFERENCE,
+            "+",
+            isolated=True,
+            limits=esolangs.ExecutionLimits(max_memory=-1),
+        )
     with pytest.raises(esolangs.ArgumentError, match="completion evidence"):
         esolangs.ExecutionOutcome("completed", esolangs.ExecutionResult("", 0, 0, 0))
 
@@ -372,8 +377,13 @@ def test_an_execution_budget_outlasts_the_default_total() -> None:
         )
         assert stopped.bound == "execution_timeout"
         with pytest.raises(esolangs.ExecutionTimeoutError, match=r"4\.0-second") as e:
-            esolangs.run(REFERENCE, "+[]", timeout=4.0, isolated=True)
-        assert e.value.bound == "timeout"
+            esolangs.run(
+                REFERENCE,
+                "+[]",
+                limits=esolangs.ExecutionLimits(execution_timeout=4.0),
+                isolated=True,
+            )
+        assert e.value.bound == "execution_timeout"
         # The default total said "timeout", a parameter never passed.
         with pytest.raises(esolangs.ExecutionTimeoutError) as e:
             esolangs.run(REFERENCE, "+[]", isolated=True)
@@ -382,5 +392,5 @@ def test_an_execution_budget_outlasts_the_default_total() -> None:
     # this never stopped.
     stuck = esolangs.Language(REFERENCE).prepare("+[]")
     with pytest.raises(esolangs.ExecutionTimeoutError, match=r"1\.0-second") as e:
-        stuck.run(timeout=1.0)
-    assert e.value.bound == "timeout"
+        stuck.run(limits=esolangs.ExecutionLimits(execution_timeout=1.0))
+    assert e.value.bound == "execution_timeout"

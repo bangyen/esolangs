@@ -1,6 +1,6 @@
 """Public catalog result schema without runtime or compiler imports."""
 
-from typing import TypedDict
+from dataclasses import dataclass
 
 from esolangs.registry._contracts import (
     AnswerMode,
@@ -13,25 +13,26 @@ from esolangs.registry._contracts import (
 from esolangs.settings import DialectOption
 
 
-class LanguageInfo(TypedDict):
-    """What :func:`describe` returns, as a type a caller can annotate with.
+@dataclass(frozen=True, slots=True)
+class LanguageInfo:
+    """What :func:`describe` returns.
 
-    ``dict[str, object]`` cost a cast per field (five ``mypy --strict`` errors
-    in an ordinary consumer).  ``total=True``: every key is always present, and
-    a scalar field that does not apply is None, never ``""`` -- so a caller
-    tests ``is None`` and iterates the registry without branching.
+    Every field is always set, and a scalar that does not apply is None, never
+    ``""`` -- so a caller tests ``is None`` and iterates the registry without
+    branching.  ``dataclasses.asdict`` gives the JSON the CLI prints.
     """
 
     name: str
+    dialect_settings: dict[str, DialectOption]
     spec: str
     id: str
     source_kind: SourceForm
     state_model: StateModel
     generator_shape: GeneratorShape | None
+    boolean_generator: bool
+    generator_scaling: str | None
     generator_max_inputs: int | None
     generator_restrictions: str | None
-    generator_scaling: str | None
-    boolean_generator: bool
     parameterized: bool
     reads_input: bool
     width_effect: WidthEffect
@@ -48,4 +49,3 @@ class LanguageInfo(TypedDict):
     random: bool
     examples: list[str]
     wiki_url: str
-    dialect_settings: dict[str, DialectOption]

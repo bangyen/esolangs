@@ -16,7 +16,7 @@ class ExecutionLimits:
     not worker startup; it selects isolation even with a step limit. Total, output
     and memory limits also select isolation. Memory limits require Linux. An
     isolated invocation without total_timeout gets 30 seconds plus any
-    execution_timeout.  ``run(timeout=t)`` is ``execution_timeout=t``.
+    execution_timeout.
     """
 
     execution_timeout: float | None = None

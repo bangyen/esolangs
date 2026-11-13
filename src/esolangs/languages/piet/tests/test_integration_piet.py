@@ -48,7 +48,14 @@ def test_raster_interpreter_owns_loading_and_scale_support() -> None:
         == "1"
     )
     assert (
-        run("Piet", program, stdin="1", scale=2, max_steps=100, catalog=catalog).output
+        run(
+            "Piet",
+            program,
+            stdin="1",
+            scale=2,
+            limits=esolangs.ExecutionLimits(max_steps=100),
+            catalog=catalog,
+        ).output
         == "1"
     )
 
@@ -62,15 +69,17 @@ class TestSpecAbortsRatherThanReturningNothing:
         other = importlib.import_module(
             f"esolangs.languages.{LANGUAGES[first_other_raster()].id}.interpreter"
         )
-        assert esolangs.describe("Piet")["spec"] == (piet.__doc__ or "").strip()
-        assert esolangs.describe("Piet")["spec"] != (other.__doc__ or "").strip()
+        assert esolangs.describe("Piet").spec == (piet.__doc__ or "").strip()
+        assert esolangs.describe("Piet").spec != (other.__doc__ or "").strip()
 
 
 @pytest.mark.medium
 def test_raster_interpreter_retains_geometry_hint() -> None:
     image = Raster((((255, 255, 255),),))
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
-        run("Piet", image, scale=2, timeout=1)
+        run(
+            "Piet", image, scale=2, limits=esolangs.ExecutionLimits(execution_timeout=1)
+        )
     assert "dividing both image dimensions" in caught.value.__notes__[0]
 
 

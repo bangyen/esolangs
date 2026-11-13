@@ -170,7 +170,12 @@ class TestDimensional:
         for row, expected in enumerate(table):
             stdin = "\n".join(format(row, "04b"))
             assert (
-                run("Dimensional", program, stdin=stdin, max_steps=10_000).output
+                run(
+                    "Dimensional",
+                    program,
+                    stdin=stdin,
+                    limits=esolangs.ExecutionLimits(max_steps=10_000),
+                ).output
                 == expected
             )
 

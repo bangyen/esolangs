@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from contextlib import nullcontext
 
-from esolangs import run
+from esolangs import ExecutionLimits, run
 from esolangs.cli.args import (
     _check_count,
     _errors,
@@ -129,13 +129,15 @@ def _run(rest: list[str]) -> None:
                 language,
                 program,
                 stdin=stdin,
-                timeout=timeout,
+                limits=ExecutionLimits(
+                    execution_timeout=timeout,
+                    max_steps=max_steps,
+                    max_output=max_output,
+                    max_memory=max_memory,
+                ),
                 seed=seed,
                 scale=scale,
                 isolated=isolated,
-                max_output=max_output,
-                max_memory=max_memory,
-                max_steps=max_steps,
                 settings=settings,
             ).output
     except TemplateError as exc:

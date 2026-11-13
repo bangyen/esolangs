@@ -52,7 +52,12 @@ def test_a_table_past_the_low_input_cap_labels_its_blocks() -> None:
     program = esolangs.generate("What!?", table).source
     for row in (0, 32767, 32768, 65535):
         stdin = esolangs.encode_inputs("What!?", [int(b) for b in format(row, "016b")])
-        got = run("What!?", program, stdin=stdin, timeout=10).output
+        got = run(
+            "What!?",
+            program,
+            stdin=stdin,
+            limits=esolangs.ExecutionLimits(execution_timeout=10),
+        ).output
         assert esolangs.read_answer("What!?", got) == table[row], row
 
 

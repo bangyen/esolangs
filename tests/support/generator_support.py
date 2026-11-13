@@ -65,7 +65,7 @@ def assert_saved_rows(
     assert language.dump_program(restored) == document
     template = isinstance(restored, esolangs.TemplateArtifact)
     prepared = None if template else language.prepare(restored)
-    termination = language.describe()["answer_mode"] == "termination"
+    termination = language.describe().answer_mode == "termination"
     limits = esolangs.ExecutionLimits(max_steps=200_000) if termination else None
     n = len(table).bit_length() - 1
     for row in rows:
@@ -258,7 +258,7 @@ def assert_shared_program(
     n = len(table).bit_length() - 1
     program = esolangs.generate(language, table)
     assert plain is None or size(program.source) < size(plain)
-    parameterized = esolangs.describe(language)["parameterized"]
+    parameterized = esolangs.describe(language).parameterized
     for row in range(len(table)) if rows is None else rows:
         expected = table[row]
         bits = [int(bit) for bit in format(row, f"0{n}b")]

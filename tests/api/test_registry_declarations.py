@@ -5,6 +5,7 @@ import sys
 from dataclasses import replace
 from types import SimpleNamespace
 
+from esolangs import ExecutionLimits
 from esolangs.registry import LANGUAGES, _table
 
 
@@ -63,10 +64,15 @@ def _check_scoped_catalogs():
     bound = scoped.bind("scoped-bf")
     assert bound.catalog is scoped
     assert replace(bound, name="Brainfuck").catalog is scoped
-    assert bound.run("input.bf", max_steps=10).output == "\x00"
+    assert bound.run("input.bf", limits=ExecutionLimits(max_steps=10)).output == "\x00"
     with pytest.raises(esolangs.UnknownLanguageError):
         CATALOG.resolve("scoped-bf")
-    assert snapshot.bind("Brainfuck").run("input.bf", max_steps=10).output == "\x00"
+    assert (
+        snapshot.bind("Brainfuck")
+        .run("input.bf", limits=ExecutionLimits(max_steps=10))
+        .output
+        == "\x00"
+    )
 
     class Unreadable:
         def read(self):
@@ -105,5 +111,10 @@ def _check_scoped_catalogs():
         second = pool.submit(call, scoped, "B:", "y")
         assert first.result(timeout=5) == "A:x"
         assert second.result(timeout=5) == "B:y"
-    assert esolangs.run("brainfuck", ",.", stdin="z", max_steps=2).output == "z"
+    assert (
+        esolangs.run(
+            "brainfuck", ",.", stdin="z", limits=ExecutionLimits(max_steps=2)
+        ).output
+        == "z"
+    )
     assert not hasattr(execution, "io_factory")

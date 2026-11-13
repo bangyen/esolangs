@@ -102,7 +102,12 @@ def test_a_balanced_table_past_225_code_rows_uses_a_doubling_height_literal() ->
     for row in (0, 5000001, (1 << inputs) - 1):
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Fish", bits)
-        got = execute("Fish", program, stdin=stdin, timeout=60).output
+        got = execute(
+            "Fish",
+            program,
+            stdin=stdin,
+            limits=esolangs.ExecutionLimits(execution_timeout=60),
+        ).output
         assert esolangs.read_answer("Fish", got) == table[row], row
 
 

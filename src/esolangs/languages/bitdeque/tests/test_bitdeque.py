@@ -154,11 +154,27 @@ class TestBitdequeRefusesNonsense:
     def test_refuses_nonsense_and_still_runs_a_real_program(self) -> None:
         """``findall`` kept what matched and dropped the rest in silence."""
         with pytest.raises(esolangs.ProgramError, match="not a Bitdeque command"):
-            execute("Bitdeque", "PUSH FROB PUSH", stdin="", timeout=5)
+            execute(
+                "Bitdeque",
+                "PUSH FROB PUSH",
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            )
         # The whole language was a no-op for anyone who guessed the case.
         with pytest.raises(esolangs.ProgramError, match="upper case"):
-            execute("Bitdeque", "push invert push", stdin="", timeout=5)
+            execute(
+                "Bitdeque",
+                "push invert push",
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            )
         # Three refusals are worth nothing if the valid case broke.
         assert (
-            execute("Bitdeque", "PUSH INVERT PUSH", stdin="", timeout=5).output == "0 1"
+            execute(
+                "Bitdeque",
+                "PUSH INVERT PUSH",
+                stdin="",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            ).output
+            == "0 1"
         )

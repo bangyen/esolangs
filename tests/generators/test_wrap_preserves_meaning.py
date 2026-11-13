@@ -23,13 +23,13 @@ def _wrappable() -> list[str]:
         for name, lang in LANGUAGES.items()
         if lang.backend is not None
         and lang.backend.wrap is not None
-        and esolangs.describe(name)["answer_mode"] != "termination"
+        and esolangs.describe(name).answer_mode != "termination"
     )
 
 
 def _evaluate(name: str, table: str, width: int | None) -> str:
     """Return the program's answer on every row of ``table``, at ``width``."""
-    parameterized = esolangs.describe(name)["parameterized"]
+    parameterized = esolangs.describe(name).parameterized
     program = esolangs.generate(name, table, width=None if parameterized else width)
     inputs = len(table).bit_length() - 1
     got = ""

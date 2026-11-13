@@ -90,14 +90,14 @@ One kind of language needs a different call:
 Both carry explicit `.source`, language and dialect settings; raster programs
 also retain scale, and a generated `ProgramArtifact` its `input_arity`, which
 `evaluate` checks `bits` against. Native files carry none of these but
-raster metadata; `save_program` refuses an unfilled template. `TemplateArtifact.fill(bits)` returns a runnable record.
-`run`, `instantiate`, `dump_program` and `save_program` accept records;
+raster metadata; `to_file` refuses an unfilled template. `TemplateArtifact.fill(bits)` returns a runnable record.
+`run`, `instantiate`, `dump_program` and `to_file` accept records;
 `load_program` restores them, including template bindings. Template artifacts
 must be filled before execution. An artifact's `fill` and `evaluate` are
 `instantiate` and `Language.evaluate` with its own language and the installed
 catalog.
 
-`save_program(language, record, path, gzip=True)` compresses native text exports;
+`to_file(language, record, path, gzip=True)` compresses native text exports;
 gzip input loads as `run` loads it, so `gzip=False` writes it decompressed;
 `generate --gzip` does the same on the CLI. API exports are lossless by default;
 CLI generation uses native file terminators.
@@ -106,7 +106,7 @@ Use `dump_program` to preserve dialect settings and template bindings on disk.
 ```python
 from pathlib import Path
 
-esolangs.save_program("brainfuck", program, "xor.bf")  # native source
+esolangs.to_file("brainfuck", program, "xor.bf")  # native source
 esolangs.run("brainfuck", Path("xor.bf"), stdin="01")  # a str would be source
 esolangs.Language("brainfuck").from_file("xor.bf")  # back to an artifact
 text = esolangs.dump_program("brainfuck", program)  # JSON keeps settings
@@ -116,7 +116,7 @@ esolangs.load_program("brainfuck", text)  # takes the JSON text, not a path
 `Language.from_source(source)` declares runnable source explicitly, including
 text that resembles a filename. `Language.from_file(path)` preserves decoded text
 exactly and retains embedded dialect settings and scale. Use `normalize=True`
-on import or `save_program(..., normalize=True)` on export for native file
+on import or `to_file(..., normalize=True)` on export for native file
 terminators. Direct `run(Path(...))` is lossless; strings are always source.
 The CLI explicitly loads native files with newline normalization.
 Both return `ProgramArtifact`; parsing still happens when the program executes.
@@ -217,7 +217,7 @@ uses the existing preparation. An isolated call prepares again in its worker.
 An execution deadline selects isolation, including with a step budget, so it
 can interrupt an individual step.
 Without a total deadline, a worker gets 30 seconds plus any execution deadline.
-`run(timeout=t)` is `execution_timeout=t`, isolated or not.
+`run` takes the same `limits`.
 
 `Catalog` owns immutable declarations. Build a narrower scope from the
 records in an existing one, such as
@@ -264,7 +264,7 @@ Functions:
 - `esolangs.load_program` -- restore version-1 JSON as an explicit program or template record
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
 - `esolangs.run` -- execute `program` and return output, input usage and completion evidence
-- `esolangs.save_program` -- write a program as a native source file
+- `esolangs.to_file` -- write a program as a native source file
 
 Types:
 
@@ -278,7 +278,7 @@ Types:
 - `esolangs.ExecutionResult` -- output, stdin usage and explicit completion evidence
 - `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
 - `esolangs.Language` -- bind a canonical language name to one immutable catalog
-- `esolangs.LanguageInfo` -- what `describe` returns, as a type a caller can annotate with
+- `esolangs.LanguageInfo` -- what `describe` returns
 - `esolangs.PreparedProgram` -- loaded source and bound runtime; every invocation owns its IO and RNG
 - `esolangs.Program` -- `str | Raster | CompressedText`
 - `esolangs.ProgramArtifact` -- runnable source with its language and retained dialect choices
@@ -316,7 +316,7 @@ an `ExecutionOutcome` then holds `partial_output` with unknown counters). Some a
 | Exception | Attributes |
 | --- | --- |
 | `ExecutionCapError` | `bound`: `"max_output"` or `"max_memory"` |
-| `ExecutionTimeoutError` | `bound`: the parameter that ran out, as the caller named it: `"timeout"` or `"max_steps"` from `run`; `"execution_timeout"`, `"total_timeout"`, `"preparation_timeout"` or `"max_steps"` from `ExecutionLimits`; `"total_timeout"` when an isolated call's 30-second default total ran out |
+| `ExecutionTimeoutError` | `bound`: the `ExecutionLimits` field that ran out: `"execution_timeout"`, `"total_timeout"`, `"preparation_timeout"` or `"max_steps"`; `"total_timeout"` when an isolated call's 30-second default total ran out |
 | `InputExhaustedError` | `reads`, the reads that succeeded; `supplied`, the input units given; `unit`, what one is (`"line"` by default) |
 | `UnknownLanguageError` | `language`, the name asked for; `suggestions`, the close registered names |
 
@@ -420,12 +420,12 @@ A timeout on a termination language remains undecided. Their
 
 `generate` and CLI `--width` request a column count, not a bound: a token
 longer than the width overruns it (a Quassaunt node body reaches 180).
-`describe(language)["width_effect"]` identifies the three behaviours,
+`describe(language).width_effect` identifies the three behaviours,
 including the languages it does not affect (`"none"`).
 
 ## Dialect settings
 
-`describe(language)["dialect_settings"]` lists a language's choices and
+`describe(language).dialect_settings` lists a language's choices and
 defaults. Create overrides with
 `esolangs.Language("Alight").settings(expression_syntax="postfix")`, then pass
 them as `settings=` to `generate`, `run` or `make_debugger`. On the CLI, use
@@ -439,24 +439,25 @@ another dialect is another program. Pass `.source` to drop retained settings.
 
 ## Bounded execution
 
-Untrusted programs need all three bounds: `isolated=True`, a `timeout` and,
-on Linux, `max_memory`. A timeout alone does not bound memory, and a program
+Untrusted programs need all three bounds: `isolated=True`, an
+`execution_timeout` and, on Linux, `max_memory`. A timeout alone does not bound memory, and a program
 can grow faster than any timeout fires. Elsewhere, cap the process yourself.
 
 - Underload's `(x)(~:*~:^):^` doubles a string past a gigabyte in under a second.
 
 ### Isolate a run
 
-`run(language, program, stdin=stdin, isolated=True, timeout=30)` bounds reading
+`run(language, program, stdin=stdin, isolated=True,
+limits=ExecutionLimits(execution_timeout=30))` bounds reading
 the program and stdin, and execution, but not subprocess startup; it works on
 Windows and in worker threads. A timeout kills and reaps the child; errors retain their class and
 `partial_output`.
 
-| Bound | Python | CLI | Notes |
+| Bound | `ExecutionLimits` | CLI | Notes |
 | --- | --- | --- | --- |
-| Time | `timeout` | `--timeout` | `--isolated` defaults to 30 seconds |
+| Time | `execution_timeout` | `--timeout` | `--isolated` defaults to 30 seconds |
 | Commands | `max_steps` | `--max-steps` | combines with time, isolation and seed |
-| Memory | `max_memory=BYTES` | `--max-memory BYTES` | Linux only, selects isolation; other platforms refuse it |
+| Memory | `max_memory` | `--max-memory BYTES` | Linux only, selects isolation; other platforms refuse it |
 | Output | `max_output` | `--max-output` | selects isolation; counts Unicode characters |
 
 - `max_memory` bounds an isolated worker's virtual address space, including
@@ -471,7 +472,10 @@ Windows and in worker threads. A timeout kills and reaps the child; errors retai
 ```python
 try:
     esolangs.run(
-        "brainfuck", ",[.]", stdin="y", isolated=True, timeout=3, max_output=12
+        "brainfuck",
+        ",[.]",
+        stdin="y",
+        limits=esolangs.ExecutionLimits(execution_timeout=3, max_output=12),
     )
 except esolangs.InterpreterLimitError as exc:
     assert exc.partial_output == "y" * 12
@@ -483,10 +487,11 @@ bound separately.
 
 ### Count steps
 
-`run(language, program, stdin=stdin, max_steps=100_000, timeout=1)`
+`run(language, program, stdin=stdin,
+limits=ExecutionLimits(max_steps=100_000, execution_timeout=1))`
 returns output on halt. When either bound expires it raises
-`ExecutionTimeoutError` with `partial_output`; its `bound` is `"timeout"` or
-`"max_steps"`, the parameter that ran out.
+`ExecutionTimeoutError` with `partial_output`; its `bound` is `"execution_timeout"` or
+`"max_steps"`, the field that ran out.
 
 - `max_steps` selects cooperative stepping. It steps all languages on
   Windows and worker threads.
@@ -496,7 +501,7 @@ returns output on halt. When either bound expires it raises
   execution budget.
 - Text and image-based languages share the VM and debugger.
 - Command bounds combine with isolation, output/memory caps and seeds.
-- A language whose `describe()["steppable_to_answer"]` is false (A Painter
+- A language whose `describe().steppable_to_answer` is false (A Painter
   Ant) answers only through `run`, which proves the periodic render (a
   `max_steps` too small to prove it raises); stepped, it never halts.
 

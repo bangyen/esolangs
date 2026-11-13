@@ -32,7 +32,7 @@ def test_generator_cap_hint() -> None:
 def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -> None:
     bounds: dict[str, Any] = {}
     if mode == "steps":
-        bounds["max_steps"] = 100
+        bounds["limits"] = esolangs.ExecutionLimits(max_steps=100)
     elif mode == "isolated":
         bounds["isolated"] = True
     assert run("Befunge", "&.@", stdin=b"-12345", **bounds).output == "-12345 "
@@ -63,7 +63,15 @@ def test_random_snapshot_cannot_prove_a_cycle(wrapped) -> None:
         run_until_halt_or_cycle(machine, limit=1000)
     run_until_halt(vm, limit=1000)
     assert vm.halted
-    assert run("Befunge", source, seed=0, timeout=1).output == ""
+    assert (
+        run(
+            "Befunge",
+            source,
+            seed=0,
+            limits=esolangs.ExecutionLimits(execution_timeout=1),
+        ).output
+        == ""
+    )
     assert run_until_halt_or_cycle(vm, limit=1000) is True
 
 
@@ -92,7 +100,15 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
         assert debugger.run(max_steps=100) == "halted"
         assert machine.output == debugger.output == native
         assert machine.snapshot() == debugger.snapshot()
-        assert run("Befunge", source, seed=seed, max_steps=100).output == native
+        assert (
+            run(
+                "Befunge",
+                source,
+                seed=seed,
+                limits=esolangs.ExecutionLimits(max_steps=100),
+            ).output
+            == native
+        )
         observed.setdefault(native, seed)
     assert len(observed) > 1  # Positive control: the program actually drew.
 
@@ -105,9 +121,9 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
                 source,
                 seed=seed,
                 isolated=True,
-                timeout=5,
-                max_steps=100,
-                max_output=len(output),
+                limits=esolangs.ExecutionLimits(
+                    execution_timeout=5, max_steps=100, max_output=len(output)
+                ),
             ).output
             == output
         )

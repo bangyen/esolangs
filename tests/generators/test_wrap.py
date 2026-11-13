@@ -256,7 +256,7 @@ _RUN_TIMEOUT = 2.0
 @cache
 def _behaviour(name: str, program: str, stdin: str) -> str:
     """What ``program`` does, as a value: its output, or how it failed."""
-    if esolangs.describe(name)["answer_mode"] == "termination":
+    if esolangs.describe(name).answer_mode == "termination":
         return (
             "halts"
             if terminates(name, program, stdin, _RUN_TIMEOUT)

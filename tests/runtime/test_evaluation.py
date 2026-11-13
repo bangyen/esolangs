@@ -19,9 +19,9 @@ def _kinds() -> list[str]:
     seen: dict[tuple, str] = {}
     for name in languages(boolean_generator=True):
         facts = esolangs.describe(name)
-        key = (facts["source_kind"], facts["answer_mode"], facts["parameterized"])
+        key = (facts.source_kind, facts.answer_mode, facts.parameterized)
         seen.setdefault(key, name)
-        seen.setdefault((facts["input_shape"],), name)
+        seen.setdefault((facts.input_shape,), name)
     return sorted(set(seen.values()))
 
 
@@ -31,9 +31,9 @@ def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
     table = probe_table(name)
     program = esolangs.generate(name, table)
     path = tmp_path / "source"
-    if gzip and esolangs.describe(name)["source_kind"] == "raster":
+    if gzip and esolangs.describe(name).source_kind == "raster":
         with pytest.raises(esolangs.ProgramError, match="rasters use PNG"):
-            esolangs.save_program(name, program, path, gzip=True)
+            esolangs.to_file(name, program, path, gzip=True)
         assert not path.exists()
         return
     inputs = len(table).bit_length() - 1
@@ -43,7 +43,7 @@ def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
         assert _evaluate(name, restored, inputs=inputs) == table
         answer = _row_answerer(
             name,
-            terminating=esolangs.describe(name)["answer_mode"] == "termination",
+            terminating=esolangs.describe(name).answer_mode == "termination",
             isolated=False,
             settings=program.settings,
             scale=None,
@@ -52,7 +52,7 @@ def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
         )
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in reversed(range(inputs))]
-            esolangs.save_program(
+            esolangs.to_file(
                 name, esolangs.instantiate(name, restored, bits), path, gzip=gzip
             )
             loaded = esolangs.Language(name).from_file(
@@ -60,7 +60,7 @@ def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
             )
             assert answer(loaded, "", 30) == expected
         return
-    esolangs.save_program(name, program, path, gzip=gzip)
+    esolangs.to_file(name, program, path, gzip=gzip)
     assert _evaluate(name, path, inputs=inputs) == table
 
 

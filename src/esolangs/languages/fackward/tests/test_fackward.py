@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs import ExecutionLimits
 from esolangs import run as execute
 from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.fackward import interpreter as native
@@ -88,7 +89,11 @@ def test_the_printable_range_is_the_scalar_values() -> None:
 def test_a_count_past_sys_maxsize_is_a_limit() -> None:
     """``[x] * count`` raised a bare OverflowError (CLI exit 70)."""
     with pytest.raises(InterpreterLimitError, match="index-sized"):
-        execute("Fackward", "$ 99999999999999999999 1", timeout=2)
+        execute(
+            "Fackward",
+            "$ 99999999999999999999 1",
+            limits=ExecutionLimits(execution_timeout=2),
+        )
     machine = _Machine("$4096H", ScriptedIO())
     machine.step()
     assert machine.ip == (0, 4096)
