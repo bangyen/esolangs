@@ -15,7 +15,9 @@ Public operations split by who supplies the program:
 * Catalog: ``describe`` and ``list_languages`` provide registry facts.
 
 Boolean evaluation over every row is private certification machinery,
-not public API.  ``Language(name)`` binds these functions to one language.
+not public API.  ``Language(name)`` binds these functions to one language
+and adds its own: ``execute`` (an outcome instead of a raise), ``evaluate``,
+``prepare``, ``from_source``/``from_file`` and ``settings``.
 Names resolve case-insensitively; deliberate errors derive from EsolangError.
 """
 
