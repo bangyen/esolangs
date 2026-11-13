@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-multiple_shared_residual_admission = { tables = [{ arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = false, test = "test_boolean_qrain.py::test_every_row_prints_its_answer[00]" }
+multiple_shared_residual_admission = { tables = [{ arity = 4, rule = "parity" }, { arity = 5, rule = "parity" }], benchmark = false, test = "test_boolean_qrain.py::test_every_row_prints_its_answer" }
 
 [curation]
 backlinks = 2

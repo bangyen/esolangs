@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-constant_read_initialization_cutoff = { tables = [{ arity = 7, rule = "one" }, { arity = 8, rule = "one" }], benchmark = false, test = "test_boolean_iebel.py::test_every_row_prints_its_answer[00]" }
+constant_read_initialization_cutoff = { tables = [{ arity = 7, rule = "one" }, { arity = 8, rule = "one" }], benchmark = false, test = "test_boolean_iebel.py::test_every_row_prints_its_answer" }
 
 [curation]
 backlinks = 0

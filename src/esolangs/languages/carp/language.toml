@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-register_input_cap = { tables = [{ arity = 14, rule = "parity" }, { arity = 15, rule = "parity" }], benchmark = false, test = "test_boolean_carp.py::test_every_row_prints_its_answer[00]" }
+register_input_cap = { tables = [{ arity = 14, rule = "parity" }, { arity = 15, rule = "parity" }], benchmark = false, test = "test_boolean_carp.py::test_every_row_prints_its_answer" }
 
 [curation]
 backlinks = 1
