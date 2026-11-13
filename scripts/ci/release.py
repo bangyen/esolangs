@@ -266,7 +266,7 @@ def _smoke_files() -> None:
         assert _evaluate("brainfuck", source, timeout=None, inputs=2) == "0110"
         for program, options, code, output, diagnostic in (
             (",.+[]", ["--timeout", "2"], 124, "A", "2.0-second timeout"),
-            (",[.]", ["--max-output", "3"], 1, "AAA", "output limit exceeded"),
+            (",[.]", ["--max-output", "3"], 124, "AAA", "output limit exceeded"),
         ):
             source.write_text(program, encoding="utf-8")
             result = subprocess.run(

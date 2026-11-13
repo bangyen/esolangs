@@ -22,7 +22,8 @@ which were otherwise readable only from Python.
 Exit codes: **2** is a usage error (unknown command, option, or language;
 nothing ran), **1** is the program's own failure (read past its input, halted
 on an invalid operation, printed no readable answer), and **124** is a run stopped by
-``--timeout``, after timeout(1), from every command that takes one.  124 is
+``--timeout``, after timeout(1), from every command that takes one, or by
+``--max-steps``, ``--max-output`` or ``--max-memory``.  124 is
 distinct from 1 so the three languages whose answer *is* a timeout are not
 confused with a crash.  Only an unexpected error reaches the terminal as a
 traceback.

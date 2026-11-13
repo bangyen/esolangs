@@ -6,7 +6,12 @@ from collections.abc import Iterable
 from difflib import get_close_matches
 
 from esolangs import LanguageInfo
-from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
+from esolangs.exceptions import (
+    EsolangError,
+    ExecutionBudgetError,
+    ExecutionTimeoutError,
+    TemplateError,
+)
 from esolangs.registry import SUGGESTION_CUTOFF, Language
 from esolangs.runtime.source_hints import error_text
 
@@ -21,8 +26,10 @@ def _exit_code(exc: EsolangError) -> int:
 
     ``run --help`` documents 124 for the timeout running out, and three of the
     five commands exited 1 on it.  ``ValueError`` is misuse, 2; else 1.
+    An output or memory cap is the same verdict -- the caller's budget ran
+    out, the answer is undecided -- and exited 1, "the program broke".
     """
-    if isinstance(exc, ExecutionTimeoutError):
+    if isinstance(exc, ExecutionBudgetError):
         return _TIMEOUT_EXIT
     return 2 if isinstance(exc, ValueError) else 1
 

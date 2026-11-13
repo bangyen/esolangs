@@ -7,6 +7,9 @@ Releases before 0.10.0 are described on the
 
 ## Unreleased
 
+- **Breaking:** `esolangs run` exits 124, not 1, when `--max-output` or
+  `--max-memory` runs out, as it does for `--timeout` and `--max-steps`.
+  A worker killed before it reports the memory cap still exits 1.
 - `max_output` and `max_memory` raise `ExecutionCapError`, still an
   `InterpreterLimitError`, with `bound` naming the cap. It shares the new
   base `ExecutionBudgetError` with `ExecutionTimeoutError`, and

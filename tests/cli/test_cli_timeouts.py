@@ -159,8 +159,8 @@ class TestTheDocumentedExitCodesAreTheRealOnes:
     ("source", "options", "code", "output", "error"),
     [
         (",.", [], 0, "A", ""),
-        (",[.]", ["--max-output", "3"], 1, "AAA", "output limit exceeded"),
-        (",[.]", ["--max-output", "0"], 1, "", "output limit exceeded"),
+        (",[.]", ["--max-output", "3"], 124, "AAA", "output limit exceeded"),
+        (",[.]", ["--max-output", "0"], 124, "", "output limit exceeded"),
         # Includes worker startup; 0.5s lost output in two full-suite runs.
         (",.+[]", ["--timeout", "2"], 124, "A", "2.0-second timeout"),
         (",.", [], 0, "1", ""),

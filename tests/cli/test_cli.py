@@ -117,7 +117,7 @@ class TestInProcess:
         """``--max-output`` alone exited 2 with "requires --isolated"."""
         path = tmp_path / "p.txt"
         path.write_text("+[.]")
-        with pytest.raises(SystemExit, match=r"^1$"):
+        with pytest.raises(SystemExit, match=r"^124$"):
             call_main(["run", "--max-output", "3", REFERENCE, str(path)], capsys)
         captured = capsys.readouterr()
         assert captured.out == "\x01" * 3
