@@ -260,18 +260,29 @@ class TestProgramObjectsRefuseMisuse:
     """1.0 audit, round 2: each slipped past ``except EsolangError``."""
 
     def test_fill_refuses_the_wrong_bit_count(self) -> None:
+        """An argument error, as from evaluate; it was a TemplateError."""
         template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
-        with pytest.raises(esolangs.TemplateError):
-            template.fill([0])  # type: ignore[union-attr]
+        assert isinstance(template, esolangs.TemplateArtifact)
+        for fill in (
+            lambda: template.fill([0]),
+            lambda: esolangs.instantiate(TEMPLATE_LANGUAGE, template, [0]),
+        ):
+            with pytest.raises(esolangs.ArgumentError, match="2 inputs, but 1 bit"):
+                fill()
 
     def test_a_generated_programs_language_is_read_only(self) -> None:
         program = esolangs.generate(REFERENCE, "0110")
         with pytest.raises(FrozenInstanceError):
             program.language = TEMPLATE_LANGUAGE  # type: ignore[union-attr]
 
-    @pytest.mark.parametrize("language", ["nonesuch", 5])
-    def test_a_tag_must_name_a_language(self, language: object) -> None:
-        with pytest.raises(esolangs.UnknownLanguageError):
+    @pytest.mark.parametrize(
+        ("language", "error"),
+        [("nonesuch", esolangs.UnknownLanguageError), (5, esolangs.ArgumentError)],
+    )
+    def test_a_tag_must_name_a_language(
+        self, language: object, error: type[Exception]
+    ) -> None:
+        with pytest.raises(error):
             esolangs.Language(language).from_source(esolangs.Raster((((0, 0, 0),),)))  # type: ignore[arg-type]
 
     def test_compressed_limits_are_typed(self) -> None:
@@ -279,6 +290,10 @@ class TestProgramObjectsRefuseMisuse:
 
         with pytest.raises(esolangs.ArgumentError, match="limits"):
             esolangs.CompressedText(gzip.compress(b"x"), limits=5)  # type: ignore[arg-type]
+        # save leaked FileNotFoundError and TypeError.
+        for path in ("/nonexistent/dir/x.gz", 5):
+            with pytest.raises(esolangs.ProgramError):
+                esolangs.CompressedText.repeated("+", 5).save(path)  # type: ignore[arg-type]
 
     def test_an_alias_tag_is_stored_canonically(self) -> None:
         """Stored as typed, ``run`` refused it under every spelling."""

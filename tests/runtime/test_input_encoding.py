@@ -88,7 +88,7 @@ class TestRemainingGuards:
 
     def test_a_non_string_language_is_refused_by_name(self) -> None:
         """It leaked ``'NoneType' object has no attribute 'replace'``."""
-        with pytest.raises(esolangs.UnknownLanguageError, match="got NoneType"):
+        with pytest.raises(esolangs.ArgumentError, match="got NoneType"):
             esolangs.generate(None, XOR)
 
     def test_the_cli_hint_passes_through_an_unrelated_message(self) -> None:

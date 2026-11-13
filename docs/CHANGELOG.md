@@ -40,6 +40,12 @@ Releases before 0.10.0 are described on the
   operation does, and refuses another language's artifact;
   `Language.save_program` binds it. Raw Whitespace text saved with
   `normalize=True` no longer gains a trailing newline.  It now loads bytes, paths and streams as `run` and `dump_program` do.
+- **Breaking:** A bit count that does not match a template's inputs raises
+  `ArgumentError` from `instantiate` and `fill`, as it does from `evaluate`;
+  it was `TemplateError`. `Language(5)` raises `ArgumentError`, not
+  `UnknownLanguageError`. `save_program` refuses an unfilled template: its
+  native file would run with the placeholders. `read-answer` exits 1 when the
+  output holds no readable answer.
 - **Breaking:** `describe()` drops `proof_status` and `list` drops
   `--proof-status`: the category is proof bookkeeping (109 of 114
   generators read `linear`), and ledger changes should not change the API.

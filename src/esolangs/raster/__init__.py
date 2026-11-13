@@ -211,8 +211,7 @@ class Raster:
         if scale == 1:
             return self
 
-        def materialize() -> Rows:
-            base = self.rows
+        def check(base: Rows) -> None:
             pixels = len(base) * len(base[0]) * scale * scale
             if pixels > MAX_UPSCALED_PIXELS:
                 raise ArgumentError(
@@ -220,6 +219,15 @@ class Raster:
                     f"{len(base) * scale} image ({pixels} pixels), over the "
                     f"{MAX_UPSCALED_PIXELS}-pixel limit; use a smaller scale"
                 )
+
+        # Known rows refuse now: generate(scale=10**30) returned and only a
+        # later pickle, dump or run refused it.
+        if self._rows is not None:
+            check(self.rows)
+
+        def materialize() -> Rows:
+            base = self.rows
+            check(base)
             rows = [
                 tuple(pixel for pixel in row for _ in range(scale)) for row in self.rows
             ]

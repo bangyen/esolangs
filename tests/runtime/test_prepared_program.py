@@ -38,7 +38,9 @@ def _check_preparation_consumes_source_once_and_keeps_fresh_invocations():
     with pytest.raises(esolangs.ProgramError, match="program or template artifact"):
         language.evaluate(",.", [0])
     generated = language.prepare(esolangs.generate(REFERENCE, "0110"))
-    with pytest.raises(esolangs.ArgumentError, match="expects 2 bits"):
+    with pytest.raises(
+        esolangs.ArgumentError, match="has 2 inputs, but 1 bit was given"
+    ):
         generated.evaluate([0])
     assert generated.evaluate([0, 1]).bit == "1"
     assert generated.evaluate([1, 1]).bit == "0"
@@ -256,9 +258,13 @@ def _check_uniform_outcomes_and_phase_limits():
         {"max_steps": True},
         {"max_output": -1},
         {"max_memory": 0},
+        {"max_memory": -1},
         {"total_timeout": float("inf")},
+        {"execution_timeout": 0},
+        {"preparation_timeout": 0},
     ):
-        with pytest.raises(esolangs.ArgumentError):
+        # Each names its own field; all three timeouts said "timeout".
+        with pytest.raises(esolangs.ArgumentError, match=f"^{next(iter(kwargs))} "):
             esolangs.ExecutionLimits(**kwargs)
     with pytest.raises(esolangs.ArgumentError, match="completion evidence"):
         esolangs.ExecutionOutcome("completed", esolangs.ExecutionResult("", 0, 0, 0))

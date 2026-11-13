@@ -100,7 +100,11 @@ def read_artifact(
         # Source-kind checking still belongs to the selected language's loader.
         source = source_for(name, record.source, catalog=catalog)
         return ProgramArtifact(source, name, record.settings, record.scale)
-    source = source_for(name, value, catalog=catalog, native=file and normalize)
+    # Re-wrap file bytes so a decoding error names the file, not its bytes.
+    named = (
+        _FileSource(str(program), value) if file and isinstance(value, bytes) else value
+    )
+    source = source_for(name, named, catalog=catalog, native=file and normalize)
     return ProgramArtifact(source, name)
 
 

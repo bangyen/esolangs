@@ -74,8 +74,18 @@ def _read_container(
     )
 
 
-def text_source(source: ProgramSource | _FileSource) -> str:
+def _label(source: object) -> str:
+    """Name a source in errors: its path, never its (possibly huge) bytes."""
+    if isinstance(source, (os.PathLike, _FileSource)):
+        return str(source)
+    return "the program"
+
+
+def text_source(
+    source: ProgramSource | _FileSource, *, label: str | None = None
+) -> str:
     """Decode UTF-8 source without changing line endings or terminators."""
+    label = _label(source) if label is None else label
     value, _path = _read_container(source)
     if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
         value = CompressedText(value)
@@ -86,7 +96,7 @@ def text_source(source: ProgramSource | _FileSource) -> str:
             value = value.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise syntax_error(
-                f"cannot read {source!s}: not text (invalid UTF-8 at byte {exc.start})",
+                f"cannot read {label}: not text (invalid UTF-8 at byte {exc.start})",
                 "save the text program as UTF-8 before running it",
                 error_type=ProgramError,
             ) from exc
@@ -113,7 +123,7 @@ def compressed_text_source(source: ProgramSource | _FileSource) -> str | Compres
         return value
     if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
         return CompressedText(value)
-    return text_source(value)
+    return text_source(value, label=_label(source))
 
 
 def raster_source(source: ProgramSource | _FileSource) -> Raster:

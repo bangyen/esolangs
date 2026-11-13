@@ -192,8 +192,15 @@ class CompressedText:
         return self.data
 
     def save(self, path: str | Path) -> None:
-        """Write a gzip source file."""
-        Path(path).write_bytes(self.data)
+        """Write a gzip source file.
+
+        Raises:
+            ProgramError: The file cannot be written.
+        """
+        try:
+            Path(path).write_bytes(self.data)
+        except (OSError, TypeError, ValueError) as exc:
+            raise ProgramError(f"cannot save program to {path!s}: {exc}") from exc
 
     def wrapped(self, width: int | None) -> CompressedText:
         """Insert line breaks at width without collecting expanded source."""

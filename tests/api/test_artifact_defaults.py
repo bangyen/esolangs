@@ -87,5 +87,7 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
         else:
             assert bound.load_program(document) == restored
             if not options:
-                with pytest.raises(esolangs.ArgumentError, match="expects 1 bits"):
+                with pytest.raises(
+                    esolangs.ArgumentError, match="has 1 input, but 2 bits were given"
+                ):
                     restored.evaluate([0, 1])

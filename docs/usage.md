@@ -88,7 +88,9 @@ One kind of language needs a different call:
 
 `generate` returns an immutable `ProgramArtifact` or `TemplateArtifact`.
 Both carry explicit `.source`, language and dialect settings; raster programs
-also retain scale. `TemplateArtifact.fill(bits)` returns a runnable record.
+also retain scale, and a generated `ProgramArtifact` its `input_arity`, which
+`evaluate` checks `bits` against. Native files carry none of these but
+raster metadata; `save_program` refuses an unfilled template. `TemplateArtifact.fill(bits)` returns a runnable record.
 `run`, `instantiate`, `dump_program` and `save_program` accept records;
 `load_program` restores them, including template bindings. Template artifacts
 must be filled before execution. An artifact's `fill` and `evaluate` are
@@ -122,7 +124,8 @@ expanded text. A `CompressedText` carries its `limits`, a
 other two cap the expanded work and the compressed file. `dump_program` and
 `load_program` round-trip all three as text. Without limits nothing is
 capped: a gzip file expands about 1000-fold, counted on construction, so
-pass `TextLimits` when the data is untrusted.
+pass `TextLimits` when the data is untrusted. A gzip file read by `from_file`
+or `run(Path(...))` carries no limits.
 
 ## Work with one language
 
@@ -205,8 +208,10 @@ Without a total deadline, a worker gets 30 seconds plus any execution deadline.
 `run(timeout=t)` is `execution_timeout=t`, isolated or not.
 
 `Catalog` owns immutable declarations. Build a narrower scope from the
-records in an existing one, such as `Language("Brainfuck").catalog.languages`;
-`with_language(record)` returns a new scope with one more of those records. Use `catalog.bind(name)` or `Language(name, catalog=catalog)`.
+records in an existing one, such as
+`Catalog(Language("Brainfuck").catalog.languages.values())`;
+`with_language(record)` returns a new scope with that record added or
+replaced. Use `catalog.bind(name)` or `Language(name, catalog=catalog)`.
 Package operations and VM/debugger factories also accept `catalog=`.
 Subprocess isolation requires runtime declarations matching the installed
 catalog; native and cooperative execution use the supplied declarations.
@@ -291,11 +296,12 @@ Exceptions:
 
 Every `EsolangError` carries `partial_output`, the output written before
 the raise (empty when the program never ran), and `observation`, the
-`ExecutionResult` up to the failure (None when execution was not observed). Some add fields:
+`ExecutionResult` up to the failure (None when execution was not observed;
+an `ExecutionOutcome` then holds `partial_output` with unknown counters). Some add fields:
 
 | Exception | Attributes |
 | --- | --- |
-| `ExecutionTimeoutError` | `bound`: `"timeout"` or `"max_steps"` |
+| `ExecutionTimeoutError` | `bound`: the parameter that ran out, as the caller named it: `"timeout"` or `"max_steps"` from `run`; `"execution_timeout"`, `"total_timeout"`, `"preparation_timeout"` or `"max_steps"` from `ExecutionLimits` |
 | `InputExhaustedError` | `reads`, the reads that succeeded; `supplied`, the input units given; `unit`, what one is (`"line"` by default) |
 | `UnknownLanguageError` | `language`, the name asked for; `suggestions`, the close registered names |
 
@@ -462,7 +468,7 @@ bound separately.
 `run(language, program, stdin=stdin, max_steps=100_000, timeout=1)`
 returns output on halt. When either bound expires it raises
 `ExecutionTimeoutError` with `partial_output`; its `bound` is `"timeout"` or
-`"max_steps"`.
+`"max_steps"`, the parameter that ran out.
 
 - `max_steps` selects cooperative stepping. It steps all languages on
   Windows and worker threads.

@@ -9,7 +9,7 @@ from esolangs.operations.boolean_io import encode_inputs, read_answer
 from esolangs.operations.execution import _execute_outcome
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._prepared import PreparedProgram
-from esolangs.runtime._validate import check_bits
+from esolangs.runtime._validate import check_bit_count, check_bits
 
 
 def evaluate(
@@ -33,10 +33,8 @@ def evaluate(
     if isinstance(artifact, TemplateArtifact):
         stdin = ""
     else:
-        if program.input_arity is not None and len(row) != program.input_arity:
-            raise ArgumentError(
-                f"{name} program expects {program.input_arity} bits, got {len(row)}"
-            )
+        if program.input_arity is not None:
+            check_bit_count(row, program.input_arity, f"{name} program")
         stdin = encode_inputs(name, row, catalog=catalog)
 
     if contract.answer_mode != "termination":

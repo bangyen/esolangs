@@ -39,7 +39,13 @@ from esolangs.registry import (
     template_setters,
 )
 from esolangs.registry._catalog import Catalog
-from esolangs.runtime._validate import check_bits, check_flag, check_scale, check_width
+from esolangs.runtime._validate import (
+    check_bit_count,
+    check_bits,
+    check_flag,
+    check_scale,
+    check_width,
+)
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import (
     DialectSettings,
@@ -124,7 +130,11 @@ def generate(
                 catalog=catalog,
             ),
         )
-        return replace(artifact, source=artifact.source.upscaled(scale), scale=scale)
+        # Materialize the base so upscaled() checks the pixel limit now, not
+        # at the first pickle, dump or run.
+        base = artifact.source
+        _ = base.rows
+        return replace(artifact, source=base.upscaled(scale), scale=scale)
     if balance and width is not None:
         raise with_hint(
             ArgumentError("balance and width are mutually exclusive"),
@@ -416,10 +426,10 @@ def instantiate(
     Raises:
         UnknownLanguageError: ``language`` is not registered.
         TemplateError: Nothing to fill: the language reads its inputs, the
-            template came from another language or table, is a raster, is
-            already filled, or has a different input count than ``bits``.
-        ArgumentError: A bit is not an integer 0 or 1, or an option is
-            invalid.
+            template came from another language or table, is a raster, or is
+            already filled.
+        ArgumentError: A bit is not an integer 0 or 1, ``bits`` does not
+            match the template's input count, or an option is invalid.
     """
     from esolangs.registry._catalog import get_catalog
 
@@ -473,19 +483,13 @@ def instantiate(
     bits = check_bits(bits, "bits")
     artifact = template
     inputs = artifact.bindings.inputs
-    if len(bits) != inputs:
-        given = (
-            f"{len(bits)} bit was given"
-            if len(bits) == 1
-            else f"{len(bits)} bits were given"
-        )
+    try:
+        check_bit_count(bits, inputs, f"{name} template")
+    except ArgumentError as error:
         raise with_hint(
-            TemplateError(
-                f"this {name} template has {inputs} input"
-                f"{'' if inputs == 1 else 's'}, but {given}"
-            ),
+            error,
             f"pass exactly {inputs} integer bits to instantiate(), one per input",
-        )
+        ) from None
     filled = artifact.fill(bits)
     program = wrap_program(
         filled.source, catalog.languages[name].id, width, catalog=catalog

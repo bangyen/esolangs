@@ -27,12 +27,17 @@ class ExecutionLimits:
 
     def __post_init__(self) -> None:
         """Refuse invalid budgets before acquiring source or input."""
-        check_timeout(self.preparation_timeout)
-        check_timeout(self.execution_timeout)
-        check_timeout(self.total_timeout)
-        for name in ("max_steps", "max_output", "max_memory"):
+        check_timeout(self.preparation_timeout, "preparation_timeout")
+        check_timeout(self.execution_timeout, "execution_timeout")
+        check_timeout(self.total_timeout, "total_timeout")
+        for name in ("max_steps", "max_output"):
             value = getattr(self, name)
             if value is not None:
                 check_whole(value, name)
-                if name == "max_memory" and value == 0:
-                    raise ArgumentError("max_memory must be positive")
+        memory = self.max_memory
+        if memory is not None and (
+            isinstance(memory, bool) or not isinstance(memory, int) or memory <= 0
+        ):
+            raise ArgumentError(
+                f"max_memory must be a positive integer, got {memory!r}"
+            )

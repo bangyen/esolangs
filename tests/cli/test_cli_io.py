@@ -73,6 +73,9 @@ class TestNonTextInputIsRefusedNotCrashed:
         assert result.returncode == 2
         assert "not text" in result.stderr
         assert "Traceback" not in result.stderr
+        # It named the file by its bytes: 100 KB of stderr for a 100 KB file.
+        assert str(path) in result.stderr
+        assert len(result.stderr) < 500
 
     def test_binary_stdin_is_refused(self) -> None:
         """A program's binary output piped into `read-answer`."""

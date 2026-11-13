@@ -69,7 +69,12 @@ def check_seed(seed: object) -> None:
         )
 
 
-def check_timeout(timeout: object) -> None:
+def _timeout_noun(name: str) -> str:
+    """Return how a hint names the timeout parameter."""
+    return "a timeout" if name == "timeout" else name
+
+
+def check_timeout(timeout: object, name: str = "timeout") -> None:
     """Refuse invalid timeouts; ``None`` is allowed."""
     from esolangs.exceptions import ArgumentError
     from esolangs.runtime.source_hints import with_hint
@@ -79,19 +84,19 @@ def check_timeout(timeout: object) -> None:
     if isinstance(timeout, bool) or not isinstance(timeout, int | float):
         raise with_hint(
             ArgumentError(
-                f"timeout must be a number or None, got {_argument_repr(timeout)}"
+                f"{name} must be a number or None, got {_argument_repr(timeout)}"
             ),
-            ("set a timeout in seconds, for example timeout=5.0"),
+            (f"set {_timeout_noun(name)} in seconds, for example {name}=5.0"),
         )
     if timeout != timeout or timeout in _INFINITE:
         raise with_hint(
-            ArgumentError(f"timeout must be finite, got {_argument_repr(timeout)}"),
-            ("set a timeout in seconds, for example timeout=5.0"),
+            ArgumentError(f"{name} must be finite, got {_argument_repr(timeout)}"),
+            (f"set {_timeout_noun(name)} in seconds, for example {name}=5.0"),
         )
     if timeout <= 0:
         raise with_hint(
-            ArgumentError(f"timeout must be positive, got {_argument_repr(timeout)}"),
-            ("set a timeout in seconds, for example timeout=5.0"),
+            ArgumentError(f"{name} must be positive, got {_argument_repr(timeout)}"),
+            (f"set {_timeout_noun(name)} in seconds, for example {name}=5.0"),
         )
     if timeout > _TIMEOUT_CEILING:
         # Thread waits take this bound: the CLI's source read joins with it
@@ -101,11 +106,11 @@ def check_timeout(timeout: object) -> None:
         # ``get(timeout=1e300)``; a bound that long is not one anybody wants.
         raise with_hint(
             ArgumentError(
-                f"timeout must be at most {_TIMEOUT_CEILING} seconds, got "
+                f"{name} must be at most {_TIMEOUT_CEILING} seconds, got "
                 f"{_argument_repr(timeout)}; a longer one does not fit "
                 "a thread wait"
             ),
-            ("set a timeout in seconds, for example timeout=5.0"),
+            (f"set {_timeout_noun(name)} in seconds, for example {name}=5.0"),
         )
 
 
@@ -127,6 +132,18 @@ def check_width(width: object) -> None:
         raise with_hint(
             ArgumentError(f"width must be positive, got {_argument_repr(width)}"),
             ("use a positive integer column width, for example width=80"),
+        )
+
+
+def check_bit_count(bits: list[int], inputs: int, subject: str) -> None:
+    """Refuse a bit list whose length is not ``subject``'s input count."""
+    from esolangs.exceptions import ArgumentError
+
+    if len(bits) != inputs:
+        given = f"{len(bits)} bit{' was' if len(bits) == 1 else 's were'} given"
+        raise ArgumentError(
+            f"this {subject} has {inputs} input{'' if inputs == 1 else 's'}, "
+            f"but {given}"
         )
 
 

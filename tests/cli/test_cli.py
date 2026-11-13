@@ -324,12 +324,6 @@ _REFUSALS = {
         "unknown language",
         "1",
     ),
-    "read_answer_reports_an_unreadable_output": (
-        "read-answer brainfuck",
-        "no answer this could read",
-        "no digits here!",
-        " \t\n",
-    ),
     "a_genuine_extra_argument_still_says_so": (
         "describe brainfuck zzz",
         "unexpected argument",

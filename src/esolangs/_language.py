@@ -64,9 +64,17 @@ class Language:
 
         Raises:
             TemplateError: Source is an unfilled template.
-            ProgramError: Source has an unsupported type or foreign provenance.
+            ProgramError: Source has an unsupported type, such as a program
+                artifact (pass its ``.source``).
             ArgumentError: Dialect settings are invalid for this language.
         """
+        from esolangs.exceptions import ProgramError
+
+        if isinstance(source, ProgramArtifact):
+            raise ProgramError(
+                f"from_source takes source, not a {source.language} artifact; "
+                "pass its .source"
+            )
         retained = effective_settings(self.name, source, settings, catalog=self.catalog)
         return ProgramArtifact(source, self.name, retained)
 

@@ -85,7 +85,7 @@ Bound a run with:
 
 `evaluate` handles stdin encoding, template binding, and answer extraction.
 The row includes an execution observation and, for termination answers,
-a halt or divergence proof. Exhausting a budget raises `ExecutionTimeoutError`.
+a halt or divergence proof. Exhausting a time or step budget raises `ExecutionTimeoutError`; `max_output`, `InterpreterLimitError`.
 Generated artifacts expose `.source` and templates expose `.fill(bits)`.
 For a custom catalog, use `Language.evaluate(artifact, bits)`.
 The [2.0 migration guide](docs/usage.md#compatibility) covers the changed return

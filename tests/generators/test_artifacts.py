@@ -228,6 +228,8 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
     language = esolangs.Language(REFERENCE)
     source = "program.bf"
     artifact = language.from_source(source)
+    with pytest.raises(esolangs.ProgramError, match=r"pass its \.source"):
+        language.from_source(artifact)  # type: ignore[arg-type]
     assert language.run(source) == language.run(artifact)
     restored = language.load_program(language.dump_program(artifact))
     path = tmp_path / "source.txt"

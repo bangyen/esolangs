@@ -128,6 +128,7 @@ options:
                 ex     a committed program beside its language modules
                 int    interpreter-only: a classic kept for coverage, with
                        no generator, so `generate` refuses it
+              then `max-inputs=N` and any table-dependent restriction
   --json      print a JSON array: names, or capability records with --details
   --generator restrict to languages with a Boolean generator
   --interpreter-only restrict to languages without a Boolean generator
@@ -164,7 +165,8 @@ says (one input per line, adjacent bit characters, and so on).
 
 Some languages instead return a *template*: their generators embed the
 inputs in the code rather than reading them, leaving a run of `$` per input
-as long as the code that will replace it.  Running one unfilled is refused.
+as long as the code that will replace it.  The API refuses to run one
+unfilled, but its printed text is plain source that would run as written.
 `esolangs list --details` marks them `tmpl`; pass --bits to get a runnable
 program instead of the template.
 

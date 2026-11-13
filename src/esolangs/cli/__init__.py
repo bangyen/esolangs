@@ -21,7 +21,7 @@ which were otherwise readable only from Python.
 
 Exit codes: **2** is a usage error (unknown command, option, or language;
 nothing ran), **1** is the program's own failure (read past its input, halted
-on an invalid operation, was a template), and **124** is a run stopped by
+on an invalid operation, printed no readable answer), and **124** is a run stopped by
 ``--timeout``, after timeout(1), from every command that takes one.  124 is
 distinct from 1 so the three languages whose answer *is* a timeout are not
 confused with a crash.  Only an unexpected error reaches the terminal as a
@@ -74,7 +74,7 @@ from esolangs.cli.hints import (
 from esolangs.cli.io import _read_stdin
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
-from esolangs.exceptions import EsolangError
+from esolangs.exceptions import EsolangError, ProgramError
 from esolangs.raster import png
 from esolangs.registry import LANGUAGES, Language, resolve
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
@@ -222,7 +222,7 @@ def _list(rest: list[str]) -> None:
     # unexplained for anyone who ran the thing before reading about it.
     print(
         f"{'language'.ljust(width)}  gen=generator tmpl=template ex=example "
-        f"int=interpreter-only"
+        f"int=interpreter-only; then any generator cap"
     )
     for name in names:
         facts = describe(name)
@@ -536,8 +536,14 @@ def _read_answer(rest: list[str]) -> None:
             f"output in: esolangs run {language} prog.txt | esolangs "
             f"read-answer {language}"
         )
-    with _errors():
-        print(read_answer(language, output))
+    try:
+        answer = read_answer(language, output)
+    except ProgramError as exc:
+        # Output with no readable answer is the program's failure, as in run.
+        _fail(exc, 1)
+    except EsolangError as exc:
+        _fail(exc)
+    print(answer)
 
 
 def main() -> None:

@@ -17,12 +17,13 @@ from esolangs.artifacts import (
     TemplateBindings,
 )
 from esolangs.compressed import CompressedText, TextLimits
-from esolangs.exceptions import ArgumentError, ProgramError
+from esolangs.exceptions import ArgumentError, ProgramError, TemplateError
 from esolangs.raster import Raster, png
 from esolangs.registry import template_char
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._json import unique_object
 from esolangs.runtime._source import ProgramSource
+from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import (
     DialectSettings,
     _settings_for,
@@ -56,6 +57,7 @@ def save_program(
     Raises:
         UnknownLanguageError: ``language`` is not registered.
         ArgumentError: ``gzip`` or ``normalize`` is not a Boolean flag.
+        TemplateError: ``program`` is an unfilled template.
         ProgramNotFoundError: ``program`` is a Path that does not exist.
         ProgramError: The record belongs to another language, or the source
             cannot be read or encoded or the file cannot be written.
@@ -81,6 +83,17 @@ def save_program(
         )
         if record is not None:
             check_origin(origin, record.language, catalog=catalog)
+            if isinstance(record, TemplateArtifact):
+                # A native file cannot carry bindings: it reloaded as plain
+                # source and ran with its placeholders unfilled.
+                raise with_hint(
+                    TemplateError(
+                        "a template's native file would run with its "
+                        "placeholders unfilled"
+                    ),
+                    "fill it with instantiate() first, or keep the bindings "
+                    "with dump_program()",
+                )
             program = record.source
         elif not isinstance(program, (str, Raster, CompressedText)):
             # Bytes, paths and streams load as run() loads them.
@@ -115,7 +128,7 @@ def save_program(
             staged = Path(temporary) / "source"
             staged.write_bytes(source)
             staged.replace(target)
-    except ProgramError:
+    except (ProgramError, TemplateError):
         raise
     except (OSError, TypeError, ValueError) as exc:
         raise ProgramError(f"cannot save program to {path!s}: {exc}") from exc

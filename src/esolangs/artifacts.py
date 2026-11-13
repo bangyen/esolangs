@@ -21,7 +21,7 @@ from esolangs.raster import Raster
 from esolangs.results import ExecutionResult
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import CycleDecision
-from esolangs.runtime._validate import check_bits, check_scale
+from esolangs.runtime._validate import check_bit_count, check_bits, check_scale
 
 __all__ = [
     "Artifact",
@@ -129,11 +129,7 @@ class TemplateBindings:
     ) -> str:
         """Bind integer bits in source, refusing missing or stray runs."""
         bits = check_bits(bits, "bits")
-        if len(bits) != self.inputs:
-            raise TemplateError(
-                f"this template has {self.inputs} inputs, but {len(bits)} "
-                f"bits were given"
-            )
+        check_bit_count(bits, self.inputs, "template")
         return fill_runs(source, self.char, self.setters, bits, spans=spans)
 
 

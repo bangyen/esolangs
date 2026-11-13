@@ -225,10 +225,10 @@ def test_raster_repr_names_its_size() -> None:
 
 
 def test_an_oversized_upscale_is_refused_before_rendering() -> None:
-    """``scale=99999`` was OOM-killed with no message."""
-    program = esolangs.generate(RASTER_LANGUAGES[0], "0110", scale=10**4)
-    with pytest.raises(esolangs.ArgumentError, match="pixel limit"):
-        program.source.to_png()
+    """``scale=99999`` was OOM-killed with no message; generate refuses it now."""
+    for language in RASTER_LANGUAGES:
+        with pytest.raises(esolangs.ArgumentError, match="pixel limit"):
+            esolangs.generate(language, "0110", scale=10**4)
 
 
 @pytest.mark.medium

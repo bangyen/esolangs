@@ -111,8 +111,8 @@ class Catalog:
             # Before ``canonical_id`` touches it: a ``None`` name would otherwise
             # escape as ``'NoneType' object has no attribute 'replace'`` from
             # inside the API.
-            raise UnknownLanguageError(
-                f"expected a language name, got {type(name).__name__}"
+            raise ArgumentError(
+                f"a language name must be a string, got {type(name).__name__}"
             )
         if name in self.languages:
             return name

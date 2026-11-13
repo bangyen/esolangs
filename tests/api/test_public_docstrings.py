@@ -129,6 +129,16 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     ),
     (
         "save_program",
+        x.TemplateError,
+        lambda: esolangs.save_program(
+            _first("parameterized"),
+            esolangs.generate(_first("parameterized"), "0110"),
+            _MISSING,
+        ),
+        None,
+    ),
+    (
+        "save_program",
         x.ProgramNotFoundError,
         lambda: esolangs.save_program("Brainfuck", _MISSING, _MISSING),
         None,
@@ -195,7 +205,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     ),
     (
         "instantiate",
-        x.TemplateError,
+        x.ArgumentError,
         lambda: esolangs.instantiate(_first("parameterized"), _template(), [1]),
         None,
     ),
