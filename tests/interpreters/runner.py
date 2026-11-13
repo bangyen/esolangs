@@ -19,7 +19,11 @@ def run_program(
     suppress_eof: bool = True,
     **run_kwargs: Any,
 ) -> str:
-    """Run ``code`` through ``run`` and return everything it printed."""
+    """Run ``code`` through ``run`` and return everything it printed.
+
+    Exhausted input ends the run quietly; ``suppress_eof=False`` (or
+    :func:`native_runner`) lets a test assert the ``EOFError``.
+    """
     io = ScriptedIO(stdin)
     kwargs = dict(run_kwargs) if limit is None else {"limit": limit, **run_kwargs}
     halts: tuple[type[BaseException], ...] = (EOFError,) if suppress_eof else ()

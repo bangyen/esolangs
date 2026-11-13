@@ -1,7 +1,5 @@
 """Tests for the Nandypants Boolean generator."""
 
-import pytest
-
 import esolangs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -11,14 +9,14 @@ from tests.support.generator_support import assert_every_row, three_input_corpus
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        assert_analysis_complement("Nandypants", "subtree_ids")
-        _check_constants()
-        _check_forward()
-    assert_every_row("Nandypants", table)
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            assert_analysis_complement("Nandypants", "subtree_ids")
+            _check_constants()
+            _check_forward()
+        assert_every_row("Nandypants", table)
 
 
 def _check_constants() -> None:

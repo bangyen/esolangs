@@ -1,7 +1,5 @@
 """Tests for the Chicken Boolean generator."""
 
-import pytest
-
 import esolangs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -12,18 +10,18 @@ from tests.support.generator_support import assert_every_row, three_input_corpus
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        _check_constants()
-    n = len(table).bit_length() - 1
-    program = esolangs.generate("Chicken", table).source
-    # Missing characters are false; arithmetic coercion would produce NaN.
-    for prefix in ("", "0", "1"):
-        row = int(prefix.ljust(n, "0"), 2)
-        assert run("Chicken", program, stdin=prefix, timeout=5).output == table[row]
-    assert_every_row("Chicken", table, program=program)
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            _check_constants()
+        n = len(table).bit_length() - 1
+        program = esolangs.generate("Chicken", table).source
+        # Missing characters are false; arithmetic coercion would produce NaN.
+        for prefix in ("", "0", "1"):
+            row = int(prefix.ljust(n, "0"), 2)
+            assert run("Chicken", program, stdin=prefix, timeout=5).output == table[row]
+        assert_every_row("Chicken", table, program=program)
 
 
 def _check_constants() -> None:

@@ -75,12 +75,12 @@ commands:
 
 Language names are case-insensitive.  `esolangs <command> --help` (-h)
 describes one command in full; `--version` (-V) prints the version.  -s is
-short for --settings.  A truth table is 2^n bits, most significant first; its length
-sets the input count (0110 is two-input XOR).
+short for --settings.  A truth table is 2^n bits, most significant first; its
+length sets the input count (0110 is two-input XOR).
 
 exit codes: 0 success, 1 the program broke, 2 the ask was wrong, 70 internal
-error (a bug in esolangs), 120 stdout closed early, 124 time/step budget exhausted,
-130 interrupted.
+error (a bug in esolangs), 120 stdout closed early, 124 time/step budget
+exhausted, 130 interrupted.
 
 examples:
   esolangs list

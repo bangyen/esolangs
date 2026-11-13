@@ -17,22 +17,22 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        _check_native_constants()
-        assert_analysis_complement("Object disoriented", "subtree_ids")
-    from esolangs.languages.object_disoriented.interpreter import run
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            _check_native_constants()
+            assert_analysis_complement("Object disoriented", "subtree_ids")
+        from esolangs.languages.object_disoriented.interpreter import run
 
-    program = esolangs.generate("Object disoriented", table).source
-    assert_native_rows(
-        "Object disoriented", table, program, run, sentinel="Q", token=True
-    )
+        program = esolangs.generate("Object disoriented", table).source
+        assert_native_rows(
+            "Object disoriented", table, program, run, sentinel="Q", token=True
+        )
 
-    from .workspace_checks import check_accounting_object_disoriented
+        from .workspace_checks import check_accounting_object_disoriented
 
-    check_accounting_object_disoriented(table)
+        check_accounting_object_disoriented(table)
 
 
 def _check_native_constants() -> None:

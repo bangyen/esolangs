@@ -18,18 +18,20 @@ from tests.support.generator_support import (
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        _check_constants()
-        _check_projection()
-    program = esolangs.generate("Balik", table).source
-    if table == "10":
-        assert len(program.splitlines()) == 3
-    from esolangs.languages.balik.interpreter import run
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            _check_constants()
+            _check_projection()
+        program = esolangs.generate("Balik", table).source
+        if table == "10":
+            assert len(program.splitlines()) == 3
+        from esolangs.languages.balik.interpreter import run
 
-    assert_native_rows("Balik", table, program, run, token=True, count_whitespace=True)
+        assert_native_rows(
+            "Balik", table, program, run, token=True, count_whitespace=True
+        )
 
 
 def _check_constants() -> None:

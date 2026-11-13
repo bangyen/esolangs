@@ -1,7 +1,5 @@
 """Tests for the Pilas Boolean generator."""
 
-import pytest
-
 import esolangs
 from esolangs.languages.pilas.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -13,33 +11,35 @@ from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        _check_constants()
-    n = len(table).bit_length() - 1
-    if table == "01101001":
-        assert three_input_corpus_size("Pilas") == 24034
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            _check_constants()
+        n = len(table).bit_length() - 1
+        if table == "01101001":
+            assert three_input_corpus_size("Pilas") == 24034
 
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.progress() == n
-            super()._write(value)
+        class ReadFirstIO(ScriptedIO):
+            inputs = n
 
-    program = esolangs.generate("Pilas", table).source
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("Pilas", bits)
-        got = run_observed("Pilas", program, stdin=stdin, timeout=5).output
-        io = ReadFirstIO(stdin + "7")
-        run(program, io)
-        assert io.getvalue() == table[row]
-        assert io.progress() == n
-        assert io.past_end == 0
-        assert io.input_char() == ord("7")
-        # The answer as the contract reads it, not the raw output.
-        assert esolangs.read_answer("Pilas", got) == table[row], (table, row)
+            def _write(self, value):
+                assert self.progress() == self.inputs
+                super()._write(value)
+
+        program = esolangs.generate("Pilas", table).source
+        for row in range(len(table)):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            stdin = esolangs.encode_inputs("Pilas", bits)
+            got = run_observed("Pilas", program, stdin=stdin, timeout=5).output
+            io = ReadFirstIO(stdin + "7")
+            run(program, io)
+            assert io.getvalue() == table[row]
+            assert io.progress() == n
+            assert io.past_end == 0
+            assert io.input_char() == ord("7")
+            # The answer as the contract reads it, not the raw output.
+            assert esolangs.read_answer("Pilas", got) == table[row], (table, row)
 
 
 def _check_constants() -> None:

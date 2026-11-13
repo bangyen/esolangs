@@ -2,8 +2,6 @@
 
 from unittest.mock import patch
 
-import pytest
-
 import esolangs
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm
@@ -17,10 +15,10 @@ from tests.support.generator_support import (
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    assert_every_row("Blindfolded Arithmetic", table)
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        assert_every_row("Blindfolded Arithmetic", table)
 
 
 def test_the_input_is_the_row_number() -> None:

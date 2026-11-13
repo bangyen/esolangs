@@ -24,13 +24,13 @@ def _answer(program: str, n: int, row: int) -> str:
     return esolangs.read_answer("Interprogck8", got)
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    n = len(table).bit_length() - 1
-    program = esolangs.generate("Interprogck8", table).source
-    for row in range(len(table)):
-        assert _answer(program, n, row) == table[row], (table, row)
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        n = len(table).bit_length() - 1
+        program = esolangs.generate("Interprogck8", table).source
+        for row in range(len(table)):
+            assert _answer(program, n, row) == table[row], (table, row)
 
 
 @pytest.mark.medium

@@ -11,13 +11,17 @@ preclude generation. Record rejections in [limitations](limitations.md).
    `git config core.hooksPath .githooks`, then
    `uv run python scripts/verify/gate.py`.
 2. Improve a language, or check a new one's [admission](#what-makes-a-candidate-worth-adding).
-3. `just new-language "Name"` creates interpreter, generator and test stubs.
+3. `just new-language "Name" --category <category>` creates interpreter,
+   generator and test stubs; `just new-language --help` lists the categories.
    Follow [interpreter conventions](#interpreter-conventions) and the
    [Boolean I/O contract](#the-boolean-io-contract).
 4. Run `just test-quick` while editing; `just check-language "Name"` lists
-   missing integration and checks the language.
+   missing integration, then lints and tests the language.
 5. Run `just test` before committing. For a new language,
    `just finish-language "Name"` regenerates artifacts and runs the full gate.
+
+A small fix (a doc, help text, one bug) needs only steps 1 and 5:
+`just test`, then a commit with a short imperative subject.
 
 Read [Code shape](#code-shape) before refactoring and the
 [optimization gate](#what-makes-a-generator-optimization-worth-shipping)
@@ -295,8 +299,8 @@ steps; bound each piece's upside before choosing it.
 
 ## Checklist
 
-1. `just new-language "Name"` asks for category (`--category` overrides;
-   `--interpreter-only` requires fame admission), creates stubs and records
+1. `just new-language "Name" --category <category>` (`--interpreter-only`
+   requires fame admission) creates stubs and records
    `[curation] unassessed = true` in `language.toml`. Replace placeholders.
 2. Repeat `just check-language "Name"` until no integration is missing.
    It names files and entries: registry, exports, contract, example, width

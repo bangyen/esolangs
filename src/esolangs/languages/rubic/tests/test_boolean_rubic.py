@@ -14,37 +14,39 @@ from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        assert_analysis_complement("Rubic", "subtree_ids")
-    n = len(table).bit_length() - 1
-    program = esolangs.generate("Rubic", table).source
-    opening = _Machine(" ".join(_OPENING), ScriptedIO())
-    while not opening.halted:
-        opening.step()
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            assert_analysis_complement("Rubic", "subtree_ids")
+        n = len(table).bit_length() - 1
+        program = esolangs.generate("Rubic", table).source
+        opening = _Machine(" ".join(_OPENING), ScriptedIO())
+        while not opening.halted:
+            opening.step()
 
-    class ReadFirstIO(ScriptedIO):
-        def _write(self, value):
-            assert self.progress() == n
-            super()._write(value)
+        class ReadFirstIO(ScriptedIO):
+            inputs = n
 
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("Rubic", bits)
-        got = run("Rubic", program, stdin=stdin, timeout=5).output
-        io = ReadFirstIO(stdin + "Q")
-        machine = _Machine(program, io)
-        while not machine.halted:
-            machine.step()
-        assert machine.state.cube == opening.state.cube
-        assert io.getvalue() == table[row]
-        assert io.progress() == n
-        assert io.past_end == 0
-        assert io.input_char() == ord("Q")
-        # The answer as the contract reads it, not the raw output.
-        assert esolangs.read_answer("Rubic", got) == table[row], (table, row)
+            def _write(self, value):
+                assert self.progress() == self.inputs
+                super()._write(value)
+
+        for row in range(len(table)):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            stdin = esolangs.encode_inputs("Rubic", bits)
+            got = run("Rubic", program, stdin=stdin, timeout=5).output
+            io = ReadFirstIO(stdin + "Q")
+            machine = _Machine(program, io)
+            while not machine.halted:
+                machine.step()
+            assert machine.state.cube == opening.state.cube
+            assert io.getvalue() == table[row]
+            assert io.progress() == n
+            assert io.past_end == 0
+            assert io.input_char() == ord("Q")
+            # The answer as the contract reads it, not the raw output.
+            assert esolangs.read_answer("Rubic", got) == table[row], (table, row)
 
 
 def test_the_table_holds_on_both_cube_states() -> None:

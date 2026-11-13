@@ -29,18 +29,18 @@ def _wrong_rows(table: str, program: str) -> int:
     return wrong
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    assert _wrong_rows(table, esolangs.generate("Shakespeare", table).source) == 0
-    if table == "00":
-        assert (
-            sum(
-                len(esolangs.generate("Shakespeare", f"{v:08b}").source)
-                for v in range(256)
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        assert _wrong_rows(table, esolangs.generate("Shakespeare", table).source) == 0
+        if table == "00":
+            assert (
+                sum(
+                    len(esolangs.generate("Shakespeare", f"{v:08b}").source)
+                    for v in range(256)
+                )
+                == 215909
             )
-            == 215909
-        )
 
 
 @pytest.mark.parametrize("n", [5, 6])

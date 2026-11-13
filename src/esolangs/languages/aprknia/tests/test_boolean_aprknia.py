@@ -1,7 +1,5 @@
 """Tests for the Aprknia Boolean generator."""
 
-import pytest
-
 import esolangs
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
@@ -15,18 +13,18 @@ from tests.support.generator_support import (
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        _check_constants()
-        _check_quotient_guard()
-    from esolangs.languages.aprknia.interpreter import run
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            _check_constants()
+            _check_quotient_guard()
+        from esolangs.languages.aprknia.interpreter import run
 
-    program = esolangs.generate("Aprknia", table).source
-    assert isinstance(program, str)
+        program = esolangs.generate("Aprknia", table).source
+        assert isinstance(program, str)
 
-    assert_native_rows("Aprknia", table, program, run)
+        assert_native_rows("Aprknia", table, program, run)
 
 
 def _check_constants() -> None:

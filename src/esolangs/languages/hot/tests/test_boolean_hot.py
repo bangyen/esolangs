@@ -12,24 +12,23 @@ from tests.support.generator_support import assert_every_row, three_input_corpus
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str, monkeypatch) -> None:
+def test_every_row_prints_its_answer(monkeypatch) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    assert_every_row("Hot", table)
-    if table == "0011":
-        from esolangs.languages.hot import generator
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        assert_every_row("Hot", table)
+    from esolangs.languages.hot import generator
 
-        canonical = generator.subtree_ids
+    canonical = generator.subtree_ids
 
-        def wrong_children(table):
-            ids = [list(row) for row in canonical(table)]
-            ids[1][1] = ids[1][0]
-            return ids
+    def wrong_children(table):
+        ids = [list(row) for row in canonical(table)]
+        ids[1][1] = ids[1][0]
+        return ids
 
-        with monkeypatch.context() as patch:
-            patch.setattr(generator, "subtree_ids", wrong_children)
-            with pytest.raises(AssertionError):
-                assert_every_row("Hot", table)
+    with monkeypatch.context() as patch:
+        patch.setattr(generator, "subtree_ids", wrong_children)
+        with pytest.raises(AssertionError):
+            assert_every_row("Hot", "0011")
 
 
 def test_the_bits_are_one_unseparated_string(monkeypatch) -> None:

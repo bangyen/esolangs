@@ -275,7 +275,11 @@ def _declared_boolean_models():
     ledger = Path(__file__).with_name("workspace_models.csv")
     with ledger.open() as source:
         rows = list(csv.DictReader(source))
-    assert {row["language"] for row in rows} == LANGUAGES.keys()
+    listed = {row["language"] for row in rows}
+    assert listed == LANGUAGES.keys(), (
+        f"{ledger.name}: add rows for {sorted(LANGUAGES.keys() - listed)}, "
+        f"drop {sorted(listed - LANGUAGES.keys())}"
+    )
     assert len(rows) == len(LANGUAGES)
     for row in rows:
         assert row["workspace"] in {"owned-adapter", "inherited-adapter"}, row

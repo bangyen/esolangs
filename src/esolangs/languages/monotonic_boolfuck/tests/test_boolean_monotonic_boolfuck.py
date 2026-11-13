@@ -1,7 +1,5 @@
 """Tests for the Monotonic Boolfuck Boolean generator."""
 
-import pytest
-
 import esolangs
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
@@ -10,15 +8,15 @@ from tests.support.generator_support import assert_native_rows, three_input_corp
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        _check_constants()
-    from esolangs.languages.monotonic_boolfuck.interpreter import run
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            _check_constants()
+        from esolangs.languages.monotonic_boolfuck.interpreter import run
 
-    program = esolangs.generate("Monotonic Boolfuck", table).source
-    assert_native_rows("Monotonic Boolfuck", table, program, run, sentinel="Q")
+        program = esolangs.generate("Monotonic Boolfuck", table).source
+        assert_native_rows("Monotonic Boolfuck", table, program, run, sentinel="Q")
 
 
 def _check_constants() -> None:

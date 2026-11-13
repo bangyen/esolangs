@@ -1,7 +1,5 @@
 """Tests for the NOR machine Boolean generator."""
 
-import pytest
-
 import esolangs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -13,10 +11,10 @@ from tests.support.generator_support import assert_every_row, three_input_corpus
 TABLES = [format(i, f"0{2**n}b") for n in (1, 2) for i in range(1, 2**2**n - 1)]
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    assert_every_row("NOR machine", table)
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        assert_every_row("NOR machine", table)
 
 
 def test_constants_consume_the_queue_then_print_once() -> None:

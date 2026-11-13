@@ -150,23 +150,21 @@ LANGUAGE = Language("{name}", RuntimeSpec(
 
 _GENERATOR_TEST = '''"""Tests for the {name} Boolean generator."""
 
-import pytest
-
 import esolangs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    n = len(table).bit_length() - 1
-    program = esolangs.generate("{name}", table)
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        stdin = esolangs.encode_inputs("{name}", bits)
-        got = esolangs.run("{name}", program, stdin=stdin, timeout=5).output
-        # The answer as the contract reads it, not the raw output.
-        assert esolangs.read_answer("{name}", got) == table[row], (table, row)
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        n = len(table).bit_length() - 1
+        program = esolangs.generate("{name}", table)
+        for row in range(len(table)):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            stdin = esolangs.encode_inputs("{name}", bits)
+            got = esolangs.run("{name}", program, stdin=stdin, timeout=5).output
+            # The answer as the contract reads it, not the raw output.
+            assert esolangs.read_answer("{name}", got) == table[row], (table, row)
 '''
 
 
@@ -278,6 +276,37 @@ def _registered_generator(name: str) -> bool:
     return lang is not None and lang.backend is not None
 
 
+def _template(section_name: str) -> str:
+    """Point at the reference language's filled-in ``section_name`` to copy."""
+    from esolangs.registry import LANGUAGES
+    from tests.support.reference import REFERENCE
+
+    path = f"src/esolangs/languages/{LANGUAGES[REFERENCE].id}/language.toml"
+    return f"; copy its [{section_name}] section from {path} and edit it"
+
+
+def _workspace_row(name: str) -> list[Gap]:
+    """The workspace ledger row the runtime tests require of every language."""
+    import csv
+
+    ledger = ROOT / "tests/runtime/workspace_models.csv"
+    if not ledger.exists():  # a scaffold-only tree, as the tooling tests build
+        return []
+    with ledger.open(encoding="utf-8") as source:
+        if any(row["language"] == name for row in csv.DictReader(source)):
+            return []
+    backend = "yes" if _registered_generator(name) else "no"
+    return [
+        Gap(
+            str(ledger.relative_to(ROOT)),
+            f"add the row {name},{backend},owned-adapter,<model>: <model> is the "
+            "name its interpreter passes to workspace_model(...), and "
+            "inherited-adapter replaces owned-adapter if it reuses another "
+            "language's",
+        )
+    ]
+
+
 def _common_gaps(name: str, module: str) -> list[Gap]:
     """List the steps every language needs, generator or not."""
     gaps = []
@@ -287,6 +316,18 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
         gaps.append(Gap(f"{base.relative_to(ROOT)}.py", "write the interpreter"))
     elif PLACEHOLDER in source.read_text(encoding="utf-8"):
         gaps.append(Gap(str(source.relative_to(ROOT)), "write the docstring"))
+    elif not hasattr(
+        importlib.import_module(f"esolangs.languages.{module}.interpreter"),
+        "_Machine",
+    ):
+        gaps.append(
+            Gap(
+                str(source.relative_to(ROOT)),
+                "expose the stepping machine as _Machine (an interpreter that "
+                "reuses another's subclasses or aliases it); the runtime and "
+                "lifecycle tests step it",
+            )
+        )
     needle = f"esolangs.languages.{module}.interpreter"
     tests = [
         path
@@ -343,7 +384,7 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
                 "implementation as outside_implementation = { date, source }",
             )
         )
-    return gaps
+    return gaps + _workspace_row(name)
 
 
 def _generator_gaps(lang: Language) -> list[Gap]:
@@ -363,7 +404,10 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         parse_anchors(lang.name, section(metadata, "evidence") or {})
     except (ValueError, FileNotFoundError) as error:
         gaps.append(
-            Gap(str(metadata.relative_to(ROOT)), f"record source evidence: {error}")
+            Gap(
+                str(metadata.relative_to(ROOT)),
+                f"record source evidence: {error}{_template('evidence')}",
+            )
         )
     try:
         parse_audits(lang.name, "ablations", section(metadata, "ablations") or {})
@@ -371,7 +415,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         gaps.append(
             Gap(
                 str(metadata.relative_to(ROOT)),
-                f"record measured audit evidence: {error}",
+                f"record measured audit evidence: {error}{_template('ablations')}",
             )
         )
     if source.exists() and PLACEHOLDER in source.read_text(encoding="utf-8"):
@@ -459,7 +503,8 @@ def check(name: str) -> list[Gap]:
         gaps.append(
             Gap(
                 f"src/esolangs/languages/{lang.id}/language.toml",
-                f"record bounded independent semantic checks: {error}",
+                "record bounded independent semantic checks: "
+                f"{error}{_template('semantic_evidence')}",
             )
         )
     if lang.backend is not None:
@@ -502,6 +547,7 @@ def quick_tests(name: str) -> list[str]:
         # Kiss/Sonata/SwitchCase first failed all of these inside finish's
         # 250 s gate (2026-10-21).
         "tests/interpreters/test_spec_triggers.py",
+        "tests/api/test_language_coupling.py::test_no_file_cites_another_language",
         "tests/api/test_catalog_contracts.py::TestTheSpecIsReachable",
         "tests/interpreters/test_transition_purity.py"
         f"::test_interpreter_core_is_pure_for_its_sample[{name}]",
@@ -782,6 +828,18 @@ def _regenerate() -> bool:
     return True
 
 
+def _lint(name: str) -> bool:
+    """Run ruff over the language's package, as ``finish``'s pre-commit will."""
+    package = f"src/esolangs/languages/{_slug(name)}"
+    for args in (["check"], ["format", "--check"]):
+        cmd = [sys.executable, "-m", "ruff", *args, package]
+        print("+ ruff", " ".join(args), package, flush=True)
+        if subprocess.run(cmd, cwd=ROOT, check=False).returncode:
+            print(f"{name}: fix the lint above (`ruff format {package}` formats)")
+            return False
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     """Dispatch ``start``, ``check``, ``finish`` or ``bounds``."""
     argv = list(sys.argv[1:] if argv is None else argv)
@@ -822,6 +880,8 @@ def main(argv: list[str] | None = None) -> int:
             _report(args.name, gaps)
             return 0
         if not _regenerate():
+            return 1
+        if not _lint(args.name):
             return 1
         quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
         tests = quick_tests(args.name)

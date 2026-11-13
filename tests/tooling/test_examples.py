@@ -280,6 +280,12 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         program = esolangs.ProgramArtifact("x", REFERENCE)
         monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("sample", program)]))
         module.write_set("boolean")
+        # The committed form the staleness test reads back: without the
+        # terminator, a regeneration rewrote 110 examples it then failed.
+        language = LANGUAGES[resolve(REFERENCE)]
+        written = tmp_path / "examples" / "sample" / f"sample{language.source_suffix}"
+        ending = "\n" if language.runtime.file_newline else ""
+        assert written.read_text(encoding="utf-8") == "x" + ending
         capsys.readouterr()
         module.write_set("boolean")
 

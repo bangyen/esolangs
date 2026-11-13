@@ -1,7 +1,5 @@
 """Tests for the Between Boolean generator."""
 
-import pytest
-
 import esolangs
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
@@ -10,10 +8,10 @@ from tests.support.generator_support import assert_every_row, constant_programs
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    assert_every_row("Between", table)
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        assert_every_row("Between", table)
 
 
 def test_ignored_inputs_are_read_but_never_tested() -> None:

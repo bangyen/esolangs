@@ -178,7 +178,7 @@ for name in esolangs.list_languages():
     executed.add(name)
 assert generated == sum(lang.backend is not None for lang in LANGUAGES.values()) > 0
 assert executed == set(LANGUAGES)
-assert stepped == 116 and periodic == 1, (stepped, periodic)
+assert periodic == 1 and stepped == len(LANGUAGES) - 1, (stepped, periodic)
 assert not barrier.blocked, barrier.blocked
 
 # Workers start fresh interpreters; install the guard before their first import.

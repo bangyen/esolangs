@@ -182,7 +182,7 @@ def write_set(name: str) -> None:
         existing = path.read_bytes() if path.exists() else None
         with TemporaryDirectory(dir=directory) as temporary:
             staged = pathlib.Path(temporary) / path.name
-            save_program(generated.language, generated, staged)
+            save_program(generated.language, generated, staged, normalize=True)
             if not _same_program(existing, staged.read_bytes(), generated):
                 staged.replace(path)
                 print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")

@@ -161,7 +161,7 @@ def _citations() -> list[str]:
     )
     owned = {lang.name: _own(lang)[1] for lang in langs}
     files = subprocess.run(
-        ["git", "ls-files", "*.py", "*.md", "*.tex"],
+        ["git", "ls-files", "-co", "--exclude-standard", "*.py", "*.md", "*.tex"],
         cwd=ROOT,
         capture_output=True,
         text=True,

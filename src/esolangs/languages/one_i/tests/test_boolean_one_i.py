@@ -3,8 +3,6 @@
 from fractions import Fraction
 from unittest.mock import patch
 
-import pytest
-
 import esolangs
 from esolangs.generation.algebraic import parity_bias
 from esolangs.languages.one_i import generator
@@ -17,13 +15,13 @@ from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        _check_constants()
-        _check_arithmetic_tails()
-    checks.assert_every_row("1 + i", table)
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            _check_constants()
+            _check_arithmetic_tails()
+        checks.assert_every_row("1 + i", table)
 
 
 def _check_constants() -> None:

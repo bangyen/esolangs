@@ -14,19 +14,19 @@ from tests.support.generator_support import (
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        from esolangs.languages.hq9_with_headers import generator
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            from esolangs.languages.hq9_with_headers import generator
 
-        answer = (
-            *generator._ANSWER[:-1],
-            f"[~:: q h {generator._hex('p("0")')} {generator._hex('p("1")')}]",
-        )
-        with patch.object(generator, "_ANSWER", answer):
-            assert evaluate_generated("HQ9+ with headers", "0011") == "1100"
-    assert_every_row("HQ9+ with headers", table)
+            answer = (
+                *generator._ANSWER[:-1],
+                f"[~:: q h {generator._hex('p("0")')} {generator._hex('p("1")')}]",
+            )
+            with patch.object(generator, "_ANSWER", answer):
+                assert evaluate_generated("HQ9+ with headers", "0011") == "1100"
+        assert_every_row("HQ9+ with headers", table)
 
 
 @pytest.mark.parametrize("bit", ["0", "1"])

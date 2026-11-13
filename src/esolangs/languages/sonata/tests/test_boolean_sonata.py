@@ -1,7 +1,5 @@
 """Tests for the Sonata Boolean generator."""
 
-import pytest
-
 import esolangs
 from esolangs import run
 from esolangs.runtime.io import ScriptedIO
@@ -17,21 +15,21 @@ from tests.support.witness_tables import SMALL_TABLES as TABLES
 from tests.support.witness_tables import row_bits
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_prints_its_answer(table: str) -> None:
+def test_every_row_prints_its_answer() -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
-    if table == "00":
-        _check_constants()
-    n = len(table).bit_length() - 1
-    program = esolangs.generate("Sonata", table).source
-    if n != 2:
-        assert "0_I->%0_I" not in program
-        # An exact-length setup still leaves a wrong-length binary input unanswered.
-        invalid = "0" * (n + 1)
-        assert run("Sonata", program, stdin=invalid).output == invalid
-    elif len(set(table)) == 2:
-        assert "0_I->%0_I" in program
-    assert_every_row("Sonata", table, program=program)
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            _check_constants()
+        n = len(table).bit_length() - 1
+        program = esolangs.generate("Sonata", table).source
+        if n != 2:
+            assert "0_I->%0_I" not in program
+            # An exact-length setup still leaves a wrong-length binary input unanswered.
+            invalid = "0" * (n + 1)
+            assert run("Sonata", program, stdin=invalid).output == invalid
+        elif len(set(table)) == 2:
+            assert "0_I->%0_I" in program
+        assert_every_row("Sonata", table, program=program)
 
 
 def test_pair_table_prints_its_answer() -> None:

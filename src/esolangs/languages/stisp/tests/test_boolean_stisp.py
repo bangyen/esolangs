@@ -1,7 +1,5 @@
 """Tests for the Stisp Boolean generator."""
 
-import pytest
-
 import esolangs
 from esolangs.languages.stisp.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
@@ -20,36 +18,36 @@ from tests.support.generator_support import (
 from tests.support.witness_tables import SMALL_TABLES as TABLES
 
 
-@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
-def test_every_row_results_in_its_answer(table: str) -> None:
-    if table == "00":
-        _check_constants()
-    n = len(table).bit_length() - 1
-    template = esolangs.generate("Stisp", table)
-    workspace = resource_bounds("Stisp")["workspace"].formula
-    for row in range(len(table)):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        program = esolangs.instantiate("Stisp", template, bits)
-        got = run("Stisp", program, timeout=5).output
-        assert esolangs.read_answer("Stisp", got) == table[row], (table, row)
-        io = ScriptedIO("7")
-        machine = _Machine(program.source, io)
-        written = WrittenState(machine.workspace_snapshot())
-        steps = 0
-        while not machine.halted:
+def test_every_row_results_in_its_answer() -> None:
+    for table in (*TABLES, "00010111", "01101001", "11101000"):
+        if table == "00":
+            _check_constants()
+        n = len(table).bit_length() - 1
+        template = esolangs.generate("Stisp", table)
+        workspace = resource_bounds("Stisp")["workspace"].formula
+        for row in range(len(table)):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            program = esolangs.instantiate("Stisp", template, bits)
+            got = run("Stisp", program, timeout=5).output
+            assert esolangs.read_answer("Stisp", got) == table[row], (table, row)
+            io = ScriptedIO("7")
+            machine = _Machine(program.source, io)
+            written = WrittenState(machine.workspace_snapshot())
+            steps = 0
+            while not machine.halted:
+                machine.step()
+                written.sample(machine.workspace_snapshot())
+                steps += 1
+                assert io.getvalue() == ""
+            assert steps == (1 if len(set(table)) == 1 else n)
+            assert written.bits <= workspace(n, program.source)
+            before_dump = written.bits
             machine.step()
             written.sample(machine.workspace_snapshot())
-            steps += 1
-            assert io.getvalue() == ""
-        assert steps == (1 if len(set(table)) == 1 else n)
-        assert written.bits <= workspace(n, program.source)
-        before_dump = written.bits
-        machine.step()
-        written.sample(machine.workspace_snapshot())
-        assert written.bits == before_dump + 1
-        assert io.getvalue() == table[row]
-        assert io.reads == 0
-        assert io.input_char() == ord("7")
+            assert written.bits == before_dump + 1
+            assert io.getvalue() == table[row]
+            assert io.reads == 0
+            assert io.input_char() == ord("7")
 
 
 def test_the_and_template_is_the_documented_one() -> None:
