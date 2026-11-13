@@ -8,10 +8,7 @@ byte_index_wrap_cutoff = { tables = [{ arity = 7, rule = "dense" }, { arity = 8,
 # Dense sizes settle at 5.16 chars an entry from n=10; the odd-parity window
 # 7-9-11 read 4.59 straddling the approach, 4.01 with n=13-14 added.
 linearity = 14
-# Dense written state is noisy under the band's three-row sample (1390 bits at
-# n=8, 377 at n=9): those dips read as route changes, leaving three rungs
-# at 12.  At 14 the dense ratio is x1.005.
-workspace = 14
+workspace = 9
 
 [curation]
 backlinks = 3

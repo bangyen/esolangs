@@ -32,7 +32,7 @@ from tests.proofs.deep.execution import (
     exempt_generators,
     run_to_answer,
 )
-from tests.proofs.deep.linearity import _regime_start
+from tests.proofs.deep.linearity import REGIME_BAND, _regime_start
 from tests.support.witness_tables import parity as _parity
 from tests.support.witness_tables import row_bits
 
@@ -101,6 +101,25 @@ def _written(name: str, table: str) -> int | None:
     return worst
 
 
+def _without_dips(series: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """``series`` without rungs that dip out of the route band and straight back.
+
+    Three sampled rows make dense written state noisy: BFStack read 1390 bits
+    at n=8, 377 at n=9 and 1598 at n=10, and the two jumps registered as route
+    changes, leaving too few rungs.  Only dips go: a low reading cannot hide
+    growth, a high one can, so a spike stays and still counts.
+    """
+    lo, hi = REGIME_BAND
+
+    def dip(i: int) -> bool:
+        (_, before), (_, here), (_, after) = series[i - 1 : i + 2]
+        return here < before * lo and here < after and lo <= after / before <= hi
+
+    return [
+        row for i, row in enumerate(series) if not 0 < i < len(series) - 1 or not dip(i)
+    ]
+
+
 def _self_check() -> tuple[float, float, float]:
     """Run the fit on ``n**2``, ``T`` and ``T log T`` bit series."""
     window = list(range(5, 5 + WINDOW))
@@ -111,6 +130,16 @@ def _self_check() -> tuple[float, float, float]:
     assert poly <= POLY_GROWTH, f"n**2 control read x{poly}"
     assert POLY_GROWTH < linear <= MAX_GROWTH, f"T control read x{linear}"
     assert MAX_GROWTH < log <= LOG_GROWTH < quadratic, f"T log T control read x{log}"
+    # A dip between agreeing neighbours goes; a spike, a step to a new level
+    # and a dip that never recovers all stay.
+    dip = [(8, 1390), (9, 377), (10, 1598), (11, 1636)]
+    assert _without_dips(dip) == [dip[0], *dip[2:]]
+    for kept in (
+        [(8, 1390), (9, 6000), (10, 1598)],
+        [(8, 1390), (9, 377), (10, 400)],
+        [(8, 100), (9, 40), (10, 600)],
+    ):
+        assert _without_dips(kept) == kept, kept
     return poly, linear, log
 
 
@@ -142,7 +171,9 @@ def measure(
             series.append((n, bits))
     if len(series) < MIN_RUNGS:
         return Growth(name, workspace, reason="too few arities produced a halting row")
-    past = [row for row in series if row[0] >= _regime_start(series)]
+    readings = _without_dips(series)
+    start = _regime_start(readings)
+    past = [row for row in readings if row[0] >= start]
     if len(past) < MIN_RUNGS:
         return Growth(
             name, workspace, reason="too few rungs past the last route change"
@@ -153,7 +184,8 @@ def measure(
         _growth(past[-WINDOW:]),
         past[-1][0],
         past[-1][1],
-        step=_step_growth(past),
+        # Increments need consecutive rungs; a dip already makes this abstain.
+        step=_step_growth([row for row in series if row[0] >= start]),
     )
 
 
