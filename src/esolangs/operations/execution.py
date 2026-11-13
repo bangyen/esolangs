@@ -116,11 +116,11 @@ def run(
             and in worker threads. Can combine with ``max_steps``.
         max_steps: Cooperative stepping bound, for text and raster programs;
             with ``timeout``, a worker also enforces the execution deadline.
-        max_output: Isolated output cap in Unicode characters (zero allowed);
-            the prefix is kept.
+        max_output: Output cap in Unicode characters (zero allowed); the
+            prefix is kept.  Selects isolation.
         max_memory: Linux worker virtual address space cap in bytes, including
-            Python overhead; other platforms refuse it.  Loading in the
-            parent is not capped.
+            Python overhead; other platforms refuse it.  Selects isolation;
+            loading in the parent is not capped.
         settings: Dialect choices.  Artifacts retain their own; these
             override individual ones.  Plain source uses these.
         scale: Raster scale factor; detected when None.
@@ -179,12 +179,18 @@ def _run_result(
     # Before the ``or`` below, which turned isolated=[] into a plain False.
     check_flag(isolated, "isolated")
     # timeout is ExecutionLimits.execution_timeout under its short name; with
-    # isolated, it used to bound the whole invocation instead.
+    # isolated, it used to bound the whole invocation instead.  A cap selects
+    # the worker as it does in ``execute``: run(max_output=0) was refused with
+    # "requires isolated=True" where ExecutionLimits(max_output=0) ran.
+    worker = any(
+        value is not None
+        for value in (timeout, options.get("max_output"), options.get("max_memory"))
+    )
     outcome = _execute_invocation(
         language,
         program,
         execution_timeout=timeout,
-        isolated=isolated or timeout is not None,
+        isolated=isolated or worker,
         **options,
     )
     if isinstance(outcome.error, ExecutionTimeoutError):

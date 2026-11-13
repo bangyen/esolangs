@@ -40,8 +40,10 @@ def test_invalid_memory_budget_precedes_source_reads(limit: object) -> None:
         run("Underload", Path("missing"), isolated=True, max_memory=limit)
 
 
-def test_memory_budget_requires_isolation() -> None:
-    with pytest.raises(esolangs.ArgumentError, match="isolated"):
+def test_memory_budget_selects_isolation(monkeypatch) -> None:
+    # Reaching the worker-only platform check shows the cap chose the worker.
+    monkeypatch.setattr(_isolated.sys, "platform", "darwin")
+    with pytest.raises(esolangs.ArgumentError, match="Linux"):
         run("Underload", Path("missing"), max_memory=_BUDGET)
 
 

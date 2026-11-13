@@ -75,23 +75,19 @@ def _run(rest: list[str]) -> None:
         )
         _nonnegative(max_steps, "--max-steps", options["--max-steps"])
     rest, flags = _pop_flags(rest, {"--isolated"})
-    isolated = "--isolated" in flags
+    # A cap selects the worker, as run(max_output=...) does; both flags
+    # exited 2 with "requires --isolated".
+    isolated = bool({"--isolated", "--max-output", "--max-memory"} & {*flags, *options})
     if isolated and timeout is None:
         timeout = 30.0
     max_output = None
     if "--max-output" in options:
-        if not isolated:
-            _fail("--max-output requires --isolated")
         max_output = _integer(
             options["--max-output"], "--max-output", kind="a non-negative integer"
         )
         _nonnegative(max_output, "--max-output", options["--max-output"])
     max_memory = None
     if "--max-memory" in options:
-        # Checked by flag name, as --max-output is; the API's message said
-        # "max_memory requires isolated=True".
-        if not isolated:
-            _fail("--max-memory requires --isolated")
         max_memory = _integer(
             options["--max-memory"], "--max-memory", kind="a positive integer"
         )

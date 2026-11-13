@@ -7,6 +7,9 @@ Releases before 0.10.0 are described on the
 
 ## Unreleased
 
+- `run(max_output=...)` and `run(max_memory=...)` select isolation, as
+  `ExecutionLimits` does, instead of raising `ArgumentError` without
+  `isolated=True`; `--max-output` and `--max-memory` imply `--isolated`.
 - `esolangs generate` notes on stderr that an unfilled template needs
   `--bits`, and `esolangs run` notes a template language's unfilled slot
   character in its source; both still exit 0.

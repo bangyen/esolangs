@@ -194,7 +194,7 @@ def test_isolated_cli_retains_output_and_verdict(
 @pytest.mark.parametrize(
     "options",
     [
-        ["--max-output", "1"],
+        ["--max-output", "-1"],
         ["--isolated", "--max-output", "-1"],
         ["--isolated", "--max-output", "abc"],
         ["--isolated", "--isolated"],

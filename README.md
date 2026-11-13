@@ -78,7 +78,7 @@ Bound a run with:
 
 - `max_steps`: a command count.
 - `timeout`: wall time for reading the program and stdin, and for execution, enforced in a worker on all platforms.
-- `max_output`, and `max_memory` on Linux: need `isolated=True`.
+- `max_output`, and `max_memory` on Linux: each selects isolation.
 
 `evaluate` handles stdin encoding, template binding, and answer extraction.
 The row includes an execution observation and, for termination answers,

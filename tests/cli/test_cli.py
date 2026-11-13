@@ -97,14 +97,31 @@ class TestInProcess:
             call_main(["run", REFERENCE, str(path)], capsys)
         assert capsys.readouterr().out == "\x01"
 
-    def test_max_memory_names_the_flags(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    def test_max_memory_names_the_flag(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         path = tmp_path / "p.txt"
         path.write_text("+")
+        monkeypatch.setattr(sys, "platform", "darwin")
         with pytest.raises(SystemExit):
             call_main(["run", "--max-memory", "1000", REFERENCE, str(path)], capsys)
-        assert "--max-memory requires --isolated" in capsys.readouterr().err
+        assert "--max-memory is supported only on Linux" in capsys.readouterr().err
+
+    @pytest.mark.medium
+    def test_an_output_cap_implies_isolation(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``--max-output`` alone exited 2 with "requires --isolated"."""
+        path = tmp_path / "p.txt"
+        path.write_text("+[.]")
+        with pytest.raises(SystemExit, match=r"^1$"):
+            call_main(["run", "--max-output", "3", REFERENCE, str(path)], capsys)
+        captured = capsys.readouterr()
+        assert captured.out == "\x01" * 3
+        assert "output limit exceeded" in captured.err
 
     def test_spec_json_is_the_spec(self, capsys: pytest.CaptureFixture[str]) -> None:
         """``--spec --json`` printed every fact, ignoring ``--spec``."""

@@ -234,8 +234,9 @@ bug in esolangs), 120 stdout closed early, 124 time/step budget exhausted,
 
 options:
   --isolated         run in a subprocess, by default with a 30-second deadline.
-  --max-output N     cap isolated output in Unicode characters (including zero).
-  --max-memory BYTES cap worker address space (Linux only); requires --isolated.
+  --max-output N     cap output in Unicode characters (including zero); implies
+                     --isolated.
+  --max-memory BYTES cap worker address space (Linux only); implies --isolated.
   --max-steps N      bound commands cooperatively; combines with isolation and seed.
   --timeout SECONDS  stop the run after this long, in a worker subprocess.
                      Unbounded by default.

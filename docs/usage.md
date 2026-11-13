@@ -30,8 +30,8 @@ Options, each explained in full by its command's `--help`:
 | `--set KEY=VALUE` | generate, run | one dialect override, repeatable, applied after `--settings` |
 | `--timeout SECONDS` | run | stop the run after this long; unbounded by default |
 | `--isolated` | run | run in a subprocess, 30 seconds by default |
-| `--max-output N` | run | cap isolated output in characters |
-| `--max-memory BYTES` | run | cap an isolated worker's address space (Linux) |
+| `--max-output N` | run | cap output in characters; implies `--isolated` |
+| `--max-memory BYTES` | run | cap the worker's address space (Linux); implies `--isolated` |
 | `--max-steps N` | run | bound commands cooperatively, with optional isolation |
 | `--seed N` | run | fix a random language's draws |
 | `--details` | list | add the marker column |
@@ -453,8 +453,8 @@ Windows and in worker threads. A timeout kills and reaps the child; errors retai
 | --- | --- | --- | --- |
 | Time | `timeout` | `--timeout` | `--isolated` defaults to 30 seconds |
 | Commands | `max_steps` | `--max-steps` | combines with time, isolation and seed |
-| Memory | `max_memory=BYTES` | `run --isolated --max-memory BYTES` | Linux only, needs `isolated=True`; other platforms refuse it |
-| Output | `max_output` | `--max-output` | needs `isolated=True`; counts Unicode characters |
+| Memory | `max_memory=BYTES` | `--max-memory BYTES` | Linux only, selects isolation; other platforms refuse it |
+| Output | `max_output` | `--max-output` | selects isolation; counts Unicode characters |
 
 - `max_memory` bounds an isolated worker's virtual address space, including
   Python overhead. Parent source loading is outside the cap. Exhaustion
