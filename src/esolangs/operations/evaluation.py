@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from esolangs.artifacts import Artifact, BooleanEvaluation, TemplateArtifact
-from esolangs.exceptions import ArgumentError, ExecutionTimeoutError
+from esolangs.exceptions import ArgumentError
 from esolangs.limits import ExecutionLimits
 from esolangs.operations.boolean_io import encode_inputs, read_answer
 from esolangs.operations.execution import _execute_outcome
@@ -76,23 +76,18 @@ def evaluate(
         from esolangs.operations.execution import default_total
         from esolangs.runtime._isolated import termination_result_isolated
 
-        try:
-            proof = termination_result_isolated(
-                name,
-                program,
-                stdin,
-                default_total(selected.total_timeout, selected.execution_timeout),
-                max_steps=selected.max_steps,
-                max_output=selected.max_output,
-                max_memory=selected.max_memory,
-                execution_timeout=selected.execution_timeout,
-                preparation_timeout=selected.preparation_timeout,
-                catalog=catalog,
-            )
-        except ExecutionTimeoutError as error:
-            if error.bound == "timeout":
-                error.bound = "total_timeout"
-            raise
+        proof = termination_result_isolated(
+            name,
+            program,
+            stdin,
+            default_total(selected.total_timeout, selected.execution_timeout),
+            max_steps=selected.max_steps,
+            max_output=selected.max_output,
+            max_memory=selected.max_memory,
+            execution_timeout=selected.execution_timeout,
+            preparation_timeout=selected.preparation_timeout,
+            catalog=catalog,
+        )
     answer = "halts" if proof.decision.halts else "diverges"
     return BooleanEvaluation(
         str(contract.answer_values.index(answer)), proof.observation, proof.decision

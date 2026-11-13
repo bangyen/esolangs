@@ -52,7 +52,6 @@ class ExecutionBudgetError(HaltError):
 
     #: The parameter that ran out, as the caller named it.
     bound: Literal[
-        "timeout",
         "max_steps",
         "preparation_timeout",
         "execution_timeout",
@@ -67,11 +66,10 @@ class ExecutionTimeoutError(ExecutionBudgetError, TimeoutError):
 
     #: The wall-clock phase that ended the invocation.
     bound: Literal[
-        "timeout",
         "preparation_timeout",
         "execution_timeout",
         "total_timeout",
-    ] = "timeout"
+    ] = "total_timeout"
 
     def __init__(self, *args: object) -> None:
         """Keep the timeout diagnostic and suggest checking termination first."""

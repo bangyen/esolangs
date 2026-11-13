@@ -14,6 +14,8 @@ Releases before 0.10.0 are described on the
 - **Breaking:** `ExecutionCapError` is no longer an `InterpreterLimitError`,
   which now means only the interpreter's own limits. `max_output` and
   `max_memory` need `except ExecutionCapError`.
+- **Breaking:** `bound` is never `"timeout"`: the value is gone from its
+  type, and a bare `ExecutionTimeoutError` defaults to `"total_timeout"`.
 - **Breaking:** `run`, `Language.run` and `PreparedProgram.run` take
   `limits=ExecutionLimits(...)`, as `execute` and `evaluate` do, in place of
   `timeout`, `max_steps`, `max_output` and `max_memory`. `timeout=t` is

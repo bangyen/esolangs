@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from esolangs.exceptions import ArgumentError, ExecutionTimeoutError
+from esolangs.exceptions import ArgumentError
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome, _capture_outcome
 from esolangs.registry._catalog import Catalog
@@ -266,7 +266,7 @@ def _execute_outcome(
     if prepared is not None and not use_worker:
         preparation_timeout = None
     use_worker = use_worker or preparation_timeout is not None
-    outcome = _execute_invocation(
+    return _execute_invocation(
         language,
         program,
         stdin=stdin,
@@ -283,6 +283,3 @@ def _execute_outcome(
         catalog=catalog,
         prepared=prepared,
     )
-    if isinstance(outcome.error, ExecutionTimeoutError) and outcome.bound == "timeout":
-        outcome.error.bound = "total_timeout"
-    return outcome

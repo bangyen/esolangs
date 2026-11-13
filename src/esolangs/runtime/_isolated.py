@@ -148,7 +148,6 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
     error.__notes__ = list(result["notes"])
     if isinstance(error, exceptions.ExecutionTimeoutError):
         if result["bound"] not in (
-            "timeout",
             "execution_timeout",
             "total_timeout",
         ):
@@ -465,7 +464,7 @@ def _invoke_worker(
     if (
         isinstance(result, ExecutionOutcome)
         and isinstance(result.error, exceptions.ExecutionTimeoutError)
-        and result.bound == "timeout"
+        and result.bound == "total_timeout"
     ):
         result.error.args = (f"execution exceeded the {timeout}-second timeout",)
     return result
@@ -479,7 +478,7 @@ def _timeout_named(timeout: float) -> Iterator[None]:
     except exceptions.ExecutionTimeoutError as error:
         # It said "isolated execution exceeded its deadline", a second
         # wording of one error for the same ``timeout=``.
-        if error.bound == "timeout":
+        if error.bound == "total_timeout":
             error.args = (f"execution exceeded the {timeout}-second timeout",)
         raise
 
