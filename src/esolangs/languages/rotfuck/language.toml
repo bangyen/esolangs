@@ -6,6 +6,9 @@ biased_to_raw_index_digits = { tables = [{ arity = 6, rule = "dense" }, { arity 
 
 [deep_arities]
 workspace = 6
+# A route change at n=7 (895 -> 5563 commands) leaves three rungs at the
+# default 9; at 11 there are five, growing x1.13 an input.
+execution = 11
 
 [curation]
 backlinks = 3

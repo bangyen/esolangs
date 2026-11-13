@@ -4,6 +4,12 @@
 [construction_boundaries]
 comb_to_fold_race = { tables = [{ arity = 5, rule = "dense" }, { arity = 6, rule = "dense" }], benchmark = false, test = "test_boolean_back.py::TestParameterizedBack::test_area_is_linear_where_the_comb_is_not" }
 
+[deep_arities]
+# The dense comb-to-fold switch lands at n=10 (x3.5, inside the route band),
+# so the difference ratio needs n=14 to read three same-parity rungs past it:
+# 4.20 there against 10.12 straddling it at n=12.
+linearity = 14
+
 [curation]
 backlinks = 1
 admitted = 2020-07-10T04:13:12-04:00

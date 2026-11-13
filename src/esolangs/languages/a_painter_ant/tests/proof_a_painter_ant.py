@@ -11,9 +11,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
 from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.helpers import input_weights
+from esolangs.generation.lookup import near_unanimity
+from esolangs.generation.template import TemplateToken, layout_fragments
 from esolangs.languages.a_painter_ant.generator import (
     _east,
     _flipped,
+    _westward_flipped,
     a_painter_ant,
 )
 from esolangs.languages.a_painter_ant.tests.a_painter_ant_trace import run
@@ -27,6 +30,12 @@ BAND = "by-hand"
 COST = 15.0
 
 
+def _head(parts: list[TemplateToken]) -> str:
+    """Render a corridor builder's tokens up to its first input slot."""
+    source = layout_fragments(parts).source
+    return source[: source.index(TEMPLATE_CHAR)]
+
+
 def bits_of(idx: int, n: int) -> list[int]:
     """Input vector for table index ``idx``, most-significant bit first."""
     return row_bits(idx, n)
@@ -38,11 +47,21 @@ def corridor_end(table: str) -> int:
 
 
 def variant(table: str) -> tuple[bool, bool]:
-    """``(flipped, invert)`` of the corridor the generator ships, ties as ``min``."""
-    weights, kept = input_weights(table, len(table).bit_length() - 1)
+    """``(flipped, invert)`` of the corridor the generator ships, ties as ``min``.
+
+    A near-unanimous table builds the mirror from its wall westward; it paints
+    the cells the mirror does, so either counts as flipped here.  Candidates
+    compete on characters, not tokens: by tokens, ``0001`` read as flipped
+    while the generator shipped the east corridor.
+    """
+    n = len(table).bit_length() - 1
+    weights, kept = input_weights(table, n)
+    mirror = _westward_flipped if near_unanimity(table, n) else _flipped
     return min(
-        ((f is _flipped, inv) for f in (_east, _flipped) for inv in (False, True)),
-        key=lambda c: len((_flipped if c[0] else _east)(kept, weights, invert=c[1])),
+        ((f is mirror, inv) for f in (_east, mirror) for inv in (False, True)),
+        key=lambda c: sum(
+            map(len, (mirror if c[0] else _east)(kept, weights, invert=c[1]))
+        ),
     )
 
 
@@ -145,7 +164,7 @@ def check_l3(max_w: int = 10) -> list[str]:
     table = "1" * (size - 1) + "0"
     # The walks are the corridor's; inverting changes only answers and tail.
     build = _east(table, input_weights(table, max_w)[0], invert=False)
-    head = build[: build.index(TEMPLATE_CHAR)]
+    head = _head(build)
     powers = [1 << k for k in range(max_w)]
     # The build ends at the corridor's west end, the origin of every walk.
     base = run(head, 1).position[0]
@@ -162,7 +181,7 @@ def check_l3(max_w: int = 10) -> list[str]:
             # projection cannot shorten the corridor this lemma measures.
             table = "0" + table[1:]
         short = _east(table, input_weights(table, max_w)[0], invert=False)
-        head = short[: short.index(TEMPLATE_CHAR)]
+        head = _head(short)
         base = run(head, 1).position[0]
         for w in powers:
             outcome = run(head + "N" + "E" * w + "SN", 1)
@@ -173,7 +192,7 @@ def check_l3(max_w: int = 10) -> list[str]:
         table = table[:-1] + "1"
         weights = input_weights(table, max_w)[0]
         flipped = _flipped(input_weights(table, max_w)[1], weights, invert=False)
-        head = flipped[: flipped.index(TEMPLATE_CHAR)]
+        head = _head(flipped)
         cells = len(table.lstrip("0")) + 1
         for w in powers:
             zero = run(head + "n" + "e" * w + "SN", 1).position
