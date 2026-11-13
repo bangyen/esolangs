@@ -10,6 +10,7 @@ from esolangs.registry import BY_BOOLEAN
 from scripts.docs.resource_description import (
     EXECUTION_CLASSES,
     SCALING_CLASSES,
+    SCALING_EVIDENCE,
     WORKSPACE_CLASSES,
 )
 from tests.proofs._ledger import (
@@ -115,11 +116,17 @@ def test_every_row_carries_a_scaling_cell(ledger: Ledger) -> None:
             f"{row.generator}: unknown scaling class {row.scaling_class!r}"
         )
         assert row.scaling_clause, f"{row.generator}: scaling cell has no clause"
+        assert row.scaling_evidence in SCALING_EVIDENCE, row.generator
         if row.scaling_class == "linear":
             words = len(row.scaling_clause.split())
-            assert words <= LINEAR_CLAUSE_WORDS, (
-                f"{row.generator}: linear clause is {words} words, "
-                f"more than {LINEAR_CLAUSE_WORDS}"
+            # A formula's spaced operators count as words, as in the other columns.
+            limit = (
+                FORMULA_CLAUSE_WORDS
+                if row.resources.scaling.bounded
+                else LINEAR_CLAUSE_WORDS
+            )
+            assert words <= limit, (
+                f"{row.generator}: linear clause is {words} words, more than {limit}"
             )
 
 
@@ -164,5 +171,7 @@ def test_every_definition_names_a_symbol_its_cells_use() -> None:
 
 def test_unproved_scaling_requires_a_totality_exception(ledger: Ledger) -> None:
     """An exception may still bound its construction on the supported domain."""
-    measured = {row.generator for row in ledger.rows if row.scaling_class == "measured"}
+    measured = {
+        row.generator for row in ledger.rows if row.scaling_evidence == "measured"
+    }
     assert measured <= {row.generator for row in ledger.labelled("exception")}

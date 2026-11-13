@@ -9,9 +9,12 @@ from typing import Any, NamedTuple
 from .resource_formula import arity_cases, describe_cases, source_term_names
 
 COLUMNS = frozenset({"scaling", "execution", "workspace"})
-SCALING_CLASSES = frozenset(
-    {"linear", "linear, time n log", "T log T", "measured", "open", "lower bound"}
-)
+#: How source size grows with the table; a stated generation-time factor
+#: beyond it belongs in the clause.
+SCALING_CLASSES = frozenset({"linear", "T log T", "T**2", "2**T"})
+#: What backs a scaling class: an argument for every table, a measurement on
+#: the supported domain, or a bound the language itself forces.
+SCALING_EVIDENCE = frozenset({"proved", "measured", "lower bound"})
 EXECUTION_CLASSES = frozenset({"poly n", "linear", "unmeasured"})
 WORKSPACE_CLASSES = EXECUTION_CLASSES | {"T log T"}
 _FIELDS = frozenset({"claim", "formula", "unit", "first", "previous"})
@@ -25,11 +28,19 @@ class ResourceDescription:
     clause: str
     unit: str | None
     claim: str | None
+    evidence: str = "proved"
 
     @property
     def text(self) -> str:
-        """Return the ledger's public text cell."""
+        """Return the ledger's cell; its evidence has a column of its own."""
         return f"{self.growth}: {self.clause}"
+
+    @property
+    def statement(self) -> str:
+        """Return the public text, naming any evidence short of a proof."""
+        if self.evidence == "proved":
+            return self.text
+        return f"{self.growth}, {self.evidence}: {self.clause}"
 
     @property
     def bounded(self) -> bool:
@@ -55,6 +66,16 @@ def _growth(column: str, value: object) -> str:
     if not isinstance(value, str) or value not in classes:
         raise ValueError("invalid resource growth class")
     return value
+
+
+def _evidence(column: str, raw: dict[str, Any]) -> str:
+    """Validate a scaling claim's evidence; the other columns state none."""
+    if "evidence" not in raw:
+        return "proved"
+    value = raw["evidence"]
+    if column != "scaling" or value not in SCALING_EVIDENCE:
+        raise ValueError("invalid resource evidence")
+    return str(value)
 
 
 def source_terms(value: object) -> tuple[frozenset[str], str]:
@@ -97,13 +118,17 @@ def _description(column: str, row: dict[str, Any]) -> ResourceDescription:
             column != "scaling"
             or set(row) != {"qualitative"}
             or not isinstance(raw, dict)
-            or set(raw) != {"growth", "text"}
+            or set(raw) - {"evidence"} != {"growth", "text"}
             or not isinstance(raw["text"], str)
             or not raw["text"]
         ):
             raise ValueError("invalid qualitative resource description")
         return ResourceDescription(
-            _growth(column, raw["growth"]), raw["text"], None, None
+            _growth(column, raw["growth"]),
+            raw["text"],
+            None,
+            None,
+            _evidence(column, raw),
         )
     raw = row.get("description")
     fields = {"growth", "claim", "template"}
@@ -111,7 +136,8 @@ def _description(column: str, row: dict[str, Any]) -> ResourceDescription:
     if (
         len(kinds) != 1
         or not isinstance(raw, dict)
-        or set(raw) != (fields | {"formula"} if "provider" in kinds else fields)
+        or set(raw) - {"evidence"}
+        != (fields | {"formula"} if "provider" in kinds else fields)
     ):
         raise ValueError("invalid resource description fields")
     names: frozenset[str] = frozenset()
@@ -164,7 +190,11 @@ def _description(column: str, row: dict[str, Any]) -> ResourceDescription:
         previous=first - 1,
     )
     return ResourceDescription(
-        _growth(column, raw["growth"]), clause, unit, raw["claim"]
+        _growth(column, raw["growth"]),
+        clause,
+        unit,
+        raw["claim"],
+        _evidence(column, raw),
     )
 
 

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from scripts.docs.proof_status import ProofRow
 from scripts.docs.resource_description import SCALING_CLASSES as SCALING_CLASSES
+from scripts.docs.resource_description import SCALING_EVIDENCE as SCALING_EVIDENCE
 
 #: Resolved from this file, not the working directory: the suite is run from
 #: the repo root, from `just`, and from a worktree, and only ``__file__`` is
@@ -41,9 +42,9 @@ QUALIFIERS = frozenset({"cap", "exception"})
 
 _WORD_NUMBERS = {"no": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
 
-#: The classes whose rows the scaling audit table must carry as open on
+#: The scaling evidence whose rows the audit table must carry as open on
 #: generation time or output size, and vice versa.
-UNSETTLED_SCALING = frozenset({"measured", "open", "lower bound"})
+UNSETTLED_SCALING = frozenset({"measured", "lower bound"})
 
 #: A ``linear`` clause names its argument; longer than this it is prose.
 LINEAR_CLAUSE_WORDS = 12

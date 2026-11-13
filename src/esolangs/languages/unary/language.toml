@@ -117,7 +117,7 @@ unit = "bits"
 description = { growth = "poly n", claim = "worst", template = "{claim} {unit} past n={previous}: {formula}", formula = "tape and cursor peaks among admitted nine-command shapes" }
 
 [resource_evidence.scaling]
-qualitative = { growth = "lower bound", text = "worst source length at least 2**T - 1; zero-count encoding" }
+qualitative = { growth = "2**T", evidence = "lower bound", text = "worst source length at least 2**T - 1; zero-count encoding" }
 
 [semantic_evidence]
 version = 1

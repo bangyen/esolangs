@@ -114,7 +114,7 @@ exact = [2, 3, 4, 5, 6, 7]
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "characters"
-description = { growth = "lower bound", claim = "worst", template = "{claim} {formula} {unit} from n = 2: generated Θ(T**2) on the alternating table with its first pair flipped ([summary](#ascenic-bound))" }
+description = { growth = "T**2", evidence = "lower bound", claim = "worst", template = "{claim} {formula} {unit} from n = 2: generated Θ(T**2) on the alternating table with its first pair flipped ([summary](#ascenic-bound))" }
 
 [semantic_evidence]
 version = 1

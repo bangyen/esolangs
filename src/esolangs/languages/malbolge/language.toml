@@ -128,7 +128,7 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-description = { growth = "measured", claim = "worst", template = "{claim} {formula}; final range uses the whole 3^10-cell store" }
+description = { growth = "linear", evidence = "measured", claim = "worst", template = "{claim} {formula}; final range uses the whole 3^10-cell store" }
 
 [semantic_evidence]
 version = 1

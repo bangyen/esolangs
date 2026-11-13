@@ -62,8 +62,13 @@ class ProofRow:
 
     @property
     def scaling_class(self) -> str:
-        """Return the declared source/generation growth class."""
+        """Return the declared source growth class."""
         return self.resources.scaling.growth
+
+    @property
+    def scaling_evidence(self) -> str:
+        """Return what backs the scaling class: proved, measured or lower bound."""
+        return self.resources.scaling.evidence
 
 
 @dataclass(frozen=True)
@@ -320,13 +325,13 @@ def update_docs(root: Path = ROOT) -> bool:
         (
             "PROOF-STATUS",
             [
-                "| Generator | Proof | Qualification | Scaling | Execution | "
-                "Workspace |",
-                "| --- | --- | --- | --- | --- | --- |",
+                "| Generator | Proof | Qualification | Scaling | Evidence | "
+                "Execution | Workspace |",
+                "| --- | --- | --- | --- | --- | --- | --- |",
                 *[
                     f"| {r.generator} | {', '.join(r.labels)} | "
-                    f"{r.qualification} | {r.scaling} | {r.execution} | "
-                    f"{r.workspace} |"
+                    f"{r.qualification} | {r.scaling} | {r.scaling_evidence} | "
+                    f"{r.execution} | {r.workspace} |"
                     for r in proofs
                 ],
                 "",
@@ -365,7 +370,9 @@ def update_catalogue(output_root: Path) -> bool:
     proofs, _ = load()
     from esolangs.registry import LANGUAGES
 
-    data = {LANGUAGES[row.generator].id: row.scaling for row in proofs}
+    data = {
+        LANGUAGES[row.generator].id: row.resources.scaling.statement for row in proofs
+    }
     path = output_root / "src/esolangs/registry/scaling.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     return _write_if_changed(path, json.dumps(data, indent=2, sort_keys=True) + "\n")

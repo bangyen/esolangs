@@ -72,10 +72,12 @@ def test_the_totality_column_is_the_ledger(audit: Audit) -> None:
 
 
 def test_the_scaling_column_is_the_audit(audit: Audit) -> None:
-    """A ledger row is ``open``, ``lower bound`` or ``measured`` iff it is audited."""
+    """A ledger row's scaling is ``lower bound`` or ``measured`` iff it is audited."""
     ledger = load_ledger()
     unsettled = {
-        row.generator for row in ledger.rows if row.scaling_class in UNSETTLED_SCALING
+        row.generator
+        for row in ledger.rows
+        if row.scaling_evidence in UNSETTLED_SCALING
     }
     audited = {
         row.generator
@@ -84,7 +86,7 @@ def test_the_scaling_column_is_the_audit(audit: Audit) -> None:
     }
     assert unsettled == audited
     bounded = {
-        row.generator for row in ledger.rows if row.scaling_class == "lower bound"
+        row.generator for row in ledger.rows if row.scaling_evidence == "lower bound"
     }
     assert bounded == {
         row.generator
