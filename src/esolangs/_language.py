@@ -107,7 +107,9 @@ class Language:
         check_flag(normalize, "normalize")
         dialect_options(self.name, settings, catalog=self.catalog)
         if not isinstance(path, (str, PathLike)):
-            raise ArgumentError("path must be a string or Path")
+            raise ArgumentError(
+                f"path must be a str or PathLike, got {type(path).__name__}"
+            )
         artifact = _source_operations.read_artifact(
             self.name, Path(path), catalog=self.catalog, normalize=normalize
         )

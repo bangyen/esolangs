@@ -113,7 +113,7 @@ else:
 
 #: The public surface.  Without it ``dir(esolangs)`` advertised ``Any``,
 #: ``Callable``, ``importlib``, ``pathlib``, ``signal`` and ``threading``
-#: alongside the six functions anyone wants, and there was no way to tell
+#: alongside the functions anyone wants, and there was no way to tell
 #: from the outside which was which.
 __all__ = [
     "ArgumentError",

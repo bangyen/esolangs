@@ -8,6 +8,7 @@ import io
 import zlib
 from collections.abc import Iterable, Iterator
 from dataclasses import KW_ONLY, dataclass, field
+from os import PathLike
 from pathlib import Path
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
@@ -191,7 +192,7 @@ class CompressedText:
         """Return the compressed file bytes."""
         return self.data
 
-    def save(self, path: str | Path) -> None:
+    def save(self, path: str | PathLike[str]) -> None:
         """Write a gzip source file.
 
         Raises:
