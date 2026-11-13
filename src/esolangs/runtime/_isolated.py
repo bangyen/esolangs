@@ -233,9 +233,15 @@ def check_memory(max_memory: int | None, *, isolated: bool) -> None:
     """Validate a Linux worker address-space budget in bytes before acquisition."""
     if max_memory is None:
         return
-    check_whole(max_memory, "max_memory")
-    if max_memory == 0:
-        raise exceptions.ArgumentError("max_memory must be a positive integer, got 0")
+    if (
+        isinstance(max_memory, bool)
+        or not isinstance(max_memory, int)
+        or max_memory <= 0
+    ):
+        # check_whole said "non-negative" while refusing 0.
+        raise exceptions.ArgumentError(
+            f"max_memory must be a positive integer, got {max_memory!r}"
+        )
     if not isolated:
         raise exceptions.ArgumentError("max_memory requires isolated=True")
     # A local, not ``sys.platform`` inline: mypy narrows that per host and

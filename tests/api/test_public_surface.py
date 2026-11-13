@@ -5,6 +5,7 @@ import inspect
 import re
 from dataclasses import FrozenInstanceError
 from importlib.resources import files
+from pathlib import Path
 
 import pytest
 
@@ -285,7 +286,7 @@ class TestProgramObjectsRefuseMisuse:
         with pytest.raises(error):
             esolangs.Language(language).from_source(esolangs.Raster((((0, 0, 0),),)))  # type: ignore[arg-type]
 
-    def test_compressed_limits_are_typed(self) -> None:
+    def test_compressed_limits_are_typed(self, tmp_path: Path) -> None:
         import gzip
 
         with pytest.raises(esolangs.ArgumentError, match="limits"):
@@ -294,6 +295,15 @@ class TestProgramObjectsRefuseMisuse:
         for path in ("/nonexistent/dir/x.gz", 5):
             with pytest.raises(esolangs.ProgramError):
                 esolangs.CompressedText.repeated("+", 5).save(path)  # type: ignore[arg-type]
+        # save_program named its staging file, and "" read as the cwd.
+        for target, error, words in (
+            (None, esolangs.ArgumentError, "str or PathLike"),
+            ("", esolangs.ArgumentError, "empty"),
+            (tmp_path / "no" / "x", esolangs.ProgramError, "directory does not"),
+            (tmp_path, esolangs.ProgramError, "is a directory$"),
+        ):
+            with pytest.raises(error, match=words):
+                esolangs.save_program(REFERENCE, "+", target)  # type: ignore[arg-type]
 
     def test_an_alias_tag_is_stored_canonically(self) -> None:
         """Stored as typed, ``run`` refused it under every spelling."""
@@ -454,6 +464,9 @@ class TestProgramObjectsRefuseMisuse:
         """A truthy ``isolated="no"`` switched the sandbox on."""
         with pytest.raises(esolangs.ArgumentError, match="isolated"):
             esolangs.run(REFERENCE, "+", isolated="no")  # type: ignore[arg-type]
+        # A falsy non-bool reached ``isolated or timeout is not None`` unchecked.
+        with pytest.raises(esolangs.ArgumentError, match="isolated"):
+            esolangs.run(REFERENCE, "+", isolated=[])  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError, match="balance"):
             esolangs.generate(REFERENCE, "0110", balance="no")  # type: ignore[arg-type]
 

@@ -196,7 +196,8 @@ def test_cli_help_shows_literal_settings_json(capsys) -> None:
 
 @pytest.mark.parametrize("key", ["index_base", "eof", "input_framing"])
 def test_omission_policies_are_not_public_choices(key) -> None:
-    with pytest.raises(esolangs.ArgumentError, match="unknown dialect setting"):
+    # Brainfuck has no settings; the message ended "known settings: ".
+    with pytest.raises(esolangs.ArgumentError, match=r"setting.*it has none$"):
         esolangs.Language("brainfuck").settings(**{key: "default"})
 
 

@@ -75,9 +75,12 @@ class DialectSchema:
                 names = sorted(known)
                 close = get_close_matches(key, names, n=1, cutoff=0.6)
                 suggestion = f" (did you mean {close[0]}?)" if close else ""
+                known_names = (
+                    f"known settings: {', '.join(names)}" if names else "it has none"
+                )
                 raise ArgumentError(
                     f"unknown dialect setting for {self.language}: {key}{suggestion}; "
-                    f"known settings: {', '.join(names)}"
+                    f"{known_names}"
                 )
             values = known[key]
             if type(value) is not type(values[0]) or value not in values:

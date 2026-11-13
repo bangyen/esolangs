@@ -266,6 +266,9 @@ def _check_uniform_outcomes_and_phase_limits():
         # Each names its own field; all three timeouts said "timeout".
         with pytest.raises(esolangs.ArgumentError, match=f"^{next(iter(kwargs))} "):
             esolangs.ExecutionLimits(**kwargs)
+    # run said "non-negative" for -1 while refusing 0.
+    with pytest.raises(esolangs.ArgumentError, match="max_memory must be a positive"):
+        esolangs.run(REFERENCE, "+", isolated=True, max_memory=-1)
     with pytest.raises(esolangs.ArgumentError, match="completion evidence"):
         esolangs.ExecutionOutcome("completed", esolangs.ExecutionResult("", 0, 0, 0))
 

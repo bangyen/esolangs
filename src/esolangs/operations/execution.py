@@ -104,8 +104,9 @@ def run(
             Boolean-generated program's stdin with :func:`encode_inputs`,
             which validates the bits.
         timeout: Wall-clock seconds of execution (None: unbounded), run in a
-            worker: ``ExecutionLimits.execution_timeout``.  Loading gets 30
-            seconds on top.  The catalog must match installed runtimes.
+            worker: ``ExecutionLimits.execution_timeout``.  It bounds loading
+            the program and stdin separately; worker startup gets 30 seconds
+            on top.  The catalog must match installed runtimes.
         seed: Integer fixing the languages that draw
             (``describe(language)["random"]``); the rest refuse it.
         isolated: Run in a subprocess whose deadline covers startup and
@@ -144,6 +145,8 @@ def run(
             (``esolangs[image]`` for PNG).
     """
     check_timeout(timeout)
+    # Before the ``or`` below, which turned isolated=[] into a plain False.
+    check_flag(isolated, "isolated")
     # timeout is ExecutionLimits.execution_timeout under its short name; with
     # isolated, it used to bound the whole invocation instead.
     outcome = _execute_invocation(
