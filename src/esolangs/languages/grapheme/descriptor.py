@@ -52,6 +52,6 @@ LANGUAGE = Language(
         alphabet=("%", "A"),
         note="input bits are spelled % and A: a line starting with A is a 1 "
         "and any other line a 0, so a 0/1 line reads as 0 and the program "
-        "answers the all-zeros row; esolangs encode spells them",
+        "answers the all-zeros row; esolangs encode-inputs spells them",
     ),
 )

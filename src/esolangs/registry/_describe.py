@@ -109,9 +109,11 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
     stem = example_stems(catalog=catalog).get(lang.id, lang.id)
     # Package-relative: repository-relative paths broke after a ``chdir`` and
     # when installed; absolute ones froze the install location into output.
-    examples = sorted(
-        f"languages/{lang.id}/{p.name}"
-        for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
+    examples = tuple(
+        sorted(
+            f"languages/{lang.id}/{p.name}"
+            for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
+        )
     )
     traits = machine_traits(name, catalog=catalog)
     parameterized = lang.parameterized

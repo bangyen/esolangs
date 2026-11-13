@@ -114,7 +114,7 @@ def test_every_documented_command_runs(where: str, tmp_path: pathlib.Path) -> No
                 (work / filename).write_text(generated.stdout)
         stdin_text = ""
         if language is not None and "|" not in command:
-            encoded = _setup_command("encode", language, "10")
+            encoded = _setup_command("encode-inputs", language, "10")
             stdin_text = encoded.stdout if encoded.returncode == 0 else ""
         shell = command.replace("esolangs ", f"{sys.executable} -m esolangs ")
         result = subprocess.run(

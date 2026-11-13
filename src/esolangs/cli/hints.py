@@ -59,7 +59,7 @@ def _generate_hint(exc: EsolangError, language: str, table: str) -> str:
     message = str(exc)
     notes = _notes(exc).replace(
         "run the generated program with stdin=encode_inputs(language, bits)",
-        f"pipe input from esolangs encode {_as_argument(language)} <bits> "
+        f"pipe input from esolangs encode-inputs {_as_argument(language)} <bits> "
         "when running the generated program",
     )
     return message + _swapped_hint(language, table) + notes
@@ -95,7 +95,7 @@ def _timeout_text(exc: ExecutionBudgetError) -> str:
 
 
 def _shell_hint(message: str, language: str) -> str:
-    """Re-point ``encode``'s refusal at the flag that does the same job.
+    """Re-point ``encode-inputs``'s refusal at the flag that does the same job.
 
     ``instantiate()`` is not a thing you can type at a shell; ``generate
     --bits`` is.

@@ -226,7 +226,7 @@ def _validate_shape(truth_table: str) -> int:
         # printed ``sorted(set(...))``, so someone who typed ``nonsense``
         # was told "got 'enos'" -- a string they had never seen, which
         # reads like a shell-quoting bug rather than a typo.  The sibling
-        # validator in ``encode`` echoed the argument all along.
+        # validator in ``encode-inputs`` echoed the argument all along.
         bad = next((i, c) for i, c in enumerate(truth_table) if c not in {"0", "1"})
         raise with_hint(
             TruthTableError(

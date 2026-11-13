@@ -47,5 +47,5 @@ class LanguageInfo:
     steppable_to_answer: bool
     eof_is_a_value: bool
     random: bool
-    examples: list[str]
+    examples: tuple[str, ...]
     wiki_url: str

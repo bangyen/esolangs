@@ -54,7 +54,7 @@
   "TemplateBindings.__init__": "(self, char: 'str' = '$', setters: 'Setters' = ()) -> None",
   "TemplateBindings.fill": "(self, source: 'str', bits: 'list[int] | tuple[int, ...]', *, spans: 'Sequence[tuple[int, int]] | None' = None) -> 'str'",
   "esolangs.debugger.make_debugger": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', seed: 'int | None' = None, settings: 'DialectSettings | None' = None, scale: 'int | None' = None, catalog: 'Catalog | None' = None) -> 'Debugger'",
-  "esolangs.debugger.make_vm": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', seed: 'int | None' = None, settings: 'DialectSettings | None' = None, scale: 'int | None' = None, catalog: 'Catalog | None' = None) -> '_VM'",
+  "esolangs.debugger.make_vm": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', seed: 'int | None' = None, settings: 'DialectSettings | None' = None, scale: 'int | None' = None, catalog: 'Catalog | None' = None) -> 'VM'",
   "esolangs.describe": "(language: str, *, catalog: 'Catalog | None' = None) -> esolangs.registry._info.LanguageInfo",
   "esolangs.dump_program": "(language: 'str', program: 'ProgramSource', *, settings: 'DialectSettings | None' = None, catalog: 'Catalog | None' = None) -> 'str'",
   "esolangs.encode_inputs": "(language: str, bits: list[int] | tuple[int, ...], *, truth_table: str | None = None, catalog: 'Catalog | None' = None) -> str",

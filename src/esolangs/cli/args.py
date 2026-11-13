@@ -29,7 +29,7 @@ _GLOBAL_FLAGS = {"--help", "--version"}
 #: Each command's positional arguments, in order, so a missing one can be
 #: named rather than left to be inferred from the usage line.
 _ARGUMENTS = {
-    "encode": ("<language>", "<bits>"),
+    "encode-inputs": ("<language>", "<bits>"),
     "generate": ("<language>", "<truth-table>"),
     "run": ("<language>", "<program-file>"),
     "describe": ("<language>",),

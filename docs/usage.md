@@ -11,7 +11,7 @@ hides this using [`describe`](#describe) metadata.
 | --- | --- |
 | `generate` | print a program computing a truth table |
 | `run` | run a program through its interpreter |
-| `encode` | print the stdin that feeds a bit string |
+| `encode-inputs` | print the stdin that feeds a bit string |
 | `read-answer` | print the answer bit a program's output carries |
 | `list` | list the languages; `--details` adds the generator, template and example markers; `--json --details` gives a record of `describe` fields per language to filter with `jq` |
 | `describe` | how one language reads input and where its answer lands |
@@ -44,13 +44,13 @@ Options, each explained in full by its command's `--help`:
 | `--inputs N` | list | declared generator cap permits N; table restrictions still apply |
 | `--spec` | describe | print the interpreter's own description of the language |
 
-`encode` and `read-answer` wrap `run` for one input row:
+`encode-inputs` and `read-answer` wrap `run` for one input row:
 
 - LaserFuck:
 
   ```bash
   esolangs generate LaserFuck 0110 > prog.txt
-  esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck  # prints 1
+  esolangs encode-inputs LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck  # prints 1
   ```
 - Modulous:
 
@@ -390,7 +390,7 @@ input row and encoding.
 
 `esolangs run` passes stdin to the interpreter verbatim. It does not check
 it against the alphabet above (`ab` reads as two bits in brainfuck). Build
-stdin with `encode`, and pipe the output to `read-answer` when you want an
+stdin with `encode-inputs`, and pipe the output to `read-answer` when you want an
 answer bit.
 
 ## Templates

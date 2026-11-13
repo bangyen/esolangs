@@ -359,14 +359,17 @@ _REFUSALS = {
     ),
     "an_unknown_subcommand_is_suggested": ("lst", "did you mean list"),
     "encode_refuses_a_language_that_reads_nothing": (
-        f"encode {TEMPLATED!r} 01",
+        f"encode-inputs {TEMPLATED!r} 01",
         "reads no stdin",
     ),
     "a_repeated_option_is_refused": (
         f"generate --bits 10 --bits 01 {TEMPLATED!r} 0110",
         "more than once",
     ),
-    "encode_refuses_a_non_binary_bit_string": ("encode brainfuck 2x", "0s and 1s"),
+    "encode_refuses_a_non_binary_bit_string": (
+        "encode-inputs brainfuck 2x",
+        "0s and 1s",
+    ),
     "read_answer_says_so_when_given_nothing": (
         "read-answer brainfuck",
         "nothing on stdin",

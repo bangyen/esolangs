@@ -60,7 +60,8 @@ commands:
         [--set KEY=VALUE] <language> <file>
                                 run a program through its interpreter
   Contract adapters (your data in, checked data out):
-    encode <language> <bits>    print the stdin that feeds those bits
+    encode-inputs <language> <bits>
+                                print the stdin that feeds those bits
     read-answer <language>      read a program's output on stdin and print
                                 the answer bit it carries
   Catalog:
@@ -85,21 +86,21 @@ error (a bug in esolangs), 120 stdout closed early, 124 a budget ran out
 examples:
   esolangs list
   esolangs describe brainfuck
-  esolangs encode brainfuck 10
+  esolangs encode-inputs brainfuck 10
   esolangs generate brainfuck 0110 > prog.txt
   esolangs generate --width brainfuck 10010110
-  esolangs encode brainfuck 10 | esolangs run brainfuck prog.txt \\
+  esolangs encode-inputs brainfuck 10 | esolangs run brainfuck prog.txt \\
     | esolangs read-answer brainfuck
 """
 
 
 _HELP = {
-    "encode": """usage: esolangs encode <language> <bits>
+    "encode-inputs": """usage: esolangs encode-inputs <language> <bits>
 
 Print the stdin that feeds <bits> to a <language> program, so it can be
 piped straight into `esolangs run`:
 
-    esolangs encode brainfuck 101 | esolangs run brainfuck prog.txt
+    esolangs encode-inputs brainfuck 101 | esolangs run brainfuck prog.txt
 
 Character readers take adjacent 0/1 characters. Numeric readers take
 whitespace-delimited tokens; string readers take lines. Other contracts
@@ -110,7 +111,7 @@ A language whose generator embeds the inputs in the program reads no stdin
 at all; `esolangs generate --bits` builds those.
 
 example:
-  esolangs encode brainfuck 10  # prints 10
+  esolangs encode-inputs brainfuck 10  # prints 10
 """,
     "list": """usage: esolangs list [--details] [--json]
                      [--generator | --interpreter-only] [--grep REGEX]
@@ -218,10 +219,10 @@ Run a program through its interpreter and print what it writes.
 
 The program is read from <program-file>; its input is this command's stdin.
 Input is consumed verbatim using the language's character, number, or
-string reads. For generated Boolean programs, `esolangs encode` spells the
+string reads. For generated Boolean programs, `esolangs encode-inputs` spells the
 input characters, numeric tokens, or lines.
 
-    esolangs encode brainfuck 101 | esolangs run brainfuck prog.txt
+    esolangs encode-inputs brainfuck 101 | esolangs run brainfuck prog.txt
 
 Output is written verbatim, so it can be piped byte for byte; a trailing
 newline is added only when stdout is a terminal.  Whatever the program
@@ -298,7 +299,7 @@ the answer undecided.  They are:
 
 examples:
   esolangs generate brainfuck 0110 > p.txt
-  esolangs encode brainfuck 10 | esolangs run brainfuck p.txt \\
+  esolangs encode-inputs brainfuck 10 | esolangs run brainfuck p.txt \\
     | esolangs read-answer brainfuck
 """,
 }

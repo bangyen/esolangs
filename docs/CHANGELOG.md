@@ -14,6 +14,9 @@ Releases before 0.10.0 are described on the
 - **Breaking:** `ExecutionCapError` is no longer an `InterpreterLimitError`,
   which now means only the interpreter's own limits. `max_output` and
   `max_memory` need `except ExecutionCapError`.
+- **Breaking:** the `esolangs encode` command is `esolangs encode-inputs`,
+  as the API's `encode_inputs` is.
+- **Breaking:** `LanguageInfo.examples` is a tuple, not a list.
 - **Breaking:** `ExecutionLimits` and `TextLimits` take keyword arguments
   only.
 - **Breaking:** `ExecutionResult` and `BooleanEvaluation` are frozen

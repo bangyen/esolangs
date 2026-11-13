@@ -175,7 +175,7 @@ class TestGrapheme:
 
 
 class TestInputUsesTheDeclaredAlphabet:
-    """`encode` refused these bytes all along; `run` answered them."""
+    """`encode-inputs` refused these bytes all along; `run` answered them."""
 
     def test_a_correct_encoding_is_silent_and_right(
         self, tmp_path, capsys: pytest.CaptureFixture[str]

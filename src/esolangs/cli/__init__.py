@@ -4,7 +4,8 @@ Subcommands:
     esolangs list                         list the supported languages
     esolangs describe <language>          print its input shape and where
                                           the answer lands
-    esolangs encode <language> <bits>     print the stdin those bits need
+    esolangs encode-inputs <language> <bits>
+                                          print the stdin those bits need
     esolangs generate <language> <table>  print a program computing a table
                                           (``--width N`` wraps it to N columns)
     esolangs run <language> <file>        run a program through its interpreter
@@ -94,7 +95,7 @@ def describe(language: str) -> LanguageInfo:
 def _encode(rest: list[str]) -> None:
     """Print the stdin that feeds a language its input bits."""
     rest = _split_positional(rest, set())
-    _check_count("encode", rest, 2)
+    _check_count("encode-inputs", rest, 2)
     language, bits = rest[0], rest[1]
     if set(bits) - {"0", "1"} or not bits:
         _fail(f"bits must be a string of 0s and 1s, got {bits!r}")
@@ -664,7 +665,7 @@ def _dispatch() -> None:
     {
         "list": _list,
         "describe": _describe,
-        "encode": _encode,
+        "encode-inputs": _encode,
         "generate": _generate,
         "run": _run,
         "read-answer": _read_answer,

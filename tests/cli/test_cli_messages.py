@@ -28,7 +28,7 @@ class TestTheHintsStayQuietWhenTheyDoNotApply:
     ) -> None:
         """Only the message naming ``instantiate()`` gets rewritten."""
         with pytest.raises(SystemExit) as exc:
-            call_main(["encode", "Nonexistent", "10"], capsys)
+            call_main(["encode-inputs", "Nonexistent", "10"], capsys)
         assert exc.value.code == 2
         err = capsys.readouterr().err
         assert "unknown language" in err
@@ -78,7 +78,9 @@ class TestRoundSixQol:
         """`run --help` used to answer this with a `python -c` incantation."""
         for name in _SPELLED:
             zero, one = esolangs.describe(name).input_encoding
-            assert call_main(["encode", name, "10"], capsys) == f"{one}\n{zero}\n"
+            assert (
+                call_main(["encode-inputs", name, "10"], capsys) == f"{one}\n{zero}\n"
+            )
 
     @pytest.mark.parametrize("stream", _STREAM)
     def test_encode_then_run_computes_the_table(
@@ -89,7 +91,7 @@ class TestRoundSixQol:
         esolangs.to_file(stream, esolangs.generate(stream, "10010110"), path)
         got = ""
         for row in range(8):
-            stdin = call_main(["encode", stream, f"{row:03b}"], capsys)
+            stdin = call_main(["encode-inputs", stream, f"{row:03b}"], capsys)
             got += call_main(["run", stream, str(path)], capsys, stdin=stdin)[-1:]
         assert got == "10010110"
 
@@ -191,7 +193,7 @@ def test_truth_table_hint_and_corrected_cli_program(
     path = tmp_path / "generated.bf"
     path.write_text(program)
     bits = "01" if len(good) == 4 else "0"
-    stdin, err = call_both(["encode", REFERENCE, bits], capsys)
+    stdin, err = call_both(["encode-inputs", REFERENCE, bits], capsys)
     assert err == ""
     answer, err = call_both(["run", REFERENCE, str(path)], capsys, stdin)
     assert answer.strip() == "1"
@@ -200,7 +202,7 @@ def test_truth_table_hint_and_corrected_cli_program(
 
 def test_reader_template_hint_names_cli_encode(capsys) -> None:
     _, err = _failure(["generate", "--bits", "01", REFERENCE, "0110"], capsys)
-    assert "hint: pipe input from esolangs encode brainfuck <bits>" in err
+    assert "hint: pipe input from esolangs encode-inputs brainfuck <bits>" in err
     assert "stdin=encode_inputs" not in err
 
 
@@ -241,7 +243,7 @@ def test_text_generator_scale_hint_uses_cli_flag(capsys) -> None:
 _REFUSALS = {
     "removed_suggest_is_refused": ("suggest", "unknown command: suggest"),
     "encode_refuses_a_language_that_reads_nothing": (
-        "encode ArrowQueue 01",
+        "encode-inputs ArrowQueue 01",
         "reads no stdin",
     ),
     "a_repeated_option_is_refused": (
