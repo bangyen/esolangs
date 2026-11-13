@@ -292,7 +292,9 @@ Exceptions:
 
 - `esolangs.ArgumentError(EsolangError, ValueError)` -- an argument's value is outside what the call accepts
 - `esolangs.EsolangError(Exception)` -- base class for errors from the esolangs package
-- `esolangs.ExecutionTimeoutError(HaltError, TimeoutError)` -- a time or step budget ran out before the program ended; `bound` names it
+- `esolangs.ExecutionBudgetError(HaltError)` -- a caller-set budget ran out before the program ended; `bound` names it
+- `esolangs.ExecutionCapError(ExecutionBudgetError, InterpreterLimitError)` -- an isolated run exceeded `max_output` or `max_memory`; `bound` names it
+- `esolangs.ExecutionTimeoutError(ExecutionBudgetError, TimeoutError)` -- a time or step budget ran out before the program ended; `bound` names it
 - `esolangs.GeneratorCapError(EsolangError, ValueError)` -- a boolean generator, such as a prime-based one, refusing too big a table
 - `esolangs.HaltError(EsolangError)` -- a program stopped without completing: an invalid operation or a limit
 - `esolangs.InputExhaustedError(EsolangError, EOFError)` -- a program read past the end of its input
@@ -313,6 +315,7 @@ an `ExecutionOutcome` then holds `partial_output` with unknown counters). Some a
 
 | Exception | Attributes |
 | --- | --- |
+| `ExecutionCapError` | `bound`: `"max_output"` or `"max_memory"` |
 | `ExecutionTimeoutError` | `bound`: the parameter that ran out, as the caller named it: `"timeout"` or `"max_steps"` from `run`; `"execution_timeout"`, `"total_timeout"`, `"preparation_timeout"` or `"max_steps"` from `ExecutionLimits`; `"total_timeout"` when an isolated call's 30-second default total ran out |
 | `InputExhaustedError` | `reads`, the reads that succeeded; `supplied`, the input units given; `unit`, what one is (`"line"` by default) |
 | `UnknownLanguageError` | `language`, the name asked for; `suggestions`, the close registered names |
@@ -458,9 +461,11 @@ Windows and in worker threads. A timeout kills and reaps the child; errors retai
 
 - `max_memory` bounds an isolated worker's virtual address space, including
   Python overhead. Parent source loading is outside the cap. Exhaustion
-  raises `InterpreterLimitError`, never a Boolean answer.
-- Exceeding `max_output` raises `InterpreterLimitError` with the retained
-  prefix in `partial_output`. Zero permits no output; halting at exactly the
+  raises `ExecutionCapError`, never a Boolean answer; a worker killed
+  before it can report raises a bare `InterpreterLimitError`.
+- Exceeding `max_output` raises `ExecutionCapError` with the retained
+  prefix in `partial_output`. Both are `InterpreterLimitError`s, and with
+  `ExecutionTimeoutError` share the base `ExecutionBudgetError`. Zero permits no output; halting at exactly the
   cap succeeds.
 
 ```python

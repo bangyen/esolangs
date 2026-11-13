@@ -10,6 +10,7 @@ from typing import Literal
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
+    ExecutionBudgetError,
     ExecutionTimeoutError,
     InputExhaustedError,
     InterpreterLimitError,
@@ -72,9 +73,9 @@ class ExecutionOutcome:
 
     @property
     def bound(self) -> str | None:
-        """The exhausted deadline or step bound, when the error declares one."""
+        """The exhausted caller-set budget, when the error declares one."""
         return (
-            self.error.bound if isinstance(self.error, ExecutionTimeoutError) else None
+            self.error.bound if isinstance(self.error, ExecutionBudgetError) else None
         )
 
     def unwrap(self) -> ExecutionResult:

@@ -35,6 +35,8 @@ from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
+    ExecutionBudgetError,
+    ExecutionCapError,
     ExecutionTimeoutError,
     GeneratorCapError,
     HaltError,
@@ -121,6 +123,8 @@ __all__ = [
     "CompressedText",
     "DialectSettings",
     "EsolangError",
+    "ExecutionBudgetError",
+    "ExecutionCapError",
     "ExecutionLimits",
     "ExecutionOutcome",
     "ExecutionResult",

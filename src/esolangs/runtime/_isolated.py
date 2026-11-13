@@ -113,7 +113,7 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
     if not isinstance(cls, type) or not issubclass(cls, exceptions.EsolangError):
         raise ValueError("unknown isolated error kind")
     fields = {"error", "args", "notes", "execution", "output_limit"}
-    if issubclass(cls, exceptions.ExecutionTimeoutError):
+    if issubclass(cls, exceptions.ExecutionBudgetError):
         fields.add("bound")
     if set(result) != fields or not isinstance(result["args"], list):
         raise ValueError("invalid isolated error fields")
@@ -155,6 +155,13 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
             "total_timeout",
         ):
             raise ValueError("invalid timeout bound")
+        error.bound = result["bound"]
+    elif isinstance(error, exceptions.ExecutionCapError):
+        # The marker and the bound are two spellings of one fact.
+        if result["bound"] != (
+            "max_output" if result["output_limit"] else "max_memory"
+        ):
+            raise ValueError("invalid cap bound")
         error.bound = result["bound"]
     if result["execution"] is not None:
         error.observation = decode_result(partial, result["execution"])
@@ -902,7 +909,7 @@ def _failure_wire(error: BaseException) -> dict[str, Any]:
         "execution": encode_result(observation) if observation is not None else None,
         **(
             {"bound": error.bound}
-            if isinstance(error, exceptions.ExecutionTimeoutError)
+            if isinstance(error, exceptions.ExecutionBudgetError)
             else {}
         ),
         "output_limit": isinstance(error, exceptions.InterpreterLimitError)
@@ -939,7 +946,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
             for at in range(0, len(accepted), 4096):
                 send({"output": accepted[at : at + 4096]})
             if len(accepted) != len(text):
-                raise exceptions.InterpreterLimitError(
+                raise exceptions.ExecutionCapError(
                     _OUTPUT_LIMIT,
                     hint="reduce output or raise max_output if the output is needed",
                 )
@@ -955,12 +962,15 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
             cause = cause.__cause__
         if cause is not None:
             del reserve
+            # Without max_memory the machine ran out, not a caller's budget.
+            capped = request["max_memory"] is not None
             send(
                 {
-                    "error": "InterpreterLimitError",
+                    "error": "ExecutionCapError" if capped else "InterpreterLimitError",
                     "args": ["isolated memory limit exceeded"],
                     "notes": [],
                     "execution": None,
+                    **({"bound": "max_memory"} if capped else {}),
                     "output_limit": False,
                 }
             )

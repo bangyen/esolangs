@@ -7,6 +7,10 @@ Releases before 0.10.0 are described on the
 
 ## Unreleased
 
+- `max_output` and `max_memory` raise `ExecutionCapError`, still an
+  `InterpreterLimitError`, with `bound` naming the cap. It shares the new
+  base `ExecutionBudgetError` with `ExecutionTimeoutError`, and
+  `ExecutionOutcome.bound` now names every caller-set budget.
 - `run(max_output=...)` and `run(max_memory=...)` select isolation, as
   `ExecutionLimits` does, instead of raising `ArgumentError` without
   `isolated=True`; `--max-output` and `--max-memory` imply `--isolated`.

@@ -583,3 +583,11 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
                 esolangs.InterpreterLimitError, match="invalid isolated"
             ):
                 _decode(json.dumps({**envelope, "args": args}), expired=False)
+    cap = {**payload, "error": "ExecutionCapError", "bound": "max_memory"}
+    with pytest.raises(esolangs.ExecutionCapError) as capped:
+        _decode(json.dumps(cap), expired=False)
+    assert capped.value.bound == "max_memory"
+    # The bound must agree with the output marker, and be a cap's.
+    for bound in ("max_output", "max_steps"):
+        with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
+            _decode(json.dumps({**cap, "bound": bound}), expired=False)

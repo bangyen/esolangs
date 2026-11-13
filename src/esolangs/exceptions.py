@@ -39,12 +39,27 @@ class HaltError(EsolangError):
             self.add_note(f"hint: {hint}")
 
 
-class ExecutionTimeoutError(HaltError, TimeoutError):
-    """A time or step budget ran out before the program ended; ``bound`` names it.
+class ExecutionBudgetError(HaltError):
+    """A caller-set budget ran out before the program ended; ``bound`` names it.
 
     Its own subclass of :class:`HaltError`, because some languages answer by
-    terminating: running out of time is no answer.
+    terminating: running out of budget is no answer.
     """
+
+    #: The parameter that ran out, as the caller named it.
+    bound: Literal[
+        "timeout",
+        "max_steps",
+        "preparation_timeout",
+        "execution_timeout",
+        "total_timeout",
+        "max_output",
+        "max_memory",
+    ]
+
+
+class ExecutionTimeoutError(ExecutionBudgetError, TimeoutError):
+    """A time or step budget ran out before the program ended; ``bound`` names it."""
 
     #: The wall-clock phase or command budget that ended the invocation.
     bound: Literal[
@@ -185,3 +200,12 @@ class InterpreterLimitError(HaltError):
 
     The program is well formed (a recursion); distinct from a generator's cap.
     """
+
+
+class ExecutionCapError(ExecutionBudgetError, InterpreterLimitError):
+    """An isolated run exceeded ``max_output`` or ``max_memory``; ``bound`` names it.
+
+    Still an :class:`InterpreterLimitError`, the class both caps raised bare.
+    """
+
+    bound: Literal["max_output", "max_memory"] = "max_output"

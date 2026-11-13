@@ -253,6 +253,10 @@ def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned) -> None
     with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
         esolangs.run(REFERENCE, "+[.]", isolated=True, max_output=limit)
     assert caught.value.partial_output == "\x01" * limit
+    # A budget the caller named, but no clock ran out.
+    assert isinstance(caught.value, esolangs.ExecutionBudgetError)
+    assert caught.value.bound == "max_output"
+    assert not isinstance(caught.value, TimeoutError)
     assert len(spawned) == 1
     assert spawned[0].poll() is not None
 
@@ -270,6 +274,7 @@ def test_an_output_cap_selects_isolation_on_every_route(spawned) -> None:
         with pytest.raises(esolangs.InterpreterLimitError) as caught:
             call()
         assert str(caught.value) == str(outcome.error)
+        assert caught.value.bound == outcome.bound == "max_output"
         assert caught.value.partial_output == outcome.observation.output == "\x01"
     assert len(spawned) == 3
     with pytest.raises(esolangs.ArgumentError, match="max_memory must be a positive"):
@@ -316,7 +321,8 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(
     messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert [len(message["output"]) for message in messages[:-1]] == [4096, 4096, 1]
     assert messages[-1]["output_limit"] is True
-    assert messages[-1]["error"] == "InterpreterLimitError"
+    assert messages[-1]["error"] == "ExecutionCapError"
+    assert messages[-1]["bound"] == "max_output"
 
 
 @pytest.mark.medium

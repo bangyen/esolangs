@@ -59,6 +59,10 @@ def test_worker_memory_failure_retains_protocol(
     with pytest.raises(esolangs.InterpreterLimitError, match=message) as caught:
         _decode(capsys.readouterr().out, expired=False)
     assert caught.value.observation is None
+    # Only the cap running out is a budget; failing to install it is not.
+    assert getattr(caught.value, "bound", None) == (
+        "max_memory" if error is MemoryError else None
+    )
 
 
 def test_cli_invalid_budget_precedes_path_reads(capsys) -> None:
@@ -108,8 +112,10 @@ def test_worker_reports_a_translated_memory_error_as_the_cap(
         io.StringIO(json.dumps(_isolated._request_wire(REFERENCE, "+", ""))),
     )
     _worker()
-    with pytest.raises(esolangs.InterpreterLimitError, match="memory limit"):
+    with pytest.raises(esolangs.InterpreterLimitError, match="memory limit") as caught:
         _decode(capsys.readouterr().out, expired=False)
+    # No max_memory was passed, so no caller budget ran out.
+    assert not isinstance(caught.value, esolangs.ExecutionBudgetError)
 
 
 def test_successful_worker_budget_retains_output_protocol(monkeypatch, capsys) -> None:

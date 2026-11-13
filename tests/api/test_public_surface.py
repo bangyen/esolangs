@@ -30,6 +30,8 @@ class TestPackageSurface:
             "CompressedText",
             "DialectSettings",
             "EsolangError",
+            "ExecutionBudgetError",
+            "ExecutionCapError",
             "ExecutionLimits",
             "ExecutionOutcome",
             "ExecutionResult",
