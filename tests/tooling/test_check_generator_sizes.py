@@ -280,25 +280,37 @@ while True:
     p.write_text(str(time.monotonic()))
     time.sleep(0.01)
 """
+    # The grandchild is spawned first, and the worker is started and the
+    # marker awaited before ``measure`` starts the clock: the generation
+    # deadline counts from spawn, so on a slow macOS runner 1s once ran out
+    # during interpreter startup and ``import benchmark``, killing the tree
+    # before the grandchild existed and leaving no marker to check.
     setup = f"""
 import sys, subprocess, time
+subprocess.Popen([sys.executable, '-c', {child!r}])
+"""
+    if phase == "startup":
+        setup += "time.sleep(30)"
+    else:
+        setup += f"""
 sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / "scripts")!r})
 import benchmark
 def hang(*args, **kwargs):
-    subprocess.Popen([sys.executable, '-c', {child!r}])
     time.sleep(30)
+benchmark.{"esolangs.generate" if phase == "generation" else "_execute"} = hang
+benchmark._worker_main()
 """
-    setup += (
-        "benchmark.esolangs.generate = hang\n"
-        if phase == "generation"
-        else "benchmark._execute = hang\n"
-    )
-    setup += (
-        f"subprocess.Popen([sys.executable, '-c', {child!r}]); time.sleep(30)"
-        if phase == "startup"
-        else "benchmark._worker_main()"
-    )
-    monkeypatch.setattr(b, "Worker", lambda: factory([sys.executable, "-c", setup]))
+
+    def started() -> b.Worker:
+        worker = factory([sys.executable, "-c", setup])
+        worker.start()
+        waited = time.monotonic() + 30
+        while not marker.exists() and time.monotonic() < waited:
+            time.sleep(0.01)
+        assert marker.exists(), "the grandchild never started"
+        return worker
+
+    monkeypatch.setattr(b, "Worker", started)
     start = time.monotonic()
     expected = "execution" if phase == "execution" else "generation"
     with pytest.raises(esolangs.ExecutionTimeoutError, match=f"{expected} deadline"):
