@@ -66,35 +66,29 @@ jobs:
       if: github.ref_type == 'tag'
       run: uv run python scripts/ci/release.py notes "$GITHUB_REF_NAME" >/dev/null
 
+  # The full suite in one job outgrew the gate's 900 s pytest deadline
+  # (v2.0.0: 17,146 tests on 4 workers); CI already runs it, sharded, on the
+  # same commit.  Require that run's success instead of repeating it, so a
+  # tag on a commit CI never passed still cannot publish.
   verify:
     needs: check-version
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    permissions:
+      actions: read
     steps:
-    - uses: actions/checkout@v7
-      with:
-        persist-credentials: false
-        # Audit provenance and replay baselines pin earlier commits.
-        fetch-depth: 0
-    - name: Set up Python
-      uses: ./.github/actions/setup
-      with:
-        python-version: "3.14"
-    - name: Verify the release commit
+    - name: CI must have passed on the release commit
       env:
-        PYTEST_ADDOPTS: "-n auto"
-      run: uv run python scripts/verify/gate.py --full
-
-    - name: Retain worker and verification logs
-      if: always()
-      uses: actions/upload-artifact@v7
-      with:
-        name: logs-${{ github.job }}-${{ strategy.job-index }}
-        path: |
-          notes/verification/*.log
-          notes/benchmarks/*.log
-        if-no-files-found: ignore
-        retention-days: 14
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        conclusion="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml \
+          --commit "$GITHUB_SHA" --event push --status completed --limit 1 \
+          --json conclusion --jq '.[0].conclusion // ""')"
+        echo "CI on $GITHUB_SHA: ${conclusion:-no completed run}"
+        if [ "$conclusion" != success ]; then
+          echo "::error::CI has not passed on $GITHUB_SHA; push it to main and wait for CI before tagging"
+          exit 1
+        fi
 
   build:
     needs: verify
