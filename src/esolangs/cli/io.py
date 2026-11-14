@@ -20,6 +20,11 @@ from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
 from esolangs.exceptions import EsolangError
 from esolangs.operations.source import _check_program
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._files import (
+    StreamReadTimeoutError,
+    read_snapshot,
+    stream_read_deadline,
+)
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
 
@@ -154,6 +159,8 @@ def _slurp_thread[SlurpT](
         on_timeout()
     # A finished thread always appended; a live one exited above.
     result = box[0]
+    if isinstance(result, StreamReadTimeoutError):
+        on_timeout()
     if isinstance(result, BaseException):
         raise result
     return result
@@ -168,11 +175,14 @@ def _bounded_read(
 ) -> bytes:
     """Open and read ``path`` with a size cap and a deadline."""
     waited = timeout if timeout is not None else _READ_DEADLINE
+    deadline = monotonic() + waited
 
     def _read_file() -> bytes:
         try:
-            with open(path, "rb") as handle:
-                return handle.read(max_bytes + 1)
+            with open(path, "rb") as handle, stream_read_deadline(deadline):
+                return read_snapshot(handle, size=max_bytes + 1)
+        except StreamReadTimeoutError:
+            raise
         except OSError as exc:
             _fail(f"cannot read {path}: {exc}")
 
@@ -223,26 +233,28 @@ def _read_stdin(
 
     ``sys.stdin.read()`` blocks until EOF, so an open, unwritten pipe hung
     the command before ``--execution-timeout`` could apply.  The read runs on a
-    daemon thread bounded by the acquisition deadline, announced if still waiting; a
-    thread rather than :func:`select.select` because tests supply an
-    object with no ``fileno``.
+    daemon thread to bound blocking reads and announce a long wait.
     """
     # A missing descriptor or terminal supplies no piped input.
-    if sys.stdin is None or sys.stdin.isatty():
+    stdin = sys.stdin
+    if stdin is None or stdin.isatty():
         return ""
+    deadline = None if timeout is None else monotonic() + timeout
 
     def _read_text() -> str:
-        stream = cast("BinaryIO | None", getattr(sys.stdin, "buffer", None))
+        stream = cast("BinaryIO | None", getattr(stdin, "buffer", None))
         try:
-            # A blocked daemon must leave the BufferedReader unlocked at shutdown.
-            if isinstance(stream, BufferedReader) and isinstance(stream.raw, FileIO):
-                data = stream.raw.read()
-                if data is None:
-                    _fail("cannot read stdin: no data available")
-                return data.decode("utf-8")
-            if stream is not None:
-                return stream.read().decode("utf-8")
-            return sys.stdin.read()
+            with stream_read_deadline(deadline):
+                # A blocked daemon must leave the BufferedReader unlocked at shutdown.
+                if isinstance(stream, BufferedReader) and isinstance(
+                    stream.raw, FileIO
+                ):
+                    return read_snapshot(stream.raw).decode("utf-8")
+                if stream is not None:
+                    return read_snapshot(stream).decode("utf-8")
+                return read_snapshot(stdin)
+        except StreamReadTimeoutError:
+            raise
         except UnicodeDecodeError as exc:
             _fail(f"cannot read stdin: not text ({_decode_note(exc)})")
         except OSError as exc:
@@ -251,8 +263,7 @@ def _read_stdin(
     def _on_timeout() -> None:
         bound = f" ({timeout_flag})" if timeout_flag else ""
         _fail(
-            f"no input arrived on stdin within {timeout:g}s{bound}, and nothing "
-            f"closed it{hint}",
+            f"stdin did not reach EOF within {timeout:g}s{bound}{hint}",
             _TIMEOUT_EXIT,
         )
 

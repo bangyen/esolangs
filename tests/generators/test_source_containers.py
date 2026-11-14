@@ -2,8 +2,9 @@
 
 import gzip
 import io
+import os
 from pathlib import Path
-from threading import Event
+from threading import Event, Thread
 from typing import Any
 
 import pytest
@@ -112,6 +113,95 @@ def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
     source = io.StringIO("ignored,.")
     source.seek(7)
     assert esolangs.run(REFERENCE, source, stdin="Z").output == "Z"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX nonblocking pipes")
+def test_nonblocking_raw_program_waits_for_a_delayed_suffix() -> None:
+    prefix_read = Event()
+
+    class ProgramReader(io.FileIO):
+        def read(self, size=-1):
+            chunk = super().read(size)
+            if chunk == b"+":
+                prefix_read.set()
+            return chunk
+
+    read_fd, write_fd = os.pipe()
+    os.set_blocking(read_fd, False)
+    os.write(write_fd, b"+")
+
+    def publish_suffix() -> None:
+        try:
+            if prefix_read.wait(2):
+                os.write(write_fd, b".")
+        finally:
+            os.close(write_fd)
+
+    sender = Thread(target=publish_suffix)
+    sender.start()
+    try:
+        with ProgramReader(read_fd, mode="rb") as stream:
+            api = esolangs.Language(REFERENCE)
+            artifact = api.from_json(api.to_json(stream))
+            assert artifact.source == "+."
+            assert api.run(artifact).output == "\x01"
+            assert not stream.closed
+            assert not os.get_blocking(read_fd)
+    finally:
+        sender.join(3)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX nonblocking pipes")
+def test_nonblocking_text_program_refuses_before_consuming_bytes() -> None:
+    read_fd, write_fd = os.pipe()
+    try:
+        os.set_blocking(read_fd, False)
+        os.write(write_fd, b"+.")
+        with os.fdopen(read_fd, "r") as stream:
+            with pytest.raises(
+                esolangs.ProgramError, match=r"cannot detect EOF.*nonblocking"
+            ):
+                esolangs.run(REFERENCE, stream)
+            assert os.read(read_fd, 2) == b"+."
+            assert not stream.closed
+    finally:
+        os.close(write_fd)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX nonblocking pipes")
+def test_nonblocking_buffered_program_preserves_prefetched_bytes() -> None:
+    read_fd, write_fd = os.pipe()
+    with os.fdopen(read_fd, "rb") as stream:
+        with os.fdopen(write_fd, "wb") as sender:
+            os.set_blocking(read_fd, False)
+            sender.write(b"+.")
+        assert stream.peek(1) == b"+."
+        assert esolangs.run(REFERENCE, stream).output == "\x01"
+        assert not stream.closed
+
+
+def test_closed_and_would_block_streams_report_read_errors() -> None:
+    class Pending:
+        def read(self):
+            return None
+
+    closed = io.BytesIO(b"+.")
+    closed.close()
+    for source, message in ((closed, "closed"), (Pending(), "would block")):
+        with pytest.raises(
+            esolangs.ProgramError, match=f"cannot read the program stream.*{message}"
+        ):
+            esolangs.prepare(REFERENCE, source)
+
+
+def test_managed_program_stream_preserves_a_deliberate_api_error() -> None:
+    timeout = esolangs.ExecutionTimeoutError("managed reader deadline")
+
+    class Stream:
+        def read(self):
+            raise timeout
+
+    assert esolangs.execute(REFERENCE, Stream()).error is timeout
 
 
 @pytest.mark.parametrize(

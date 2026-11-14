@@ -12,6 +12,7 @@ from dataclasses import KW_ONLY, dataclass, field
 from functools import cache
 from typing import TYPE_CHECKING, cast
 
+from esolangs.exceptions import ArgumentError
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
 from esolangs.runtime._capabilities import MachineCapabilities
@@ -103,13 +104,35 @@ class LanguageDeclaration:
 
     def __post_init__(self) -> None:
         """Validate assembled capabilities and fill an absent canonical id."""
+        if (
+            not isinstance(self.name, str)
+            or not (name := str.__str__(self.name)).strip()
+        ):
+            raise ArgumentError("catalog language names must be nonblank strings")
+        if not isinstance(self.id, str):
+            raise ArgumentError("catalog language identifiers must be nonempty strings")
+        identifier = str.__str__(self.id) or canonical_id(name)
+        if not identifier.strip():
+            raise ArgumentError("catalog language identifiers must be nonempty strings")
+        if not isinstance(self.aliases, tuple):
+            raise ArgumentError("catalog aliases must be immutable tuples")
+        aliases = []
+        for alias in tuple.__iter__(self.aliases):
+            if not isinstance(alias, str) or not (text := str.__str__(alias)).strip():
+                raise ArgumentError(
+                    "catalog identifiers and aliases must be nonblank strings"
+                )
+            aliases.append(text)
+        if not isinstance(self.runtime, RuntimeSpec):
+            raise ArgumentError("language runtime must be a RuntimeSpec")
         if not isinstance(self.runtime.capabilities, MachineCapabilities):
             raise TypeError("runtime capabilities must be declared")
         schema = self.runtime.dialect_schema
-        if schema is not None and schema.language != self.name:
+        if schema is not None and schema.language != name:
             raise ValueError("dialect schema must belong to the declaring language")
-        if not self.id:
-            object.__setattr__(self, "id", canonical_id(self.name))
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "id", identifier)
+        object.__setattr__(self, "aliases", tuple(aliases))
 
     @property
     def source_suffix(self) -> str:

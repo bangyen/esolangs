@@ -9,10 +9,15 @@ from typing import IO, TYPE_CHECKING
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
-from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
+from esolangs.exceptions import (
+    ArgumentError,
+    EsolangError,
+    ProgramError,
+    ProgramNotFoundError,
+)
 from esolangs.raster import Raster
 from esolangs.runtime._definition import SourceLoader
-from esolangs.runtime._files import explicit_path
+from esolangs.runtime._files import explicit_path, read_snapshot
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error, with_hint
@@ -43,6 +48,7 @@ def _read_container(
 ) -> tuple[Program | bytes, str | None]:
     """Return the underlying data and the filename if it came from a file."""
     label = "the program"
+    reading_stream = False
     try:
         if isinstance(source, (ProgramArtifact, TemplateArtifact)):
             source = source.source
@@ -51,7 +57,8 @@ def _read_container(
         if isinstance(source, os.PathLike):
             path = explicit_path(source)
             label = str(path)
-            return path.read_bytes(), label
+            with path.open("rb") as file:
+                return read_snapshot(file), label
         if isinstance(source, (Raster, CompressedText)):
             return source, None
         value = source
@@ -59,18 +66,21 @@ def _read_container(
             getattr(source, "read", None)
         ):
             label = "the program stream"
-            value = source.read()
+            reading_stream = True
+            value = read_snapshot(source)
         if isinstance(value, str):
             return str.__str__(value), None
         if isinstance(value, bytes):
             return bytes.__bytes__(value), None
-    except FileNotFoundError as exc:
-        raise syntax_error(
-            f"cannot read {label}: {exc}",
-            "check that the source path exists and names the intended program file",
-            error_type=ProgramNotFoundError,
-        ) from exc
     except (OSError, TypeError, ValueError) as exc:
+        if reading_stream and isinstance(exc, EsolangError):
+            raise
+        if isinstance(exc, FileNotFoundError):
+            raise syntax_error(
+                f"cannot read {label}: {exc}",
+                "check that the source path exists and names the intended program file",
+                error_type=ProgramNotFoundError,
+            ) from exc
         raise syntax_error(
             f"cannot read {label}: {exc}",
             "check that the program file or stream is readable",

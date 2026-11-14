@@ -36,6 +36,33 @@ def test_catalog_identifiers_cannot_be_shadowed_by_aliases() -> None:
         scoped.with_language(other)
 
 
+def test_catalog_freezes_declaration_spellings_before_indexing() -> None:
+    class WrappedText(str):
+        __hash__ = None
+
+        def strip(self, _chars=None):
+            raise AssertionError("declaration called the string wrapper")
+
+    original = LANGUAGES[REFERENCE]
+    record = replace(
+        original,
+        name=WrappedText("Private interpreter"),
+        id=WrappedText("private_interpreter"),
+        aliases=(WrappedText("PRIVATE-ALIAS"),),
+    )
+    for scoped in (
+        esolangs.Catalog([record]),
+        esolangs.Catalog([]).with_language(record),
+    ):
+        assert scoped.resolve("private_interpreter") == "Private interpreter"
+        assert scoped.bind("private-alias").run("+.").output == "\x01"
+
+
+def test_bad_declaration_name_is_a_public_argument_error() -> None:
+    with pytest.raises(esolangs.ArgumentError, match="nonblank strings"):
+        replace(LANGUAGES[REFERENCE], name=42, id="")
+
+
 def test_boolean_text_arguments_use_string_storage() -> None:
     class WrappedText(str):
         __hash__ = None
@@ -138,8 +165,22 @@ def test_template_with_an_unregistered_owner_raises_template_error() -> None:
     scoped = esolangs.Catalog([local]).bind(local.name)
     template = scoped.generate("01")
     assert scoped.instantiate(template, [1]) == template.fill([1])
+    result = template.evaluate([1], catalog=scoped.catalog)
+    assert result == scoped.evaluate(template, [1])
+    assert result.answer == "1"
     with pytest.raises(esolangs.TemplateError, match="belongs to"):
         owner.instantiate(template, [1])
+
+
+def test_program_artifact_evaluation_can_select_a_scoped_contract() -> None:
+    original = LANGUAGES[REFERENCE]
+    swapped = replace(original.contract, answer_values=("1", "0"))
+    scoped = esolangs.Catalog([replace(original, contract=swapped)]).bind(REFERENCE)
+    program = scoped.generate("01")
+    assert program.evaluate([1]).answer == "1"
+    result = program.evaluate([1], catalog=scoped.catalog)
+    assert result == scoped.evaluate(program, [1])
+    assert result.answer == "0"
 
 
 #: What a spec must not show: a private name, a raw Sphinx role, a repo path.

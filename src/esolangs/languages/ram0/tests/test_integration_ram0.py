@@ -65,7 +65,7 @@ class TestStdinCannotHangTheCommandForever:
             ["run", "--execution-timeout", "2", REFERENCE, str(path)], 20
         )
         assert code == 124
-        assert "no input arrived on stdin" in err
+        assert "stdin did not reach EOF" in err
 
     @pytest.mark.slow
     def test_an_unknown_language_is_named_without_reading_stdin(

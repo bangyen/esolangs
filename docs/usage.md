@@ -95,9 +95,9 @@ also retain scale, and a generated `ProgramArtifact` its `input_arity`, which
 raster metadata; `to_file` refuses an unfilled template. `TemplateArtifact.fill(bits)` returns a runnable record.
 `run`, `instantiate`, `to_json` and `to_file` accept records;
 `from_json` restores them, including template bindings. Template artifacts
-must be filled before execution. An artifact's `fill` and `evaluate` are
-`instantiate` and `Language.evaluate` with its own language and the installed
-catalog.
+must be filled before execution. `TemplateArtifact.fill` uses the retained
+bindings. An artifact's `evaluate(bits, catalog=...)` uses its own language
+and the supplied catalog, defaulting to the installed one.
 
 `to_file(language, record, path, gzip=True)` compresses native text exports;
 gzip input loads as `run` loads it, so `gzip=False` writes it decompressed;

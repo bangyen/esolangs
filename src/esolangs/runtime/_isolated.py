@@ -24,7 +24,8 @@ from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import interpreter_errors
-from esolangs.runtime._input import InputSource, read_input
+from esolangs.runtime._files import stream_read_deadline
+from esolangs.runtime._input import InputSource, check_input, read_input
 from esolangs.runtime._json import canonical_integer, worker_dumps, worker_loads
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import TerminationResult
@@ -449,17 +450,30 @@ def _invoke_worker(
 
     def prepare() -> None:
         try:
-            artifact = _check_program(name, program, stdin, catalog=catalog)
-            source = artifact.source
-            retained = effective_settings(name, artifact, settings, catalog=catalog)
-            retained_scale = effective_scale(name, artifact, scale, catalog=catalog)
-            check_scale_for(name, retained_scale, catalog=catalog)
+            with stream_read_deadline(acquisition_deadline):
+                if monotonic() >= acquisition_deadline:
+                    return
+                check_input(stdin)
+                if monotonic() >= acquisition_deadline:
+                    return
+                artifact = _check_program(name, program, catalog=catalog)
+                if monotonic() >= acquisition_deadline:
+                    return
+                source = artifact.source
+                retained = effective_settings(name, artifact, settings, catalog=catalog)
+                retained_scale = effective_scale(name, artifact, scale, catalog=catalog)
+                check_scale_for(name, retained_scale, catalog=catalog)
+                if monotonic() >= acquisition_deadline:
+                    return
+                captured_input = read_input(stdin)
+            if monotonic() >= acquisition_deadline:
+                return
             box.append(
                 worker_dumps(
                     _request_wire(
                         name,
                         source,
-                        read_input(stdin),
+                        captured_input,
                         settings=retained,
                         seed=seed,
                         scale=retained_scale,

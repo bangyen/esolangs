@@ -3,8 +3,11 @@
 import gzip
 import json
 import os
+import select
 import subprocess
 import sys
+from collections.abc import Iterator
+from io import FileIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -114,6 +117,91 @@ class TestNonTextInputIsRefusedNotCrashed:
         path.write_bytes(bytes(range(256)))
         with pytest.raises(esolangs.ProgramError, match="not text"):
             esolangs.run(REFERENCE, path)
+
+
+@pytest.fixture
+def nonblocking_pipe() -> Iterator[tuple[FileIO, FileIO]]:
+    reader, writer = os.pipe()
+    with (
+        os.fdopen(reader, "rb", buffering=0) as source,
+        os.fdopen(writer, "wb", buffering=0) as feed,
+    ):
+        os.set_blocking(source.fileno(), False)
+        yield source, feed
+
+
+@pytest.mark.medium
+@pytest.mark.skipif(not hasattr(select, "poll"), reason="requires POSIX pipe polling")
+@pytest.mark.parametrize("prefix", [b"", b"\xc3"], ids=["empty", "split-utf8"])
+def test_nonblocking_stdin_reads_delayed_utf8(
+    nonblocking_pipe: tuple[FileIO, FileIO], prefix: bytes, tmp_path: Path
+) -> None:
+    source, feed = nonblocking_pipe
+    path = tmp_path / "echo.txt"
+    path.write_text(",.", encoding="utf-8")
+    payload = "é".encode()
+    feed.write(prefix)
+    script = (
+        "from esolangs.cli import io, main\nio._WAITING_NOTICE_AFTER = 0.1\nmain()\n"
+    )
+    with subprocess.Popen(
+        [sys.executable, "-c", script, "run", REFERENCE, str(path)],
+        stdin=source,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as child:
+        try:
+            assert child.stderr is not None
+            assert select.select([child.stderr], [], [], 10)[0]
+            assert child.stderr.readline().startswith(b"still waiting for input")
+            feed.write(payload[len(prefix) :])
+            feed.close()
+            output, diagnostic = child.communicate(timeout=10)
+        finally:
+            if child.poll() is None:
+                child.kill()
+    assert (child.returncode, output, diagnostic) == (0, payload, b"")
+    assert not os.get_blocking(source.fileno())
+
+
+@pytest.mark.medium
+@pytest.mark.skipif(not hasattr(select, "poll"), reason="requires POSIX pipe polling")
+@pytest.mark.parametrize("ingress", ["stdin", "source"])
+def test_nonblocking_pipe_requires_eof_before_running(
+    nonblocking_pipe: tuple[FileIO, FileIO], ingress: str, tmp_path: Path
+) -> None:
+    source, feed = nonblocking_pipe
+    if ingress == "source":
+        path = Path("/dev/fd/0")
+        if not path.exists():
+            pytest.skip("no /dev/fd")
+        feed.write(b"+")
+        diagnostic = b"gave up reading /dev/fd/0"
+    else:
+        path = tmp_path / "echo.txt"
+        path.write_text(",.", encoding="utf-8")
+        feed.write(b"A")
+        diagnostic = b"stdin did not reach EOF"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "esolangs",
+            "run",
+            "--total-timeout",
+            "1",
+            REFERENCE,
+            str(path),
+        ],
+        stdin=source,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    assert (result.returncode, result.stdout) == (124, b"")
+    assert diagnostic in result.stderr
+    assert b"--total-timeout" in result.stderr
+    assert not os.get_blocking(source.fileno())
 
 
 @pytest.mark.medium

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+import esolangs
 from esolangs._bindings import (
     TEMPLATE_CHAR,
     Setters,
@@ -116,11 +117,12 @@ class ProgramArtifact[Source: Program]:
         bits: list[int] | tuple[int, ...],
         *,
         limits: ExecutionLimits | None = None,
+        catalog: esolangs.Catalog | None = None,
     ) -> BooleanEvaluation:
-        """Run one Boolean row and return its answer and execution evidence."""
+        """Run a Boolean row in the supplied or installed catalog."""
         from esolangs.operations.evaluation import evaluate_artifact
 
-        return evaluate_artifact(self, bits, limits=limits)
+        return evaluate_artifact(self, bits, limits=limits, catalog=catalog)
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,11 +218,12 @@ class TemplateArtifact:
         bits: list[int] | tuple[int, ...],
         *,
         limits: ExecutionLimits | None = None,
+        catalog: esolangs.Catalog | None = None,
     ) -> BooleanEvaluation:
-        """Run one Boolean row and return its answer and execution evidence."""
+        """Run a Boolean row in the supplied or installed catalog."""
         from esolangs.operations.evaluation import evaluate_artifact
 
-        return evaluate_artifact(self, bits, limits=limits)
+        return evaluate_artifact(self, bits, limits=limits, catalog=catalog)
 
     def fill(self, bits: list[int] | tuple[int, ...]) -> ProgramArtifact[str]:
         """Bind inputs without rescanning the immutable template's runs.

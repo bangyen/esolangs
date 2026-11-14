@@ -184,7 +184,6 @@ def _execute_invocation(
     check_limits(max_output, max_memory, isolated=isolated)
     if max_steps is not None:
         check_whole(max_steps, "max_steps")
-    check_input(stdin)
     if isolated:
         if io_factory is not ScriptedIO:
             raise ArgumentError("custom I/O factories require in-process execution")
@@ -206,6 +205,7 @@ def _execute_invocation(
             preparation_timeout=preparation_timeout,
             catalog=catalog,
         )
+    check_input(stdin)
     if max_steps is not None:
         return _execute_bounded(
             language,
