@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib
-import re
 import shlex
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -24,6 +23,7 @@ from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.memory import _hit_digit_cap
 from esolangs.runtime.randomness import Seeded
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import dialect_options
@@ -111,22 +111,6 @@ def execute_prepared(
             completion=value,
         ),
     )
-
-
-#: CPython's int/str digit-cap ValueError, an implementation limit.  Matched
-#: from the start: a parse error echoing source "Exceeds the limit (" is not.
-_DIGIT_CAP = re.compile(r"Exceeds the limit \(\d+ digits\) for integer string")
-
-
-def _hit_digit_cap(error: BaseException | None) -> bool:
-    """Whether CPython's digit cap raised ``error`` or anything it chains."""
-    seen: set[int] = set()
-    while error is not None and id(error) not in seen:
-        if isinstance(error, ValueError) and _DIGIT_CAP.match(str(error)):
-            return True
-        seen.add(id(error))
-        error = error.__cause__ or error.__context__
-    return False
 
 
 # Substrings of CPython's ValueError wording, mapped to the hint each

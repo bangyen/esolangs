@@ -13,6 +13,7 @@ from os import PathLike
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
 from esolangs.runtime._files import explicit_path, write_staged
 from esolangs.runtime._validate import _argument_repr, check_width
+from esolangs.runtime.memory import repr_value
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -28,6 +29,14 @@ class TextLimits:
         for value in (self.plain_chars, self.generation_chars, self.gzip_bytes):
             if type(value) is not int or value < 0:
                 raise ArgumentError("text limits must be nonnegative integers")
+
+    def __repr__(self) -> str:
+        """Represent each budget even beyond the decimal digit cap."""
+        return (
+            f"{type(self).__qualname__}(plain_chars={repr_value(self.plain_chars)}, "
+            f"generation_chars={repr_value(self.generation_chars)}, "
+            f"gzip_bytes={repr_value(self.gzip_bytes)})"
+        )
 
 
 def _check_plain(limits: TextLimits, count: int) -> None:

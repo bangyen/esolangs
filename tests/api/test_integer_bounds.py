@@ -1,5 +1,7 @@
 """Shared public contracts, independent of language ownership."""
 
+import sys
+
 import pytest
 
 import esolangs
@@ -56,6 +58,34 @@ def test_oversized_integer_arguments_keep_public_errors(operation) -> None:
     with pytest.raises(esolangs.ArgumentError) as caught:
         operation(10**5000)
     assert len(str(caught.value)) < 400
+
+
+def test_large_artifact_and_dialect_metadata_repr() -> None:
+    cap = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(sys.int_info.str_digits_check_threshold)
+        huge = 10**5000
+        literal = hex(huge)
+        schema = esolangs.DialectSchema(REFERENCE, {"mode": (1, huge)}, {"mode": huge})
+        assert repr(schema).count(literal) == 2
+
+        limits = esolangs.TextLimits(
+            plain_chars=huge, generation_chars=huge, gzip_bytes=huge
+        )
+        compressed = esolangs.CompressedText.repeated("+", 1, limits=limits)
+        assert repr(compressed).count(literal) == 3
+
+        language = first(source_kind="raster")
+        raster = esolangs.Raster((((0, 0, 0),),))
+        artifact = esolangs.ProgramArtifact(
+            raster, language, scale=huge, input_arity=huge
+        )
+        assert repr(artifact) == (
+            f"ProgramArtifact(source=Raster(1x1), language={language!r}, "
+            f"settings=None, scale={literal}, input_arity={literal})"
+        )
+    finally:
+        sys.set_int_max_str_digits(cap)
 
 
 @pytest.mark.parametrize("isolated", [False, True])

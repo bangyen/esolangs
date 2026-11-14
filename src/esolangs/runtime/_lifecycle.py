@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Hashable
 from dataclasses import dataclass
 from enum import StrEnum
+from reprlib import recursive_repr
 
 
 class Completion(StrEnum):
@@ -23,6 +24,17 @@ class BoundaryCycle:
     first_pass: int
     repeat_pass: int
     commands_per_pass: int
+
+    @recursive_repr()
+    def __repr__(self) -> str:
+        from esolangs.runtime.memory import repr_value
+
+        return (
+            f"{type(self).__qualname__}(state={repr_value(self.state)}, "
+            f"first_pass={repr_value(self.first_pass)}, "
+            f"repeat_pass={repr_value(self.repeat_pass)}, "
+            f"commands_per_pass={repr_value(self.commands_per_pass)})"
+        )
 
     def __post_init__(self) -> None:
         """Require integer boundaries, a nonnegative stride and hashable state."""

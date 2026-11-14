@@ -1,13 +1,20 @@
 """Structured output retains IO usage and only declared completion reports."""
 
+import sys
+from fractions import Fraction
+
 import pytest
 
-from esolangs import BooleanEvaluation
-from esolangs.exceptions import ArgumentError, InterpreterLimitError
+from esolangs import BooleanEvaluation, ExecutionLimits, ExecutionOutcome
+from esolangs.exceptions import (
+    ArgumentError,
+    InputExhaustedError,
+    InterpreterLimitError,
+)
 from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import execute_prepared
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
-from esolangs.runtime._proof import CycleDecision
+from esolangs.runtime._proof import BranchProof, CycleDecision
 from esolangs.runtime.io import ScriptedIO
 from tests.support.reference import REFERENCE
 
@@ -93,3 +100,58 @@ def test_public_records_require_valid_evidence() -> None:
         BooleanEvaluation("1", unfinished, termination=True)
     with pytest.raises(ArgumentError, match="unfinalized"):
         BooleanEvaluation("1", completed, termination=proof)
+
+
+def test_execution_record_repr_keeps_ordinary_diagnostics() -> None:
+    assert repr(ExecutionLimits(max_steps=3)) == (
+        "ExecutionLimits(preparation_timeout=None, execution_timeout=None, "
+        "total_timeout=None, max_steps=3, max_output=None, max_memory=None)"
+    )
+    assert repr(ExecutionResult("é", 1, 1, 0)) == (
+        "ExecutionResult(output='é', input_position=1, input_reads=1, "
+        "input_past_end=0, completion=None, steps=None)"
+    )
+    assert repr(BoundaryCycle((3,), 1, 2, 1)) == (
+        "BoundaryCycle(state=(3,), first_pass=1, repeat_pass=2, commands_per_pass=1)"
+    )
+    assert repr(CycleDecision(halts=True, commands=3)) == (
+        "CycleDecision(halts=True, commands=3, cycle=None, branches=None)"
+    )
+
+
+def test_execution_records_repr_large_counts_and_nested_evidence() -> None:
+    count = 1 << 18000
+    spelling = hex(count)
+    cap = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        with pytest.raises(ValueError, match="Exceeds the limit"):
+            repr(count)
+        limits = ExecutionLimits(max_steps=count, max_output=count, max_memory=count)
+        cycle = BoundaryCycle((frozenset({count}), Fraction(count, 3)), 1, count, 1)
+        completed = ExecutionResult(
+            "",
+            count,
+            count,
+            0,
+            completion=CompletionReport(Completion.PERIODIC, cycle),
+            steps=count,
+        )
+        observed = ExecutionResult("", count, count, 1, steps=count)
+        verdict = CycleDecision(halts=True, commands=count)
+        branch = BranchProof(count, ((count, (count,)),), halts=False)
+        error = InputExhaustedError(count, count)
+
+        assert f"max_steps={spelling}" in repr(limits)
+        assert f"Fraction({spelling}, 3)" in repr(completed)
+        assert f"repeat_pass={spelling}" in repr(
+            ExecutionOutcome("completed", completed)
+        )
+        assert f"commands={spelling}" in repr(
+            BooleanEvaluation("0", observed, termination=verdict)
+        )
+        assert f"root={spelling}" in repr(branch)
+        assert f"{spelling} lines supplied" in str(error)
+        assert hex(count + 1) in error.__notes__[0]
+    finally:
+        sys.set_int_max_str_digits(cap)

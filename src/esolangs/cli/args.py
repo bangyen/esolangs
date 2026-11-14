@@ -22,6 +22,7 @@ from esolangs.exceptions import EsolangError
 from esolangs.registry import resolve
 from esolangs.runtime._json import unique_object
 from esolangs.runtime._validate import check_scale, check_timeout
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.settings import DialectSettings, dialect_choices
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -272,7 +273,7 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
             continue
         width = _integer(value, "--width")
         if width <= 0:
-            _fail(f"--width must be positive, got {width}")
+            _fail(f"--width must be positive, got {format_integer(width)}")
     return args, width, bare
 
 
@@ -401,7 +402,7 @@ def _scale_of(options: dict[str, str]) -> int | None:
 
 
 def _set_value(key: str, raw: str, language: str) -> int | str | None:
-    """Read one ``--set`` value; the two modulus settings are integers."""
+    """Read one ``--set`` value using its declared scalar type."""
     if raw == "null":
         return None
     schema = dialect_choices(language)
@@ -423,7 +424,11 @@ def _settings_of(
     values: dict[str, object] = {}
     if "--settings" in options:
         try:
-            parsed = json.loads(options["--settings"], object_pairs_hook=unique_object)
+            parsed = json.loads(
+                options["--settings"],
+                object_pairs_hook=unique_object,
+                parse_int=parse_integer,
+            )
         except (ValueError, RecursionError) as exc:
             _fail(f"--settings is not valid JSON ({exc}); pass a JSON object")
         if not isinstance(parsed, dict):

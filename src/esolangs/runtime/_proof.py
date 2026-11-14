@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Hashable
 from dataclasses import dataclass
+from reprlib import recursive_repr
 from typing import NamedTuple
 
 from esolangs.results import ExecutionResult
@@ -18,6 +19,16 @@ class BranchProof:
     transitions: tuple[tuple[Hashable, tuple[Hashable, ...]], ...]
     halts: bool
     terminal: Hashable | None = None
+
+    @recursive_repr()
+    def __repr__(self) -> str:
+        from esolangs.runtime.memory import repr_value
+
+        return (
+            f"{type(self).__qualname__}(root={repr_value(self.root)}, "
+            f"transitions={repr_value(self.transitions)}, "
+            f"halts={self.halts!r}, terminal={repr_value(self.terminal)})"
+        )
 
     def __post_init__(self) -> None:
         """Require immutable, root-reachable evidence and a valid endpoint/closure."""
@@ -71,6 +82,15 @@ class CycleDecision(NamedTuple):
     commands: int | None
     cycle: BoundaryCycle | None = None
     branches: BranchProof | None = None
+
+    def __repr__(self) -> str:
+        from esolangs.runtime.memory import repr_value
+
+        return (
+            f"{type(self).__name__}(halts={self.halts!r}, "
+            f"commands={repr_value(self.commands)}, cycle={self.cycle!r}, "
+            f"branches={self.branches!r})"
+        )
 
 
 def checked_decision(value: object) -> CycleDecision:

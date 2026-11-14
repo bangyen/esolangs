@@ -296,8 +296,25 @@ def _check_row_filters(
             offset += stride + 1
 
 
+def _check_pixel_limit(width: int, height: int, max_image_pixels: int | None) -> None:
+    """Apply Pillow's hard limit before inflating or packing PNG pixels."""
+    if max_image_pixels is None:
+        return
+    pixels = max(1, width) * max(1, height)
+    limit = 2 * max_image_pixels
+    # Above MAX_IMAGE_PIXELS itself, Pillow still permits reads with a warning.
+    if pixels > limit:
+        raise syntax_error(
+            f"PNG size {width}x{height} ({pixels} pixels) exceeds the "
+            f"{limit}-pixel PNG limit",
+            "use a smaller raster",
+            error_type=ProgramError,
+        )
+
+
 def _validate_png(
     data: bytes,
+    max_image_pixels: int | None,
 ) -> tuple[int, int, int, bytes]:
     """Validate the container and stream before Pillow allocates pixels."""
     header, palette, idat = _scan_chunks(data)
@@ -310,6 +327,7 @@ def _validate_png(
     channels = _check_header_fields(
         depth, colour, compression, filter_method, interlace
     )
+    _check_pixel_limit(width, height, max_image_pixels)
     needed = _expected_stream_size(width, height, channels, depth, interlace)
     data_stream = _inflate_checked(idat, needed, width, height, depth)
     if colour == _PALETTE and palette is None:
@@ -322,7 +340,7 @@ def _validate_png(
 
 def _read(data: bytes, mode: str) -> tuple[bytes, int]:
     image = _require_image()
-    width, depth, colour, palette = _validate_png(data)
+    width, depth, colour, palette = _validate_png(data, image.MAX_IMAGE_PIXELS)
     with image.open(io.BytesIO(data), formats=["PNG"]) as opened:
         opened.load()
         if colour == _PALETTE and max(opened.tobytes()) >= len(palette) // 3:
@@ -384,8 +402,7 @@ def read_rgb(data: bytes) -> list[list[tuple[int, int, int]]]:
     return [list(row) for row in _rgb_rows(data)]
 
 
-def _write(mode: str, width: int, height: int, raw: bytes) -> bytes:
-    image = _require_image()
+def _write(image: Any, mode: str, width: int, height: int, raw: bytes) -> bytes:
     output = io.BytesIO()
     with image.frombytes(mode, (width, height), raw) as opened:
         opened.save(output, format="PNG")
@@ -401,7 +418,9 @@ def write_grey(pixels: list[bytearray]) -> bytes:
             "expected a non-empty 2-D greyscale image with equal-length rows",
             "provide nonempty, equal-width rows of greyscale pixels",
         )
-    return _write("L", width, height, b"".join(pixels))
+    image = _require_image()
+    _check_pixel_limit(width, height, image.MAX_IMAGE_PIXELS)
+    return _write(image, "L", width, height, b"".join(pixels))
 
 
 def write_grey_file(path: str, pixels: list[bytearray]) -> None:
@@ -420,6 +439,8 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
             "expected a non-empty 2-D RGB image",
             "provide nonempty, equal-width rows of RGB pixels",
         )
+    image = _require_image()
+    _check_pixel_limit(width, height, image.MAX_IMAGE_PIXELS)
     packed_rows: dict[int, tuple[Sequence[tuple[int, int, int]], bytes]] = {}
     packed_pixels: dict[int, tuple[tuple[int, int, int], bytes]] = {}
     cache_pixels = True
@@ -468,7 +489,7 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
         parts.append(packed)
         if immutable and len(packed_rows) < 1024:
             packed_rows[id(row)] = row, packed
-    return _write("RGB", width, height, b"".join(parts))
+    return _write(image, "RGB", width, height, b"".join(parts))
 
 
 _METADATA_CHUNK = b"esOL"

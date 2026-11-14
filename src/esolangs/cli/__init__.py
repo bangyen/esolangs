@@ -91,8 +91,10 @@ from esolangs.raster import png
 from esolangs.registry import LANGUAGES, LanguageDeclaration, get_catalog, resolve
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
 from esolangs.registry._describe import _catalog_facts, _spec, _width_effect
+from esolangs.runtime._json import record_dumps
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import native_file_terminator
+from esolangs.runtime._validate import _argument_repr
 
 
 def describe(language: str) -> LanguageInfo:
@@ -139,6 +141,14 @@ def _input_shape(declaration: LanguageDeclaration) -> str | None:
 def _display(text: str = "") -> None:
     """Print one line of human-readable output using the stream's encoding."""
     _write_output(text + "\n", utf8=False)
+
+
+def _metadata_json(record: object) -> str:
+    """Keep the pretty layout for ordinary records and preserve large integers."""
+    try:
+        return json.dumps(record, indent=2)
+    except ValueError:
+        return record_dumps(record)
 
 
 def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> bool:
@@ -220,7 +230,7 @@ def _list(rest: list[str]) -> None:
     records = [_catalog_facts(LANGUAGES[name], catalog=catalog) for name in names]
     if as_json:
         _write_output(
-            json.dumps(
+            _metadata_json(
                 [
                     {
                         **facts,
@@ -231,7 +241,6 @@ def _list(rest: list[str]) -> None:
                     }
                     for facts in records
                 ],
-                indent=2,
             )
             + "\n"
         )
@@ -257,7 +266,7 @@ def _list(rest: list[str]) -> None:
         )
         limit = facts["generator_max_inputs"]
         restriction = facts["generator_restrictions"]
-        suffix = f" max-inputs={limit}" if limit is not None else ""
+        suffix = f" max-inputs={_argument_repr(limit)}" if limit is not None else ""
         if restriction:
             suffix += f" ({restriction})"
         _display(f"{name.ljust(width)}  {marks}{suffix}")
@@ -412,6 +421,8 @@ def _printable(value: object) -> str:
 
     INTERCAL's zero answer ends in a newline; printed raw it split its line.
     """
+    if isinstance(value, int):
+        return _argument_repr(value)
     text = str(value)
     return text if text.isprintable() else repr(text)[1:-1]
 
@@ -441,7 +452,7 @@ def _generator_sentence(facts: LanguageInfo) -> str:
     elif facts.reads_input:
         parts.append("reads input bits from stdin")
     if facts.generator_max_inputs is not None:
-        parts.append(f"max {facts.generator_max_inputs} inputs")
+        parts.append(f"max {_argument_repr(facts.generator_max_inputs)} inputs")
     if facts.generator_restrictions:
         parts.append(str(facts.generator_restrictions))
     return "; ".join(parts)
@@ -454,9 +465,9 @@ def _settings_sentence(facts: LanguageInfo) -> str:
         return "none"
     rendered = []
     for key, option in settings.items():
-        text = f"{key}={option['default']}"
+        text = f"{key}={_printable(option['default'])}"
         if option["choices"]:
-            text += f" (choices: {', '.join(str(c) for c in option['choices'])})"
+            text += f" (choices: {', '.join(map(_printable, option['choices']))})"
         rendered.append(text)
     return "; ".join(rendered)
 
@@ -508,7 +519,7 @@ def _describe(rest: list[str]) -> None:
         # Verbatim, including the keys the reading layout hides: a caller
         # asking for JSON is not reading it, and a field that vanishes when
         # it is empty is the thing that makes a schema unusable.
-        _write_output(json.dumps(asdict(facts), indent=2) + "\n")
+        _write_output(_metadata_json(asdict(facts)) + "\n")
         return
     # The contract first: how bits go in, where the answer comes out, and
     # whether a generator exists.  The field list below keeps the facts

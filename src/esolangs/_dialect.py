@@ -11,6 +11,7 @@ from unicodedata import normalize
 
 from esolangs.exceptions import ArgumentError
 from esolangs.runtime._validate import _argument_repr
+from esolangs.runtime.memory import repr_value
 
 type Scalar = int | str
 
@@ -65,6 +66,13 @@ class DialectSchema:
         object.__setattr__(self, "language", str.__str__(language))
         object.__setattr__(self, "_choices", tuple(sorted(frozen.items())))
         object.__setattr__(self, "_defaults", tuple(sorted(frozen_defaults.items())))
+
+    def __repr__(self) -> str:
+        return (
+            f"{type(self).__qualname__}(language={self.language!r}, "
+            f"_choices={repr_value(self._choices)}, "
+            f"_defaults={repr_value(self._defaults)})"
+        )
 
     @property
     def choices(self) -> dict[str, tuple[Scalar, ...]]:
@@ -149,22 +157,16 @@ class DialectSettings:
 
     def __repr__(self) -> str:
         """Spell the public factory that reconstructs these choices."""
-
-        def literal(value: Scalar) -> str:
-            try:
-                return repr(value)
-            except ValueError:
-                assert isinstance(value, int)
-                return hex(value)
-
         if any(normalize("NFKC", key) != key for key, _ in self._items):
             # Python normalizes identifiers in call syntax, but preserves dict keys.
             items = ", ".join(
-                f"{key!r}: {literal(value)}" for key, value in self._items
+                f"{key!r}: {repr_value(value)}" for key, value in self._items
             )
             choices = f"**{{{items}}}"
         else:
-            choices = ", ".join(f"{key}={literal(value)}" for key, value in self._items)
+            choices = ", ".join(
+                f"{key}={repr_value(value)}" for key, value in self._items
+            )
         return f"Language({self.language!r}).settings({choices})"
 
     def options(self) -> dict[str, Scalar]:

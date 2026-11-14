@@ -64,6 +64,9 @@ def record_dumps(
 
 
 _SURROGATES = re.compile(r"[\ud800-\udfff]")
+_WORKER_TAGS = ("$python_text", "$python_object", "$python_integer")
+# Keep decimal tokens below even the smallest Python digit cap.
+_WORKER_INTEGER_BITS = 1024
 
 
 def _worker_values(value: Any) -> Any:
@@ -80,10 +83,7 @@ def _worker_values(value: Any) -> Any:
             active.remove(identity)
             if operation == "object":
                 result = dict(zip(keys, children, strict=True))
-                if len(result) == 1 and next(iter(result)) in {
-                    "$python_text",
-                    "$python_object",
-                }:
+                if len(result) == 1 and next(iter(result)) in _WORKER_TAGS:
                     values.append({"$python_object": list(map(list, result.items()))})
                 else:
                     values.append(result)
@@ -91,6 +91,8 @@ def _worker_values(value: Any) -> Any:
                 values.append(children)
         elif isinstance(item, str) and _SURROGATES.search(item):
             values.append({"$python_text": item.encode("utf-8", "surrogatepass").hex()})
+        elif type(item) is int and item.bit_length() > _WORKER_INTEGER_BITS:
+            values.append({"$python_integer": hex(item)})
         elif isinstance(item, (dict, list, tuple)):
             identity = id(item)
             if identity in active:
@@ -124,7 +126,7 @@ def _worker_key(key: Any) -> str:
 
 
 def worker_dumps(value: Any) -> str:
-    """Preserve Python code points without recursive container encoding."""
+    """Preserve Python code points and large integers in iterative JSON encoding."""
     pending: list[tuple[str, Any]] = [("value", _worker_values(value))]
     output: list[str] = []
     while pending:
@@ -155,7 +157,7 @@ def worker_dumps(value: Any) -> str:
 
 
 def worker_object(pairs: list[tuple[str, Any]]) -> Any:
-    """Decode canonical worker text tags after rejecting repeated fields."""
+    """Decode canonical worker tags after rejecting repeated fields."""
     result = unique_object(pairs)
     if set(result) == {"$python_object"}:
         entries = result["$python_object"]
@@ -164,10 +166,15 @@ def worker_object(pairs: list[tuple[str, Any]]) -> Any:
             or len(entries) != 1
             or not isinstance(entries[0], list)
             or len(entries[0]) != 2
-            or entries[0][0] not in ("$python_text", "$python_object")
+            or entries[0][0] not in _WORKER_TAGS
         ):
             raise ValueError("invalid worker object")
         return dict(entries)
+    if set(result) == {"$python_integer"}:
+        integer = canonical_integer(result["$python_integer"])
+        if integer.bit_length() <= _WORKER_INTEGER_BITS:
+            raise ValueError("noncanonical worker integer")
+        return integer
     if set(result) != {"$python_text"}:
         return result
     payload = result["$python_text"]

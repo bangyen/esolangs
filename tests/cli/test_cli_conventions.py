@@ -1,8 +1,11 @@
 """What the CLI makes discoverable: examples, specs, usage and templates."""
 
+import json
 import pathlib
 import re
 import shlex
+import sys
+from dataclasses import replace
 from importlib.resources import files
 from pathlib import Path
 
@@ -12,12 +15,14 @@ import esolangs
 from esolangs import cli
 from esolangs._dialect import DialectSchema
 from esolangs.cli.help import COMMANDS, USAGE, help_text
-from esolangs.registry import wiki_url
+from esolangs.registry import LANGUAGES, _table, wiki_url
 from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime.memory import parse_integer
 from tests.support.cli_support import call_main
 from tests.support.pick import first, one_where
+from tests.support.reference import REFERENCE
 
 
 def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
@@ -81,6 +86,65 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     languages.clear()
     languages.clear()
     assert help_module._capability_examples() == ("", "")
+
+
+def test_catalog_displays_and_help_keep_large_integer_settings(
+    monkeypatch, capsys
+) -> None:
+    from esolangs.cli import help as help_module
+    from esolangs.cli.args import _settings_of
+
+    threshold = sys.int_info.str_digits_check_threshold
+    previous_limit = sys.get_int_max_str_digits()
+    sys.set_int_max_str_digits(threshold)
+    try:
+        large = 1 << (threshold * 4)
+        original = LANGUAGES[REFERENCE]
+        scope = esolangs.Catalog(
+            [
+                replace(
+                    original,
+                    backend=replace(original.backend, max_inputs=large),
+                    runtime=replace(
+                        original.runtime,
+                        dialect=lambda mode=large: mode,
+                        dialect_schema=DialectSchema(
+                            REFERENCE, {"mode": (1, large)}, {"mode": large}
+                        ),
+                    ),
+                )
+            ]
+        )
+        monkeypatch.setattr(_table, "CATALOG", scope)
+        monkeypatch.setattr(cli, "LANGUAGES", scope.languages)
+        monkeypatch.setattr(help_module, "LANGUAGES", scope.languages)
+
+        description = call_main(["describe", REFERENCE], capsys)
+        summary = f"<integer with {large.bit_length()} bits>"
+        assert f"mode={summary}" in description
+        assert f"max-inputs={summary}" in call_main(["list", "--details"], capsys)
+        details = json.loads(
+            call_main(["describe", "--json", REFERENCE], capsys),
+            parse_int=parse_integer,
+        )
+        assert details["dialect_settings"]["mode"]["default"] == large
+        rows = json.loads(
+            call_main(["list", "--json", "--details"], capsys), parse_int=parse_integer
+        )
+        assert rows[0]["generator_max_inputs"] == large
+
+        help_commands = help_module._capability_examples()[1].splitlines()
+        json_option = shlex.split(help_commands[0])[3]
+        pair = shlex.split(help_commands[1])[3]
+        assert pair.startswith("mode=0x")
+        for settings in (
+            _settings_of({"--settings": json_option}, language=REFERENCE),
+            _settings_of({}, [pair], language=REFERENCE),
+        ):
+            assert settings is not None
+            assert settings.options()["mode"] == large
+    finally:
+        sys.set_int_max_str_digits(previous_limit)
 
 
 class TestExamplesShipWithThePackage:

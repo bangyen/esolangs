@@ -285,5 +285,5 @@ class Raster:
             raise error from exc
 
     def to_png(self) -> bytes:
-        """Encode this raster as PNG bytes."""
+        """Encode as PNG within Pillow's hard decode pixel limit."""
         return png.write_rgb(self.rows)

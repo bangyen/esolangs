@@ -32,6 +32,18 @@ class ExecutionResult:
     completion: CompletionReport | None = field(default=None, kw_only=True)
     steps: int | None = field(default=None, kw_only=True)
 
+    def __repr__(self) -> str:
+        """Render observations even with unusually large counts."""
+        from esolangs.runtime.memory import repr_value
+
+        return (
+            f"{type(self).__qualname__}(output={self.output!r}, "
+            f"input_position={repr_value(self.input_position)}, "
+            f"input_reads={repr_value(self.input_reads)}, "
+            f"input_past_end={repr_value(self.input_past_end)}, "
+            f"completion={self.completion!r}, steps={repr_value(self.steps)})"
+        )
+
     def __post_init__(self) -> None:
         """Reject invalid output, counters and completion evidence."""
         problem = self._invalid_fields()

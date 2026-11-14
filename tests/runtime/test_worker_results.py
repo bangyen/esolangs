@@ -311,6 +311,62 @@ def test_worker_refuses_partial_counters_and_wrong_periodic_steps() -> None:
             decode_result(result.output, {**metadata, **corrupted})
 
 
+def test_large_worker_counters_keep_completion_proof_and_failure() -> None:
+    from esolangs.runtime._isolated import _failure_wire
+    from esolangs.runtime._json import worker_dumps
+
+    count = 1 << 18000
+    cycle = BoundaryCycle((count,), count - 1, count, 1)
+    finished = ExecutionResult(
+        "",
+        count,
+        count,
+        0,
+        completion=CompletionReport(Completion.PERIODIC, cycle),
+        steps=count,
+    )
+    metadata = encode_result(finished)
+    packet = worker_dumps({"result": "", "execution": metadata})
+    assert _decode(packet, expired=False) == finished
+
+    proof = CycleDecision(halts=False, commands=count, cycle=cycle)
+    live = replace(finished, completion=None)
+    packet = worker_dumps(
+        {
+            "result": "",
+            "execution": encode_result(live),
+            "termination": encode_decision(proof),
+        }
+    )
+    decoded = _decode(packet, expired=False)
+    assert decoded.observation == live
+    assert decoded.decision == proof
+
+    failure = esolangs.InputExhaustedError(count, count, unit="character")
+    failure.observation = replace(live, input_past_end=1)
+    with pytest.raises(esolangs.InputExhaustedError) as caught:
+        _decode(worker_dumps(_failure_wire(failure)), expired=False)
+    assert (caught.value.reads, caught.value.supplied, caught.value.unit) == (
+        count,
+        count,
+        "character",
+    )
+    assert caught.value.observation == failure.observation
+
+
+def test_worker_integer_tag_is_lossless_and_canonical() -> None:
+    from esolangs.runtime._json import worker_dumps, worker_loads
+
+    number = 1 << 18000
+    literal = {"$python_integer": hex(number)}
+    payload = {"values": [number, -number, True, 3], "literal": literal}
+    assert worker_loads(worker_dumps(payload)) == payload
+    assert worker_loads(json.dumps(literal)) == number
+    for value in (None, 1, "0x1", "0X12", "-0x0", "0x0" + hex(number)[2:]):
+        with pytest.raises(ValueError, match="worker integer"):
+            worker_loads(json.dumps({"$python_integer": value}))
+
+
 @pytest.mark.parametrize("termination", [None, CycleDecision(halts=True, commands=0)])
 def test_successful_workers_must_report_known_input_counters(termination) -> None:
     from esolangs.runtime._isolated import _decode_outcome

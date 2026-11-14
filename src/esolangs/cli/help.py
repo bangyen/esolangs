@@ -7,10 +7,11 @@ verbatim. Capability-specific examples follow the current registry.
 
 from __future__ import annotations
 
-import json
 import shlex
 
 from esolangs.registry import LANGUAGES, SourceKind
+from esolangs.runtime._json import record_dumps
+from esolangs.runtime.memory import repr_value
 
 
 def _capability_examples() -> tuple[str, str]:
@@ -27,10 +28,10 @@ def _capability_examples() -> tuple[str, str]:
             templates = f"  esolangs generate --bits 10 {quoted} 0110"
         if not dialects and lang.runtime.dialect_schema:
             for key, values in sorted(lang.runtime.dialect_schema.choices.items()):
-                settings = shlex.quote(
-                    json.dumps({key: values[-1]}, separators=(",", ":"))
-                )
-                setting = shlex.quote(f"{key}={values[-1]}")
+                value = values[-1]
+                settings = shlex.quote(record_dumps({key: value}))
+                operand = repr_value(value) if isinstance(value, int) else value
+                setting = shlex.quote(f"{key}={operand}")
                 dialects = (
                     f"  esolangs generate --settings {settings} {quoted} 0110\n"
                     f"  esolangs generate --set {setting} {quoted} 0110"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from reprlib import recursive_repr
 
 import esolangs
 from esolangs._bindings import (
@@ -26,6 +27,7 @@ from esolangs.runtime._proof import (
     checked_termination,
 )
 from esolangs.runtime._validate import check_bit_count, check_bits, check_scale
+from esolangs.runtime.memory import repr_value
 
 __all__ = [
     "Artifact",
@@ -111,6 +113,16 @@ class ProgramArtifact[Source: Program]:
                 object.__setattr__(self, "scale", check_scale(self.scale))
         elif self.scale is not None:
             raise ArgumentError("scale is only supported for raster programs")
+
+    @recursive_repr()
+    def __repr__(self) -> str:
+        """Represent source and metadata, including uncapped integer metadata."""
+        return (
+            f"{type(self).__qualname__}(source={self.source!r}, "
+            f"language={self.language!r}, settings={self.settings!r}, "
+            f"scale={repr_value(self.scale)}, "
+            f"input_arity={repr_value(self.input_arity)})"
+        )
 
     def evaluate(
         self,

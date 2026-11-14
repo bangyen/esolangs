@@ -318,8 +318,13 @@ def test_rejects_a_malformed_palette_length() -> None:
                 reader(blob(plte))
 
 
-def test_a_corrupt_ihdr_dimension_is_refused_before_allocating() -> None:
+def test_a_corrupt_ihdr_dimension_is_refused_before_allocating(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A flipped width byte used to OOM-kill the process (SIGKILL)."""
+    from PIL import Image
+
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", None)
     data = bytearray(png.write_rgb([[(0, 0, 0)]]))
     data[16] ^= 0x80  # the IHDR width's most significant byte
     _repair_ihdr_crc(data)
@@ -440,6 +445,57 @@ def test_png_decompression_is_bounded_by_header(monkeypatch, raw_size) -> None:
     assert expanded == [(5, min(raw_size, 5))]
 
 
+def test_png_hard_pixel_limit_applies_to_export_and_precedes_inflation(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from PIL import Image
+
+    raster = esolangs.Raster((((1, 2, 3), (4, 5, 6), (7, 8, 9)),))
+    data = raster.to_png()
+    api = esolangs.Language(one(source_kind="raster")[0])
+    document = api.to_json(raster)
+    path = tmp_path / "source.png"
+    path.write_bytes(data)
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1)
+
+    def unexpected_inflate(*_args: object) -> bytes:
+        pytest.fail("oversized PNG reached IDAT inflation")
+
+    monkeypatch.setattr(png, "_inflate_checked", unexpected_inflate)
+    match = r"3x1 \(3 pixels\).*2-pixel PNG limit"
+    for operation in (
+        lambda: esolangs.Raster.from_png(data),
+        lambda: api.from_file(path),
+        lambda: api.from_json(document),
+        raster.to_png,
+        lambda: png.write_grey([bytearray(3)]),
+        lambda: api.to_json(raster),
+        lambda: api.to_file(raster, path),
+    ):
+        with pytest.raises(esolangs.ProgramError, match=match):
+            operation()
+    assert path.read_bytes() == data
+    assert Image.MAX_IMAGE_PIXELS == 1
+
+
+def test_png_allows_exact_hard_limit_and_keeps_pillow_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from PIL import Image
+
+    raster = esolangs.Raster((((1, 2, 3), (4, 5, 6)),))
+    ordinary = raster.to_png()
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1)
+    assert raster.to_png() == ordinary
+    with pytest.warns(Image.DecompressionBombWarning) as warnings:
+        assert esolangs.Raster.from_png(ordinary) == raster
+    assert len(warnings) == 1
+
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", None)
+    assert esolangs.Raster.from_png(raster.to_png()) == raster
+    assert Image.MAX_IMAGE_PIXELS is None
+
+
 def test_png_rejects_missing_compressed_checksum() -> None:
     blob = _encode([bytes(4)], 1, 1, colour=2)
     chunks = bytearray(blob[:8])
@@ -520,7 +576,12 @@ def test_png_source_kind_checked_before_dependency(
             load()
 
 
-def test_png_rejects_dimensions_beyond_platform_size() -> None:
+def test_png_rejects_dimensions_beyond_platform_size(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from PIL import Image
+
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", None)
     blob = _encode([bytes(4)], 0xFFFFFFFF, 0xFFFFFFFF, depth=16, colour=6)
     with pytest.raises(ValueError, match="IHDR"):
         png.read_rgb(blob)

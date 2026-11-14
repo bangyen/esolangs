@@ -50,6 +50,7 @@ from esolangs.registry import LANGUAGES, resolve, template_char
 from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
 from esolangs.runtime._source import check_scale_for
+from esolangs.runtime.memory import format_integer
 from esolangs.settings import dialect_options
 
 
@@ -119,7 +120,10 @@ def _run(rest: list[str]) -> None:
             options["--max-memory"], "--max-memory", kind="a positive integer"
         )
         if max_memory < 1:
-            _fail(f"--max-memory must be a positive integer, got {max_memory}")
+            _fail(
+                "--max-memory must be a positive integer, got "
+                f"{format_integer(max_memory)}"
+            )
         try:
             check_memory(max_memory, isolated=isolated)
         except ArgumentError as exc:  # "max_memory is supported only on Linux"

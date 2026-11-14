@@ -159,13 +159,17 @@ class InputExhaustedError(EsolangError, EOFError):
 
     def __init__(self, reads: int, supplied: int, *, unit: str = "line") -> None:
         """Build the error after ``reads`` reads against ``supplied`` input units."""
+        from esolangs.runtime.memory import repr_value
+
+        supplied_text = repr_value(supplied)
+        requested = repr_value(reads + 1)
         super().__init__(
-            f"program read past the end of input: {supplied} "
+            f"program read past the end of input: {supplied_text} "
             f"{unit}{'' if supplied == 1 else 's'} supplied, "
-            f"read {reads + 1}"
+            f"read {requested}"
         )
         self.add_note(
-            f"hint: supply at least {reads + 1} input "
+            f"hint: supply at least {requested} input "
             f"{unit}{'' if reads == 0 else 's'} "
             "or stop the program from reading past the supplied input"
         )

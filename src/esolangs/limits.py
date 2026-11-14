@@ -25,6 +25,20 @@ class ExecutionLimits:
     max_output: int | None = None
     max_memory: int | None = None
 
+    def __repr__(self) -> str:
+        """Render bounds even beyond the decimal integer limit."""
+        from esolangs.runtime.memory import repr_value
+
+        return (
+            f"{type(self).__qualname__}("
+            f"preparation_timeout={self.preparation_timeout!r}, "
+            f"execution_timeout={self.execution_timeout!r}, "
+            f"total_timeout={self.total_timeout!r}, "
+            f"max_steps={repr_value(self.max_steps)}, "
+            f"max_output={repr_value(self.max_output)}, "
+            f"max_memory={repr_value(self.max_memory)})"
+        )
+
     def __post_init__(self) -> None:
         """Refuse invalid budgets before acquiring source or input."""
         for name in ("preparation_timeout", "execution_timeout", "total_timeout"):
