@@ -36,9 +36,7 @@ def test_generated_program_obeys_its_table(language: str) -> None:
         random.seed(0)
         second = esolangs.generate(language, table)
         assert first == second
-        program = esolangs.load_program(
-            language, esolangs.dump_program(language, first)
-        )
+        program = esolangs.from_json(language, esolangs.to_json(language, first))
         inputs = len(table).bit_length() - 1
         assert _evaluate(language, program, inputs=inputs) == table, (
             "answers",
@@ -90,9 +88,7 @@ def test_saved_program_executes_in_a_fresh_process(language, tmp_path) -> None:
     source = esolangs.generate(language, table)
     path = tmp_path / "program"
     if esolangs.describe(language).parameterized:
-        source = esolangs.load_program(
-            language, esolangs.dump_program(language, source)
-        )
+        source = esolangs.from_json(language, esolangs.to_json(language, source))
         assert (
             _evaluate(
                 language, source, inputs=len(table).bit_length() - 1, isolated=True

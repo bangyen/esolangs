@@ -122,8 +122,8 @@ def test_bitdeque_short_load_saved_source_and_large_tables(width: int) -> None:
     for n in range(4, 7):
         table = "".join(str(row.bit_count() % 2) for row in range(2**n))
         template = esolangs.generate("Bitdeque", table, width=width)
-        template = esolangs.load_program(
-            "Bitdeque", esolangs.dump_program("Bitdeque", template)
+        template = esolangs.from_json(
+            "Bitdeque", esolangs.to_json("Bitdeque", template)
         )
         for row in [0, 1, 2**n // 3, 2**n - 1]:
             bits = list(map(int, format(row, f"0{n}b")))

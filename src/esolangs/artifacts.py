@@ -35,9 +35,9 @@ from esolangs.settings import DialectSettings
 
 @dataclass(frozen=True, slots=True)
 class BooleanEvaluation:
-    """Answer with the observed IO and, for termination answers, a proof."""
+    """Answer bit as ``read_answer`` spells it, the observed IO, and any proof."""
 
-    bit: str
+    answer: str
     observation: ExecutionResult
     termination: CycleDecision | None = None
 
@@ -91,9 +91,9 @@ class ProgramArtifact[Source: Program]:
         limits: ExecutionLimits | None = None,
     ) -> BooleanEvaluation:
         """Run one Boolean row and return its answer and execution evidence."""
-        from esolangs.operations.evaluation import evaluate
+        from esolangs.operations.evaluation import evaluate_artifact
 
-        return evaluate(self, bits, limits=limits)
+        return evaluate_artifact(self, bits, limits=limits)
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,9 +170,9 @@ class TemplateArtifact:
         limits: ExecutionLimits | None = None,
     ) -> BooleanEvaluation:
         """Run one Boolean row and return its answer and execution evidence."""
-        from esolangs.operations.evaluation import evaluate
+        from esolangs.operations.evaluation import evaluate_artifact
 
-        return evaluate(self, bits, limits=limits)
+        return evaluate_artifact(self, bits, limits=limits)
 
     def fill(self, bits: list[int] | tuple[int, ...]) -> ProgramArtifact[str]:
         """Bind inputs without rescanning the immutable template's runs."""

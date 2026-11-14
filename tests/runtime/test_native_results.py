@@ -61,7 +61,7 @@ def test_native_driver_reports_completion(language):
         assert result.completion.kind is expected
 
     debugger = make_debugger(language, source, **options)
-    reason = debugger.run(max_steps=1)
+    reason = debugger.run(limits=esolangs.ExecutionLimits(max_steps=1))
     expected = debugger.observation
     for isolated in (False, True):
         with guarded_worker() if isolated else nullcontext():

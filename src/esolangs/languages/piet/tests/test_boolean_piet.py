@@ -392,11 +392,11 @@ def _check_triples() -> None:
         with patch.object(boolean, "_chunks", wraps=boolean._chunks) as chunks:
             artifact = language.generate(table)
         assert chunks.call_count == (2 if n == 4 else 0)
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row, expected in enumerate(table):
             result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
-            assert result.bit == expected
+            assert result.answer == expected
             assert result.observation.input_reads == n
 
     bounds = resource_bounds("Piet")

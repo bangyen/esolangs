@@ -42,8 +42,8 @@ def _check_preparation_consumes_source_once_and_keeps_fresh_invocations():
         esolangs.ArgumentError, match="has 2 inputs, but 1 bit was given"
     ):
         generated.evaluate([0])
-    assert generated.evaluate([0, 1]).bit == "1"
-    assert generated.evaluate([1, 1]).bit == "0"
+    assert generated.evaluate([0, 1]).answer == "1"
+    assert generated.evaluate([1, 1]).answer == "0"
 
 
 def _check_prepared_isolation_preserves_the_same_observation():

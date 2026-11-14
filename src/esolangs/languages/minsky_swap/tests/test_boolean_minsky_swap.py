@@ -106,8 +106,8 @@ class TestParameterizedMinskySwap:
                 )
                 for template in (
                     generated,
-                    esolangs.load_program(
-                        "Minsky Swap", esolangs.dump_program("Minsky Swap", generated)
+                    esolangs.from_json(
+                        "Minsky Swap", esolangs.to_json("Minsky Swap", generated)
                     ),
                 ):
                     for row in range(1 << n):

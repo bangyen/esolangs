@@ -124,7 +124,10 @@ def test_a_dump_is_reachable_without_touching_the_wrapped_vm() -> None:
     """``Debugger.step`` returned early on ``halted``; the dump *is* that step."""
     program, _ = _row("RAM0", "0110", [0, 1])
     debugger = debugger_api.make_debugger("RAM0", program)
-    assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
+    assert (
+        debugger.run(limits=esolangs.ExecutionLimits(max_steps=_STEP_BUDGET))
+        == "halted"
+    )
     assert esolangs.read_answer("RAM0", debugger.output) == "1"
     # And the step after the dump is the no-op the docstring promises,
     # so a caller who does step again is not punished for it.

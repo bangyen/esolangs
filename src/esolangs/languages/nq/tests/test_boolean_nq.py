@@ -70,7 +70,7 @@ def test_language_contract(monkeypatch, capsys: pytest.CaptureFixture[str]) -> N
         for n in range(1, 9):
             table = "0" * ((1 << n) - 1) + "1"
             source = language.generate(table, width=1, settings=settings)
-            source = language.load_program(language.dump_program(source))
+            source = language.from_json(language.to_json(source))
             assert source.settings == settings
             vm = make_vm("NQ", source, stdin="1" * n)
             steps = 0

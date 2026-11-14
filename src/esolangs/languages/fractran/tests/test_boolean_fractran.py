@@ -117,8 +117,8 @@ def test_fractran_parity_two_executes_at_every_width() -> None:
         for restored in (False, True):
             template = esolangs.generate("FRACTRAN", "0110", width=width)
             if restored:
-                template = esolangs.load_program(
-                    "FRACTRAN", esolangs.dump_program("FRACTRAN", template)
+                template = esolangs.from_json(
+                    "FRACTRAN", esolangs.to_json("FRACTRAN", template)
                 )
             for row, expected in enumerate("0110"):
                 program = esolangs.instantiate(

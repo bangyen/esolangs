@@ -1,7 +1,15 @@
 """Acquire runnable source and validate language ownership."""
 
+from os import PathLike
+from pathlib import Path
+
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
-from esolangs.exceptions import MissingDependencyError, ProgramError, TemplateError
+from esolangs.exceptions import (
+    ArgumentError,
+    MissingDependencyError,
+    ProgramError,
+    TemplateError,
+)
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._input import InputSource, check_input
@@ -12,8 +20,8 @@ from esolangs.runtime._source import (
     _read_container,
     source_for,
 )
-from esolangs.runtime._validate import check_scale
-from esolangs.settings import dialect_options
+from esolangs.runtime._validate import check_flag, check_scale
+from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 
 def check_origin(
@@ -139,3 +147,70 @@ def _check_program(
     assert isinstance(record, ProgramArtifact)
     check_input(stdin)
     return record
+
+
+def from_source(
+    language: str,
+    source: Program,
+    *,
+    settings: DialectSettings | None = None,
+    catalog: "Catalog | None" = None,
+) -> ProgramArtifact[Program]:
+    """Declare runnable source, including text that resembles a filename.
+
+    Parsing happens on execution. Use ``from_file`` to read native source.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        TemplateError: Source is an unfilled template.
+        ProgramError: Source has an unsupported type, such as a program
+            artifact (pass its ``.source``).
+        ArgumentError: Dialect settings are invalid for this language.
+    """
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
+    if isinstance(source, ProgramArtifact):
+        raise ProgramError(
+            f"from_source takes source, not a {source.language} artifact; "
+            "pass its .source"
+        )
+    retained = effective_settings(name, source, settings, catalog=catalog)
+    return ProgramArtifact(source, name, retained)
+
+
+def from_file(
+    language: str,
+    path: "str | PathLike[str]",
+    *,
+    settings: DialectSettings | None = None,
+    normalize: bool = False,
+    catalog: "Catalog | None" = None,
+) -> ProgramArtifact[Program]:
+    """Read lossless source with retained metadata.
+
+    Gzip and PNG are detected by content. ``normalize=True`` applies the
+    language's native file newline policy.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ArgumentError: Settings or the path argument are invalid.
+        ProgramNotFoundError: The source file does not exist.
+        ProgramError: Source cannot be decoded or belongs to another language.
+        MissingDependencyError: PNG loading needs the image extra.
+    """
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
+    check_flag(normalize, "normalize")
+    dialect_options(name, settings, catalog=catalog)
+    if not isinstance(path, (str, PathLike)):
+        raise ArgumentError(
+            f"path must be a str or PathLike, got {type(path).__name__}"
+        )
+    artifact = read_artifact(name, Path(path), catalog=catalog, normalize=normalize)
+    retained = effective_settings(name, artifact, settings, catalog=catalog)
+    assert isinstance(artifact, ProgramArtifact)
+    return ProgramArtifact(artifact.source, name, retained, artifact.scale)

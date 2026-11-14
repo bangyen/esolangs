@@ -283,3 +283,67 @@ def _execute_outcome(
         catalog=catalog,
         prepared=prepared,
     )
+
+
+def execute(
+    language: str,
+    program: ProgramSource,
+    *,
+    stdin: InputSource = "",
+    limits: ExecutionLimits | None = None,
+    seed: int | None = None,
+    isolated: bool = False,
+    settings: DialectSettings | None = None,
+    scale: int | None = None,
+    catalog: Catalog | None = None,
+) -> ExecutionOutcome:
+    """Return completion, rejection, input exhaustion, fault or limit evidence.
+
+    Total deadlines and output/memory caps select isolation. Execution
+    deadlines bound reading the program and stdin, and execution, each
+    separately; total deadlines also include worker startup.
+    Use outcome.unwrap() for the exception-raising result convention.
+
+    Raises nothing deliberate: each package error is the outcome's
+    ``error``, with status ``rejected``, ``input_exhausted``, ``limit``
+    or ``fault``.
+    """
+    return _execute_outcome(
+        language,
+        program,
+        stdin=stdin,
+        limits=limits,
+        seed=seed,
+        isolated=isolated,
+        settings=settings,
+        scale=scale,
+        catalog=catalog,
+    )
+
+
+def prepare(
+    language: str,
+    program: ProgramSource,
+    *,
+    settings: DialectSettings | None = None,
+    scale: int | None = None,
+    catalog: Catalog | None = None,
+) -> PreparedProgram:
+    """Load reusable source; each run or VM owns fresh IO, state and randomness.
+
+    Arguments: :func:`esolangs.run`.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ArgumentError: ``settings`` or ``scale`` is invalid or inapplicable.
+        ProgramError: The program does not load.
+        TemplateError: ``program`` is an unfilled template.
+    """
+    return prepare_program(
+        language,
+        program,
+        settings=settings,
+        scale=scale,
+        catalog=catalog,
+        bind_machine=True,
+    )

@@ -85,7 +85,7 @@ def check_constructor_error_observations() -> None:
             return _capture_observation(vm, halted)
         if route == "debug":
             debugger = make_debugger("Forbin", artifact, stdin="")
-            assert debugger.run(max_steps=64) == "halted"
+            assert debugger.run(limits=ExecutionLimits(max_steps=64)) == "halted"
             return debugger.observation
         isolated = route.startswith("isolated-")
         return esolangs.run(

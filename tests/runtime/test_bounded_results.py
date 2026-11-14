@@ -77,12 +77,12 @@ def test_debugger_completion_does_not_count_idle_steps():
     from esolangs.debugger import make_debugger
 
     debugger = make_debugger(REFERENCE, "+.")
-    assert debugger.run(max_steps=2) == "halted"
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "halted"
     result = debugger.observation
     assert result.steps == 2
     assert result.completion.kind is Completion.HALTED
     debugger.step()
-    assert debugger.run(max_steps=0) == "halted"
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
     assert debugger.observation == result
 
 
@@ -141,7 +141,7 @@ def test_failed_dump_remains_unfinished_and_can_be_retried(monkeypatch, drive):
     )[0]
     source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
     debugger = make_debugger(name, source)
-    assert debugger.run(max_steps=0) == "max_steps"
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "max_steps"
     while not debugger.halted:
         assert debugger.observation.steps < 10000
         debugger.step()
@@ -158,7 +158,7 @@ def test_failed_dump_remains_unfinished_and_can_be_retried(monkeypatch, drive):
     assert debugger.observation.completion is None
     assert debugger.observation.steps == steps
     monkeypatch.setattr(debugger.vm, "step", original)
-    assert debugger.run(max_steps=0) == "halted"
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
     assert debugger.observation.completion.kind is Completion.POST_HALT
     assert debugger.observation.steps == steps
     assert esolangs.read_answer(name, debugger.observation.output) == "1"

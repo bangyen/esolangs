@@ -7,6 +7,20 @@ Releases before 0.10.0 are described on the
 
 ## Unreleased
 
+- **Breaking:** `Debugger.run` takes `limits=ExecutionLimits(...)` in place
+  of `max_steps` and `timeout`, and returns `"execution_timeout"`, not
+  `"timeout"`. It honours `max_steps` and `execution_timeout` and refuses
+  the limits that need a worker.
+- **Breaking:** `BooleanEvaluation.bit` is `.answer`, as in `read_answer`.
+- **Breaking:** `PreparedProgram` no longer takes the interpreter module as
+  a constructor argument.
+- **Breaking:** `generate`'s `scale` defaults to `None`, as `run`'s does;
+  `scale=1` still means native output.
+- Every `Language` method but `settings` is also a module-level function
+  taking the language first: `evaluate`, `execute`, `prepare`, `from_file`
+  and `from_source` are new. `Language` gains `make_vm` and `make_debugger`,
+  and `PreparedProgram` gains `make_debugger`.
+- `to_file` takes `settings=`, recorded in PNG metadata.
 - **Breaking:** `max_steps` running out raises `ExecutionCapError`, not
   `ExecutionTimeoutError`, so it is no longer a `TimeoutError`.
   `ExecutionTimeoutError` now means a deadline elapsed. Catch
@@ -34,8 +48,8 @@ Releases before 0.10.0 are described on the
 - **Breaking:** `describe` returns a frozen `LanguageInfo` dataclass, not a
   dict: `describe(name).answer_mode`. `dataclasses.asdict` gives the record
   `describe --json` prints, which is unchanged.
-- **Breaking:** `save_program` is `to_file`, the inverse of
-  `Language.from_file`; `load_program` reads `dump_program` JSON.
+- **Breaking:** `save_program` is `to_file`, `dump_program` is `to_json` and
+  `load_program` is `from_json`, beside `from_file` and `from_source`.
 - **Breaking:** `esolangs run` exits 124, not 1, when `--max-output` or
   `--max-memory` runs out, as it does for `--timeout` and `--max-steps`.
   A worker killed before it reports the memory cap still exits 1.

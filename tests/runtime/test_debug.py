@@ -17,7 +17,7 @@ class TestRun:
 
     def test_max_steps_bounds_runaway(self) -> None:
         dbg = debugger_api.make_debugger(REFERENCE, "+[]")
-        dbg.run(max_steps=10)
+        dbg.run(limits=esolangs.ExecutionLimits(max_steps=10))
         assert not dbg.halted
 
     def test_step_guards_on_halt(self) -> None:
@@ -54,8 +54,10 @@ class TestABreakpointAtTheHaltIsReported:
             REFERENCE, esolangs.generate(REFERENCE, "0110"), stdin="10"
         )
         dbg.break_on_output("1")
-        assert dbg.run(max_steps=100_000) == "breakpoint"
-        assert dbg.run(max_steps=100_000) == "halted"
+        assert (
+            dbg.run(limits=esolangs.ExecutionLimits(max_steps=100_000)) == "breakpoint"
+        )
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=100_000)) == "halted"
         assert dbg.halted
 
     @pytest.mark.parametrize("name", _DUMPERS)
@@ -65,9 +67,11 @@ class TestABreakpointAtTheHaltIsReported:
         program, stdin = _runnable(name)
         dbg = debugger_api.make_debugger(name, program, stdin=stdin)
         dbg.break_when(lambda vm: vm.halted and vm.output == "")
-        assert dbg.run(max_steps=300_000) == "breakpoint"
+        assert (
+            dbg.run(limits=esolangs.ExecutionLimits(max_steps=300_000)) == "breakpoint"
+        )
         assert dbg.output == ""
-        assert dbg.run(max_steps=300_000) == "halted"
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=300_000)) == "halted"
         assert (
             dbg.output
             == esolangs.run(
@@ -84,10 +88,10 @@ class TestABreakpointAtTheHaltIsReported:
         program, stdin = _runnable(name)
         dbg = debugger_api.make_debugger(name, program, stdin=stdin)
         history = dbg.watch_cell(0)
-        dbg.run(max_steps=300_000)
+        dbg.run(limits=esolangs.ExecutionLimits(max_steps=300_000))
         after_one = len(history)
         for _ in range(4):
-            dbg.run(max_steps=300_000)
+            dbg.run(limits=esolangs.ExecutionLimits(max_steps=300_000))
         assert len(history) == after_one
 
 

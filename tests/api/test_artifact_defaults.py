@@ -61,15 +61,15 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
             program, (esolangs.ProgramArtifact, esolangs.TemplateArtifact)
         )
         assert program.language == bound.name
-        document = esolangs.dump_program(language, program)
-        restored = esolangs.load_program(language, document)
+        document = esolangs.to_json(language, program)
+        restored = esolangs.from_json(language, document)
         assert type(restored) is type(program)
-        assert esolangs.dump_program(language, restored) == document
+        assert esolangs.to_json(language, restored) == document
         assert _evaluate(language, restored, inputs=1) == "01"
         if not options:
             for bit in (0, 1):
                 result = bound.evaluate(restored, [bit])
-                assert result.bit == str(bit)
+                assert result.answer == str(bit)
                 if bound.describe().answer_mode == "termination":
                     assert result.termination is not None
                 else:
@@ -85,7 +85,7 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
             assert isinstance(filled, esolangs.ProgramArtifact)
             assert filled.language == language
         else:
-            assert bound.load_program(document) == restored
+            assert bound.from_json(document) == restored
             if not options:
                 with pytest.raises(
                     esolangs.ArgumentError, match="has 1 input, but 2 bits were given"

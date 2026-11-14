@@ -299,9 +299,9 @@ def test_four_input_table_keeps_its_gate_size() -> None:
         else:
             assert gated is not None
             assert artifact.source == gated
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row in range(len(table)):
             result = prepared.evaluate(row_bits(row, n))
-            assert result.bit == table[row]
+            assert result.answer == table[row]
             assert result.observation.input_reads == n

@@ -186,11 +186,11 @@ def test_binary_digits_block_bounds_cost_their_binary_digits() -> None:
         with patch.object(boolean, "subtree_ids", wraps=boolean.subtree_ids) as blocks:
             artifact = language.generate(table)
         assert blocks.call_count == int(n == 5)
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row, expected in enumerate(table):
             result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
-            assert result.bit == expected
+            assert result.answer == expected
             assert result.observation.input_reads == n
 
     table = _bits("655d655d0791655d", 6)

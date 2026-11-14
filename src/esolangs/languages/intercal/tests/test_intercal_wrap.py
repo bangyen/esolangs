@@ -30,8 +30,8 @@ def test_intercal_wrapped_template_keeps_public_provenance(
     table = "0110"
     template = esolangs.generate("INTERCAL", table, width=width)
     if restored:
-        template = esolangs.load_program(
-            "INTERCAL", esolangs.dump_program("INTERCAL", template)
+        template = esolangs.from_json(
+            "INTERCAL", esolangs.to_json("INTERCAL", template)
         )
     shapes = set()
     for row, expected in enumerate(table):

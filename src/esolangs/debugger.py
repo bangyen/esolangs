@@ -55,9 +55,10 @@ class Debugger(_ExecutionController):
     """Breakpoints and watches over a :class:`VM`.
 
     ``step()`` advances one command; ``run()`` until a halt or breakpoint --
-    **pass ``max_steps`` or ``timeout``** unless the program is known to
-    halt.  The VM's properties and traits are mirrored so a driving caller
-    never needs ``self.vm``; ``watch_cell``/``watch_stack`` accumulate history.
+    **pass ``limits``** (``max_steps`` or ``execution_timeout``) unless the
+    program is known to halt.  The VM's properties and traits are mirrored so
+    a driving caller never needs ``self.vm``; ``watch_cell``/``watch_stack``
+    accumulate history.
     """
 
     def __init__(self, vm: VM) -> None:

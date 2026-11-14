@@ -103,12 +103,12 @@ def _check_majority() -> None:
             artifact = language.generate(table)
         assert tree.call_count == 1
         assert tree.call_args.kwargs["majority"] == (witness.rule == "majority")
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row, expected in enumerate(table):
             bits = [int(bit) for bit in f"{row:0{n}b}"]
             result = prepared.evaluate(bits)
-            assert result.bit == expected
+            assert result.answer == expected
             assert result.observation.input_position == len(
                 language.encode_inputs(bits)
             )

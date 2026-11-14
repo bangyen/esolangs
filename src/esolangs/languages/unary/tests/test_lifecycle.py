@@ -51,11 +51,11 @@ def test_compressed_factory_keeps_source_and_owns_fresh_state(monkeypatch):
         assert debug.views == ()
         assert debug.eof_is_a_value
         assert debug.ip_shape == "offset"
-        assert debug.run(max_steps=3) == "halted"
+        assert debug.run(limits=esolangs.ExecutionLimits(max_steps=3)) == "halted"
         assert debug.observation == replace(native, steps=3)
         before = debug.observation, debug.snapshot()
         debug.step()
-        assert debug.run(max_steps=0) == "halted"
+        assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
         assert (debug.observation, debug.snapshot()) == before
         assert esolangs.run("Unary", value, isolated=True) == native
 

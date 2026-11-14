@@ -52,13 +52,13 @@ def test_artifact_persistence_executes_the_same_table(
     with monkeypatch.context() as patch:
         patch.setattr(portable, "source_adapter", refuse_adapter, raising=False)
         patch.setattr(esolangs.Raster, "tagged", refuse_adapter, raising=False)
-        document = esolangs.dump_program(language, source)
-        restored = esolangs.load_program(language, document)
-        assert esolangs.dump_program(language, restored) == document
+        document = esolangs.to_json(language, source)
+        restored = esolangs.from_json(language, document)
+        assert esolangs.to_json(language, restored) == document
         assert type(source) is type(restored)
         assert source.settings == restored.settings == choices
         assert source.language == restored.language == language
-        assert esolangs.Language(language).load_program(document) == restored
+        assert esolangs.Language(language).from_json(document) == restored
         if isinstance(restored, TemplateArtifact):
             assert restored.bindings == source.bindings
             for isolated, max_steps in ((False, None), (False, 10_000), (True, 10_000)):
@@ -86,8 +86,8 @@ def test_artifact_persistence_executes_the_same_table(
     path = tmp_path / ("program" + LANGUAGES[language].source_suffix)
     if isinstance(source, TemplateArtifact):
         document = tmp_path / "template.json"
-        document.write_text(esolangs.dump_program(language, source))
-        restored = esolangs.load_program(language, document.read_text())
+        document.write_text(esolangs.to_json(language, source))
+        restored = esolangs.from_json(language, document.read_text())
         assert _evaluate(language, restored, inputs=inputs) == table
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in reversed(range(inputs))]
@@ -140,7 +140,7 @@ def test_generated_and_restored_bindings_need_no_recovery(
     language, monkeypatch
 ) -> None:
     source = esolangs.generate(language, "0110")
-    restored = esolangs.load_program(language, esolangs.dump_program(language, source))
+    restored = esolangs.from_json(language, esolangs.to_json(language, source))
 
     def refuse_recovery(*_args):
         raise AssertionError("lost explicit input bindings")
@@ -208,9 +208,7 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
     choices = esolangs.Language(language).settings()
     artifact = esolangs.generate(language, "0110", settings=choices)
     assert isinstance(artifact, TemplateArtifact)
-    restored = esolangs.load_program(
-        language, esolangs.dump_program(language, artifact)
-    )
+    restored = esolangs.from_json(language, esolangs.to_json(language, artifact))
 
     def refuse_rescan(*_args):
         raise AssertionError("rescanned a validated template")
@@ -234,7 +232,7 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
     with pytest.raises(esolangs.ProgramError, match=r"pass its \.source"):
         language.from_source(artifact)  # type: ignore[arg-type]
     assert language.run(source) == language.run(artifact)
-    restored = language.load_program(language.dump_program(artifact))
+    restored = language.from_json(language.to_json(artifact))
     path = tmp_path / "source.txt"
     language.to_file(artifact, path)
     loaded = language.from_file(str(path))

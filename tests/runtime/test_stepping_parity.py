@@ -81,7 +81,12 @@ def _check_row(name: str, artifact: esolangs.Artifact, table: str, row: int) -> 
         want,
     )
     debugger = debugger_api.make_debugger(name, program, stdin=stdin, seed=seed)
-    assert debugger.run(max_steps=steps) == "halted", (name, table, row, steps)
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=steps)) == "halted", (
+        name,
+        table,
+        row,
+        steps,
+    )
     assert debugger.observation == replace(want, steps=steps), (
         "source steps",
         name,

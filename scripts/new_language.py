@@ -162,7 +162,7 @@ def test_every_row_prints_its_answer() -> None:
         for row in range(len(table)):
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
             stdin = esolangs.encode_inputs("{name}", bits)
-            got = esolangs.run("{name}", program, stdin=stdin, timeout=5).output
+            got = esolangs.run("{name}", program, stdin=stdin).output
             # The answer as the contract reads it, not the raw output.
             assert esolangs.read_answer("{name}", got) == table[row], (table, row)
 '''

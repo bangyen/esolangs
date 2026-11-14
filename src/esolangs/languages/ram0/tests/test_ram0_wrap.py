@@ -34,18 +34,18 @@ def test_saved_templates_preserve_exact_provenance(
         patch.setattr("esolangs.artifacts.runs", unexpected_scan)
         original = esolangs.generate("RAM0", table, width=width)
         balanced = esolangs.generate("RAM0", table, balance=True)
-        document = esolangs.dump_program("RAM0", original)
-        template = esolangs.load_program("RAM0", document)
+        document = esolangs.to_json("RAM0", original)
+        template = esolangs.from_json("RAM0", document)
     assert original == template
     assert balanced.spans is not None
     legacy = json.loads(document)
     del legacy["spans"]
     with pytest.raises(esolangs.ProgramError, match="missing fields"):
-        esolangs.load_program("RAM0", json.dumps(legacy))
+        esolangs.from_json("RAM0", json.dumps(legacy))
     damaged = json.loads(document)
     damaged["spans"][0][0] += 1
     with pytest.raises(esolangs.ProgramError, match="invalid template span"):
-        esolangs.load_program("RAM0", json.dumps(damaged))
+        esolangs.from_json("RAM0", json.dumps(damaged))
     bits = [0] * (len(table).bit_length() - 1)
     source = esolangs.instantiate("RAM0", template, bits, truth_table=table)
     assert esolangs.read_answer("RAM0", run("RAM0", source).output) == table[0]

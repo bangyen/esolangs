@@ -128,7 +128,7 @@ def test_narrow_smallfuck_saved_provenance(*, restored: bool) -> None:
     table = "0110"
     template = esolangs.generate("Smallfuck", table, width=1)
     source = (
-        esolangs.load_program("Smallfuck", esolangs.dump_program("Smallfuck", template))
+        esolangs.from_json("Smallfuck", esolangs.to_json("Smallfuck", template))
         if restored
         else template
     )

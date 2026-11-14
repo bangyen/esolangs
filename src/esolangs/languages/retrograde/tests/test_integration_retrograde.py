@@ -20,7 +20,7 @@ def test_language_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     for n in range(1, 9):
         table = "0" * ((1 << n) - 1) + "1"
         template = language.generate(table, width=1)
-        template = language.load_program(language.dump_program(template))
+        template = language.from_json(language.to_json(template))
         source = language.instantiate(template, (1,) * n)
         vm = make_vm(language.name, source)
         steps = 0

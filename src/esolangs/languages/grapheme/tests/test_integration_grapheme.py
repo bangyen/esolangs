@@ -44,7 +44,7 @@ def test_conversion_reaches_debugger_and_bound_language(monkeypatch) -> None:
     language = esolangs.Language("Grapheme")
     assert language.run("FAFY", settings=settings).output == "10"
     debugger = make_debugger("Grapheme", "FAFY", settings=settings)
-    debugger.run(max_steps=10)
+    debugger.run(limits=esolangs.ExecutionLimits(max_steps=10))
     assert debugger.vm.output == "10"
 
     from esolangs.languages.grapheme import interpreter

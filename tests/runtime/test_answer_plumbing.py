@@ -126,9 +126,7 @@ class TestATemplateCarriesItsSetters:
     def test_portable_templates_retain_their_setters(self) -> None:
         for name in languages(parameterized=True):
             template = esolangs.generate(name, "0011")
-            restored = esolangs.load_program(
-                name, esolangs.dump_program(name, template)
-            )
+            restored = esolangs.from_json(name, esolangs.to_json(name, template))
             assert esolangs.instantiate(name, restored, [1, 0]) == (
                 esolangs.instantiate(name, template, [1, 0])
             ), name

@@ -9,7 +9,7 @@ from esolangs.debugger import make_vm
 def check_serialized_narrow_template_and_vm() -> None:
     language = esolangs.Language("REFRACTRAN")
     template = language.generate("0110", width=1)
-    restored = language.load_program(language.dump_program(template))
+    restored = language.from_json(language.to_json(template))
     for bits, answer in [((0, 0), "0"), ((0, 1), "1"), ((1, 0), "1"), ((1, 1), "0")]:
         program = language.instantiate(restored, bits)
         vm = make_vm(language.name, program)
@@ -22,7 +22,7 @@ def check_serialized_narrow_template_and_vm() -> None:
 
     table = "".join(Random(4242 + 10).choices("01", k=1024))
     template = language.generate(table, balance=True)
-    restored = language.load_program(language.dump_program(template))
+    restored = language.from_json(language.to_json(template))
     for row in (0, 1, 511, 1023):
         program = language.instantiate(restored, [int(b) for b in f"{row:010b}"])
         output = language.run(

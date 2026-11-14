@@ -172,7 +172,7 @@ def _owned_template_boundaries(
         (esolangs, ("_recover_template",)),
         (
             getattr(esolangs, "compat", None),
-            ("generate", "instantiate", "load_program", "source_adapter"),
+            ("generate", "instantiate", "from_json", "source_adapter"),
         ),
     ):
         for name in names:

@@ -63,10 +63,10 @@ def _check_register_cap() -> None:
     table = admitted.table()
     artifact = language.generate(table)
     assert all(f"INP r{i} " in artifact.source for i in range(1, admitted.arity + 1))
-    prepared = language.prepare(language.load_program(language.dump_program(artifact)))
+    prepared = language.prepare(language.from_json(language.to_json(artifact)))
     for row in (0, 1, len(table) // 2, len(table) - 1):
         result = prepared.evaluate(row_bits(row, admitted.arity))
-        assert result.bit == table[row]
+        assert result.answer == table[row]
         assert result.observation.input_position == 2 * admitted.arity - 1
     with pytest.raises(esolangs.GeneratorCapError, match="at most fourteen inputs"):
         language.generate(refused.table())

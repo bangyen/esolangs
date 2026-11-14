@@ -140,12 +140,12 @@ def _check_reader() -> None:
         artifact = language.generate(table)
         reader = boolean._READ * n
         assert (reader in artifact.source) == (n == 2)
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row in range(len(table)):
             bits = [int(bit) for bit in f"{row:0{n}b}"]
             result = prepared.evaluate(bits)
-            assert result.bit == table[row]
+            assert result.answer == table[row]
             assert result.observation.input_reads == n
 
     total = 0

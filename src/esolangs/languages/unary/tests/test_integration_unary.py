@@ -39,7 +39,7 @@ def test_compressed_and_plain_sources_share_execution(tmp_path) -> None:
             ).output
             == ""
         )
-    restored = esolangs.load_program("Unary", esolangs.dump_program("Unary", program))
+    restored = esolangs.from_json("Unary", esolangs.to_json("Unary", program))
     assert isinstance(restored, esolangs.ProgramArtifact)
     assert isinstance(restored.source, esolangs.CompressedText)
     assert restored == program

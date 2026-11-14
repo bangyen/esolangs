@@ -582,7 +582,7 @@ type _Image = tuple[tuple[str, ...], tuple[_Instr, ...]]
 
 
 @lru_cache(maxsize=4)
-def _load_program(code: str) -> _Image:
+def _from_json(code: str) -> _Image:
     """Split and compile a program text: its lines and their compiled forms.
 
     Cached per text because the harness rebuilds a machine per input row
@@ -595,7 +595,7 @@ def _load_program(code: str) -> _Image:
 
 def _prepare_source(code: str | list[str]) -> _Image:
     if isinstance(code, str):
-        return _load_program(code)
+        return _from_json(code)
     lines = tuple(code)
     return lines, tuple(map(_compile, lines))
 

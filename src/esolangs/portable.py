@@ -39,6 +39,7 @@ def to_file(
     program: ProgramSource,
     path: str | PathLike[str],
     *,
+    settings: DialectSettings | None = None,
     gzip: bool = False,
     normalize: bool = False,
     catalog: Catalog | None = None,
@@ -51,13 +52,16 @@ def to_file(
     ``normalize=True`` appends a language-permitted native file terminator to text,
     including gzip exports.
     An existing file is replaced after encoding and
-    writing succeed. Use :func:`dump_program` for a portable document that
+    writing succeed. ``settings`` merge over an artifact's own as
+    :func:`esolangs.run` merges them; PNG metadata records the result and
+    text carries none. Use :func:`to_json` for a portable document that
     preserves dialect settings and template setters.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
-        ArgumentError: ``gzip`` or ``normalize`` is not a Boolean flag, or
-            ``path`` is not a str or PathLike, or is empty.
+        ArgumentError: ``gzip`` or ``normalize`` is not a Boolean flag,
+            ``path`` is not a str or PathLike, or is empty, or ``settings``
+            is invalid for the language.
         TemplateError: ``program`` is an unfilled template.
         ProgramNotFoundError: ``program`` is a Path that does not exist.
         ProgramError: The record belongs to another language, or the source
@@ -82,6 +86,7 @@ def to_file(
     # The language decides the file terminator and PNG metadata; without it,
     # normalize appended "\n" even where a trailing newline is code.
     origin = catalog.resolve(language)
+    settings = effective_settings(origin, program, settings, catalog=catalog)
     try:
         record = (
             program
@@ -99,7 +104,7 @@ def to_file(
                         "placeholders unfilled"
                     ),
                     "fill it with instantiate() first, or keep the bindings "
-                    "with dump_program()",
+                    "with to_json()",
                 )
             program = record.source
         elif not isinstance(program, (str, Raster, CompressedText)):
@@ -114,7 +119,7 @@ def to_file(
             source = png.write_source(
                 program.rows,
                 origin,
-                record.settings if record is not None else None,
+                effective_settings(origin, record, settings, catalog=catalog),
                 record.scale if isinstance(record, ProgramArtifact) else None,
             )
         elif isinstance(program, str):
@@ -146,7 +151,7 @@ def to_file(
         raise ProgramError(f"cannot save program to {path!s}: {exc}") from exc
 
 
-def dump_program(
+def to_json(
     language: str,
     program: ProgramSource,
     *,
@@ -222,7 +227,7 @@ def dump_program(
     else:
         document.update(kind="text", source=str(body))
     try:
-        # The check ``load_program`` makes: a lone surrogate dumped as a
+        # The check ``from_json`` makes: a lone surrogate dumped as a
         # ``\ud800`` escape, which it then refused.
         json.dumps(document, ensure_ascii=False).encode("utf-8")
     except UnicodeEncodeError as error:
@@ -383,7 +388,7 @@ class _Loader(Protocol):
     ) -> Artifact: ...
 
 
-#: Source-kind dispatch for :func:`load_program`.
+#: Source-kind dispatch for :func:`from_json`.
 _LOADERS: dict[str, _Loader] = {
     "png": _load_png,
     "gzip": _load_gzip,
@@ -392,7 +397,7 @@ _LOADERS: dict[str, _Loader] = {
 }
 
 
-def load_program(
+def from_json(
     language: str, document: str, *, catalog: Catalog | None = None
 ) -> Artifact:
     """Restore version-1 JSON as an explicit program or template record.
@@ -453,7 +458,7 @@ def load_program(
     except (ValueError, TypeError) as error:
         # A path or native source here is the usual mistake (dogfood, 2.0.0).
         hint = (
-            "; load_program reads dump_program JSON text, not a path; "
+            "; from_json reads to_json JSON text, not a path; "
             "load a native file with Language(name).from_file(path)"
             if isinstance(error, json.JSONDecodeError)
             else ""

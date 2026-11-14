@@ -9,6 +9,7 @@ from types import ModuleType
 from typing import Any, cast
 
 from esolangs.artifacts import BooleanEvaluation, ProgramArtifact
+from esolangs.debugger import Debugger
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry._catalog import Catalog, get_catalog
@@ -48,7 +49,7 @@ class PreparedProgram:
 
     artifact: ProgramArtifact[Program]
     catalog: Catalog = field(repr=False)
-    _module: ModuleType = field(repr=False, compare=False)
+    _module: ModuleType = field(init=False, repr=False, compare=False)
     _code: Program | tuple[str, ...] = field(init=False, repr=False, compare=False)
     _source_options: tuple[tuple[str, Any], ...] = field(
         init=False, repr=False, compare=False
@@ -59,6 +60,13 @@ class PreparedProgram:
 
     def __post_init__(self) -> None:
         """Retain validated dialect options and immutable shaped source."""
+        with interpreter_errors(
+            f"the {self.language} interpreter recursed deeper than CPython's "
+            "stack limit allows while loading this program",
+            language=self.language,
+        ):
+            module = interpreter_module(self.language, catalog=self.catalog)
+        object.__setattr__(self, "_module", module)
         code, options = prepare_call(
             self.language,
             self.artifact.source,
@@ -169,9 +177,9 @@ class PreparedProgram:
         limits: ExecutionLimits | None = None,
     ) -> BooleanEvaluation:
         """Evaluate a generated stdin row against the retained preparation."""
-        from esolangs.operations.evaluation import evaluate
+        from esolangs.operations.evaluation import evaluate_artifact
 
-        return evaluate(
+        return evaluate_artifact(
             self.artifact, bits, limits=limits, catalog=self.catalog, prepared=self
         )
 
@@ -187,6 +195,12 @@ class PreparedProgram:
         return self.execute(
             stdin=stdin, limits=limits, seed=seed, isolated=isolated
         ).unwrap()
+
+    def make_debugger(
+        self, *, stdin: InputSource = "", seed: int | None = None
+    ) -> Debugger:
+        """Wrap a fresh step machine in a debugger; errors follow make_vm."""
+        return Debugger(self.make_vm(stdin=stdin, seed=seed))
 
     def make_vm(self, *, stdin: InputSource = "", seed: int | None = None) -> VM:
         """Create an independent step machine; errors follow debugger.make_vm."""
@@ -224,17 +238,20 @@ def prepare_program(
     settings = effective_settings(name, artifact, settings, catalog=catalog)
     scale = effective_scale(name, artifact, scale, catalog=catalog)
     check_scale_for(name, scale, catalog=catalog)
-    with interpreter_errors(
-        f"the {name} interpreter recursed deeper than CPython's stack "
-        "limit allows while loading this program",
-        language=name,
-    ):
-        module = module_loader(name, catalog=catalog)
     prepared = PreparedProgram(
         ProgramArtifact(artifact.source, name, settings, scale, artifact.input_arity),
         catalog,
-        module,
     )
+    if module_loader is not interpreter_module:
+        # A caller's own loader (tests replace one route's) wins over the
+        # default the constructor resolved.
+        with interpreter_errors(
+            f"the {name} interpreter recursed deeper than CPython's stack "
+            "limit allows while loading this program",
+            language=name,
+        ):
+            module = module_loader(name, catalog=catalog)
+        object.__setattr__(prepared, "_module", module)
     if bind_machine:
         with interpreter_errors(
             f"the {name} interpreter recursed deeper than CPython's stack "

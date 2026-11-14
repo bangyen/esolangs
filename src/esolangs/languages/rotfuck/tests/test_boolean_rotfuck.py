@@ -215,11 +215,11 @@ class TestRotfuck:
             with patch.object(boolean, "_select", wraps=boolean._select) as select:
                 artifact = language.generate(table)
             assert select.call_args.kwargs["raw"] == (n == 7)
-            restored = language.load_program(language.dump_program(artifact))
+            restored = language.from_json(language.to_json(artifact))
             prepared = language.prepare(restored)
             for row in (0, 1, len(table) // 2, len(table) - 1):
                 result = prepared.evaluate(row_bits(row, n))
-                assert result.bit == table[row]
+                assert result.answer == table[row]
                 assert result.observation.input_position == n
         _check_symmetric_multipliers()
         _check_raw_five_digits()

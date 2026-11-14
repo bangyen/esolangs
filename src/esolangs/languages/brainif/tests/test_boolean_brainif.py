@@ -216,11 +216,11 @@ def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:
         ) as lookup:
             artifact = language.generate(table, width=80)
         assert lookup.call_count == int(n == 5)
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row in (0, 1, len(table) // 2, len(table) - 1):
             result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
-            assert result.bit == table[row]
+            assert result.answer == table[row]
             assert result.observation.input_reads == n
 
     table = "".join(str(row.bit_count() % 2) for row in range(32))

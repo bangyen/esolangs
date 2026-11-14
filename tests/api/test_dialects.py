@@ -280,7 +280,7 @@ def test_generated_programs_refuse_a_contradicting_dialect(
     for operation in (
         lambda: esolangs.run(language, artifact, settings=contrary),
         lambda: esolangs.Language(language).prepare(artifact, settings=contrary),
-        lambda: esolangs.dump_program(language, artifact, settings=contrary),
+        lambda: esolangs.to_json(language, artifact, settings=contrary),
     ):
         with pytest.raises(esolangs.ProgramError, match=f"{key}="):
             operation()

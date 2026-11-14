@@ -187,11 +187,11 @@ def test_entry_digit_prefix_executes_every_small_table() -> None:
         ) as narrow:
             artifact = language.generate(table, width=1)
         assert narrow.call_count == int(n == 2)
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row, expected in enumerate(table):
             result = prepared.evaluate(row_bits(row, n))
-            assert result.bit == expected
+            assert result.answer == expected
             assert result.observation.input_position == n
 
     assert max(map(len, boolean.clockwise("0110", 1).splitlines())) == 2

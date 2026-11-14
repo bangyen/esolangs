@@ -87,7 +87,7 @@ def test_streams_work_with_bound_api_debugging_and_evaluation(
     data = _native_bytes(program, tmp_path)
     assert _evaluate(api.name, io.BytesIO(data), inputs=1) == "01"
     debugger = make_debugger(language, io.BytesIO(data), stdin=io.StringIO("1"))
-    assert debugger.run(max_steps=10000) == "halted"
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=10000)) == "halted"
     assert debugger.output == "1"
 
 

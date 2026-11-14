@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.debugger import STOP_REASONS
-from tests.support.pick import languages
+from tests.support.pick import first, languages
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import _debugger
 
@@ -19,21 +21,28 @@ class TestABoundMustBind:
     def test_a_bad_step_bound_is_refused(self, max_steps: object) -> None:
         """A negative one ran unbounded: the drive counts *up* to the limit."""
         with pytest.raises(esolangs.ArgumentError, match="max_steps"):
-            _debugger().run(max_steps=max_steps)
+            _debugger().run(limits=esolangs.ExecutionLimits(max_steps=max_steps))
 
     @pytest.mark.parametrize("timeout", ["x", 0, -1])
     def test_a_bad_timeout_is_refused(self, timeout: object) -> None:
         """``timeout='x'`` reached the arithmetic and leaked a TypeError."""
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
-            _debugger().run(timeout=timeout)
+            _debugger().run(limits=esolangs.ExecutionLimits(execution_timeout=timeout))
 
     def test_a_zero_step_bound_still_means_zero(self) -> None:
         """The refusal must not swallow the one legal edge."""
-        assert _debugger().run(max_steps=0) == "max_steps"
+        assert (
+            _debugger().run(limits=esolangs.ExecutionLimits(max_steps=0)) == "max_steps"
+        )
 
     def test_the_stop_reasons_are_enumerable(self) -> None:
         """``StopReason`` is a Literal, so its members needed a data twin."""
-        assert set(STOP_REASONS) == {"halted", "breakpoint", "max_steps", "timeout"}
+        assert set(STOP_REASONS) == {
+            "halted",
+            "breakpoint",
+            "max_steps",
+            "execution_timeout",
+        }
 
 
 class TestTheNamespaceIsTheSurface:
@@ -59,7 +68,7 @@ class TestTheChecksAreSymmetric:
                 limits=esolangs.ExecutionLimits(execution_timeout=timeout),
             )
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
-            _debugger().run(timeout=timeout)
+            _debugger().run(limits=esolangs.ExecutionLimits(execution_timeout=timeout))
 
     @pytest.mark.parametrize(
         ("program", "stdin", "expected"),
@@ -101,7 +110,7 @@ class TestTheChecksAreSymmetric:
     def test_break_when_still_takes_a_real_predicate(self) -> None:
         dbg = debugger_api.make_debugger(REFERENCE, "+++", stdin="")
         dbg.break_when(lambda vm: bool(vm.memory) and vm.memory[0] == 2)
-        assert dbg.run(max_steps=10) == "breakpoint"
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=10)) == "breakpoint"
 
 
 class TestTerminationPolarityIsData:
@@ -131,3 +140,89 @@ def test_debugger_rejects_huge_invalid_arguments(method) -> None:
     )
     with pytest.raises(ArgumentError):
         call()
+
+
+class TestOneOperationOneSpelling:
+    """Each operation is a module function and a bound method, spelled alike."""
+
+    def test_a_debugger_refuses_a_limit_it_cannot_enforce(self) -> None:
+        """Output, memory and whole-invocation budgets need a worker."""
+        for limit in (
+            {"max_output": 1},
+            {"max_memory": 1},
+            {"total_timeout": 1},
+            {"preparation_timeout": 1},
+        ):
+            with pytest.raises(esolangs.ArgumentError, match=next(iter(limit))):
+                _debugger().run(limits=esolangs.ExecutionLimits(**limit))
+        with pytest.raises(esolangs.ArgumentError, match="ExecutionLimits"):
+            _debugger().run(limits=5)  # type: ignore[arg-type]
+
+    def test_every_language_function_is_a_method(self) -> None:
+        """``to_file`` had no ``from_file``; five methods had no function."""
+        import inspect
+
+        import esolangs.debugger as debugger_api
+
+        functions = {
+            name: getattr(module, name)
+            for module in (esolangs, debugger_api)
+            for name in module.__all__
+            if inspect.isfunction(getattr(module, name))
+        }
+        del functions["list_languages"]
+        methods = {
+            name
+            for name, member in vars(esolangs.Language).items()
+            if inspect.isfunction(member) and not name.startswith("_")
+        }
+        assert methods == {*functions, "settings"}
+        for name, function in functions.items():
+            unbound = list(inspect.signature(function).parameters.values())
+            bound = list(
+                inspect.signature(getattr(esolangs.Language, name)).parameters.values()
+            )
+            assert (unbound[0].name, unbound[-1].name) == ("language", "catalog")
+            assert [(p.name, p.kind, p.default) for p in unbound[1:-1]] == [
+                (p.name, p.kind, p.default) for p in bound[1:]
+            ], name
+
+    def test_the_bound_and_unbound_spellings_agree(self, tmp_path: Path) -> None:
+        bound = esolangs.Language(REFERENCE)
+        path = tmp_path / "program"
+        esolangs.to_file(REFERENCE, "+.", path)
+        assert esolangs.from_file(REFERENCE, path) == bound.from_file(path)
+        assert esolangs.from_source(REFERENCE, "+.") == bound.from_source("+.")
+        assert esolangs.execute(REFERENCE, "+.") == bound.execute("+.")
+        assert esolangs.prepare(REFERENCE, "+.").run() == bound.run("+.")
+        artifact = esolangs.generate(REFERENCE, "0110")
+        assert esolangs.evaluate(REFERENCE, artifact, [0, 1]).answer == "1"
+        assert bound.make_vm("+.").ip == bound.prepare("+.").make_vm().ip
+        for debugger in (
+            bound.make_debugger("+."),
+            bound.prepare("+.").make_debugger(),
+        ):
+            assert debugger.run() == "halted"
+            assert debugger.output == "\x01"
+
+    def test_to_file_takes_settings_as_every_program_reader_does(
+        self, tmp_path: Path
+    ) -> None:
+        """A bare raster's PNG could not record the dialect it was written in."""
+        name = first(source_kind="raster", boolean_generator=True)
+        bound = esolangs.Language(name)
+        raster = bound.generate("01").source
+        bound.to_file(raster, tmp_path / "bare.png")
+        bound.to_file(raster, tmp_path / "kept.png", settings=bound.settings())
+        assert bound.from_file(tmp_path / "bare.png").settings is None
+        assert bound.from_file(tmp_path / "kept.png").settings == bound.settings()
+        with pytest.raises(esolangs.ArgumentError, match="belong to"):
+            esolangs.to_file(
+                REFERENCE, "+.", tmp_path / "refused", settings=bound.settings()
+            )
+
+    def test_an_absent_scale_is_none_everywhere(self) -> None:
+        """``generate`` alone defaulted to 1; a text language refused only 2."""
+        name = first(source_kind="raster", boolean_generator=True)
+        assert esolangs.generate(name, "01") == esolangs.generate(name, "01", scale=1)
+        assert esolangs.generate(REFERENCE, "01", scale=1).scale is None

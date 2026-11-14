@@ -4,37 +4,31 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from os import PathLike
-from pathlib import Path
 
 import esolangs
-import esolangs.operations.source as _source_operations
-from esolangs.artifacts import (
-    Artifact,
-    BooleanEvaluation,
-    ProgramArtifact,
-    TemplateArtifact,
-)
+from esolangs._dialect import Scalar
+from esolangs.artifacts import Artifact, BooleanEvaluation, ProgramArtifact
+from esolangs.debugger import Debugger, make_debugger, make_vm
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry import Catalog, get_catalog
 from esolangs.registry._info import LanguageInfo
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
-from esolangs.runtime._prepared import PreparedProgram, prepare_program
+from esolangs.runtime._prepared import PreparedProgram
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource
-from esolangs.settings import DialectSettings, effective_settings
+from esolangs.runtime._vm_protocol import VM
+from esolangs.settings import DialectSettings
 
 
 @dataclass(frozen=True, slots=True)
 class Language:
     """Bind a canonical language name to one immutable catalog.
 
-    Methods follow the package split by who supplies the program:
-    ``generate``/``instantiate`` are generator-made, ``run`` executes
-    caller-supplied source, ``encode_inputs``/``read_answer`` and
-    ``dump_program``/``load_program``/``to_file`` are contract adapters, and
-    ``describe`` is catalog. ``evaluate`` runs one Boolean row.
+    Every module-level function taking a language is a method here, the
+    :mod:`esolangs.debugger` factories included; ``settings`` is the one
+    addition.
     """
 
     name: str
@@ -50,7 +44,7 @@ class Language:
         object.__setattr__(self, "catalog", get_catalog(self.catalog))
         object.__setattr__(self, "name", self.catalog.resolve(self.name))
 
-    def settings(self, **choices: int | str) -> DialectSettings:
+    def settings(self, **choices: Scalar) -> DialectSettings:
         """Return overrides validated within this language's dialect schema.
 
         Raises:
@@ -65,23 +59,11 @@ class Language:
     ) -> ProgramArtifact[Program]:
         """Declare runnable source, including text that resembles a filename.
 
-        Parsing happens on execution. Use ``from_file`` to read native source.
-
-        Raises:
-            TemplateError: Source is an unfilled template.
-            ProgramError: Source has an unsupported type, such as a program
-                artifact (pass its ``.source``).
-            ArgumentError: Dialect settings are invalid for this language.
+        Arguments and errors: :func:`esolangs.from_source`.
         """
-        from esolangs.exceptions import ProgramError
-
-        if isinstance(source, ProgramArtifact):
-            raise ProgramError(
-                f"from_source takes source, not a {source.language} artifact; "
-                "pass its .source"
-            )
-        retained = effective_settings(self.name, source, settings, catalog=self.catalog)
-        return ProgramArtifact(source, self.name, retained)
+        return esolangs.from_source(
+            self.name, source, settings=settings, catalog=self.catalog
+        )
 
     def from_file(
         self,
@@ -92,32 +74,56 @@ class Language:
     ) -> ProgramArtifact[Program]:
         """Read lossless source with retained metadata.
 
-        ``normalize=True`` applies the language's native file newline policy.
-
-        Raises:
-            ArgumentError: Settings or the path argument are invalid.
-            ProgramNotFoundError: The source file does not exist.
-            ProgramError: Source cannot be decoded or belongs to another language.
-            MissingDependencyError: PNG loading needs the image extra.
+        Arguments and errors: :func:`esolangs.from_file`.
         """
-        from esolangs.exceptions import ArgumentError
-        from esolangs.runtime._validate import check_flag
-        from esolangs.settings import dialect_options
+        return esolangs.from_file(
+            self.name,
+            path,
+            settings=settings,
+            normalize=normalize,
+            catalog=self.catalog,
+        )
 
-        check_flag(normalize, "normalize")
-        dialect_options(self.name, settings, catalog=self.catalog)
-        if not isinstance(path, (str, PathLike)):
-            raise ArgumentError(
-                f"path must be a str or PathLike, got {type(path).__name__}"
-            )
-        artifact = _source_operations.read_artifact(
-            self.name, Path(path), catalog=self.catalog, normalize=normalize
+    def from_json(self, document: str) -> Artifact:
+        """Restore portable JSON as this language's program or template artifact.
+
+        Arguments and errors: :func:`esolangs.from_json`.
+        """
+        return esolangs.from_json(self.name, document, catalog=self.catalog)
+
+    def to_file(
+        self,
+        program: ProgramSource,
+        path: str | PathLike[str],
+        *,
+        settings: DialectSettings | None = None,
+        gzip: bool = False,
+        normalize: bool = False,
+    ) -> None:
+        """Write a program as a native source file.
+
+        Arguments and errors: :func:`esolangs.to_file`.
+        """
+        esolangs.to_file(
+            self.name,
+            program,
+            path,
+            settings=settings,
+            gzip=gzip,
+            normalize=normalize,
+            catalog=self.catalog,
         )
-        retained = effective_settings(
-            self.name, artifact, settings, catalog=self.catalog
+
+    def to_json(
+        self, program: ProgramSource, *, settings: DialectSettings | None = None
+    ) -> str:
+        """Return portable JSON retaining source and dialect choices.
+
+        Arguments and errors: :func:`esolangs.to_json`.
+        """
+        return esolangs.to_json(
+            self.name, program, settings=settings, catalog=self.catalog
         )
-        assert isinstance(artifact, ProgramArtifact)
-        return ProgramArtifact(artifact.source, self.name, retained, artifact.scale)
 
     def prepare(
         self,
@@ -128,15 +134,10 @@ class Language:
     ) -> PreparedProgram:
         """Load reusable source; each run or VM owns fresh IO, state and randomness.
 
-        Arguments and errors: :func:`esolangs.run`.
+        Arguments and errors: :func:`esolangs.prepare`.
         """
-        return prepare_program(
-            self.name,
-            program,
-            settings=settings,
-            scale=scale,
-            catalog=self.catalog,
-            bind_machine=True,
+        return esolangs.prepare(
+            self.name, program, settings=settings, scale=scale, catalog=self.catalog
         )
 
     def generate(
@@ -145,7 +146,7 @@ class Language:
         *,
         width: int | None = None,
         balance: bool = False,
-        scale: int = 1,
+        scale: int | None = None,
         settings: DialectSettings | None = None,
     ) -> Artifact:
         """Return a program artifact or template computing ``truth_table``.
@@ -171,22 +172,11 @@ class Language:
     ) -> BooleanEvaluation:
         """Run one Boolean row and return its answer and execution evidence.
 
-        Raises:
-            ProgramError: ``artifact`` is not an artifact, or belongs to
-                another language.
-            ArgumentError: ``bits`` is not one 0 or 1 per input.
-            EsolangError: Any error :func:`esolangs.run` raises for the row.
+        Arguments and errors: :func:`esolangs.evaluate`.
         """
-        from esolangs.exceptions import ProgramError
-        from esolangs.operations.evaluation import evaluate
-
-        if not isinstance(artifact, (ProgramArtifact, TemplateArtifact)):
-            raise ProgramError("evaluation requires a program or template artifact")
-        if self.catalog.resolve(artifact.language) != self.name:
-            raise ProgramError(
-                f"artifact belongs to {artifact.language}, not {self.name}"
-            )
-        return evaluate(artifact, bits, limits=limits, catalog=self.catalog)
+        return esolangs.evaluate(
+            self.name, artifact, bits, limits=limits, catalog=self.catalog
+        )
 
     def instantiate(
         self,
@@ -211,45 +201,6 @@ class Language:
             catalog=self.catalog,
         )
 
-    def dump_program(
-        self, program: ProgramSource, *, settings: DialectSettings | None = None
-    ) -> str:
-        """Return portable JSON retaining source and dialect choices.
-
-        Arguments and errors: :func:`esolangs.dump_program`.
-        """
-        return esolangs.dump_program(
-            self.name, program, settings=settings, catalog=self.catalog
-        )
-
-    def load_program(self, document: str) -> Artifact:
-        """Restore portable JSON as this language's program or template artifact.
-
-        Arguments and errors: :func:`esolangs.load_program`.
-        """
-        return esolangs.load_program(self.name, document, catalog=self.catalog)
-
-    def to_file(
-        self,
-        program: ProgramSource,
-        path: str | PathLike[str],
-        *,
-        gzip: bool = False,
-        normalize: bool = False,
-    ) -> None:
-        """Write a program as a native source file.
-
-        Arguments and errors: :func:`esolangs.to_file`.
-        """
-        esolangs.to_file(
-            self.name,
-            program,
-            path,
-            gzip=gzip,
-            normalize=normalize,
-            catalog=self.catalog,
-        )
-
     def execute(
         self,
         program: ProgramSource,
@@ -263,18 +214,9 @@ class Language:
     ) -> ExecutionOutcome:
         """Return completion, rejection, input exhaustion, fault or limit evidence.
 
-        Total deadlines and output/memory caps select isolation. Execution
-        deadlines bound reading the program and stdin, and execution, each
-        separately; total deadlines also include worker startup.
-        Use outcome.unwrap() for the exception-raising result convention.
-
-        Raises nothing deliberate: each package error is the outcome's
-        ``error``, with status ``rejected``, ``input_exhausted``, ``limit``
-        or ``fault``.
+        Arguments and errors: :func:`esolangs.execute`.
         """
-        from esolangs.operations.execution import _execute_outcome
-
-        return _execute_outcome(
+        return esolangs.execute(
             self.name,
             program,
             stdin=stdin,
@@ -308,6 +250,52 @@ class Language:
             limits=limits,
             seed=seed,
             isolated=isolated,
+            settings=settings,
+            scale=scale,
+            catalog=self.catalog,
+        )
+
+    def make_vm(
+        self,
+        program: ProgramSource,
+        *,
+        stdin: InputSource = "",
+        seed: int | None = None,
+        settings: DialectSettings | None = None,
+        scale: int | None = None,
+    ) -> VM:
+        """Return a step-and-inspect machine over ``program``.
+
+        Arguments and errors: :func:`esolangs.debugger.make_vm`.
+        """
+        return make_vm(
+            self.name,
+            program,
+            stdin=stdin,
+            seed=seed,
+            settings=settings,
+            scale=scale,
+            catalog=self.catalog,
+        )
+
+    def make_debugger(
+        self,
+        program: ProgramSource,
+        *,
+        stdin: InputSource = "",
+        seed: int | None = None,
+        settings: DialectSettings | None = None,
+        scale: int | None = None,
+    ) -> Debugger:
+        """Return a debugger over a fresh machine for ``program``.
+
+        Arguments and errors: :func:`esolangs.debugger.make_debugger`.
+        """
+        return make_debugger(
+            self.name,
+            program,
+            stdin=stdin,
+            seed=seed,
             settings=settings,
             scale=scale,
             catalog=self.catalog,

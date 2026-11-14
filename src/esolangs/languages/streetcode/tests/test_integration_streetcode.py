@@ -29,7 +29,7 @@ class TestABreakpointMustBeAbleToFire:
         )
         assert isinstance(dbg.ip, tuple)
         dbg.break_at(dbg.ip)
-        assert dbg.run(max_steps=5) == "breakpoint"
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=5)) == "breakpoint"
 
     def test_a_non_integer_cell_value_is_refused(self) -> None:
         with pytest.raises(esolangs.ArgumentError, match="value must be"):

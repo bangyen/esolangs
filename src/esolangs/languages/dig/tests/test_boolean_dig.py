@@ -100,7 +100,7 @@ class TestDig:
             with patch.object(boolean, "_dig_grid", wraps=boolean._dig_grid) as grid:
                 artifact = language.generate(table)
             assert grid.call_count == int(witness.arity == 4)
-            restored = language.load_program(language.dump_program(artifact))
+            restored = language.from_json(language.to_json(artifact))
             _check_rows(restored.source.splitlines(), table, 220)
         for n in (5, 6):
             size = 1 << n

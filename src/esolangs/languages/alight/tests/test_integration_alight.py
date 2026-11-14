@@ -138,7 +138,9 @@ class TestBreakAtChecksTheKindOfPosition:
         program = esolangs.generate(REFERENCE, "0110")
         debugger = debugger_api.make_debugger(REFERENCE, program, stdin="0\n1\n")
         debugger.break_at(0)
-        assert debugger.run(max_steps=100) == "breakpoint"
+        assert (
+            debugger.run(limits=esolangs.ExecutionLimits(max_steps=100)) == "breakpoint"
+        )
 
     def test_the_arity_is_not_checked(self) -> None:
         """It varies within a run, so checking it would refuse valid ones."""

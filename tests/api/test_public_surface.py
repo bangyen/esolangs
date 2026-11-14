@@ -58,15 +58,20 @@ class TestPackageSurface:
             "TruthTableError",
             "UnknownLanguageError",
             "describe",
-            "dump_program",
             "encode_inputs",
+            "evaluate",
+            "execute",
+            "from_file",
+            "from_json",
+            "from_source",
             "generate",
             "instantiate",
             "list_languages",
-            "load_program",
+            "prepare",
             "read_answer",
             "run",
             "to_file",
+            "to_json",
         ]
 
     def test_the_signatures_are_pinned(self) -> None:
@@ -308,9 +313,9 @@ class TestProgramObjectsRefuseMisuse:
                 esolangs.to_file(REFERENCE, "+", target)  # type: ignore[arg-type]
         # A path is the usual mistake.
         with pytest.raises(esolangs.ProgramError, match=r"not a path.*from_file"):
-            esolangs.load_program(REFERENCE, "x.bf")
+            esolangs.from_json(REFERENCE, "x.bf")
         with pytest.raises(esolangs.ProgramError) as caught:
-            esolangs.load_program(REFERENCE, "{}")
+            esolangs.from_json(REFERENCE, "{}")
         assert "from_file" not in str(caught.value)
 
     def test_an_alias_tag_is_stored_canonically(self) -> None:
@@ -413,9 +418,9 @@ class TestProgramObjectsRefuseMisuse:
         assert all(type(cell) is int for cell in vm.memory), name
 
     def test_a_portable_surrogate_is_refused_like_a_file(self) -> None:
-        document = esolangs.dump_program(REFERENCE, "+.").replace('"+."', '"+.\\ud800"')
+        document = esolangs.to_json(REFERENCE, "+.").replace('"+."', '"+.\\ud800"')
         with pytest.raises(esolangs.ProgramError, match="surrogates"):
-            esolangs.load_program(REFERENCE, document)
+            esolangs.from_json(REFERENCE, document)
 
     def test_a_debugger_needs_a_vm(self) -> None:
         vm = debugger_api.make_vm(REFERENCE, "+")
@@ -433,13 +438,13 @@ class TestProgramObjectsRefuseMisuse:
         import json
 
         document = json.loads(
-            esolangs.dump_program(
+            esolangs.to_json(
                 TEMPLATE_LANGUAGE, esolangs.generate(TEMPLATE_LANGUAGE, "0110")
             )
         )
         document["setters"] = [["\ud800", "\udfff"]] * len(document["setters"])
         with pytest.raises(esolangs.ProgramError):
-            esolangs.load_program(TEMPLATE_LANGUAGE, json.dumps(document))
+            esolangs.from_json(TEMPLATE_LANGUAGE, json.dumps(document))
 
     def test_break_at_takes_a_negative_position(self) -> None:
         """AddSubJump and Subleq halt at -8 and -1; break_at refused them."""

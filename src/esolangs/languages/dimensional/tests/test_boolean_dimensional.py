@@ -154,11 +154,11 @@ class TestDimensional:
             n, table = witness.arity, witness.table()
             artifact = language.generate(table)
             assert ("[->4+<4[->5+<5[->4-<4]]]" in artifact.source) == (n == 7)
-            restored = language.load_program(language.dump_program(artifact))
+            restored = language.from_json(language.to_json(artifact))
             prepared = language.prepare(restored)
             for row in range(0, len(table), 5):
                 result = prepared.evaluate(row_bits(row, n))
-                assert result.bit == table[row]
+                assert result.answer == table[row]
                 assert result.observation.input_position == 2 * n - 1
         either = "0" + "1" * 127
         assert "[->4+<4[->5" not in esolangs.generate("Dimensional", either).source

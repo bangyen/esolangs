@@ -97,7 +97,7 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
         machine = make_vm("Befunge", source, seed=seed)
         debugger = make_debugger("Befunge", source, seed=seed)
         complete_vm(machine)
-        assert debugger.run(max_steps=100) == "halted"
+        assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=100)) == "halted"
         assert machine.output == debugger.output == native
         assert machine.snapshot() == debugger.snapshot()
         assert (

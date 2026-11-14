@@ -91,8 +91,8 @@ Both carry explicit `.source`, language and dialect settings; raster programs
 also retain scale, and a generated `ProgramArtifact` its `input_arity`, which
 `evaluate` checks `bits` against. Native files carry none of these but
 raster metadata; `to_file` refuses an unfilled template. `TemplateArtifact.fill(bits)` returns a runnable record.
-`run`, `instantiate`, `dump_program` and `to_file` accept records;
-`load_program` restores them, including template bindings. Template artifacts
+`run`, `instantiate`, `to_json` and `to_file` accept records;
+`from_json` restores them, including template bindings. Template artifacts
 must be filled before execution. An artifact's `fill` and `evaluate` are
 `instantiate` and `Language.evaluate` with its own language and the installed
 catalog.
@@ -101,7 +101,7 @@ catalog.
 gzip input loads as `run` loads it, so `gzip=False` writes it decompressed;
 `generate --gzip` does the same on the CLI. API exports are lossless by default;
 CLI generation uses native file terminators.
-Use `dump_program` to preserve dialect settings and template bindings on disk.
+Use `to_json` to preserve dialect settings and template bindings on disk.
 
 ```python
 from pathlib import Path
@@ -109,8 +109,8 @@ from pathlib import Path
 esolangs.to_file("brainfuck", program, "xor.bf")  # native source
 esolangs.run("brainfuck", Path("xor.bf"), stdin="01")  # a str would be source
 esolangs.Language("brainfuck").from_file("xor.bf")  # back to an artifact
-text = esolangs.dump_program("brainfuck", program)  # JSON keeps settings
-esolangs.load_program("brainfuck", text)  # takes the JSON text, not a path
+text = esolangs.to_json("brainfuck", program)  # JSON keeps settings
+esolangs.from_json("brainfuck", text)  # takes the JSON text, not a path
 ```
 
 `Language.from_source(source)` declares runnable source explicitly, including
@@ -121,7 +121,7 @@ terminators. Direct `run(Path(...))` is lossless; strings are always source.
 The CLI explicitly loads native files with newline normalization.
 Both return `ProgramArtifact`; parsing still happens when the program executes.
 
-`generate` and `load_program` return artifacts; `instantiate` returns a filled
+`generate` and `from_json` return artifacts; `instantiate` returns a filled
 `ProgramArtifact`. `run` returns `ExecutionResult`.
 Extract `.source` for native source operations and `.output` for output text.
 Raw rasters and compressed text contain payload only. Artifacts own language,
@@ -132,8 +132,8 @@ Source is a string, `Raster`, or `CompressedText` (Unary).
 expanded text. A `CompressedText` carries its `limits`, a
 `TextLimits(plain_chars=, generation_chars=, gzip_bytes=)`: past `plain_chars`
 `str()` refuses with `GeneratorCapError` (export the gzip instead), and the
-other two cap the expanded work and the compressed file. `dump_program` and
-`load_program` round-trip all three as text. Without limits nothing is
+other two cap the expanded work and the compressed file. `to_json` and
+`from_json` round-trip all three as text. Without limits nothing is
 capped: a gzip file expands about 1000-fold, counted on construction, so
 pass `TextLimits` when the data is untrusted. A gzip file read by `from_file`
 or `run(Path(...))` carries no limits.
@@ -256,20 +256,25 @@ layout. Rendering more than 2^28 pixels raises `ArgumentError`.
 Functions:
 
 - `esolangs.describe` -- return a structured description of `language`
-- `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and Boolean bindings
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
+- `esolangs.evaluate` -- run one Boolean row and return its answer and execution evidence
+- `esolangs.execute` -- return completion, rejection, input exhaustion, fault or limit evidence
+- `esolangs.from_file` -- read lossless source with retained metadata
+- `esolangs.from_json` -- restore version-1 JSON as an explicit program or template record
+- `esolangs.from_source` -- declare runnable source, including text that resembles a filename
 - `esolangs.generate` -- return an immutable program or template computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
-- `esolangs.load_program` -- restore version-1 JSON as an explicit program or template record
+- `esolangs.prepare` -- load reusable source; each run or VM owns fresh IO, state and randomness
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
 - `esolangs.run` -- execute `program` and return output, input usage and completion evidence
 - `esolangs.to_file` -- write a program as a native source file
+- `esolangs.to_json` -- return version-1 JSON preserving source, choices, and Boolean bindings
 
 Types:
 
 - `esolangs.Artifact` -- `ProgramArtifact[Program] | TemplateArtifact`
-- `esolangs.BooleanEvaluation` -- answer with the observed IO and, for termination answers, a proof
+- `esolangs.BooleanEvaluation` -- answer bit as `read_answer` spells it, the observed IO, and any proof
 - `esolangs.Catalog` -- own a frozen declaration set; derived indexes share the same scope
 - `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
 - `esolangs.DialectSettings` -- validated overrides bound to one language schema
@@ -432,7 +437,7 @@ them as `settings=` to `generate`, `run` or `make_debugger`. On the CLI, use
 `--settings JSON` or the repeatable `--set KEY=VALUE`.
 
 A generated program retains its settings, defaults included. Plain text
-saved to a file does not, so `run` needs them again; `dump_program` keeps
+saved to a file does not, so `run` needs them again; `to_json` keeps
 them. Explicit `settings=` may add a choice an artifact does not retain, but
 contradicting a retained one raises `ProgramError`: the same source read in
 another dialect is another program. Pass `.source` to drop retained settings.
@@ -527,8 +532,9 @@ print(vm.ip, vm.memory, vm.output)
 ```
 
 `make_debugger(...).run()` returns one of `STOP_REASONS`:
-`"halted"`, `"breakpoint"`, `"max_steps"`, or `"timeout"`. Program faults raise
-an exception instead.
+`"halted"`, `"breakpoint"`, `"max_steps"`, or `"execution_timeout"`, the last
+two naming the `ExecutionLimits` field that ended it; the other limits need a
+worker and are refused. Program faults raise an exception instead.
 
 Every language steps under the debugger.
 
@@ -549,13 +555,14 @@ Every language steps under the debugger.
   `halted` separately from the stop reason.
 
 ```python
+import esolangs
 from esolangs.debugger import make_debugger
 
 debug = make_debugger("brainfuck", ",[.]", stdin="y")
 debug.break_on_output("yy")
-assert debug.run(max_steps=100) == "breakpoint"
+assert debug.run(limits=esolangs.ExecutionLimits(max_steps=100)) == "breakpoint"
 assert debug.output == "yy"
-assert debug.run(max_steps=20) == "max_steps"
+assert debug.run(limits=esolangs.ExecutionLimits(max_steps=20)) == "max_steps"
 assert len(debug.output) > 2
 ```
 
@@ -603,7 +610,7 @@ regex, instead.
 
 ## Compatibility
 
-Version 2.0 changes the default return types: `generate` and `load_program`
+Version 2.0 changes the default return types: `generate` and `from_json`
 return `ProgramArtifact | TemplateArtifact`, `instantiate` returns a runnable
 `ProgramArtifact`, and `run` returns `ExecutionResult`. `Language` methods use
 these same defaults. Portable template records require `spans`, and gzip records

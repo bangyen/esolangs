@@ -62,7 +62,7 @@ import esolangs
 
 program = esolangs.generate("brainfuck", "0110")
 row = program.evaluate([0, 1], limits=esolangs.ExecutionLimits(max_steps=10_000))
-assert row.bit == "1"
+assert row.answer == "1"
 ```
 
 | Call | Does |

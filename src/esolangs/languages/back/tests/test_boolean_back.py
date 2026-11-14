@@ -166,11 +166,11 @@ class TestParameterizedBack:
             with patch.object(generators, "_back_htree", side_effect=observe):
                 artifact = language.generate(table)
             assert len(candidates) == int(n == 6)
-            restored = language.load_program(language.dump_program(artifact))
+            restored = language.from_json(language.to_json(artifact))
             for row in (0, 1, len(table) // 2, len(table) - 1):
                 bits = row_bits(row, n)
                 result = language.evaluate(restored, bits)
-                assert result.bit == table[row]
+                assert result.answer == table[row]
                 assert result.observation.input_reads == 0
                 for source in candidates:
                     assert (
@@ -388,7 +388,7 @@ def test_parity_accumulator_keeps_public_slots_and_provenance(
     assert generated.bindings.setters == (("-", "+"),) * n
     for template in (
         generated,
-        esolangs.load_program("Back", esolangs.dump_program("Back", generated)),
+        esolangs.from_json("Back", esolangs.to_json("Back", generated)),
     ):
         for row, expected in enumerate(table):
             bits = list(map(int, f"{row:0{n}b}"))

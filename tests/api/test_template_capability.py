@@ -32,12 +32,12 @@ def test_template_declaration_refuses_ambiguous_or_invalid_bindings(kwargs, mess
 @pytest.mark.parametrize("language", languages(parameterized=True))
 def test_changing_an_example_cannot_change_generated_bindings(language):
     original = LANGUAGES[language]
-    before = esolangs.dump_program(language, esolangs.generate(language, "0110"))
+    before = esolangs.to_json(language, esolangs.generate(language, "0110"))
     catalog = CATALOG.with_language(
         replace(original, example=Example(table="01", bits=(1,), expected="other"))
     )
     assert catalog.languages[language].parameterized
-    after = esolangs.dump_program(
+    after = esolangs.to_json(
         language, esolangs.generate(language, "0110", catalog=catalog), catalog=catalog
     )
     assert before == after
@@ -56,7 +56,7 @@ from esolangs.registry import CATALOG, LANGUAGES
 sys.modules['esolangs.generation.examples'] = None
 language = {language!r}
 source = esolangs.generate(language, '0110', balance=True)
-source = esolangs.load_program(language, esolangs.dump_program(language, source))
+source = esolangs.from_json(language, esolangs.to_json(language, source))
 if LANGUAGES[language].parameterized:
     source = esolangs.instantiate(language, source, [0, 1])
     stdin = ''

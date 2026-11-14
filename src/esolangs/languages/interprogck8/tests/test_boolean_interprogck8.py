@@ -132,11 +132,11 @@ def test_the_input_cap_is_forty(monkeypatch: pytest.MonkeyPatch) -> None:
         source = generator.interprogck8(bit)
         assert source.splitlines().count("u") == 40
         artifact = esolangs.ProgramArtifact(source, language.name, input_arity=40)
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for bits in ([0] * 40, [0, 1] * 20, [1] * 40):
             result = prepared.evaluate(bits)
-            assert result.bit == bit
+            assert result.answer == bit
             assert result.observation.input_reads == 40
 
 

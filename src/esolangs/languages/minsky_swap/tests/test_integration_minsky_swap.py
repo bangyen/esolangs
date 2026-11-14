@@ -23,12 +23,17 @@ class TestARunFinishesTheDump:
         """``run`` reports the breakpoint, not ``"halted"``, when it does."""
         program, stdin = SAMPLES["Minsky Swap"]
         plain = debugger_api.make_debugger("Minsky Swap", program, stdin=stdin)
-        assert plain.run(timeout=10) == "halted"
+        assert (
+            plain.run(limits=esolangs.ExecutionLimits(execution_timeout=10)) == "halted"
+        )
         assert plain.output
 
         stopped = debugger_api.make_debugger("Minsky Swap", program, stdin=stdin)
         stopped.break_on_output(plain.output)
-        assert stopped.run(timeout=10) == "breakpoint"
+        assert (
+            stopped.run(limits=esolangs.ExecutionLimits(execution_timeout=10))
+            == "breakpoint"
+        )
         assert stopped.output == plain.output
 
     def test_the_dumping_sets_are_distinct(self) -> None:
@@ -52,7 +57,10 @@ class TestARunFinishesTheDump:
             else:
                 stdin = esolangs.encode_inputs(name, [0, 0], truth_table="0110")
             debugger = debugger_api.make_debugger(name, program, stdin=stdin)
-            assert debugger.run(timeout=30) == "halted"
+            assert (
+                debugger.run(limits=esolangs.ExecutionLimits(execution_timeout=30))
+                == "halted"
+            )
             assert (
                 debugger.output
                 == run(
@@ -70,5 +78,5 @@ class TestARunFinishesTheDump:
         """The step is a no-op elsewhere, but it would land in every watch."""
         debugger = debugger_api.make_debugger(REFERENCE, "+++.", stdin="")
         history = debugger.watch_cell(0)
-        debugger.run(timeout=10)
+        debugger.run(limits=esolangs.ExecutionLimits(execution_timeout=10))
         assert len(history) == 4  # three increments and the print, no more

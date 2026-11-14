@@ -136,7 +136,7 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
     debug = esolangs.debugger.make_debugger("A Painter Ant", "P")
     assert not debug.self_halts
     assert not debug.steppable_to_answer
-    assert debug.run(max_steps=3) == "max_steps"
+    assert debug.run(limits=esolangs.ExecutionLimits(max_steps=3)) == "max_steps"
     assert debug.output == ""
     assert debug.observation.completion is None
     assert debug.observation.steps == 3

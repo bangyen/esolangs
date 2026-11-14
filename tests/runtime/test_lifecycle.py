@@ -236,7 +236,7 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             debug.step()
             assert debug.observation == result
             assert debug.snapshot() == snapshot
-            assert debug.run(max_steps=0) == "halted"
+            assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
             assert debug.observation == result
             assert esolangs.run(name, source, stdin=stdin, seed=seed) == native
             control.setattr(
@@ -390,13 +390,15 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             assert debug.ip_shape == caps.debug.ip_shape
             assert debug.eof_is_a_value == caps.eof_is_a_value
             assert "incidental_view" not in dict(debug.views)
-            assert debug.run(max_steps=1000) == "halted"
+            assert (
+                debug.run(limits=esolangs.ExecutionLimits(max_steps=1000)) == "halted"
+            )
             result, snapshot = debug.observation, debug.snapshot()
             assert result == replace(native, steps=result.steps)
             debug.step()
             assert debug.observation == result
             assert debug.snapshot() == snapshot
-            assert debug.run(max_steps=0) == "halted"
+            assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
             assert debug.observation == result
             assert esolangs.run(name, source, stdin=stdin, seed=seed) == native
             control.setattr(

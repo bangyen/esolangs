@@ -537,11 +537,11 @@ def test_coprime_chain_generates_asymmetric_tables(n: int, io_modulus: int) -> N
         artifact = language.generate(table, settings=settings)
         chain = compact_chain(table, n, modulus=255, io_modulus=io_modulus)
         assert (artifact.source == chain) == (n == 3)
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row in range(len(table)):
             result = prepared.evaluate(row_bits(row, n))
-            assert result.bit == table[row]
+            assert result.answer == table[row]
             assert result.observation.input_position == n
 
 

@@ -76,7 +76,9 @@ def test_scale_binding_preserves_graph_and_raster_execution_paths():
                 machine.step()
             assert machine.io.getvalue() == native.output
             debug = make_debugger("Line", source, stdin="1", scale=scale)
-            assert debug.run(max_steps=1000) == "halted"
+            assert (
+                debug.run(limits=esolangs.ExecutionLimits(max_steps=1000)) == "halted"
+            )
             result, snapshot = debug.observation, debug.snapshot()
             assert result == replace(native, steps=result.steps)
             assert esolangs.run("Line", source, stdin="1", scale=scale) == native
@@ -85,7 +87,7 @@ def test_scale_binding_preserves_graph_and_raster_execution_paths():
                 == native
             )
             debug.step()
-            assert debug.run(max_steps=0) == "halted"
+            assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
             assert (debug.observation, debug.snapshot()) == (result, snapshot)
 
 

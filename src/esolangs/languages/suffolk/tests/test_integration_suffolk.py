@@ -116,7 +116,10 @@ def test_suffolk_no_longer_disagrees_with_itself() -> None:
             == want
         )
         debugger = debugger_api.make_debugger("Suffolk", program, stdin=stdin)
-        assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
+        assert (
+            debugger.run(limits=esolangs.ExecutionLimits(max_steps=_STEP_BUDGET))
+            == "halted"
+        )
         assert debugger.output == want
 
 
@@ -179,11 +182,11 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     debug = debugger_api.make_debugger("Suffolk", "<")
     assert not debug.self_halts
     assert debug.steppable_to_answer
-    assert debug.run(max_steps=3) == "max_steps"
+    assert debug.run(limits=esolangs.ExecutionLimits(max_steps=3)) == "max_steps"
     assert debug.observation.completion is None
     assert debug.observation.steps == 3
     eof = debugger_api.make_debugger("Suffolk", ",")
-    assert eof.run(max_steps=1) == "halted"
+    assert eof.run(limits=esolangs.ExecutionLimits(max_steps=1)) == "halted"
     assert eof.observation == replace(ended, steps=1)
     monkeypatch.setattr(interpreter, "_execute", lambda *_args: POST_HALT_REPORT)
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):

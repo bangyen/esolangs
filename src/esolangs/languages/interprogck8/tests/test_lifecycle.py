@@ -11,12 +11,12 @@ from esolangs.runtime.io import ScriptedIO
 
 
 def test_factory_reuses_compilation_with_private_call_state():
-    interpreter._load_program.cache_clear()
+    interpreter._from_json.cache_clear()
     source = "nNnN\n<\n@nd\n>\nEXE\ndiv"
     factory = interpreter.prepare_machine(source, {})
     first, second = factory(ScriptedIO()), factory(ScriptedIO())
-    assert interpreter._load_program.cache_info().misses == 1
-    assert interpreter._load_program.cache_info().hits == 0
+    assert interpreter._from_json.cache_info().misses == 1
+    assert interpreter._from_json.cache_info().hits == 0
     assert first._program is second._program
     before = second.snapshot()
     for _ in range(3):
@@ -28,11 +28,11 @@ def test_factory_reuses_compilation_with_private_call_state():
     assert first.io.getvalue() == "B"
     assert second.memory == [0]
     assert second.stack == []
-    interpreter._load_program.cache_clear()
+    interpreter._from_json.cache_clear()
     third = factory(ScriptedIO())
     assert third._program is second._program
     assert third.snapshot() == before
-    assert interpreter._load_program.cache_info().misses == 0
+    assert interpreter._from_json.cache_info().misses == 0
 
 
 def test_split_factory_binds_source_and_reloads_only_its_own_program():
@@ -75,7 +75,7 @@ def test_rng_binding_draws_only_during_execution():
         source = "~\n[. :::]\n$ay"
         native = esolangs.run("Interprogck8", source, seed=seed)
         debug = make_debugger("Interprogck8", source, seed=seed)
-        assert debug.run(max_steps=3) == "halted"
+        assert debug.run(limits=esolangs.ExecutionLimits(max_steps=3)) == "halted"
         assert debug.observation == replace(native, steps=3)
         assert esolangs.run("Interprogck8", source, seed=seed, isolated=True) == native
 

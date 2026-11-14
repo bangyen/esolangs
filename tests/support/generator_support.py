@@ -60,9 +60,9 @@ def assert_saved_rows(
     rows: Iterable[int],
 ) -> None:
     """Check selected answers and input consumption after portable restoration."""
-    document = language.dump_program(program)
-    restored = language.load_program(document)
-    assert language.dump_program(restored) == document
+    document = language.to_json(program)
+    restored = language.from_json(document)
+    assert language.to_json(restored) == document
     template = isinstance(restored, esolangs.TemplateArtifact)
     prepared = None if template else language.prepare(restored)
     termination = language.describe().answer_mode == "termination"
@@ -75,7 +75,7 @@ def assert_saved_rows(
             if prepared is None
             else prepared.evaluate(bits, limits=limits)
         )
-        assert result.bit == table[row], (language.name, row)
+        assert result.answer == table[row], (language.name, row)
         if template:
             assert result.observation.input_reads == 0
             assert result.observation.input_position == 0

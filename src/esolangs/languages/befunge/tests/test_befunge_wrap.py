@@ -97,11 +97,11 @@ def test_befunge_refuses_a_table_larger_than_the_torus(width: int | None) -> Non
     admitted, refused = construction_boundaries("Befunge")["torus_input_cap"]
     table = admitted.table()
     artifact = language.generate(table, width=width)
-    restored = language.load_program(language.dump_program(artifact))
+    restored = language.from_json(language.to_json(artifact))
     prepared = language.prepare(restored)
     for row in (0, 1, len(table) // 2, len(table) - 1):
         result = prepared.evaluate(row_bits(row, admitted.arity))
-        assert result.bit == table[row]
+        assert result.answer == table[row]
         assert result.observation.input_reads == admitted.arity
     with pytest.raises(esolangs.GeneratorCapError, match="at most thirteen inputs"):
         language.generate(refused.table(), width=width)
@@ -171,11 +171,11 @@ def test_width_one_and_balance_cross_the_packing_cutoff() -> None:
             artifact = language.generate(table, **options)
             # Parity can use a one-column sum through ten inputs only.
             assert (max(map(len, artifact.source.splitlines())) == 1) == (n == 10)
-            restored = language.load_program(language.dump_program(artifact))
+            restored = language.from_json(language.to_json(artifact))
             prepared = language.prepare(restored)
             for row in (0, 5, 6, 479, 480, len(table) - 1):
                 result = prepared.evaluate(row_bits(row, n))
-                assert result.bit == table[row]
+                assert result.answer == table[row]
 
 
 def test_befunge_balance_rejects_oversized_table() -> None:

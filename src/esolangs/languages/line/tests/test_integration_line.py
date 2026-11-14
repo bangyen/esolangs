@@ -41,8 +41,8 @@ def test_raw_png_round_trip_executes(scale, tmp_path) -> None:
     assert raw.scale == scale
     assert Raster.from_png(path.read_bytes()).rows == raw.source.rows
     assert not hasattr(raw.source, "settings")
-    restored = esolangs.load_program(
-        "Line", esolangs.dump_program("Line", raw, settings=settings)
+    restored = esolangs.from_json(
+        "Line", esolangs.to_json("Line", raw, settings=settings)
     )
     assert isinstance(restored, esolangs.ProgramArtifact)
     assert restored.source.rows == source.source.rows
@@ -51,12 +51,10 @@ def test_raw_png_round_trip_executes(scale, tmp_path) -> None:
 
 @pytest.mark.parametrize("value", ["!", "abcd", "é"])
 def test_invalid_png(value) -> None:
-    document = json.loads(
-        esolangs.dump_program("Line", esolangs.generate("Line", "01"))
-    )
+    document = json.loads(esolangs.to_json("Line", esolangs.generate("Line", "01")))
     document["source"] = value
     with pytest.raises(esolangs.ProgramError):
-        esolangs.load_program("Line", json.dumps(document))
+        esolangs.from_json("Line", json.dumps(document))
 
 
 class TestTheSmallInconsistencies:
@@ -95,12 +93,10 @@ class TestTheSmallInconsistencies:
 
 
 def test_source_kind_cannot_change_language_contract() -> None:
-    document = json.loads(
-        esolangs.dump_program("Line", esolangs.generate("Line", "01"))
-    )
+    document = json.loads(esolangs.to_json("Line", esolangs.generate("Line", "01")))
     document["language"] = REFERENCE
     with pytest.raises(esolangs.ProgramError):
-        esolangs.load_program("Brainfuck", json.dumps(document))
+        esolangs.from_json("Brainfuck", json.dumps(document))
 
 
 @pytest.mark.medium

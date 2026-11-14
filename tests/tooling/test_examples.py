@@ -105,7 +105,7 @@ def test_regeneration_yields_public_balanced_programs() -> None:
         expected = generate(language, example.table, balance=True, scale=example.scale)
         if example.fill is not None:
             expected = instantiate(language, expected, example.bits)
-        assert esolangs.dump_program(language, programs[stem]) == esolangs.dump_program(
+        assert esolangs.to_json(language, programs[stem]) == esolangs.to_json(
             language, expected
         ), stem
         assert getattr(programs[stem], "language", None) == getattr(

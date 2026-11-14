@@ -106,8 +106,8 @@ def test_short_selectors_keep_public_provenance_and_uniform_width() -> None:
     for width in (1, 2, 3, 4, 5, 13, 40, 80):
         table = "0110"
         template = esolangs.generate("Underload", table, width=width)
-        template = esolangs.load_program(
-            "Underload", esolangs.dump_program("Underload", template)
+        template = esolangs.from_json(
+            "Underload", esolangs.to_json("Underload", template)
         )
         setters = underload_setters(template.source, 2)
         assert setters == template.bindings.setters

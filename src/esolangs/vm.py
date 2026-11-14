@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Hashable
 from functools import cache
-from typing import Any, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 import esolangs._cycles as _cycles
 from esolangs._cycles import (
@@ -56,7 +56,6 @@ from esolangs.runtime._execution import (
 )
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._lifecycle import Completion, CompletionReport
-from esolangs.runtime._prepared import PreparedProgram, prepare_program
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._state import WorkspaceSnapshot
 from esolangs.runtime._traits import trait, traits
@@ -65,6 +64,10 @@ from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime._vm_views import machine_views
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings
+
+if TYPE_CHECKING:
+    # A runtime import would close the cycle PreparedProgram.make_debugger opens.
+    from esolangs.runtime._prepared import PreparedProgram
 
 
 def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
@@ -356,6 +359,8 @@ def _make_vm(
     check_seed_for(name, seed, catalog=catalog)
     check_input(stdin)
     if prepared is None:
+        from esolangs.runtime._prepared import prepare_program
+
         prepared = prepare_program(
             name,
             program,

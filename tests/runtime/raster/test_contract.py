@@ -169,7 +169,7 @@ def test_bounded_raster_run_preserves_explicit_scale(language: str, native_png) 
         vm.step()
     assert vm.output == "0"
     debugger = make_debugger(language, source, stdin="1\n", scale=2)
-    assert debugger.run(max_steps=1000) == "halted"
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=1000)) == "halted"
     assert debugger.output == "1"
     assert esolangs.describe(language).state_model in {"tape", "stack"}
 

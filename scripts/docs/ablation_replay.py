@@ -257,7 +257,9 @@ def _baseline(
     code = (
         "import esolangs,json,sys; r=json.load(sys.stdin); "
         "p=esolangs.generate(r['language'],r['table'],balance=r['balanced']); "
-        "d=json.loads(esolangs.dump_program(r['language'],p)); "
+        # A baseline before the rename spells it dump_program.
+        "dump=getattr(esolangs,'to_json',None) or esolangs.dump_program; "
+        "d=json.loads(dump(r['language'],p)); "
         "fields=('format','version','language','settings',"
         "'kind','source','char','setters'); "
         "print(json.dumps({k:d[k] for k in fields} if d['kind']=='template' else d))"
@@ -316,7 +318,7 @@ def _baseline(
             bindings,
             decode_settings(document["settings"], language),
         )
-    return esolangs.load_program(language, generated.stdout)
+    return esolangs.from_json(language, generated.stdout)
 
 
 def _source_size(artifact: Artifact, unit: str) -> int:

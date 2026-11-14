@@ -76,7 +76,7 @@ def test_scale_binding_eof_and_unicode_match_all_routes():
         assert tuple(name for name, _ in debug.views) == ("cc", "current", "dp")
         assert debug.ip_shape == "grid"
         assert debug.eof_is_a_value
-        assert debug.run(max_steps=20) == "halted"
+        assert debug.run(limits=esolangs.ExecutionLimits(max_steps=20)) == "halted"
         result, snapshot = debug.observation, debug.snapshot()
         assert result == replace(native, steps=result.steps)
         assert (
@@ -84,7 +84,7 @@ def test_scale_binding_eof_and_unicode_match_all_routes():
             == native
         )
         debug.step()
-        assert debug.run(max_steps=0) == "halted"
+        assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
         assert (debug.observation, debug.snapshot()) == (result, snapshot)
 
 

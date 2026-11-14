@@ -61,7 +61,7 @@ def generate(
     *,
     width: int | None = None,
     balance: bool = False,
-    scale: int = 1,
+    scale: int | None = None,
     settings: DialectSettings | None = None,
     catalog: "Catalog | None" = None,
 ) -> Artifact:
@@ -84,7 +84,7 @@ def generate(
             being about twice as tall as wide, then source length, then
             width.  A raster minimizes max(width, height) in pixels, then
             pixel area, then width.  Excludes ``width``.
-        scale: Raster only; replicates pixels after layout (1: native output).
+        scale: Raster only; replicates pixels after layout (None: native output).
         settings: Dialect choices; see ``describe(language)["dialect_settings"]``.
 
     Raises:
@@ -108,9 +108,10 @@ def generate(
         # Record the dialect the source was written in.  A retained None reads
         # as "unknown", so explicit settings could otherwise misread it.
         settings = _settings_for(language, dict(schema.defaults), catalog=catalog)
-    check_scale(scale)
     check_flag(balance, "balance")
-    if scale != 1:
+    if scale is not None:
+        check_scale(scale)
+    if scale not in (None, 1):
         if (
             catalog.languages[catalog.resolve(language)].runtime.source_kind
             is not SourceKind.RASTER
@@ -134,6 +135,7 @@ def generate(
         # at the first pickle, dump or run.
         base = artifact.source
         _ = base.rows
+        assert scale is not None
         return replace(artifact, source=base.upscaled(scale), scale=scale)
     if balance and width is not None:
         raise with_hint(
@@ -465,7 +467,7 @@ def instantiate(
                 "template must be the TemplateArtifact generate() returned, "
                 f"got {type(template).__name__}"
             ),
-            "retain generate()'s template or restore it with load_program()",
+            "retain generate()'s template or restore it with from_json()",
         )
     if catalog.resolve(template.language) != name:
         raise TemplateError(f"template belongs to {template.language}, not {name}")

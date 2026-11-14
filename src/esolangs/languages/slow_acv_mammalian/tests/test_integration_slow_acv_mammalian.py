@@ -44,7 +44,7 @@ def test_partial_overrides_merge_and_validate() -> None:
 
 
 def test_large_integer_setting_is_rejected() -> None:
-    document = json.loads(esolangs.dump_program("SLOW ACV MAMMALIAN", "SEED"))
+    document = json.loads(esolangs.to_json("SLOW ACV MAMMALIAN", "SEED"))
     document["settings"] = {"cell_modulus": {"integer": hex(1 << 20_000)}}
     with pytest.raises(esolangs.ProgramError):
-        esolangs.load_program("SLOW ACV MAMMALIAN", json.dumps(document))
+        esolangs.from_json("SLOW ACV MAMMALIAN", json.dumps(document))

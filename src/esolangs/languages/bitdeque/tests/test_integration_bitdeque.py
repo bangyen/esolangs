@@ -82,9 +82,7 @@ def test_balanced_bitdeque_setters(restored) -> None:
     program = esolangs.generate("Bitdeque", table, balance=True, settings=settings)
     for row, expected in enumerate(table):
         source = (
-            esolangs.load_program(
-                "Bitdeque", esolangs.dump_program("Bitdeque", program)
-            )
+            esolangs.from_json("Bitdeque", esolangs.to_json("Bitdeque", program))
             if restored
             else program
         )
@@ -101,9 +99,9 @@ def test_filled_template_becomes_portable_text() -> None:
         "Bitdeque", "0110", settings=esolangs.Language("Bitdeque").settings()
     )
     filled = esolangs.instantiate("Bitdeque", source, [1, 0])
-    document = esolangs.dump_program("Bitdeque", filled)
+    document = esolangs.to_json("Bitdeque", filled)
     assert json.loads(document)["kind"] == "text"
-    assert run("Bitdeque", esolangs.load_program("Bitdeque", document)).output == "1"
+    assert run("Bitdeque", esolangs.from_json("Bitdeque", document)).output == "1"
 
 
 def test_foreign_language_is_rejected() -> None:
@@ -111,9 +109,9 @@ def test_foreign_language_is_rejected() -> None:
         "Bitdeque", "0110", settings=esolangs.Language("Bitdeque").settings()
     )
     with pytest.raises(esolangs.ProgramError):
-        esolangs.dump_program("Brainfuck", source)
+        esolangs.to_json("Brainfuck", source)
     with pytest.raises(esolangs.ProgramError, match="program language"):
-        esolangs.load_program("Brainfuck", esolangs.dump_program("Bitdeque", source))
+        esolangs.from_json("Brainfuck", esolangs.to_json("Bitdeque", source))
 
 
 @pytest.mark.parametrize(
@@ -129,11 +127,11 @@ def test_foreign_language_is_rejected() -> None:
 )
 def test_invalid_template_fields(field, value) -> None:
     document = json.loads(
-        esolangs.dump_program("Bitdeque", esolangs.generate("Bitdeque", "0110"))
+        esolangs.to_json("Bitdeque", esolangs.generate("Bitdeque", "0110"))
     )
     document[field] = value
     with pytest.raises(esolangs.ProgramError):
-        esolangs.load_program("Bitdeque", json.dumps(document))
+        esolangs.from_json("Bitdeque", json.dumps(document))
 
 
 @pytest.mark.medium
@@ -142,14 +140,14 @@ def test_bound_language_round_trip() -> None:
     source = language.generate(
         "0110", settings=esolangs.Language("Bitdeque").settings()
     )
-    document = language.dump_program(source)
-    restored = language.load_program(document)
+    document = language.to_json(source)
+    restored = language.from_json(document)
     assert _evaluate(language.name, restored, inputs=2) == "0110"
     filled = language.instantiate(source, [1, 0])
-    document = language.dump_program(
+    document = language.to_json(
         filled, settings=esolangs.Language("Bitdeque").settings()
     )
-    assert language.run(language.load_program(document)).output == "1"
+    assert language.run(language.from_json(document)).output == "1"
 
 
 class TestBitdeque:

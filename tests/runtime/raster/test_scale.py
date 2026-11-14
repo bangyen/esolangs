@@ -49,8 +49,9 @@ def test_scale_validation_and_uniformity(name: str) -> None:
     for scale in (True, 0, -1, 1.5, "2", None):
         with pytest.raises(ArgumentError, match="scale"):
             image.upscaled(scale)
-        with pytest.raises(ArgumentError, match="scale"):
-            esolangs.generate(name, "00", scale=scale)
+        if scale is not None:
+            with pytest.raises(ArgumentError, match="scale"):
+                esolangs.generate(name, "00", scale=scale)
     with pytest.raises(ArgumentError, match="raster"):
         esolangs.generate(REFERENCE, "00", scale=2)
     with pytest.raises(ArgumentError, match="raster"):

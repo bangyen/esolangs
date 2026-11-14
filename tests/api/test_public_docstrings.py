@@ -11,6 +11,7 @@ import re
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -23,7 +24,10 @@ from tests.support.reference import REFERENCE
 from tests.support.spec_triggers import all_triggers, run_trigger
 
 #: Exported functions with no ``Raises:``, each with the reason.
-RAISE_FREE = {"list_languages": "returns the registry's names"}
+RAISE_FREE = {
+    "list_languages": "returns the registry's names",
+    "execute": "returns each package error as the outcome's error",
+}
 
 _MISSING = Path("/nonexistent/program.b")
 
@@ -102,8 +106,8 @@ def _run_png_without_pillow() -> object:
     return _without_pillow(lambda: esolangs.run(_first("raster"), data).output)
 
 
-def _load_png_without_pillow(load=esolangs.load_program) -> object:
-    document = esolangs.dump_program(_first("raster"), _raster_png())
+def _load_png_without_pillow(load=esolangs.from_json) -> object:
+    document = esolangs.to_json(_first("raster"), _raster_png())
     return _without_pillow(lambda: load(_first("raster"), document))
 
 
@@ -113,9 +117,20 @@ def _no_docstrings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _portable(settings: dict[str, object]) -> str:
-    document = json.loads(esolangs.dump_program(REFERENCE, "+."))
+    document = json.loads(esolangs.to_json(REFERENCE, "+."))
     document["settings"] = settings
     return json.dumps(document)
+
+
+def _png_file_without_pillow() -> object:
+    with TemporaryDirectory() as folder:
+        path = Path(folder) / "program.png"
+        path.write_bytes(_raster_png())
+        return _without_pillow(lambda: esolangs.from_file(_first("raster"), path))
+
+
+def _foreign_settings() -> esolangs.DialectSettings:
+    return esolangs.Language(_first("raster")).settings()
 
 
 R = REFERENCE
@@ -124,6 +139,81 @@ type _Probe = tuple[Callable[[], object], _Setup | None]
 
 #: ``(function, exception, call, setup)``: ``call`` must raise ``exception``.
 TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]] = [
+    (
+        "from_source",
+        x.UnknownLanguageError,
+        lambda: esolangs.from_source("Nolang", "+"),
+        None,
+    ),
+    (
+        "from_source",
+        x.TemplateError,
+        lambda: esolangs.from_source(_first("parameterized"), _template()),  # type: ignore[arg-type]
+        None,
+    ),
+    (
+        "from_source",
+        x.ProgramError,
+        lambda: esolangs.from_source(R, esolangs.generate(R, "01")),  # type: ignore[arg-type]
+        None,
+    ),
+    (
+        "from_source",
+        x.ArgumentError,
+        lambda: esolangs.from_source(R, "+", settings=_foreign_settings()),
+        None,
+    ),
+    (
+        "from_file",
+        x.UnknownLanguageError,
+        lambda: esolangs.from_file("Nolang", _MISSING),
+        None,
+    ),
+    (
+        "from_file",
+        x.ArgumentError,
+        lambda: esolangs.from_file(R, 1),  # type: ignore[arg-type]
+        None,
+    ),
+    (
+        "from_file",
+        x.ProgramNotFoundError,
+        lambda: esolangs.from_file(R, _MISSING),
+        None,
+    ),
+    ("from_file", x.MissingDependencyError, _png_file_without_pillow, None),
+    (
+        "evaluate",
+        x.UnknownLanguageError,
+        lambda: esolangs.evaluate("Nolang", esolangs.generate(R, "01"), [0]),
+        None,
+    ),
+    (
+        "evaluate",
+        x.ProgramError,
+        lambda: esolangs.evaluate(R, ",.", [0]),  # type: ignore[arg-type]
+        None,
+    ),
+    (
+        "evaluate",
+        x.ArgumentError,
+        lambda: esolangs.evaluate(R, esolangs.generate(R, "0110"), [0]),
+        None,
+    ),
+    ("prepare", x.UnknownLanguageError, lambda: esolangs.prepare("Nolang", ""), None),
+    (
+        "prepare",
+        x.ArgumentError,
+        lambda: esolangs.prepare(R, "+", settings=_foreign_settings()),
+        None,
+    ),
+    ("prepare", x.ProgramError, lambda: esolangs.prepare(R, _MISSING), None),
+    (
+        "prepare",
+        x.TemplateError,
+        lambda: esolangs.prepare(_first("parameterized"), _template()),
+        None,
+    ),
     (
         "to_file",
         x.UnknownLanguageError,
@@ -325,60 +415,60 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     ),
     ("read_answer", x.ProgramError, lambda: esolangs.read_answer(R, "x"), None),
     (
-        "dump_program",
+        "to_json",
         x.UnknownLanguageError,
-        lambda: esolangs.dump_program("Nolang", ""),
+        lambda: esolangs.to_json("Nolang", ""),
         None,
     ),
     (
-        "dump_program",
+        "to_json",
         x.ArgumentError,
-        lambda: esolangs.dump_program(
+        lambda: esolangs.to_json(
             R, "+.", settings=esolangs.Language("brainfuck").settings(nonsense_key=1)
         ),
         None,
     ),
     (
-        "dump_program",
+        "to_json",
         x.ProgramNotFoundError,
-        lambda: esolangs.dump_program(R, _MISSING),  # type: ignore[arg-type]
+        lambda: esolangs.to_json(R, _MISSING),  # type: ignore[arg-type]
         None,
     ),
     (
-        "dump_program",
+        "to_json",
         x.MissingDependencyError,
         lambda: _without_pillow(
-            lambda: esolangs.dump_program(
+            lambda: esolangs.to_json(
                 _first("raster"), esolangs.generate(_first("raster"), "01")
             )
         ),
         None,
     ),
     (
-        "load_program",
+        "from_json",
         x.UnknownLanguageError,
-        lambda: esolangs.load_program("Nolang", "{}"),
+        lambda: esolangs.from_json("Nolang", "{}"),
         None,
     ),
     (
-        "load_program",
+        "from_json",
         x.ArgumentError,
-        lambda: esolangs.load_program(R, b"{}"),  # type: ignore[arg-type]
+        lambda: esolangs.from_json(R, b"{}"),  # type: ignore[arg-type]
         None,
     ),
     (
-        "load_program",
+        "from_json",
         x.ProgramError,
-        lambda: esolangs.load_program(R, "{}"),
+        lambda: esolangs.from_json(R, "{}"),
         None,
     ),
     (
-        "load_program",
+        "from_json",
         x.ProgramError,
-        lambda: esolangs.load_program(R, _portable({"nonsense_key": 1})),
+        lambda: esolangs.from_json(R, _portable({"nonsense_key": 1})),
         None,
     ),
-    ("load_program", x.MissingDependencyError, _load_png_without_pillow, None),
+    ("from_json", x.MissingDependencyError, _load_png_without_pillow, None),
 ]
 
 

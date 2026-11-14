@@ -116,11 +116,11 @@ class TestParameterizedRam0:
             ) as nand:
                 artifact = language.generate(table, width=1)
             assert nand.call_count == int(n == 3)
-            restored = language.load_program(language.dump_program(artifact))
+            restored = language.from_json(language.to_json(artifact))
             assert restored.spans == artifact.spans
             for row, expected in enumerate(table):
                 result = language.evaluate(restored, row_bits(row, n))
-                assert result.bit == expected
+                assert result.answer == expected
                 assert result.observation.input_position == 0
                 assert result.observation.input_reads == 0
 

@@ -3,21 +3,22 @@
 Public operations split by who supplies the program:
 
 * Generator-made: ``generate`` returns a program artifact or template;
-  ``instantiate`` fills a template into a runnable artifact.
-  An artifact's ``evaluate`` method executes one Boolean row.
+  ``instantiate`` fills a template into a runnable artifact;
+  ``evaluate`` executes one Boolean row.
 * Caller-supplied: ``run`` returns output, input consumption and completion
-  evidence in an immutable execution result.
+  evidence in an immutable execution result; ``execute`` returns an outcome
+  instead of raising; ``prepare`` loads source once for many invocations.
   Stepping and debugging live in :mod:`esolangs.debugger`.
-* Contract adapters: ``encode_inputs`` spells input bits as stdin,
-  ``read_answer`` extracts an answer bit from output,
-  ``to_file`` writes native source files, and
-  ``dump_program``/``load_program`` preserve source in portable JSON.
+* Records: ``from_source``, ``from_file`` and ``from_json`` declare or
+  restore an artifact; ``to_file`` writes native source and ``to_json``
+  portable JSON.
+* Contract adapters: ``encode_inputs`` spells input bits as stdin and
+  ``read_answer`` extracts an answer bit from output.
 * Catalog: ``describe`` and ``list_languages`` provide registry facts.
 
 Boolean evaluation over every row is private certification machinery,
-not public API.  ``Language(name)`` binds these functions to one language
-and adds its own: ``execute`` (an outcome instead of a raise), ``evaluate``,
-``prepare``, ``from_source``/``from_file`` and ``settings``.
+not public API.  ``Language(name)`` binds every function above that takes a
+language, and adds ``settings``.
 Names resolve case-insensitively; deliberate errors derive from EsolangError.
 """
 
@@ -63,10 +64,15 @@ _LAZY = {
     "PreparedProgram": "esolangs.runtime._prepared",
     "Language": "esolangs._language",
     "run": "esolangs.operations.execution",
+    "execute": "esolangs.operations.execution",
+    "prepare": "esolangs.operations.execution",
+    "evaluate": "esolangs.operations.evaluation",
+    "from_file": "esolangs.operations.source",
+    "from_source": "esolangs.operations.source",
     "generate": "esolangs.operations.generation",
     "instantiate": "esolangs.operations.generation",
-    "dump_program": "esolangs.portable",
-    "load_program": "esolangs.portable",
+    "to_json": "esolangs.portable",
+    "from_json": "esolangs.portable",
     "to_file": "esolangs.portable",
     "LanguageInfo": "esolangs.registry._info",
     "describe": "esolangs.registry._describe",
@@ -80,12 +86,17 @@ if TYPE_CHECKING:
     from esolangs._language import Language as Language
     from esolangs.operations.boolean_io import encode_inputs as encode_inputs
     from esolangs.operations.boolean_io import read_answer as read_answer
+    from esolangs.operations.evaluation import evaluate as evaluate
+    from esolangs.operations.execution import execute as execute
+    from esolangs.operations.execution import prepare as prepare
     from esolangs.operations.execution import run as run
     from esolangs.operations.generation import generate as generate
     from esolangs.operations.generation import instantiate as instantiate
-    from esolangs.portable import dump_program as dump_program
-    from esolangs.portable import load_program as load_program
+    from esolangs.operations.source import from_file as from_file
+    from esolangs.operations.source import from_source as from_source
+    from esolangs.portable import from_json as from_json
     from esolangs.portable import to_file as to_file
+    from esolangs.portable import to_json as to_json
     from esolangs.registry._catalog import Catalog as Catalog
     from esolangs.registry._describe import describe as describe
     from esolangs.registry._describe import list_languages as list_languages
@@ -151,15 +162,20 @@ __all__ = [
     "TruthTableError",
     "UnknownLanguageError",
     "describe",
-    "dump_program",
     "encode_inputs",
+    "evaluate",
+    "execute",
+    "from_file",
+    "from_json",
+    "from_source",
     "generate",
     "instantiate",
     "list_languages",
-    "load_program",
+    "prepare",
     "read_answer",
     "run",
     "to_file",
+    "to_json",
 ]
 
 

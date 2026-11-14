@@ -7,9 +7,10 @@ from time import monotonic
 from typing import Literal
 
 from esolangs.exceptions import ArgumentError, EsolangError, steps_exhausted
+from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome, _failed_outcome
 from esolangs.results import Completion, CompletionReport, ExecutionResult
-from esolangs.runtime._validate import _argument_repr, check_timeout, check_whole
+from esolangs.runtime._validate import _argument_repr
 from esolangs.runtime._vm_protocol import VM
 from esolangs.vm import (
     _capture_observation,
@@ -19,7 +20,7 @@ from esolangs.vm import (
     run_until_halt,
 )
 
-StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
+StopReason = Literal["halted", "breakpoint", "max_steps", "execution_timeout"]
 
 
 class ExecutionController:
@@ -133,25 +134,44 @@ class ExecutionController:
             self._dumped = True
         self._record()
 
-    def run(
-        self, *, max_steps: int | None = None, timeout: float | None = None
-    ) -> StopReason:
+    def run(self, *, limits: ExecutionLimits | None = None) -> StopReason:
         """Execute until the machine halts, a breakpoint fires, or a bound ends it.
 
         Returns why: ``"halted"``, ``"breakpoint"``, ``"max_steps"`` or
-        ``"timeout"``.  A breakpoint that stopped the last run is suppressed
+        ``"execution_timeout"``, the last two naming the ``limits`` field that
+        ended it.  A breakpoint that stopped the last run is suppressed
         until its condition goes false.  It is checked again after the halt, and
         on the post-halt-dump languages before *and* after the dump, so
         ``"breakpoint"`` can come back with ``halted`` true and ``output`` empty
         -- another ``step()`` takes the dump, which is outside ``max_steps``.
         Bounds return rather than raise (``None`` unbounded); a fault still
         raises, with ``partial_output`` set.
-        The timeout is checked with the breakpoints, so no main thread is
+        The deadline is checked with the breakpoints, so no main thread is
         needed.  Drives the controller so observer hooks see every successful step.
+
+        Raises:
+            ArgumentError: ``limits`` is not ExecutionLimits, or sets a bound
+                other than ``max_steps`` or ``execution_timeout``: the rest
+                need an isolated worker, and a debugger steps in-process.
         """
-        if max_steps is not None:
-            check_whole(max_steps, "max_steps")
-        check_timeout(timeout)
+        selected = ExecutionLimits() if limits is None else limits
+        if not isinstance(selected, ExecutionLimits):
+            raise ArgumentError("limits must be ExecutionLimits or None")
+        for name in (
+            "preparation_timeout",
+            "total_timeout",
+            "max_output",
+            "max_memory",
+        ):
+            if getattr(selected, name) is not None:
+                raise ArgumentError(
+                    f"a debugger steps in-process and cannot enforce {name}; "
+                    "it takes max_steps and execution_timeout"
+                )
+        return self._run(selected.max_steps, selected.execution_timeout)
+
+    def _run(self, max_steps: int | None, timeout: float | None) -> StopReason:
+        """Drive to a halt, breakpoint or bound; the limits are already checked."""
         deadline = None if timeout is None else monotonic() + timeout
         self._timed_out = False
         halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))
@@ -185,7 +205,7 @@ class ExecutionController:
                     return "breakpoint"
             return "halted"
         if self._timed_out:
-            return "timeout"
+            return "execution_timeout"
         if self._accept_stop():
             return "breakpoint"
         return "max_steps"
@@ -207,7 +227,7 @@ class ExecutionController:
         try:
             if isinstance(self.vm, _DelegatingVM) and not self.steppable_to_answer:
                 return self._periodic_execution(self.vm, max_steps)
-            reason = self.run(max_steps=max_steps)
+            reason = self._run(max_steps, None)
         except EsolangError as fault:
             fault.partial_output = self.output
             observation = fault.observation or _capture_observation(self.vm)

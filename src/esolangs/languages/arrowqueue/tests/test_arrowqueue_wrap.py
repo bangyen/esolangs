@@ -38,9 +38,7 @@ def test_arrowqueue_four_columns_preserve_public_provenance(*, restored: bool) -
     table = "0110"
     template = esolangs.generate("ArrowQueue", table, width=1)
     source = (
-        esolangs.load_program(
-            "ArrowQueue", esolangs.dump_program("ArrowQueue", template)
-        )
+        esolangs.from_json("ArrowQueue", esolangs.to_json("ArrowQueue", template))
         if restored
         else template
     )

@@ -32,9 +32,7 @@ def test_crement_width_narrows_the_widest_instruction() -> None:
         for template in (default, narrowed):
             source = esolangs.instantiate("Crement", template, bits)
             assert diverges("Crement", source, "") is (table[row] == "1")
-    restored = esolangs.load_program(
-        "Crement", esolangs.dump_program("Crement", narrowed)
-    )
+    restored = esolangs.from_json("Crement", esolangs.to_json("Crement", narrowed))
     source = esolangs.instantiate("Crement", restored, [0] * 11, truth_table=table)
     assert diverges("Crement", source, "") is (table[0] == "1")
 
@@ -45,9 +43,7 @@ def test_crement_data_only_setters_survive_saved_template(monkeypatch) -> None:
 
     monkeypatch.setattr("esolangs.artifacts.runs", unexpected_scan)
     template = esolangs.generate("Crement", "0110", width=1)
-    template = esolangs.load_program(
-        "Crement", esolangs.dump_program("Crement", template)
-    )
+    template = esolangs.from_json("Crement", esolangs.to_json("Crement", template))
     balanced = esolangs.generate("Crement", "00110110", balance=True)
     assert balanced.spans is not None
     assert all(end - start == 6 for start, end in balanced.spans)
@@ -64,9 +60,7 @@ def test_crement_data_only_setters_survive_saved_template(monkeypatch) -> None:
 @pytest.mark.parametrize("table", ["0110", "00010111", "01101001" * 4])
 def test_crement_saved_layouts_keep_exact_provenance(table: str, width: int) -> None:
     template = esolangs.generate("Crement", table, width=width)
-    template = esolangs.load_program(
-        "Crement", esolangs.dump_program("Crement", template)
-    )
+    template = esolangs.from_json("Crement", esolangs.to_json("Crement", template))
     bits = [0] * (len(table).bit_length() - 1)
     source = esolangs.instantiate("Crement", template, bits, truth_table=table)
     assert diverges("Crement", source, "") is (table[0] == "1")

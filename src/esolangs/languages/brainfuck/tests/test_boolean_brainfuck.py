@@ -156,11 +156,11 @@ def _check_literal_counter_cutoff() -> None:
         ) as counter:
             artifact = language.generate(table)
         assert counter.call_count == 2 * int(n == 2)
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row, expected in enumerate(table):
             result = prepared.evaluate([int(bit) for bit in f"{row:0{n}b}"])
-            assert result.bit == expected
+            assert result.answer == expected
             assert result.observation.input_reads == n
 
 

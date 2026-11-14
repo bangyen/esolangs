@@ -42,11 +42,11 @@ class TestLaserFuck:
             artifact = language.generate(table)
             weighted = module._laserfuck_weighted(table)
             assert (artifact.source == weighted) == (n == 7)
-            restored = language.load_program(language.dump_program(artifact))
+            restored = language.from_json(language.to_json(artifact))
             prepared = language.prepare(restored)
             for row in (0, 1, len(table) // 2, len(table) - 1):
                 result = prepared.evaluate(row_bits(row, n))
-                assert result.bit == table[row]
+                assert result.answer == table[row]
                 assert result.observation.input_reads == n
 
         for n in (5, 6):

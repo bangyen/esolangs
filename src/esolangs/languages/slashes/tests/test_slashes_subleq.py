@@ -91,7 +91,7 @@ def test_slashes_literal_dollar_and_serialized_template() -> None:
         == "$"
     )
     template = esolangs.generate("///", "01")
-    restored = esolangs.load_program("///", esolangs.dump_program("///", template))
+    restored = esolangs.from_json("///", esolangs.to_json("///", template))
     with pytest.raises(TemplateError, match="fill the template"):
         esolangs.run("///", restored)
     partial = esolangs.generate("///", "0110").source.replace("$", "a", 1)

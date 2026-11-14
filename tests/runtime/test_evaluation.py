@@ -38,8 +38,8 @@ def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
         return
     inputs = len(table).bit_length() - 1
     if isinstance(program, esolangs.TemplateArtifact):
-        path.write_text(esolangs.dump_program(name, program))
-        restored = esolangs.load_program(name, path.read_text())
+        path.write_text(esolangs.to_json(name, program))
+        restored = esolangs.from_json(name, path.read_text())
         assert _evaluate(name, restored, inputs=inputs) == table
         answer = _row_answerer(
             name,
@@ -128,7 +128,7 @@ def test_termination_output_limit_is_not_a_divergence_verdict() -> None:
                 source.evaluate([bit], limits=esolangs.ExecutionLimits(max_steps=100))
                 for bit in (0, 1)
             ]
-            assert [result.bit for result in decisions] == ["0", "1"]
+            assert [result.answer for result in decisions] == ["0", "1"]
             assert {result.termination.halts for result in decisions} == {False, True}
             with pytest.raises(esolangs.ExecutionCapError) as stopped:
                 source.evaluate([1], limits=esolangs.ExecutionLimits(max_steps=0))

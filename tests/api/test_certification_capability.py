@@ -88,12 +88,12 @@ def test_clearing_certification_preserves_generated_source(language, monkeypatch
         and node.module is not None
         and node.module.endswith(".proof_formulas")
     }
-    before = esolangs.dump_program(language, esolangs.generate(language, "01"))
+    before = esolangs.to_json(language, esolangs.generate(language, "01"))
     path = f"esolangs.languages.{original.id}.certification"
     load_certification(original)
     if path in sys.modules:
         monkeypatch.setattr(sys.modules[path], "CERTIFICATION", CertificationSpec())
-    after = esolangs.dump_program(language, esolangs.generate(language, "01"))
+    after = esolangs.to_json(language, esolangs.generate(language, "01"))
     assert after == before
 
 
@@ -141,7 +141,7 @@ for name in esolangs.list_languages():
         termination = language.contract.answer_mode == 'termination'
         table, bit = ('00', 0) if termination else ('01', 1)
         artifact = esolangs.generate(name, table)
-        restored = esolangs.load_program(name, esolangs.dump_program(name, artifact))
+        restored = esolangs.from_json(name, esolangs.to_json(name, artifact))
         assert restored == artifact, name
         if language.parameterized:
             program = esolangs.instantiate(name, restored, [bit])
@@ -159,7 +159,8 @@ for name in esolangs.list_languages():
         assert esolangs.read_answer(name, result.output) == str(bit), name
     debugger = make_debugger(name, program, stdin=stdin, seed=seed)
     if debugger.steppable_to_answer:
-        assert debugger.run(max_steps=100_000) == 'halted', name
+        limits = esolangs.ExecutionLimits(max_steps=100_000)
+        assert debugger.run(limits=limits) == 'halted', name
         stepped += 1
         observed = debugger.observation
         assert observed.steps > 0, name

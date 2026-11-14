@@ -29,7 +29,7 @@ def test_width_one_layouts_compute_the_table(language: str, n: int) -> None:
 @pytest.mark.parametrize("name", languages(parameterized=True))
 def test_narrow_templates_keep_their_bindings(name: str) -> None:
     template = esolangs.generate(name, "0110", width=1)
-    restored = esolangs.load_program(name, esolangs.dump_program(name, template))
+    restored = esolangs.from_json(name, esolangs.to_json(name, template))
     for row in range(4):
         bits = [int(char) for char in format(row, "02b")]
         code = esolangs.instantiate(name, template, bits, truth_table="0110")

@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
-from esolangs.artifacts import Artifact, BooleanEvaluation, TemplateArtifact
-from esolangs.exceptions import ArgumentError
+from esolangs.artifacts import (
+    Artifact,
+    BooleanEvaluation,
+    ProgramArtifact,
+    TemplateArtifact,
+)
+from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.limits import ExecutionLimits
 from esolangs.operations.boolean_io import encode_inputs, read_answer
 from esolangs.operations.execution import _execute_outcome
@@ -12,7 +17,7 @@ from esolangs.runtime._prepared import PreparedProgram
 from esolangs.runtime._validate import check_bit_count, check_bits
 
 
-def evaluate(
+def evaluate_artifact(
     artifact: Artifact,
     bits: list[int] | tuple[int, ...],
     *,
@@ -92,3 +97,31 @@ def evaluate(
     return BooleanEvaluation(
         str(contract.answer_values.index(answer)), proof.observation, proof.decision
     )
+
+
+def evaluate(
+    language: str,
+    artifact: Artifact,
+    bits: list[int] | tuple[int, ...],
+    *,
+    limits: ExecutionLimits | None = None,
+    catalog: Catalog | None = None,
+) -> BooleanEvaluation:
+    """Run one Boolean row and return its answer and execution evidence.
+
+    Raises:
+        UnknownLanguageError: ``language`` is not registered.
+        ProgramError: ``artifact`` is not an artifact, or belongs to
+            another language.
+        ArgumentError: ``bits`` is not one 0 or 1 per input.
+        EsolangError: Any error :func:`esolangs.run` raises for the row.
+    """
+    from esolangs.registry._catalog import get_catalog
+
+    catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
+    if not isinstance(artifact, (ProgramArtifact, TemplateArtifact)):
+        raise ProgramError("evaluation requires a program or template artifact")
+    if catalog.resolve(artifact.language) != name:
+        raise ProgramError(f"artifact belongs to {artifact.language}, not {name}")
+    return evaluate_artifact(artifact, bits, limits=limits, catalog=catalog)

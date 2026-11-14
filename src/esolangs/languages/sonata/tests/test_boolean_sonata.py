@@ -39,11 +39,11 @@ def test_pair_table_prints_its_answer() -> None:
         n, table = witness.arity, witness.table()
         artifact = language.generate(table)
         assert ("@#b_T0->=1" in artifact.source) == (n == 7)
-        restored = language.load_program(language.dump_program(artifact))
+        restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row in range(len(table)):
             result = prepared.evaluate(row_bits(row, n))
-            assert result.bit == table[row]
+            assert result.answer == table[row]
             assert result.observation.input_position == n
 
 

@@ -156,14 +156,14 @@ def test_constant_balance_and_setters_off_path(bit: str) -> None:
             ) as ring:
                 artifact = language.generate(witness.table())
             assert ring.call_count == (2 if witness.arity == 3 else 0)
-            restored = language.load_program(language.dump_program(artifact))
+            restored = language.from_json(language.to_json(artifact))
             for row in range(1 << witness.arity):
                 result = language.evaluate(
                     restored,
                     row_bits(row, witness.arity),
                     limits=esolangs.ExecutionLimits(max_steps=200),
                 )
-                assert result.bit == "1"
+                assert result.answer == "1"
                 assert result.observation.input_reads == 0
                 assert result.termination is not None
                 assert result.termination.cycle is not None

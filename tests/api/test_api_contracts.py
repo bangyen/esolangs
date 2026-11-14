@@ -106,13 +106,15 @@ class TestDebuggerResume:
         """Output only accumulates, so the condition is true forever after."""
         dbg = self._debugger()
         dbg.break_on_output("1")
-        assert dbg.run(max_steps=100000) == "breakpoint"
-        assert dbg.run(max_steps=100000) == "halted"
+        assert (
+            dbg.run(limits=esolangs.ExecutionLimits(max_steps=100000)) == "breakpoint"
+        )
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=100000)) == "halted"
         assert dbg.halted
 
     def test_the_stop_reason_separates_all_three(self) -> None:
         dbg = debugger_api.make_debugger(REFERENCE, "++>+<.", stdin="")
-        assert dbg.run(max_steps=2) == "max_steps"
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "max_steps"
         assert dbg.run() == "halted"
 
     def test_a_position_breakpoint_still_fires_before_its_step(self) -> None:
@@ -133,7 +135,10 @@ class TestDebuggerResume:
     def test_timeout_bounds_an_unbounded_run(self) -> None:
         """``run()`` with no budget hangs on a program that never halts."""
         dbg = debugger_api.make_debugger(REFERENCE, "+[]", stdin="")
-        assert dbg.run(timeout=0.01) == "timeout"
+        assert (
+            dbg.run(limits=esolangs.ExecutionLimits(execution_timeout=0.01))
+            == "execution_timeout"
+        )
         assert not dbg.halted
 
 
@@ -323,7 +328,7 @@ class TestSourceAndPathsAreExplicit:
 
         assert complete_vm(debugger_api.make_vm(REFERENCE, source)) == "\x00"
         debugger = debugger_api.make_debugger(REFERENCE, source)
-        assert debugger.run(max_steps=100) == "halted"
+        assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=100)) == "halted"
         assert debugger.output == "\x00"
 
     def test_a_real_program_is_untouched(self) -> None:
@@ -409,9 +414,11 @@ class TestThreadExecution:
         program = esolangs.instantiate(name, esolangs.generate(name, "0110"), [0, 1])
 
         def work() -> object:
-            return debugger_api.make_debugger(name, program, stdin="").run(timeout=0.01)
+            return debugger_api.make_debugger(name, program, stdin="").run(
+                limits=esolangs.ExecutionLimits(execution_timeout=0.01)
+            )
 
-        assert self._off_thread(work) == "timeout"
+        assert self._off_thread(work) == "execution_timeout"
 
     def test_the_private_evaluation_route_works_on_a_thread(self) -> None:
         """The private harness settles diverging rows off the main thread."""
@@ -501,10 +508,10 @@ class TestTheArgumentBoundaryRefusesCleanly:
         with pytest.raises(ArgumentError, match="UTF-8"):
             build()
 
-    def test_dump_program_refuses_what_load_program_would(self) -> None:
+    def test_to_json_refuses_what_from_json_would(self) -> None:
         """``run`` accepts the surrogate; the dumped document did not load."""
         with pytest.raises(ProgramError, match="UTF-8"):
-            esolangs.dump_program(REFERENCE, "\ud800")
+            esolangs.to_json(REFERENCE, "\ud800")
 
     @pytest.mark.parametrize("data", [None, 5, "png"])
     def test_png_data_of_the_wrong_type_says_so(self, data: object) -> None:

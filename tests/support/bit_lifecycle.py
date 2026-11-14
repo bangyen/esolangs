@@ -31,7 +31,7 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
         assert result == replace(native, steps=result.steps)
         assert esolangs.run(name, source, isolated=True) == native
         debug.step()
-        assert debug.run(max_steps=0) == "halted"
+        assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
         assert (debug.observation, debug.snapshot()) == (result, snapshot)
     retained = set_command == "1"
     cases = [
@@ -48,6 +48,6 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
             native.input_past_end,
         ) == (output, position, reads, past_end)
         debug = make_debugger(name, source, stdin=stdin)
-        assert debug.run(max_steps=100) == "halted"
+        assert debug.run(limits=esolangs.ExecutionLimits(max_steps=100)) == "halted"
         assert debug.observation == replace(native, steps=debug.observation.steps)
         assert esolangs.run(name, source, stdin=stdin, isolated=True) == native
