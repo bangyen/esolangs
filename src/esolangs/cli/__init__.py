@@ -52,10 +52,11 @@ from esolangs import (
 )
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli.args import (
+    _VALUE_OPTIONS,
     _check_count,
     _errors,
-    _expand_short_options,
     _fail,
+    _normalize_options,
     _pop_flags,
     _pop_options,
     _pop_set_pairs,
@@ -74,7 +75,7 @@ from esolangs.cli.hints import (
     _looks_like_a_table,
     _shell_hint,
 )
-from esolangs.cli.io import _read_stdin
+from esolangs.cli.io import _read_stdin, _write_output
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError, ProgramError
@@ -100,7 +101,7 @@ def _encode(rest: list[str]) -> None:
     if set(bits) - {"0", "1"} or not bits:
         _fail(f"bits must be a string of 0s and 1s, got {bits!r}")
     try:
-        sys.stdout.write(encode_inputs(language, [int(bit) for bit in bits]))
+        _write_output(encode_inputs(language, [int(bit) for bit in bits]))
     except EsolangError as exc:
         _fail(_shell_hint(_cli_error_text(exc), language))
 
@@ -166,7 +167,7 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
     if "--grep" in options:
         try:
             pattern = re.compile(options["--grep"], re.IGNORECASE)
-        except re.error as exc:
+        except (re.error, OverflowError, RecursionError) as exc:
             _fail(f"--grep is not a valid regular expression: {exc}")
     wanted = [_FLAG_FILTERS[flag] for flag in flags if flag in _FLAG_FILTERS]
     return [
@@ -180,7 +181,7 @@ def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
 
 def _list(rest: list[str]) -> None:
     """Print languages matching the requested capabilities."""
-    value_options = {"--grep", "--inputs", *_CATALOG_FILTERS}
+    value_options = _VALUE_OPTIONS["list"]
     flag_options = {"--details", "--json", *_FLAG_FILTERS}
     rest, options = _pop_options(rest, value_options)
     rest, flags = _pop_flags(rest, flag_options)
@@ -191,9 +192,9 @@ def _list(rest: list[str]) -> None:
     names = _catalog_names(options, flags)
     if as_json:
         if not details:
-            print(json.dumps(names, indent=2))
+            _write_output(json.dumps(names, indent=2) + "\n")
             return
-        print(
+        _write_output(
             json.dumps(
                 [
                     {
@@ -218,6 +219,7 @@ def _list(rest: list[str]) -> None:
                 ],
                 indent=2,
             )
+            + "\n"
         )
         return
     if not details:
@@ -283,7 +285,7 @@ def _emit(artifact: Artifact, *, plain: bool, gzip: bool = False) -> None:
     if isinstance(program, CompressedText):
         if plain:
             for chunk in program.plain_chunks():
-                sys.stdout.write(chunk)
+                _write_output(chunk)
         else:
             sys.stdout.buffer.write(program.to_gzip())
     elif isinstance(program, Raster):
@@ -295,15 +297,17 @@ def _emit(artifact: Artifact, *, plain: bool, gzip: bool = False) -> None:
         )
     else:
         ending = "\n" if LANGUAGES[artifact.language].runtime.file_newline else ""
-        sys.stdout.write(program + ending)
+        _write_output(program + ending)
 
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     from esolangs import generate, instantiate
 
-    value_options = {"--bits", "--scale", "--settings"}
+    value_options = _VALUE_OPTIONS["generate"] - {"--set"}
     flag_options = {"--balance", "--plain", "--gzip"}
+    before = rest
+    rest, width, bare = _pop_width(rest)
     rest, set_pairs = _pop_set_pairs(rest)
     rest, options = _pop_options(rest, value_options)
     rest, flags = _pop_flags(rest, flag_options)
@@ -312,8 +316,6 @@ def _generate(rest: list[str]) -> None:
     if gzip and "--plain" in flags:
         _fail("--gzip and --plain are mutually exclusive")
     scale = _scale_of(options)
-    before = list(rest)
-    rest, width, bare = _pop_width(rest)
     if balance and width is not None:
         _fail("--balance and --width are mutually exclusive")
     rest = _split_positional(
@@ -482,7 +484,10 @@ def _describe(rest: list[str]) -> None:
     if as_spec:
         with _errors():
             spec = _spec(rest[0])
-        print(json.dumps(spec) if as_json else spec)
+        if as_json:
+            _write_output(json.dumps(spec) + "\n")
+        else:
+            print(spec)
         return
     with _errors():
         facts = describe(rest[0])
@@ -490,7 +495,7 @@ def _describe(rest: list[str]) -> None:
         # Verbatim, including the keys the reading layout hides: a caller
         # asking for JSON is not reading it, and a field that vanishes when
         # it is empty is the thing that makes a schema unusable.
-        print(json.dumps(asdict(facts), indent=2))
+        _write_output(json.dumps(asdict(facts), indent=2) + "\n")
         return
     # The contract first: how bits go in, where the answer comes out, and
     # whether a generator exists.  The field list below keeps the facts
@@ -542,26 +547,29 @@ def _read_answer(rest: list[str]) -> None:
         _fail(
             f"{declaration.name} answers 0 if it {zero} and 1 if it {one}, so "
             f"there is no output to read; use: esolangs run "
-            f"--execution-timeout <seconds> {declaration.name} <program-file> "
+            f"--execution-timeout <seconds> {_as_argument(declaration.name)} "
+            "<program-file> "
             "and observe "
             f"whether it halts"
         )
     output = _read_stdin(hint="; pipe a program's output in, or close stdin")
     # NQ's false answer is a space; only absent output is empty stdin.
-    if not output:
-        _fail(
-            f"nothing on stdin to read an answer out of; pipe a program's "
-            f"output in: esolangs run {language} prog.txt | esolangs "
-            f"read-answer {language}"
-        )
     try:
         answer = read_answer(language, output)
     except ProgramError as exc:
         # Output with no readable answer is the program's failure, as in run.
+        if not output:
+            language_arg = _as_argument(declaration.name)
+            _fail(
+                "nothing on stdin to read an answer out of; pipe a program's "
+                f"output in: esolangs run {language_arg} prog.txt | esolangs "
+                f"read-answer {language_arg}",
+                1,
+            )
         _fail(exc, 1)
     except EsolangError as exc:
         _fail(exc)
-    print(answer)
+    _write_output(answer + "\n")
 
 
 def main() -> None:
@@ -640,6 +648,8 @@ def _dispatch() -> None:
         sys.exit(2)
 
     cmd, rest = argv[0], argv[1:]
+    rest = _normalize_options(cmd, rest)
+    argv = [cmd, *rest]
     option_argv = argv[: argv.index("--")] if "--" in argv else argv
     # Accepted after a subcommand too.  The top-level help advertises it
     # without saying where it goes, and `esolangs list --version` answering
@@ -662,7 +672,6 @@ def _dispatch() -> None:
         sys.stdout.write(help_text(cmd))
         sys.exit(0)
 
-    rest = _expand_short_options(rest)
     {
         "list": _list,
         "describe": _describe,

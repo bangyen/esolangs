@@ -1,5 +1,7 @@
 """What ``--execution-timeout`` bounds, what it costs, and the code it exits with."""
 
+import subprocess
+import sys
 import time
 from importlib import import_module
 from pathlib import Path
@@ -119,6 +121,33 @@ def test_shortest_deadline_applies_to_blocked_stdin(
         assert f"({flag})" in capsys.readouterr().err
     finally:
         release.set()
+
+
+@pytest.mark.medium
+def test_blocked_stdin_pipe_exits_without_aborting(tmp_path: Path) -> None:
+    cmd = [
+        sys.executable,
+        "-m",
+        "esolangs",
+        "run",
+        "--preparation-timeout",
+        "0.2",
+        REFERENCE,
+        _program(tmp_path, ",."),
+    ]
+    with subprocess.Popen(
+        cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as child:
+        try:
+            # Keep the writer open through the child's shutdown.
+            assert child.wait(timeout=10) == 124
+        finally:
+            if child.poll() is None:
+                child.kill()
+        assert child.stderr is not None
+        diagnostic = child.stderr.read()
+    assert b"--preparation-timeout" in diagnostic
+    assert b"Fatal Python error" not in diagnostic
 
 
 def test_preparation_deadline_applies_to_decoding(

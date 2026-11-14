@@ -22,7 +22,7 @@ def _check_cli_answers(capsys: pytest.CaptureFixture[str]) -> None:
         assert call_main(["read-answer", "NQ"], capsys, stdin=output) == answer + "\n"
     with pytest.raises(SystemExit) as exc:
         call_main(["read-answer", "NQ"], capsys)
-    assert exc.value.code == 2
+    assert exc.value.code == 1
     assert "nothing on stdin" in capsys.readouterr().err
 
 

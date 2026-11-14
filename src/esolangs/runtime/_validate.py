@@ -13,6 +13,7 @@ _INFINITE = (float("inf"), float("-inf"))
 #: The longest wall-clock bound; a thread wait overflows past
 #: ``threading.TIMEOUT_MAX``; see :func:`check_timeout`.
 _TIMEOUT_CEILING = 2_592_000.0
+_ISOLATED_TIMEOUT = 30.0
 
 
 def _argument_repr(value: object) -> str:
@@ -74,7 +75,9 @@ def _timeout_noun(name: str) -> str:
     return "a timeout" if name == "timeout" else name
 
 
-def check_timeout(timeout: object, name: str = "timeout") -> None:
+def check_timeout(
+    timeout: object, name: str = "timeout", *, ceiling: float = _TIMEOUT_CEILING
+) -> None:
     """Refuse invalid timeouts; ``None`` is allowed."""
     from esolangs.exceptions import ArgumentError
     from esolangs.runtime.source_hints import with_hint
@@ -98,7 +101,7 @@ def check_timeout(timeout: object, name: str = "timeout") -> None:
             ArgumentError(f"{name} must be positive, got {_argument_repr(timeout)}"),
             (f"set {_timeout_noun(name)} in seconds, for example {name}=5.0"),
         )
-    if timeout > _TIMEOUT_CEILING:
+    if timeout > ceiling:
         # Thread waits take this bound: the CLI's source read joins with it
         # and a worker reads records with ``Queue.get``.  Both raised
         # ``OverflowError: timestamp out of range for C PyTime_t`` past
@@ -106,7 +109,7 @@ def check_timeout(timeout: object, name: str = "timeout") -> None:
         # ``get(timeout=1e300)``; a bound that long is not one anybody wants.
         raise with_hint(
             ArgumentError(
-                f"{name} must be at most {_TIMEOUT_CEILING} seconds, got "
+                f"{name} must be at most {ceiling} seconds, got "
                 f"{_argument_repr(timeout)}; a longer one does not fit "
                 "a thread wait"
             ),

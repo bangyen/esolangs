@@ -116,6 +116,9 @@ class Debugger(_ExecutionController):
         (Cyclic tag records the dump in its snapshot).  Every ``make_vm``
         machine has one; a hand-written VM needs ``snapshot()`` for this.
         """
+        snapshot = getattr(self.vm, "snapshot", None)
+        if not callable(snapshot):
+            raise ArgumentError("vm must provide snapshot() to inspect internal state")
         return cast(SnapshotVM, self.vm).snapshot()
 
     def break_at(self, ip: int | tuple[int, ...]) -> None:

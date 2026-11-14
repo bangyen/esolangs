@@ -105,6 +105,13 @@ class TestATemplateCarriesItsSetters:
         with pytest.raises(ValueError, match="expected 2 bits"):
             fill_runs("$$", "$", (("a", "b"), ("c", "d")), [1])
 
+    def test_standalone_bindings_validate_source_and_spans(self) -> None:
+        bindings = esolangs.TemplateBindings(setters=(("+", "-"),))
+        assert bindings.fill("a$b", [1], spans=[(1, 2)]) == "a-b"
+        for source, spans in (("abc", None), ("abc", ((1, 2),)), ("a$b", ())):
+            with pytest.raises(esolangs.TemplateError):
+                bindings.fill(source, [1], spans=spans)
+
     def test_a_zero_width_setter_has_an_empty_run(self) -> None:
         """An input spelled as nothing on both branches fills to nothing."""
         from esolangs._bindings import fill_runs, runs

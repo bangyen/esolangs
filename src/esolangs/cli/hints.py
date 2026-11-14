@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from collections.abc import Iterable
 from difflib import get_close_matches
 
@@ -174,10 +175,5 @@ def _input_sentence(facts: LanguageInfo) -> str:
 
 
 def _as_argument(language: str) -> str:
-    """Return ``language`` spelled the way a shell needs it.
-
-    Some names contain a space (a count is pinned by
-    ``TestPrintedCommandsCanBePasted``), and ``esolangs describe --spec A
-    Painter Ant`` gave ``unexpected argument: 'Painter'``.
-    """
-    return f'"{language}"' if " " in language else language
+    """Quote one language name for a POSIX shell."""
+    return shlex.quote(language)

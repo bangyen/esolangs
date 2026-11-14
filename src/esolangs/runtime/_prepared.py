@@ -10,6 +10,7 @@ from typing import Any, cast
 
 from esolangs.artifacts import BooleanEvaluation, ProgramArtifact
 from esolangs.debugger import Debugger
+from esolangs.exceptions import ProgramError
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry._catalog import Catalog, get_catalog
@@ -60,6 +61,17 @@ class PreparedProgram:
 
     def __post_init__(self) -> None:
         """Retain validated dialect options and immutable shaped source."""
+        from esolangs.operations.source import _check_program
+
+        if not isinstance(self.artifact, ProgramArtifact):
+            raise ProgramError("a prepared program requires a program artifact")
+        catalog = get_catalog(self.catalog)
+        artifact = _check_program(
+            self.artifact.language, self.artifact, catalog=catalog
+        )
+        check_scale_for(artifact.language, artifact.scale, catalog=catalog)
+        object.__setattr__(self, "artifact", artifact)
+        object.__setattr__(self, "catalog", catalog)
         with interpreter_errors(
             f"the {self.language} interpreter recursed deeper than CPython's "
             "stack limit allows while loading this program",

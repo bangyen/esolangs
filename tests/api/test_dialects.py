@@ -275,18 +275,28 @@ def test_generated_programs_refuse_a_contradicting_dialect(
     language: str, key: str, other: int | str
 ) -> None:
     """An infix Alight program run as postfix misparsed instead of refusing."""
-    artifact = esolangs.generate(language, "0110")
+    bound = esolangs.Language(language)
     choices = settings_api.dialect_choices(language)
     defaults = {k: v["default"] for k, v in choices.items()}
-    assert artifact.settings == esolangs.Language(language).settings(**defaults)
-    contrary = esolangs.Language(language).settings(**{key: other})
-    for operation in (
-        lambda: esolangs.run(language, artifact, settings=contrary),
-        lambda: esolangs.Language(language).prepare(artifact, settings=contrary),
-        lambda: esolangs.to_json(language, artifact, settings=contrary),
-    ):
-        with pytest.raises(esolangs.ProgramError, match=f"{key}="):
-            operation()
+    contrary = bound.settings(**{key: other})
+    for selected in (None, bound.settings()):
+        artifact = bound.generate("0110", settings=selected)
+        assert artifact.settings == bound.settings(**defaults)
+        for operation in (bound.run, bound.prepare, bound.to_json):
+            with pytest.raises(esolangs.ProgramError, match=f"{key}="):
+                operation(artifact, settings=contrary)
+
+
+def test_balanced_generation_retains_partial_dialect_settings() -> None:
+    name = one_where(lambda info: "expression_syntax" in info.dialect_settings)[0]
+    language = esolangs.Language(name)
+    partial = language.settings(expression_syntax="postfix")
+    full = language.settings(expression_syntax="postfix", list_update="in_place")
+    artifact = language.generate("0110", balance=True, settings=partial)
+    assert artifact == language.generate("0110", balance=True, settings=full)
+    assert artifact.settings == full
+    for row, expected in enumerate("0110"):
+        assert language.evaluate(artifact, [row >> 1, row & 1]).answer == expected
 
 
 def test_every_reported_default_and_choice_is_accepted(monkeypatch) -> None:

@@ -2,6 +2,7 @@
 
 import pathlib
 import re
+import shlex
 from importlib.resources import files
 from pathlib import Path
 
@@ -16,12 +17,10 @@ from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec
 from tests.support.cli_support import call_main
-from tests.support.pick import first
+from tests.support.pick import first, one_where
 
 
 def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
-    import shlex
-
     from esolangs.cli import help as help_module
     from esolangs.registry import LanguageDeclaration
     from esolangs.registry._backend import TemplateSpec
@@ -228,6 +227,26 @@ class TestDescribeHidesInputFieldsWithNoInput:
         out = call_main(["describe", first(input_shape="row_index")], capsys)
         assert "input_shape" in out
         assert "row_index" in out
+
+
+@pytest.mark.parametrize(
+    "language", one_where(lambda facts: bool(re.search(r"[*()]", facts.name)))
+)
+def test_describe_quotes_shell_metacharacters_in_its_spec_command(
+    capsys, language: str
+) -> None:
+    report = call_main(["describe", language], capsys)
+    command = next(
+        line.removeprefix("spec: ")
+        for line in report.splitlines()
+        if line.startswith("spec: ")
+    )
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    tool, *args = lexer
+    assert tool == "esolangs"
+    assert args == ["describe", "--spec", language]
+    assert call_main(args, capsys).strip() == esolangs.describe(language).spec.strip()
 
 
 class TestVersion:

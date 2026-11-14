@@ -219,15 +219,15 @@ examples:
 
 Run a program through its interpreter and print what it writes.
 
-The program is read from <program-file>; its input is this command's stdin.
-Input is consumed verbatim using the language's character, number, or
-string reads. For generated Boolean programs, `esolangs encode-inputs` spells the
-input characters, numeric tokens, or lines.
+The program is read from <program-file>. Piped stdin is decoded as UTF-8
+and consumed verbatim using the language's character, number, or string reads.
+For generated Boolean programs, `esolangs encode-inputs` spells the input
+characters, numeric tokens, or lines.
 
     esolangs encode-inputs brainfuck 101 | esolangs run brainfuck prog.txt
 
-Output is written verbatim, so it can be piped byte for byte; a trailing
-newline is added only when stdout is a terminal.  Whatever the program
+Piped output is written verbatim as UTF-8. A trailing newline is added
+only when stdout is a terminal. Whatever the program
 printed before a failure is written too, then the error on stderr.
 
 exit codes: 0 ran, 1 the program broke while running, 2 the ask was wrong

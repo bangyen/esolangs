@@ -397,10 +397,9 @@ Use `encode_inputs` to build stdin; it and this table use `describe`.
 [`EXAMPLES.md`](../src/esolangs/languages/EXAMPLES.md) lists each example’s
 input row and encoding.
 
-`esolangs run` passes stdin to the interpreter verbatim. It does not check
-it against the alphabet above (`ab` reads as two bits in brainfuck). Build
-stdin with `encode-inputs`, and pipe the output to `read-answer` when you want an
-answer bit.
+`esolangs run` reads piped stdin as UTF-8 and passes the text to the interpreter
+verbatim (`ab` reads as two bits in brainfuck). Piped text from `generate`,
+`encode-inputs`, `run`, and `read-answer` also uses UTF-8.
 
 ## Templates
 
@@ -493,8 +492,8 @@ except esolangs.ExecutionCapError as exc:
 ```
 
 On the CLI: `esolangs run --isolated --execution-timeout 3 --max-output 4096 brainfuck program.txt`.
-File acquisition, stdin acquisition, and subprocess execution each use that
-bound separately.
+File acquisition, decoding, and stdin share one execution-timeout budget.
+Subprocess execution uses a fresh budget after worker preparation.
 
 ### Count steps
 

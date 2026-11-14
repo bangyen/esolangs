@@ -52,11 +52,23 @@ def test_grep_searches_the_spec_case_insensitively(capsys) -> None:
     assert _names(["--grep", "zzz-no-spec-says-this"], capsys) == []
 
 
+@pytest.mark.parametrize("pattern", ["--help", "-h", "--version", "-V", "--set", "-s"])
+def test_grep_keeps_option_shaped_values(capsys, pattern: str) -> None:
+    expected = _names([f"--grep={pattern}"], capsys)
+    assert _names(["--grep", pattern], capsys) == expected
+
+
 def test_invalid_filters_are_usage_errors(capsys) -> None:
     cases = [
         (["--generator", "--interpreter-only"], "cannot be combined"),
         (["--grep", "("], "--grep is not a valid regular expression"),
+        (
+            ["--grep", "a{999999999999999999999999999}"],
+            "--grep is not a valid regular expression",
+        ),
+        (["--grep", "(" * 1_000 + "x" + ")" * 1_000], "--grep is not a valid"),
         (["--grep"], "--grep needs a value"),
+        (["--grep", "--", "--json"], "--grep needs a value"),
         (["--grep", "a", "--grep", "b"], "--grep given more than once"),
         (["--source-kind", "grid"], "--source-kind must be one of"),
         (["--answer-mode", "printed"], "--answer-mode must be one of"),

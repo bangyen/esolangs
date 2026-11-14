@@ -98,7 +98,7 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
     """Return the answer bit, ``"0"`` or ``"1"``, a program's ``output`` carries.
 
     Most print it (last non-whitespace character); some dump their state.
-    ``describe(language)["answer_pattern"]`` and ``answer_mode`` are the
+    ``describe(language).answer_pattern`` and ``.answer_mode`` are the
     same facts as data (a verifier that hardcoded two dumps and forgot a
     third reported a passing language as broken).
 
@@ -107,7 +107,8 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
         ArgumentError: The language answers by terminating: its answer is
             whether it halts, not anything printed; or ``output`` is not a
             string.
-        ProgramError: ``output`` holds no readable answer.
+        ProgramError: ``output`` holds no readable answer or the language's
+            answer pattern cannot be compiled.
     """
     from esolangs.registry._catalog import get_catalog
 
@@ -125,10 +126,17 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
             f"{name} answers by terminating, not by printing; a timeout is undecided"
         )
     if contract.answer_pattern:
-        found = re.findall(contract.answer_pattern, output)
-        raw = found[-1] if found else ""
+        try:
+            matches = re.finditer(contract.answer_pattern, output)
+        except (re.error, OverflowError, RecursionError) as error:
+            raise ProgramError(
+                f"{name} has an invalid answer pattern: {error}"
+            ) from error
+        raw = None
+        for match in matches:
+            raw = match[1 if match.re.groups else 0]
     else:
-        raw = output.strip()[-1:]
+        raw = output.strip()[-1:] or None
     zero, one = contract.answer_values
     if raw == one:
         return "1"

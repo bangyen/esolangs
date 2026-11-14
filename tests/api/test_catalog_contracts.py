@@ -1,13 +1,57 @@
 """Shared listing and specification contracts."""
 
 import re
+from dataclasses import replace
 
 import pytest
 
 import esolangs
+from esolangs.registry import LANGUAGES
 from esolangs.runtime._execution import interpreter_module
 from tests.support.cli_support import call_main
 from tests.support.reference import REFERENCE
+
+
+def test_catalog_aliases_use_the_same_normalization_as_lookup() -> None:
+    original = LANGUAGES[REFERENCE]
+    scoped = esolangs.Catalog([replace(original, aliases=("  scoped-bf  ",))])
+    assert scoped.resolve("SCOPED-BF") == REFERENCE
+    other = replace(original, name="other", id="other", aliases=("scoped-bf",))
+    with pytest.raises(esolangs.ArgumentError, match="one owner"):
+        scoped.with_language(other)
+    for alias in (None, " "):
+        with pytest.raises(esolangs.ArgumentError, match="nonblank strings"):
+            esolangs.Catalog([replace(original, aliases=(alias,))])
+
+
+def test_read_answer_uses_the_first_group_of_the_last_match() -> None:
+    original = LANGUAGES[REFERENCE]
+    contract = replace(original.contract, answer_pattern=r"([01])([ab])")
+    scoped = esolangs.Catalog([replace(original, contract=contract)])
+    assert scoped.bind(REFERENCE).read_answer("0a, 1b") == "1"
+
+
+def test_read_answer_reports_a_malformed_catalog_pattern() -> None:
+    original = LANGUAGES[REFERENCE]
+    contract = replace(original.contract, answer_pattern="wat(")
+    scoped = esolangs.Catalog([replace(original, contract=contract)])
+    with pytest.raises(esolangs.ProgramError, match="invalid answer pattern"):
+        scoped.bind(REFERENCE).read_answer("1")
+
+
+def test_scoped_description_uses_the_declared_runtime() -> None:
+    original = LANGUAGES[REFERENCE]
+    local = replace(
+        original,
+        name="Scoped runtime",
+        id="scoped_runtime",
+        runtime=replace(original.runtime, category="custom"),
+    )
+    scoped = esolangs.Catalog([local]).bind(local.name)
+    assert scoped.describe().state_model == "other"
+    assert scoped.describe().spec == esolangs.describe(REFERENCE).spec
+    assert scoped.run("+.").output == "\x01"
+
 
 #: What a spec must not show: a private name, a raw Sphinx role, a repo path.
 _MAINTAINER = re.compile(

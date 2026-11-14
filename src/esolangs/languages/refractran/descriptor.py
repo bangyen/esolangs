@@ -18,6 +18,7 @@ def _backend() -> BackendDefinition:
     from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import wrap_space_delimited
     from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
 
     return BooleanBackend(
@@ -26,6 +27,11 @@ def _backend() -> BackendDefinition:
         ),
         layout_width=True,
         wrap=wrap_space_delimited,
+        same_layout=FunctionRef(
+            "esolangs.generation.helpers",
+            "same_token_layout",
+            ("template", "plain", "_layout"),
+        ),
         balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.refractran.generator", "refractran_balance_request"
         ),

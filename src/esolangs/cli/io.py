@@ -6,12 +6,13 @@ carries a size and a deadline, and two notices say why nothing happened.
 
 from __future__ import annotations
 
-import codecs
 import sys
 import threading
 from collections.abc import Callable
 from contextlib import AbstractContextManager
+from io import BufferedReader, FileIO
 from time import monotonic
+from typing import BinaryIO, cast
 
 from esolangs.artifacts import ProgramArtifact
 from esolangs.cli.args import _fail
@@ -221,7 +222,16 @@ def _read_stdin(
         return ""
 
     def _read_text() -> str:
+        stream = cast("BinaryIO | None", getattr(sys.stdin, "buffer", None))
         try:
+            # A blocked daemon must leave the BufferedReader unlocked at shutdown.
+            if isinstance(stream, BufferedReader) and isinstance(stream.raw, FileIO):
+                data = stream.raw.read()
+                if data is None:
+                    _fail("cannot read stdin: no data available")
+                return data.decode("utf-8")
+            if stream is not None:
+                return stream.read().decode("utf-8")
             return sys.stdin.read()
         except UnicodeDecodeError as exc:
             _fail(f"cannot read stdin: not text ({_decode_note(exc)})")
@@ -237,43 +247,22 @@ def _read_stdin(
     result = _slurp_thread(
         _read_text, timeout, notice=_waiting_notice(hint), on_timeout=_on_timeout
     )
-    hidden = _smuggled_bytes(result)
-    if hidden is not None:
+    if (hidden := _smuggled_bytes(result)) is not None:
         _fail(f"cannot read stdin: not text ({_decode_note(hidden)})")
     return result
 
 
 def _write_output(text: str) -> None:
-    """Write program output to stdout, whatever bytes it turned out to be.
-
-    A program can print a lone surrogate (a print command emits the
-    accumulator as an unbounded character), which made ``sys.stdout.write``
-    raise a nineteen-line traceback.  When the text stream refuses, write
-    through the byte stream with ``surrogatepass``, keeping ``run --help``'s
-    verbatim promise; a stream with no ``buffer`` gets an escaped form.  A
-    stream that cannot encode a character at all (an ASCII locale) gets it
-    backslash-escaped, since ``surrogatepass`` raised again there (exit 70).
-    """
+    """Write UTF-8 data to a pipe, preserving interpreter surrogates."""
     stream = getattr(sys.stdout, "buffer", None)
-    if stream is None:
-        # A text-only stream (an in-process StringIO) takes any str verbatim.
-        try:
-            sys.stdout.write(text)
-        except UnicodeEncodeError:
-            sys.stdout.write(text.encode("utf-8", "backslashreplace").decode("utf-8"))
+    if stream is not None and not sys.stdout.isatty():
+        stream.write(text.encode("utf-8", "surrogatepass"))
         return
-    encoding = sys.stdout.encoding or "utf-8"
     try:
-        text.encode(encoding)  # Strict: ``main`` made the stream itself lenient.
+        sys.stdout.write(text)
     except UnicodeEncodeError:
-        utf8 = codecs.lookup(encoding).name == "utf-8"
-        sys.stdout.flush()
-        stream.write(
-            text.encode(encoding, "surrogatepass" if utf8 else "backslashreplace")
-        )
-        stream.flush()
-        return
-    sys.stdout.write(text)
+        encoding = sys.stdout.encoding or "utf-8"
+        sys.stdout.write(text.encode(encoding, "backslashreplace").decode(encoding))
 
 
 def _emit_partial(exc: EsolangError) -> None:

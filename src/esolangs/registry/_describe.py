@@ -106,21 +106,24 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
     lang = catalog.languages[name]
-    stem = example_stems(catalog=catalog).get(lang.id, lang.id)
+    packaged = get_catalog().languages.get(name)
+    has_packaged_examples = lang == packaged
     # Package-relative: repository-relative paths broke after a ``chdir`` and
     # when installed; absolute ones froze the install location into output.
-    examples = tuple(
-        sorted(
-            f"languages/{lang.id}/{p.name}"
-            for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
+    examples: tuple[str, ...] = ()
+    if has_packaged_examples:
+        stem = example_stems(catalog=catalog).get(lang.id, lang.id)
+        examples = tuple(
+            sorted(
+                f"languages/{lang.id}/{p.name}"
+                for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
+            )
         )
-    )
     traits = machine_traits(name, catalog=catalog)
     parameterized = lang.parameterized
     contract = lang.contract
     width_effect = _width_effect(lang)
-    packaged = get_catalog().languages.get(name)
-    scaling = _SCALING.get(lang.id) if lang == packaged else None
+    scaling = _SCALING.get(lang.id) if has_packaged_examples else None
     backend = lang.backend
     generates = backend is not None
     reads_input = generates and not parameterized
@@ -130,7 +133,7 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
         spec=_spec(name, catalog=catalog),
         id=lang.id,
         source_kind=lang.runtime.source_kind.value,
-        state_model=_STATE_MODELS[lang.runtime.category],
+        state_model=_STATE_MODELS.get(lang.runtime.category, "other"),
         generator_shape=backend.shape.value if backend is not None else None,
         boolean_generator=generates,
         generator_scaling=scaling,

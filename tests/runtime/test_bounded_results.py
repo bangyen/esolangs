@@ -125,6 +125,19 @@ def test_debugger_does_not_invent_periodic_completion():
     assert result.output == "unproven"
     assert result.completion is None
     assert result.input_position is None
+    with pytest.raises(esolangs.ArgumentError, match="must provide snapshot"):
+        Debugger(Interrupted()).snapshot()
+
+
+def test_debugger_refuses_a_step_only_object():
+    from esolangs.debugger import Debugger
+
+    class StepOnly:
+        def step(self):
+            pass
+
+    with pytest.raises(esolangs.ArgumentError, match=r"vm must be a VM.*halted"):
+        Debugger(StepOnly())
 
 
 @pytest.mark.parametrize("drive", ["step", "run"])

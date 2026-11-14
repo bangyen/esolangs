@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, TYPE_CHECKING
@@ -36,6 +36,19 @@ class _FileSource:
 
     def __str__(self) -> str:
         return self.path
+
+
+def explicit_path(path: str | os.PathLike[str]) -> Path:
+    """Validate a path argument before opening or reading a file."""
+    try:
+        spelling = os.fspath(path)
+    except (TypeError, ValueError) as error:
+        raise ArgumentError("path must be a str or PathLike returning str") from error
+    if not isinstance(spelling, str):
+        raise ArgumentError("path must be a str or PathLike returning str")
+    if not spelling:
+        raise ArgumentError("path must not be empty")
+    return Path(spelling)
 
 
 def _read_container(
@@ -116,6 +129,29 @@ def native_text_source(source: ProgramSource | _FileSource) -> str:
     )
 
 
+def _native_chunks(chunks: Iterable[str]) -> Iterator[str]:
+    """Normalize line endings across chunks and drop one final terminator."""
+    pending = ""
+    for chunk in chunks:
+        text = pending + chunk
+        split = -2 if text.endswith("\r\n") else -1
+        pending = text[split:]
+        yield text[:split].replace("\r\n", "\n").replace("\r", "\n")
+    yield pending.replace("\r\n", "\n").replace("\r", "\n").removesuffix("\n")
+
+
+def _native_compressed_source(
+    source: ProgramSource | _FileSource,
+) -> str | CompressedText:
+    """Normalize a gzip-native language without expanding it into one string."""
+    value = compressed_text_source(source)
+    if isinstance(value, CompressedText):
+        return CompressedText.from_chunks(
+            _native_chunks(value.chunks()), limits=value.limits
+        )
+    return native_text_source(value)
+
+
 def compressed_text_source(source: ProgramSource | _FileSource) -> str | CompressedText:
     """Keep gzip source compressed; accept ordinary text containers too."""
     value, _path = _read_container(source)
@@ -166,6 +202,8 @@ def source_for(
     loader = catalog.languages[catalog.resolve(language)].runtime.source_loader
     if native and loader is SourceLoader.TEXT:
         return native_text_source(source)
+    if native and loader is SourceLoader.COMPRESSED:
+        return _native_compressed_source(source)
     if preserve_compression and loader is not SourceLoader.RASTER:
         return compressed_text_source(source)
     return _SOURCE_LOADERS[loader](source)

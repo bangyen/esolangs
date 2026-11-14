@@ -34,7 +34,12 @@ from esolangs.runtime._result_wire import (
     encode_result,
 )
 from esolangs.runtime._source import ProgramSource, effective_scale
-from esolangs.runtime._validate import check_timeout, check_whole
+from esolangs.runtime._validate import (
+    _ISOLATED_TIMEOUT,
+    _TIMEOUT_CEILING,
+    check_timeout,
+    check_whole,
+)
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import (
     DialectSettings,
@@ -374,7 +379,8 @@ def _invoke_worker(
     check_limits(max_output, max_memory, isolated=True)
     if max_steps is not None:
         check_whole(max_steps, "max_steps")
-    check_timeout(timeout)
+    # The default total adds worker startup time to a validated execution budget.
+    check_timeout(timeout, ceiling=_TIMEOUT_CEILING + _ISOLATED_TIMEOUT)
     check_timeout(execution_timeout)
     check_timeout(preparation_timeout)
     if timeout is None:

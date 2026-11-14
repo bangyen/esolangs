@@ -130,7 +130,15 @@ class TemplateBindings:
         """Bind integer bits in source, refusing missing or stray runs."""
         bits = check_bits(bits, "bits")
         check_bit_count(bits, self.inputs, "template")
-        return fill_runs(source, self.char, self.setters, bits, spans=spans)
+        if not isinstance(source, str):
+            raise TemplateError("template source must be text")
+        try:
+            if spans is not None:
+                spans = tuple(spans)
+                validate_spans(source, self.char, self.setters, spans)
+            return fill_runs(source, self.char, self.setters, bits, spans=spans)
+        except (TypeError, ValueError) as error:
+            raise TemplateError(str(error)) from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,7 +191,13 @@ class TemplateArtifact:
         bits = check_bits(bits, "bits")
         check_bit_count(bits, self.bindings.inputs, f"{self.language} template")
         return ProgramArtifact(
-            self.bindings.fill(self.source, bits, spans=self.spans),
+            fill_runs(
+                self.source,
+                self.bindings.char,
+                self.bindings.setters,
+                bits,
+                spans=self.spans,
+            ),
             self.language,
             settings=self.settings,
         )

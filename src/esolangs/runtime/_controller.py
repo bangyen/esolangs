@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from inspect import getattr_static
 from time import monotonic
 from typing import Literal
 
@@ -22,6 +23,14 @@ from esolangs.vm import (
 
 StopReason = Literal["halted", "breakpoint", "max_steps", "execution_timeout"]
 
+_DRIVER_FIELDS = (
+    "halted",
+    "output",
+    "steppable_to_answer",
+    "dumps_on_the_post_halt_step",
+)
+_MISSING = object()
+
 
 class ExecutionController:
     """Drive a VM with shared bounds, completion and execution observations."""
@@ -29,6 +38,13 @@ class ExecutionController:
     def __init__(self, vm: VM) -> None:
         if isinstance(vm, type) or not callable(getattr(vm, "step", None)):
             raise ArgumentError(f"vm must be a VM, got {_argument_repr(vm)}")
+        if not isinstance(vm, _DelegatingVM):
+            for name in _DRIVER_FIELDS:
+                # Leave properties unevaluated, but accept a forwarding proxy.
+                if getattr_static(vm, name, _MISSING) is _MISSING and not hasattr(
+                    vm, name
+                ):
+                    raise ArgumentError(f"vm must be a VM with a {name} attribute")
         self.vm = vm
         self._timed_out = False
         self._dumped = False

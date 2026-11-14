@@ -1,13 +1,16 @@
 """Portable source survives disk with its dialect and template conventions."""
 
 import json
+from pathlib import Path
 
 import pytest
 
 import esolangs
 from esolangs import ProgramArtifact
+from esolangs.registry import template_char
 from tests.support.dialect_support import CASES
 from tests.support.evaluation import _evaluate
+from tests.support.pick import one
 from tests.support.reference import REFERENCE
 
 
@@ -103,3 +106,40 @@ def test_template_kind_requires_parameterized_language() -> None:
     document.update(kind="template", char="$", setters=[], spans=[])
     with pytest.raises(esolangs.ProgramError, match="template char does not match"):
         esolangs.from_json("Brainfuck", json.dumps(document))
+
+
+@pytest.mark.parametrize("language", [REFERENCE, *one(parameterized=True)])
+def test_export_refuses_templates_the_importer_would_reject(language) -> None:
+    declared = template_char(esolangs.describe(language).id)
+    marker = "_" if declared == "@" else "@"
+    bindings = esolangs.TemplateBindings(char=marker, setters=(("+", "-"),))
+    template = esolangs.TemplateArtifact(marker, language, bindings)
+    with pytest.raises(esolangs.ProgramError, match="template char does not match"):
+        esolangs.to_json(language, template)
+
+
+def test_portable_storage_preserves_compression_for_text_languages(
+    tmp_path: Path,
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    compressed = esolangs.CompressedText.from_chunks(("++.",))
+    data = compressed.to_gzip()
+    path = tmp_path / "source"
+    path.write_bytes(data)
+    expected = api.from_source(compressed)
+    for supplied in (compressed, expected, data, path):
+        restored = api.from_json(api.to_json(supplied))
+        assert restored == expected
+        assert api.run(restored).output == "\x02"
+
+
+def test_portable_compression_respects_raw_export_budget() -> None:
+    api = esolangs.Language(REFERENCE)
+    budget = esolangs.TextLimits(plain_chars=2, generation_chars=100, gzip_bytes=100)
+    compressed = esolangs.CompressedText.from_chunks(("++.",), limits=budget)
+    expected = api.from_source(compressed)
+    for supplied in (compressed, expected):
+        restored = api.from_json(api.to_json(supplied))
+        assert restored == expected
+        with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
+            str(restored.source)

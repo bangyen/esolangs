@@ -37,6 +37,12 @@ class Catalog:
             raise ArgumentError("catalog entries must be LanguageDeclaration records")
         if any(not isinstance(lang.aliases, tuple) for lang in records):
             raise ArgumentError("catalog aliases must be immutable tuples")
+        if any(
+            not isinstance(lang.name, str) or not lang.name.strip() for lang in records
+        ):
+            raise ArgumentError("catalog language names must be nonblank strings")
+        if any(not isinstance(lang.id, str) or not lang.id for lang in records):
+            raise ArgumentError("catalog language identifiers must be nonempty strings")
         languages = {lang.name: lang for lang in records}
         if len(languages) != len(records):
             raise ArgumentError("catalog language names must be unique")
@@ -46,7 +52,12 @@ class Catalog:
         folded: dict[str, str] = {}
         for language in records:
             for spelling in (language.name, *language.aliases):
-                key = spelling.casefold()
+                if not isinstance(spelling, str) or not (
+                    key := spelling.strip().casefold()
+                ):
+                    raise ArgumentError(
+                        "catalog language aliases must be nonblank strings"
+                    )
                 if key in folded and folded[key] != language.name:
                     raise ArgumentError("catalog aliases must have one owner")
                 folded[key] = language.name
@@ -74,9 +85,9 @@ class Catalog:
             "_interpreters",
             MappingProxyType(
                 {
-                    lang.name: f"esolangs.languages.{lang.id}.interpreter"
+                    lang.name: f"esolangs.languages.{module}.interpreter"
                     for lang in records
-                    if lang.runtime.interpreter is not None
+                    if (module := lang.runtime.interpreter) is not None
                 }
             ),
         )

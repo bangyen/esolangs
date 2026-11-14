@@ -1,5 +1,6 @@
 """Reading a program and stdin, and writing what came back."""
 
+import json
 import os
 import subprocess
 import sys
@@ -29,6 +30,7 @@ class TestTheStdinReaderInProcess:
         [
             (["NotALang"], "unknown language"),
             (["--seed", "1", REFERENCE], "draws no random values"),
+            (["--scale", "1", REFERENCE], "scale is only supported for raster"),
         ],
     )
     def test_an_unanswerable_run_is_refused_before_stdin_is_read(
@@ -90,9 +92,9 @@ class TestNonTextInputIsRefusedNotCrashed:
         assert b"not text" in result.stderr
         assert b"Traceback" not in result.stderr
 
-    def test_binary_stdin_is_refused_under_utf8_mode(self) -> None:
-        """The same pipe on a runner whose locale is ``C``."""
-        env = {**os.environ, "PYTHONUTF8": "1"}
+    def test_binary_stdin_is_refused_under_latin1_io_encoding(self) -> None:
+        """Pipes have the same UTF-8 input contract as binary Python streams."""
+        env = {**os.environ, "PYTHONIOENCODING": "latin1"}
         result = subprocess.run(
             [sys.executable, "-m", "esolangs", "read-answer", REFERENCE],
             input=b"\x80\x81",
@@ -111,6 +113,76 @@ class TestNonTextInputIsRefusedNotCrashed:
         path.write_bytes(bytes(range(256)))
         with pytest.raises(esolangs.ProgramError, match="not text"):
             esolangs.run(REFERENCE, path)
+
+
+@pytest.mark.medium
+def test_piped_text_is_utf8_across_cli_commands(tmp_path: Path) -> None:
+    def call(*args: str, stdin: bytes = b"") -> bytes:
+        return subprocess.run(
+            [sys.executable, "-m", "esolangs", *args],
+            input=stdin,
+            capture_output=True,
+            timeout=30,
+            check=True,
+            env={**os.environ, "PYTHONIOENCODING": "ascii"},
+        ).stdout
+
+    encoded = one_where(
+        lambda facts: (
+            facts.input_encoding is not None
+            and any(not bit.isascii() for bit in facts.input_encoding)
+        ),
+        input_shape="char_stream",
+    )
+    if not encoded:
+        pytest.skip("no non-ASCII character-stream alphabet")
+    encoding_language = encoded[0]
+    bit = next(
+        bit
+        for bit in "01"
+        if not esolangs.encode_inputs(encoding_language, [int(bit)]).isascii()
+    )
+    payload = call("encode-inputs", encoding_language, bit)
+    assert payload == esolangs.encode_inputs(encoding_language, [int(bit)]).encode()
+    echo = tmp_path / "echo.bf"
+    echo.write_text(",.,.,.")
+    payload += b"\r\n"
+    assert call("run", REFERENCE, str(echo), stdin=payload) == payload
+
+    readers = languages(
+        source_kind="text", parameterized=False, reads_input=True, answer_mode="output"
+    )
+    for language in readers:
+        source = esolangs.generate(language, "01").source
+        if isinstance(source, str) and not source.isascii():
+            break
+    else:
+        pytest.skip("no Unicode program from a text stdin generator")
+    source = call("generate", language, "01")
+    assert not source.isascii()
+    program = tmp_path / "generated.txt"
+    program.write_bytes(source)
+    stdin = call("encode-inputs", language, "1")
+    output = call("run", language, str(program), stdin=stdin)
+    assert call("read-answer", language, stdin=output) == b"1\n"
+
+
+@pytest.mark.medium
+def test_catalog_json_uses_utf8_on_a_pipe() -> None:
+    for command in (
+        ["list", "--json"],
+        ["list", "--json", "--details"],
+        ["describe", "--json", REFERENCE],
+        ["describe", "--json", "--spec", REFERENCE],
+    ):
+        report = subprocess.run(
+            [sys.executable, "-m", "esolangs", *command],
+            capture_output=True,
+            timeout=30,
+            check=True,
+            env={**os.environ, "PYTHONIOENCODING": "utf-16"},
+        )
+        assert json.loads(report.stdout.decode("utf-8"))
 
 
 # 8.5s over 9 tests: drives the CLI as a subprocess.
@@ -321,7 +393,7 @@ class TestAClosedPipeIsNotAnError:
             timeout=30,
             check=False,
         )
-        assert closed.returncode == 2, closed.stderr
+        assert closed.returncode == 1, closed.stderr
         assert "nothing on stdin" in closed.stderr
 
 

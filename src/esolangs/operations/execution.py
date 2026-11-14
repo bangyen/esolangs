@@ -12,12 +12,13 @@ from esolangs.runtime._execution import (
     check_seed_for,
     interpreter_module,
 )
-from esolangs.runtime._input import InputSource
+from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._isolated import execute_isolated as _execute_isolated
 from esolangs.runtime._prepared import PreparedProgram, prepare_program
 from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
 from esolangs.runtime._validate import (
+    _ISOLATED_TIMEOUT,
     check_flag,
     check_seed,
     check_timeout,
@@ -26,8 +27,6 @@ from esolangs.runtime._validate import (
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.vm import _make_vm
-
-_ISOLATED_TIMEOUT = 30.0
 
 
 def default_total(total: float | None, execution: float | None) -> float:
@@ -183,6 +182,7 @@ def _execute_invocation(
     check_limits(max_output, max_memory, isolated=isolated)
     if max_steps is not None:
         check_whole(max_steps, "max_steps")
+    check_input(stdin)
     if isolated:
         if io_factory is not ScriptedIO:
             raise ArgumentError("custom I/O factories require in-process execution")
@@ -226,9 +226,6 @@ def _execute_invocation(
             catalog=catalog,
             module_loader=interpreter_module,
         )
-    from esolangs.runtime._input import check_input
-
-    check_input(stdin)
     return prepared._execute_native(  # noqa: SLF001
         stdin, seed=seed, io_factory=io_factory
     )

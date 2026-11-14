@@ -14,6 +14,7 @@ from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
     InterpreterLimitError,
+    MissingDependencyError,
     ProgramError,
 )
 from esolangs.outcomes import ExecutionOutcome, _capture_outcome
@@ -40,7 +41,23 @@ def interpreter_module(name: str, *, catalog: Catalog | None = None) -> ModuleTy
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    return importlib.import_module(catalog._interpreters[name])  # noqa: SLF001
+    name = catalog.resolve(name)
+    module = catalog._interpreters.get(name)  # noqa: SLF001
+    if module is None:
+        raise ProgramError(f"{name} has no declared interpreter")
+    try:
+        return importlib.import_module(module)
+    except ModuleNotFoundError as error:
+        missing = error.name
+        if missing is not None and (
+            module == missing or module.startswith(f"{missing}.")
+        ):
+            raise ProgramError(
+                f"{name}'s interpreter module {module!r} is missing"
+            ) from error
+        raise MissingDependencyError(
+            f"{name}'s interpreter could not load {missing!r}"
+        ) from error
 
 
 @_capture_outcome

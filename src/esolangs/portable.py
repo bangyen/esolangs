@@ -29,7 +29,7 @@ from esolangs.raster import Raster, png
 from esolangs.registry import template_char
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._json import unique_object
-from esolangs.runtime._source import ProgramSource
+from esolangs.runtime._source import ProgramSource, explicit_path
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import (
     DialectSettings,
@@ -84,12 +84,7 @@ def to_file(
         raise ArgumentError("gzip must be a boolean")
     if type(normalize) is not bool:
         raise ArgumentError("normalize must be a boolean")
-    if not isinstance(path, (str, PathLike)):
-        raise ArgumentError(
-            f"path must be a str or PathLike, got {type(path).__name__}"
-        )
-    if not str(path):
-        raise ArgumentError("path must not be empty")
+    target = explicit_path(path)
     from esolangs.operations.source import read_artifact
 
     # The language decides the file terminator and PNG metadata; without it,
@@ -130,7 +125,6 @@ def to_file(
                 body.plain_chunks() if isinstance(body, CompressedText) else (body,)
             )
             encoded = (chunk.encode("utf-8") for chunk in chain(chunks, (ending,)))
-        target = Path(path)
         # The staged write's errors named the temporary file instead.
         if target.is_dir():
             raise IsADirectoryError("it is a directory")
@@ -173,13 +167,7 @@ def to_json(
 
     name = catalog.resolve(language)
     settings = effective_settings(name, program, settings, catalog=catalog)
-    values = dialect_options(name, settings, catalog=catalog)
-    acquired = read_artifact(name, program, catalog=catalog)
-    artifact = (
-        program
-        if isinstance(program, (ProgramArtifact, TemplateArtifact))
-        else acquired
-    )
+    artifact = read_artifact(name, program, catalog=catalog, preserve_compression=True)
     settings = effective_settings(name, artifact, settings, catalog=catalog)
     values = dialect_options(name, settings, catalog=catalog)
     encoded = (
@@ -200,6 +188,7 @@ def to_json(
         document["input_arity"] = artifact.input_arity
     body = artifact.source
     if isinstance(artifact, TemplateArtifact):
+        _check_template_char(name, artifact.bindings.char, catalog=catalog)
         document.update(
             kind="template",
             source=artifact.source,
@@ -332,6 +321,12 @@ def _load_text(
     return ProgramArtifact(value["source"], name, settings=settings)
 
 
+def _check_template_char(name: str, char: str, *, catalog: Catalog) -> None:
+    """Require the selected language's declared marker on portable templates."""
+    if char != template_char(catalog.languages[name].id, catalog=catalog):
+        raise ProgramError("template char does not match the language")
+
+
 def _load_template(
     value: dict[str, Any],
     name: str,
@@ -345,8 +340,7 @@ def _load_template(
     catalog = get_catalog(catalog)
     if not isinstance(value["char"], str) or len(value["char"]) != 1:
         raise ValueError("template char must be one character")
-    if value["char"] != template_char(catalog.languages[name].id, catalog=catalog):
-        raise ValueError("template char does not match the language")
+    _check_template_char(name, value["char"], catalog=catalog)
     pairs = value["setters"]
     if not isinstance(pairs, list) or any(
         not isinstance(pair, list)
@@ -408,7 +402,7 @@ def from_json(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    from esolangs.operations.source import _read_source
+    from esolangs.operations.source import read_artifact
 
     name = catalog.resolve(language)
     if not isinstance(document, str):
@@ -449,8 +443,7 @@ def from_json(
             if type(arity) is not int or arity < 1:
                 raise ValueError("input_arity must be a positive integer")
             artifact = replace(artifact, input_arity=arity)
-        _read_source(name, artifact, catalog=catalog)
-        return artifact
+        return read_artifact(name, artifact, catalog=catalog, preserve_compression=True)
     except (ValueError, TypeError) as error:
         # A path or native source here is the usual mistake (dogfood, 2.0.0).
         hint = (

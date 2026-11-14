@@ -174,7 +174,10 @@ def _underload_layout_tokens(template: str) -> list[str]:
 def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
     """Compare the narrow layouts token by token."""
     if plain.startswith(("(0)", "(1)")):
-        return _underload_layout_tokens(template) == _underload_layout_tokens(plain)
+        # Adjacent three-character slots are ambiguous without a separator.
+        return _underload_layout_tokens(template) == _underload_layout_tokens(
+            str(layout(1))
+        )
     for width in (1, 4):
         narrow = str(layout(width))
         if _underload_layout_tokens(template) == _underload_layout_tokens(narrow):

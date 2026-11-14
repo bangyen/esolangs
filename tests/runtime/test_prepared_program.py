@@ -18,6 +18,32 @@ from esolangs.vm import complete_vm
 from tests.support.reference import REFERENCE
 
 
+def test_prepared_constructor_accepts_artifact_alias_and_refuses_invalid_types():
+    api = esolangs.Language(REFERENCE)
+    artifact = esolangs.ProgramArtifact(",+.", api.name.upper())
+    direct = esolangs.PreparedProgram(artifact, api.catalog)
+    assert direct.language == api.name
+    assert direct.run(stdin="A") == api.prepare(artifact).run(stdin="A")
+    with pytest.raises(esolangs.ProgramError, match="requires a program artifact"):
+        esolangs.PreparedProgram(artifact.source, api.catalog)
+    with pytest.raises(esolangs.ArgumentError, match="catalog must be a Catalog"):
+        esolangs.PreparedProgram(artifact, object())
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("options", [{}, {"max_steps": 3}, {"total_timeout": 5}])
+def test_invalid_stdin_container_leaves_source_unread(options):
+    source = BytesIO(b",+.")
+    limits = esolangs.ExecutionLimits(**options)
+    api = esolangs.Language(REFERENCE)
+    rejected = api.execute(source, stdin=object(), limits=limits)
+    assert rejected.status == "rejected"
+    assert isinstance(rejected.error, esolangs.ArgumentError)
+    assert source.tell() == 0
+    assert api.run(source, stdin="A", limits=limits).output == "B"
+    assert source.tell() == 3
+
+
 def _check_preparation_consumes_source_once_and_keeps_fresh_invocations():
     source = BytesIO(b",+.")
     prepared = esolangs.Language(REFERENCE).prepare(source)
@@ -364,6 +390,16 @@ def _check_outcomes_are_the_internal_boundary(monkeypatch):
     assert response.observation == esolangs.ExecutionResult("prefix", None, None, None)
     assert response.observation.completion is None
     assert response.error.observation is None
+
+
+@pytest.mark.medium
+def test_longest_execution_timeout_leaves_time_for_worker_startup() -> None:
+    from esolangs.runtime._validate import _TIMEOUT_CEILING
+
+    limits = esolangs.ExecutionLimits(execution_timeout=_TIMEOUT_CEILING)
+    assert esolangs.run(REFERENCE, "+.", limits=limits).output == "\x01"
+    with pytest.raises(esolangs.ArgumentError, match="total_timeout must be at most"):
+        esolangs.ExecutionLimits(total_timeout=_TIMEOUT_CEILING + 1)
 
 
 @pytest.mark.medium

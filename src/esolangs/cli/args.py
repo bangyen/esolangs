@@ -44,50 +44,45 @@ def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
     sys.exit(code)
 
 
-#: Long options that consume the next token, across every subcommand.  The
-#: short-option expansion skips the token after one of these: it is a value,
-#: even when it happens to spell ``-p``.
-_VALUE_OPTIONS = {
-    "--bits",
-    "--scale",
-    "--settings",
-    "--set",
-    "--execution-timeout",
-    "--total-timeout",
-    "--preparation-timeout",
-    "--max-output",
-    "--max-memory",
-    "--max-steps",
-    "--seed",
-    "--source-kind",
-    "--answer-mode",
-    "--input-shape",
-    "--inputs",
-}
-
 _SHORT_OPTIONS = {"-s": "--settings"}
 
+#: Required-value options, excluding the optional value on ``--width``.
+_VALUE_OPTIONS = {
+    "generate": {"--bits", "--scale", "--settings", "--set"},
+    "list": {"--grep", "--inputs", "--source-kind", "--input-shape", "--answer-mode"},
+    "run": {
+        "--execution-timeout",
+        "--total-timeout",
+        "--preparation-timeout",
+        "--seed",
+        "--scale",
+        "--max-output",
+        "--max-memory",
+        "--max-steps",
+        "--settings",
+        "--set",
+    },
+}
 
-def _expand_short_options(rest: list[str]) -> list[str]:
-    """Expand the short options before the positional separator."""
-    expanded: list[str] = []
+
+def _normalize_options(command: str, rest: list[str]) -> list[str]:
+    """Attach mandatory values so later passes cannot mistake them for flags."""
+    names = _VALUE_OPTIONS.get(command, set())
+    normalized: list[str] = []
     i = 0
     while i < len(rest):
         arg = rest[i]
         if arg == "--":
-            expanded.extend(rest[i:])
+            normalized.extend(rest[i:])
             break
-        if expanded and expanded[-1] in _VALUE_OPTIONS:
-            expanded.append(arg)
-            i += 1
-            continue
         name, sep, inline = arg.partition("=")
-        if name in _SHORT_OPTIONS:
-            expanded.append(_SHORT_OPTIONS[name] + (sep + inline if sep else ""))
-        else:
-            expanded.append(arg)
+        name = _SHORT_OPTIONS.get(name, name)
+        if name in names and not sep and i + 1 < len(rest) and rest[i + 1] != "--":
+            i += 1
+            sep, inline = "=", rest[i]
+        normalized.append(name + sep + inline)
         i += 1
-    return expanded
+    return normalized
 
 
 def _scan_values(
@@ -110,7 +105,7 @@ def _scan_values(
         elif sep:
             yield name, inline
             i += 1
-        elif i + 1 < len(rest):
+        elif i + 1 < len(rest) and rest[i + 1] != "--":
             yield name, rest[i + 1]
             i += 2
         else:

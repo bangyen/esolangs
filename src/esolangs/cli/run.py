@@ -8,6 +8,7 @@ from time import monotonic
 
 from esolangs import ExecutionLimits, run
 from esolangs.cli.args import (
+    _VALUE_OPTIONS,
     _check_count,
     _errors,
     _fail,
@@ -48,6 +49,7 @@ from esolangs.operations.execution import default_total
 from esolangs.registry import LANGUAGES, resolve, template_char
 from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._isolated import check_memory
+from esolangs.runtime._source import check_scale_for
 from esolangs.settings import dialect_options
 
 
@@ -65,17 +67,7 @@ def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     started = monotonic()
     rest, set_pairs = _pop_set_pairs(rest)
-    value_options = {
-        "--execution-timeout",
-        "--total-timeout",
-        "--preparation-timeout",
-        "--seed",
-        "--scale",
-        "--max-output",
-        "--max-memory",
-        "--max-steps",
-        "--settings",
-    }
+    value_options = _VALUE_OPTIONS["run"] - {"--set"}
     rest, options = _pop_options(rest, value_options)
     # The value is checked here, before the positionals are counted.  It ran
     # after, so `run --execution-timeout brainfuck prog.txt` -- a forgotten number --
@@ -146,6 +138,7 @@ def _run(rest: list[str]) -> None:
         declaration = LANGUAGES[resolve(language)]
         # Before stdin too: held open, `run --seed 1 brainfuck` hung here.
         check_seed_for(declaration.name, seed)
+        check_scale_for(declaration.name, scale)
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.

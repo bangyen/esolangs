@@ -1,11 +1,9 @@
 """Acquire runnable source and validate language ownership."""
 
 from os import PathLike
-from pathlib import Path
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import (
-    ArgumentError,
     MissingDependencyError,
     ProgramError,
     TemplateError,
@@ -18,6 +16,7 @@ from esolangs.runtime._source import (
     ProgramSource,
     _FileSource,
     _read_container,
+    explicit_path,
     source_for,
 )
 from esolangs.runtime._validate import check_flag, check_scale
@@ -104,7 +103,11 @@ def read_artifact(
             if not isinstance(source, str):
                 raise TemplateError("template source must be text")
             return TemplateArtifact(
-                source, name, program.bindings, settings=program.settings
+                source,
+                name,
+                program.bindings,
+                settings=program.settings,
+                spans=program.spans,
             )
         return ProgramArtifact(
             source,
@@ -133,19 +136,6 @@ def read_artifact(
         preserve_compression=preserve_compression,
     )
     return ProgramArtifact(source, name)
-
-
-def _read_source(
-    language: str,
-    program: ProgramSource | _FileSource,
-    *,
-    catalog: "Catalog | None" = None,
-) -> Program:
-    """Project source for callers that explicitly need only the payload."""
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    return read_artifact(language, program, catalog=catalog).source
 
 
 def _check_program(
@@ -228,11 +218,9 @@ def from_file(
     name = catalog.resolve(language)
     check_flag(normalize, "normalize")
     dialect_options(name, settings, catalog=catalog)
-    if not isinstance(path, (str, PathLike)):
-        raise ArgumentError(
-            f"path must be a str or PathLike, got {type(path).__name__}"
-        )
-    artifact = read_artifact(name, Path(path), catalog=catalog, normalize=normalize)
+    artifact = read_artifact(
+        name, explicit_path(path), catalog=catalog, normalize=normalize
+    )
     retained = effective_settings(name, artifact, settings, catalog=catalog)
     assert isinstance(artifact, ProgramArtifact)
     return ProgramArtifact(

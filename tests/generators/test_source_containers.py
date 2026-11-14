@@ -11,8 +11,9 @@ import pytest
 import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.operations.source import _check_program
+from esolangs.registry import LANGUAGES
 from tests.support.evaluation import _evaluate
-from tests.support.pick import languages
+from tests.support.pick import languages, one_where
 from tests.support.reference import REFERENCE
 
 _RASTERS = languages(source_kind="raster", boolean_generator=True)
@@ -132,6 +133,37 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
     assert path.read_bytes() == b"+,\r\n.\r\n"
     assert _check_program(REFERENCE, path).source == "+,\r\n.\r\n"
     assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
+
+
+@pytest.mark.parametrize("spelling", ["", b"bytes", 1])
+def test_explicit_paths_are_validated_on_import_and_export(spelling) -> None:
+    class BadPath:
+        def __fspath__(self):
+            return spelling
+
+    for path in ("", BadPath()):
+        with pytest.raises(esolangs.ArgumentError, match="path"):
+            esolangs.from_file(REFERENCE, path)
+        with pytest.raises(esolangs.ArgumentError, match="path"):
+            esolangs.to_file(REFERENCE, "+.", path)
+
+
+@pytest.mark.parametrize("compressed", [False, True])
+@pytest.mark.parametrize(
+    "language", one_where(lambda info: LANGUAGES[info.name].runtime.compressed_source)
+)
+def test_compressed_language_honors_native_newlines(
+    tmp_path: Path, language: str, *, compressed: bool
+) -> None:
+    api = esolangs.Language(language)
+    # Put the first CRLF across gzip read chunks.
+    body = "0" * 65535 + "\r\n0\r0\n"
+    path = tmp_path / "source"
+    api.to_file(body, path, gzip=compressed, normalize=True)
+    assert str(api.from_file(path).source) == body + "\n"
+    native = api.from_file(path, normalize=True).source
+    assert isinstance(native, esolangs.CompressedText if compressed else str)
+    assert str(native) == body.replace("\r\n", "\n").replace("\r", "\n")
 
 
 def test_source_declaration_and_export_validate_the_language_kind(

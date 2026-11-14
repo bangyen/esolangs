@@ -12,7 +12,7 @@ import pytest
 import esolangs
 from esolangs.cli import _generate, main
 from esolangs.registry import LANGUAGES
-from tests.support.cli_support import _program, _refused, call_main, run_cli
+from tests.support.cli_support import _failure, _program, _refused, call_main, run_cli
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
@@ -370,12 +370,31 @@ _REFUSALS = {
         "encode-inputs brainfuck 2x",
         "0s and 1s",
     ),
-    "read_answer_says_so_when_given_nothing": (
-        "read-answer brainfuck",
-        "nothing on stdin",
-    ),
     "a_swallowed_table_is_named": ("generate brainfuck --width 0110", "--width"),
 }
+
+
+def test_option_passes_cannot_steal_another_options_value(capsys) -> None:
+    for options in (["--settings", "--set"], ["--settings=--set"]):
+        _, error = _failure(["generate", *options, REFERENCE, "01"], capsys)
+        assert "--settings is not valid JSON" in error
+
+
+@pytest.mark.parametrize("option", [["--plain"], ["--settings", "{}"]])
+def test_bare_width_does_not_consume_a_table_past_another_option(
+    capsys, option: list[str]
+) -> None:
+    default = call_main(["generate", "--width", REFERENCE, TABLE3], capsys)
+    assert (
+        call_main(["generate", REFERENCE, "--width", *option, TABLE3], capsys)
+        == default
+    )
+
+
+def test_read_answer_treats_empty_output_as_a_program_failure(capsys) -> None:
+    stdout, error = _failure(["read-answer", REFERENCE], capsys, code=1)
+    assert stdout == ""
+    assert "nothing on stdin" in error
 
 
 @pytest.mark.parametrize("case", _REFUSALS.values(), ids=list(_REFUSALS))

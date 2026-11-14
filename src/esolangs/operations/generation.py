@@ -14,8 +14,14 @@ from esolangs.artifacts import (
     TemplateBindings,
 )
 from esolangs.compressed import CompressedText
-from esolangs.exceptions import ArgumentError, EsolangError, ProgramError, TemplateError
-from esolangs.generation.helpers import check_table_text, same_up_to_wrapping
+from esolangs.exceptions import (
+    ArgumentError,
+    EsolangError,
+    GeneratorCapError,
+    ProgramError,
+    TemplateError,
+)
+from esolangs.generation.helpers import check_table_text
 from esolangs.generation.requests import (
     BalanceRequest,
     GeneratedProgram,
@@ -75,7 +81,7 @@ def generate(
 
     Args:
         truth_table: Binary string of length ``2**n``, MSB first.
-        width: A request, not a bound (``describe(language)["width_effect"]``):
+        width: A layout request (``describe(language).width_effect``):
             it does nothing where newlines are semantic, and a token longer
             than the width still overruns it.  A template wraps with each run
             kept whole, so every row breaks in the same places.
@@ -85,7 +91,7 @@ def generate(
             width.  A raster minimizes max(width, height) in pixels, then
             pixel area, then width.  Excludes ``width``.
         scale: Raster only; replicates pixels after layout (None: native output).
-        settings: Dialect choices; see ``describe(language)["dialect_settings"]``.
+        settings: Dialect choices from ``describe(language).dialect_settings``.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
@@ -96,18 +102,17 @@ def generate(
             with one it excludes (``balance`` with ``width``, ``scale`` for a
             text language).
         GeneratorCapError: The table exceeds the generator's cap
-            (``describe(language)["generator_max_inputs"]`` and
-            ``["generator_restrictions"]``).
+            (``describe(language).generator_max_inputs`` and
+            ``.generator_restrictions``).
     """
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
     options = dialect_options(language, settings, catalog=catalog)
     schema = catalog.languages[catalog.resolve(language)].runtime.dialect_schema
-    if settings is None and schema is not None and schema.defaults:
-        # Record the dialect the source was written in.  A retained None reads
-        # as "unknown", so explicit settings could otherwise misread it.
-        settings = _settings_for(language, dict(schema.defaults), catalog=catalog)
+    if schema is not None and (choices := schema.defaults | options) != options:
+        # Partial overrides still generate against the remaining defaults.
+        settings = _settings_for(language, choices, catalog=catalog)
     check_flag(balance, "balance")
     if scale is not None:
         check_scale(scale)
@@ -381,7 +386,7 @@ def _is_template_for(
         return True
     backend = catalog.languages[name].backend
     assert backend is not None  # generate above refuses absent backends
-    width_aware = backend.layout_width
+    width_aware = backend.layout_width or backend.wrap is not None
 
     @cache
     def layout(width: int) -> str:
@@ -396,15 +401,25 @@ def _is_template_for(
     # unlike whitespace wrapping, so compare that template exactly too.
     if width_aware and text == layout(1):
         return True
-    # A layout built for its own widest line: ArrowQueue's ``width=5`` shifts
-    # the setter column, matching neither the default nor ``layout(1)``.
+    # Reproduce a layout at its widest line. Arbitrary newlines can change
+    # a fraction or literal.
     widest = max(map(len, text.splitlines()), default=0)
     if width_aware and widest and text == layout(widest):
         return True
-    same_layout = backend.same_layout or (
-        lambda template, plain, _layout: same_up_to_wrapping(template, plain)
+    if backend.same_layout is not None and backend.same_layout(text, plain, layout):
+        return True
+    try:
+        balanced = generate(
+            name, truth_table, balance=True, settings=settings, catalog=catalog
+        )
+    except GeneratorCapError:
+        return False
+    return (
+        isinstance(balanced, TemplateArtifact)
+        and template.source == balanced.source
+        and template.spans == balanced.spans
+        and template.bindings == balanced.bindings
     )
-    return same_layout(text, plain, layout)
 
 
 def instantiate(
@@ -421,8 +436,8 @@ def instantiate(
 
     Hand substitution fails: each language spells a set-input its own way.  A
     TemplateArtifact from :func:`generate` retains explicit bindings.
-    Retained dialect choices follow the
-    filled program; explicit ``settings`` override individual ones.
+    Retained dialect choices follow the filled program. Explicit ``settings``
+    can supply choices the template does not retain.
 
     Args:
         template: The TemplateArtifact returned by :func:`generate` or portable loading.
