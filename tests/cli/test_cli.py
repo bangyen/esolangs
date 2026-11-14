@@ -2,6 +2,7 @@
 
 import gzip
 import json
+import shlex
 import sys
 from io import StringIO
 from pathlib import Path
@@ -265,6 +266,27 @@ class TestOutputAndAbridging:
         data = capsysbinary.readouterr().out
         expected = esolangs.generate(REFERENCE, "01").source + "\n"
         assert gzip.decompress(data).decode() == expected
+
+    @pytest.mark.medium
+    def test_template_fill_hint_keeps_export_flags(
+        self, capsysbinary, tmp_path
+    ) -> None:
+        language = first(parameterized=True, answer_mode="output")
+        original = ["--gzip", "--width=3", language, "01"]
+        _generate(original)
+        stderr = capsysbinary.readouterr().err.decode()
+        command = shlex.split(stderr.split("fill them with: ", 1)[1])
+        assert command == ["esolangs", "generate", "--bits", "<bits>", *original]
+        path = tmp_path / "program.gz"
+        for bit in "01":
+            command[3] = bit
+            _generate(command[2:])
+            data = capsysbinary.readouterr().out
+            assert data.startswith(b"\x1f\x8b")
+            path.write_bytes(data)
+            result = run_cli("run", language, str(path))
+            assert result.returncode == 0, result.stderr
+            assert esolangs.read_answer(language, result.stdout) == bit
 
     def test_a_trailing_newline_is_added_only_for_a_terminal(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

@@ -201,11 +201,9 @@ def _run(rest: list[str]) -> None:
     empty = isinstance(program.source, str) and not program.source.strip()
     slot = template_char(declaration.id)
     if slot is not None and isinstance(program.source, str) and slot in program.source:
-        # Hand-written source may use the character; a filled template never
-        # does, and an unfilled one runs as nonsense (dogfood, 2.0.0).
         _note(
-            f"note: {path} contains {slot!r}, the unfilled input slot of a "
-            f"generated template; fill it with: esolangs generate --bits "
+            f"note: {path} contains {slot!r}, which marks an unfilled input slot "
+            "in generated templates. To fill one, use: esolangs generate --bits "
             f"<bits> {_as_argument(language)} <table>"
         )
     if empty:

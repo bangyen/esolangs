@@ -13,4 +13,5 @@ CAPABILITIES = MachineCapabilities(
         views=("acc", "clamp_slack", "ind", "key", "ptr", "tape", "values"),
     ),
     native_completions=frozenset((Completion.HALTED, Completion.PERIODIC)),
+    complete_on_exact_repeat=True,
 )

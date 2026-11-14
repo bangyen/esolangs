@@ -206,23 +206,27 @@ class ExecutionController:
                 return "breakpoint"
         return "halted"
 
-    def _periodic_execution(
+    def _repeat_execution(
         self, vm: _DelegatingVM, max_steps: int
-    ) -> ExecutionOutcome:
+    ) -> ExecutionOutcome | None:
         def step() -> None:
             if self._steps >= max_steps:
                 raise steps_exhausted("execution stopped at the max_steps bound")
             self.step()
 
-        report = vm._complete_periodic(step)  # noqa: SLF001
+        report = vm._complete_repeating(step)  # noqa: SLF001
+        if report is None:
+            return None
         result = replace(_capture_observation(vm, report), steps=self._steps)
         return ExecutionOutcome("completed", result)
 
     def _execute(self, *, max_steps: int) -> ExecutionOutcome:
         """Finish a non-interactive invocation, retaining faults and bound stops."""
         try:
-            if isinstance(self.vm, _DelegatingVM) and not self.steppable_to_answer:
-                return self._periodic_execution(self.vm, max_steps)
+            if isinstance(self.vm, _DelegatingVM):
+                completed = self._repeat_execution(self.vm, max_steps)
+                if completed is not None:
+                    return completed
             reason = self._run(max_steps, None)
         except EsolangError as fault:
             fault.partial_output = self.output

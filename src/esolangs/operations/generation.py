@@ -6,6 +6,7 @@ from functools import cache
 from math import isqrt
 from typing import cast
 
+from esolangs._bindings import check_setters, validate_spans
 from esolangs._dialect import Scalar
 from esolangs.artifacts import (
     Artifact,
@@ -28,7 +29,7 @@ from esolangs.generation.requests import (
     GenerationRequest,
     Options,
 )
-from esolangs.generation.template import TemplateLayout
+from esolangs.generation.template import TemplateLayout, layout_fragments
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import (
     TokenWrapper,
@@ -369,7 +370,8 @@ def _is_template_for(
 ) -> bool:
     """Return whether ``template`` is what ``name`` generates for the table.
 
-    Compare wrapping using the language's whitespace rules.
+    Compare wrapping using the language's whitespace rules, with slots
+    spelled in the generator's marker.
     """
     from esolangs.registry._catalog import get_catalog
 
@@ -378,18 +380,33 @@ def _is_template_for(
     if not isinstance(canonical, TemplateArtifact):
         return False
     bindings = canonical.bindings
-    expected = TemplateBindings(
-        char=bindings.char,
-        setters=template_setters(
-            catalog.languages[name].id,
-            template.source,
-            bindings.inputs,
-            catalog=catalog,
-        ),
-    )
-    if template.bindings != expected:
+    if template.bindings.inputs != bindings.inputs:
         return False
     text = template.source
+    if template.bindings.char != bindings.char:
+        spans = template.spans
+        if spans is None:
+            return False
+        text = layout_fragments(
+            TemplateLayout(text, spans).fragments(), char=bindings.char
+        ).source
+        try:
+            validate_spans(text, bindings.char, template.bindings.setters, spans)
+        except ValueError:
+            return False
+    try:
+        expected = check_setters(
+            template_setters(
+                catalog.languages[name].id, text, bindings.inputs, catalog=catalog
+            )
+        )
+    except EsolangError:
+        raise
+    except ValueError:
+        # A setter extractor can reject a caller-supplied source layout.
+        return False
+    if template.bindings.setters != expected:
+        return False
     plain = canonical.source
     if text == plain:
         return True
@@ -425,9 +442,9 @@ def _is_template_for(
         return False
     return (
         isinstance(balanced, TemplateArtifact)
-        and template.source == balanced.source
+        and text == balanced.source
         and template.spans == balanced.spans
-        and template.bindings == balanced.bindings
+        and template.bindings.setters == balanced.bindings.setters
     )
 
 
@@ -452,8 +469,8 @@ def instantiate(
         template: The TemplateArtifact returned by :func:`generate` or portable loading.
         bits: One integer 0 or 1 per input.
         width: As for :func:`generate`.
-        truth_table: The table ``template`` was generated from; when given,
-            a template :func:`generate` would not return for it is refused.
+        truth_table: Check whether the layout and setters match that table's
+            generated template. The placeholder marker may be relabeled.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
@@ -501,17 +518,17 @@ def instantiate(
         )
     if resolve_origin(template.language, catalog=catalog) != name:
         raise TemplateError(f"template belongs to {template.language}, not {name}")
-    if truth_table is not None and not _is_template_for(
-        template, name, truth_table, settings, catalog=catalog
-    ):
-        raise with_hint(
-            TemplateError(
-                f"this is not the template generate({name!r}, {truth_table!r}) "
-                "returns, so filling it would produce a program that "
-                "does not compute that table"
-            ),
-            "regenerate the template from the intended language and truth table",
-        )
+    if truth_table is not None:
+        truth_table = check_table_text(truth_table)
+        if not _is_template_for(template, name, truth_table, settings, catalog=catalog):
+            raise with_hint(
+                TemplateError(
+                    f"this is not the template generate({name!r}, {truth_table!r}) "
+                    "returns, so filling it would produce a program that "
+                    "does not compute that table"
+                ),
+                "regenerate the template from the intended language and truth table",
+            )
     bits = check_bits(bits, "bits")
     artifact = template
     inputs = artifact.bindings.inputs

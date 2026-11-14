@@ -406,9 +406,11 @@ verbatim (`ab` reads as two bits in brainfuck). Piped text from `generate`,
 ## Templates
 
 Some Boolean generators embed the input bits in source. For these, `generate`
-returns a template with one ordered `$` run per input, exactly as long as
+returns a template with one ordered placeholder run per input, exactly as long as
 its replacement. Fill it with `esolangs.instantiate(language, template, bits)`.
-Portable JSON stores each slot's start and end offsets alongside its setters.
+Portable JSON stores the marker and each slot's offsets and setters.
+With `truth_table=`, `instantiate` checks the generated layout and setters.
+Relabeling the marker preserves this match.
 Running a `TemplateArtifact` is refused until it is filled. Literal source is
 interpreted directly, including placeholder-like characters.
 Pass the unfilled template and a row to `evaluate`. Use `run` on the filled

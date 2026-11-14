@@ -35,6 +35,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import sys
 from collections.abc import Callable, Mapping
 from contextlib import suppress
@@ -333,6 +334,9 @@ def _generate(rest: list[str]) -> None:
     eaten = _eaten_width_note(before) if width is not None and not bare else ""
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
     settings = _settings_of(options, set_pairs, language=rest[0])
+    bits = options.get("--bits")
+    if bits is not None and (not bits or set(bits) - {"0", "1"}):
+        _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
     try:
         # Widthed at both ends, and that is not a mistake.  ``generate``
         # wraps the template (or hands the width to a *layout* language,
@@ -346,10 +350,7 @@ def _generate(rest: list[str]) -> None:
             scale=scale or 1,
             settings=settings,
         )
-        if "--bits" in options:
-            bits = options["--bits"]
-            if set(bits) - {"0", "1"} or not bits:
-                _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
+        if bits is not None:
             if isinstance(artifact.source, Raster):
                 _fail("raster programs read bits from stdin and cannot be instantiated")
             artifact = instantiate(
@@ -392,12 +393,11 @@ def _generate(rest: list[str]) -> None:
     with _errors():  # A raster renders here, and may exceed the pixel limit.
         _emit(artifact, plain="--plain" in flags, gzip=gzip)
     if isinstance(artifact, TemplateArtifact):
-        # `run` takes the unfilled template as source and answers nonsense
-        # with exit 0, where the API refuses it (dogfood, 2.0.0).
+        # Keep the original options when suggesting how to obtain runnable source.
         _diagnostic(
             f"note: this is a template with unfilled {artifact.bindings.char!r} "
             f"input slots; fill them with: esolangs generate "
-            f"--bits <bits> {_as_argument(rest[0])} {rest[1]}\n"
+            f"--bits <bits> {shlex.join(before)}\n"
         )
 
 
@@ -555,9 +555,8 @@ def _read_answer(rest: list[str]) -> None:
             f"{declaration.name} answers 0 if it {zero} and 1 if it {one}, so "
             f"there is no output to read; use: esolangs run "
             f"--execution-timeout <seconds> {_as_argument(declaration.name)} "
-            "<program-file> "
-            "and observe "
-            f"whether it halts"
+            "<program-file> and observe whether it halts. "
+            "A timeout leaves the answer undecided."
         )
     output = _read_stdin(hint="; pipe a program's output in, or close stdin")
     # NQ's false answer is a space; only absent output is empty stdin.

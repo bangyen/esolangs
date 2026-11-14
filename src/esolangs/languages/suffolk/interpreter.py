@@ -29,13 +29,9 @@ from functools import partial
 from typing import Any
 
 from esolangs.languages.suffolk.lifecycle import CAPABILITIES
+from esolangs.runtime._drive import drive_until_repeat
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import (
-    HALTED_REPORT,
-    BoundaryCycle,
-    Completion,
-    CompletionReport,
-)
+from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
@@ -227,21 +223,7 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
 
 def _execute(code: str, io: IO) -> CompletionReport:
     """Run until EOF zeroes the accumulator or a state repeats."""
-    machine = _Machine(code, io)
-    seen: set[tuple[object, ...]] = set()
-    history: list[tuple[object, ...]] = []
-    while not machine.halted:
-        state = machine.snapshot()
-        if state in seen:
-            return CompletionReport(
-                Completion.PERIODIC,
-                BoundaryCycle(state, history.index(state), len(history), 1),
-            )
-        # Ordinary EOF runs keep set lookups; index only on an actual repeat.
-        seen.add(state)
-        history.append(state)
-        machine.step()
-    return HALTED_REPORT
+    return drive_until_repeat(_Machine(code, io))
 
 
 def run(code: str, io: IO) -> None:

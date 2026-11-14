@@ -102,13 +102,11 @@ def _shell_hint(message: str, language: str) -> str:
     ``instantiate()`` is not a thing you can type at a shell; ``generate
     --bits`` is.
     """
-    pointer = "pass the bits to instantiate() instead"
-    if pointer not in message:
-        return message
-    head = message.split(pointer)[0]
-    return (
-        f"{head}embed them in the program instead: "
-        f"esolangs generate --bits <bits> {_as_argument(language)} <table>"
+    return message.replace(
+        "pass the bits to instantiate() to embed them in source",
+        "embed them in source with: "
+        f"esolangs generate --bits <bits> {_as_argument(language)} <table>",
+        1,
     )
 
 

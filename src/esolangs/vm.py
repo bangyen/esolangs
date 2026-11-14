@@ -47,7 +47,12 @@ from esolangs.exceptions import ArgumentError, steps_exhausted
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as _IpShape
-from esolangs.runtime._drive import PeriodicMachine, drive_periodic, finalize
+from esolangs.runtime._drive import (
+    PeriodicMachine,
+    drive_periodic,
+    drive_until_repeat,
+    finalize,
+)
 from esolangs.runtime._execution import (
     check_seed_for,
     interpreter_errors,
@@ -173,17 +178,24 @@ class _DelegatingVM:
             ):
                 raise
 
-    def _complete_periodic(self, step: Callable[[], None]) -> CompletionReport:
-        """Finalize at the same pass boundary as the native driver."""
+    def _complete_repeating(self, step: Callable[[], None]) -> CompletionReport | None:
+        """Retain the declared run boundary for periodic execution."""
         machine = self._machine
-        if not isinstance(machine, _PassMachine):
-            raise ArgumentError("periodic execution requires a declared pass stride")
+        exact_repeat = self._capabilities.complete_on_exact_repeat
+        if not exact_repeat and self.steppable_to_answer:
+            return None
         with interpreter_errors(
             f"the {self.language} interpreter recursed deeper than "
             "CPython's stack limit allows on this program",
             self._io,
             language=self.language,
         ):
+            if exact_repeat:
+                return drive_until_repeat(machine, step=step)
+            if not isinstance(machine, _PassMachine):
+                raise ArgumentError(
+                    "periodic execution requires a declared pass stride"
+                )
             cycle = drive_periodic(
                 machine,
                 machine.commands_per_pass,

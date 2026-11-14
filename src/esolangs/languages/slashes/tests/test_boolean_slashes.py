@@ -13,6 +13,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, make_vm
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.cli_support import call_both
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import witnesses
 
@@ -103,6 +104,14 @@ def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
 def test_partly_filled_constant_still_requires_its_remaining_input() -> None:
     assert _is_unfilled_template("/a$b//1")
     assert esolangs.run("///", "$0").output == "$0"
+
+
+def test_run_cli_slot_note_allows_a_literal_dollar(tmp_path, capsys) -> None:
+    path = tmp_path / "literal.txt"
+    path.write_text("$", encoding="utf-8")
+    out, err = call_both(["run", "///", str(path)], capsys)
+    assert out == esolangs.run("///", "$", stdin="").output == "$"
+    assert "marks an unfilled input slot in generated templates" in err
 
 
 def test_unwrappable_source_is_untouched() -> None:

@@ -20,12 +20,14 @@ class Machine(Protocol):
     def step(self) -> None: ...
 
 
-@runtime_checkable
-class PeriodicMachine(Machine, Protocol):
-    """A machine whose final image follows a repeated complete pass."""
-
+class SnapshotMachine(Machine, Protocol):
     def snapshot(self) -> Hashable:
         """Return future computational state, including input progress."""
+
+
+@runtime_checkable
+class PeriodicMachine(SnapshotMachine, Protocol):
+    """A machine whose final image follows a repeated complete pass."""
 
     def interrupt(self) -> None: ...
 
@@ -65,6 +67,25 @@ def drive(machine: Machine, *, policy: Completion) -> CompletionReport:
         machine.step()
     finalize(machine, policy=policy)
     return POST_HALT_REPORT if policy is Completion.POST_HALT else HALTED_REPORT
+
+
+def drive_until_repeat(
+    machine: SnapshotMachine, *, step: Callable[[], None] | None = None
+) -> CompletionReport:
+    """Run to a halt or the first exact repeat without taking a dump step."""
+    take_step = machine.step if step is None else step
+    seen: set[Hashable] = set()
+    history: list[Hashable] = []
+    while not machine.halted:
+        state = machine.snapshot()
+        if state in seen:
+            cycle = BoundaryCycle(state, history.index(state), len(history), 1)
+            return CompletionReport(Completion.PERIODIC, cycle)
+        # Ordinary EOF runs keep set lookups; index only on an actual repeat.
+        seen.add(state)
+        history.append(state)
+        take_step()
+    return HALTED_REPORT
 
 
 def drive_periodic(

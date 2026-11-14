@@ -23,7 +23,6 @@ from esolangs.exceptions import (
     TemplateError,
 )
 from esolangs.raster import Raster, png
-from esolangs.registry import template_char
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._files import explicit_path, write_staged
 from esolangs.runtime._json import record_dumps, unique_object
@@ -204,7 +203,7 @@ def to_json(
         document["input_arity"] = artifact.input_arity
     body = artifact.source
     if isinstance(artifact, TemplateArtifact):
-        _check_template_char(name, artifact.bindings.char, catalog=catalog)
+        _require_template_capability(name, catalog=catalog)
         document.update(
             kind="template",
             source=artifact.source,
@@ -346,10 +345,10 @@ def _load_text(
     return ProgramArtifact(value["source"], name, settings=settings)
 
 
-def _check_template_char(name: str, char: str, *, catalog: Catalog) -> None:
-    """Require the selected language's declared marker on portable templates."""
-    if char != template_char(catalog.languages[name].id, catalog=catalog):
-        raise ProgramError("template char does not match the language")
+def _require_template_capability(name: str, *, catalog: Catalog) -> None:
+    """Accept explicit markers where the selected language embeds its inputs."""
+    if not catalog.languages[name].parameterized:
+        raise ProgramError(f"{name} does not support input templates")
 
 
 def _load_template(
@@ -365,7 +364,7 @@ def _load_template(
     catalog = get_catalog(catalog)
     if not isinstance(value["char"], str) or len(value["char"]) != 1:
         raise ValueError("template char must be one character")
-    _check_template_char(name, value["char"], catalog=catalog)
+    _require_template_capability(name, catalog=catalog)
     pairs = value["setters"]
     if not isinstance(pairs, list) or any(
         not isinstance(pair, list)

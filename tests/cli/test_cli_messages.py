@@ -207,6 +207,41 @@ def test_reader_template_hint_names_cli_encode(capsys) -> None:
     assert "stdin=encode_inputs" not in err
 
 
+@pytest.mark.parametrize("language", one(parameterized=True))
+def test_encode_template_refusal_points_to_cli_generation(capsys, language) -> None:
+    out, err = _failure(["encode-inputs", language, "01"], capsys)
+    assert out == ""
+    assert "reads no stdin for its input bits" in err
+    assert "instantiate()" not in err
+    hint = err.split("embed them in source with: ", 1)[1]
+    assert shlex.split(hint) == [
+        "esolangs",
+        "generate",
+        "--bits",
+        "<bits>",
+        language,
+        "<table>",
+    ]
+
+
+@pytest.mark.parametrize("bits", ["", "two"])
+def test_bad_bits_are_refused_before_synthesis(capsys, monkeypatch, bits) -> None:
+    def unused(*_args, **_kwargs):
+        pytest.fail("invalid --bits launched generation")
+
+    monkeypatch.setattr(esolangs, "generate", unused)
+    out, err = _failure(["generate", "--bits", bits, REFERENCE, "01"], capsys)
+    assert out == ""
+    assert "--bits must be a string of 0s and 1s" in err
+
+
+@pytest.mark.parametrize("language", one(answer_mode="termination"))
+def test_read_answer_leaves_a_timed_out_termination_undecided(capsys, language) -> None:
+    out, err = _failure(["read-answer", language], capsys)
+    assert out == ""
+    assert "A timeout leaves the answer undecided." in err
+
+
 def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys) -> None:
     path = tmp_path / "program.bf"
     path.write_text("+.")

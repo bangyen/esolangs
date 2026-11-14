@@ -1,13 +1,13 @@
 """Portable source survives disk with its dialect and template conventions."""
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 import esolangs
 from esolangs import ProgramArtifact
-from esolangs.registry import template_char
 from tests.support.dialect_support import CASES
 from tests.support.evaluation import _evaluate
 from tests.support.pick import one
@@ -104,18 +104,59 @@ def test_document_argument_and_invalid_settings() -> None:
 def test_template_kind_requires_parameterized_language() -> None:
     document = json.loads(esolangs.to_json("Brainfuck", "+."))
     document.update(kind="template", char="$", setters=[], spans=[])
-    with pytest.raises(esolangs.ProgramError, match="template char does not match"):
+    with pytest.raises(esolangs.ProgramError, match="does not support input templates"):
         esolangs.from_json("Brainfuck", json.dumps(document))
+    bindings = esolangs.TemplateBindings(char="@", setters=(("+", "-"),))
+    explicit = esolangs.TemplateArtifact("@", REFERENCE, bindings)
+    with pytest.raises(esolangs.ProgramError, match="does not support input templates"):
+        esolangs.to_json(REFERENCE, explicit)
 
 
-@pytest.mark.parametrize("language", [REFERENCE, *one(parameterized=True)])
-def test_export_refuses_templates_the_importer_would_reject(language) -> None:
-    declared = template_char(esolangs.describe(language).id)
-    marker = "_" if declared == "@" else "@"
-    bindings = esolangs.TemplateBindings(char=marker, setters=(("+", "-"),))
-    template = esolangs.TemplateArtifact(marker, language, bindings)
-    with pytest.raises(esolangs.ProgramError, match="template char does not match"):
-        esolangs.to_json(language, template)
+@pytest.mark.parametrize("language", one(parameterized=True))
+def test_explicit_template_marker_round_trips_in_its_catalog(language: str) -> None:
+    declaration = esolangs.Language(language).catalog.languages[language]
+    alias = "Private Alias"
+    api = esolangs.Catalog([replace(declaration, aliases=(alias,))]).bind(alias)
+    template = api.generate("01", settings=api.settings())
+    assert isinstance(template, esolangs.TemplateArtifact)
+    legacy = api.to_json(template)
+    assert api.to_json(api.from_json(legacy)) == legacy
+
+    marker = "💡"
+    assert marker not in template.source
+    explicit = replace(
+        template,
+        source=template.source.replace(template.bindings.char, marker),
+        bindings=esolangs.TemplateBindings(
+            char=marker, setters=template.bindings.setters
+        ),
+    )
+    document = api.to_json(explicit)
+    restored = esolangs.from_json(alias, document, catalog=api.catalog)
+    assert restored == explicit
+    assert esolangs.to_json(alias, restored, catalog=api.catalog) == document
+    for bit in (0, 1):
+        assert api.evaluate(restored, [bit]).answer == str(bit)
+
+
+@pytest.mark.parametrize("language", one(parameterized=True))
+def test_explicit_template_marker_still_requires_exact_spans(language: str) -> None:
+    api = esolangs.Language(language)
+    bindings = esolangs.TemplateBindings(char="@", setters=(("", ""), ("+", "-")))
+    explicit = esolangs.TemplateArtifact(
+        "@", api.name, bindings, spans=((0, 0), (0, 1))
+    )
+    encoded = api.to_json(explicit)
+    assert api.from_json(encoded) == explicit
+    value = json.loads(encoded)
+    for corrupt in (
+        {"char": "@@"},
+        {"source": "@@"},
+        {"spans": []},
+        {"spans": [[0, 0], [True, 1]]},
+    ):
+        with pytest.raises(esolangs.ProgramError):
+            api.from_json(json.dumps({**value, **corrupt}))
 
 
 def test_portable_storage_preserves_compression_for_text_languages(

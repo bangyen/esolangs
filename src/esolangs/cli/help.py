@@ -167,12 +167,11 @@ XOR, 10010110 is three-input.  How the program takes its inputs and
 prints the result depends on the language; `esolangs describe <language>`
 says (one input per line, adjacent bit characters, and so on).
 
-Some languages instead return a *template*: their generators embed the
-inputs in the code rather than reading them, leaving a run of `$` per input
-as long as the code that will replace it.  The API refuses to run one
-unfilled, but its printed text is plain source that would run as written.
-`esolangs list --details` marks them `tmpl`; pass --bits to get a runnable
-program instead of the template.
+Some generators embed the inputs in source. They return a *template* with
+one placeholder run per input, as long as its replacement. Fill the template
+before running it through the Python API. The CLI prints literal source,
+which `esolangs run` interprets as written. `esolangs list --details` marks
+these generators `tmpl`. Pass --bits to print the filled program.
 
 options:
   --bits BITS  fill a template's input slots with these bits, one character

@@ -11,6 +11,16 @@ from esolangs import run
 from tests.support.evaluation import _evaluate
 
 
+def test_provenance_reports_invalid_layout_as_template_error() -> None:
+    api = esolangs.Language("Bitdeque")
+    bindings = esolangs.TemplateBindings(
+        setters=(("0000", "1111"), ("000000", "111111"))
+    )
+    malformed = esolangs.TemplateArtifact("$$$$ $$$$$$", api.name, bindings)
+    with pytest.raises(esolangs.TemplateError, match="is not the template"):
+        api.instantiate(malformed, [0, 1], truth_table="0110")
+
+
 class TestEveryDumpSaysWhereTheAnswerIs:
     """A dump prints the whole final state, so "where" is the question."""
 

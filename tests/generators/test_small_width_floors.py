@@ -43,6 +43,31 @@ def test_template_layouts_keep_their_bindings(name: str, layout: dict) -> None:
 
 
 @pytest.mark.parametrize("name", languages(parameterized=True))
+def test_relabeling_slots_preserves_layout_provenance(name: str) -> None:
+    api = esolangs.Language(name)
+    template = api.generate("0110", width=1)
+    marker = "\N{SNOWMAN}"
+    assert marker not in template.source
+    source = list(template.source)
+    for start, end in template.spans:
+        source[start:end] = marker * (end - start)
+    relabeled = replace(
+        template,
+        source="".join(source),
+        bindings=replace(template.bindings, char=marker),
+    )
+    restored = api.from_json(api.to_json(relabeled))
+    for row, answer in enumerate("0110"):
+        bits = [row >> 1, row & 1]
+        assert api.instantiate(restored, bits, truth_table="0110") == template.fill(
+            bits
+        )
+        assert api.evaluate(restored, bits).answer == answer
+    with pytest.raises(TemplateError, match="is not the template"):
+        api.instantiate(restored, [0, 1], truth_table="0001")
+
+
+@pytest.mark.parametrize("name", languages(parameterized=True))
 @pytest.mark.parametrize(("table", "width"), [("1111", 2), ("10110100", 15)])
 def test_templates_with_overlong_tokens_validate(
     name: str, table: str, width: int

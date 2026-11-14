@@ -32,6 +32,8 @@ class MachineCapabilities:
     native_completions: frozenset[Completion] | None = None
     #: Whether preparation accepts a raster pixel scale.
     supports_scale: bool = False
+    #: Complete a run at its first exact repeated command boundary or halt.
+    complete_on_exact_repeat: bool = False
 
     def accepts_native(self, kind: Completion) -> bool:
         """Whether the native runner declares this completion kind."""

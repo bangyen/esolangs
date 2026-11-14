@@ -191,3 +191,40 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     monkeypatch.setattr(interpreter, "_execute", lambda *_args: POST_HALT_REPORT)
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
         esolangs.run("Suffolk", "<")
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("worker", [False, True])
+def test_bounded_runs_keep_the_native_first_repeat_boundary(worker):
+    api = esolangs.Language("Suffolk")
+    artifact = api.from_source("!" * 49 + "<.<!")
+    steps = len(artifact.source)
+    native = api.run(artifact)
+    assert native.output == "0"
+    assert native.completion.cycle.repeat_pass == steps
+    expected = replace(native, steps=steps)
+    prepared = api.prepare(artifact)
+    limits = esolangs.ExecutionLimits(
+        max_steps=steps, total_timeout=5 if worker else None
+    )
+    assert api.run(artifact, limits=limits) == expected
+    assert prepared.run(limits=limits) == expected
+    assert api.evaluate(artifact, [0], limits=limits) == esolangs.BooleanEvaluation(
+        "0", expected
+    )
+
+    earlier = prepared.execute(limits=replace(limits, max_steps=steps - 1))
+    assert earlier.bound == "max_steps"
+    assert earlier.observation == replace(expected, completion=None, steps=steps - 1)
+    eof = api.run(",.", stdin="A", limits=replace(limits, max_steps=3))
+    assert eof == replace(api.run(",.", stdin="A"), steps=3)
+    assert eof.output == "@"
+    assert eof.completion.kind is Completion.HALTED
+
+    debugger = prepared.make_debugger()
+    assert (
+        debugger.run(limits=esolangs.ExecutionLimits(max_steps=2 * steps))
+        == "max_steps"
+    )
+    assert debugger.output == "00"
+    assert debugger.observation.completion is None
