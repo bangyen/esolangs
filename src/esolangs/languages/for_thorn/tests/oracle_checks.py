@@ -136,7 +136,7 @@ def _model(source, stdin):
                     return "input", [*trace, row()]
                 stop = stdin.find("\n", cursor)
                 stop = len(stdin) if stop < 0 else stop + 1
-                text = stdin[cursor:stop].removesuffix("\n").removesuffix("\r")
+                text = stdin[cursor:stop].removesuffix("\r\n").removesuffix("\n")
                 progress += max(1, stop - cursor)
                 cursor, reads = stop, reads + 1
                 stack.extend(map(ord, text))

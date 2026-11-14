@@ -130,9 +130,10 @@ class _Input:
             self.cursor += 1
         else:
             end = self.text.find("\n", start)
-            stop = len(self.text) if end < 0 else end
-            value = self.text[start:stop].removesuffix("\r")
-            self.cursor = stop if end < 0 else stop + 1
+            self.cursor = len(self.text) if end < 0 else end + 1
+            value = (
+                self.text[start : self.cursor].removesuffix("\r\n").removesuffix("\n")
+            )
             self.lines += 1
         self.reads += 1
         self.newline = False

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import shlex
+import sys
 from collections.abc import Iterable
+from contextlib import suppress
 from difflib import get_close_matches
 
 from esolangs import LanguageInfo
@@ -11,8 +13,9 @@ from esolangs.exceptions import (
     EsolangError,
     ExecutionBudgetError,
     TemplateError,
+    UnknownLanguageError,
 )
-from esolangs.registry import SUGGESTION_CUTOFF, LanguageDeclaration
+from esolangs.registry import LANGUAGES, SUGGESTION_CUTOFF, LanguageDeclaration, resolve
 from esolangs.runtime.source_hints import error_text
 
 #: A run stopped by its ``--execution-timeout``, following timeout(1).  Distinct from
@@ -173,6 +176,12 @@ def _input_sentence(facts: LanguageInfo) -> str:
     return f'one line per bit, e.g. "{lines}"'
 
 
-def _as_argument(language: str) -> str:
-    """Quote one language name for a POSIX shell."""
+def _as_argument(language: str, *, encoding: str | None = None) -> str:
+    """Quote a language operand, using its ID if the name cannot be encoded."""
+    codec = encoding or sys.stderr.encoding or "utf-8"
+    try:
+        language.encode(codec)
+    except UnicodeEncodeError:
+        with suppress(UnknownLanguageError):
+            language = LANGUAGES[resolve(language)].id
     return shlex.quote(language)

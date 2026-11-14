@@ -2,8 +2,7 @@
 
 from dataclasses import dataclass
 
-from esolangs.exceptions import ArgumentError
-from esolangs.runtime._validate import check_timeout, check_whole
+from esolangs.runtime._validate import check_memory_size, check_timeout, check_whole
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -34,11 +33,7 @@ class ExecutionLimits:
         for name in ("max_steps", "max_output"):
             value = getattr(self, name)
             if value is not None:
-                check_whole(value, name)
+                object.__setattr__(self, name, check_whole(value, name))
         memory = self.max_memory
-        if memory is not None and (
-            isinstance(memory, bool) or not isinstance(memory, int) or memory <= 0
-        ):
-            raise ArgumentError(
-                f"max_memory must be a positive integer, got {memory!r}"
-            )
+        if memory is not None:
+            object.__setattr__(self, "max_memory", check_memory_size(memory))

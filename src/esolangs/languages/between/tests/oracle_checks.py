@@ -183,7 +183,7 @@ def _model(program, stdin, cap=16):
                     raise EOFError
                 end = stdin.find("\n", cursor)
                 end = len(stdin) if end < 0 else end + 1
-                value = stdin[cursor:end].removesuffix("\n").removesuffix("\r")
+                value = stdin[cursor:end].removesuffix("\r\n").removesuffix("\n")
                 progress += max(1, end - cursor)
                 cursor = end
                 if args[0] not in variables:

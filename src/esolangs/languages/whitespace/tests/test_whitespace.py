@@ -1,5 +1,8 @@
 """Execution tests for the Whitespace interpreter."""
 
+import subprocess
+import sys
+
 import pytest
 
 from esolangs import ExecutionLimits
@@ -176,6 +179,30 @@ def test_character_output_uses_the_code_point_range(tmp_path) -> None:
             run(push(65) + OUT_CHAR + push(value) + OUT_CHAR + END, io)
         assert io.getvalue() == "A"
     _check_lossless_containers(tmp_path)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("options", "code"), [([], 1), (["--isolated"], 1), (["--max-steps", "4"], 124)]
+)
+def test_cli_rejects_surrogate_output_on_a_pipe(tmp_path, options, code) -> None:
+    source = push(65) + OUT_CHAR + push(0xD800) + OUT_CHAR + END
+    assert wrun(source).encode("utf-8", "surrogatepass") == b"A\xed\xa0\x80"
+    path = tmp_path / "surrogate.ws"
+    path.write_text(source, encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, "-m", "esolangs", "run", *options, "Whitespace", str(path)],
+        input=b"",
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    assert (result.returncode, result.stdout) == (code, b"")
+    assert b"surrogate at character 1" in result.stderr
+    assert b"UTF-8" in result.stderr
+    if code == 124:
+        assert b"omitted partial output" in result.stderr
+        assert b"execution stopped at the max_steps bound" in result.stderr
 
 
 def _check_lossless_containers(tmp_path):

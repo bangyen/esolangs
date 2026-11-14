@@ -151,7 +151,7 @@ def _model(source, stdin):
             else:
                 end = stdin.find("\n", cursor)
                 stop = len(stdin) if end < 0 else end + 1
-                text = stdin[cursor:stop].removesuffix("\n").removesuffix("\r")
+                text = stdin[cursor:stop].removesuffix("\r\n").removesuffix("\n")
                 cursor, reads = stop, reads + 1
                 stack.append(_value(text, numeric=True))
         elif kind == "lit":

@@ -190,7 +190,7 @@ def _model(source, stdin, dialect):
                 return "input", [*trace, row()]
             stop = stdin.find("\n", cursor)
             stop = len(stdin) if stop < 0 else stop + 1
-            line = stdin[cursor:stop].removesuffix("\n").removesuffix("\r")
+            line = stdin[cursor:stop].removesuffix("\r\n").removesuffix("\n")
             progress += max(1, stop - cursor)
             cursor, reads = stop, reads + 1
         changed, memory, calls = stack.copy(), variables.copy(), frames.copy()

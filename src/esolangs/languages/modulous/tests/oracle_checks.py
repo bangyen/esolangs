@@ -39,7 +39,7 @@ def _read(mode, stdin, cursor):
         return "", cursor, True
     end = stdin.find("\n", cursor)
     stop = len(stdin) if end < 0 else end + 1
-    return stdin[cursor:stop].removesuffix("\n").removesuffix("\r"), stop, False
+    return stdin[cursor:stop].removesuffix("\r\n").removesuffix("\n"), stop, False
 
 
 def _push(args, stack, variables):

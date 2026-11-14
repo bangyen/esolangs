@@ -63,6 +63,22 @@ def test_bad_declaration_name_is_a_public_argument_error() -> None:
         replace(LANGUAGES[REFERENCE], name=42, id="")
 
 
+@pytest.mark.parametrize("identifier", ["", "private_interpreter"])
+def test_catalog_rejects_names_that_cannot_form_a_utf8_url(identifier: str) -> None:
+    with pytest.raises(esolangs.ArgumentError, match=r"language names.*UTF-8"):
+        replace(LANGUAGES[REFERENCE], name="Private\ud800", id=identifier)
+
+
+def test_unicode_catalog_name_round_trips_and_forms_a_wiki_url() -> None:
+    record = replace(LANGUAGES[REFERENCE], name="Private \N{SNAKE}", id="")
+    api = esolangs.Catalog([record]).bind(record.id)
+    assert api.describe().wiki_url.endswith("/Private_%F0%9F%90%8D")
+    program = api.generate("01")
+    restored = api.from_json(api.to_json(program))
+    assert restored == program
+    assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+
+
 def test_boolean_text_arguments_use_string_storage() -> None:
     class WrappedText(str):
         __hash__ = None
@@ -84,6 +100,23 @@ def test_boolean_text_arguments_use_string_storage() -> None:
         assert program == api.generate("01", balance=balance)
         for bit in (0, 1):
             assert bound.evaluate(program, [bit]).answer == str(bit)
+
+
+@pytest.mark.parametrize("sequence_type", [list, tuple])
+def test_boolean_rows_use_the_sequence_contents(sequence_type: type) -> None:
+    class WrappedRow(sequence_type):
+        def __iter__(self):
+            return iter((1,))
+
+        def __len__(self):
+            return 1
+
+    api = esolangs.Language(REFERENCE)
+    row = WrappedRow([0])
+    assert api.encode_inputs(row) == "0"
+    assert api.evaluate(api.generate("01"), row).answer == "0"
+    with pytest.raises(esolangs.ArgumentError, match="must not be empty"):
+        api.encode_inputs(WrappedRow())
 
 
 def test_boolean_adapters_use_stdin_contract_without_a_generator() -> None:

@@ -58,7 +58,7 @@ def _model(rules, text, stdin, choices):
                 return "input", [*trace, row]
             end = stdin.find("\n", cursor)
             end = len(stdin) if end < 0 else end + 1
-            replacement = stdin[cursor:end].removesuffix("\n").removesuffix("\r")
+            replacement = stdin[cursor:end].removesuffix("\r\n").removesuffix("\n")
             progress += max(1, end - cursor)
             cursor = end
         elif right.startswith("~"):

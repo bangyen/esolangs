@@ -41,15 +41,30 @@ def check_whole(value: object, name: str) -> int:
     from esolangs.exceptions import ArgumentError
     from esolangs.runtime.source_hints import with_hint
 
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise with_hint(
-            ArgumentError(
-                f"{name} must be a non-negative integer, got {_argument_repr(value)}"
-            ),
-            f"use a non-negative integer, for example {name}=0; "
-            "bools and floats are not counts",
-        )
-    return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        value = int.__int__(value)
+        if value >= 0:
+            return value
+    raise with_hint(
+        ArgumentError(
+            f"{name} must be a non-negative integer, got {_argument_repr(value)}"
+        ),
+        f"use a non-negative integer, for example {name}=0; "
+        "bools and floats are not counts",
+    )
+
+
+def check_memory_size(value: object) -> int:
+    """Return the positive whole byte count shared by the limits and worker."""
+    from esolangs.exceptions import ArgumentError
+
+    if isinstance(value, int) and not isinstance(value, bool):
+        value = int.__int__(value)
+        if value > 0:
+            return value
+    raise ArgumentError(
+        f"max_memory must be a positive integer, got {_argument_repr(value)}"
+    )
 
 
 def check_seed(seed: object) -> None:
@@ -163,22 +178,23 @@ def check_bits(bits: object, what: str = "bits") -> list[int]:
             ),
             ("pass integer bits as a list or tuple, for example [0, 1]"),
         )
-    if not bits:
-        raise with_hint(
-            ArgumentError(f"{what} must not be empty; a program reads at least one"),
-            ("pass integer bits as a list or tuple, for example [0, 1]"),
-        )
+    entries = list.__iter__(bits) if isinstance(bits, list) else tuple.__iter__(bits)
     values = [
         int.__int__(bit)
         if type(bit) is not int and isinstance(bit, int) and not isinstance(bit, bool)
         else bit
-        for bit in bits
+        for bit in entries
     ]
+    if not values:
+        raise with_hint(
+            ArgumentError(f"{what} must not be empty; a program reads at least one"),
+            ("pass integer bits as a list or tuple, for example [0, 1]"),
+        )
     if any(
         isinstance(bit, bool) or not isinstance(bit, int) or bit not in (0, 1)
         for bit in values
     ):
-        if any(isinstance(bit, bool) for bit in bits):
+        if any(isinstance(bit, bool) for bit in values):
             # Said separately because "must be 0 or 1" reads as wrong when
             # you passed True.  Before this check `[True, False]` and
             # `[1.0, 0.0]` were accepted and selected a different row.
@@ -186,14 +202,12 @@ def check_bits(bits: object, what: str = "bits") -> list[int]:
                 ArgumentError(
                     f"{what} must be the integers 0 and 1; bools are refused on "
                     f"purpose, because True == 1 and a list of them used to be "
-                    f"accepted as a different row, got {_argument_repr(list(bits))}"
+                    f"accepted as a different row, got {_argument_repr(values)}"
                 ),
                 ("pass integer bits as a list or tuple, for example [0, 1]"),
             )
         raise with_hint(
-            ArgumentError(
-                f"{what} must each be 0 or 1, got {_argument_repr(list(bits))}"
-            ),
+            ArgumentError(f"{what} must each be 0 or 1, got {_argument_repr(values)}"),
             ("pass integer bits as a list or tuple, for example [0, 1]"),
         )
     return values

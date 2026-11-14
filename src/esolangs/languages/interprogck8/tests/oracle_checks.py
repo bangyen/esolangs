@@ -27,7 +27,7 @@ class _Port:
             raise EOFError
         end = self.stdin.find("\n", self.cursor)
         stop = len(self.stdin) if end < 0 else end + 1
-        text = self.stdin[self.cursor : stop].removesuffix("\n").removesuffix("\r")
+        text = self.stdin[self.cursor : stop].removesuffix("\r\n").removesuffix("\n")
         self.cursor = stop
         if not text:
             raise ArithmeticError("empty input")

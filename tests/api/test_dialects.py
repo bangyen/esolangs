@@ -298,6 +298,19 @@ def test_dialect_schema_reports_invalid_mapping_arguments() -> None:
         schema.validate({1: "left"})
 
 
+def test_dialect_schema_freezes_enum_tuple_contents() -> None:
+    class EnumTuple(tuple):
+        def __iter__(self):
+            return iter(("first", "injected"))
+
+    schema = esolangs.DialectSchema(
+        REFERENCE, {"mode": EnumTuple(("first", "second"))}, {"mode": "first"}
+    )
+    assert DialectSettings(schema, mode="second").options() == {"mode": "second"}
+    with pytest.raises(esolangs.ArgumentError, match="invalid value"):
+        DialectSettings(schema, mode="injected")
+
+
 def test_default_pickle_has_no_retained_choices() -> None:
     source = esolangs.generate(REFERENCE, "01")
     restored = pickle.loads(pickle.dumps(source))

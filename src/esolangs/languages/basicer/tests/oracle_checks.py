@@ -64,7 +64,7 @@ def _line(stdin, at):
         return None, at, 0
     end = stdin.find("\n", at)
     stop = len(stdin) if end < 0 else end + 1
-    line = stdin[at : len(stdin) if end < 0 else end].removesuffix("\r")
+    line = stdin[at:stop].removesuffix("\r\n").removesuffix("\n")
     return line, stop, max(1, len(line), stop - at)
 
 

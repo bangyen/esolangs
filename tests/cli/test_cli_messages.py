@@ -11,7 +11,7 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
-from esolangs.cli.io import _write_output
+from esolangs.cli.io import _StdoutEncodingError, _write_output
 from tests.support.cli_support import _failure, _refused, call_both, call_main
 from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
@@ -147,31 +147,16 @@ class TestTheLastResortPaths:
         assert exc.value.code == 2
         assert "larger than" in capsys.readouterr().err
 
-    def test_output_a_terminal_cannot_encode_is_written_as_bytes(self) -> None:
-        """A lone surrogate reaches the byte stream rather than raising."""
-        written: list[bytes] = []
-
-        class _Narrow(io.StringIO):
-            # utf-8, because the fallback re-encodes with ``surrogatepass``
-            # and that is only defined for the utf codecs -- an ascii
-            # stream would fail there for a different reason than the one
-            # under test.
-            encoding = "utf-8"
-            buffer = type(
-                "_Bytes",
-                (),
-                {
-                    "write": lambda _s, data: written.append(data),
-                    "flush": lambda _s: None,
-                },
-            )()
-
-            def write(self, text: str) -> int:
-                raise UnicodeEncodeError("ascii", text, 0, 1, "narrow")
-
-        with patch.object(sys, "stdout", _Narrow()):
-            _write_output("\ud800")
-        assert written, "nothing reached the byte stream"
+    def test_redirected_stdout_accepts_only_utf8_text(self) -> None:
+        buffer = io.BytesIO()
+        with (
+            io.TextIOWrapper(buffer, encoding="ascii") as stdout,
+            patch.object(sys, "stdout", stdout),
+        ):
+            _write_output("é")
+            with pytest.raises(_StdoutEncodingError, match="surrogate at character 1"):
+                _write_output("a\ud800")
+            assert buffer.getvalue() == "é".encode()
 
 
 @pytest.mark.parametrize(

@@ -284,6 +284,10 @@ class _StdoutError(Exception):
         super().__init__(str(error))
 
 
+class _StdoutEncodingError(Exception):
+    """Output text cannot be written as UTF-8."""
+
+
 def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
     """Write data to stdout and distinguish destination errors from faults."""
     stream = getattr(sys.stdout, "buffer", None)
@@ -293,7 +297,13 @@ def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
         and stream is not None
         and not sys.stdout.isatty()
     ):
-        data = data.encode("utf-8", "surrogatepass")
+        try:
+            data = data.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise _StdoutEncodingError(
+                f"output contains a surrogate at character {exc.start} "
+                "and cannot be encoded as UTF-8"
+            ) from exc
     try:
         if isinstance(data, bytes):
             sys.stdout.buffer.write(data)
@@ -326,7 +336,11 @@ def _emit_partial(exc: EsolangError) -> None:
     """
     if not exc.partial_output:
         return
-    _write_output(exc.partial_output)
+    try:
+        _write_output(exc.partial_output)
+    except _StdoutEncodingError as error:
+        _note(f"note: omitted partial output. {error}")
+        return
     # Terminal only, as on success: a pipe got "\x01\n" for "\x01", and a
     # --max-output 3 cap 4 bytes.
     if not exc.partial_output.endswith("\n") and sys.stdout.isatty():

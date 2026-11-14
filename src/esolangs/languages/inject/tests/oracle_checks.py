@@ -172,7 +172,7 @@ def _model(source, stdin, cap=64):
             else:
                 end = stdin.find("\n", cursor)
                 stop = len(stdin) if end < 0 else end + 1
-                line_in = stdin[cursor:stop].removesuffix("\n").removesuffix("\r")
+                line_in = stdin[cursor:stop].removesuffix("\r\n").removesuffix("\n")
                 cursor = stop
                 reads += 1
         changed = _Store(lines, spans, pc, stopped)

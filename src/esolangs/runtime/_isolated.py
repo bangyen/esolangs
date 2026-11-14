@@ -40,6 +40,7 @@ from esolangs.runtime._source import ProgramSource, check_scale_for, effective_s
 from esolangs.runtime._validate import (
     _ISOLATED_TIMEOUT,
     _TIMEOUT_CEILING,
+    check_memory_size,
     check_timeout,
     check_whole,
 )
@@ -279,15 +280,7 @@ def check_memory(max_memory: int | None, *, isolated: bool) -> None:
     """Validate a Linux worker address-space budget in bytes before acquisition."""
     if max_memory is None:
         return
-    if (
-        isinstance(max_memory, bool)
-        or not isinstance(max_memory, int)
-        or max_memory <= 0
-    ):
-        # check_whole said "non-negative" while refusing 0.
-        raise exceptions.ArgumentError(
-            f"max_memory must be a positive integer, got {max_memory!r}"
-        )
+    max_memory = check_memory_size(max_memory)
     if not isolated:
         raise exceptions.ArgumentError("max_memory requires isolated=True")
     # A local, not ``sys.platform`` inline: mypy narrows that per host and

@@ -77,7 +77,13 @@ from esolangs.cli.hints import (
     _looks_like_a_table,
     _shell_hint,
 )
-from esolangs.cli.io import _flush_stdout, _read_stdin, _StdoutError, _write_output
+from esolangs.cli.io import (
+    _flush_stdout,
+    _read_stdin,
+    _StdoutEncodingError,
+    _StdoutError,
+    _write_output,
+)
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError, ProgramError
@@ -508,11 +514,12 @@ def _describe(rest: list[str]) -> None:
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
     name = str(facts.name)
+    operand = _as_argument(name, encoding=sys.stdout.encoding or "utf-8")
     _display(name)
     if facts.parameterized:
         _display(
             "input: generated programs embed the bits in source. Fill them with "
-            f"esolangs generate --bits <bits> {_as_argument(name)} <table>"
+            f"esolangs generate --bits <bits> {operand} <table>"
         )
     elif not facts.reads_input:
         _display("input: none -- this language reads no stdin")
@@ -521,7 +528,7 @@ def _describe(rest: list[str]) -> None:
     _display(f"answer: {_answer_sentence(facts)}")
     _display(f"generator: {_generator_sentence(facts)}")
     _display(f"settings: {_settings_sentence(facts)}")
-    _display(f"spec: esolangs describe --spec {_as_argument(name)}")
+    _display(f"spec: esolangs describe --spec {operand}")
     _display()
     _display("details:")
     shown_facts: dict[str, object] = {
@@ -585,8 +592,9 @@ def main() -> None:
     terminating prints "will run until you stop it", inviting the interrupt;
     exit 130 is the shell convention for SIGINT.
 
-    Stdout errors exit 120. An early-closing pipe is silent. Stderr failures
-    leave the command's status unchanged.
+    An unavailable stdout exits 120. An early-closing pipe is silent. Text
+    that cannot be encoded for a pipe exits 1. Stderr failures leave the
+    command's status unchanged.
 
     Anything else is a bug in this package, not the program being run, and
     exits 70 with a one-line report instead of a traceback.
@@ -627,6 +635,8 @@ def main() -> None:
     except KeyboardInterrupt:
         _diagnostic("interrupted\n")
         sys.exit(130)
+    except _StdoutEncodingError as exc:
+        _fail(exc, 1)
     except _StdoutError as exc:
         # Python flushes stdout at exit and would report the same error
         # again from the interpreter's own teardown.

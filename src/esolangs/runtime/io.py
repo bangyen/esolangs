@@ -251,8 +251,8 @@ class ScriptedIO(IO):
     def _read(self, _prompt: str) -> str:
         r"""Read one ``\n``-terminated line.
 
-        A trailing ``\r`` is stripped, so ``\r\n`` reads as one line
-        terminator.  Character reads (``_read_char``) deliberately do not
+        A ``\r`` immediately before ``\n`` is part of the line terminator.
+        Character reads (``_read_char``) deliberately do not
         do this: they return the raw text, ``\\r`` included.  Line reads
         see lines; character reads see characters -- the two views share
         one offset cursor but normalize differently, by design.
@@ -261,14 +261,13 @@ class ScriptedIO(IO):
             self._exhausted("line")
         end = self._source.find("\n", self._offset)
         if end < 0:
-            end = len(self._source)
-            stop = end
+            value = self._source[self._offset :]
+            self._offset = len(self._source)
         else:
-            stop = end + 1
-        value = self._source[self._offset : end]
-        self._offset = stop
+            value = self._source[self._offset : end].removesuffix("\r")
+            self._offset = end + 1
         self._line_reads += 1
-        return value.removesuffix("\r")
+        return value
 
     def _read_char(self, _prompt: str) -> str:
         self._character_reads = True

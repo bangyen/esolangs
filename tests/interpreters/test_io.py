@@ -161,10 +161,10 @@ def test_mixed_read_exhaustion_reports_character_offset() -> None:
 def test_line_exhaustion_counts_only_actual_line_delimiters(separator: str) -> None:
     from esolangs.exceptions import InputExhaustedError
 
-    source = ScriptedIO(f"a{separator}b\nend")
+    source = ScriptedIO(f"a{separator}b\nend{separator}")
     assert source.supplied == 2
     assert source.input_str() == f"a{separator}b"
-    assert source.input_str() == "end"
+    assert source.input_str() == f"end{separator}"
     with pytest.raises(InputExhaustedError) as error:
         source.input_str()
     assert (error.value.reads, error.value.supplied, error.value.unit) == (2, 2, "line")

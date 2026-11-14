@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import random
 import struct
 import zlib
@@ -665,6 +667,32 @@ def test_malformed_source_metadata_is_refused(body) -> None:
     data = data[:-12] + _chunk(b"esOL", body) + data[-12:]
     with pytest.raises(ProgramError, match="not a readable PNG"):
         read_png_artifact(one(source_kind="raster")[0], data)
+
+
+@pytest.mark.parametrize(
+    "encoding", ["utf-8", "utf-8-sig", "utf-16", "utf-16-le", "utf-32"]
+)
+def test_source_metadata_bytes_require_utf8(encoding: str, tmp_path: Path) -> None:
+    api = esolangs.Language(one(source_kind="raster")[0])
+    pixels = esolangs.Raster((((1, 2, 3),),))
+    raw = pixels.to_png()
+    body = '{"version":1,"scale":4}'.encode(encoding)
+    data = raw[:-12] + _chunk(b"esOL", body) + raw[-12:]
+    path = tmp_path / "source.png"
+    path.write_bytes(data)
+    portable = json.loads(api.to_json(pixels))
+    portable["source"] = base64.b64encode(data).decode("ascii")
+    document = json.dumps(portable)
+
+    assert esolangs.Raster.from_png(data) == pixels
+    if encoding.startswith("utf-8"):
+        assert api.from_file(path) == api.from_json(document)
+        assert api.from_file(path).scale == 4
+    else:
+        with pytest.raises(esolangs.ProgramError, match="not a readable PNG"):
+            api.from_file(path)
+        with pytest.raises(esolangs.ProgramError, match="not a readable PNG"):
+            api.from_json(document)
 
 
 def test_metadata_writer_bounds_chunk_size() -> None:

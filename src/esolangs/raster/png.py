@@ -480,7 +480,7 @@ class SourceMetadataSizeError(ProgramError):
 
 
 def read_metadata(data: bytes) -> dict[str, Any] | None:
-    """Read bounded version-one source metadata."""
+    """Read bounded UTF-8 version-one source metadata."""
     found: dict[str, Any] | None = None
     for kind, body in _chunks(data):
         if kind != _METADATA_CHUNK:
@@ -488,7 +488,9 @@ def read_metadata(data: bytes) -> dict[str, Any] | None:
         if found is not None or len(body) > _METADATA_LIMIT:
             raise ValueError("duplicate or oversized esolangs PNG metadata")
         decoded = json.loads(
-            body, object_pairs_hook=unique_object, parse_int=parse_integer
+            body.decode("utf-8-sig"),
+            object_pairs_hook=unique_object,
+            parse_int=parse_integer,
         )
         if not isinstance(decoded, dict):
             raise ValueError("esolangs PNG metadata must be an object")

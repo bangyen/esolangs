@@ -109,6 +109,12 @@ class LanguageDeclaration:
             or not (name := str.__str__(self.name)).strip()
         ):
             raise ArgumentError("catalog language names must be nonblank strings")
+        try:
+            name.encode("utf-8")
+        except UnicodeEncodeError as error:
+            raise ArgumentError(
+                "catalog language names must be valid UTF-8 text"
+            ) from error
         if not isinstance(self.id, str):
             raise ArgumentError("catalog language identifiers must be nonempty strings")
         identifier = str.__str__(self.id) or canonical_id(name)

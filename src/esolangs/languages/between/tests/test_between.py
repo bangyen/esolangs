@@ -4,7 +4,7 @@ from itertools import product
 
 import pytest
 
-from esolangs import ExecutionLimits
+from esolangs import ExecutionCapError, ExecutionLimits, ExecutionResult, Language
 from esolangs import run as run_public
 from esolangs.exceptions import HaltError
 from esolangs.languages.between.interpreter import run
@@ -51,6 +51,42 @@ def test_apostrophes_in_strings() -> None:
             ).output
             == text
         )
+
+
+@pytest.mark.medium
+def test_line_input_and_output_caps_preserve_python_code_points() -> None:
+    api = Language("Between")
+    code = "'x'v.\n[x]i.\n[x]p."
+    text = "\U0001f600\ud800\udfff\r"
+    prepared = api.prepare(code)
+    result = api.run(code, stdin=text)
+    assert (result.output, result.input_position, result.input_reads) == (text, 4, 1)
+    assert prepared.run(stdin=text) == result
+    assert api.run(code, stdin=text, isolated=True) == result
+
+    steps = ExecutionLimits(max_steps=3)
+    expected = ExecutionResult(text, 4, 1, 0, completion=result.completion, steps=3)
+    assert prepared.run(stdin=text, limits=steps) == expected
+    assert api.run(code, stdin=text, limits=steps) == expected
+    debugger = prepared.make_debugger(stdin=text)
+    assert debugger.run(limits=steps) == "halted"
+    assert debugger.observation == expected
+
+    exact = ExecutionLimits(max_steps=3, max_output=len(text))
+    assert prepared.run(stdin=text, limits=exact) == expected
+    for limit in (2, 3):
+        with pytest.raises(ExecutionCapError, match="output limit") as caught:
+            prepared.run(
+                stdin=text, limits=ExecutionLimits(max_steps=3, max_output=limit)
+            )
+        assert caught.value.partial_output == text[:limit]
+        assert caught.value.observation == ExecutionResult(
+            text[:limit], 4, 1, 0, steps=2
+        )
+
+    crlf = api.run(code, stdin=text + "\n", isolated=True)
+    assert crlf.output == text[:-1]
+    assert crlf.input_position == len(text) + 1
 
 
 def test_groups_nest_and_compute(monkeypatch) -> None:

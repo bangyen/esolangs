@@ -4,6 +4,7 @@ import gzip
 import json
 import os
 import select
+import shlex
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -83,11 +84,12 @@ class TestNonTextInputIsRefusedNotCrashed:
         assert str(path) in result.stderr
         assert len(result.stderr) < 500
 
-    def test_binary_stdin_is_refused(self) -> None:
+    @pytest.mark.parametrize("data", [b"\x80\x81", b"\xed\xa0\x80"])
+    def test_binary_stdin_is_refused(self, data: bytes) -> None:
         """A program's binary output piped into `read-answer`."""
         result = subprocess.run(
             [sys.executable, "-m", "esolangs", "read-answer", REFERENCE],
-            input=b"\x80\x81",
+            input=data,
             capture_output=True,
             timeout=60,
             check=False,
@@ -299,6 +301,26 @@ def test_catalog_json_uses_utf8_on_a_pipe() -> None:
             env={**os.environ, "PYTHONIOENCODING": "utf-16"},
         )
         assert json.loads(report.stdout.decode("utf-8"))
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("language", one_where(lambda d: not d.name.isascii()))
+def test_catalog_spec_command_is_copyable_with_ascii_stdout(language: str) -> None:
+    def call(*args: str) -> bytes:
+        return subprocess.run(
+            [sys.executable, "-m", "esolangs", *args],
+            capture_output=True,
+            timeout=10,
+            check=True,
+            env={**os.environ, "PYTHONIOENCODING": "ascii"},
+        ).stdout
+
+    report = call("describe", language).decode("ascii")
+    line = next(line for line in report.splitlines() if line.startswith("spec: "))
+    command = shlex.split(line.removeprefix("spec: "))
+    assert command[-1] == esolangs.describe(language).id
+    spec = call(*command[1:])
+    assert spec == call("describe", "--spec", language)
 
 
 @pytest.mark.medium

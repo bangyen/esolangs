@@ -46,7 +46,7 @@ class DialectSchema:
                 raise ArgumentError("dialect names must be distinct identifiers")
             if not isinstance(declared, tuple):
                 raise ArgumentError("dialect enums must be tuples")
-            values = tuple(declared)
+            values = tuple(tuple.__iter__(declared))
             if not values or any(type(value) not in (int, str) for value in values):
                 raise ArgumentError(
                     "dialect choices must be nonempty integer/string enums"

@@ -228,13 +228,13 @@ characters, numeric tokens, or lines.
     esolangs encode-inputs brainfuck 101 | esolangs run brainfuck prog.txt
 
 Piped output is written verbatim as UTF-8. A trailing newline is added
-only when stdout is a terminal. Whatever the program
-printed before a failure is written too, then the error on stderr.
+only when stdout is a terminal. Partial output is written before the error
+on stderr. Text containing a surrogate cannot be sent to a pipe as UTF-8.
 
-exit codes: 0 ran, 1 the program broke while running, 2 the ask was wrong
-(unknown language, malformed program, unreadable file), 70 internal error (a
-bug in esolangs), 120 stdout unavailable, 124 a budget ran out (time,
-steps, output, memory), 130 interrupted.
+exit codes: 0 ran, 1 the program broke or its output cannot be encoded,
+2 the ask was wrong (unknown language, malformed program, unreadable file),
+70 internal error (a bug in esolangs), 120 stdout unavailable, 124 a budget
+ran out (time, steps, output, memory), 130 interrupted.
 
 options:
   --isolated         run in a subprocess, by default with a 30-second deadline.
