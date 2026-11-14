@@ -250,6 +250,24 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     ),
     (
         "to_file",
+        x.GeneratorCapError,
+        lambda: esolangs.to_file(
+            R,
+            esolangs.CompressedText.repeated(
+                "+",
+                2,
+                limits=esolangs.TextLimits(
+                    plain_chars=1,
+                    generation_chars=2,
+                    gzip_bytes=100,
+                ),
+            ),
+            _MISSING,
+        ),
+        None,
+    ),
+    (
+        "to_file",
         x.MissingDependencyError,
         lambda: _without_pillow(
             lambda: esolangs.to_file(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from contextlib import nullcontext
+from time import monotonic
 
 from esolangs import ExecutionLimits, run
 from esolangs.cli.args import (
@@ -43,14 +44,26 @@ from esolangs.exceptions import (
     ExecutionBudgetError,
     TemplateError,
 )
+from esolangs.operations.execution import default_total
 from esolangs.registry import LANGUAGES, resolve, template_char
 from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._isolated import check_memory
 from esolangs.settings import dialect_options
 
 
+def _remaining(timeout: float | None, elapsed: float, flag: str) -> float | None:
+    """Charge acquisition time to the original deadline."""
+    if timeout is None:
+        return None
+    remaining = timeout - elapsed
+    if remaining <= 0:
+        _fail(f"{flag} expired while loading the program or stdin", _TIMEOUT_EXIT)
+    return remaining
+
+
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
+    started = monotonic()
     rest, set_pairs = _pop_set_pairs(rest)
     value_options = {
         "--execution-timeout",
@@ -82,10 +95,23 @@ def _run(rest: list[str]) -> None:
     # A cap selects the worker, as run(max_output=...) does; both flags
     # exited 2 with "requires --isolated".
     isolated = bool({"--isolated", "--max-output", "--max-memory"} & {*flags, *options})
-    if isolated and timeout is None and total is None:
-        timeout = 30.0
-    # Reading the file and stdin is acquisition, which either deadline bounds.
-    waited = timeout if timeout is not None else total
+    if timeout is None and (isolated or preparation is not None):
+        total = default_total(total, None)
+    # File and stdin share the tightest acquisition budget. Execution gets
+    # its own execution_timeout after the worker has prepared the program.
+    acquisition, flag = min(
+        (
+            (bound, flag)
+            for bound, flag in (
+                (total, "--total-timeout"),
+                (preparation, "--preparation-timeout"),
+                (timeout, "--execution-timeout"),
+            )
+            if bound is not None
+        ),
+        default=(None, ""),
+        key=lambda pair: pair[0],
+    )
     max_output = None
     if "--max-output" in options:
         max_output = _integer(
@@ -123,12 +149,23 @@ def _run(rest: list[str]) -> None:
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
-    program = _read_program(path, waited, language=language)
-    stdin = _read_stdin(waited, _stdin_hint(declaration))
+    program = _read_program(
+        path,
+        _remaining(acquisition, monotonic() - started, flag),
+        language=language,
+        timeout_flag=flag,
+    )
+    stdin = _read_stdin(
+        _remaining(acquisition, monotonic() - started, flag),
+        _stdin_hint(declaration),
+        timeout_flag=flag,
+    )
+    elapsed = monotonic() - started
+    _remaining(acquisition, elapsed, flag)
     try:
         with (
             _unbounded_notice("run")
-            if waited is None and max_steps is None
+            if acquisition is None and max_steps is None
             else nullcontext()
         ):
             output = run(
@@ -136,9 +173,11 @@ def _run(rest: list[str]) -> None:
                 program,
                 stdin=stdin,
                 limits=ExecutionLimits(
-                    preparation_timeout=preparation,
+                    preparation_timeout=_remaining(
+                        preparation, elapsed, "--preparation-timeout"
+                    ),
                     execution_timeout=timeout,
-                    total_timeout=total,
+                    total_timeout=_remaining(total, elapsed, "--total-timeout"),
                     max_steps=max_steps,
                     max_output=max_output,
                     max_memory=max_memory,

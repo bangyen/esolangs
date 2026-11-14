@@ -82,6 +82,7 @@ def read_artifact(
     *,
     catalog: "Catalog | None" = None,
     normalize: bool = False,
+    preserve_compression: bool = False,
 ) -> Artifact:
     """Acquire source once, retaining native metadata only in an explicit record."""
     from esolangs.registry._catalog import get_catalog
@@ -91,7 +92,12 @@ def read_artifact(
     if isinstance(program, (ProgramArtifact, TemplateArtifact)):
         check_origin(name, program.language, catalog=catalog)
         dialect_options(name, program.settings, catalog=catalog)
-        source = source_for(name, program.source, catalog=catalog)
+        source = source_for(
+            name,
+            program.source,
+            catalog=catalog,
+            preserve_compression=preserve_compression,
+        )
         if source is program.source and program.language == name:
             return program
         if isinstance(program, TemplateArtifact):
@@ -119,7 +125,13 @@ def read_artifact(
     named = (
         _FileSource(str(program), value) if file and isinstance(value, bytes) else value
     )
-    source = source_for(name, named, catalog=catalog, native=file and normalize)
+    source = source_for(
+        name,
+        named,
+        catalog=catalog,
+        native=file and normalize,
+        preserve_compression=preserve_compression,
+    )
     return ProgramArtifact(source, name)
 
 
@@ -171,8 +183,8 @@ def from_source(
     Raises:
         UnknownLanguageError: ``language`` is not registered.
         TemplateError: Source is an unfilled template.
-        ProgramError: Source has an unsupported type, such as a program
-            artifact (pass its ``.source``).
+        ProgramError: Source has an unsupported type or does not match the
+            language's source kind.
         ArgumentError: Dialect settings are invalid for this language.
     """
     from esolangs.registry._catalog import get_catalog
@@ -185,7 +197,9 @@ def from_source(
             "pass its .source"
         )
     retained = effective_settings(name, source, settings, catalog=catalog)
-    return ProgramArtifact(source, name, settings=retained)
+    artifact = ProgramArtifact(source, name, settings=retained)
+    source_for(name, artifact.source, catalog=catalog, preserve_compression=True)
+    return artifact
 
 
 def from_file(

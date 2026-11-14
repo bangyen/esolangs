@@ -156,6 +156,7 @@ def source_for(
     *,
     catalog: Catalog | None = None,
     native: bool = False,
+    preserve_compression: bool = False,
 ) -> Program:
     """Decode containers using declared policy without importing an interpreter."""
     from esolangs.registry._catalog import get_catalog
@@ -165,6 +166,8 @@ def source_for(
     loader = catalog.languages[catalog.resolve(language)].runtime.source_loader
     if native and loader is SourceLoader.TEXT:
         return native_text_source(source)
+    if preserve_compression and loader is not SourceLoader.RASTER:
+        return compressed_text_source(source)
     return _SOURCE_LOADERS[loader](source)
 
 

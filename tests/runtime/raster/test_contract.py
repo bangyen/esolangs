@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
-from esolangs.operations.source import _check_program, read_png_artifact
+from esolangs.operations.source import _check_program
 from esolangs.raster import Raster, lazy_raster
 from esolangs.registry import CATALOG, LANGUAGES, SourceKind
 from tests.support.dialect_support import integer_setting
@@ -274,7 +274,7 @@ def test_scaling_composes_retained_factors(native_png) -> None:
     assert _check_program(source.language, native_png(enlarged)).scale == 6
 
 
-def test_png_settings_retain_integer_choices(native_png) -> None:
+def test_png_settings_retain_integer_choices(tmp_path: Path) -> None:
     """Integers travel as hex; a settings tag needs its language (1.0 audit)."""
     key = integer_setting()
     owner, choices = next(
@@ -283,18 +283,32 @@ def test_png_settings_retain_integer_choices(native_png) -> None:
         if key
         in (lang.runtime.dialect_schema.choices if lang.runtime.dialect_schema else {})
     )
-    settings = esolangs.Language(owner).settings(**{key: choices[-1]})
-    source = esolangs.ProgramArtifact(Raster((((1, 2, 3),),)), owner, settings=settings)
-    assert read_png_artifact(owner, native_png(source)).settings == settings
+    raster = LANGUAGES[RASTER_LANGUAGES[0]]
+    dialect = LANGUAGES[owner].runtime
+    schema = dialect.dialect_schema
+    assert schema is not None
+    runtime = replace(
+        raster.runtime,
+        dialect=dialect.dialect,
+        dialect_schema=esolangs.DialectSchema(
+            raster.name, schema.choices, schema.defaults
+        ),
+    )
+    api = CATALOG.with_language(replace(raster, runtime=runtime)).bind(raster.name)
+    settings = api.settings(**{key: choices[-1]})
+    pixels = Raster((((1, 2, 3),),))
+    path = tmp_path / "settings.png"
+    api.to_file(api.from_source(pixels, settings=settings), path)
+    assert api.from_file(path).settings == settings
     huge = 1 << 20_000  # Past CPython's decimal rendering cap.
     with pytest.raises(esolangs.ArgumentError, match="integer with 20001 bits"):
-        esolangs.Language(owner).settings(**{key: huge})
-    forged = esolangs.Language(owner).settings()
+        api.settings(**{key: huge})
+    forged = api.settings()
     object.__setattr__(forged, "_items", ((key, huge),))
     with pytest.raises(
         esolangs.ArgumentError, match="invalid value for dialect setting"
     ):
-        esolangs.ProgramArtifact(Raster((((1, 2, 3),),)), owner, settings=forged)
+        esolangs.ProgramArtifact(pixels, api.name, settings=forged)
 
 
 def test_png_language_tag_refuses_cross_language_execution(native_png) -> None:

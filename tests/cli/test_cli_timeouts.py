@@ -1,7 +1,9 @@
 """What ``--execution-timeout`` bounds, what it costs, and the code it exits with."""
 
 import time
+from importlib import import_module
 from pathlib import Path
+from threading import Event
 
 import pytest
 
@@ -31,6 +33,119 @@ _BAD_TIMEOUTS = [
 def test_a_bad_timeout_is_refused_with_exit_2(args, message, tmp_path, capsys) -> None:
     refused = _refused(f"run {args} prog:,.", tmp_path, capsys, "1\n")
     assert message in refused
+
+
+def test_file_and_stdin_share_the_acquisition_budget(
+    tmp_path, capsys, monkeypatch
+) -> None:
+    run_cli = import_module("esolangs.cli.run")
+    now = 100.0
+    read_program = run_cli._read_program
+
+    def read_file(path, timeout, **options):
+        nonlocal now
+        assert timeout == 5
+        now += 2
+        return read_program(path, timeout, **options)
+
+    def read_stdin(timeout, _hint, **_options):
+        nonlocal now
+        assert timeout == 3
+        now += 1
+        return ""
+
+    def execute(_language, _program, *, limits, **_options):
+        assert limits == esolangs.ExecutionLimits(
+            execution_timeout=5,
+            total_timeout=7,
+            preparation_timeout=3,
+        )
+        return esolangs.run(REFERENCE, "+.")
+
+    monkeypatch.setattr(run_cli, "monotonic", lambda: now)
+    monkeypatch.setattr(run_cli, "_read_program", read_file)
+    monkeypatch.setattr(run_cli, "_read_stdin", read_stdin)
+    monkeypatch.setattr(run_cli, "run", execute)
+    assert (
+        call_main(
+            [
+                "run",
+                "--total-timeout",
+                "10",
+                "--preparation-timeout",
+                "6",
+                "--execution-timeout",
+                "5",
+                REFERENCE,
+                _program(tmp_path, "+."),
+            ],
+            capsys,
+        )
+        == "\x01"
+    )
+
+
+@pytest.mark.parametrize("flag", ["--total-timeout", "--preparation-timeout"])
+def test_shortest_deadline_applies_to_blocked_stdin(
+    flag, tmp_path, capsys, monkeypatch
+) -> None:
+    from esolangs.cli import io
+
+    release = Event()
+
+    def blocked():
+        release.wait(2)
+        return ""
+
+    def read_stdin(*args, **kwargs):
+        monkeypatch.setattr(io.sys.stdin, "read", blocked)
+        return io._read_stdin(*args, **kwargs)
+
+    monkeypatch.setattr("esolangs.cli.run._read_stdin", read_stdin)
+    try:
+        with pytest.raises(SystemExit, match=r"^124$"):
+            call_main(
+                [
+                    "run",
+                    flag,
+                    "0.1",
+                    "--execution-timeout",
+                    "1",
+                    REFERENCE,
+                    _program(tmp_path, "+."),
+                ],
+                capsys,
+            )
+        assert f"({flag})" in capsys.readouterr().err
+    finally:
+        release.set()
+
+
+def test_preparation_deadline_applies_to_decoding(
+    tmp_path, capsys, monkeypatch
+) -> None:
+    release = Event()
+
+    def decode(*_args, **_kwargs):
+        release.wait(2)
+        raise AssertionError("decoding should have timed out")
+
+    monkeypatch.setattr("esolangs.cli.io._check_program", decode)
+    try:
+        with pytest.raises(SystemExit, match=r"^124$"):
+            call_main(
+                [
+                    "run",
+                    "--preparation-timeout",
+                    "0.2",
+                    REFERENCE,
+                    _program(tmp_path, "+."),
+                ],
+                capsys,
+            )
+        assert "decoding" in capsys.readouterr().err
+    finally:
+        release.set()
 
 
 class TestTimeoutValuesAreCheckedOnce:

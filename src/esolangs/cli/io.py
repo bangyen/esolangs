@@ -11,6 +11,7 @@ import sys
 import threading
 from collections.abc import Callable
 from contextlib import AbstractContextManager
+from time import monotonic
 
 from esolangs.artifacts import ProgramArtifact
 from esolangs.cli.args import _fail
@@ -31,8 +32,7 @@ _WAITING_NOTICE_AFTER = 3.0
 _MAX_PROGRAM_BYTES = 1024 * 1024
 
 
-#: How long to wait for a program file that is not delivering, when no
-#: ``--execution-timeout`` was given to bound it instead.
+#: Fallback deadline for reading a program file.
 _READ_DEADLINE = 10.0
 
 
@@ -82,13 +82,27 @@ def _waiting_notice(hint: str = "") -> _DelayedNotice:
 
 
 def _read_program(
-    path: str, timeout: float | None = None, *, language: str
+    path: str, timeout: float | None = None, *, language: str, timeout_flag: str = ""
 ) -> ProgramArtifact[Program]:
     """Read bounded source, refusing a non-text or oversized file."""
+    started = monotonic()
+    data = _bounded_read(path, timeout, timeout_flag=timeout_flag)
+
+    def decode() -> ProgramArtifact[Program]:
+        return _check_program(language, _FileSource(path, data), normalize=True)
+
     try:
-        return _check_program(
-            language, _FileSource(path, _bounded_read(path, timeout)), normalize=True
-        )
+        if timeout is None:
+            return decode()
+        remaining = timeout - (monotonic() - started)
+        bound = f" ({timeout_flag})" if timeout_flag else ""
+
+        def on_timeout() -> None:
+            _fail(f"gave up decoding {path} after {timeout:g}s{bound}", _TIMEOUT_EXIT)
+
+        if remaining <= 0:
+            on_timeout()
+        return _slurp_thread(decode, remaining, on_timeout=on_timeout)
     except EsolangError as exc:
         _fail(exc)
         raise  # pragma: no cover - _fail exits
@@ -136,12 +150,8 @@ def _slurp_thread[SlurpT](
     return result
 
 
-def _bounded_read(path: str, timeout: float | None) -> bytes:
-    """Open and read ``path``, with a size cap and a deadline.
-
-    Only acquisition runs on the daemon thread; interpreter decoding follows
-    on the caller's thread. The cap applies before any decoding.
-    """
+def _bounded_read(path: str, timeout: float | None, *, timeout_flag: str = "") -> bytes:
+    """Open and read ``path`` with a size cap and a deadline."""
     waited = timeout if timeout is not None else _READ_DEADLINE
 
     def _read_file() -> bytes:
@@ -152,8 +162,9 @@ def _bounded_read(path: str, timeout: float | None) -> bytes:
             _fail(f"cannot read {path}: {exc}")
 
     def _on_timeout() -> None:
+        bound = f" ({timeout_flag})" if timeout_flag else ""
         _fail(
-            f"gave up reading {path} after {waited:g}s -- it is not "
+            f"gave up reading {path} after {waited:g}s{bound} -- it is not "
             f"delivering data (a FIFO with no writer, or a device)",
             _TIMEOUT_EXIT,
         )
@@ -194,12 +205,14 @@ def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:
     return None
 
 
-def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
+def _read_stdin(
+    timeout: float | None = None, hint: str = "", *, timeout_flag: str = ""
+) -> str:
     """Return this command's stdin, or exit if it is not text or never comes.
 
     ``sys.stdin.read()`` blocks until EOF, so an open, unwritten pipe hung
     the command before ``--execution-timeout`` could apply.  The read runs on a
-    daemon thread bounded by ``--execution-timeout``, announced if still waiting; a
+    daemon thread bounded by the acquisition deadline, announced if still waiting; a
     thread rather than :func:`select.select` because tests supply an
     object with no ``fileno``.
     """
@@ -214,8 +227,9 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
             _fail(f"cannot read stdin: not text ({_decode_note(exc)})")
 
     def _on_timeout() -> None:
+        bound = f" ({timeout_flag})" if timeout_flag else ""
         _fail(
-            f"no input arrived on stdin within {timeout:g}s, and nothing "
+            f"no input arrived on stdin within {timeout:g}s{bound}, and nothing "
             f"closed it{hint}",
             _TIMEOUT_EXIT,
         )

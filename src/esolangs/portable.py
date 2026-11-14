@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Iterable
 from dataclasses import asdict, replace
+from itertools import chain
 from os import PathLike
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -17,7 +19,12 @@ from esolangs.artifacts import (
     TemplateBindings,
 )
 from esolangs.compressed import CompressedText, TextLimits
-from esolangs.exceptions import ArgumentError, ProgramError, TemplateError
+from esolangs.exceptions import (
+    ArgumentError,
+    GeneratorCapError,
+    ProgramError,
+    TemplateError,
+)
 from esolangs.raster import Raster, png
 from esolangs.registry import template_char
 from esolangs.registry._catalog import Catalog
@@ -46,8 +53,8 @@ def to_file(
 ) -> None:
     """Write a program as a native source file.
 
-    Text retains its UTF-8 bytes and line endings, compressed source stays gzip,
-    and rasters are PNG. ``gzip=True`` compresses ordinary text exports too.
+    Text retains its UTF-8 bytes and line endings, and rasters are PNG.
+    ``gzip=True`` writes gzip. ``gzip=False`` writes plain text.
     Compression is explicit; a ``.gz`` suffix alone does not enable it.
     ``normalize=True`` appends a language-permitted native file terminator to text,
     including gzip exports.
@@ -66,6 +73,8 @@ def to_file(
         ProgramNotFoundError: ``program`` is a Path that does not exist.
         ProgramError: The record belongs to another language, or the source
             cannot be read or encoded or the file cannot be written.
+        GeneratorCapError: Plain text exceeds its raw-export budget, or
+            adding a native terminator exceeds its generation or gzip budget.
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
     from esolangs.registry._catalog import get_catalog
@@ -81,60 +90,46 @@ def to_file(
         )
     if not str(path):
         raise ArgumentError("path must not be empty")
-    from esolangs.operations.source import check_origin, read_artifact
+    from esolangs.operations.source import read_artifact
 
     # The language decides the file terminator and PNG metadata; without it,
     # normalize appended "\n" even where a trailing newline is code.
     origin = catalog.resolve(language)
     settings = effective_settings(origin, program, settings, catalog=catalog)
     try:
-        record = (
-            program
-            if isinstance(program, (ProgramArtifact, TemplateArtifact))
-            else None
+        record = read_artifact(
+            origin, program, catalog=catalog, preserve_compression=True
         )
-        if record is not None:
-            check_origin(origin, record.language, catalog=catalog)
-            if isinstance(record, TemplateArtifact):
-                # A native file cannot carry bindings: it reloaded as plain
-                # source and ran with its placeholders unfilled.
-                raise with_hint(
-                    TemplateError(
-                        "a template's native file would run with its "
-                        "placeholders unfilled"
-                    ),
-                    "fill it with instantiate() first, or keep the bindings "
-                    "with to_json()",
-                )
-            program = record.source
-        elif not isinstance(program, (str, Raster, CompressedText)):
-            # Bytes, paths and streams load as run() loads them.
-            record = read_artifact(origin, program, catalog=catalog)
-            program = record.source
-        if isinstance(program, CompressedText):
-            source = program.to_gzip()
-        elif isinstance(program, Raster):
+        settings = effective_settings(origin, record, settings, catalog=catalog)
+        if isinstance(record, TemplateArtifact):
+            raise with_hint(
+                TemplateError(
+                    "a template's native file would run with its placeholders unfilled"
+                ),
+                "fill it with instantiate() first, or keep the bindings with to_json()",
+            )
+        body = record.source
+        ending = (
+            "\n" if normalize and catalog.languages[origin].runtime.file_newline else ""
+        )
+        encoded: Iterable[bytes]
+        if isinstance(body, Raster):
             if gzip:
                 raise ProgramError("gzip export requires text; rasters use PNG")
-            source = png.write_source(
-                program.rows,
-                origin,
-                effective_settings(origin, record, settings, catalog=catalog),
-                record.scale if isinstance(record, ProgramArtifact) else None,
-            )
-        elif isinstance(program, str):
-            ending = (
-                "\n"
-                if normalize and catalog.languages[origin].runtime.file_newline
-                else ""
-            )
-            source = (
-                CompressedText.from_chunks((program, ending)).to_gzip()
-                if gzip
-                else (program + ending).encode("utf-8")
-            )
+            encoded = (png.write_source(body.rows, origin, settings, record.scale),)
+        elif gzip:
+            if not isinstance(body, CompressedText):
+                body = CompressedText.from_chunks((body, ending))
+            elif ending:
+                body = CompressedText.from_chunks(
+                    chain(body.chunks(), (ending,)), limits=body.limits
+                )
+            encoded = (body.to_gzip(),)
         else:
-            raise ProgramError("expected text, compressed source, or a raster")
+            chunks = (
+                body.plain_chunks() if isinstance(body, CompressedText) else (body,)
+            )
+            encoded = (chunk.encode("utf-8") for chunk in chain(chunks, (ending,)))
         target = Path(path)
         # The staged write's errors named the temporary file instead.
         if target.is_dir():
@@ -143,9 +138,10 @@ def to_file(
             raise FileNotFoundError("its directory does not exist")
         with TemporaryDirectory(dir=target.parent) as temporary:
             staged = Path(temporary) / "source"
-            staged.write_bytes(source)
+            with staged.open("wb") as stream:
+                stream.writelines(encoded)
             staged.replace(target)
-    except (ProgramError, TemplateError):
+    except (GeneratorCapError, ProgramError, TemplateError):
         raise
     except (OSError, TypeError, ValueError) as exc:
         raise ProgramError(f"cannot save program to {path!s}: {exc}") from exc

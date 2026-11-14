@@ -1,5 +1,6 @@
 """Execution keeps the same behavior across source and input containers."""
 
+import gzip
 import io
 from pathlib import Path
 from threading import Event
@@ -131,6 +132,53 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
     assert path.read_bytes() == b"+,\r\n.\r\n"
     assert _check_program(REFERENCE, path).source == "+,\r\n.\r\n"
     assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
+
+
+def test_source_declaration_and_export_validate_the_language_kind(
+    tmp_path: Path,
+) -> None:
+    for name, source in (
+        (_RASTERS[0], "+."),
+        (REFERENCE, esolangs.Raster((((0, 0, 0),),))),
+    ):
+        path = tmp_path / "source"
+        with pytest.raises(esolangs.ProgramError):
+            esolangs.from_source(name, source)
+        for supplied in (source, esolangs.ProgramArtifact(source, name)):
+            with pytest.raises(esolangs.ProgramError):
+                esolangs.to_file(name, supplied, path)
+            assert not path.exists()
+
+
+@pytest.mark.parametrize("normalize", [False, True])
+def test_text_export_uses_gzip_flag_for_every_container(
+    tmp_path: Path, *, normalize: bool
+) -> None:
+    text = "+.\r\n"
+    expected = (text + ("\n" if normalize else "")).encode()
+    compressed = esolangs.CompressedText.from_chunks((text,))
+    api = esolangs.Language(REFERENCE)
+    artifact = api.from_source(compressed)
+    assert artifact.source is compressed
+    original, exported = tmp_path / "source.gz", tmp_path / "exported"
+    original.write_bytes(compressed.to_gzip())
+    for source in (text, compressed, artifact, original):
+        api.to_file(source, exported, normalize=normalize)
+        assert exported.read_bytes() == expected
+        api.to_file(source, exported, gzip=True, normalize=normalize)
+        assert gzip.decompress(exported.read_bytes()) == expected
+
+
+def test_plain_export_respects_the_raw_text_budget(tmp_path: Path) -> None:
+    limits = esolangs.TextLimits(plain_chars=1, generation_chars=2, gzip_bytes=100)
+    compressed = esolangs.CompressedText.from_chunks(("+.",), limits=limits)
+    path = tmp_path / "source"
+    path.write_bytes(b"original")
+    with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
+        esolangs.to_file(REFERENCE, compressed, path)
+    assert path.read_bytes() == b"original"
+    esolangs.to_file(REFERENCE, compressed, path, gzip=True)
+    assert path.read_bytes() == compressed.to_gzip()
 
 
 @pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
