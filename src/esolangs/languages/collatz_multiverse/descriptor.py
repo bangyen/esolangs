@@ -1,7 +1,11 @@
 """Runtime and compiler capabilities for Collatz Multiverse."""
 
 from esolangs.languages.collatz_multiverse.lifecycle import CAPABILITIES
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -25,7 +29,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Collatz Multiverse",
     RuntimeSpec(
         "collatz_multiverse",

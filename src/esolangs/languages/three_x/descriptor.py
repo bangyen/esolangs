@@ -1,7 +1,11 @@
 """Runtime and compiler capabilities for 3x."""
 
 from esolangs.languages.three_x.lifecycle import CAPABILITIES
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -21,7 +25,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "3x",
     RuntimeSpec(
         "three_x",

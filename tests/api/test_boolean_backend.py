@@ -8,13 +8,13 @@ import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
-from esolangs.registry._language import Language
+from esolangs.registry._language import LanguageDeclaration
 from esolangs.runtime._definition import RuntimeSpec
 
 
 def test_backend_fields_have_one_owner():
     names = {field.name for field in fields(BooleanBackend)}
-    for record in (Language, RuntimeSpec, CertificationSpec):
+    for record in (LanguageDeclaration, RuntimeSpec, CertificationSpec):
         assert names.isdisjoint(field.name for field in fields(record))
     assert all(
         lang.backend is None or isinstance(lang.backend, BooleanBackend)

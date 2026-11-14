@@ -6,7 +6,7 @@ from esolangs.registry._language import (
     BackendDefinition,
     DeferredBackend,
     Example,
-    Language,
+    LanguageDeclaration,
 )
 from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
@@ -30,7 +30,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Circuit Diagram",
     RuntimeSpec(
         "circuit_diagram",

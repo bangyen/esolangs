@@ -2,7 +2,11 @@
 
 from esolangs.languages.bitdeque.lifecycle import CAPABILITIES
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -40,7 +44,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Bitdeque",
     RuntimeSpec(
         "bitdeque",

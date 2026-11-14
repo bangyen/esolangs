@@ -1,7 +1,11 @@
 """Runtime and compiler capabilities for HQ9+ with headers."""
 
 from esolangs.languages.hq9_with_headers.lifecycle import CAPABILITIES
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -22,7 +26,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "HQ9+ with headers",
     RuntimeSpec(
         "hq9_with_headers",

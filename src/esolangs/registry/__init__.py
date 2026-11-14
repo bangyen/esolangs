@@ -12,7 +12,7 @@ from urllib.parse import quote
 from esolangs._bindings import Setters
 from esolangs.exceptions import TemplateError, UnknownLanguageError
 from esolangs.registry._catalog import Catalog, get_catalog
-from esolangs.registry._language import Language
+from esolangs.registry._language import LanguageDeclaration
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
 from esolangs.runtime._definition import SourceKind
 
@@ -24,7 +24,7 @@ __all__ = [
     "SUGGESTION_CUTOFF",
     "Catalog",
     "Generator",
-    "Language",
+    "LanguageDeclaration",
     "SourceKind",
     "canonical_id",
     "example_stems",
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from esolangs.registry._table import CATALOG as CATALOG
     from esolangs.registry._table import LANGUAGES as LANGUAGES
 
-    BY_BOOLEAN: Mapping[str, Language]
+    BY_BOOLEAN: Mapping[str, LanguageDeclaration]
     INTERPRETERS: Mapping[str, str]
 
 

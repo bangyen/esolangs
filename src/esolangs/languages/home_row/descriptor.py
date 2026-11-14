@@ -2,7 +2,11 @@
 
 from esolangs.languages.home_row.lifecycle import CAPABILITIES
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 HOME_ROW_PAIR = ("s", "j")
@@ -27,7 +31,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Home Row",
     RuntimeSpec(
         "home_row",

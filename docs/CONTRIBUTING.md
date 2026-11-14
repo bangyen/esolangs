@@ -135,7 +135,7 @@ and source citations remain checked.
 
 `Language` records names, interpreter, source shape, optional generator and
 typed I/O contract. `resolve` normalizes names; the catalog selects whole-source
-or split-line input. Each language declares `LANGUAGE = Language(...)` in its `descriptor.py`,
+or split-line input. Each language declares `LANGUAGE = LanguageDeclaration(...)` in its `descriptor.py`,
 including interpreter-only entries. Callable references load implementations
 on use; generators import only descriptor definitions they use.
 `scripts/docs/generate.py` derives documentation and examples from the registry

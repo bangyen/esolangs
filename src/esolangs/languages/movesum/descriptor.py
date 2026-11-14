@@ -5,7 +5,7 @@ from esolangs.registry._language import (
     BackendDefinition,
     DeferredBackend,
     Example,
-    Language,
+    LanguageDeclaration,
 )
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -27,7 +27,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Movesum",
     RuntimeSpec(
         "movesum",

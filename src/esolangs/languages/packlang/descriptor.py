@@ -7,7 +7,11 @@ from esolangs.languages.packlang.dialect import (
 )
 from esolangs.languages.packlang.lifecycle import CAPABILITIES
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -48,7 +52,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Packlang",
     RuntimeSpec(
         "packlang",

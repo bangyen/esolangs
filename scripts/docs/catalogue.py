@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any
 from .fragments import AggregateKey, aggregate, registry, sections
 
 if TYPE_CHECKING:
-    from esolangs.registry import Language
+    from esolangs.registry import LanguageDeclaration
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -74,7 +74,7 @@ _AGGREGATES: dict[AggregateKey, dict[str, dict[str, dict[str, str]]]] = {}
 
 
 def aggregate_fragments(
-    packages: Path, languages: Iterable[Language]
+    packages: Path, languages: Iterable[LanguageDeclaration]
 ) -> dict[str, dict[str, dict[str, str]]]:
     """Merge every package's catalogue section, grouped as the ledger was.
 
@@ -89,7 +89,7 @@ def aggregate_fragments(
 
 
 def _aggregate_fragments(
-    packages: Path, languages: Iterable[Language]
+    packages: Path, languages: Iterable[LanguageDeclaration]
 ) -> dict[str, dict[str, dict[str, str]]]:
     """Merge the catalogue sections, uncached; see :func:`aggregate_fragments`."""
     groups: dict[str, dict[str, dict[str, str]]] = {}

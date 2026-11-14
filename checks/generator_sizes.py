@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any
 from docs.fragments import FRAGMENT, AggregateKey, aggregate, sections
 
 if TYPE_CHECKING:
-    from esolangs.registry import Language
+    from esolangs.registry import LanguageDeclaration
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES = ROOT / "src" / "esolangs" / "languages"
@@ -90,7 +90,7 @@ def _validate_section(path: Path, section: dict[str, Any]) -> dict[str, Any]:
 
 
 def _aggregate_fragments(
-    packages: Path, languages: Iterable[Language]
+    packages: Path, languages: Iterable[LanguageDeclaration]
 ) -> dict[str, dict[str, Any]]:
     """Merge every package's generator_sizes section, keyed by language name.
 
@@ -115,7 +115,7 @@ _AGGREGATES: dict[AggregateKey, dict[str, dict[str, Any]]] = {}
 
 
 def aggregate_fragments(
-    packages: Path, languages: Iterable[Language]
+    packages: Path, languages: Iterable[LanguageDeclaration]
 ) -> dict[str, dict[str, Any]]:
     """Merge the generator_sizes sections, cached per process.
 
@@ -205,7 +205,7 @@ def _replace_section(text: str, rendered: str | None) -> str:
 
 def write_fragments(
     packages: Path,
-    languages: Iterable[Language],
+    languages: Iterable[LanguageDeclaration],
     records: Mapping[str, Mapping[str, Any]],
 ) -> bool:
     """Write each language's records into its package fragment.

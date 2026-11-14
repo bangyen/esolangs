@@ -6,7 +6,7 @@ from esolangs.registry._language import (
     BackendDefinition,
     DeferredBackend,
     Example,
-    Language,
+    LanguageDeclaration,
 )
 from esolangs.runtime._definition import (
     CompressedSourcePolicy,
@@ -35,7 +35,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Unary",
     RuntimeSpec(
         "unary",

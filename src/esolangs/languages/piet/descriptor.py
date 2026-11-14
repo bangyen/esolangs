@@ -6,7 +6,7 @@ from esolangs.registry._language import (
     BackendDefinition,
     DeferredBackend,
     Example,
-    Language,
+    LanguageDeclaration,
 )
 from esolangs.runtime._definition import (
     RasterSourcePolicy,
@@ -31,7 +31,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Piet",
     RuntimeSpec(
         "piet",

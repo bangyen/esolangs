@@ -1,7 +1,11 @@
 """Runtime and compiler capabilities for CARP."""
 
 from esolangs.languages.carp.lifecycle import CAPABILITIES
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 MAX_INPUTS = 14
@@ -23,7 +27,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "CARP",
     RuntimeSpec(
         "carp",

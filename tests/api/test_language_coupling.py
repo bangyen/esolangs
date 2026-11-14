@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.registry import LANGUAGES, Language
+from esolangs.registry import LANGUAGES, LanguageDeclaration
 from tests.support.reference import REFERENCE
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -208,7 +208,7 @@ def test_citation_matching_covers_a_compound() -> None:
     assert _cites("Zork's rotations cost 19", name, phrase) is False
 
 
-def _own(lang: Language) -> tuple[set[str], tuple[str, ...]]:
+def _own(lang: LanguageDeclaration) -> tuple[set[str], tuple[str, ...]]:
     """Return a language's spellings and the path prefixes it owns."""
     modules = (
         [f"esolangs.languages.{lang.id}.interpreter"]

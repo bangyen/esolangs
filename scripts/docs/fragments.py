@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from esolangs.registry import Language
+    from esolangs.registry import LanguageDeclaration
 
 #: The file each package keeps its fragment datasets in.
 FRAGMENT = "language.toml"
@@ -65,8 +65,8 @@ def cached[K, T](cache: dict[K, T], key: K, build: Callable[[], T]) -> T:
 def aggregate[T](
     cache: dict[AggregateKey, T],
     packages: Path,
-    languages: Iterable[Language],
-    build: Callable[[Path, list[Language]], T],
+    languages: Iterable[LanguageDeclaration],
+    build: Callable[[Path, list[LanguageDeclaration]], T],
 ) -> T:
     """Return the aggregate over ``packages`` for ``languages``, cached.
 
@@ -80,7 +80,7 @@ def aggregate[T](
     return cached(cache, key, lambda: build(packages, langs))
 
 
-def registry() -> tuple[Language, ...]:
+def registry() -> tuple[LanguageDeclaration, ...]:
     """Return the registered languages, in registry order."""
     from esolangs.registry import LANGUAGES
 
@@ -98,8 +98,8 @@ def section(path: Path, name: str) -> dict[str, Any] | None:
 
 
 def sections(
-    packages: Path, languages: Iterable[Language], name: str
-) -> Iterator[tuple[Language, Path, dict[str, Any]]]:
+    packages: Path, languages: Iterable[LanguageDeclaration], name: str
+) -> Iterator[tuple[LanguageDeclaration, Path, dict[str, Any]]]:
     """Yield each registered package's ``[name]`` table, in registry order.
 
     A repeated language id, or the section in an unregistered package,

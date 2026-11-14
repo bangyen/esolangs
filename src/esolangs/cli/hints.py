@@ -11,7 +11,7 @@ from esolangs.exceptions import (
     ExecutionBudgetError,
     TemplateError,
 )
-from esolangs.registry import SUGGESTION_CUTOFF, Language
+from esolangs.registry import SUGGESTION_CUTOFF, LanguageDeclaration
 from esolangs.runtime.source_hints import error_text
 
 #: A run stopped by its ``--execution-timeout``, following timeout(1).  Distinct from
@@ -148,7 +148,7 @@ def _decode_note(exc: UnicodeDecodeError) -> str:
     return f"invalid UTF-8 at byte {exc.start}"
 
 
-def _stdin_hint(language: Language) -> str:
+def _stdin_hint(language: LanguageDeclaration) -> str:
     """Suggest how to finish waiting for caller-supplied input."""
     if not language.runtime.reads_stdin or not language.has_backend:
         return f"; {language.name} reads no stdin -- close it"

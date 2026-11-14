@@ -1,7 +1,11 @@
 """Runtime and compiler capabilities for Modulous."""
 
 from esolangs.languages.modulous.lifecycle import CAPABILITIES
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -24,7 +28,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Modulous",
     RuntimeSpec(
         "modulous",

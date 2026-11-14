@@ -53,10 +53,10 @@ def test_a_slug_drops_only_punctuation_the_language_has() -> None:
 
 def test_a_language_cannot_both_wrap_and_refuse_to() -> None:
     from esolangs.generation.wrap import wrap_chars
-    from esolangs.registry._language import Language
+    from esolangs.registry._language import LanguageDeclaration
 
     with pytest.raises(ValueError, match="exclude each other"):
-        Language(
+        LanguageDeclaration(
             "X",
             runtime=RuntimeSpec(
                 "fixture",
@@ -74,9 +74,9 @@ def test_parameterized_follows_the_backend_independently_of_examples() -> None:
     from dataclasses import replace
 
     from esolangs.registry._backend import TemplateSpec
-    from esolangs.registry._language import Example, Language
+    from esolangs.registry._language import Example, LanguageDeclaration
 
-    embedded = Language(
+    embedded = LanguageDeclaration(
         "X",
         runtime=RuntimeSpec(
             "fixture",
@@ -88,7 +88,7 @@ def test_parameterized_follows_the_backend_independently_of_examples() -> None:
     )
     assert embedded.parameterized
     assert replace(embedded, example=Example(table="01", bits=(1,))).parameterized
-    reader = Language(
+    reader = LanguageDeclaration(
         "X",
         runtime=RuntimeSpec(
             "fixture",

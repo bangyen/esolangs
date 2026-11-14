@@ -11,7 +11,7 @@ from types import MappingProxyType
 
 import esolangs
 from esolangs.exceptions import ArgumentError, UnknownLanguageError
-from esolangs.registry._language import Language
+from esolangs.registry._language import LanguageDeclaration
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
 
 
@@ -19,22 +19,22 @@ from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
 class Catalog:
     """Own a frozen declaration set; derived indexes share the same scope."""
 
-    languages: Mapping[str, Language]
+    languages: Mapping[str, LanguageDeclaration]
     _by_id: Mapping[str, str]
     _by_folded: Mapping[str, str]
-    _by_boolean: Mapping[str, Language]
+    _by_boolean: Mapping[str, LanguageDeclaration]
     _runners: Mapping[str, tuple[str, bool]]
     _interpreters: Mapping[str, str]
 
-    def __init__(self, declarations: Iterable[Language]) -> None:
+    def __init__(self, declarations: Iterable[LanguageDeclaration]) -> None:
         try:
             records = tuple(declarations)
         except TypeError as error:
             raise ArgumentError(
-                "catalog requires iterable Language declarations"
+                "catalog requires iterable LanguageDeclaration records"
             ) from error
-        if any(not isinstance(lang, Language) for lang in records):
-            raise ArgumentError("catalog declarations must be Language records")
+        if any(not isinstance(lang, LanguageDeclaration) for lang in records):
+            raise ArgumentError("catalog entries must be LanguageDeclaration records")
         if any(not isinstance(lang.aliases, tuple) for lang in records):
             raise ArgumentError("catalog aliases must be immutable tuples")
         languages = {lang.name: lang for lang in records}
@@ -84,10 +84,10 @@ class Catalog:
     def __repr__(self) -> str:
         return f"Catalog({len(self.languages)} languages)"
 
-    def with_language(self, language: Language) -> Catalog:
+    def with_language(self, language: LanguageDeclaration) -> Catalog:
         """Return a new scope with one declaration added or replaced."""
-        if not isinstance(language, Language):
-            raise ArgumentError("catalog declarations must be Language records")
+        if not isinstance(language, LanguageDeclaration):
+            raise ArgumentError("catalog entries must be LanguageDeclaration records")
         return Catalog(({**self.languages, language.name: language}).values())
 
     def bind(self, name: str) -> esolangs.Language:

@@ -1,10 +1,10 @@
 """Runtime capabilities for HQ9+."""
 
 from esolangs.languages.hq9.lifecycle import CAPABILITIES
-from esolangs.registry._language import Language
+from esolangs.registry._language import LanguageDeclaration
 from esolangs.runtime._definition import RuntimeSpec
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "HQ9+",
     RuntimeSpec(
         "hq9",

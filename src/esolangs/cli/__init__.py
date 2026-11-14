@@ -79,7 +79,7 @@ from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError, ProgramError
 from esolangs.raster import png
-from esolangs.registry import LANGUAGES, Language, resolve
+from esolangs.registry import LANGUAGES, LanguageDeclaration, resolve
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
 from esolangs.registry._describe import _spec
 from esolangs.runtime._program import Program
@@ -106,7 +106,7 @@ def _encode(rest: list[str]) -> None:
 
 
 #: ``list``'s filters; every other fact is in ``list --json --details``.
-_FLAG_FILTERS: dict[str, Callable[[Language], bool]] = {
+_FLAG_FILTERS: dict[str, Callable[[LanguageDeclaration], bool]] = {
     "--generator": lambda lang: lang.has_backend,
     "--interpreter-only": lambda lang: not lang.has_backend,
 }

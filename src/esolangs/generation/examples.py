@@ -25,7 +25,13 @@ from esolangs.generation.requests import GenerationRequest, Options
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import DEFAULT_WIDTH, wrap_program
 from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, Language, canonical_id, example_stems, resolve
+from esolangs.registry import (
+    LANGUAGES,
+    LanguageDeclaration,
+    canonical_id,
+    example_stems,
+    resolve,
+)
 from esolangs.registry._backend import Generator
 from esolangs.registry._contracts import (
     CHAR_STREAMS,
@@ -273,7 +279,7 @@ def _fill_from(
 BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
 
 
-def _stem(lang: Language) -> str:
+def _stem(lang: LanguageDeclaration) -> str:
     """Return the stem shared with catalog metadata."""
     return example_stems()[lang.id]
 

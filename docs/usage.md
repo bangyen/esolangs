@@ -286,6 +286,7 @@ Types:
 - `esolangs.ExecutionResult` -- output, stdin usage and explicit completion evidence
 - `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
 - `esolangs.Language` -- bind a canonical language name to one immutable catalog
+- `esolangs.LanguageDeclaration` -- everything the package and its tests know about one language
 - `esolangs.LanguageInfo` -- what `describe` returns
 - `esolangs.PreparedProgram` -- loaded source and bound runtime; every invocation owns its IO and RNG
 - `esolangs.Program` -- `str | Raster | CompressedText`

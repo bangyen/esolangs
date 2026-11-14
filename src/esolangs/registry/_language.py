@@ -1,6 +1,6 @@
 """The metadata a language declares about itself.
 
-Each language owns ``descriptor.py`` with ``LANGUAGE = Language(...)``.
+Each language owns ``descriptor.py`` with ``LANGUAGE = LanguageDeclaration(...)``.
 The registry collects descriptors without importing generator implementations.  This
 module keeps declarations independent of example generation.
 """
@@ -8,7 +8,7 @@ module keeps declarations independent of example generation.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import KW_ONLY, dataclass, field
 from functools import cache
 from typing import TYPE_CHECKING, cast
 
@@ -55,7 +55,7 @@ class _BackendSlot:
     """Expose concrete backend values through the declaration's dataclass field."""
 
     def __get__(
-        self, language: Language | None, owner: type[Language]
+        self, language: LanguageDeclaration | None, owner: type[LanguageDeclaration]
     ) -> BooleanBackend | None:
         if language is None:
             return None
@@ -67,12 +67,14 @@ class _BackendSlot:
         )
 
     def __set__(
-        self, language: Language, value: BooleanBackend | DeferredBackend | None
+        self,
+        language: LanguageDeclaration,
+        value: BooleanBackend | DeferredBackend | None,
     ) -> None:
         object.__setattr__(language, "_backend", value)
 
     @staticmethod
-    def raw(language: Language) -> BooleanBackend | DeferredBackend | None:
+    def raw(language: LanguageDeclaration) -> BooleanBackend | DeferredBackend | None:
         return cast(
             "BooleanBackend | DeferredBackend | None",
             object.__getattribute__(language, "_backend"),
@@ -83,12 +85,13 @@ _BACKEND_SLOT = _BackendSlot()
 
 
 @dataclass(frozen=True)
-class Language:
+class LanguageDeclaration:
     """Everything the package and its tests know about one language."""
 
     # Identity.  ``id`` defaults to :func:`canonical_id` of the name.
     name: str
     runtime: RuntimeSpec
+    _: KW_ONLY
     id: str = ""
     #: Other names :func:`~esolangs.registry.resolve` accepts.
     aliases: tuple[str, ...] = ()

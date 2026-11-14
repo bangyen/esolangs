@@ -8,7 +8,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from esolangs.registry._language import Language
+    from esolangs.registry._language import LanguageDeclaration
 
 Payload = tuple[tuple[int, ...], tuple[int, ...], int, int]
 
@@ -34,7 +34,7 @@ class CertificationSpec:
 _DEFAULT = CertificationSpec()
 
 
-def load(language: Language) -> CertificationSpec:
+def load(language: LanguageDeclaration) -> CertificationSpec:
     """Load language-owned evidence only when verification requests it."""
     package = f"esolangs.languages.{language.id}"
     module = package + ".certification"

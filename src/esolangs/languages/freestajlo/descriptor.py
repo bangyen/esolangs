@@ -1,7 +1,11 @@
 """Runtime and compiler capabilities for Freestajlo."""
 
 from esolangs.languages.freestajlo.lifecycle import CAPABILITIES
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 _UNIT = r'"[^"]*"|\'[\s\S]|\d+|[\s\S]'
@@ -27,7 +31,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Freestajlo",
     RuntimeSpec(
         "freestajlo",

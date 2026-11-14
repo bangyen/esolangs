@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 from .fragments import AggregateKey, aggregate, registry, section, sections
 
 if TYPE_CHECKING:
-    from esolangs.registry import Language
+    from esolangs.registry import LanguageDeclaration
 
 ROOT = Path(__file__).resolve().parents[2]
 # Fame admits at this many backlinks; below it, only a first implementation.
@@ -63,7 +63,7 @@ _AGGREGATES: dict[AggregateKey, dict[str, dict[str, Any]]] = {}
 
 
 def aggregate_fragments(
-    packages: Path, languages: Iterable[Language]
+    packages: Path, languages: Iterable[LanguageDeclaration]
 ) -> dict[str, dict[str, Any]]:
     """Merge every package's curation section, keyed by language name.
 
@@ -76,7 +76,7 @@ def aggregate_fragments(
 
 
 def _aggregate_fragments(
-    packages: Path, languages: Iterable[Language]
+    packages: Path, languages: Iterable[LanguageDeclaration]
 ) -> dict[str, dict[str, Any]]:
     """Merge the curation sections, uncached; see :func:`aggregate_fragments`."""
     return {

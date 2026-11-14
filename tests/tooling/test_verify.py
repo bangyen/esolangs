@@ -455,7 +455,7 @@ def test_generator_scope_keeps_transitive_dependents(
 
         build.__module__ = f"esolangs.languages.{name}.generator"
         build.__name__ = name
-        languages[name] = registry.Language(
+        languages[name] = registry.LanguageDeclaration(
             name,
             runtime=RuntimeSpec(
                 name,
@@ -919,7 +919,7 @@ def colocated_scope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
             return table
 
         generate.__module__ = f"esolangs.languages.{slug}.generator"
-        languages[slug] = registry.Language(
+        languages[slug] = registry.LanguageDeclaration(
             slug,
             runtime=RuntimeSpec(
                 slug,

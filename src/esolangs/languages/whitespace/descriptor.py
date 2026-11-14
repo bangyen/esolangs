@@ -1,7 +1,11 @@
 """Runtime and compiler capabilities for Whitespace."""
 
 from esolangs.languages.whitespace.lifecycle import CAPABILITIES
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec, VerbatimSourcePolicy
 
 
@@ -21,7 +25,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Whitespace",
     RuntimeSpec(
         "whitespace",

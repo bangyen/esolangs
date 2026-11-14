@@ -176,13 +176,13 @@ def test_shipped_example_selects_its_language(source_tree, extension, exists) ->
 
 def test_language_corpus_is_independent_of_other_examples(monkeypatch) -> None:
     from esolangs.registry._certification import CertificationSpec
-    from esolangs.registry._language import Language
+    from esolangs.registry._language import LanguageDeclaration
 
     monkeypatch.setattr(
         leaks,
         "LANGUAGES",
         {
-            name: Language(
+            name: LanguageDeclaration(
                 name,
                 runtime=RuntimeSpec(
                     "fixture",

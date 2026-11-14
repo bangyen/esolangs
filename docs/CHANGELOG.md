@@ -7,6 +7,9 @@ Releases before 0.10.0 are described on the
 
 ## Unreleased
 
+- **Breaking:** the registry's declaration class is `LanguageDeclaration`,
+  not a second `Language`; `esolangs` exports it for `Catalog` and
+  `Catalog.with_language`. Its optional fields are keyword-only.
 - **Breaking:** `esolangs run --timeout` is `--execution-timeout`, the
   `ExecutionLimits` field it sets. `--total-timeout` and
   `--preparation-timeout` are new.

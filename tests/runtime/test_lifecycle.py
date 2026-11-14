@@ -413,13 +413,13 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
 def test_every_runtime_declares_preparation_and_capabilities():
     from dataclasses import replace
 
-    from esolangs.registry._language import Language
+    from esolangs.registry._language import LanguageDeclaration
     from esolangs.runtime import _lifecycle
     from esolangs.runtime._definition import RuntimeSpec
 
     assert not hasattr(_lifecycle, "completion")
     with pytest.raises(TypeError, match="runtime"):
-        Language("undeclared")
+        LanguageDeclaration("undeclared")
     with pytest.raises(TypeError, match="required keyword-only"):
         RuntimeSpec("undeclared")
     for language in LANGUAGES.values():

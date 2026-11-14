@@ -5,7 +5,11 @@ from esolangs.languages.slow_acv_mammalian.dialect import LEAPFROG_RESUMES, MODU
 from esolangs.languages.slow_acv_mammalian.lifecycle import CAPABILITIES
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._functions import FunctionRef
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -43,7 +47,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "SLOW ACV MAMMALIAN",
     RuntimeSpec(
         "slow_acv_mammalian",

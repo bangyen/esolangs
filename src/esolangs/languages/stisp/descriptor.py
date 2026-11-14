@@ -2,7 +2,11 @@
 
 from esolangs.languages.stisp.lifecycle import CAPABILITIES
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 _TOKEN = r"->|[A-Za-z0-9_]+|[\s\S]"
@@ -28,7 +32,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Stisp",
     RuntimeSpec(
         "stisp",

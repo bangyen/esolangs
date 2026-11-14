@@ -5,12 +5,12 @@ from importlib import import_module
 from importlib.resources import files
 
 from esolangs.registry._catalog import Catalog
-from esolangs.registry._language import Language
+from esolangs.registry._language import LanguageDeclaration
 
-__all__ = ["LANGUAGES", "Language"]
+__all__ = ["LANGUAGES", "LanguageDeclaration"]
 
 
-def _declarations() -> Iterator[Language]:
+def _declarations() -> Iterator[LanguageDeclaration]:
     """Discover the same descriptor path for every installed language."""
     for package in sorted(
         files("esolangs.languages").iterdir(), key=lambda item: item.name
@@ -22,4 +22,4 @@ def _declarations() -> Iterator[Language]:
 
 
 CATALOG = Catalog(sorted(_declarations(), key=lambda lang: lang.name.casefold()))
-LANGUAGES: Mapping[str, Language] = CATALOG.languages
+LANGUAGES: Mapping[str, LanguageDeclaration] = CATALOG.languages

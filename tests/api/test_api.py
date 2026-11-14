@@ -33,12 +33,12 @@ def test_list_languages() -> None:
 
 
 def test_seed_hint_tracks_registered_random_languages() -> None:
-    from esolangs.registry import Language
+    from esolangs.registry import LanguageDeclaration
     from esolangs.runtime import _execution
 
     registered = {
         REFERENCE: LANGUAGES[REFERENCE],
-        "Draws": Language(
+        "Draws": LanguageDeclaration(
             "Draws",
             RuntimeSpec(
                 "draws",
@@ -48,7 +48,7 @@ def test_seed_hint_tracks_registered_random_languages() -> None:
                 random=True,
             ),
         ),
-        "Quiet": Language(
+        "Quiet": LanguageDeclaration(
             "Quiet",
             RuntimeSpec(
                 "quiet",

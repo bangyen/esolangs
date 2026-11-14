@@ -2,7 +2,11 @@
 
 from esolangs.languages.cyclic_tag.lifecycle import CAPABILITIES
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import RuntimeSpec
 
 PAIR = ("0", "1")
@@ -27,7 +31,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Cyclic tag",
     RuntimeSpec(
         "cyclic_tag",

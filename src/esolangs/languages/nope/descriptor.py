@@ -1,10 +1,10 @@
 """Runtime capabilities for Nope.."""
 
 from esolangs.languages.nope.lifecycle import CAPABILITIES
-from esolangs.registry._language import Language
+from esolangs.registry._language import LanguageDeclaration
 from esolangs.runtime._definition import RuntimeSpec
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Nope.",
     RuntimeSpec(
         "nope",

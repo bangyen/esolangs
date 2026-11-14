@@ -93,6 +93,29 @@ PUBLIC_MEMBERS = {
         "upscaled",
     },
     esolangs.DialectSettings: {"language", "options"},
+    esolangs.BooleanEvaluation: {"answer", "observation", "termination"},
+    esolangs.CompressedText: {
+        "chunks",
+        "from_chunks",
+        "limits",
+        "plain_chunks",
+        "repeated",
+        "to_file",
+        "to_gzip",
+        "wrapped",
+    },
+    # No defaults, so its three fields are not class attributes.
+    esolangs.TextLimits: set(),
+    esolangs.LanguageInfo: set(esolangs.LanguageInfo.__slots__),
+    # Fields without defaults are not class attributes.
+    esolangs.LanguageDeclaration: {
+        "aliases",
+        "backend",
+        "has_backend",
+        "id",
+        "parameterized",
+        "source_suffix",
+    },
     esolangs.DialectSchema: {"language", "choices", "defaults", "validate"},
     debugger_api.Debugger: {
         "break_at",

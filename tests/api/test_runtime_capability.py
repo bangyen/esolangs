@@ -12,7 +12,7 @@ import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, LanguageDeclaration
 from esolangs.runtime._definition import RuntimeSpec
 
 
@@ -54,7 +54,9 @@ def test_runtime_facts_are_owned_only_by_the_runtime_record():
             "file_newline",
         }
     )
-    assert runtime_fields.isdisjoint(field.name for field in fields(Language))
+    assert runtime_fields.isdisjoint(
+        field.name for field in fields(LanguageDeclaration)
+    )
     for lang in LANGUAGES.values():
         assert isinstance(lang.runtime, RuntimeSpec)
         assert lang.runtime.interpreter is not None

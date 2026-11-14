@@ -7,7 +7,7 @@ from typing import get_args
 
 from esolangs.exceptions import ProgramError
 from esolangs.registry import (
-    Language,
+    LanguageDeclaration,
     example_stems,
     wiki_url,
 )
@@ -161,7 +161,7 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
     )
 
 
-def _width_effect(lang: Language) -> WidthEffect:
+def _width_effect(lang: LanguageDeclaration) -> WidthEffect:
     """Return ``"layout"`` (a shape built to fit), ``"wrap"`` or ``"none"``."""
     backend = lang.backend
     if backend is None:

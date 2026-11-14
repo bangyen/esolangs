@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from scripts.docs.fragments import AggregateKey, aggregate, registry, sections
 
 if TYPE_CHECKING:
-    from esolangs.registry import Language
+    from esolangs.registry import LanguageDeclaration
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGES = ROOT / "src" / "esolangs" / "languages"
@@ -36,7 +36,7 @@ _AGGREGATES: dict[AggregateKey, frozenset[str]] = {}
 
 
 def aggregate_fragments(
-    packages: Path, languages: Iterable[Language]
+    packages: Path, languages: Iterable[LanguageDeclaration]
 ) -> frozenset[str]:
     """Return the names whose package records the fold exemption.
 
@@ -49,7 +49,7 @@ def aggregate_fragments(
 
 
 def _aggregate_fragments(
-    packages: Path, languages: Iterable[Language]
+    packages: Path, languages: Iterable[LanguageDeclaration]
 ) -> frozenset[str]:
     """Collect the fold exemptions, uncached; see :func:`aggregate_fragments`."""
     names: set[str] = set()

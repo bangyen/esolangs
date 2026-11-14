@@ -43,6 +43,7 @@ class TestPackageSurface:
             "InputSource",
             "InterpreterLimitError",
             "Language",
+            "LanguageDeclaration",
             "LanguageInfo",
             "MissingDependencyError",
             "PreparedProgram",

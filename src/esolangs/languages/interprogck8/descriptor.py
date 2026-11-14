@@ -1,7 +1,11 @@
 """Runtime and compiler capabilities for Interprogck8."""
 
 from esolangs.languages.interprogck8.lifecycle import CAPABILITIES
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
 MAX_INPUTS = 40
@@ -25,7 +29,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Interprogck8",
     RuntimeSpec(
         "interprogck8",

@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from esolangs.registry import Language
+    from esolangs.registry import LanguageDeclaration
 
 ROOT = Path(__file__).parents[1]
 # Support direct execution and imports of the development tools.
@@ -109,7 +109,7 @@ def {slug}_request(request: GenerationRequest) -> Program:
 
 _DESCRIPTOR = '''"""Runtime and compiler capabilities for {name}."""
 
-from esolangs.registry._language import Language
+from esolangs.registry._language import LanguageDeclaration
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._operations import OperationRef
 from esolangs.generation.requests import GenerationRequest
@@ -118,7 +118,7 @@ from esolangs.runtime._capabilities import DebugSpec, MachineCapabilities
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._definition import RuntimeSpec
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "{name}", RuntimeSpec(
         "{slug}", category="{category}",
         machine_preparation="prepare_machine", completion_entrypoint="_execute",
@@ -134,7 +134,7 @@ LANGUAGE = Language(
 
 _INTERPRETER_DESCRIPTOR = '''"""Runtime capabilities for {name}."""
 
-from esolangs.registry._language import Language
+from esolangs.registry._language import LanguageDeclaration
 from esolangs.runtime._capabilities import DebugSpec, MachineCapabilities
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._definition import RuntimeSpec
@@ -427,7 +427,7 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
     return gaps + _workspace_row(name)
 
 
-def _generator_gaps(lang: Language) -> list[Gap]:
+def _generator_gaps(lang: LanguageDeclaration) -> list[Gap]:
     """List the steps a language with a Boolean generator needs."""
     from docs.ablations import parse_audits
     from docs.evidence import parse_anchors

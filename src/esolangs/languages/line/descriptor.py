@@ -1,7 +1,11 @@
 """Runtime and compiler capabilities for Line."""
 
 from esolangs.languages.line.lifecycle import CAPABILITIES
-from esolangs.registry._language import BackendDefinition, DeferredBackend, Language
+from esolangs.registry._language import (
+    BackendDefinition,
+    DeferredBackend,
+    LanguageDeclaration,
+)
 from esolangs.runtime._definition import (
     RasterSourcePolicy,
     RuntimeSpec,
@@ -26,7 +30,7 @@ def _backend() -> BackendDefinition:
     )
 
 
-LANGUAGE = Language(
+LANGUAGE = LanguageDeclaration(
     "Line",
     RuntimeSpec(
         "line",

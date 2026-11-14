@@ -23,14 +23,14 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     import shlex
 
     from esolangs.cli import help as help_module
-    from esolangs.registry import Language
+    from esolangs.registry import LanguageDeclaration
     from esolangs.registry._backend import TemplateSpec
 
     def build(table):
         return table
 
     languages = {
-        "Template Choice": Language(
+        "Template Choice": LanguageDeclaration(
             "Template Choice",
             RuntimeSpec(
                 "template_choice",
@@ -42,7 +42,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
                 entrypoint=build, template=TemplateSpec(pair=("0", "1"))
             ),
         ),
-        "Dialect Choice": Language(
+        "Dialect Choice": LanguageDeclaration(
             "Dialect Choice",
             RuntimeSpec(
                 "dialect_choice",
@@ -68,7 +68,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
     assert help_module._capability_examples()[0] == ""
     # A cap below two inputs is not a runnable example.
     languages.clear()
-    languages["Capped"] = Language(
+    languages["Capped"] = LanguageDeclaration(
         "Capped",
         RuntimeSpec(
             "capped",
