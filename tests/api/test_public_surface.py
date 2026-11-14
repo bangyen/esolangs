@@ -91,18 +91,25 @@ class TestPackageSurface:
             "make_vm",
         ]
         live = {}
+
+        def signature(function) -> str:
+            # 3.15 prints a union's `type` alias with its module path.
+            return str(inspect.signature(function)).replace(
+                "esolangs.registry._contracts.", ""
+            )
+
         for module in (esolangs, debugger_api):
             for name in module.__all__:
                 value = getattr(module, name)
                 if inspect.isfunction(value):
-                    live[f"{module.__name__}.{name}"] = str(inspect.signature(value))
+                    live[f"{module.__name__}.{name}"] = signature(value)
         for cls in PUBLIC_MEMBERS:
             for name, value in inspect.getmembers(cls):
                 function = getattr(value, "__func__", value)
                 if (name == "__init__" or not name.startswith("_")) and (
                     inspect.isfunction(function)
                 ):
-                    live[f"{cls.__name__}.{name}"] = str(inspect.signature(function))
+                    live[f"{cls.__name__}.{name}"] = signature(function)
         assert live == SIGNATURES
         for cls, members in PUBLIC_MEMBERS.items():
             assert {n for n in dir(cls) if not n.startswith("_")} == members, cls

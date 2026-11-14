@@ -74,7 +74,7 @@ def test_unsupported_platform_refuses_before_acquisition(monkeypatch, platform) 
 @pytest.mark.skipif(not _LINUX, reason="Linux RLIMIT_AS only")
 def test_growing_state_fails_and_worker_is_reaped(spawned) -> None:
     source = "(A)S(x)" + ":*" * 29
-    with pytest.raises(esolangs.InterpreterLimitError, match="memory limit") as caught:
+    with pytest.raises(esolangs.ExecutionCapError, match="memory limit") as caught:
         run(
             "Underload",
             source,
@@ -97,7 +97,7 @@ def test_growing_state_fails_and_worker_is_reaped(spawned) -> None:
 @pytest.mark.medium
 @pytest.mark.skipif(not _LINUX, reason="Linux RLIMIT_AS only")
 def test_memory_failure_during_evaluation_is_not_an_answer() -> None:
-    with pytest.raises(esolangs.InterpreterLimitError, match="memory limit") as caught:
+    with pytest.raises(esolangs.ExecutionCapError, match="memory limit") as caught:
         _evaluate(
             "Underload",
             _growing_template(29),
