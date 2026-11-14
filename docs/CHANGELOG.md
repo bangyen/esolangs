@@ -5,7 +5,7 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
-## Unreleased
+## 2.1.0
 
 - **Breaking:** the registry's declaration class is `LanguageDeclaration`,
   not a second `Language`; `esolangs` exports it for `Catalog` and
