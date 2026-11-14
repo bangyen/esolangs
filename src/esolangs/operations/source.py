@@ -10,6 +10,7 @@ from esolangs.exceptions import (
 )
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
+from esolangs.runtime._definition import SourceKind
 from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import (
@@ -52,6 +53,8 @@ def read_png_artifact(
     from esolangs.portable import decode_settings
 
     name = catalog.resolve(language)
+    if catalog.languages[name].runtime.source_kind is not SourceKind.RASTER:
+        raise ProgramError(f"{name} requires text source, but the program is a PNG")
     try:
         metadata = png.read_metadata(data)
         settings = None
@@ -66,7 +69,7 @@ def read_png_artifact(
             )
             scale = metadata.get("scale")
             if scale is not None:
-                check_scale(scale)
+                scale = check_scale(scale)
         raster = Raster.from_png(data)
         return ProgramArtifact(raster, name, settings=settings, scale=scale)
     except (ProgramError, MissingDependencyError):
@@ -118,12 +121,7 @@ def read_artifact(
         )
     value, file = _read_container(program)
     if isinstance(value, bytes) and value.startswith(b"\x89PNG\r\n\x1a\n"):
-        record = read_png_artifact(name, value, catalog=catalog)
-        # Source-kind checking still belongs to the selected language's loader.
-        source = source_for(name, record.source, catalog=catalog)
-        return ProgramArtifact(
-            source, name, settings=record.settings, scale=record.scale
-        )
+        return read_png_artifact(name, value, catalog=catalog)
     # Re-wrap file bytes so a decoding error names the file, not its bytes.
     named = (
         _FileSource(str(program), value) if file and isinstance(value, bytes) else value

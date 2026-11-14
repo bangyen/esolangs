@@ -8,6 +8,7 @@ import subprocess  # fixed Python worker; source travels over stdin.
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import lru_cache
 from itertools import chain, groupby, repeat
 from queue import Empty, Full, Queue
@@ -50,8 +51,12 @@ from esolangs.settings import (
 )
 
 type _WorkerResponse = ExecutionOutcome | TerminationResult
-
 type _RasterRuns = tuple[tuple[int, tuple[tuple[int, Pixel], ...]], ...]
+
+_ACQUISITION_STARTED: ContextVar[float | None] = ContextVar(
+    "_ACQUISITION_STARTED", default=None
+)
+
 
 _REQUEST_FIELDS = frozenset(
     {
@@ -74,6 +79,16 @@ _REQUEST_FIELDS = frozenset(
         "report_prepared",
     }
 )
+
+
+@contextmanager
+def _acquisition_started_at(started: float) -> Iterator[None]:
+    """Include source and stdin acquisition by the caller in a worker deadline."""
+    token = _ACQUISITION_STARTED.set(started)
+    try:
+        yield
+    finally:
+        _ACQUISITION_STARTED.reset(token)
 
 
 # Scale-3 raster JSON: 13,759,407 -> 18,621 bytes; four rows 5.71s -> 0.62s.
@@ -394,7 +409,9 @@ def _invoke_worker(
     scale = effective_scale(name, program, scale, catalog=catalog)
     settings = effective_settings(name, program, settings, catalog=catalog)
     dialect_options(name, settings, catalog=catalog)
-    started = monotonic()
+    started = _ACQUISITION_STARTED.get()
+    if started is None:
+        started = monotonic()
     deadline = started + timeout
     preparation_deadline = (
         None if preparation_timeout is None else started + preparation_timeout
@@ -733,7 +750,7 @@ def _request_wire(
         # Decimal JSON rendering rejects valid 4301-digit integers.
         "seed": hex(seed) if seed is not None else None,
         "integer_seed": seed is not None,
-        "scale": scale,
+        "scale": hex(scale) if scale is not None else None,
         "max_memory": max_memory,
         "max_output": hex(max_output) if max_output is not None else None,
         "integer_max_output": max_output is not None,
@@ -862,10 +879,14 @@ def _read_request(stream: TextIO) -> dict[str, Any]:
                 request[key] = decoded
         elif value is not None:
             raise ValueError("untagged worker integer")
-    for key in ("scale", "max_memory"):
-        value = request[key]
-        if value is not None and (type(value) is not int or value < 1):
-            raise ValueError("invalid worker size")
+    if request["scale"] is not None:
+        scale = canonical_integer(request["scale"])
+        if scale < 1:
+            raise ValueError("invalid worker scale")
+        request["scale"] = scale
+    memory = request["max_memory"]
+    if memory is not None and (type(memory) is not int or memory < 1):
+        raise ValueError("invalid worker size")
     if type(request["report_prepared"]) is not bool:
         raise ValueError("invalid worker preparation flag")
     if request["raster"]:

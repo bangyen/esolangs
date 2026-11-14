@@ -46,6 +46,82 @@ def test_corrupt_or_non_utf8_gzip_is_a_program_error(data: bytes) -> None:
         CompressedText(data)
 
 
+def test_existing_gzip_counts_only_through_first_chunk_over_budget() -> None:
+    class Monitored(CompressedText):
+        def chunks(self):
+            yield "ab"
+            pytest.fail("source kept decoding after exceeding its generation-work cap")
+
+    data = gzip.compress(b"abcd", mtime=0)
+    limits = esolangs.TextLimits(plain_chars=0, generation_chars=1, gzip_bytes=100)
+    with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
+        Monitored(data, limits=limits)
+
+
+def test_gzip_budget_and_hash_use_builtin_bytes() -> None:
+    class Buffer(bytes):
+        __hash__ = None
+
+        def __len__(self):
+            return 1
+
+        def __bytes__(self):
+            return b"unrelated"
+
+    data = gzip.compress(b"x", mtime=0)
+    buffer = Buffer(data)
+    original = CompressedText(data)
+    restored = CompressedText(buffer)
+    assert type(restored.data) is bytes
+    assert hash(restored) == hash(original)
+    assert restored.to_gzip() == data
+    limits = esolangs.TextLimits(plain_chars=1, generation_chars=1, gzip_bytes=1)
+    with pytest.raises(esolangs.GeneratorCapError, match="file cap"):
+        CompressedText(buffer, limits=limits)
+
+
+def test_compression_uses_underlying_string_contents_and_length() -> None:
+    class Text(str):
+        def __len__(self):
+            return 100
+
+        def __str__(self):
+            return "other"
+
+        def encode(self, *_args, **_kwargs):
+            return b"other"
+
+    limits = esolangs.TextLimits(plain_chars=2, generation_chars=2, gzip_bytes=100)
+    compressed = CompressedText.from_chunks((Text("x"), Text("x")), limits=limits)
+    assert compressed == CompressedText(compressed.to_gzip(), limits=limits)
+    assert compressed == CompressedText.repeated(Text("x"), 2, limits=limits)
+    assert str(compressed) == "xx"
+
+
+@pytest.mark.medium
+def test_raw_export_cap_does_not_prevent_loading_compressed_source(
+    tmp_path: Path,
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    budget = esolangs.TextLimits(plain_chars=0, generation_chars=2, gzip_bytes=100)
+    compressed = CompressedText.from_chunks(("+.",), limits=budget)
+    artifact = api.from_source(compressed)
+    assert api.prepare(artifact).run().output == "\x01"
+    for limits in (
+        None,
+        esolangs.ExecutionLimits(max_steps=2),
+        esolangs.ExecutionLimits(total_timeout=5),
+    ):
+        assert api.run(artifact, limits=limits).output == "\x01"
+    path = tmp_path / "program"
+    with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
+        api.to_file(artifact, path)
+    api.to_file(artifact, path, gzip=True)
+    assert path.read_bytes() == compressed.to_gzip()
+    with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
+        CompressedText.from_chunks(("++.",), limits=budget)
+
+
 def test_wrapping_preserves_characters_and_bounds_lines() -> None:
     program = CompressedText.repeated("x", 100000)
     wrapped = program.wrapped(37)

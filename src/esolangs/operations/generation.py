@@ -21,7 +21,7 @@ from esolangs.exceptions import (
     ProgramError,
     TemplateError,
 )
-from esolangs.generation.helpers import check_table_text
+from esolangs.generation.helpers import _validate_truth_table, check_table_text
 from esolangs.generation.requests import (
     BalanceRequest,
     GeneratedProgram,
@@ -104,6 +104,7 @@ def generate(
         GeneratorCapError: The table exceeds the generator's cap
             (``describe(language).generator_max_inputs`` and
             ``.generator_restrictions``).
+        ProgramError: The backend returned an incompatible source type.
     """
     from esolangs.registry._catalog import get_catalog
 
@@ -115,7 +116,7 @@ def generate(
         settings = _settings_for(language, choices, catalog=catalog)
     check_flag(balance, "balance")
     if scale is not None:
-        check_scale(scale)
+        scale = check_scale(scale)
     if scale not in (None, 1):
         if (
             catalog.languages[catalog.resolve(language)].runtime.source_kind
@@ -163,9 +164,10 @@ def generate(
             f"{resolved} has no boolean generator under this repository's "
             f"generator contracts. `esolangs list --details` marks it 'int'"
         )
-    fn = backend.generate
     check_table_text(truth_table)
     check_width(width)
+    inputs = _validate_truth_table(truth_table)
+    fn = backend.generate
     laid_out = width is not None and backend.layout_width
     try:
         schema = lang.runtime.dialect_schema
@@ -181,8 +183,11 @@ def generate(
         raise
     except ValueError as error:
         raise ArgumentError(str(error)) from error
-    inputs = len(truth_table).bit_length() - 1
     if isinstance(generated, TemplateLayout):
+        if backend.template is None or lang.runtime.source_kind is SourceKind.RASTER:
+            raise ProgramError(
+                f"{resolved}'s generator returned an undeclared template"
+            )
         if width is not None and not laid_out and backend.wrap is not None:
             if backend.wrap is wrap_chars and _character_slots(generated):
                 generated = wrap_character_slots(generated, width)
@@ -199,22 +204,25 @@ def generate(
             catalog,
         )
     if lang.runtime.source_kind is SourceKind.RASTER:
-        if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
+        if not isinstance(generated, Raster):
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
         return ProgramArtifact(
             generated, resolved, settings=settings, scale=1, input_arity=inputs
         )
+    if backend.template is not None:
+        raise ProgramError(f"{resolved}'s template generator did not return slots")
     if isinstance(generated, CompressedText):
         return ProgramArtifact(
             generated.wrapped(width), resolved, settings=settings, input_arity=inputs
         )
-    slots = str(generated)
-    if not lang.parameterized:
-        program = (
-            slots if laid_out else wrap_program(slots, lang.id, width, catalog=catalog)
-        )
-        return ProgramArtifact(program, resolved, settings=settings, input_arity=inputs)
-    raise ProgramError(f"{resolved}'s template generator did not return slots")
+    if not isinstance(generated, str):
+        raise ProgramError(f"{resolved}'s generator did not return text")
+    program = (
+        generated
+        if laid_out
+        else wrap_program(generated, lang.id, width, catalog=catalog)
+    )
+    return ProgramArtifact(program, resolved, settings=settings, input_arity=inputs)
 
 
 def _backend_options(

@@ -101,8 +101,9 @@ catalog.
 
 `to_file(language, record, path, gzip=True)` compresses native text exports;
 gzip input loads as `run` loads it, so `gzip=False` writes it decompressed;
-`generate --gzip` does the same on the CLI. API exports are lossless by default;
-CLI generation uses native file terminators.
+`generate --gzip` does the same on the CLI. API exports are lossless by default.
+CLI generation adds native terminators where needed and preserves generated
+compressed text exactly in both gzip and plain exports.
 Use `to_json` to preserve dialect settings and template bindings on disk.
 
 ```python
@@ -409,6 +410,8 @@ its replacement. Fill it with `esolangs.instantiate(language, template, bits)`.
 Portable JSON stores each slot's start and end offsets alongside its setters.
 Running a `TemplateArtifact` is refused until it is filled. Literal source is
 interpreted directly, including placeholder-like characters.
+Pass the unfilled template and a row to `evaluate`. Use `run` on the filled
+program to execute the row already embedded in its source.
 `esolangs list --details` marks these languages `tmpl`.
 
 ## Reading the answer
@@ -606,7 +609,7 @@ shows the `gen`, `tmpl`, and `ex` markers. Fields include:
 | `answer_mode`, `answer_encoding` | where the answer lands (`"output"`, `"dump"` or `"termination"`) and its `(zero, one)` form |
 | `width_effect` | what `width` does: `"layout"`, `"wrap"` or `"none"` |
 | `parameterized` | `generate` returns a template for `instantiate` |
-| `reads_input` | the language reads stdin |
+| `reads_input` | Boolean rows use the language's stdin encoding |
 | `random` | the interpreter draws at random, so `run(seed=...)` applies |
 
 `help(esolangs.describe)` lists every field. `name` is the display name
@@ -643,7 +646,7 @@ Within a major release, compatibility covers:
   ones keyword-only), and deliberate `EsolangError` exceptions;
 - CLI command names, JSON field meanings, and exit statuses: 0 success,
   1 the program broke, 2 the ask was wrong, 70 internal error, 120 stdout
-  closed early, 124 a time, step, output or memory budget ran out, 130 interrupted;
+  unavailable, 124 a time, step, output or memory budget ran out, 130 interrupted;
 - existing `describe()` fields and their value types (an absent value is
   `None`; `examples` are paths relative to the package);
 - interpreter semantics for valid programs, including I/O and answers;

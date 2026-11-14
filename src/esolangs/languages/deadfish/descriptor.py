@@ -8,6 +8,7 @@ LANGUAGE = LanguageDeclaration(
     "Deadfish",
     RuntimeSpec(
         "deadfish",
+        reads_stdin=False,
         category="register_based",
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",

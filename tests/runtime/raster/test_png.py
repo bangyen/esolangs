@@ -6,13 +6,16 @@ import random
 import struct
 import zlib
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+import esolangs
 from esolangs.operations.source import read_png_artifact
 from esolangs.raster import png
 from tests.support.pick import one
+from tests.support.reference import REFERENCE
 
 #: Two wiki images, kept apart from any one language's fixtures so the codec
 #: tests outlive the language that drew them.
@@ -444,6 +447,77 @@ def test_png_rejects_missing_compressed_checksum() -> None:
         png.read_rgb(bytes(chunks))
 
 
+def test_png_datastream_requires_an_empty_iend() -> None:
+    blob = png.write_grey([bytearray([0])])
+    with pytest.raises(esolangs.ProgramError, match="no complete IEND"):
+        esolangs.Raster.from_png(blob[:-12])
+    with pytest.raises(esolangs.ProgramError, match="IEND chunk must be empty"):
+        esolangs.Raster.from_png(blob[:-12] + _chunk(b"IEND", b"x"))
+
+
+def test_critical_chunks_are_unique_and_ordered() -> None:
+    image = png.write_grey([bytearray([0])])
+    header, payload, trailer = [_chunk(k, b) for k, b in png._chunks(image)]
+    auxiliary = _chunk(b"aUNG", b"")
+    empty_idat = _chunk(b"IDAT", b"")
+    cases = (
+        ((auxiliary, header, payload, trailer), "IHDR must appear first"),
+        ((header, header, payload, trailer), "IHDR must appear first"),
+        ((header, trailer), "no IDAT"),
+        ((header, payload, auxiliary, empty_idat, trailer), "IDAT.*consecutive"),
+        ((header, payload, _chunk(b"AUNG", b""), trailer), "critical chunk AUNG"),
+    )
+    for chunks, message in cases:
+        with pytest.raises(esolangs.ProgramError, match=message):
+            esolangs.Raster.from_png(png._SIGNATURE + b"".join(chunks))
+    assert esolangs.Raster.from_png(
+        png._SIGNATURE + header + empty_idat + payload + auxiliary + trailer
+    ) == esolangs.Raster.from_png(image)
+
+
+def test_png_final_idat_may_have_unused_bytes() -> None:
+    image = png.write_grey([bytearray([0])])
+    data = b"".join(
+        _chunk(kind, body + b"\x00extra" if kind == b"IDAT" else body)
+        for kind, body in png._chunks(image)
+    )
+    assert esolangs.Raster.from_png(png._SIGNATURE + data) == esolangs.Raster.from_png(
+        image
+    )
+
+
+@pytest.mark.parametrize("language", one(source_kind="raster"))
+def test_png_metadata_stops_at_iend(language: str, tmp_path: Path) -> None:
+    expected = esolangs.Language(language).from_source(esolangs.Raster((((0, 0, 0),),)))
+    path = tmp_path / "program"
+    path.write_bytes(expected.source.to_png() + _chunk(b"esOL", b'{"version":9}'))
+    assert esolangs.from_file(language, path) == expected
+
+
+@pytest.mark.parametrize("language", one(source_kind="raster"))
+def test_png_source_kind_checked_before_dependency(
+    language, tmp_path, monkeypatch
+) -> None:
+    import json
+
+    image = png.write_grey([bytearray([0])])
+    path = tmp_path / "program"
+    path.write_bytes(image)
+    portable = json.loads(esolangs.to_json(language, image))
+    portable["language"] = REFERENCE
+    monkeypatch.setattr(png, "Image", None)
+    with pytest.raises(esolangs.MissingDependencyError):
+        esolangs.from_file(language, path)
+    for load in (
+        lambda: esolangs.from_file(REFERENCE, path),
+        lambda: esolangs.prepare(REFERENCE, image),
+        lambda: esolangs.to_json(REFERENCE, image),
+        lambda: esolangs.from_json(REFERENCE, json.dumps(portable)),
+    ):
+        with pytest.raises(esolangs.ProgramError, match="requires text source"):
+            load()
+
+
 def test_png_rejects_dimensions_beyond_platform_size() -> None:
     blob = _encode([bytes(4)], 0xFFFFFFFF, 0xFFFFFFFF, depth=16, colour=6)
     with pytest.raises(ValueError, match="IHDR"):
@@ -597,3 +671,48 @@ def test_metadata_writer_bounds_chunk_size() -> None:
     data = png.write_rgb((((1, 2, 3),),))
     with pytest.raises(ValueError, match="oversized"):
         png.write_metadata(data, {"version": 1, "extra": "x" * 16_384})
+
+
+@pytest.mark.parametrize("language", one(source_kind="raster"))
+def test_non_ascii_dialect_metadata_uses_utf8_only_when_needed(
+    language, tmp_path
+) -> None:
+    pixels = esolangs.Raster((((0, 0, 0),),))
+    original = esolangs.Language(language).catalog.languages[language]
+    note = "é" * 4096
+    schema = esolangs.DialectSchema(language, {"note": ("é", note)}, {"note": "é"})
+    runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
+    api = esolangs.Catalog([replace(original, runtime=runtime)]).bind(language)
+    path = tmp_path / "source.png"
+    ordinary = api.from_source(pixels, settings=api.settings(note="é"))
+    api.to_file(ordinary, path)
+    assert b'"note":"\\u00e9"' in path.read_bytes()
+
+    large = api.from_source(pixels, settings=api.settings(note=note))
+    api.to_file(large, path)
+    assert note.encode("utf-8") in path.read_bytes()
+    assert api.from_file(path) == large
+    assert api.from_json(api.to_json(large)) == large
+
+
+@pytest.mark.parametrize("language", one(source_kind="raster"))
+def test_declarations_cannot_persist_surrogate_metadata(language, tmp_path) -> None:
+    pixels = esolangs.Raster((((0, 0, 0),),))
+    original = esolangs.Language(language).catalog.languages[language]
+    schema = esolangs.DialectSchema(language, {"note": ("\ud800",)}, {"note": "\ud800"})
+    runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
+    api = esolangs.Catalog([replace(original, runtime=runtime)]).bind(language)
+    path = tmp_path / "source.png"
+    record = api.from_source(pixels, settings=api.settings(note="\ud800"))
+    for save in (lambda: api.to_file(record, path), lambda: api.to_json(record)):
+        with pytest.raises(esolangs.ProgramError, match=r"UTF-8.*surrogates"):
+            save()
+    raw = pixels.to_png()
+    path.write_bytes(
+        raw[:-12]
+        + _chunk(b"esOL", b'{"version":1,"settings":{"note":"\\ud800"}}')
+        + raw[-12:]
+    )
+    with pytest.raises(esolangs.ProgramError, match=r"UTF-8.*surrogates"):
+        api.from_file(path)
+    assert esolangs.Raster.from_png(path.read_bytes()) == pixels

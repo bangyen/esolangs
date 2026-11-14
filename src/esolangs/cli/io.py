@@ -227,7 +227,7 @@ def _read_stdin(
     thread rather than :func:`select.select` because tests supply an
     object with no ``fileno``.
     """
-    # None: fd 0 was closed at startup (``<&-``), an internal error, exit 70.
+    # A missing descriptor or terminal supplies no piped input.
     if sys.stdin is None or sys.stdin.isatty():
         return ""
 
@@ -245,6 +245,8 @@ def _read_stdin(
             return sys.stdin.read()
         except UnicodeDecodeError as exc:
             _fail(f"cannot read stdin: not text ({_decode_note(exc)})")
+        except OSError as exc:
+            _fail(f"cannot read stdin: {exc}")
 
     def _on_timeout() -> None:
         bound = f" ({timeout_flag})" if timeout_flag else ""
@@ -262,17 +264,46 @@ def _read_stdin(
     return result
 
 
-def _write_output(text: str) -> None:
-    """Write UTF-8 data to a pipe, preserving interpreter surrogates."""
+class _StdoutError(Exception):
+    """A write or flush failed at the output destination."""
+
+    def __init__(self, error: OSError) -> None:
+        """Retain the cause for the closed-pipe policy."""
+        self.error = error
+        super().__init__(str(error))
+
+
+def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
+    """Write data to stdout and distinguish destination errors from faults."""
     stream = getattr(sys.stdout, "buffer", None)
-    if stream is not None and not sys.stdout.isatty():
-        stream.write(text.encode("utf-8", "surrogatepass"))
-        return
+    if (
+        isinstance(data, str)
+        and utf8
+        and stream is not None
+        and not sys.stdout.isatty()
+    ):
+        data = data.encode("utf-8", "surrogatepass")
     try:
-        sys.stdout.write(text)
-    except UnicodeEncodeError:
-        encoding = sys.stdout.encoding or "utf-8"
-        sys.stdout.write(text.encode(encoding, "backslashreplace").decode(encoding))
+        if isinstance(data, bytes):
+            sys.stdout.buffer.write(data)
+        else:
+            try:
+                sys.stdout.write(data)
+            except UnicodeEncodeError:
+                encoding = sys.stdout.encoding or "utf-8"
+                sys.stdout.write(
+                    data.encode(encoding, "backslashreplace").decode(encoding)
+                )
+    except OSError as exc:
+        raise _StdoutError(exc) from exc
+
+
+def _flush_stdout() -> None:
+    """Flush buffered output while the CLI can report a destination error."""
+    try:
+        sys.stdout.flush()
+    except OSError as exc:
+        raise _StdoutError(exc) from exc
 
 
 def _emit_partial(exc: EsolangError) -> None:
@@ -288,5 +319,5 @@ def _emit_partial(exc: EsolangError) -> None:
     # Terminal only, as on success: a pipe got "\x01\n" for "\x01", and a
     # --max-output 3 cap 4 bytes.
     if not exc.partial_output.endswith("\n") and sys.stdout.isatty():
-        sys.stdout.write("\n")
-    sys.stdout.flush()
+        _write_output("\n")
+    _flush_stdout()

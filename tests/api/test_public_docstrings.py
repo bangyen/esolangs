@@ -41,6 +41,20 @@ def _functions() -> dict[str, Callable[..., object]]:
     }
 
 
+def _invalid_generated_source() -> None:
+    from dataclasses import replace
+
+    from esolangs.registry._backend import BooleanBackend
+
+    api = esolangs.Language(R)
+    declaration = api.catalog.languages[R]
+    amended = replace(declaration, backend=BooleanBackend(lambda _request: None))
+    scoped = esolangs.Catalog([amended]).bind(R)
+    with pytest.raises(x.TruthTableError):
+        scoped.generate("1")
+    scoped.generate("01")
+
+
 def _raises(name: str) -> set[str]:
     """Return the exception names a function's ``Raises:`` lists."""
     doc = inspect.getdoc(_functions()[name]) or ""
@@ -200,6 +214,18 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         lambda: esolangs.evaluate(R, esolangs.generate(R, "0110"), [0]),
         None,
     ),
+    (
+        "evaluate",
+        x.TemplateError,
+        lambda: esolangs.evaluate(
+            R,
+            esolangs.TemplateArtifact(
+                "$", R, esolangs.TemplateBindings(setters=((".", "."),))
+            ),
+            [0],
+        ),
+        None,
+    ),
     ("prepare", x.UnknownLanguageError, lambda: esolangs.prepare("Nolang", ""), None),
     (
         "prepare",
@@ -302,6 +328,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         None,
     ),
     ("generate", x.GeneratorCapError, _over_cap, None),
+    ("generate", x.ProgramError, _invalid_generated_source, None),
     (
         "instantiate",
         x.UnknownLanguageError,

@@ -26,6 +26,30 @@ def test_catalog_aliases_use_the_same_normalization_as_lookup() -> None:
             esolangs.Catalog([replace(original, aliases=(alias,))])
 
 
+def test_catalog_identifiers_cannot_be_shadowed_by_aliases() -> None:
+    original = LANGUAGES[REFERENCE]
+    owner = replace(original, name="Private owner", id="private_owner")
+    other = replace(original, name="Another", id="another", aliases=("PRIVATE_OWNER",))
+    scoped = esolangs.Catalog([owner])
+    assert scoped.resolve("private_owner") == owner.name
+    with pytest.raises(esolangs.ArgumentError, match="one owner"):
+        scoped.with_language(other)
+
+
+def test_boolean_adapters_use_stdin_contract_without_a_generator() -> None:
+    original = LANGUAGES[REFERENCE]
+    api = esolangs.Catalog([replace(original, backend=None)]).bind(REFERENCE)
+    facts = api.describe()
+    assert not facts.boolean_generator
+    assert facts.reads_input
+    assert (facts.input_shape, facts.input_encoding) == ("char_stream", ("0", "1"))
+    with pytest.raises(esolangs.ArgumentError, match="no boolean generator"):
+        api.generate("01")
+    program = api.from_source(",.")
+    assert api.encode_inputs([1]) == "1"
+    assert api.evaluate(program, [1]).answer == "1"
+
+
 def test_read_answer_uses_the_first_group_of_the_last_match() -> None:
     original = LANGUAGES[REFERENCE]
     contract = replace(original.contract, answer_pattern=r"([01])([ab])")

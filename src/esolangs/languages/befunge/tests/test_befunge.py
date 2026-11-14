@@ -1,9 +1,11 @@
 """Execution tests for the Befunge classic."""
 
 from ctypes import c_long, sizeof
+from dataclasses import replace
 
 import pytest
 
+import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.languages.befunge.interpreter import (
     _advance,
@@ -22,6 +24,37 @@ from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hi
 def run_befunge(program: str, stdin: str = "", rng: object = None) -> str:
     """Run a grid program and return its captured output."""
     return run_program(run, program.splitlines(), stdin, rng=rng)
+
+
+@pytest.mark.medium
+def test_scoped_termination_keeps_public_failure_evidence() -> None:
+    api = esolangs.Language("Befunge")
+    record = api.catalog.languages[api.name]
+    contract = replace(
+        record.contract, answer_mode="termination", answer_values=("halts", "diverges")
+    )
+    scoped = esolangs.Catalog([replace(record, contract=contract)]).bind(api.name)
+    local = esolangs.ExecutionLimits(max_steps=500)
+    worker = esolangs.ExecutionLimits(max_steps=500, total_timeout=5)
+    successes = []
+    for limits in (local, worker):
+        halted = scoped.evaluate(scoped.from_source("@"), [0], limits=limits)
+        assert halted.answer == "0"
+        successes.append(halted)
+        with pytest.raises(
+            esolangs.InterpreterLimitError, match="depends on its own draws"
+        ) as stopped:
+            scoped.evaluate(scoped.from_source("?@"), [0], limits=limits)
+        assert stopped.value.observation == esolangs.ExecutionResult("", 0, 0, 0)
+        assert stopped.value.__notes__
+    assert successes[0] == successes[1]
+    with pytest.raises(esolangs.InterpreterLimitError, match="cannot be safely forked"):
+        scoped.evaluate(scoped.from_source("&@"), [0])
+    with pytest.raises(esolangs.ExecutionCapError, match="branching states") as capped:
+        scoped.evaluate(
+            scoped.from_source("@"), [0], limits=esolangs.ExecutionLimits(max_steps=0)
+        )
+    assert capped.value.bound == "max_steps"
 
 
 def test_string_mode_pushes_and_commas_emit() -> None:

@@ -75,7 +75,7 @@ from esolangs.cli.hints import (
     _looks_like_a_table,
     _shell_hint,
 )
-from esolangs.cli.io import _read_stdin, _write_output
+from esolangs.cli.io import _flush_stdout, _read_stdin, _StdoutError, _write_output
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError, ProgramError
@@ -123,6 +123,11 @@ _CATALOG_FILTERS: dict[str, tuple[str, tuple[str, ...]]] = {
 def _input_shape(facts: LanguageInfo) -> str | None:
     """Return the shape ``--input-shape`` filters on: ``template`` included."""
     return "template" if facts.parameterized else facts.input_shape
+
+
+def _display(text: str = "") -> None:
+    """Print one line of human-readable output using the stream's encoding."""
+    _write_output(text + "\n", utf8=False)
 
 
 def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> bool:
@@ -224,12 +229,12 @@ def _list(rest: list[str]) -> None:
         return
     if not details:
         for name in names:
-            print(name)
+            _display(name)
         return
     width = max(len(name) for name in LANGUAGES)
     # The legend lived in `list --help` only, so the marker columns arrived
     # unexplained for anyone who ran the thing before reading about it.
-    print(
+    _display(
         f"{'language'.ljust(width)}  gen=generator tmpl=template ex=example "
         f"int=interpreter-only; then any generator cap"
     )
@@ -250,7 +255,7 @@ def _list(rest: list[str]) -> None:
         suffix = f" max-inputs={limit}" if limit is not None else ""
         if restriction:
             suffix += f" ({restriction})"
-        print(f"{name.ljust(width)}  {marks}{suffix}")
+        _display(f"{name.ljust(width)}  {marks}{suffix}")
 
 
 def _eaten_width_note(before: list[str]) -> str:
@@ -287,10 +292,10 @@ def _emit(artifact: Artifact, *, plain: bool, gzip: bool = False) -> None:
             for chunk in program.plain_chunks():
                 _write_output(chunk)
         else:
-            sys.stdout.buffer.write(program.to_gzip())
+            _write_output(program.to_gzip())
     elif isinstance(program, Raster):
         assert isinstance(artifact, ProgramArtifact)
-        sys.stdout.buffer.write(
+        _write_output(
             png.write_source(
                 program.rows, artifact.language, artifact.settings, artifact.scale
             )
@@ -487,7 +492,7 @@ def _describe(rest: list[str]) -> None:
         if as_json:
             _write_output(json.dumps(spec) + "\n")
         else:
-            print(spec)
+            _display(spec)
         return
     with _errors():
         facts = describe(rest[0])
@@ -501,22 +506,22 @@ def _describe(rest: list[str]) -> None:
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
     name = str(facts.name)
-    print(name)
+    _display(name)
     if facts.parameterized:
-        print(
+        _display(
             "input: none -- this generator embeds the bits in the program: "
             f"esolangs generate --bits <bits> {_as_argument(name)} <table>"
         )
     elif not facts.reads_input:
-        print("input: none -- this language reads no stdin")
+        _display("input: none -- this language reads no stdin")
     else:
-        print(f"input: {_input_sentence(facts)}")
-    print(f"answer: {_answer_sentence(facts)}")
-    print(f"generator: {_generator_sentence(facts)}")
-    print(f"settings: {_settings_sentence(facts)}")
-    print(f"spec: esolangs describe --spec {_as_argument(name)}")
-    print()
-    print("details:")
+        _display(f"input: {_input_sentence(facts)}")
+    _display(f"answer: {_answer_sentence(facts)}")
+    _display(f"generator: {_generator_sentence(facts)}")
+    _display(f"settings: {_settings_sentence(facts)}")
+    _display(f"spec: esolangs describe --spec {_as_argument(name)}")
+    _display()
+    _display("details:")
     shown_facts: dict[str, object] = {
         **asdict(facts),
         "examples": f"{len(facts.examples)} committed (paths in --json)",
@@ -531,7 +536,7 @@ def _describe(rest: list[str]) -> None:
             if isinstance(value, tuple)
             else _printable(value)
         )
-        print(f"  {key.ljust(width)}  {shown}")
+        _display(f"  {key.ljust(width)}  {shown}")
 
 
 def _read_answer(rest: list[str]) -> None:
@@ -579,9 +584,7 @@ def main() -> None:
     terminating prints "will run until you stop it", inviting the interrupt;
     exit 130 is the shell convention for SIGINT.
 
-    ``BrokenPipeError`` likewise: ``esolangs generate ... | head`` closes the
-    pipe before the first write, which otherwise left ``Exception ignored
-    while flushing sys.stdout`` on the terminal and exit 120.
+    Output destination errors exit 120. An early-closing pipe is silent.
 
     Anything else is a bug in this package, not the program being run, and
     exits 70 with a one-line report instead of a traceback.
@@ -611,22 +614,24 @@ def main() -> None:
         except SystemExit:
             # An early exit flushes here too: `debug`'s exit 1 into a closed
             # pipe printed "Exception ignored while flushing sys.stdout".
-            sys.stdout.flush()
+            _flush_stdout()
             raise
         # Flushed here, where the failure is catchable.  Python flushes
         # stdout again during interpreter shutdown, and a pipe closed
         # before the first write made *that* print "Exception ignored
         # while flushing sys.stdout" after the command had otherwise
         # finished.
-        sys.stdout.flush()
+        _flush_stdout()
     except KeyboardInterrupt:
         sys.stderr.write("interrupted\n")
         sys.exit(130)
-    except BrokenPipeError:  # pragma: no cover - needs a closed pipe
+    except _StdoutError as exc:
         # Python flushes stdout at exit and would report the same error
-        # again from the interpreter's own teardown; pointing it at
-        # ``devnull`` is the documented way to stop that.
-        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        # again from the interpreter's own teardown.
+        with suppress(OSError, ValueError), open(os.devnull, "wb") as sink:
+            os.dup2(sink.fileno(), sys.stdout.fileno())
+        if not isinstance(exc.error, BrokenPipeError):
+            sys.stderr.write(f"cannot write stdout: {exc}\n")
         sys.exit(120)
     except Exception as exc:
         # Anything reaching here is a package bug (three interpreters once
@@ -655,13 +660,13 @@ def _dispatch() -> None:
     # without saying where it goes, and `esolangs list --version` answering
     # "unknown option" is a strange way to learn that.
     if {"--version", "-V"} & set(option_argv):
-        print(f"esolangs {__version__}")
+        _display(f"esolangs {__version__}")
         sys.exit(0)
     if cmd in ("--help", "-h", "help"):
         if rest and rest[0] not in COMMANDS:
             # `help nope` printed the usage and exited 0.
             _fail(f"unknown command: {rest[0]}{_did_you_mean(rest[0], set(COMMANDS))}")
-        sys.stdout.write(help_text(rest[0]) if rest else USAGE)
+        _write_output(help_text(rest[0]) if rest else USAGE, utf8=False)
         sys.exit(0)
     if cmd not in COMMANDS:
         # Languages and options both suggest a near miss; the subcommands
@@ -669,7 +674,7 @@ def _dispatch() -> None:
         # usage block and no hint that `list` was one letter away.
         _fail(f"unknown command: {cmd}{_did_you_mean(cmd, set(COMMANDS))}\n\n{USAGE}")
     if {"--help", "-h"} & set(option_argv[1:]):
-        sys.stdout.write(help_text(cmd))
+        _write_output(help_text(cmd), utf8=False)
         sys.exit(0)
 
     {

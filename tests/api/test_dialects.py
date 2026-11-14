@@ -250,6 +250,32 @@ def test_settings_are_immutable_and_repr_rebuilds_them(
         settings._items = ()
 
 
+def test_custom_dialect_with_large_integer_choices() -> None:
+    from dataclasses import replace
+
+    value = 10**5000
+    schema = esolangs.DialectSchema(REFERENCE, {"mode": (1, value)}, {"mode": 1})
+    original = LANGUAGES[REFERENCE]
+    runtime = replace(
+        original.runtime, dialect=lambda **choices: choices, dialect_schema=schema
+    )
+    catalog = esolangs.Catalog([replace(original, runtime=runtime)])
+    settings = catalog.bind(REFERENCE).settings(mode=value)
+    assert eval(repr(settings), {"Language": catalog.bind}) == settings
+    with pytest.raises(esolangs.ArgumentError, match=r"integer with .* bits"):
+        schema.validate({"mode": 2})
+
+
+def test_dialect_schema_reports_invalid_mapping_arguments() -> None:
+    with pytest.raises(esolangs.ArgumentError, match="mappings"):
+        esolangs.DialectSchema(REFERENCE, [], {})
+    schema = esolangs.DialectSchema(REFERENCE, {}, {})
+    with pytest.raises(esolangs.ArgumentError, match="mapping"):
+        schema.validate([])
+    with pytest.raises(esolangs.ArgumentError, match="names must be strings"):
+        schema.validate({1: "left"})
+
+
 def test_default_pickle_has_no_retained_choices() -> None:
     source = esolangs.generate(REFERENCE, "01")
     restored = pickle.loads(pickle.dumps(source))

@@ -327,6 +327,35 @@ class TestAClosedPipeIsNotAnError:
         )
         assert both.returncode == 120  # It wrote to a None stderr: exit 1.
 
+    def test_unwritable_stdout_is_a_destination_error(self, tmp_path: Path) -> None:
+        path = tmp_path / "readonly.txt"
+        path.write_text("original")
+        with path.open("rb") as destination:
+            result = subprocess.run(
+                [sys.executable, "-m", "esolangs", "describe", "--json", REFERENCE],
+                stdout=destination,
+                stderr=subprocess.PIPE,
+                timeout=10,
+                check=False,
+            )
+        assert result.returncode == 120, result.stderr
+        assert result.stderr.startswith(b"cannot write stdout:")
+        assert len(result.stderr.splitlines()) == 1
+        assert path.read_text() == "original"
+
+    def test_unreadable_stdin_is_a_usage_error(self, tmp_path: Path) -> None:
+        with (tmp_path / "writeonly.txt").open("wb") as source:
+            result = subprocess.run(
+                [sys.executable, "-m", "esolangs", "read-answer", REFERENCE],
+                stdin=source,
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+        assert result.returncode == 2, result.stderr
+        assert not result.stdout
+        assert result.stderr.startswith(b"cannot read stdin:")
+
     def test_a_closed_stderr_still_runs(self, tmp_path: Path) -> None:
         """``2>&-``: every note wrote to None, so `run` printed nothing, exit 1."""
         import subprocess

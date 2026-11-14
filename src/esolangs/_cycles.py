@@ -150,6 +150,10 @@ def _halt_or_cycle_result(
     return cast("CycleDecision", _drive_halt_or_cycle(machine, limit, evidence=True))
 
 
+class _DrawDependentHaltError(TypeError):
+    """Branch exploration found a halt that depends on a draw."""
+
+
 def _drive_halt_or_cycle(
     machine: _StepMachine | VM, limit: int | None, *, evidence: bool
 ) -> bool | CycleDecision:
@@ -183,7 +187,7 @@ def _drive_halt_or_cycle(
                 else result.halts
             )
         raise with_hint(
-            TypeError(
+            _DrawDependentHaltError(
                 "random machines: some draws halt this program, so whether "
                 "this run halts depends on its own draws"
             ),

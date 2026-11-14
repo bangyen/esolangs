@@ -25,7 +25,7 @@ from esolangs.operations.source import _check_program
 from esolangs.registry import LANGUAGES
 from tests.support.execution import run_observed
 from tests.support.generator_support import CHECK, evaluate_generated
-from tests.support.pick import languages
+from tests.support.pick import first, languages
 from tests.support.reference import REFERENCE
 from tests.support.witness_tables import XOR
 
@@ -533,7 +533,7 @@ class TestTheArgumentBoundaryRefusesCleanly:
         monkeypatch.setattr(png, "read_metadata", lambda _data: bad)
         data = esolangs.Raster((((0, 0, 0),),)).to_png()
         with pytest.raises(ProgramError, match="hexadecimal"):
-            read_png_artifact(REFERENCE, data)
+            read_png_artifact(first(source_kind="raster"), data)
 
     def test_read_answer_of_a_non_string_is_an_argument_error(self) -> None:
         """Every other wrong-type argument already was."""

@@ -102,6 +102,16 @@ def test_answer_rejection_keeps_successful_execution_evidence() -> None:
     assert caught.value.partial_output == result.output
 
 
+def test_evaluation_requires_unfilled_template_for_embedded_inputs() -> None:
+    api = esolangs.Language(first(parameterized=True, answer_mode="output"))
+    template = api.generate("01")
+    filled = template.fill([1])
+    assert api.read_answer(api.run(filled).output) == "1"
+    for target in (filled, api.prepare(filled)):
+        with pytest.raises(esolangs.ArgumentError, match="pass the unfilled template"):
+            target.evaluate([0])
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize("streaming", [False, True])
 def test_isolated_row_output_limit_resets_per_row(streaming) -> None:

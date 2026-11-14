@@ -212,7 +212,7 @@ class Raster:
         from .scale import normalize
 
         if scale is not None:
-            check_scale(scale)
+            scale = check_scale(scale)
         if scale not in self._normalizations:
             self._normalizations[scale] = normalize(self.rows, scale)
         return self._normalizations[scale]
@@ -265,7 +265,7 @@ class Raster:
             # ``None`` read "'NoneType' object is not subscriptable".
             raise ArgumentError(f"PNG data must be bytes, got {type(data).__name__}")
         try:
-            data = bytes(data)
+            data = bytes.__bytes__(data) if isinstance(data, bytes) else bytes(data)
         except ValueError as exc:
             raise ArgumentError(f"cannot read PNG data: {exc}") from exc
         try:

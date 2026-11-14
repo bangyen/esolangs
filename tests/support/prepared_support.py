@@ -53,6 +53,7 @@ def check_image_reuse(
 
 def check_random_plan_reuse(language, code, module, parser_name, monkeypatch):
     """Reuse a finite witness while each invocation owns its random draws."""
+    from esolangs.runtime import _prepared as preparation
     from esolangs.runtime import randomness
 
     api = esolangs.Language(language)
@@ -68,18 +69,21 @@ def check_random_plan_reuse(language, code, module, parser_name, monkeypatch):
         return parse(source)
 
     shape_calls = []
+    shape = preparation.prepare_call
 
-    class Source(str):
-        def splitlines(self, *args, **kwargs):
-            shape_calls.append(True)
-            return super().splitlines(*args, **kwargs)
+    def counted_shape(name, source, context, **options):
+        shaped, runtime_options = shape(name, source, context, **options)
+        shape_calls.append(shaped)
+        return shaped, runtime_options
 
     with monkeypatch.context() as patch:
         patch.setattr(module, parser_name, counted)
-        prepared = api.prepare(api.from_source(Source(code)))
-        assert len(calls) == 1
-        shaped = len(shape_calls)
-        assert shaped == int(api.catalog.languages[api.name].runtime.split)
+        patch.setattr(preparation, "prepare_call", counted_shape)
+        prepared = api.prepare(api.from_source(code))
+        split = api.catalog.languages[api.name].runtime.split
+        shaped = code.splitlines() if split else code
+        assert calls == [shaped]
+        assert shape_calls == [shaped]
         real_draws = []
         choice = 0
 
@@ -109,5 +113,5 @@ def check_random_plan_reuse(language, code, module, parser_name, monkeypatch):
             first.step()
             assert second.snapshot() == initial
             assert complete_vm(first) == complete_vm(second) == want.output
-        assert len(calls) == 1
-        assert len(shape_calls) == shaped
+        assert calls == [shaped]
+        assert shape_calls == [shaped]

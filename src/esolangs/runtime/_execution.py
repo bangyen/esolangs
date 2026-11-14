@@ -60,6 +60,14 @@ def interpreter_module(name: str, *, catalog: Catalog | None = None) -> ModuleTy
         ) from error
 
 
+def runtime_hook(module: ModuleType, language: str, name: str) -> Callable[..., Any]:
+    """Resolve a declared entry point when its execution route needs it."""
+    target: object = getattr(module, name, None)
+    if not callable(target):
+        raise ProgramError(f"{language}'s interpreter has no callable {name!r} hook")
+    return target
+
+
 @_capture_outcome
 def execute_prepared(
     name: str,

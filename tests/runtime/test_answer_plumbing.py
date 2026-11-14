@@ -112,6 +112,39 @@ class TestATemplateCarriesItsSetters:
             with pytest.raises(esolangs.TemplateError):
                 bindings.fill(source, [1], spans=spans)
 
+    def test_template_freezes_text_and_tuple_subclasses(self) -> None:
+        class Text(str):
+            __hash__ = None
+
+            def __str__(self):
+                return "other"
+
+            def __len__(self):
+                return 2
+
+        class Span(tuple):
+            __hash__ = None
+
+            def __iter__(self):
+                return iter((1, 2))
+
+        bindings = esolangs.TemplateBindings(
+            char=Text("$"), setters=((Text("+"), Text("-")),)
+        )
+        spans = (Span((0, 1)),)
+        template = esolangs.TemplateArtifact(
+            Text("$"), TEMPLATED, bindings, spans=spans
+        )
+        plain = esolangs.TemplateArtifact(
+            "$", TEMPLATED, esolangs.TemplateBindings(setters=(("+", "-"),))
+        )
+        assert template == plain
+        assert hash(template) == hash(plain)
+        assert template.fill([1]).source == "-"
+        assert bindings.fill(Text("$"), [0], spans=spans) == "+"
+        with pytest.raises(esolangs.TemplateError, match="differ in width"):
+            esolangs.TemplateBindings(setters=((Text("ab"), Text("c")),))
+
     def test_a_zero_width_setter_has_an_empty_run(self) -> None:
         """An input spelled as nothing on both branches fills to nothing."""
         from esolangs._bindings import fill_runs, runs

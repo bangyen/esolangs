@@ -6,7 +6,12 @@ from functools import partial
 from typing import cast
 
 import esolangs.runtime._execution as _execution_runtime
-from esolangs._cycles import _BranchingStepMachine, _halt_or_cycle_result, _unwrap
+from esolangs._cycles import (
+    _BranchingStepMachine,
+    _DrawDependentHaltError,
+    _halt_or_cycle_result,
+    _unwrap,
+)
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import (
     EsolangError,
@@ -96,8 +101,13 @@ def _termination_result(
                 )
             except ExecutionTimeoutError:
                 raise
-            except TimeoutError as error:
-                raise steps_exhausted(str(error)) from error
+            except (_DrawDependentHaltError, TimeoutError) as error:
+                if isinstance(error, TimeoutError) and max_steps is not None:
+                    raise steps_exhausted(str(error)) from error
+                failure = InterpreterLimitError(str(error))
+                for note in getattr(error, "__notes__", ()):
+                    failure.add_note(note)
+                raise failure from error
             try:
                 checked_decision(decision)
             except ValueError:

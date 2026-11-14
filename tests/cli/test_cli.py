@@ -380,6 +380,16 @@ def test_option_passes_cannot_steal_another_options_value(capsys) -> None:
         assert "--settings is not valid JSON" in error
 
 
+def test_deep_settings_document_is_a_usage_error() -> None:
+    document = '{"setting":' + "[" * 10_000 + "0" + "]" * 10_000 + "}"
+    result = run_cli("generate", "--settings", document, REFERENCE, "01")
+    assert result.returncode == 2
+    assert (
+        "--settings is not valid JSON" in result.stderr
+        or "dialect setting" in result.stderr
+    )
+
+
 @pytest.mark.parametrize(
     ("command", "flag", "arguments"),
     [

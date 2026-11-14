@@ -81,7 +81,7 @@ def example_stems(*, catalog: Catalog | None = None) -> Mapping[str, str]:
     catalog = get_catalog(catalog)
     stems = {}
     for lang in catalog.languages.values():
-        if lang.backend is None or lang.runtime.interpreter is None:
+        if not lang.has_backend or lang.runtime.interpreter is None:
             continue
         # Windows rejects punctuation such as `?`; slash names also need ids.
         stem = lang.name.lower().replace(" ", "-")

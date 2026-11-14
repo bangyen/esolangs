@@ -159,3 +159,27 @@ def test_large_record_integers_stay_json_numbers() -> None:
         ("plain_chars", "generation_chars", "gzip_bytes"), wire["input_arity"]
     )
     assert esolangs.from_json(REFERENCE, document) == original
+
+
+def test_source_records_freeze_the_underlying_text(tmp_path: Path) -> None:
+    class Text(str):
+        __hash__ = None
+
+        def __str__(self):
+            return "other"
+
+        def encode(self, *_args, **_kwargs):
+            return b"other"
+
+    api = esolangs.Language(REFERENCE)
+    original = ProgramArtifact(Text("+."), Text(api.name))
+    expected = api.from_source("+.")
+    assert type(original.source) is str
+    assert type(original.language) is str
+    assert original == expected
+    assert hash(original) == hash(expected)
+    assert api.run(original).output == "\x01"
+    path = tmp_path / "source"
+    api.to_file(original, path)
+    assert api.from_file(path) == expected
+    assert api.from_json(api.to_json(original)) == expected

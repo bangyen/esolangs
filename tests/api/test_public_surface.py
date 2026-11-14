@@ -259,6 +259,23 @@ class TestWidthIsCheckedWhereverItIsTaken:
 class TestBitsAreBits:
     """The container as well as the elements."""
 
+    def test_integer_subclasses_keep_their_integer_value(self) -> None:
+        class FalseOne(int):
+            def __bool__(self) -> bool:
+                return False
+
+        bit = FalseOne(1)
+        assert esolangs.encode_inputs(REFERENCE, [bit]) == "1"
+        template = esolangs.generate(TEMPLATE_LANGUAGE, "01")
+        filled = template.fill([bit])
+        assert filled == template.fill([1])
+        assert (
+            template.evaluate(
+                [bit], limits=esolangs.ExecutionLimits(max_steps=1000)
+            ).answer
+            == "1"
+        )
+
     @pytest.mark.parametrize("bits", [None, "10", {0: 1, 1: 0}, [], [1.0, 0.0]])
     def test_both_encoders_refuse_the_same_bits(self, bits: object) -> None:
         """A dict was iterated as its *keys*, answering a different row."""

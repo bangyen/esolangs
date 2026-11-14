@@ -28,17 +28,23 @@ class DialectSchema:
         defaults: Mapping[str, Scalar],
     ) -> None:
         """Freeze the schema and require a typed default for every choice."""
-        if not isinstance(language, str) or not language.strip():
+        if not isinstance(language, str) or not str.__str__(language).strip():
             raise ArgumentError("a dialect schema requires a language")
+        if not isinstance(choices, Mapping) or not isinstance(defaults, Mapping):
+            raise ArgumentError("dialect choices and defaults must be mappings")
         if choices.keys() != defaults.keys():
             raise ArgumentError("dialect defaults must match declared choices")
         frozen = {}
+        frozen_defaults = {}
         for key, declared in choices.items():
-            if not isinstance(key, str) or not key.isidentifier() or iskeyword(key):
+            if not isinstance(key, str):
                 raise ArgumentError("dialect names must be identifiers")
+            name = str.__str__(key)
+            if not name.isidentifier() or iskeyword(name) or name in frozen:
+                raise ArgumentError("dialect names must be distinct identifiers")
             if not isinstance(declared, tuple):
                 raise ArgumentError("dialect enums must be tuples")
-            values = declared
+            values = tuple(declared)
             if not values or any(type(value) not in (int, str) for value in values):
                 raise ArgumentError(
                     "dialect choices must be nonempty integer/string enums"
@@ -52,10 +58,11 @@ class DialectSchema:
                 raise ArgumentError(
                     f"default for {key} must be a declared dialect choice"
                 )
-            frozen[key] = values
-        object.__setattr__(self, "language", language)
+            frozen[name] = values
+            frozen_defaults[name] = default
+        object.__setattr__(self, "language", str.__str__(language))
         object.__setattr__(self, "_choices", tuple(sorted(frozen.items())))
-        object.__setattr__(self, "_defaults", tuple(sorted(defaults.items())))
+        object.__setattr__(self, "_defaults", tuple(sorted(frozen_defaults.items())))
 
     @property
     def choices(self) -> dict[str, tuple[Scalar, ...]]:
@@ -69,8 +76,16 @@ class DialectSchema:
 
     def validate(self, choices: Mapping[str, Scalar]) -> dict[str, Scalar]:
         """Copy overrides after validating them within this language's scope."""
+        if not isinstance(choices, Mapping):
+            raise ArgumentError("dialect overrides must be a mapping")
         known = self.choices
-        for key, value in choices.items():
+        checked: dict[str, Scalar] = {}
+        for given, value in choices.items():
+            if not isinstance(given, str):
+                raise ArgumentError("dialect override names must be strings")
+            key = str.__str__(given)
+            if key in checked:
+                raise ArgumentError(f"duplicate dialect override: {key}")
             if key not in known:
                 names = sorted(known)
                 close = get_close_matches(key, names, n=1, cutoff=0.6)
@@ -84,12 +99,17 @@ class DialectSchema:
                 )
             values = known[key]
             if type(value) is not type(values[0]) or value not in values:
+                available = ", ".join(
+                    choice if isinstance(choice, str) else _argument_repr(choice)
+                    for choice in values
+                )
                 raise ArgumentError(
                     f"invalid value for dialect setting {key}: "
                     f"{_argument_repr(value)}; "
-                    f"choices: {', '.join(map(str, values))}"
+                    f"choices: {available}"
                 )
-        return dict(choices)
+            checked[key] = value
+        return checked
 
 
 @dataclass(frozen=True, slots=True, init=False, repr=False)
@@ -115,7 +135,15 @@ class DialectSettings:
 
     def __repr__(self) -> str:
         """Spell the public factory that reconstructs these choices."""
-        choices = ", ".join(f"{key}={value!r}" for key, value in self._items)
+
+        def literal(value: Scalar) -> str:
+            try:
+                return repr(value)
+            except ValueError:
+                assert isinstance(value, int)
+                return hex(value)
+
+        choices = ", ".join(f"{key}={literal(value)}" for key, value in self._items)
         return f"Language({self.language!r}).settings({choices})"
 
     def options(self) -> dict[str, Scalar]:

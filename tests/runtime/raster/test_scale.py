@@ -14,6 +14,25 @@ RASTER = languages(source_kind="raster", boolean_generator=True)
 
 
 @pytest.mark.medium
+def test_isolation_preserves_scale_beyond_the_decimal_limit() -> None:
+    api = esolangs.Language(RASTER[0])
+    source = Raster((((0, 0, 0),),))
+    scale = 10**5000
+    native = api.execute(source, scale=scale)
+    assert isinstance(native.error, ProgramError)
+    assert "scale" in str(native.error)
+    for limits in (
+        esolangs.ExecutionLimits(max_steps=2),
+        esolangs.ExecutionLimits(total_timeout=5),
+        esolangs.ExecutionLimits(execution_timeout=5),
+    ):
+        outcome = api.execute(source, limits=limits, scale=scale)
+        assert type(outcome.error) is type(native.error)
+        assert str(outcome.error) == str(native.error)
+        assert outcome.observation == native.observation
+
+
+@pytest.mark.medium
 @pytest.mark.parametrize("name", RASTER)
 @pytest.mark.parametrize("balanced", [False, True])
 @pytest.mark.parametrize("scale", [2, 3])
@@ -34,6 +53,34 @@ def test_scaled_png_computes_every_row(
 def test_generic_detection_finds_a_large_scale(native_png) -> None:
     image = esolangs.generate(RASTER[-1], "0001", scale=17)
     assert detect_scale(Raster.from_png(native_png(image)).rows) == 17
+
+
+@pytest.mark.parametrize("name", RASTER)
+def test_scale_subclass_cannot_change_geometric_or_metadata_semantics(
+    name: str,
+) -> None:
+    class Scale(int):
+        __hash__ = None
+
+        def __eq__(self, _other):
+            return True
+
+        def __int__(self):
+            return 1
+
+    base = esolangs.generate(name, "01")
+    enlarged = esolangs.generate(name, "01", scale=Scale(2))
+    assert isinstance(base.source, Raster)
+    assert isinstance(enlarged.source, Raster)
+    assert enlarged.source == base.source.upscaled(2)
+    assert type(enlarged.scale) is int
+    assert enlarged.scale == 2
+    record = esolangs.ProgramArtifact(enlarged.source, name, scale=Scale(2))
+    assert type(record.scale) is int
+    assert hash(record) == hash(
+        esolangs.ProgramArtifact(enlarged.source, name, scale=2)
+    )
+    assert esolangs.run(name, enlarged, stdin="1\n", scale=Scale(2)).output == "1"
 
 
 @pytest.mark.parametrize("name", RASTER)

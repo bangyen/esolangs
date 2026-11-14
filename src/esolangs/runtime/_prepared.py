@@ -10,7 +10,7 @@ from typing import Any, cast
 
 from esolangs.artifacts import BooleanEvaluation, ProgramArtifact
 from esolangs.debugger import Debugger
-from esolangs.exceptions import ProgramError
+from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry._catalog import Catalog, get_catalog
@@ -22,6 +22,7 @@ from esolangs.runtime._execution import (
     interpreter_errors,
     interpreter_module,
     prepare_call,
+    runtime_hook,
 )
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._lifecycle import CompletionReport
@@ -123,9 +124,14 @@ class PreparedProgram:
             return self._plan.bind(options.get("rng"))
         code, options = self._call(seed=seed, reproducible=reproducible)
         prepare = cast(
-            MachinePreparation, getattr(self._module, runtime.machine_preparation)
+            MachinePreparation,
+            runtime_hook(self._module, self.language, runtime.machine_preparation),
         )
         plan = prepare(code, options)
+        if not callable(plan):
+            raise InterpreterLimitError(
+                f"{self.language}'s preparation hook returned no machine factory"
+            )
         # Keep only the read-only origin of an RNG-bound invocation plan.
         if isinstance(plan, RuntimePlan):
             if runtime.random and plan.random_source is not None:
@@ -146,12 +152,15 @@ class PreparedProgram:
             code, options = self._call(seed=seed)
         else:
             code, options = self.artifact.source, self._options(seed=seed)
+        runner: Callable[..., Any]
         if isinstance(self._plan, RandomRuntimePlan):
             runner = partial(_run_plan, self._plan.bind(options.get("rng")))
         elif isinstance(self._plan, RuntimePlan):
             runner = partial(_run_plan, self._plan)
         else:
-            runner = getattr(self._module, runtime.completion_entrypoint)
+            runner = runtime_hook(
+                self._module, self.language, runtime.completion_entrypoint
+            )
             if options:
                 runner = partial(runner, **options)
         return execute_prepared(

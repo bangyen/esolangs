@@ -126,7 +126,7 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
     scaling = _SCALING.get(lang.id) if has_packaged_examples else None
     backend = lang.backend
     generates = backend is not None
-    reads_input = generates and not parameterized
+    reads_input = lang.runtime.reads_stdin and not parameterized
     return _LanguageInfo(
         name=name,
         dialect_settings=dialect_choices(name, catalog=catalog),

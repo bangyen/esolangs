@@ -37,47 +37,55 @@ def test_a_bad_timeout_is_refused_with_exit_2(args, message, tmp_path, capsys) -
     assert message in refused
 
 
-def test_file_and_stdin_share_the_acquisition_budget(
-    tmp_path, capsys, monkeypatch
+@pytest.mark.parametrize(
+    ("options", "acquisition", "worker_total"),
+    [
+        (["--total-timeout", "10", "--execution-timeout", "5"], 5, 10),
+        (["--execution-timeout", "5"], 5, 35),
+        (["--execution-timeout", "2592000"], 6, 2592030),
+    ],
+)
+def test_cli_and_worker_share_acquisition_and_total_budgets(
+    tmp_path, capsys, monkeypatch, options, acquisition, worker_total
 ) -> None:
+    from esolangs.runtime import _isolated
+
     run_cli = import_module("esolangs.cli.run")
     now = 100.0
     read_program = run_cli._read_program
 
     def read_file(path, timeout, **options):
         nonlocal now
-        assert timeout == 5
+        assert timeout == acquisition
         now += 2
         return read_program(path, timeout, **options)
 
     def read_stdin(timeout, _hint, **_options):
         nonlocal now
-        assert timeout == 3
+        assert timeout == acquisition - 2
         now += 1
         return ""
 
-    def execute(_language, _program, *, limits, **_options):
-        assert limits == esolangs.ExecutionLimits(
-            execution_timeout=5,
-            total_timeout=7,
-            preparation_timeout=3,
-        )
-        return esolangs.run(REFERENCE, "+.")
+    def launch(
+        _request, timeout, *, preparation_deadline, execution_timeout, **_options
+    ):
+        assert timeout == worker_total - 3
+        assert preparation_deadline == 106
+        assert execution_timeout == int(options[-1])
+        return esolangs.execute(REFERENCE, "+.")
 
     monkeypatch.setattr(run_cli, "monotonic", lambda: now)
+    monkeypatch.setattr(_isolated, "monotonic", lambda: now)
+    monkeypatch.setattr(_isolated, "_launch", launch)
     monkeypatch.setattr(run_cli, "_read_program", read_file)
     monkeypatch.setattr(run_cli, "_read_stdin", read_stdin)
-    monkeypatch.setattr(run_cli, "run", execute)
     assert (
         call_main(
             [
                 "run",
-                "--total-timeout",
-                "10",
+                *options,
                 "--preparation-timeout",
                 "6",
-                "--execution-timeout",
-                "5",
                 REFERENCE,
                 _program(tmp_path, "+."),
             ],

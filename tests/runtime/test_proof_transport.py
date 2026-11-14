@@ -160,7 +160,7 @@ def test_actual_branch_workers_retain_the_complete_graph():
         source, stdin = _request(name, 1)
         try:
             native = termination_observed(name, source, stdin, 5)
-        except esolangs.ExecutionCapError as error:
+        except esolangs.InterpreterLimitError as error:
             if "cannot be safely forked" not in str(error):
                 raise
             refused += 1
@@ -182,6 +182,20 @@ def test_actual_branch_workers_retain_the_complete_graph():
         reached += 1
     assert reached == 2
     assert refused == 10
+
+
+def test_wire_steps_match_a_deterministic_proof() -> None:
+    proof = CycleDecision(halts=True, commands=2)
+    metadata = encode_result(ExecutionResult("", 0, 0, 0, steps=2))
+    packet = {
+        "result": "",
+        "execution": metadata,
+        "termination": encode_decision(proof),
+    }
+    assert _decode(json.dumps(packet), expired=False).decision == proof
+    metadata["steps"] = 1
+    with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
+        _decode(json.dumps(packet), expired=False)
 
 
 @pytest.mark.medium

@@ -8,12 +8,13 @@ from esolangs.artifacts import (
     ProgramArtifact,
     TemplateArtifact,
 )
-from esolangs.exceptions import ArgumentError, ProgramError
+from esolangs.exceptions import ArgumentError, ProgramError, TemplateError
 from esolangs.limits import ExecutionLimits
 from esolangs.operations.boolean_io import encode_inputs, read_answer
 from esolangs.operations.execution import _execute_outcome, _execution_route
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._prepared import PreparedProgram
+from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_bit_count, check_bits
 
 
@@ -32,12 +33,22 @@ def evaluate_artifact(
         raise ArgumentError("limits must be ExecutionLimits or None")
     catalog = get_catalog(catalog)
     name = catalog.resolve(artifact.language)
-    contract = catalog.languages[name].contract
+    declaration = catalog.languages[name]
+    contract = declaration.contract
     row = check_bits(bits, "bits")
-    program = artifact.fill(row) if isinstance(artifact, TemplateArtifact) else artifact
+    program: ProgramArtifact[Program]
     if isinstance(artifact, TemplateArtifact):
+        if not declaration.parameterized:
+            raise TemplateError(f"{name} has no template generator")
+        program = artifact.fill(row)
         stdin = ""
     else:
+        if declaration.parameterized:
+            raise ArgumentError(
+                f"{name} embeds its inputs in the program; pass the unfilled "
+                "template to evaluate or run the filled program"
+            )
+        program = artifact
         if program.input_arity is not None:
             check_bit_count(row, program.input_arity, f"{name} program")
         stdin = encode_inputs(name, row, catalog=catalog)
@@ -112,7 +123,9 @@ def evaluate(
         UnknownLanguageError: ``language`` is not registered.
         ProgramError: ``artifact`` is not an artifact, or belongs to
             another language.
-        ArgumentError: ``bits`` is not one 0 or 1 per input.
+        ArgumentError: ``bits`` is not one 0 or 1 per input, or an embedded
+            input requires the unfilled template.
+        TemplateError: ``artifact`` is a template for a stdin language.
         EsolangError: Any error :func:`esolangs.run` raises for the row.
     """
     from esolangs.registry._catalog import get_catalog

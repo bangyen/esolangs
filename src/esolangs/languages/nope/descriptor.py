@@ -8,6 +8,7 @@ LANGUAGE = LanguageDeclaration(
     "Nope.",
     RuntimeSpec(
         "nope",
+        reads_stdin=False,
         category="other",
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",

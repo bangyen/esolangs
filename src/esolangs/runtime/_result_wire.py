@@ -349,6 +349,8 @@ def decode_result(output: Any, metadata: Any) -> ExecutionResult:
         None if metadata[key] is None else _counter(metadata[key])
         for key in ("input_position", "input_reads", "input_past_end")
     )
+    if None in counters and counters != (None, None, None):
+        raise ValueError("incomplete execution input counters")
     report = None
     if metadata["completion"] is not None:
         declared = metadata["completion"]
@@ -356,14 +358,21 @@ def decode_result(output: Any, metadata: Any) -> ExecutionResult:
             raise ValueError("invalid completion report")
         cycle = _cycle_from_wire(declared["cycle"])
         report = CompletionReport(Completion(declared["kind"]), cycle)
-    steps = metadata["steps"]
+    steps = None if metadata["steps"] is None else _counter(metadata["steps"])
+    if (
+        steps is not None
+        and report is not None
+        and report.cycle is not None
+        and steps != report.cycle.repeat_pass * report.cycle.commands_per_pass
+    ):
+        raise ValueError("execution steps disagree with periodic completion evidence")
     return ExecutionResult(
         output,
         counters[0],
         counters[1],
         counters[2],
         completion=report,
-        steps=None if steps is None else _counter(steps),
+        steps=steps,
     )
 
 

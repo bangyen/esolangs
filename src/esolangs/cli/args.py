@@ -416,7 +416,7 @@ def _settings_of(
     if "--settings" in options:
         try:
             parsed = json.loads(options["--settings"], object_pairs_hook=unique_object)
-        except ValueError as exc:
+        except (ValueError, RecursionError) as exc:
             _fail(f"--settings is not valid JSON ({exc}); pass a JSON object")
         if not isinstance(parsed, dict):
             _fail("--settings must be a JSON object")

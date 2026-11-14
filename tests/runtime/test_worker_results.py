@@ -299,6 +299,19 @@ def test_periodic_wire_report_cannot_drop_its_evidence():
         decode_result("", metadata)
 
 
+def test_worker_refuses_partial_counters_and_wrong_periodic_steps() -> None:
+    cycle = BoundaryCycle((0,), 0, 2, 6)
+    completion = CompletionReport(Completion.PERIODIC, cycle)
+    result = ExecutionResult("X", 0, 1, 0, completion=completion, steps=12)
+    metadata = encode_result(result)
+    assert decode_result(result.output, metadata) == result
+    for corrupted in ({"input_reads": None}, {"steps": 1}):
+        with pytest.raises(ValueError, match=r"counters|steps disagree"):
+            decode_result(result.output, {**metadata, **corrupted})
+    with pytest.raises(esolangs.ArgumentError, match="completion evidence"):
+        esolangs.ExecutionOutcome("completed", replace(result, completion="halted"))
+
+
 def test_normal_worker_cannot_omit_result_metadata(monkeypatch):
     from esolangs.runtime import _isolated
 
@@ -469,7 +482,8 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
             if type(value) is bool
         },
         **dict.fromkeys(("seed", "max_output", "max_steps"), (0, 1, "0x1")),
-        **dict.fromkeys(("scale", "max_memory"), (False, 0, -1, 1.0)),
+        "scale": (False, 0, -1, 1.0, "0x0", "-0x1", "0x01"),
+        "max_memory": (False, 0, -1, 1.0),
         "language": (0,),
         "stdin": ([],),
         "program": ([],),

@@ -44,6 +44,7 @@ def _require_image() -> Any:
 
 
 _SIGNATURE = b"\x89PNG\r\n\x1a\n"
+_REEXPORT = "restore or re-export the complete PNG image"
 
 # PNG colour type codes (IHDR byte 9).
 _GREY = 0
@@ -66,7 +67,7 @@ _COLOUR_NAMES = {
 
 
 def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
-    """Yield ``(type, body)`` for each chunk, checking the signature first."""
+    """Yield validated chunks through the end of the PNG datastream."""
     if data[:8] != _SIGNATURE:
         raise syntax_error(
             "not a PNG file (bad signature)",
@@ -96,8 +97,15 @@ def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
                     "match the data"
                 ),
             )
+        if kind == b"IEND":
+            if body:
+                raise syntax_error("PNG IEND chunk must be empty", _REEXPORT)
+            yield kind, body
+            return
         yield kind, body
         pos += 12 + length  # length + type + body + CRC
+    missing = "IHDR" if pos == len(_SIGNATURE) else "complete IEND"
+    raise syntax_error(f"PNG has no {missing} chunk", _REEXPORT)
 
 
 # Adam7's seven passes, each as (first row, first column, row step, column
@@ -148,10 +156,21 @@ def _scan_chunks(
     header = None
     palette = None
     idat = bytearray()
-    for kind, body in _chunks(data):
+    in_image_data = finished_image_data = False
+    for index, (kind, body) in enumerate(_chunks(data)):
+        if index == 0 and kind != b"IHDR":
+            raise syntax_error("PNG IHDR must appear first and only once", _REEXPORT)
+        if in_image_data and kind != b"IDAT":
+            finished_image_data = True
         if kind == b"IHDR":
+            if index != 0:
+                raise syntax_error(
+                    "PNG IHDR must appear first and only once", _REEXPORT
+                )
             header = struct.unpack(">IIBBBBB", body)
         elif kind == b"PLTE":
+            if palette is not None or in_image_data:
+                raise syntax_error("PNG PLTE must appear once before IDAT", _REEXPORT)
             # PNG allows 1..256 RGB entries.  An over-long table made
             # ``read_grey`` build a >256-byte translate table (a raw
             # ``ValueError`` from ``bytes.translate``) while ``read_rgb``
@@ -164,9 +183,15 @@ def _scan_chunks(
                 )
             palette = body
         elif kind == b"IDAT":
+            if finished_image_data:
+                raise syntax_error("PNG IDAT chunks must be consecutive", _REEXPORT)
+            in_image_data = True
             idat += body
-        elif kind == b"IEND":
-            break
+        elif kind != b"IEND" and not kind[0] & 0x20:
+            name = kind.decode("ascii", "replace")
+            raise syntax_error(f"unknown PNG critical chunk {name}", _REEXPORT)
+    if header is not None and not in_image_data:
+        raise syntax_error("PNG has no IDAT chunk", _REEXPORT)
     return header, palette, bytes(idat)
 
 
@@ -463,6 +488,7 @@ def read_metadata(data: bytes) -> dict[str, Any] | None:
         )
         if not isinstance(decoded, dict):
             raise ValueError("esolangs PNG metadata must be an object")
+        _utf8_metadata(decoded)
         found = decoded
     if found is None:
         return None
@@ -476,7 +502,10 @@ def read_metadata(data: bytes) -> dict[str, Any] | None:
 
 def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
     """Append source metadata before IEND; image editors may discard it."""
-    body = record_dumps(metadata).encode("utf-8")
+    utf8 = _utf8_metadata(metadata)
+    body = record_dumps(metadata).encode("ascii")
+    if len(body) > _METADATA_LIMIT:
+        body = utf8
     if len(body) > _METADATA_LIMIT:
         raise ProgramError("oversized esolangs PNG metadata")
     chunk = _METADATA_CHUNK + body
@@ -487,6 +516,14 @@ def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
         + struct.pack(">I", zlib.crc32(chunk) & 0xFFFFFFFF)
         + data[-12:]
     )
+
+
+def _utf8_metadata(metadata: dict[str, Any]) -> bytes:
+    """Validate the same Unicode scalar values as portable metadata."""
+    try:
+        return record_dumps(metadata, ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError as error:
+        raise ProgramError(f"PNG metadata is not valid UTF-8 text: {error}") from error
 
 
 def write_source(

@@ -51,15 +51,17 @@ class Catalog:
             raise ArgumentError("catalog language identifiers must be unique")
         folded: dict[str, str] = {}
         for language in records:
-            for spelling in (language.name, *language.aliases):
+            for spelling in (language.id, language.name, *language.aliases):
                 if not isinstance(spelling, str) or not (
                     key := spelling.strip().casefold()
                 ):
                     raise ArgumentError(
-                        "catalog language aliases must be nonblank strings"
+                        "catalog identifiers and aliases must be nonblank strings"
                     )
                 if key in folded and folded[key] != language.name:
-                    raise ArgumentError("catalog aliases must have one owner")
+                    raise ArgumentError(
+                        "catalog names, identifiers, and aliases must have one owner"
+                    )
                 folded[key] = language.name
         object.__setattr__(self, "languages", MappingProxyType(languages))
         object.__setattr__(self, "_by_id", MappingProxyType(ids))

@@ -11,14 +11,18 @@ Setters = tuple[tuple[str, str], ...]
 
 def check_setters(setters: Sequence[tuple[str, str]]) -> Setters:
     """Return ``setters`` as a tuple, refusing a pair of unequal width."""
-    checked = tuple((zero, one) for zero, one in setters)
-    for i, (zero, one) in enumerate(checked):
+    checked = []
+    for i, (raw_zero, raw_one) in enumerate(setters):
+        if not isinstance(raw_zero, str) or not isinstance(raw_one, str):
+            raise ValueError("setters must be pairs of strings")
+        zero, one = str.__str__(raw_zero), str.__str__(raw_one)
         if len(zero) != len(one):
             raise ValueError(
                 f"input {i}'s setters differ in width ({len(zero)} against "
                 f"{len(one)}), so the program's length would carry the bit"
             )
-    return checked
+        checked.append((zero, one))
+    return tuple(checked)
 
 
 #: The character a public template spells its inputs with, unless a

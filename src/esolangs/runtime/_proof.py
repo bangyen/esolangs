@@ -118,4 +118,9 @@ def checked_termination(value: object) -> TerminationResult:
     ):
         raise ValueError("termination requires an unfinalized IO observation")
     checked_decision(value.decision)
+    steps = value.observation.steps
+    if steps is not None and (
+        type(steps) is not int or steps != value.decision.commands
+    ):
+        raise ValueError("execution steps disagree with termination evidence")
     return value

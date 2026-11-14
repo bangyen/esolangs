@@ -48,7 +48,7 @@ from esolangs.exceptions import (
 from esolangs.operations.execution import default_total
 from esolangs.registry import LANGUAGES, resolve, template_char
 from esolangs.runtime._execution import check_seed_for
-from esolangs.runtime._isolated import check_memory
+from esolangs.runtime._isolated import _acquisition_started_at, check_memory
 from esolangs.runtime._source import check_scale_for
 from esolangs.settings import dialect_options
 
@@ -87,15 +87,18 @@ def _run(rest: list[str]) -> None:
     # A cap selects the worker, as run(max_output=...) does; both flags
     # exited 2 with "requires --isolated".
     isolated = bool({"--isolated", "--max-output", "--max-memory"} & {*flags, *options})
-    if timeout is None and (isolated or preparation is not None):
-        total = default_total(total, None)
+    worker_total = (
+        default_total(total, timeout)
+        if isolated or timeout is not None or preparation is not None
+        else total
+    )
     # File and stdin share the tightest acquisition budget. Execution gets
     # its own execution_timeout after the worker has prepared the program.
     acquisition, flag = min(
         (
             (bound, flag)
             for bound, flag in (
-                (total, "--total-timeout"),
+                (worker_total, "--total-timeout"),
                 (preparation, "--preparation-timeout"),
                 (timeout, "--execution-timeout"),
             )
@@ -151,24 +154,22 @@ def _run(rest: list[str]) -> None:
         _stdin_hint(declaration),
         timeout_flag=flag,
     )
-    elapsed = monotonic() - started
-    _remaining(acquisition, elapsed, flag)
+    _remaining(acquisition, monotonic() - started, flag)
     try:
         with (
             _unbounded_notice("run")
             if acquisition is None and max_steps is None
-            else nullcontext()
+            else nullcontext(),
+            _acquisition_started_at(started),
         ):
             output = run(
                 language,
                 program,
                 stdin=stdin,
                 limits=ExecutionLimits(
-                    preparation_timeout=_remaining(
-                        preparation, elapsed, "--preparation-timeout"
-                    ),
+                    preparation_timeout=preparation,
                     execution_timeout=timeout,
-                    total_timeout=_remaining(total, elapsed, "--total-timeout"),
+                    total_timeout=total,
                     max_steps=max_steps,
                     max_output=max_output,
                     max_memory=max_memory,
@@ -196,7 +197,7 @@ def _run(rest: list[str]) -> None:
     # Piped output stays byte-exact -- it gets compared and diffed -- but a
     # result with no trailing newline runs into the next shell prompt.
     if output and not output.endswith("\n") and sys.stdout.isatty():
-        sys.stdout.write("\n")
+        _write_output("\n")
     empty = isinstance(program.source, str) and not program.source.strip()
     slot = template_char(declaration.id)
     if slot is not None and isinstance(program.source, str) and slot in program.source:

@@ -60,7 +60,7 @@ def _read_container(
         if isinstance(source, _FileSource):
             return source.read(), True
         if isinstance(source, os.PathLike):
-            return Path(source).read_bytes(), True
+            return explicit_path(source).read_bytes(), True
         if isinstance(source, (str, bytes, Raster, CompressedText)):
             return source, False
         if callable(getattr(source, "read", None)):
@@ -103,7 +103,9 @@ def text_source(
     if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
         value = CompressedText(value)
     if isinstance(value, CompressedText):
-        value = str(value)
+        # Construction already enforced the generation budget. plain_chars
+        # limits raw export; loading an interpreter's source is not export.
+        value = "".join(value.chunks())
     if isinstance(value, bytes):
         try:
             value = value.decode("utf-8")
@@ -223,7 +225,7 @@ def effective_scale(
         == catalog.resolve(language)
     ):
         return program.scale
-    return scale
+    return None if scale is None else check_scale(scale)
 
 
 def check_scale_for(

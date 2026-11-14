@@ -18,7 +18,7 @@ from esolangs.exceptions import (
     TemplateError,
     UnknownLanguageError,
 )
-from esolangs.results import ExecutionResult
+from esolangs.results import CompletionReport, ExecutionResult
 
 OutcomeStatus = Literal["completed", "rejected", "input_exhausted", "limit", "fault"]
 
@@ -59,7 +59,9 @@ class ExecutionOutcome:
         if not isinstance(self.observation, ExecutionResult):
             raise ArgumentError("an outcome requires an execution observation")
         if self.error is None:
-            if self.status != "completed" or self.observation.completion is None:
+            if self.status != "completed" or not isinstance(
+                self.observation.completion, CompletionReport
+            ):
                 raise ArgumentError("a completed outcome requires completion evidence")
         elif (
             not isinstance(self.error, EsolangError)

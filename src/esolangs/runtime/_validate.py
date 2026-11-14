@@ -168,9 +168,15 @@ def check_bits(bits: object, what: str = "bits") -> list[int]:
             ArgumentError(f"{what} must not be empty; a program reads at least one"),
             ("pass integer bits as a list or tuple, for example [0, 1]"),
         )
+    values = [
+        int.__int__(bit)
+        if type(bit) is not int and isinstance(bit, int) and not isinstance(bit, bool)
+        else bit
+        for bit in bits
+    ]
     if any(
         isinstance(bit, bool) or not isinstance(bit, int) or bit not in (0, 1)
-        for bit in bits
+        for bit in values
     ):
         if any(isinstance(bit, bool) for bit in bits):
             # Said separately because "must be 0 or 1" reads as wrong when
@@ -190,7 +196,7 @@ def check_bits(bits: object, what: str = "bits") -> list[int]:
             ),
             ("pass integer bits as a list or tuple, for example [0, 1]"),
         )
-    return list(bits)
+    return values
 
 
 #: The most cells an interpreter will grow its store to.
@@ -226,7 +232,12 @@ def check_scale(scale: object) -> int:
     from esolangs.exceptions import ArgumentError
     from esolangs.runtime.source_hints import with_hint
 
-    if isinstance(scale, bool) or not isinstance(scale, int) or scale < 1:
+    value = (
+        int.__int__(scale)
+        if isinstance(scale, int) and not isinstance(scale, bool)
+        else 0
+    )
+    if value < 1:
         raise with_hint(
             ArgumentError(
                 f"scale must be a positive integer, got {_argument_repr(scale)}"
@@ -236,7 +247,7 @@ def check_scale(scale: object) -> int:
                 "an integer replication factor"
             ),
         )
-    return scale
+    return value
 
 
 def check_flag(value: object, name: str) -> bool:

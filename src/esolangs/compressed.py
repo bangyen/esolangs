@@ -78,13 +78,17 @@ class CompressedText:
         """Validate the stream and measure its expanded characters."""
         if not isinstance(self.data, bytes):
             raise ProgramError("gzip source must be bytes")
-        # Canonical, so an alias tag compares equal to the name ``run`` checks.
+        object.__setattr__(self, "data", bytes.__bytes__(self.data))
         _check_limits(self.limits)
-        if self.limits is not None:
+        if self.limits is None:
+            size = sum(len(chunk) for chunk in self.chunks())
+        else:
             _check_gzip(self.limits, len(self.data))
-        object.__setattr__(self, "_size", sum(len(chunk) for chunk in self.chunks()))
-        if self.limits is not None:
-            _check_work(self.limits, self._size)
+            size = 0
+            for chunk in self.chunks():
+                size += len(chunk)
+                _check_work(self.limits, size)
+        object.__setattr__(self, "_size", size)
 
     def chunks(self) -> Iterator[str]:
         """Yield decoded text in bounded chunks, validating gzip and UTF-8."""
@@ -110,12 +114,13 @@ class CompressedText:
         output = io.BytesIO()
         count = 0
         with gzip.GzipFile(fileobj=output, mode="wb", filename="", mtime=0) as stream:
-            for chunk in chunks:
-                if not isinstance(chunk, str):
+            for text in chunks:
+                if not isinstance(text, str):
                     # ``[b"x"]`` raised AttributeError from ``.encode``.
                     raise ArgumentError(
-                        f"chunks must be strings, got {type(chunk).__name__}"
+                        f"chunks must be strings, got {type(text).__name__}"
                     )
+                chunk = str.__str__(text)
                 count += len(chunk)
                 if limits is not None:
                     _check_work(limits, count)
@@ -160,7 +165,7 @@ class CompressedText:
         _check_limits(limits)
         if (
             not isinstance(character, str)
-            or len(character) != 1
+            or str.__len__(character) != 1
             or type(count) is not int
             or count < 0
         ):
@@ -169,7 +174,7 @@ class CompressedText:
             )
         if limits is not None:
             _check_work(limits, count)
-        block = character * _BLOCK
+        block = str.__str__(character) * _BLOCK
         return cls.from_chunks(
             (block[: min(_BLOCK, count - start)] for start in range(0, count, _BLOCK)),
             limits=limits,
