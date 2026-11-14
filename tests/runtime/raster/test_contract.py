@@ -1,5 +1,7 @@
 """Contracts shared by every registered raster language."""
 
+import base64
+import json
 from dataclasses import replace
 from importlib.resources import files
 from pathlib import Path
@@ -302,15 +304,71 @@ def test_raster_scale_metadata_stays_a_json_integer(tmp_path: Path) -> None:
     path = tmp_path / "source.png"
     api.to_file(original, path)
     assert api.from_file(path) == original
-    assert api.from_json(api.to_json(original)) == original
+    packed = api.to_json(original)
+    assert api.from_json(packed) == original
+    legacy = json.loads(packed)
+    assert "scale" not in legacy
+    assert base64.b64decode(legacy["source"]) == path.read_bytes()
 
     oversized = replace(original, scale=10**17000)
-    for save in (lambda: api.to_file(oversized, path), lambda: api.to_json(oversized)):
-        with pytest.raises(
-            esolangs.ProgramError, match="oversized esolangs PNG metadata"
-        ):
-            save()
+    with pytest.raises(esolangs.ProgramError, match="oversized esolangs PNG metadata"):
+        api.to_file(oversized, path)
     assert api.from_file(path) == original
+    packed = api.to_json(oversized)
+    fallback = json.loads(packed, parse_int=str)
+    assert fallback["version"] == "1"
+    assert fallback["scale"] == "1" + "0" * 17000
+    assert base64.b64decode(fallback["source"]) == pixels.to_png()
+    assert api.from_json(packed) == oversized
+
+
+def test_portable_raster_saves_settings_beyond_native_metadata_budget(
+    monkeypatch,
+) -> None:
+    language = RASTER_LANGUAGES[0]
+    original = LANGUAGES[language]
+    choice = "x" * 17000
+    schema = esolangs.DialectSchema(language, {"note": ("", choice)}, {"note": ""})
+    runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
+    api = esolangs.Catalog([replace(original, runtime=runtime)]).bind(language)
+    generated = esolangs.generate(language, "0110", scale=2)
+    artifact = replace(generated, settings=api.settings(note=choice))
+    packed = api.to_json(artifact)
+    restored = api.from_json(packed)
+    assert restored == artifact
+    assert api.to_json(restored) == packed
+    module = _execution_runtime.interpreter_module(language)
+    run = getattr(module, runtime.completion_entrypoint)
+
+    def scoped_run(program, io, *, note, **options):
+        assert note == choice
+        return run(program, io, **options)
+
+    monkeypatch.setattr(module, runtime.completion_entrypoint, scoped_run)
+    for bits, answer in (([0, 1], "1"), ([1, 1], "0")):
+        assert api.evaluate(restored, bits).answer == answer
+    no_scale = replace(artifact, scale=None)
+    assert api.from_json(api.to_json(no_scale)) == no_scale
+
+
+def test_portable_scale_validates_its_type_and_embedded_agreement() -> None:
+    api = esolangs.Language(RASTER_LANGUAGES[0])
+    original = api.generate("01", scale=2)
+    document = json.loads(api.to_json(original))
+    assert api.from_json(json.dumps({**document, "scale": 2})) == original
+    with pytest.raises(
+        esolangs.ProgramError, match="conflicting PNG and document scale"
+    ):
+        api.from_json(json.dumps({**document, "scale": 3}))
+    for scale in (None, False, "2", 0, -1):
+        with pytest.raises(
+            esolangs.ProgramError, match="scale must be a positive integer"
+        ):
+            api.from_json(json.dumps({**document, "scale": scale}))
+
+    text = json.loads(esolangs.to_json(REFERENCE, "+."))
+    with pytest.raises(esolangs.ProgramError, match="unexpected or missing fields"):
+        esolangs.from_json(REFERENCE, json.dumps({**text, "scale": 2}))
 
 
 def test_scaling_composes_retained_factors(native_png) -> None:

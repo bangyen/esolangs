@@ -338,7 +338,8 @@ Catch the builtin base when a caller already does: a `ProgramError` is a
 
 ## Feeding a program
 
-Build language-specific stdin with `encode_inputs`:
+Build language-specific stdin for a generated Boolean program with
+`encode_inputs`:
 
 - Taglate:
 
@@ -404,7 +405,7 @@ verbatim (`ab` reads as two bits in brainfuck). Piped text from `generate`,
 
 ## Templates
 
-Some languages embed their inputs in the program. For these, `generate`
+Some Boolean generators embed the input bits in source. For these, `generate`
 returns a template with one ordered `$` run per input, exactly as long as
 its replacement. Fill it with `esolangs.instantiate(language, template, bits)`.
 Portable JSON stores each slot's start and end offsets alongside its setters.
@@ -412,6 +413,8 @@ Running a `TemplateArtifact` is refused until it is filled. Literal source is
 interpreted directly, including placeholder-like characters.
 Pass the unfilled template and a row to `evaluate`. Use `run` on the filled
 program to execute the row already embedded in its source.
+Handwritten programs follow the interpreter's input rules. See
+`esolangs describe --spec <language>` for those rules.
 `esolangs list --details` marks these languages `tmpl`.
 
 ## Reading the answer
@@ -617,6 +620,9 @@ shows the `gen`, `tmpl`, and `ex` markers. Fields include:
 wherever a name is. `spec`, `answer_convention` and
 `generator_restrictions` are prose for people; parse `answer_pattern`, a
 regex, instead.
+
+Interpreter specs come from docstrings. Python's `-OO` strips them, so
+`describe` and `list --grep` require a Python invocation that retains them.
 
 ## Compatibility
 

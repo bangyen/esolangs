@@ -6,6 +6,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from difflib import get_close_matches
 from keyword import iskeyword
+from typing import cast, overload
+from unicodedata import normalize
 
 from esolangs.exceptions import ArgumentError
 from esolangs.runtime._validate import _argument_repr
@@ -119,14 +121,26 @@ class DialectSettings:
     _schema: DialectSchema
     _items: tuple[tuple[str, Scalar], ...]
 
-    def __init__(self, schema: DialectSchema, **choices: Scalar) -> None:
+    @overload
+    def __init__(self, schema: DialectSchema, /, **choices: Scalar) -> None: ...
+
+    @overload
+    def __init__(self, /, *, schema: DialectSchema, **choices: Scalar) -> None: ...
+
+    def __init__(
+        self,
+        schema: DialectSchema | None = None,
+        /,
+        **choices: Scalar | DialectSchema,
+    ) -> None:
         """Freeze choices against an explicit schema; use Language.settings."""
-        if not isinstance(schema, DialectSchema):
+        # Keep the keyword constructor working when no positional schema was supplied.
+        declared = choices.pop("schema", None) if schema is None else schema
+        if not isinstance(declared, DialectSchema):
             raise ArgumentError("dialect settings require a language schema")
-        object.__setattr__(self, "_schema", schema)
-        object.__setattr__(
-            self, "_items", tuple(sorted(schema.validate(choices).items()))
-        )
+        checked = declared.validate(cast("dict[str, Scalar]", choices))
+        object.__setattr__(self, "_schema", declared)
+        object.__setattr__(self, "_items", tuple(sorted(checked.items())))
 
     @property
     def language(self) -> str:
@@ -143,7 +157,14 @@ class DialectSettings:
                 assert isinstance(value, int)
                 return hex(value)
 
-        choices = ", ".join(f"{key}={literal(value)}" for key, value in self._items)
+        if any(normalize("NFKC", key) != key for key, _ in self._items):
+            # Python normalizes identifiers in call syntax, but preserves dict keys.
+            items = ", ".join(
+                f"{key!r}: {literal(value)}" for key, value in self._items
+            )
+            choices = f"**{{{items}}}"
+        else:
+            choices = ", ".join(f"{key}={literal(value)}" for key, value in self._items)
         return f"Language({self.language!r}).settings({choices})"
 
     def options(self) -> dict[str, Scalar]:

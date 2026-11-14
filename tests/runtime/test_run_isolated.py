@@ -460,6 +460,29 @@ def test_capped_protocol_truncated_record_retains_prefix(protocol_child) -> None
         assert child.reaped
 
 
+def test_broken_request_pipe_still_drains_worker_failure(protocol_child) -> None:
+    from io import StringIO
+
+    from esolangs.runtime._isolated import _bounded_output, _failure_wire
+
+    class ClosedInput(StringIO):
+        def write(self, _text):
+            raise BrokenPipeError
+
+    error = esolangs.InterpreterLimitError("worker rejected request")
+    child = protocol_child(
+        ['{"output":"prefix"}\n', worker_dumps(_failure_wire(error))]
+    )
+    child.stdin = ClosedInput()
+    with pytest.raises(
+        esolangs.InterpreterLimitError, match="worker rejected request"
+    ) as caught:
+        _bounded_output(child, "{}", 1).unwrap()
+    assert caught.value.partial_output == "prefix"
+    assert caught.value.observation is None
+    assert child.reaped
+
+
 def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(
     protocol_child,
 ) -> None:

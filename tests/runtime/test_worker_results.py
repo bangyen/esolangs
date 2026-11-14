@@ -13,7 +13,8 @@ from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
-from esolangs.runtime._result_wire import decode_result, encode_result
+from esolangs.runtime._proof import CycleDecision
+from esolangs.runtime._result_wire import decode_result, encode_decision, encode_result
 from esolangs.vm import make_vm
 from tests.support.execution import run_observed
 from tests.support.reference import REFERENCE
@@ -308,8 +309,51 @@ def test_worker_refuses_partial_counters_and_wrong_periodic_steps() -> None:
     for corrupted in ({"input_reads": None}, {"steps": 1}):
         with pytest.raises(ValueError, match=r"counters|steps disagree"):
             decode_result(result.output, {**metadata, **corrupted})
-    with pytest.raises(esolangs.ArgumentError, match="completion evidence"):
-        esolangs.ExecutionOutcome("completed", replace(result, completion="halted"))
+
+
+@pytest.mark.parametrize("termination", [None, CycleDecision(halts=True, commands=0)])
+def test_successful_workers_must_report_known_input_counters(termination) -> None:
+    from esolangs.runtime._isolated import _decode_outcome
+
+    report = CompletionReport(Completion.HALTED) if termination is None else None
+    unknown = ExecutionResult("prefix", None, None, None, completion=report)
+    packet = {"result": "prefix", "execution": encode_result(unknown)}
+    if termination is not None:
+        packet["termination"] = encode_decision(termination)
+    prefix = '{"output":"prefix"}\n'
+    with pytest.raises(
+        esolangs.InterpreterLimitError, match="invalid isolated"
+    ) as caught:
+        _decode(prefix + json.dumps(packet), expired=False)
+    assert caught.value.partial_output == "prefix"
+    assert caught.value.observation is None
+    known = replace(unknown, input_position=0, input_reads=0, input_past_end=0)
+    packet["execution"] = encode_result(known)
+    assert (
+        _decode_outcome(prefix + json.dumps(packet), expired=False).observation == known
+    )
+
+
+def test_worker_budget_errors_preserve_the_named_bound() -> None:
+    from esolangs.runtime import _isolated
+
+    unknown = esolangs.ExecutionBudgetError("no phase declared")
+    assert (
+        _isolated._decode_outcome(
+            json.dumps(_isolated._failure_wire(unknown)), expired=False
+        ).bound
+        is None
+    )
+    for error, bound in (
+        (esolangs.ExecutionBudgetError("budget expired"), "max_steps"),
+        (esolangs.ExecutionTimeoutError("preparation expired"), "preparation_timeout"),
+    ):
+        error.bound = bound
+        outcome = _isolated._decode_outcome(
+            json.dumps(_isolated._failure_wire(error)), expired=False
+        )
+        assert type(outcome.error) is type(error)
+        assert outcome.bound == bound
 
 
 def test_normal_worker_cannot_omit_result_metadata(monkeypatch):

@@ -44,7 +44,7 @@ class Language:
         object.__setattr__(self, "catalog", get_catalog(self.catalog))
         object.__setattr__(self, "name", self.catalog.resolve(self.name))
 
-    def settings(self, **choices: Scalar) -> DialectSettings:
+    def settings(self, /, **choices: Scalar) -> DialectSettings:
         """Return overrides validated within this language's dialect schema.
 
         Its keywords are the dialect's own names, ``catalog`` included, so it

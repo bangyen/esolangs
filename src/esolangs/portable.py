@@ -155,6 +155,8 @@ def to_json(
 
     Raster pixels are embedded as base64 PNG. Integer choices use hexadecimal
     strings, including values beyond Python's decimal conversion limit.
+    If the PNG metadata exceeds its native limit, the document carries the
+    settings and any explicit scale alongside an untagged image.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
@@ -200,11 +202,15 @@ def to_json(
             spans=artifact.spans,
         )
     elif isinstance(body, Raster):
+        image = png.write_rgb(body.rows)
+        try:
+            image = png.attach_source_metadata(image, name, settings, artifact.scale)
+        except png.SourceMetadataSizeError:
+            if artifact.scale is not None:
+                document["scale"] = artifact.scale
         document.update(
             kind="png",
-            source=base64.b64encode(
-                png.write_source(body.rows, name, settings, artifact.scale)
-            ).decode("ascii"),
+            source=base64.b64encode(image).decode("ascii"),
         )
     elif isinstance(body, CompressedText):
         document.update(
@@ -278,7 +284,14 @@ def _load_png(
     metadata = png.read_metadata(data)
     if metadata is not None and record.settings != settings:
         raise ValueError("conflicting PNG and document settings")
-    return ProgramArtifact(record.source, name, settings=settings, scale=record.scale)
+    scale = record.scale
+    if "scale" in value:
+        scale = value["scale"]
+        if type(scale) is not int or scale < 1:
+            raise ValueError("scale must be a positive integer")
+        if metadata is not None and "scale" in metadata and record.scale != scale:
+            raise ValueError("conflicting PNG and document scale")
+    return ProgramArtifact(record.source, name, settings=settings, scale=scale)
 
 
 def _load_gzip(
@@ -418,6 +431,8 @@ def from_json(
         kind = value.get("kind")
         if kind == "gzip":
             fields.add("limits")
+        if kind == "png" and "scale" in value:
+            fields.add("scale")
         if kind == "template":
             fields |= {"char", "setters", "spans"}
         elif "input_arity" in value:

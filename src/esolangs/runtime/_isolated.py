@@ -7,7 +7,7 @@ import os
 import subprocess  # fixed Python worker; source travels over stdin.
 import sys
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from contextvars import ContextVar
 from functools import lru_cache
 from itertools import chain, groupby, repeat
@@ -170,6 +170,7 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
     if isinstance(error, exceptions.ExecutionTimeoutError):
         if result["bound"] not in (
             "execution_timeout",
+            "preparation_timeout",
             "total_timeout",
         ):
             raise ValueError("invalid timeout bound")
@@ -181,6 +182,20 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
         ):
             raise ValueError("invalid cap bound")
         error.bound = result["bound"]
+    elif isinstance(error, exceptions.ExecutionBudgetError):
+        bound = result["bound"]
+        if bound not in (
+            None,
+            "max_steps",
+            "max_output",
+            "max_memory",
+            "execution_timeout",
+            "preparation_timeout",
+            "total_timeout",
+        ):
+            raise ValueError("invalid budget bound")
+        if bound is not None:
+            error.bound = bound
     if result["execution"] is not None:
         error.observation = decode_result(partial, result["execution"])
         if error.observation.completion is not None:
@@ -235,10 +250,15 @@ def _decode_outcome(text: str, *, expired: bool) -> _WorkerResponse:
             if set(result) != fields or result["result"] != partial:
                 raise ValueError("invalid isolated result fields or output")
             if "termination" in result:
-                return decode_termination(
+                termination = decode_termination(
                     result["result"], result["execution"], result["termination"]
                 )
+                if termination.observation.input_position is None:
+                    raise ValueError("worker omitted input counters")
+                return termination
             execution = decode_result(result["result"], result["execution"])
+            if execution.input_position is None:
+                raise ValueError("worker omitted input counters")
             if execution.completion is None:
                 raise ValueError("worker omitted output completion")
             return ExecutionOutcome("completed", execution)
@@ -598,8 +618,9 @@ def _bounded_output(
             # _launch always opens both streams with PIPE.
             stdin = cast("TextIO", child.stdin)
             stdout = cast("TextIO", child.stdout)
-            stdin.write(request)
-            stdin.close()
+            # Like communicate(), keep reading if the child closed its input.
+            with suppress(BrokenPipeError), stdin:
+                stdin.write(request)
             for line in stdout:
                 if not publish(line):
                     return
@@ -936,7 +957,7 @@ def _failure_wire(error: BaseException) -> dict[str, Any]:
         "notes": getattr(error, "__notes__", []),
         "execution": encode_result(observation) if observation is not None else None,
         **(
-            {"bound": error.bound}
+            {"bound": getattr(error, "bound", None)}
             if isinstance(error, exceptions.ExecutionBudgetError)
             else {}
         ),
@@ -992,10 +1013,18 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
             del reserve
             # Without max_memory the machine ran out, not a caller's budget.
             capped = request["max_memory"] is not None
+            if not capped and isinstance(error, exceptions.InterpreterLimitError):
+                with suppress(MemoryError):
+                    send(_failure_wire(error))
+                    return
             send(
                 {
                     "error": "ExecutionCapError" if capped else "InterpreterLimitError",
-                    "args": ["isolated memory limit exceeded"],
+                    "args": [
+                        "isolated memory limit exceeded"
+                        if capped
+                        else "isolated worker ran out of memory"
+                    ],
                     "notes": [],
                     "execution": None,
                     **({"bound": "max_memory"} if capped else {}),

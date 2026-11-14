@@ -266,6 +266,28 @@ def test_custom_dialect_with_large_integer_choices() -> None:
         schema.validate({"mode": 2})
 
 
+def test_dialect_keys_survive_binding_and_round_trips() -> None:
+    from dataclasses import replace
+
+    names = ("catalog", "language", "schema", "self", "K", "\N{KELVIN SIGN}")
+    schema = esolangs.DialectSchema(
+        REFERENCE, dict.fromkeys(names, (1, 2)), dict.fromkeys(names, 1)
+    )
+    original = LANGUAGES[REFERENCE]
+    runtime = replace(
+        original.runtime, dialect=lambda **choices: choices, dialect_schema=schema
+    )
+    bound = CATALOG.with_language(replace(original, runtime=runtime)).bind(REFERENCE)
+    choices = dict.fromkeys(names, 2)
+    settings = bound.settings(**choices)
+    assert settings.options() == choices
+    assert DialectSettings(schema, **choices) == settings
+    assert DialectSettings(schema=schema, self=2) == bound.settings(self=2)
+    assert eval(repr(settings), {"Language": bound.catalog.bind}) == settings
+    artifact = bound.from_source("+.", settings=settings)
+    assert bound.from_json(bound.to_json(artifact)) == artifact
+
+
 def test_dialect_schema_reports_invalid_mapping_arguments() -> None:
     with pytest.raises(esolangs.ArgumentError, match="mappings"):
         esolangs.DialectSchema(REFERENCE, [], {})

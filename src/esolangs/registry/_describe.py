@@ -3,7 +3,7 @@
 import json
 import pathlib
 import re
-from typing import get_args
+from typing import TypedDict, get_args
 
 from esolangs.exceptions import ProgramError
 from esolangs.registry import (
@@ -13,7 +13,10 @@ from esolangs.registry import (
 )
 from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import (
+    AnswerMode,
     GeneratorShape,
+    InputShape,
+    SourceForm,
     StateModel,
     WidthEffect,
 )
@@ -54,6 +57,66 @@ SHAPES: tuple[str, ...] = get_args(GeneratorShape.__value__)
 WIDTH_EFFECTS: tuple[str, ...] = get_args(WidthEffect.__value__)
 #: A Sphinx role; ``~`` keeps only the last dotted component.
 _ROLE = re.compile(r":(?:class|func|meth|mod|attr|exc|data|obj):`(~?)([^`]+)`")
+
+
+class _CatalogFacts(TypedDict):
+    """Fields shared by ``describe`` and ``list --json --details``."""
+
+    name: str
+    generator_scaling: str | None
+    source_kind: SourceForm
+    state_model: StateModel
+    generator_shape: GeneratorShape | None
+    answer_mode: AnswerMode
+    input_shape: InputShape | None
+    random: bool
+    width_effect: WidthEffect
+    boolean_generator: bool
+    parameterized: bool
+    generator_max_inputs: int | None
+    generator_restrictions: str | None
+    examples: tuple[str, ...]
+
+
+def _reads_input(lang: LanguageDeclaration) -> bool:
+    """Whether Boolean inputs belong on stdin."""
+    return lang.runtime.reads_stdin and not lang.parameterized
+
+
+def _catalog_facts(lang: LanguageDeclaration, *, catalog: Catalog) -> _CatalogFacts:
+    """Return the listing metadata without loading interpreter documentation."""
+    from esolangs.registry._catalog import get_catalog
+
+    packaged = lang == get_catalog().languages.get(lang.name)
+    # Package-relative paths survive a chdir or installation.
+    examples: tuple[str, ...] = ()
+    if packaged:
+        stem = example_stems(catalog=catalog).get(lang.id, lang.id)
+        examples = tuple(
+            sorted(
+                f"languages/{lang.id}/{p.name}"
+                for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
+            )
+        )
+    backend = lang.backend
+    return {
+        "name": lang.name,
+        "generator_scaling": _SCALING.get(lang.id) if packaged else None,
+        "source_kind": lang.runtime.source_kind.value,
+        "state_model": _STATE_MODELS.get(lang.runtime.category, "other"),
+        "generator_shape": backend.shape.value if backend is not None else None,
+        "answer_mode": lang.contract.answer_mode,
+        "input_shape": lang.contract.input_shape if _reads_input(lang) else None,
+        "random": lang.runtime.random,
+        "width_effect": _width_effect(lang),
+        "boolean_generator": backend is not None,
+        "parameterized": lang.parameterized,
+        "generator_max_inputs": backend.max_inputs if backend is not None else None,
+        "generator_restrictions": (backend.restrictions or None)
+        if backend is not None
+        else None,
+        "examples": examples,
+    }
 
 
 def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInfo:
@@ -106,48 +169,16 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
     lang = catalog.languages[name]
-    packaged = get_catalog().languages.get(name)
-    has_packaged_examples = lang == packaged
-    # Package-relative: repository-relative paths broke after a ``chdir`` and
-    # when installed; absolute ones froze the install location into output.
-    examples: tuple[str, ...] = ()
-    if has_packaged_examples:
-        stem = example_stems(catalog=catalog).get(lang.id, lang.id)
-        examples = tuple(
-            sorted(
-                f"languages/{lang.id}/{p.name}"
-                for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
-            )
-        )
     traits = machine_traits(name, catalog=catalog)
-    parameterized = lang.parameterized
     contract = lang.contract
-    width_effect = _width_effect(lang)
-    scaling = _SCALING.get(lang.id) if has_packaged_examples else None
-    backend = lang.backend
-    generates = backend is not None
-    reads_input = lang.runtime.reads_stdin and not parameterized
+    reads_input = _reads_input(lang)
     return _LanguageInfo(
-        name=name,
+        **_catalog_facts(lang, catalog=catalog),
         dialect_settings=dialect_choices(name, catalog=catalog),
         spec=_spec(name, catalog=catalog),
         id=lang.id,
-        source_kind=lang.runtime.source_kind.value,
-        state_model=_STATE_MODELS.get(lang.runtime.category, "other"),
-        generator_shape=backend.shape.value if backend is not None else None,
-        boolean_generator=generates,
-        generator_scaling=scaling,
-        generator_max_inputs=backend.max_inputs if backend is not None else None,
-        generator_restrictions=(backend.restrictions or None)
-        if backend is not None
-        else None,
-        parameterized=parameterized,
         reads_input=reads_input,
-        width_effect=width_effect,
-        # Defaults leaked here as facts: Deadfish "read" ``line_per_bit``.
         input_encoding=contract.alphabet if reads_input else None,
-        input_shape=contract.input_shape if reads_input else None,
-        answer_mode=contract.answer_mode,
         answer_pattern=contract.answer_pattern or None,
         answer_encoding=contract.answer_values,
         answer_convention=contract.note or None,
@@ -158,8 +189,6 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
         dumps_on_the_post_halt_step=traits["dumps_on_the_post_halt_step"],
         steppable_to_answer=traits["steppable_to_answer"],
         eof_is_a_value=traits["eof_is_a_value"],
-        random=lang.runtime.random,
-        examples=examples,
         wiki_url=wiki_url(name),
     )
 

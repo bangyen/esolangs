@@ -19,7 +19,11 @@ from esolangs.limits import ExecutionLimits
 from esolangs.raster import Raster
 from esolangs.results import ExecutionResult
 from esolangs.runtime._program import Program
-from esolangs.runtime._proof import CycleDecision
+from esolangs.runtime._proof import (
+    CycleDecision,
+    TerminationResult,
+    checked_termination,
+)
 from esolangs.runtime._validate import check_bit_count, check_bits, check_scale
 
 __all__ = [
@@ -40,6 +44,24 @@ class BooleanEvaluation:
     answer: str
     observation: ExecutionResult
     termination: CycleDecision | None = field(default=None, kw_only=True)
+
+    def __post_init__(self) -> None:
+        """Require a bit backed by completed execution or a termination proof."""
+        if not isinstance(self.answer, str) or self.answer not in ("0", "1"):
+            raise ArgumentError("a Boolean evaluation requires an answer bit")
+        if not isinstance(self.observation, ExecutionResult):
+            raise ArgumentError(
+                "a Boolean evaluation requires an execution observation"
+            )
+        if self.termination is not None:
+            try:
+                checked_termination(
+                    TerminationResult(self.observation, self.termination)
+                )
+            except ValueError as error:
+                raise ArgumentError(str(error)) from error
+        elif self.observation.completion is None:
+            raise ArgumentError("a Boolean evaluation requires completion evidence")
 
 
 def _origin(language: str, settings: DialectSettings | None) -> str:

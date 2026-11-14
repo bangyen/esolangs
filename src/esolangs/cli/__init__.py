@@ -80,9 +80,9 @@ from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError, ProgramError
 from esolangs.raster import png
-from esolangs.registry import LANGUAGES, LanguageDeclaration, resolve
+from esolangs.registry import LANGUAGES, LanguageDeclaration, get_catalog, resolve
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
-from esolangs.registry._describe import _spec
+from esolangs.registry._describe import _catalog_facts, _spec, _width_effect
 from esolangs.runtime._program import Program
 
 
@@ -120,9 +120,11 @@ _CATALOG_FILTERS: dict[str, tuple[str, tuple[str, ...]]] = {
 }
 
 
-def _input_shape(facts: LanguageInfo) -> str | None:
+def _input_shape(declaration: LanguageDeclaration) -> str | None:
     """Return the shape ``--input-shape`` filters on: ``template`` included."""
-    return "template" if facts.parameterized else facts.input_shape
+    if declaration.parameterized:
+        return "template"
+    return declaration.contract.input_shape if declaration.runtime.reads_stdin else None
 
 
 def _display(text: str = "") -> None:
@@ -141,14 +143,16 @@ def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> 
         declaration.contract.answer_mode
     ):
         return False
-    if "--input-shape" not in options and inputs is None:
-        return True
-    facts = describe(name)
-    if "--input-shape" in options and _input_shape(facts) != options["--input-shape"]:
+    if (
+        "--input-shape" in options
+        and _input_shape(declaration) != options["--input-shape"]
+    ):
         return False
     if inputs is not None:
-        cap = facts.generator_max_inputs
-        if not facts.boolean_generator or (cap is not None and cap < inputs):
+        backend = declaration.backend
+        if backend is None or (
+            backend.max_inputs is not None and backend.max_inputs < inputs
+        ):
             return False
     return True
 
@@ -194,42 +198,34 @@ def _list(rest: list[str]) -> None:
     details = "--details" in flags
     as_json = "--json" in flags
     _check_count("list", rest, 0)
-    names = _catalog_names(options, flags)
-    if as_json:
-        if not details:
+    with _errors():
+        names = _catalog_names(options, flags)
+    if not details:
+        if as_json:
             _write_output(json.dumps(names, indent=2) + "\n")
-            return
+        else:
+            for name in names:
+                _display(name)
+        return
+    catalog = get_catalog()
+    records = [_catalog_facts(LANGUAGES[name], catalog=catalog) for name in names]
+    if as_json:
         _write_output(
             json.dumps(
                 [
                     {
-                        "name": name,
-                        "generator_scaling": facts.generator_scaling,
-                        "source_kind": facts.source_kind,
-                        "state_model": facts.state_model,
-                        "generator_shape": facts.generator_shape,
-                        "answer_mode": facts.answer_mode,
+                        **facts,
                         # The filter's value, so jq agrees with --input-shape.
-                        "input_shape": _input_shape(facts),
-                        "random": facts.random,
-                        "width_effect": facts.width_effect,
-                        # The three the marker column encodes, spelled out.
-                        "boolean_generator": facts.boolean_generator,
-                        "parameterized": facts.parameterized,
-                        "generator_max_inputs": facts.generator_max_inputs,
-                        "generator_restrictions": facts.generator_restrictions,
-                        "examples": facts.examples,
+                        "input_shape": "template"
+                        if facts["parameterized"]
+                        else facts["input_shape"],
                     }
-                    for name, facts in zip(names, map(describe, names), strict=True)
+                    for facts in records
                 ],
                 indent=2,
             )
             + "\n"
         )
-        return
-    if not details:
-        for name in names:
-            _display(name)
         return
     width = max(len(name) for name in LANGUAGES)
     # The legend lived in `list --help` only, so the marker columns arrived
@@ -238,20 +234,20 @@ def _list(rest: list[str]) -> None:
         f"{'language'.ljust(width)}  gen=generator tmpl=template ex=example "
         f"int=interpreter-only; then any generator cap"
     )
-    for name in names:
-        facts = describe(name)
+    for facts in records:
+        name = facts["name"]
         marks = " ".join(
             filter(
                 None,
                 (
-                    "gen" if facts.boolean_generator else "int",
-                    "tmpl" if facts.parameterized else "",
-                    "ex" if facts.examples else "",
+                    "gen" if facts["boolean_generator"] else "int",
+                    "tmpl" if facts["parameterized"] else "",
+                    "ex" if facts["examples"] else "",
                 ),
             )
         )
-        limit = facts.generator_max_inputs
-        restriction = facts.generator_restrictions
+        limit = facts["generator_max_inputs"]
+        restriction = facts["generator_restrictions"]
         suffix = f" max-inputs={limit}" if limit is not None else ""
         if restriction:
             suffix += f" ({restriction})"
@@ -273,10 +269,10 @@ def _eaten_width_note(before: list[str]) -> str:
     return eaten
 
 
-def _layout_ignored(language: str, *, balance: bool) -> bool:
-    """Whether ``--width``/``--balance`` cannot change ``language``'s layout."""
-    backend = LANGUAGES[resolve(language)].backend
-    return describe(language).width_effect == "none" and not (
+def _layout_ignored(declaration: LanguageDeclaration, *, balance: bool) -> bool:
+    """Whether the generator ignores ``--width`` or ``--balance``."""
+    backend = declaration.backend
+    return _width_effect(declaration) == "none" and not (
         balance and backend is not None and backend.balance is not None
     )
 
@@ -365,11 +361,11 @@ def _generate(rest: list[str]) -> None:
     except EsolangError as exc:
         _fail(_generate_hint(exc, rest[0], rest[1]))
     if (width is not None or bare or balance) and _layout_ignored(
-        rest[0], balance=balance
+        LANGUAGES[artifact.language], balance=balance
     ):
         sys.stderr.write(
             f"note: {'--balance' if balance else '--width'} has no effect on "
-            f"{describe(rest[0]).name} -- "
+            f"{artifact.language} -- "
             f"the generator retains its original layout\n"
         )
     if "--plain" in flags and isinstance(program, Raster):
@@ -382,7 +378,7 @@ def _generate(rest: list[str]) -> None:
     if binary and sys.stdout.isatty():
         # Unary's gzip once landed on a terminal unannounced.
         _fail(
-            f"{describe(rest[0]).name} generates "
+            f"{artifact.language} generates "
             f"{'a PNG' if isinstance(program, Raster) else 'gzip'}; "
             f"redirect stdout to a file"
             + ("" if isinstance(program, Raster) else " or pass --plain")
@@ -509,7 +505,7 @@ def _describe(rest: list[str]) -> None:
     _display(name)
     if facts.parameterized:
         _display(
-            "input: none -- this generator embeds the bits in the program: "
+            "input: generated programs embed the bits in source. Fill them with "
             f"esolangs generate --bits <bits> {_as_argument(name)} <table>"
         )
     elif not facts.reads_input:

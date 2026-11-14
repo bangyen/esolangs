@@ -475,6 +475,10 @@ _METADATA_CHUNK = b"esOL"
 _METADATA_LIMIT = 16_384
 
 
+class SourceMetadataSizeError(ProgramError):
+    """Source metadata exceeds the native PNG chunk budget."""
+
+
 def read_metadata(data: bytes) -> dict[str, Any] | None:
     """Read bounded version-one source metadata."""
     found: dict[str, Any] | None = None
@@ -507,7 +511,7 @@ def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
     if len(body) > _METADATA_LIMIT:
         body = utf8
     if len(body) > _METADATA_LIMIT:
-        raise ProgramError("oversized esolangs PNG metadata")
+        raise SourceMetadataSizeError("oversized esolangs PNG metadata")
     chunk = _METADATA_CHUNK + body
     return (
         data[:-12]
@@ -533,7 +537,20 @@ def write_source(
     scale: int | None,
 ) -> bytes:
     """Encode pixels and explicit native source metadata without retagging."""
-    data = write_rgb(pixels)
+    image = write_rgb(pixels)
+    try:
+        return attach_source_metadata(image, language, settings, scale)
+    except SourceMetadataSizeError as error:
+        raise ProgramError(str(error)) from error
+
+
+def attach_source_metadata(
+    data: bytes,
+    language: str | None,
+    settings: DialectSettings | None,
+    scale: int | None,
+) -> bytes:
+    """Add program metadata to already encoded, untagged pixels."""
     if language is None and settings is None and scale is None:
         return data
     return write_metadata(

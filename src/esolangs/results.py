@@ -31,3 +31,40 @@ class ExecutionResult:
     input_past_end: int | None
     completion: CompletionReport | None = field(default=None, kw_only=True)
     steps: int | None = field(default=None, kw_only=True)
+
+    def __post_init__(self) -> None:
+        """Reject invalid output, counters and completion evidence."""
+        problem = self._invalid_fields()
+        if problem is not None:
+            from esolangs.exceptions import ArgumentError
+
+            raise ArgumentError(problem)
+
+    def _invalid_fields(self) -> str | None:
+        output: object = self.output
+        if not isinstance(output, str):
+            return "invalid execution result: output must be text"
+        counters = (self.input_position, self.input_reads, self.input_past_end)
+        for value in counters:
+            if value is not None and not _valid_count(value):
+                return "invalid execution counter"
+        if None in counters and counters != (None, None, None):
+            return "incomplete execution input counters"
+        if self.steps is not None and not _valid_count(self.steps):
+            return "invalid execution counter"
+        completion: object = self.completion
+        if completion is not None:
+            if not isinstance(completion, CompletionReport):
+                return "invalid execution completion evidence"
+            cycle = completion.cycle
+            if (
+                cycle is not None
+                and self.steps is not None
+                and self.steps != cycle.repeat_pass * cycle.commands_per_pass
+            ):
+                return "execution steps disagree with periodic completion evidence"
+        return None
+
+
+def _valid_count(value: int) -> bool:
+    return type(value) is int and value >= 0

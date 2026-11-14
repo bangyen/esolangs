@@ -218,6 +218,7 @@ class TestDescribeHidesInputFieldsWithNoInput:
         """And names the flag that supplies the bits instead."""
         out = call_main(["describe", first(parameterized=True)], capsys)
         assert "input_shape" not in out
+        assert "generated programs embed the bits in source" in out
         assert "generate --bits" in out
 
     def test_a_reading_language_still_shows_them(

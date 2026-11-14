@@ -2,10 +2,12 @@
 
 import pytest
 
-from esolangs.exceptions import InterpreterLimitError
+from esolangs import BooleanEvaluation
+from esolangs.exceptions import ArgumentError, InterpreterLimitError
 from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import execute_prepared
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
+from esolangs.runtime._proof import CycleDecision
 from esolangs.runtime.io import ScriptedIO
 from tests.support.reference import REFERENCE
 
@@ -61,3 +63,33 @@ def test_halted_reports_do_not_accept_cycle_evidence(kind):
 def test_periodic_reports_require_cycle_evidence(cycle):
     with pytest.raises(ValueError, match="requires cycle"):
         CompletionReport(Completion.PERIODIC, cycle)
+
+
+def test_public_records_require_valid_evidence() -> None:
+    for fields in (
+        (None, 0, 0, 0),
+        ("", -1, 0, 0),
+        ("", None, True, None),
+        ("", 0, None, 0),
+    ):
+        with pytest.raises(ArgumentError, match=r"execution result|counter"):
+            ExecutionResult(*fields)
+    with pytest.raises(ArgumentError, match="completion evidence"):
+        ExecutionResult("", 0, 0, 0, completion="halted")
+    with pytest.raises(ArgumentError, match="invalid execution counter"):
+        ExecutionResult("", 0, 0, 0, steps=-1)
+    unfinished = ExecutionResult("", 0, 0, 0)
+    completed = ExecutionResult(
+        "0", 0, 0, 0, completion=CompletionReport(Completion.HALTED)
+    )
+    proof = CycleDecision(halts=True, commands=0)
+    assert BooleanEvaluation("0", completed).answer == "0"
+    assert BooleanEvaluation("1", unfinished, termination=proof).termination is proof
+    with pytest.raises(ArgumentError, match="answer bit"):
+        BooleanEvaluation("2", completed)
+    with pytest.raises(ArgumentError, match="completion evidence"):
+        BooleanEvaluation("1", unfinished)
+    with pytest.raises(ArgumentError, match="decision evidence"):
+        BooleanEvaluation("1", unfinished, termination=True)
+    with pytest.raises(ArgumentError, match="unfinalized"):
+        BooleanEvaluation("1", completed, termination=proof)

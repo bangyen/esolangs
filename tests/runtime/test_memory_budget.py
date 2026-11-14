@@ -102,25 +102,32 @@ def test_memory_ceiling_preserves_inherited_hard_limit(
     assert calls == [(9, (ceiling, hard))]
 
 
-def test_worker_reports_a_translated_memory_error_as_the_cap(
+def test_worker_retains_the_uncapped_memory_failure_evidence(
     monkeypatch, capsys
 ) -> None:
-    """``run`` turns MemoryError into its own error; the worker must see through it."""
+    """Uncapped allocation failure retains the native diagnostic and counters."""
 
-    def explode(*_args: object, **_kwargs: object) -> None:
+    def explode(_runner, _program, io_port) -> None:
+        io_port.print_char(chr(io_port.input_char()))
         raise MemoryError
 
     monkeypatch.setattr(_execution_runtime, "invoke", explode)
+    native = esolangs.execute(REFERENCE, "+", stdin="A")
     monkeypatch.setattr(
         sys,
         "stdin",
-        io.StringIO(json.dumps(_isolated._request_wire(REFERENCE, "+", ""))),
+        io.StringIO(json.dumps(_isolated._request_wire(REFERENCE, "+", "A"))),
     )
     _worker()
-    with pytest.raises(esolangs.InterpreterLimitError, match="memory limit") as caught:
+    with pytest.raises(
+        esolangs.InterpreterLimitError, match="ran out of memory"
+    ) as caught:
         _decode(capsys.readouterr().out, expired=False)
     # No max_memory was passed, so no caller budget ran out.
     assert not isinstance(caught.value, esolangs.ExecutionBudgetError)
+    assert caught.value.partial_output == "A"
+    assert caught.value.observation == native.observation
+    assert caught.value.__notes__ == native.error.__notes__
 
 
 def test_successful_worker_budget_retains_output_protocol(monkeypatch, capsys) -> None:

@@ -1,13 +1,67 @@
 """Catalog filters preserve capability limits across output formats."""
 
 import json
+import os
 import re
+import subprocess
+import sys
 
 import pytest
 
 import esolangs
 from tests.support.cli_support import call_both
 from tests.support.pick import languages
+from tests.support.reference import REFERENCE
+
+
+def _python_cli(
+    args: list[str], *, strip_docstrings: bool
+) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        [
+            sys.executable,
+            *(["-OO"] if strip_docstrings else []),
+            "-m",
+            "esolangs",
+            *args,
+        ],
+        env={**os.environ, "PYTHONOPTIMIZE": "0"},
+        capture_output=True,
+        check=False,
+        timeout=15,
+    )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["list", "--details"],
+        ["list", "--json", "--details"],
+        ["list", "--input-shape", "template"],
+        ["list", "--inputs", "8"],
+        ["generate", "--width", "2", REFERENCE, "01"],
+        ["generate", "--balance", REFERENCE, "01"],
+    ],
+)
+def test_metadata_commands_work_without_docstrings(args: list[str]) -> None:
+    ordinary = _python_cli(args, strip_docstrings=False)
+    stripped = _python_cli(args, strip_docstrings=True)
+    assert ordinary.returncode == stripped.returncode == 0, stripped.stderr
+    assert ordinary.stdout == stripped.stdout
+    assert ordinary.stderr == stripped.stderr
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "args", [["list", "--grep", "."], ["describe", "--spec", REFERENCE]]
+)
+def test_spec_queries_explain_missing_docstrings(args: list[str]) -> None:
+    result = _python_cli(args, strip_docstrings=True)
+    assert result.returncode == 2
+    assert result.stdout == b""
+    assert b"docstring" in result.stderr
+    assert b"-OO" in result.stderr
 
 
 def _names(args, capsys):

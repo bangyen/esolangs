@@ -75,9 +75,11 @@ class ExecutionOutcome:
     @property
     def bound(self) -> str | None:
         """The exhausted caller-set budget, when the error declares one."""
-        return (
-            self.error.bound if isinstance(self.error, ExecutionBudgetError) else None
-        )
+        if isinstance(self.error, ExecutionBudgetError):
+            bound = getattr(self.error, "bound", None)
+            if isinstance(bound, str):
+                return bound
+        return None
 
     def unwrap(self) -> ExecutionResult:
         """Return completion or raise the retained public error."""

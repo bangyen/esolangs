@@ -13,13 +13,14 @@ from collections.abc import Collection, Iterator
 from contextlib import contextmanager
 from typing import NoReturn
 
+from esolangs._language import Language
 from esolangs.cli.help import help_text
 from esolangs.cli.hints import _cli_error_text, _did_you_mean
 from esolangs.exceptions import EsolangError
 from esolangs.registry import resolve
 from esolangs.runtime._json import unique_object
 from esolangs.runtime._validate import check_scale, check_timeout
-from esolangs.settings import DialectSettings, dialect_choices, settings_for
+from esolangs.settings import DialectSettings, dialect_choices
 
 #: Flags every subcommand accepts, so a near miss on one of them is
 #: suggested by whichever subcommand it was typed after.
@@ -433,6 +434,6 @@ def _settings_of(
         if not values and "--settings" not in options and not set_pairs:
             return None
         assert language is not None
-        return settings_for(language, **values)  # type: ignore[arg-type]
+        return Language(language).settings(**values)  # type: ignore[arg-type]
     except EsolangError as exc:
         _fail(str(exc))

@@ -137,7 +137,9 @@ def actual_frame(frame):
 
 def public_type_control(actual):
     if type(actual.input_reads) is int and actual.input_reads == 1:
-        altered = replace(actual, input_reads=True)
+        # Inject the fault after constructor validation to exercise the comparator.
+        altered = replace(actual)
+        object.__setattr__(altered, "input_reads", True)
         assert altered == actual
         try:
             assert_exact(altered, actual)

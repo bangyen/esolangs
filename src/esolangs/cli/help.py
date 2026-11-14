@@ -108,8 +108,9 @@ whitespace-delimited tokens; string readers take lines. Other contracts
 use a different alphabet, a row index, or padded input.
 `esolangs describe <language>` prints the encoding.
 
-A language whose generator embeds the inputs in the program reads no stdin
-at all; `esolangs generate --bits` builds those.
+Some generators embed the bits in source using `esolangs generate --bits`.
+Those programs need no stdin for their input bits. Handwritten programs
+follow the interpreter's input rules.
 
 example:
   esolangs encode-inputs brainfuck 10  # prints 10
@@ -137,8 +138,9 @@ options:
   --source-kind KIND
               text or raster
   --input-shape SHAPE
-              line_per_bit, char_stream, char_stream_cyclic, row_index,
-              row_number, or template (inputs embedded in source)
+              Boolean input shape: line_per_bit, char_stream,
+              char_stream_cyclic, row_index, row_number, or template
+              (generated programs embed their input bits in source)
   --answer-mode MODE
               output, dump, or termination
   --inputs N  generators whose declared cap permits N inputs (N >= 0);
