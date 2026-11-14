@@ -32,9 +32,9 @@ def read_input(source: InputSource) -> str:
     try:
         value = source if isinstance(source, (str, bytes)) else source.read()
         if isinstance(value, bytes):
-            return value.decode("utf-8")
+            return bytes.decode(value, "utf-8")
         if isinstance(value, str):
-            return value
+            return str.__str__(value)
     except (OSError, TypeError, ValueError) as exc:
         raise with_hint(
             ArgumentError(f"cannot read stdin: {exc}"),

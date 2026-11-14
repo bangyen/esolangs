@@ -61,12 +61,17 @@ def _read_container(
             return source.read(), True
         if isinstance(source, os.PathLike):
             return explicit_path(source).read_bytes(), True
-        if isinstance(source, (str, bytes, Raster, CompressedText)):
+        if isinstance(source, (Raster, CompressedText)):
             return source, False
-        if callable(getattr(source, "read", None)):
+        value = source
+        if not isinstance(source, (str, bytes)) and callable(
+            getattr(source, "read", None)
+        ):
             value = source.read()
-            if isinstance(value, (str, bytes)):
-                return value, False
+        if isinstance(value, str):
+            return str.__str__(value), False
+        if isinstance(value, bytes):
+            return bytes.__bytes__(value), False
     except FileNotFoundError as exc:
         raise syntax_error(
             f"cannot read {source!s}: {exc}",
@@ -129,6 +134,11 @@ def native_text_source(source: ProgramSource | _FileSource) -> str:
     return (
         text_source(source).replace("\r\n", "\n").replace("\r", "\n").removesuffix("\n")
     )
+
+
+def native_file_terminator(text: str) -> str:
+    """Append a terminator without merging it into a final source CR."""
+    return "\r\n" if text.endswith("\r") else "\n"
 
 
 def _native_chunks(chunks: Iterable[str]) -> Iterator[str]:

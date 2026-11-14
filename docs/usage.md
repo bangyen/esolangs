@@ -259,7 +259,7 @@ layout. Rendering more than 2^28 pixels raises `ArgumentError`.
 Functions:
 
 - `esolangs.describe` -- return a structured description of `language`
-- `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
+- `esolangs.encode_inputs` -- return the stdin encoding for `bits` under the Boolean input contract
 - `esolangs.evaluate` -- run one Boolean row and return its answer and execution evidence
 - `esolangs.execute` -- return completion, rejection, input exhaustion, fault or limit evidence
 - `esolangs.from_file` -- read lossless source with retained metadata

@@ -2,7 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from io import BytesIO
+from io import BytesIO, StringIO
 from types import ModuleType
 from unittest.mock import patch
 
@@ -17,6 +17,16 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import complete_vm
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
+
+
+def test_unsupported_text_scale_does_not_consume_source() -> None:
+    api = esolangs.Language(REFERENCE)
+    for operation in (api.run, api.prepare, api.make_vm, api.make_debugger):
+        source = StringIO("+.")
+        with pytest.raises(esolangs.ArgumentError, match="scale is only supported"):
+            operation(source, scale=2)
+        assert source.tell() == 0
+        assert api.run(source).output == "\x01"
 
 
 def test_prepared_constructor_accepts_artifact_alias_and_refuses_invalid_types():

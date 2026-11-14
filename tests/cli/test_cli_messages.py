@@ -1,6 +1,7 @@
 """What the CLI says when something is wrong, and when it stays quiet."""
 
 import io
+import shlex
 import sys
 from io import StringIO
 from pathlib import Path
@@ -282,3 +283,43 @@ def test_a_bad_command_exits_2_without_the_hint(
 ) -> None:
     command, message, *stdin = case
     assert message not in _refused(command, tmp_path, capsys, *stdin)
+
+
+@pytest.mark.parametrize(
+    "language",
+    one_where(
+        lambda facts: " " in facts.name,
+        boolean_generator=True,
+        parameterized=False,
+        source_kind="text",
+        answer_mode="output",
+        reads_input=True,
+    ),
+)
+def test_generate_quotes_a_multiword_language(
+    language: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _, split = _failure(["generate", *language.split(), "01"], capsys)
+    assert shlex.split(split.split("quote it as ", 1)[1]) == [language]
+
+    _, swapped = _failure(["generate", "01", language], capsys)
+    command = shlex.split(swapped.split("first: ", 1)[1])
+    assert command == ["esolangs", "generate", language, "01"]
+    path = tmp_path / "program.txt"
+    path.write_text(call_main(command[1:], capsys), encoding="utf-8")
+    for bit in (0, 1):
+        stdin = esolangs.encode_inputs(language, [bit])
+        output = call_main(["run", language, str(path)], capsys, stdin)
+        assert esolangs.read_answer(language, output) == str(bit)
+
+
+@pytest.mark.parametrize("name", ["a; echo x", "--name; echo x"])
+def test_generate_swap_suggestion_quotes_metacharacters(
+    name: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _, error = _failure(["generate", "--", "01", name], capsys)
+    command = error.split("first: ", 1)[1]
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    separator = ["--"] if name.startswith("-") else []
+    assert list(lexer) == ["esolangs", "generate", *separator, name, "01"]

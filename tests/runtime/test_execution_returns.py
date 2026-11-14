@@ -57,7 +57,7 @@ def test_an_expired_call_does_not_return_a_false_verdict():
 
 @pytest.mark.parametrize("verdict", [None, False, True])
 def test_termination_returns_without_evidence_abort(monkeypatch, verdict):
-    def stop_without_proof(vm):
+    def stop_without_proof(vm, *_args, **_kwargs):
         vm.step()
         vm.step()
         return verdict

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import base64
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import asdict, replace
-from itertools import chain
 from os import PathLike
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -18,7 +17,7 @@ from esolangs.artifacts import (
     TemplateArtifact,
     TemplateBindings,
 )
-from esolangs.compressed import CompressedText, TextLimits
+from esolangs.compressed import CompressedText, TextLimits, _check_plain
 from esolangs.exceptions import (
     ArgumentError,
     GeneratorCapError,
@@ -29,7 +28,11 @@ from esolangs.raster import Raster, png
 from esolangs.registry import template_char
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._json import record_dumps, unique_object
-from esolangs.runtime._source import ProgramSource, explicit_path
+from esolangs.runtime._source import (
+    ProgramSource,
+    explicit_path,
+    native_file_terminator,
+)
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import (
@@ -40,6 +43,23 @@ from esolangs.settings import (
 )
 
 _FORMAT = "esolangs.program"
+
+
+def _terminated_text(
+    chunks: Iterable[str], *, plain_limits: TextLimits | None = None
+) -> Iterator[str]:
+    """Append one native separator and count it against the plain export cap."""
+    tail = ""
+    size = 0
+    for chunk in chunks:
+        if chunk:
+            tail = chunk[-1]
+            size += len(chunk)
+        yield chunk
+    ending = native_file_terminator(tail)
+    if plain_limits is not None:
+        _check_plain(plain_limits, size + len(ending))
+    yield ending
 
 
 def to_file(
@@ -57,8 +77,9 @@ def to_file(
     Text retains its UTF-8 bytes and line endings, and rasters are PNG.
     ``gzip=True`` writes gzip. ``gzip=False`` writes plain text.
     Compression is explicit; a ``.gz`` suffix alone does not enable it.
-    ``normalize=True`` appends a language-permitted native file terminator to text,
-    including gzip exports.
+    ``normalize=True`` appends one native file terminator where permitted,
+    including gzip exports. Native import normalizes line endings to LF and
+    removes the added terminator.
     An existing file is replaced after encoding and
     writing succeed. ``settings`` merge over an artifact's own as
     :func:`esolangs.run` merges them; PNG metadata records the result and
@@ -105,29 +126,30 @@ def to_file(
                 "fill it with instantiate() first, or keep the bindings with to_json()",
             )
         body = record.source
-        ending = (
-            "\n" if normalize and catalog.languages[origin].runtime.file_newline else ""
-        )
+        terminate = normalize and catalog.languages[origin].runtime.file_newline
         encoded: Iterable[bytes]
         if isinstance(body, Raster):
             if gzip:
                 raise ProgramError("gzip export requires text; rasters use PNG")
             encoded = (png.write_source(body.rows, origin, settings, record.scale),)
-        elif gzip:
-            if not isinstance(body, CompressedText):
-                body = CompressedText.from_chunks((body, ending))
-            elif ending:
-                body = CompressedText.from_chunks(
-                    chain(body.chunks(), (ending,)), limits=body.limits
-                )
+        elif isinstance(body, CompressedText) and gzip and not terminate:
             encoded = (body.to_gzip(),)
         else:
-            chunks = (
-                body._plain_chunks_with_suffix(ending)  # noqa: SLF001
-                if isinstance(body, CompressedText)
-                else (body, ending)
-            )
-            encoded = (chunk.encode("utf-8") for chunk in chunks)
+            limits = None
+            chunks: Iterable[str]
+            if isinstance(body, CompressedText):
+                limits = body.limits
+                chunks = body.chunks() if gzip else body.plain_chunks()
+                if terminate and not gzip and limits is not None:
+                    _check_plain(limits, len(body) + 1)
+            else:
+                chunks = (body,)
+            if terminate:
+                chunks = _terminated_text(chunks, plain_limits=None if gzip else limits)
+            if gzip:
+                encoded = (CompressedText.from_chunks(chunks, limits=limits).to_gzip(),)
+            else:
+                encoded = (chunk.encode("utf-8") for chunk in chunks)
         # The staged write's errors named the temporary file instead.
         if target.is_dir():
             raise IsADirectoryError("it is a directory")

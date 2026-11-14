@@ -8,8 +8,10 @@ from typing import cast
 import esolangs.runtime._execution as _execution_runtime
 from esolangs._cycles import (
     _BranchingStepMachine,
+    _BranchingUnavailableError,
     _DrawDependentHaltError,
     _halt_or_cycle_result,
+    _ProofBudgetExhaustedError,
     _unwrap,
 )
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
@@ -84,25 +86,48 @@ def _termination_result(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
+    name = catalog.resolve(name)
+    random = catalog.languages[name].runtime.random
     if prepared is None:
         dialect_options(name, settings, catalog=catalog)
 
     def _drive(*_args: object) -> TerminationResult:
         factory = partial(
-            _make_vm, settings=settings, catalog=catalog, io_factory=io_factory
+            _make_vm,
+            settings=settings,
+            catalog=catalog,
+            io_factory=io_factory,
+            observe_initialization=True,
         )
         machine = factory(name, source, stdin=stdin, prepared=prepared)
+        steps: int | None = None
+
+        def record_commands(count: int) -> None:
+            nonlocal steps
+            steps = count
+
+        def observe() -> ExecutionResult:
+            return replace(_capture_observation(machine), steps=steps)
+
         try:
             try:
-                decision = (
-                    _halt_or_cycle_result(machine)
-                    if max_steps is None
-                    else _halt_or_cycle_result(machine, max_steps)
+                decision = _halt_or_cycle_result(
+                    machine,
+                    max_steps,
+                    require_branches=random,
+                    record_commands=record_commands if max_steps is not None else None,
                 )
             except ExecutionTimeoutError:
                 raise
-            except (_DrawDependentHaltError, TimeoutError) as error:
-                if isinstance(error, TimeoutError) and max_steps is not None:
+            except (
+                _BranchingUnavailableError,
+                _DrawDependentHaltError,
+                TimeoutError,
+            ) as error:
+                if (
+                    isinstance(error, _ProofBudgetExhaustedError)
+                    and max_steps is not None
+                ):
                     raise steps_exhausted(str(error)) from error
                 failure = InterpreterLimitError(str(error))
                 for note in getattr(error, "__notes__", ()):
@@ -111,13 +136,15 @@ def _termination_result(
             try:
                 checked_decision(decision)
             except ValueError:
-                return TerminationResult(_capture_observation(machine), decision)
+                return TerminationResult(observe(), decision)
             if decision.branches is not None:
                 _observe_branch_path(machine, decision.branches)
-            return TerminationResult(_capture_observation(machine), decision)
+            return TerminationResult(observe(), decision)
         except EsolangError as error:
             if error.observation is None:
-                error.observation = _capture_observation(machine)
+                error.observation = observe()
+            elif steps is not None:
+                error.observation = replace(error.observation, steps=steps)
             error.partial_output = error.observation.output
             raise
 

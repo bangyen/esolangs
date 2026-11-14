@@ -151,10 +151,6 @@ def generate(
                 "balance when choosing a fixed width"
             ),
         )
-    if balance:
-        return _generate_balanced(
-            language, truth_table, options, settings, catalog=catalog
-        )
     resolved = catalog.resolve(language)
     lang = catalog.languages[resolved]
     backend = lang.backend
@@ -164,7 +160,11 @@ def generate(
             f"{resolved} has no boolean generator under this repository's "
             f"generator contracts. `esolangs list --details` marks it 'int'"
         )
-    check_table_text(truth_table)
+    truth_table = check_table_text(truth_table)
+    if balance:
+        return _generate_balanced(
+            resolved, truth_table, options, settings, catalog=catalog
+        )
     check_width(width)
     inputs = _validate_truth_table(truth_table)
     fn = backend.generate

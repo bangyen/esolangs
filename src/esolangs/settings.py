@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, TypedDict
 
 from esolangs._dialect import DialectSchema, Scalar
 from esolangs._dialect import DialectSettings as DialectSettings
-from esolangs.exceptions import ArgumentError, ProgramError
+from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
 
 if TYPE_CHECKING:
     from esolangs.registry._catalog import Catalog
@@ -52,6 +52,8 @@ def dialect_options(
     if runtime.dialect is not None:
         try:
             runtime.dialect(**values)
+        except EsolangError:
+            raise
         except (TypeError, ValueError) as error:
             raise ArgumentError(
                 f"invalid dialect settings for {name}: {error}"

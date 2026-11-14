@@ -1,5 +1,6 @@
 """Reading a program and stdin, and writing what came back."""
 
+import gzip
 import json
 import os
 import subprocess
@@ -455,6 +456,20 @@ class TestAClosedPipeIsNotAnError:
 
 class TestProgramFilesLoad:
     """The newline a text file ends with is the file's, not the program's."""
+
+    @pytest.mark.parametrize("gzip_output", [False, True])
+    def test_emission_retains_terminal_source_cr(
+        self, capsysbinary, tmp_path: Path, *, gzip_output: bool
+    ) -> None:
+        from esolangs.cli import _emit
+
+        source = esolangs.from_source(REFERENCE, "+.\r")
+        _emit(source, plain=False, gzip=gzip_output)
+        path = tmp_path / "source"
+        path.write_bytes(capsysbinary.readouterr().out)
+        assert esolangs.from_file(REFERENCE, path, normalize=True).source == "+.\n"
+        if gzip_output:
+            assert gzip.decompress(path.read_bytes()) == b"+.\r\r\n"
 
     @pytest.mark.parametrize("spelled", _SPELLED)
     def test_a_generated_file_runs_as_written(

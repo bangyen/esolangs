@@ -84,6 +84,7 @@ from esolangs.registry import LANGUAGES, LanguageDeclaration, get_catalog, resol
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
 from esolangs.registry._describe import _catalog_facts, _spec, _width_effect
 from esolangs.runtime._program import Program
+from esolangs.runtime._source import native_file_terminator
 
 
 def describe(language: str) -> LanguageInfo:
@@ -280,25 +281,29 @@ def _layout_ignored(declaration: LanguageDeclaration, *, balance: bool) -> bool:
 def _emit(artifact: Artifact, *, plain: bool, gzip: bool = False) -> None:
     """Write native source using the artifact's declared file convention."""
     program = artifact.source
-    if gzip and isinstance(program, str):
-        ending = "\n" if LANGUAGES[artifact.language].runtime.file_newline else ""
-        program = CompressedText.from_chunks((program, ending))
-    if isinstance(program, CompressedText):
+    if isinstance(program, str):
+        ending = (
+            native_file_terminator(program)
+            if LANGUAGES[artifact.language].runtime.file_newline
+            else ""
+        )
+        if gzip:
+            _write_output(CompressedText.from_chunks((program, ending)).to_gzip())
+        else:
+            _write_output(program + ending)
+    elif isinstance(program, CompressedText):
         if plain:
             for chunk in program.plain_chunks():
                 _write_output(chunk)
         else:
             _write_output(program.to_gzip())
-    elif isinstance(program, Raster):
+    else:
         assert isinstance(artifact, ProgramArtifact)
         _write_output(
             png.write_source(
                 program.rows, artifact.language, artifact.settings, artifact.scale
             )
         )
-    else:
-        ending = "\n" if LANGUAGES[artifact.language].runtime.file_newline else ""
-        _write_output(program + ending)
 
 
 def _generate(rest: list[str]) -> None:

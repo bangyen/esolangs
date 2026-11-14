@@ -8,8 +8,9 @@ import sys
 
 import pytest
 
+import esolangs
 from esolangs.generation.requests import GenerationRequest
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, _functions
 from esolangs.registry._certification import load as load_certification
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._operations import OperationRef
@@ -88,6 +89,53 @@ def test_callable_references_observe_mutation(monkeypatch):
     assert reference(GenerationRequest("01")) == "fault"
     monkeypatch.setattr(module, reference.name, original)
     assert reference.load() is original
+
+
+@pytest.mark.parametrize(
+    ("field", "reference", "options", "message"),
+    [
+        ("entrypoint", OperationRef("esolangs", "_missing"), {}, r"esolangs\._missing"),
+        ("balance", OperationRef("esolangs", "__all__"), {"balance": True}, "callable"),
+        ("wrap", FunctionRef("esolangs", "__all__"), {"width": 1}, "callable"),
+        ("entrypoint", OperationRef("esolangs.absent", "emit"), {}, "esolangs.absent"),
+    ],
+)
+def test_scoped_generator_hooks_raise_program_errors(
+    field, reference, options, message
+) -> None:
+    record = LANGUAGES[REFERENCE]
+    backend = dataclasses.replace(record.backend, **{field: reference})
+    bound = esolangs.Catalog([dataclasses.replace(record, backend=backend)]).bind(
+        REFERENCE
+    )
+    with pytest.raises(esolangs.ProgramError, match=message):
+        bound.generate("01", **options)
+
+
+def test_scoped_dialect_keeps_declared_hook_errors() -> None:
+    record = LANGUAGES[REFERENCE]
+    schema = esolangs.DialectSchema(REFERENCE, {"mode": (0, 1)}, {"mode": 0})
+    runtime = dataclasses.replace(
+        record.runtime,
+        dialect=FunctionRef("esolangs", "_missing", ("mode",)),
+        dialect_schema=schema,
+    )
+    bound = esolangs.Catalog([dataclasses.replace(record, runtime=runtime)]).bind(
+        REFERENCE
+    )
+    with pytest.raises(esolangs.ProgramError, match=r"esolangs\._missing"):
+        bound.settings(mode=1)
+
+
+@pytest.mark.parametrize("reference", [FunctionRef, OperationRef])
+def test_callable_references_distinguish_missing_dependencies(monkeypatch, reference):
+    def importer(module):
+        assert module == "declared.target"
+        raise ModuleNotFoundError(name="unavailable_dependency")
+
+    monkeypatch.setattr(_functions, "import_module", importer)
+    with pytest.raises(esolangs.MissingDependencyError, match="unavailable_dependency"):
+        reference("declared.target", "emit").load()
 
 
 @pytest.mark.parametrize(

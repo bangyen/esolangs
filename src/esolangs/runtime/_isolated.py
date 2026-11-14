@@ -35,7 +35,7 @@ from esolangs.runtime._result_wire import (
     encode_decision,
     encode_result,
 )
-from esolangs.runtime._source import ProgramSource, effective_scale
+from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
 from esolangs.runtime._validate import (
     _ISOLATED_TIMEOUT,
     _TIMEOUT_CEILING,
@@ -452,6 +452,8 @@ def _invoke_worker(
             artifact = _check_program(name, program, stdin, catalog=catalog)
             source = artifact.source
             retained = effective_settings(name, artifact, settings, catalog=catalog)
+            retained_scale = effective_scale(name, artifact, scale, catalog=catalog)
+            check_scale_for(name, retained_scale, catalog=catalog)
             box.append(
                 worker_dumps(
                     _request_wire(
@@ -460,7 +462,7 @@ def _invoke_worker(
                         read_input(stdin),
                         settings=retained,
                         seed=seed,
-                        scale=effective_scale(name, artifact, scale, catalog=catalog),
+                        scale=retained_scale,
                         max_memory=max_memory,
                         max_output=max_output,
                         max_steps=max_steps,

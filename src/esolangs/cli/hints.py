@@ -127,9 +127,10 @@ def _swapped_hint(language: str, table: str) -> str:
     """
     if not _looks_like_a_table(language):
         return ""
+    separator = "-- " if table.startswith("-") else ""
     return (
         f"; {language!r} looks like a truth table -- the language comes "
-        f"first: esolangs generate {table} {language}"
+        f"first: esolangs generate {separator}{_as_argument(table)} {language}"
     )
 
 

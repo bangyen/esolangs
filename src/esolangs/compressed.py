@@ -8,7 +8,6 @@ import io
 import zlib
 from collections.abc import Iterable, Iterator
 from dataclasses import KW_ONLY, dataclass, field
-from itertools import chain
 from os import PathLike
 from pathlib import Path
 
@@ -190,13 +189,9 @@ class CompressedText:
 
     def plain_chunks(self) -> Iterator[str]:
         """Enforce the raw-export budget before yielding any text."""
-        return self._plain_chunks_with_suffix("")
-
-    def _plain_chunks_with_suffix(self, suffix: str) -> Iterator[str]:
-        """Check the whole raw export, including a native file terminator."""
         if self.limits is not None:
-            _check_plain(self.limits, len(self) + len(suffix))
-        return chain(self.chunks(), (suffix,)) if suffix else self.chunks()
+            _check_plain(self.limits, len(self))
+        return self.chunks()
 
     def to_gzip(self) -> bytes:
         """Return the compressed file bytes."""

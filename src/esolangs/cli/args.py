@@ -15,7 +15,7 @@ from typing import NoReturn
 
 from esolangs._language import Language
 from esolangs.cli.help import help_text
-from esolangs.cli.hints import _cli_error_text, _did_you_mean
+from esolangs.cli.hints import _as_argument, _cli_error_text, _did_you_mean
 from esolangs.exceptions import EsolangError
 from esolangs.registry import resolve
 from esolangs.runtime._json import unique_object
@@ -193,20 +193,18 @@ def _check_count(
         named = f"\n\nmissing {', '.join(missing)}" if missing else ""
         _fail(f"{synopsis}{named}{eaten}")
     if len(args) > wanted:
-        # A name with spaces in it arrives as several positionals, and the
-        # complaint named whichever word landed past the count.  The
-        # resolver can match the joined words; it was never asked.
-        joined = " ".join(args)
-        try:
-            resolved = resolve(joined)
-        except EsolangError:
-            resolved = None
-        if resolved is not None:
-            _fail(
-                f"unexpected argument: {args[wanted]!r}; did you mean the "
-                f"language {resolved!r}?  Quote a name with spaces in it: "
-                f'"{resolved}"'
-            )
+        if wanted:
+            # The language comes first. Keep later operands out of its name.
+            joined = " ".join(args[: len(args) - wanted + 1])
+            try:
+                resolved = resolve(joined)
+            except EsolangError:
+                pass
+            else:
+                _fail(
+                    "language name was split across arguments; "
+                    f"quote it as {_as_argument(resolved)}"
+                )
         hint = (
             f"; --width took no value here (only an integer counts as one), so "
             f"it used the default width and {args[0]!r} was read as the language"

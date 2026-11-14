@@ -135,6 +135,31 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
     assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
 
 
+@pytest.mark.parametrize("gzip_output", [False, True])
+def test_native_terminator_does_not_absorb_a_lone_cr(
+    tmp_path: Path, *, gzip_output: bool
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    text = "+.\r"
+    path = tmp_path / "source"
+    for source in (text, esolangs.CompressedText.from_chunks((text,))):
+        api.to_file(source, path, gzip=gzip_output, normalize=True)
+        assert api.from_file(path, normalize=True).source == "+.\n"
+        api.to_file(source, path, gzip=gzip_output)
+        wire = path.read_bytes()
+        assert (gzip.decompress(wire) if gzip_output else wire) == text.encode()
+
+
+def test_two_byte_native_terminator_counts_toward_raw_budget(tmp_path: Path) -> None:
+    limits = esolangs.TextLimits(plain_chars=4, generation_chars=5, gzip_bytes=100)
+    compressed = esolangs.CompressedText.from_chunks(("+.\r",), limits=limits)
+    path = tmp_path / "source"
+    path.write_bytes(b"original")
+    with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
+        esolangs.to_file(REFERENCE, compressed, path, normalize=True)
+    assert path.read_bytes() == b"original"
+
+
 @pytest.mark.parametrize("spelling", ["", b"bytes", 1])
 def test_explicit_paths_are_validated_on_import_and_export(spelling) -> None:
     class BadPath:
@@ -180,6 +205,59 @@ def test_source_declaration_and_export_validate_the_language_kind(
             with pytest.raises(esolangs.ProgramError):
                 esolangs.to_file(name, supplied, path)
             assert not path.exists()
+
+
+def test_raw_and_stream_sources_use_the_underlying_string_or_bytes() -> None:
+    class Text(str):
+        def __str__(self):
+            raise AssertionError("use the stored source text")
+
+    class Blob(bytes):
+        def startswith(self, *_args):
+            raise AssertionError("detect the underlying byte signature")
+
+        def decode(self, *_args):
+            raise AssertionError("decode the underlying bytes")
+
+    class Stream:
+        def __init__(self, source):
+            self.source = source
+            self.reads = 0
+
+        def read(self):
+            self.reads += 1
+            assert self.reads == 1
+            return self.source
+
+    api = esolangs.Language(REFERENCE)
+    expected = api.from_source("+.")
+    for source in (Text("+."), Blob(b"+.")):
+        assert api.run(source).output == "\x01"
+        stream = Stream(source)
+        assert api.run(stream).output == "\x01"
+        assert stream.reads == 1
+        assert api.from_json(api.to_json(Stream(source))) == expected
+
+
+@pytest.mark.medium
+def test_stdin_subclasses_keep_the_same_bytes_in_every_execution_route() -> None:
+    class Text(str):
+        def __getitem__(self, _key):
+            return "X"
+
+    class Blob(bytes):
+        def decode(self, *_args):
+            return "X"
+
+    for stdin in (Text("A"), Blob(b"A")):
+        for limits in (
+            None,
+            esolangs.ExecutionLimits(max_steps=10),
+            esolangs.ExecutionLimits(total_timeout=5),
+        ):
+            assert (
+                esolangs.run(REFERENCE, ",.", stdin=stdin, limits=limits).output == "A"
+            )
 
 
 @pytest.mark.parametrize("normalize", [False, True])

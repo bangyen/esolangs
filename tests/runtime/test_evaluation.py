@@ -1,6 +1,7 @@
 """The private evaluation harness: supplied programs and budgets."""
 
 import threading
+from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 
@@ -100,6 +101,85 @@ def test_answer_rejection_keeps_successful_execution_evidence() -> None:
         api.evaluate(program, [1])
     assert caught.value.observation == result
     assert caught.value.partial_output == result.output
+
+
+def _termination_language(*, random: bool = False) -> esolangs.Language:
+    api = esolangs.Language(REFERENCE)
+    declaration = api.catalog.languages[api.name]
+    contract = replace(
+        declaration.contract,
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+    )
+    runtime = (
+        replace(declaration.runtime, random=True, reproducible_seed=4)
+        if random
+        else declaration.runtime
+    )
+    return esolangs.Catalog(
+        [replace(declaration, contract=contract, runtime=runtime)]
+    ).bind(api.name)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "deadline", [{}, {"total_timeout": 5}, {"preparation_timeout": 5}]
+)
+def test_termination_observes_completed_commands_and_loading_errors(deadline) -> None:
+    api = _termination_language()
+    limits = esolangs.ExecutionLimits(max_steps=2, **deadline)
+    result = api.evaluate(api.from_source(",."), [0], limits=limits)
+    completed = esolangs.ExecutionResult("0", 1, 1, 0, steps=2)
+    assert result.answer == "0"
+    assert result.termination.commands == 2
+    assert result.observation == completed
+    with pytest.raises(esolangs.ExecutionCapError) as stopped:
+        api.evaluate(api.from_source(",.,"), [0], limits=limits)
+    assert stopped.value.observation == completed
+    with pytest.raises(esolangs.InputExhaustedError) as fault:
+        api.evaluate(api.from_source(",.,"), [0], limits=replace(limits, max_steps=3))
+    assert fault.value.observation == replace(completed, input_past_end=1)
+    with pytest.raises(esolangs.ProgramError) as rejected:
+        api.evaluate(api.from_source("["), [0], limits=limits)
+    assert rejected.value.observation == esolangs.ExecutionResult("", 0, 0, 0)
+
+
+def test_active_random_runtime_needs_branch_evidence(monkeypatch) -> None:
+    from esolangs.runtime._execution import interpreter_module
+
+    class RandomMachine:
+        halted = False
+
+        def __init__(self, rng):
+            self.rng = rng
+
+        def step(self):
+            self.halted = self.rng.randbelow(2) == 1
+
+        def snapshot(self):
+            return ()
+
+    def prepare(_source, options):
+        return lambda _io: RandomMachine(options["rng"])
+
+    api = _termination_language(random=True)
+    runtime = api.catalog.languages[api.name].runtime
+    monkeypatch.setattr(
+        interpreter_module(api.name), runtime.machine_preparation, prepare
+    )
+    artifact = api.from_source("+.")
+    vm = api.make_vm(artifact)
+    initial = vm.snapshot()
+    vm.step()
+    assert vm.snapshot() == initial
+    assert not vm.halted
+    vm.step()
+    assert vm.halted
+    with pytest.raises(
+        esolangs.InterpreterLimitError, match="requires branch enumeration"
+    ) as caught:
+        api.evaluate(artifact, [0], limits=esolangs.ExecutionLimits(max_steps=3))
+    assert caught.value.observation == esolangs.ExecutionResult("", 0, 0, 0)
 
 
 def test_evaluation_requires_unfilled_template_for_embedded_inputs() -> None:

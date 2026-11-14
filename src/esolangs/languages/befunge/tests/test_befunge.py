@@ -47,6 +47,11 @@ def test_scoped_termination_keeps_public_failure_evidence() -> None:
             scoped.evaluate(scoped.from_source("?@"), [0], limits=limits)
         assert stopped.value.observation == esolangs.ExecutionResult("", 0, 0, 0)
         assert stopped.value.__notes__
+        with pytest.raises(
+            esolangs.InterpreterLimitError, match="cannot be safely forked"
+        ) as unforkable:
+            scoped.evaluate(scoped.from_source("&@"), [0], limits=limits)
+        assert unforkable.value.observation == esolangs.ExecutionResult("", 0, 0, 0)
     assert successes[0] == successes[1]
     with pytest.raises(esolangs.InterpreterLimitError, match="cannot be safely forked"):
         scoped.evaluate(scoped.from_source("&@"), [0])

@@ -36,6 +36,29 @@ def test_catalog_identifiers_cannot_be_shadowed_by_aliases() -> None:
         scoped.with_language(other)
 
 
+def test_boolean_text_arguments_use_string_storage() -> None:
+    class WrappedText(str):
+        __hash__ = None
+
+        def __iter__(self):
+            raise AssertionError("truth table subclass was iterated")
+
+        def strip(self, _chars=None):
+            raise AssertionError("string subclass was stripped")
+
+    api = esolangs.Language(REFERENCE)
+    bound = api.catalog.bind(WrappedText(REFERENCE))
+    assert type(bound.name) is str
+    table = WrappedText("01")
+    assert bound.encode_inputs([1], truth_table=table) == "1"
+    assert bound.read_answer(WrappedText("1\n")) == "1"
+    for balance in (False, True):
+        program = bound.generate(table, balance=balance)
+        assert program == api.generate("01", balance=balance)
+        for bit in (0, 1):
+            assert bound.evaluate(program, [bit]).answer == str(bit)
+
+
 def test_boolean_adapters_use_stdin_contract_without_a_generator() -> None:
     original = LANGUAGES[REFERENCE]
     api = esolangs.Catalog([replace(original, backend=None)]).bind(REFERENCE)

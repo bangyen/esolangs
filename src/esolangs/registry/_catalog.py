@@ -127,6 +127,7 @@ class Catalog:
             raise ArgumentError(
                 f"a language name must be a string, got {type(name).__name__}"
             )
+        name = str.__str__(name)
         if name in self.languages:
             return name
         match = self._by_folded.get(name.strip().casefold())

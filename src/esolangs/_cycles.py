@@ -144,18 +144,44 @@ def run_until_halt_or_cycle(
 
 
 def _halt_or_cycle_result(
-    machine: _StepMachine | VM, limit: int | None = None
+    machine: _StepMachine | VM,
+    limit: int | None = None,
+    *,
+    require_branches: bool = False,
+    record_commands: Callable[[int], None] | None = None,
 ) -> CycleDecision:
     """Retain the command boundaries or complete branching evidence of a decision."""
-    return cast("CycleDecision", _drive_halt_or_cycle(machine, limit, evidence=True))
+    return cast(
+        "CycleDecision",
+        _drive_halt_or_cycle(
+            machine,
+            limit,
+            evidence=True,
+            require_branches=require_branches,
+            record_commands=record_commands,
+        ),
+    )
 
 
 class _DrawDependentHaltError(TypeError):
     """Branch exploration found a halt that depends on a draw."""
 
 
+class _BranchingUnavailableError(TypeError):
+    """A declared random machine cannot provide branch evidence."""
+
+
+class _ProofBudgetExhaustedError(TimeoutError):
+    """The detector reached its command or branching state limit."""
+
+
 def _drive_halt_or_cycle(
-    machine: _StepMachine | VM, limit: int | None, *, evidence: bool
+    machine: _StepMachine | VM,
+    limit: int | None,
+    *,
+    evidence: bool,
+    require_branches: bool = False,
+    record_commands: Callable[[int], None] | None = None,
 ) -> bool | CycleDecision:
     """Share transitions; Boolean readers need no retained branching graph."""
     machine = cast(
@@ -193,6 +219,12 @@ def _drive_halt_or_cycle(
             ),
             "use run_until_halt_or_all_branches_cycle for the any-draw question",
         )
+    if require_branches and not machine.halted:
+        raise _BranchingUnavailableError(
+            "termination proof for an active random machine requires branch enumeration"
+        )
+    if record_commands is not None:
+        record_commands(0)
     tortoise = machine.snapshot()
     first_step = 0
     power = 1
@@ -200,8 +232,9 @@ def _drive_halt_or_cycle(
     steps = 0
     while not machine.halted:
         if limit is not None and steps >= limit:
+            error = _ProofBudgetExhaustedError if evidence else TimeoutError
             raise with_hint(
-                TimeoutError(
+                error(
                     f"undecided after {limit} steps: "
                     "neither halted nor repeated a state"
                 ),
@@ -209,6 +242,8 @@ def _drive_halt_or_cycle(
             )
         machine.step()
         steps += 1
+        if record_commands is not None:
+            record_commands(steps)
         length += 1
         # mypy narrows `machine.halted` to Literal[False] from the loop guard
         # and won't re-widen it across `step()`; the explicit local defeats that.
@@ -284,8 +319,9 @@ def _branch_search(
         # `>=`: a negative limit never equals a count rising from zero, so
         # the cap switched itself off and the caller hung.
         if len(seen) >= limit:
+            error = _ProofBudgetExhaustedError if evidence else TimeoutError
             raise with_hint(
-                TimeoutError(
+                error(
                     f"undecided after {limit} branching states: the reachable "
                     "graph may be unbounded"
                 ),
@@ -302,10 +338,16 @@ def _branch_search(
                 else None
             )
             return _BranchResult(halts=True, forked=forked, proof=proof)
-        successors = machine.branching_successors(state, limit - len(seen))
+        remaining = limit - len(seen)
+        successors = machine.branching_successors(state, remaining)
         if successors is None:
+            error = (
+                _ProofBudgetExhaustedError
+                if evidence and remaining == 0
+                else TimeoutError
+            )
             raise with_hint(
-                TimeoutError(
+                error(
                     "undecided: a branching transition cannot be safely forked: "
                     "it needs input or exceeds the outcome budget"
                 ),

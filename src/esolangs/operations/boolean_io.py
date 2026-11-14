@@ -24,7 +24,7 @@ def encode_inputs(
     truth_table: str | None = None,
     catalog: "Catalog | None" = None,
 ) -> str:
-    """Return the stdin that feeds ``bits`` to a ``language`` program.
+    """Return the stdin encoding for ``bits`` under the Boolean input contract.
 
     Character readers take adjacent digits; numeric readers take tokens;
     each language spells its bits per its registered ``input_encoding`` and
@@ -52,9 +52,8 @@ def encode_inputs(
     contract = lang.contract
     if lang.parameterized:
         raise ArgumentError(
-            f"{name} embeds its inputs in the program and reads no stdin, so "
-            f"there is nothing to encode; pass the bits to instantiate() "
-            f"instead"
+            f"a generated {name} program reads no stdin for its input bits; "
+            "pass the bits to instantiate() to embed them in source"
         )
     if not lang.runtime.reads_stdin:
         raise ArgumentError(f"{name} reads no stdin, so there is nothing to encode")
@@ -64,8 +63,7 @@ def encode_inputs(
     if truth_table is not None:
         from esolangs.generation.helpers import _validate_truth_table, check_table_text
 
-        check_table_text(truth_table)
-        arity = _validate_truth_table(truth_table)
+        arity = _validate_truth_table(check_table_text(truth_table))
         if len(bits) != arity:
             raise ArgumentError(
                 f"that table has {arity} input{'' if arity == 1 else 's'}, "
@@ -118,6 +116,7 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
             f"output must be a string, got {type(output).__name__}"
             + ("; pass its .output" if isinstance(output, ExecutionResult) else "")
         )
+    output = str.__str__(output)
     contract = catalog.languages[name].contract
     if contract.answer_mode == "termination":
         raise ArgumentError(
