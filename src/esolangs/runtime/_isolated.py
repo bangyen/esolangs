@@ -22,6 +22,7 @@ from esolangs.outcomes import ExecutionOutcome, _capture_outcome, _failed_outcom
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
+from esolangs.runtime._execution import interpreter_errors
 from esolangs.runtime._input import InputSource, read_input
 from esolangs.runtime._json import canonical_integer, worker_dumps, worker_loads
 from esolangs.runtime._program import Program
@@ -505,14 +506,17 @@ def _launch(
 ) -> _WorkerResponse:
     """Run one JSON request, killing and reaping on deadline."""
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(sys.path)
+    env.pop("PYTHONPATH", None)
+    env["PYTHONIOENCODING"] = "utf-8"
     deadline = monotonic() + timeout
     report_prepared = preparation_deadline is not None or execution_timeout is not None
     streaming = max_output is not None or report_prepared
     with subprocess.Popen(  # fixed executable and code, no shell.
         [
             sys.executable,
+            "-P",
             "-c",
+            f"import sys; sys.path[:] = {sys.path!r}; "
             "from esolangs.runtime._isolated import _worker; _worker()",
         ],
         stdin=subprocess.PIPE,
@@ -1012,14 +1016,20 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
         if request["report_prepared"]:
             from esolangs.runtime._prepared import prepare_program
 
-            prepared = prepare_program(
-                request["language"],
-                program,
-                settings=settings,
-                scale=request["scale"],
-                catalog=catalog,
-                bind_machine=True,
-            )
+            name = request["language"]
+            with interpreter_errors(
+                f"the {name} interpreter exceeded the recursion limit while preparing",
+                language=name,
+                input_acquired=True,
+            ):
+                prepared = prepare_program(
+                    name,
+                    program,
+                    settings=settings,
+                    scale=request["scale"],
+                    catalog=catalog,
+                    bind_machine=True,
+                )
             send({"prepared": True})
         if request["termination"]:
             from esolangs.runtime._termination import _termination_result

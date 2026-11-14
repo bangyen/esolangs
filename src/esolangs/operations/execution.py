@@ -70,6 +70,8 @@ def _execute_bounded(
             catalog=catalog,
             io_factory=io_factory,
             prepared=prepared,
+            reproducible=False,
+            observe_initialization=True,
         )
     )
     return controller._execute(max_steps=max_steps)  # noqa: SLF001
@@ -107,8 +109,8 @@ def run(
             loading (30 seconds plus any ``execution_timeout``); works on
             Windows and in worker threads.  The catalog must match installed
             runtimes.
-        settings: Dialect choices.  Artifacts retain their own; these
-            override individual ones.  Plain source uses these.
+        settings: Dialect choices for plain source or choices the artifact
+            does not retain. Conflicting retained choices raise ProgramError.
         scale: Raster scale factor; detected when None.
 
     Raises:
@@ -231,6 +233,25 @@ def _execute_invocation(
     )
 
 
+def _execution_route(
+    limits: ExecutionLimits, *, isolated: bool, prepared: bool
+) -> tuple[bool, float | None]:
+    """Select a worker and preserve preparation limits only when needed."""
+    use_worker = isolated or any(
+        value is not None
+        for value in (
+            limits.execution_timeout,
+            limits.total_timeout,
+            limits.max_output,
+            limits.max_memory,
+        )
+    )
+    preparation_timeout = limits.preparation_timeout
+    if prepared and not use_worker:
+        preparation_timeout = None
+    return use_worker or preparation_timeout is not None, preparation_timeout
+
+
 @_capture_outcome
 def _execute_outcome(
     language: str,
@@ -250,19 +271,9 @@ def _execute_outcome(
     if not isinstance(selected, ExecutionLimits):
         raise ArgumentError("limits must be ExecutionLimits or None")
     check_flag(isolated, "isolated")
-    use_worker = isolated or any(
-        value is not None
-        for value in (
-            selected.execution_timeout,
-            selected.total_timeout,
-            selected.max_output,
-            selected.max_memory,
-        )
+    use_worker, preparation_timeout = _execution_route(
+        selected, isolated=isolated, prepared=prepared is not None
     )
-    preparation_timeout = selected.preparation_timeout
-    if prepared is not None and not use_worker:
-        preparation_timeout = None
-    use_worker = use_worker or preparation_timeout is not None
     return _execute_invocation(
         language,
         program,

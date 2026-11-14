@@ -27,6 +27,32 @@ class TestRun:
         assert dbg.halted
 
 
+def test_breakpoint_predicate_is_checked_once_at_a_stop() -> None:
+    dbg = debugger_api.make_debugger(REFERENCE, "+++.")
+    positions = []
+
+    def first_check(vm):
+        positions.append(vm.ip)
+        return len(positions) == 1
+
+    dbg.break_when(first_check)
+    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=3)) == "breakpoint"
+    assert positions == [0]
+    assert dbg.observation.steps == 0
+    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=4)) == "halted"
+
+
+def test_manual_steps_rearm_a_breakpoint_after_leaving_it() -> None:
+    dbg = debugger_api.make_debugger(REFERENCE, "+[+]")
+    dbg.break_at(2)
+    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=3)) == "breakpoint"
+    dbg.step()
+    assert dbg.ip == 3
+    dbg.step()
+    assert dbg.ip == 2
+    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "breakpoint"
+
+
 #: Two of the nine dump-on-post-halt languages, one reader and one template:
 #: the dump step is the debugger's shared code, and test_vm_protocol already
 #: checks every language's flag against its behaviour.
@@ -93,6 +119,31 @@ class TestABreakpointAtTheHaltIsReported:
         for _ in range(4):
             dbg.run(limits=esolangs.ExecutionLimits(max_steps=300_000))
         assert len(history) == after_one
+
+    def test_an_expired_deadline_leaves_the_pending_dump_unfinished(
+        self, monkeypatch
+    ) -> None:
+        name = _DUMPERS[0]
+        source, stdin = _runnable(name)
+        dbg = debugger_api.make_debugger(name, source, stdin=stdin)
+        dbg.break_when(lambda vm: vm.halted)
+        assert (
+            dbg.run(limits=esolangs.ExecutionLimits(max_steps=300_000)) == "breakpoint"
+        )
+        assert dbg.halted
+        assert dbg.observation.completion is None
+        dbg.clear_breakpoints()
+        times = iter((0.0, 1.0))
+        monkeypatch.setattr(
+            "esolangs.runtime._controller.monotonic", lambda: next(times)
+        )
+        assert (
+            dbg.run(limits=esolangs.ExecutionLimits(execution_timeout=0.5))
+            == "execution_timeout"
+        )
+        assert dbg.observation.completion is None
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
+        assert dbg.observation.completion is not None
 
 
 class TestPointerFallback:

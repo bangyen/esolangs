@@ -11,7 +11,7 @@ from esolangs.artifacts import (
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.limits import ExecutionLimits
 from esolangs.operations.boolean_io import encode_inputs, read_answer
-from esolangs.operations.execution import _execute_outcome
+from esolangs.operations.execution import _execute_outcome, _execution_route
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._prepared import PreparedProgram
 from esolangs.runtime._validate import check_bit_count, check_bits
@@ -51,22 +51,19 @@ def evaluate_artifact(
             catalog=catalog,
             prepared=prepared,
         ).unwrap()
-        return BooleanEvaluation(
-            read_answer(name, result.output, catalog=catalog), result
-        )
+        try:
+            answer = read_answer(name, result.output, catalog=catalog)
+        except ProgramError as error:
+            error.observation = result
+            error.partial_output = result.output
+            raise
+        return BooleanEvaluation(answer, result)
 
     selected = ExecutionLimits() if limits is None else limits
-    bounded_locally = selected.max_steps is not None and all(
-        limit is None
-        for limit in (
-            selected.preparation_timeout,
-            selected.execution_timeout,
-            selected.total_timeout,
-            selected.max_memory,
-            selected.max_output,
-        )
+    use_worker, preparation_timeout = _execution_route(
+        selected, isolated=selected.max_steps is None, prepared=prepared is not None
     )
-    if bounded_locally:
+    if not use_worker:
         from esolangs.runtime._termination import _termination_result
 
         proof = _termination_result(
@@ -90,7 +87,7 @@ def evaluate_artifact(
             max_output=selected.max_output,
             max_memory=selected.max_memory,
             execution_timeout=selected.execution_timeout,
-            preparation_timeout=selected.preparation_timeout,
+            preparation_timeout=preparation_timeout,
             catalog=catalog,
         )
     answer = "halts" if proof.decision.halts else "diverges"
@@ -124,6 +121,7 @@ def evaluate(
     name = catalog.resolve(language)
     if not isinstance(artifact, (ProgramArtifact, TemplateArtifact)):
         raise ProgramError("evaluation requires a program or template artifact")
-    if catalog.resolve(artifact.language) != name:
-        raise ProgramError(f"artifact belongs to {artifact.language}, not {name}")
+    from esolangs.operations.source import check_origin
+
+    check_origin(name, artifact.language, catalog=catalog)
     return evaluate_artifact(artifact, bits, limits=limits, catalog=catalog)

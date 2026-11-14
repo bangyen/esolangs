@@ -454,7 +454,7 @@ def instantiate(
         ArgumentError: A bit is not an integer 0 or 1, ``bits`` does not
             match the template's input count, or an option is invalid.
     """
-    from esolangs.registry._catalog import get_catalog
+    from esolangs.registry._catalog import get_catalog, resolve_origin
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
@@ -490,7 +490,7 @@ def instantiate(
             ),
             "retain generate()'s template or restore it with from_json()",
         )
-    if catalog.resolve(template.language) != name:
+    if resolve_origin(template.language, catalog=catalog) != name:
         raise TemplateError(f"template belongs to {template.language}, not {name}")
     if truth_table is not None and not _is_template_for(
         template, name, truth_table, settings, catalog=catalog

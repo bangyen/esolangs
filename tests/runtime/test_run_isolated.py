@@ -1,6 +1,9 @@
 """Portable deadlines retain answers, errors, output and worker cleanup."""
 
 import json
+import os
+import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -52,6 +55,52 @@ def test_input_error_retains_counts_and_output() -> None:
     assert caught.value.supplied == 0
     assert caught.value.partial_output == "\x01"
     assert caught.value.observation == ExecutionResult("\x01", 0, 0, 1)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "budgets",
+    [
+        {},
+        {"max_steps": 5},
+        {"total_timeout": 5},
+        {"execution_timeout": 5},
+        {"preparation_timeout": 5},
+    ],
+)
+def test_syntax_rejection_preserves_known_zero_input_counters(budgets) -> None:
+    limits = esolangs.ExecutionLimits(**budgets)
+    outcome = esolangs.execute(REFERENCE, "[", limits=limits)
+    assert isinstance(outcome.error, esolangs.ProgramError)
+    assert (
+        outcome.error.observation == outcome.observation == ExecutionResult("", 0, 0, 0)
+    )
+    outcome = esolangs.execute(REFERENCE, object(), limits=limits)
+    assert isinstance(outcome.error, esolangs.ProgramError)
+    assert outcome.error.observation is None
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("flag", ["-P", "-I"])
+def test_worker_preserves_parent_import_and_stdio_options(flag, tmp_path) -> None:
+    decoy = tmp_path / "esolangs.py"
+    decoy.write_text("raise RuntimeError('local package must not be imported')\n")
+    subprocess.run(
+        [
+            sys.executable,
+            flag,
+            "-c",
+            "import esolangs; "
+            "assert esolangs.run('brainfuck', ',.', stdin='é', "
+            "isolated=True).output == 'é'; "
+            "assert esolangs.run('brainfuck', ',.', stdin='é', limits="
+            "esolangs.ExecutionLimits(execution_timeout=4)).output == 'é'",
+        ],
+        env={**os.environ, "PYTHONIOENCODING": "utf-16"},
+        cwd=tmp_path,
+        check=True,
+        timeout=10,
+    )
 
 
 @pytest.mark.parametrize("timeout", [0, float("inf")])

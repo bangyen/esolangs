@@ -268,11 +268,18 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
     return args, width, bare
 
 
-def _pop_flags(rest: list[str], names: set[str]) -> tuple[list[str], list[str]]:
-    """Remove bare flags before the positional separator."""
+def _pop_flags(rest: list[str], names: set[str]) -> tuple[list[str], set[str]]:
+    """Remove bare flags before the separator, refusing repeats."""
     boundary = rest.index("--") if "--" in rest else len(rest)
-    flags = [arg for arg in rest[:boundary] if arg in names]
-    args = [arg for arg in rest[:boundary] if arg not in names]
+    flags: set[str] = set()
+    args: list[str] = []
+    for arg in rest[:boundary]:
+        if arg not in names:
+            args.append(arg)
+        elif arg in flags:
+            _fail(f"{arg} given more than once")
+        else:
+            flags.add(arg)
     return args + rest[boundary:], flags
 
 

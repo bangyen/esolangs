@@ -19,6 +19,7 @@ from esolangs.cli.args import _fail
 from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
 from esolangs.exceptions import EsolangError
 from esolangs.operations.source import _check_program
+from esolangs.registry import LANGUAGES
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
 
@@ -28,9 +29,10 @@ from esolangs.runtime._source import _FileSource
 _WAITING_NOTICE_AFTER = 3.0
 
 
-#: The most a program file may hold.  Two orders of magnitude above the
-#: largest program any generator here produces.
+#: Keep source reads bounded, including devices that never reach EOF.
 _MAX_PROGRAM_BYTES = 1024 * 1024
+#: A gzip-native runtime may also read the full raw export of its generator.
+_MAX_GZIP_NATIVE_PROGRAM_BYTES = 32 * _MAX_PROGRAM_BYTES
 
 
 #: Fallback deadline for reading a program file.
@@ -87,7 +89,13 @@ def _read_program(
 ) -> ProgramArtifact[Program]:
     """Read bounded source, refusing a non-text or oversized file."""
     started = monotonic()
-    data = _bounded_read(path, timeout, timeout_flag=timeout_flag)
+    gzip_native = LANGUAGES[language].runtime.compressed_source
+    data = _bounded_read(
+        path,
+        timeout,
+        timeout_flag=timeout_flag,
+        max_bytes=_MAX_GZIP_NATIVE_PROGRAM_BYTES if gzip_native else _MAX_PROGRAM_BYTES,
+    )
 
     def decode() -> ProgramArtifact[Program]:
         return _check_program(language, _FileSource(path, data), normalize=True)
@@ -151,14 +159,20 @@ def _slurp_thread[SlurpT](
     return result
 
 
-def _bounded_read(path: str, timeout: float | None, *, timeout_flag: str = "") -> bytes:
+def _bounded_read(
+    path: str,
+    timeout: float | None,
+    *,
+    timeout_flag: str = "",
+    max_bytes: int = _MAX_PROGRAM_BYTES,
+) -> bytes:
     """Open and read ``path`` with a size cap and a deadline."""
     waited = timeout if timeout is not None else _READ_DEADLINE
 
     def _read_file() -> bytes:
         try:
             with open(path, "rb") as handle:
-                return handle.read(_MAX_PROGRAM_BYTES + 1)
+                return handle.read(max_bytes + 1)
         except OSError as exc:
             _fail(f"cannot read {path}: {exc}")
 
@@ -171,12 +185,8 @@ def _bounded_read(path: str, timeout: float | None, *, timeout_flag: str = "") -
         )
 
     result = _slurp_thread(_read_file, waited, on_timeout=_on_timeout)
-    if len(result) > _MAX_PROGRAM_BYTES:
-        _fail(
-            f"{path} is larger than the {_MAX_PROGRAM_BYTES // 1024} KiB this "
-            f"reads; the largest program this package generates is far under "
-            f"it, so this is almost certainly not a program"
-        )
+    if len(result) > max_bytes:
+        _fail(f"{path} is larger than the {max_bytes // 1024} KiB program file limit")
     return result
 
 

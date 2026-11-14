@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -9,6 +10,7 @@ import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._execution import interpreter_module
 from tests.support.cli_support import call_main
+from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
 
@@ -51,6 +53,46 @@ def test_scoped_description_uses_the_declared_runtime() -> None:
     assert scoped.describe().state_model == "other"
     assert scoped.describe().spec == esolangs.describe(REFERENCE).spec
     assert scoped.run("+.").output == "\x01"
+
+
+def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None:
+    owner = esolangs.Language(first(source_kind="raster"))
+    original = owner.catalog.languages[owner.name]
+    local = replace(original, name="Private scope", id="private_scope")
+    scoped = esolangs.Catalog([local]).bind(local.name)
+    program = scoped.generate("01", scale=2)
+    path = tmp_path / "scoped.png"
+    scoped.to_file(program, path)
+    document = scoped.to_json(program)
+    assert scoped.from_json(document) == program
+    assert scoped.from_file(path).source == program.source
+    for operation in (
+        lambda: owner.run(program),
+        lambda: owner.prepare(program),
+        lambda: owner.make_vm(program),
+        lambda: owner.make_debugger(program),
+        lambda: owner.evaluate(program, [1]),
+        lambda: owner.to_file(program, tmp_path / "copy.png"),
+        lambda: owner.to_json(program),
+        lambda: owner.run(path),
+        lambda: owner.from_file(path),
+        lambda: owner.from_json(document),
+    ):
+        with pytest.raises(esolangs.ProgramError):
+            operation()
+    with pytest.raises(esolangs.UnknownLanguageError):
+        esolangs.run(scoped.name, program)
+
+
+def test_template_with_an_unregistered_owner_raises_template_error() -> None:
+    owner = esolangs.Language(first(parameterized=True))
+    original = owner.catalog.languages[owner.name]
+    local = replace(original, name="Private template", id="private_template")
+    scoped = esolangs.Catalog([local]).bind(local.name)
+    template = scoped.generate("01")
+    assert scoped.instantiate(template, [1]) == template.fill([1])
+    with pytest.raises(esolangs.TemplateError, match="belongs to"):
+        owner.instantiate(template, [1])
 
 
 #: What a spec must not show: a private name, a raw Sphinx role, a repo path.

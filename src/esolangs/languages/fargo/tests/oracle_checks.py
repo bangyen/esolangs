@@ -205,7 +205,7 @@ def public(case, rows, *, isolated=False, cap=None):
         else:
             assert caught.bound == "max_steps"
         if constructor:
-            assert caught.observation is None
+            assert caught.observation == esolangs.ExecutionResult("", 0, 0, 0)
             assert caught.partial_output == ""
         else:
             assert caught.partial_output == row.output

@@ -26,19 +26,19 @@ from esolangs.settings import DialectSettings, dialect_options, effective_settin
 def check_origin(
     language: str, origin: object, *, catalog: "Catalog | None" = None
 ) -> None:
-    """Reject known foreign provenance before reading a payload."""
-    from esolangs.registry._catalog import get_catalog
+    """Reject foreign provenance before reading a payload."""
+    from esolangs.registry._catalog import get_catalog, resolve_origin
 
     catalog = get_catalog(catalog)
     if origin is None:
         return
     if not isinstance(origin, str):
         raise ProgramError("source language must be a string")
-    canonical = catalog.resolve(origin)
+    canonical = resolve_origin(origin, catalog=catalog)
     if canonical != language:
         raise ProgramError(
-            f"this program was generated for {canonical}, not {language}; read "
-            f"as {language} source it may well run, and answer nonsense"
+            f"this program was generated for {canonical or origin}, not {language}; "
+            f"read as {language} source it may well run, and answer nonsense"
         )
 
 

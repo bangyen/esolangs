@@ -76,3 +76,29 @@ def test_cli_exports_gzip_by_default_and_plain_on_request(tmp_path) -> None:
             **options,
         )
         assert native.stdout == b"Input: "
+
+
+@pytest.mark.medium
+def test_cli_loads_its_large_plain_export(tmp_path) -> None:
+    import subprocess
+    import sys
+
+    command = [sys.executable, "-m", "esolangs"]
+    path = tmp_path / "plain.txt"
+    with path.open("wb") as destination:
+        subprocess.run(
+            [*command, "generate", "--plain", "Unary", "0001"],
+            stdout=destination,
+            check=True,
+            timeout=10,
+        )
+    assert path.stat().st_size > 1024 * 1024
+    stdin = esolangs.encode_inputs("Unary", [0, 1]).encode()
+    result = subprocess.run(
+        [*command, "run", "--max-steps", "20", "unary", str(path)],
+        input=stdin,
+        capture_output=True,
+        check=True,
+        timeout=10,
+    )
+    assert result.stdout == result.stderr == b""

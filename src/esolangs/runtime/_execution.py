@@ -246,6 +246,8 @@ def interpreter_errors(
     io_obj: ScriptedIO | None = None,
     *,
     language: str | None = None,
+    input_acquired: bool = False,
+    omit_empty_io: bool = False,
 ) -> Iterator[None]:
     """Translate interpreter failures, preserving public errors and prior output."""
     try:
@@ -297,14 +299,16 @@ def interpreter_errors(
         ):
             hint = _value_error_hint(str(original), language)
             error.add_note(f"hint: {hint}")
-        if io_obj is not None:
+        if io_obj is not None and error.observation is None:
             written = io_obj.getvalue()
-            error.partial_output = written
-            error.observation = ExecutionResult(
-                written, io_obj.position(), io_obj.reads, io_obj.past_end
-            )
-            if written:
-                error.add_note(f"the program printed {written[:200]!r} before this")
+            counters = io_obj.position(), io_obj.reads, io_obj.past_end
+            if not omit_empty_io or written or any(counters):
+                error.partial_output = written
+                error.observation = ExecutionResult(written, *counters)
+                if written:
+                    error.add_note(f"the program printed {written[:200]!r} before this")
+        elif input_acquired and error.observation is None:
+            error.observation = ExecutionResult(error.partial_output, 0, 0, 0)
         if error is original:
             raise
         raise error from original

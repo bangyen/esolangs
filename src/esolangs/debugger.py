@@ -68,7 +68,13 @@ class Debugger(_ExecutionController):
         self._cell_history: dict[int, list[int | None]] = {}
         self._stack_history: dict[int, list[object]] = {}
         self._suppressed: set[int] = set()
-        self._hits: set[int] = set()
+
+    def step(self) -> None:
+        """Execute a command and rearm breakpoints whose conditions clear."""
+        super().step()
+        self._suppressed = {
+            index for index in self._suppressed if self._breakpoints[index](self.vm)
+        }
 
     @property
     def ip(self) -> int | tuple[int, ...] | None:
@@ -219,7 +225,6 @@ class Debugger(_ExecutionController):
         """
         self._breakpoints.clear()
         self._suppressed.clear()
-        self._hits.clear()
 
     def watch_cell(self, index: int) -> list[int | None]:
         """Record ``memory[index]`` each step, returning the history.
@@ -250,13 +255,6 @@ class Debugger(_ExecutionController):
             for slot, stack_history in self._stack_history.items():
                 stack_history.append(_value_at(stack, slot, from_top=True))
 
-    def _accept_stop(self) -> bool:
-        """Whether a breakpoint holds; if so, suppress it until it changes."""
-        if not self._stop_requested():
-            return False
-        self._suppressed = set(self._hits)
-        return True
-
     def _stop_requested(self) -> bool:
         """Whether a breakpoint fires now: one that holds and did not already.
 
@@ -265,9 +263,9 @@ class Debugger(_ExecutionController):
         :meth:`break_on_output`, whose ``text in vm.output`` is true forever.
         """
         hits = {i for i, cond in enumerate(self._breakpoints) if cond(self.vm)}
-        self._suppressed &= hits
-        self._hits = hits
-        return bool(hits - self._suppressed)
+        stopped = bool(hits - self._suppressed)
+        self._suppressed = hits
+        return stopped
 
 
 def make_debugger(

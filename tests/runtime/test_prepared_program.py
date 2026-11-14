@@ -15,6 +15,7 @@ from esolangs.runtime._lifecycle import HALTED_REPORT
 from esolangs.runtime._prepared import prepare_program
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import complete_vm
+from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
 
@@ -28,6 +29,16 @@ def test_prepared_constructor_accepts_artifact_alias_and_refuses_invalid_types()
         esolangs.PreparedProgram(artifact.source, api.catalog)
     with pytest.raises(esolangs.ArgumentError, match="catalog must be a Catalog"):
         esolangs.PreparedProgram(artifact, object())
+
+
+def test_prepared_termination_uses_its_retained_preparation():
+    api = esolangs.Language(first(answer_mode="termination", reads_input=True))
+    prepared = api.prepare(api.generate("01"))
+    limits = esolangs.ExecutionLimits(max_steps=100, preparation_timeout=0.000001)
+    for bit in (0, 1):
+        result = prepared.evaluate([bit], limits=limits)
+        assert result.answer == str(bit)
+        assert result.termination.halts is (bit == 0)
 
 
 @pytest.mark.medium

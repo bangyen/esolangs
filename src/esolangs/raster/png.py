@@ -11,8 +11,9 @@ import zlib
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
-from esolangs.exceptions import MissingDependencyError
-from esolangs.runtime._json import unique_object
+from esolangs.exceptions import MissingDependencyError, ProgramError
+from esolangs.runtime._json import record_dumps, unique_object
+from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 if TYPE_CHECKING:
@@ -457,7 +458,9 @@ def read_metadata(data: bytes) -> dict[str, Any] | None:
             continue
         if found is not None or len(body) > _METADATA_LIMIT:
             raise ValueError("duplicate or oversized esolangs PNG metadata")
-        decoded = json.loads(body, object_pairs_hook=unique_object)
+        decoded = json.loads(
+            body, object_pairs_hook=unique_object, parse_int=parse_integer
+        )
         if not isinstance(decoded, dict):
             raise ValueError("esolangs PNG metadata must be an object")
         found = decoded
@@ -473,9 +476,9 @@ def read_metadata(data: bytes) -> dict[str, Any] | None:
 
 def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
     """Append source metadata before IEND; image editors may discard it."""
-    body = json.dumps(metadata, separators=(",", ":")).encode("utf-8")
+    body = record_dumps(metadata).encode("utf-8")
     if len(body) > _METADATA_LIMIT:
-        raise ValueError("oversized esolangs PNG metadata")
+        raise ProgramError("oversized esolangs PNG metadata")
     chunk = _METADATA_CHUNK + body
     return (
         data[:-12]

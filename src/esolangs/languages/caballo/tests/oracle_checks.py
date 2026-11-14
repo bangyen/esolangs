@@ -457,13 +457,8 @@ def _active_rows(rows):
 
 
 def _public_prediction(source, stdin, options):
-    if options == {}:
-        # Every ticket alternative is computed before the real secrets call.
-        return [
-            _active_rows(_full_model(source, stdin, ticket=ticket)[1])
-            for ticket in range(3)
-        ]
-    return [_active_rows(_full_model(source, stdin, seed=options.get("seed", 0))[1])]
+    draw = {"seed": options["seed"]} if "seed" in options else {"ticket": 0}
+    return _active_rows(_full_model(source, stdin, **draw)[1])
 
 
 def _check_public_randomness():
@@ -476,12 +471,10 @@ def _check_public_randomness():
         expected = _public_prediction(source, stdin, options)
         created, captures, bounds, draws = [], [], [], []
         original_init, original_step = native._Machine.__init__, native._Machine.step
-        original_secret = randomness.secrets.randbelow
 
-        def audit_secret(
-            upper, _original=original_secret, _bounds=bounds, _draws=draws
-        ):
-            value = _original(upper)
+        def audit_secret(upper, _bounds=bounds, _draws=draws):
+            # The control differs from seed 0's ticket (1).
+            value = 0
             _bounds.append(upper)
             _draws.append(value)
             return value
@@ -498,7 +491,7 @@ def _check_public_randomness():
             **kwargs,
         ):
             _init(self, *args, **kwargs)
-            if _options:
+            if "seed" in _options:
                 assert type(self._rng) is Seeded
                 _audit_draw(self._rng, _bounds, _draws)
             else:
@@ -524,29 +517,26 @@ def _check_public_randomness():
                 "Caballo", ProgramArtifact(source, "Caballo"), stdin=stdin, **options
             )
         assert len(created) == 1
-        assert any([capture.row for capture in captures] == rows for rows in expected)
+        assert [capture.row for capture in captures] == expected
         assert bounds == [3]
         assert len(draws) == 1
         assert 0 <= draws[0] < 3
-        selected = next(
-            rows for rows in expected if [capture.row for capture in captures] == rows
-        )
         witness = workspace.WorkspaceWitness(_FULL_WORKSPACE)
         held = []
-        for capture, row in zip(captures, selected, strict=True):
+        for capture, row in zip(captures, expected, strict=True):
             _check_capture(capture, row, witness, held)
         witness.finish()
-        assert result.output == selected[-1][2]
+        assert result.output == expected[-1][2]
         assert result.completion.kind.value == "halted"
         assert (result.input_position, result.input_reads, result.input_past_end) == (
             0,
             1,
             0,
         )
-        assert result.steps == (len(selected) - 1 if "limits" in options else None)
-        if options:
-            expected_rng = random.Random(options.get("seed", 0))
-            for capture, row in zip(captures, selected, strict=True):
+        assert result.steps == (len(expected) - 1 if "limits" in options else None)
+        if "seed" in options:
+            expected_rng = random.Random(options["seed"])
+            for capture, row in zip(captures, expected, strict=True):
                 if row[0][3] and capture is captures[-1]:
                     assert expected_rng.randrange(3) == row[0][4][0]
                 assert capture.rng_state == expected_rng.getstate()

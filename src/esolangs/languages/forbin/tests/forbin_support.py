@@ -134,7 +134,7 @@ def check_constructor_error_observations() -> None:
                 assert execute(route, source) == ExecutionResult(
                     "A", 0, 0, 0, completion=halted, steps=1 if counted else None
                 )
-    # Parser refusals still have no machine or observed IO, unlike initializer EOF.
+    # Failed debugger construction has no observation. Run has acquired stdin.
     for source in ("", "main {"):
         artifact = esolangs.ProgramArtifact(source, "Forbin")
         for create in (make_vm, make_debugger):
@@ -146,7 +146,13 @@ def check_constructor_error_observations() -> None:
         with pytest.raises(ProgramError) as caught:
             esolangs.run("Forbin", artifact, limits=ExecutionLimits(max_steps=64))
         assert caught.value.partial_output == ""
-        assert caught.value.observation is None
+        with pytest.raises(ProgramError) as native:
+            esolangs.run("Forbin", artifact)
+        assert (
+            caught.value.observation
+            == native.value.observation
+            == ExecutionResult("", 0, 0, 0)
+        )
     # A successful IO-free construction still has no completion observation.
     artifact = esolangs.ProgramArtifact("main { }", "Forbin")
     vm = make_vm("Forbin", artifact, stdin="λ")

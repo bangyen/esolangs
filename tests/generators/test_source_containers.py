@@ -213,6 +213,18 @@ def test_plain_export_respects_the_raw_text_budget(tmp_path: Path) -> None:
     assert path.read_bytes() == compressed.to_gzip()
 
 
+def test_native_file_terminator_counts_toward_raw_export_budget(tmp_path: Path) -> None:
+    limits = esolangs.TextLimits(plain_chars=2, generation_chars=3, gzip_bytes=100)
+    compressed = esolangs.CompressedText.from_chunks(("+.",), limits=limits)
+    path = tmp_path / "source"
+    esolangs.to_file(REFERENCE, compressed, path)
+    with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
+        esolangs.to_file(REFERENCE, compressed, path, normalize=True)
+    assert path.read_bytes() == b"+."
+    esolangs.to_file(REFERENCE, compressed, path, gzip=True, normalize=True)
+    assert gzip.decompress(path.read_bytes()) == b"+.\n"
+
+
 @pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
 def test_stream_failures_keep_public_error_types(mode: str) -> None:
     bounds: dict[str, Any] = {}

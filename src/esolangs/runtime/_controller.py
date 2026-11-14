@@ -17,8 +17,6 @@ from esolangs.vm import (
     _capture_observation,
     _capture_result,
     _DelegatingVM,
-    complete_vm,
-    run_until_halt,
 )
 
 StopReason = Literal["halted", "breakpoint", "max_steps", "execution_timeout"]
@@ -46,7 +44,6 @@ class ExecutionController:
                 ):
                     raise ArgumentError(f"vm must be a VM with a {name} attribute")
         self.vm = vm
-        self._timed_out = False
         self._dumped = False
         self._steps = 0
         self._faulted = False
@@ -56,10 +53,6 @@ class ExecutionController:
 
     def _stop_requested(self) -> bool:
         """Whether an observer asks to stop before the next step."""
-        return False
-
-    def _accept_stop(self) -> bool:
-        """Acknowledge an observer stop after a run boundary."""
         return False
 
     @property
@@ -134,6 +127,10 @@ class ExecutionController:
         there, and returning early cost a debugger-driven verifier 58/65.
         A fault raises with ``partial_output`` set, as :func:`esolangs.run`'s does.
         """
+        self._take_step()
+
+    def _take_step(self) -> None:
+        """Drive a command or finalization step, accounting for its effects."""
         active = not self.vm.halted
         try:
             self.vm.step()
@@ -189,42 +186,25 @@ class ExecutionController:
     def _run(self, max_steps: int | None, timeout: float | None) -> StopReason:
         """Drive to a halt, breakpoint or bound; the limits are already checked."""
         deadline = None if timeout is None else monotonic() + timeout
-        self._timed_out = False
-        halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))
-        if halted:
-            # Breakpoints are checked before each step, so one the final
-            # step makes true was never seen (``break_on_output`` on a
-            # program ending in ``.``).  Checked both before and after the
-            # dump step below, because the dump changes ``output``:
-            # after-only lost ``vm.halted and vm.output == ""`` on the
-            # dumping languages, before-only puts the dumped text out of reach.
-            if self._accept_stop():
+        start = self._steps
+        while not self.halted:
+            if deadline is not None and monotonic() >= deadline:
+                return "execution_timeout"
+            if self._stop_requested():
                 return "breakpoint"
-            if self.dumps_on_the_post_halt_step and not self._dumped:
-                # Cross the halt for the dumping languages, or ``run``
-                # ends with the answer one un-taken step away (the CLI
-                # printed ``output: ''`` on a correct program).  Once per
-                # debugger, not per run: it lands in every watch history,
-                # and three idle ``run()`` calls on a halted machine
-                # grew ``watch_cell`` by three.
-                try:
-                    complete_vm(self.vm, max_steps=0)
-                    self._dumped = True
-                    self._faulted = False
-                except EsolangError as exc:
-                    self._faulted = True
-                    exc.partial_output = self.output
-                    exc.observation = replace(self.observation, completion=None)
-                    raise
-                self._record()
-                if self._accept_stop():
-                    return "breakpoint"
-            return "halted"
-        if self._timed_out:
-            return "execution_timeout"
-        if self._accept_stop():
+            if max_steps is not None and self._steps - start >= max_steps:
+                return "max_steps"
+            self._take_step()
+        # The final command and the dump can each trigger a breakpoint.
+        if self._stop_requested():
             return "breakpoint"
-        return "max_steps"
+        if self.dumps_on_the_post_halt_step and not self._dumped:
+            if deadline is not None and monotonic() >= deadline:
+                return "execution_timeout"
+            self._take_step()
+            if self._stop_requested():
+                return "breakpoint"
+        return "halted"
 
     def _periodic_execution(
         self, vm: _DelegatingVM, max_steps: int
@@ -259,10 +239,3 @@ class ExecutionController:
         error.partial_output = self.output
         error.observation = replace(_capture_observation(self.vm), steps=self._steps)
         return _failed_outcome(error)
-
-    def _stop(self, deadline: float | None) -> bool:
-        """Whether to stop before the next step: a breakpoint, or the clock."""
-        if deadline is not None and monotonic() > deadline:
-            self._timed_out = True
-            return True
-        return self._stop_requested()

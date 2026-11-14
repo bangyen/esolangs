@@ -10,7 +10,7 @@ from operator import is_not
 from typing import cast
 
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
-from esolangs.runtime._validate import check_scale
+from esolangs.runtime._validate import _argument_repr, check_scale
 from esolangs.runtime.source_hints import syntax_error
 
 from . import png
@@ -67,19 +67,12 @@ def _freeze_iterable_rows(rows: Rows) -> Rows:
                     frozen_row.append(pixel)
                 previous = pixel
                 continue
-            frozen = tuple(pixel)
-            if len(frozen) != 3 or any(
-                isinstance(value, bool)
-                or not isinstance(value, int)
-                or not 0 <= value <= 255
-                for value in frozen
-            ):
-                raise _pixel_error()
+            frozen = _freeze_pixel(pixel)
             if frozen_row is None and frozen is not pixel:
                 frozen_row = list(takewhile(partial(is_not, pixel), row))
             if frozen_row is not None:
                 frozen_row.append(frozen)
-            if type(pixel) is tuple:
+            if frozen is pixel:
                 previous = pixel
                 if len(validated) < 1024:
                     validated[id(pixel)] = pixel
@@ -98,6 +91,25 @@ def _freeze_iterable_rows(rows: Rows) -> Rows:
             error_type=ProgramError,
         )
     return result
+
+
+def _freeze_pixel(pixel: Pixel) -> Pixel:
+    """Store built-in integers so callers cannot alter value or hash semantics."""
+    frozen = tuple(pixel)
+    if len(frozen) != 3:
+        raise _pixel_error()
+    red, green, blue = frozen
+    if not type(red) is type(green) is type(blue) is int:
+        if any(
+            isinstance(channel, bool) or not isinstance(channel, int)
+            for channel in frozen
+        ):
+            raise _pixel_error()
+        red, green, blue = int.__int__(red), int.__int__(green), int.__int__(blue)
+        frozen = (red, green, blue)
+    if not (0 <= red <= 255 and 0 <= green <= 255 and 0 <= blue <= 255):
+        raise _pixel_error()
+    return frozen
 
 
 def _assign(
@@ -207,17 +219,18 @@ class Raster:
 
     def upscaled(self, scale: int) -> Raster:
         """Replicate pixels into solid squares."""
-        check_scale(scale)
+        scale = check_scale(scale)
         if scale == 1:
             return self
 
         def check(base: Rows) -> None:
-            pixels = len(base) * len(base[0]) * scale * scale
+            width, height = len(base[0]) * scale, len(base) * scale
+            pixels = width * height
             if pixels > MAX_UPSCALED_PIXELS:
                 raise ArgumentError(
-                    f"scale {scale} makes a {len(base[0]) * scale}x"
-                    f"{len(base) * scale} image ({pixels} pixels), over the "
-                    f"{MAX_UPSCALED_PIXELS}-pixel limit; use a smaller scale"
+                    f"scale {_argument_repr(scale)} makes a {_argument_repr(width)}x"
+                    f"{_argument_repr(height)} image ({_argument_repr(pixels)} pixels)"
+                    f", over the {MAX_UPSCALED_PIXELS}-pixel limit; use a smaller scale"
                 )
 
         # Known rows refuse now: generate(scale=10**30) returned and only a
@@ -251,7 +264,10 @@ class Raster:
         if not isinstance(data, (bytes, bytearray, memoryview)):
             # ``None`` read "'NoneType' object is not subscriptable".
             raise ArgumentError(f"PNG data must be bytes, got {type(data).__name__}")
-        data = bytes(data)
+        try:
+            data = bytes(data)
+        except ValueError as exc:
+            raise ArgumentError(f"cannot read PNG data: {exc}") from exc
         try:
             decoded = png._rgb_rows(data)  # noqa: SLF001
             # Inside the guard too: a 0x0 image decodes cleanly and then

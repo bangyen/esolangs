@@ -525,7 +525,6 @@ assert esolangs.Raster.from_png(data).rows == raster.rows
     "fields",
     [
         {"language": True},
-        {"language": "NotAnInstalledLanguage"},
         {"scale": 0},
         {"scale": True},
         {"settings": []},

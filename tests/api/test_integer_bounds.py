@@ -31,6 +31,10 @@ from tests.support.reference import REFERENCE
         lambda huge: esolangs.generate(REFERENCE, "01", width=-huge),
         lambda huge: esolangs.encode_inputs(REFERENCE, [huge]),
         lambda huge: esolangs.encode_inputs(REFERENCE, [True, huge]),
+        lambda huge: esolangs.Raster((((0, 0, 0),),)).upscaled(huge),
+        lambda huge: esolangs.ProgramArtifact(
+            ",.", REFERENCE, input_arity=huge
+        ).evaluate([1]),
         lambda huge: (
             esolangs.run(
                 first(source_kind="raster"),

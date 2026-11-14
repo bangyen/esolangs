@@ -124,8 +124,6 @@ def _run(rest: list[str]) -> None:
     rest = _split_positional(rest, set(), value_options | {"--set", "--isolated"})
     seed = _seed_of(options)
     scale = _scale_of(options)
-    if flags.count("--isolated") > 1:
-        _fail("--isolated given more than once")
     _check_count("run", rest, 2)
     language, path = rest
     settings = _settings_of(options, set_pairs, language=language)
@@ -145,7 +143,7 @@ def _run(rest: list[str]) -> None:
     program = _read_program(
         path,
         _remaining(acquisition, monotonic() - started, flag),
-        language=language,
+        language=declaration.name,
         timeout_flag=flag,
     )
     stdin = _read_stdin(

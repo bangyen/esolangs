@@ -213,13 +213,14 @@ def effective_scale(
     language: str, program: object, scale: int | None, *, catalog: Catalog | None = None
 ) -> int | None:
     """Prefer an explicit scale, then the program artifact's metadata."""
-    from esolangs.registry._catalog import get_catalog
+    from esolangs.registry._catalog import get_catalog, resolve_origin
 
     catalog = get_catalog(catalog)
     if (
         scale is None
         and isinstance(program, ProgramArtifact)
-        and catalog.resolve(program.language) == catalog.resolve(language)
+        and resolve_origin(program.language, catalog=catalog)
+        == catalog.resolve(language)
     ):
         return program.scale
     return scale

@@ -29,7 +29,7 @@ Options, each explained in full by its command's `--help`:
 | `-s`, `--settings JSON` | generate, run | dialect overrides as JSON |
 | `--set KEY=VALUE` | generate, run | one dialect override, repeatable, applied after `--settings` |
 | `--execution-timeout SECONDS` | run | stop the run after this long; unbounded by default |
-| `--total-timeout SECONDS` | run | bound the whole invocation, worker startup included |
+| `--total-timeout SECONDS` | run | bound input acquisition, worker startup, preparation, and execution |
 | `--preparation-timeout SECONDS` | run | bound loading the program, before it runs |
 | `--isolated` | run | run in a subprocess, 30 seconds by default |
 | `--max-output N` | run | cap output in characters; implies `--isolated` |
@@ -494,6 +494,8 @@ except esolangs.ExecutionCapError as exc:
 On the CLI: `esolangs run --isolated --execution-timeout 3 --max-output 4096 brainfuck program.txt`.
 File acquisition, decoding, and stdin share one execution-timeout budget.
 Subprocess execution uses a fresh budget after worker preparation.
+A total deadline covers both phases and worker startup. The CLI delivers
+output to stdout afterward, at the reader's pace.
 
 ### Count steps
 

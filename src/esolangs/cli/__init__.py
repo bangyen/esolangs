@@ -148,7 +148,7 @@ def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> 
     return True
 
 
-def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
+def _catalog_names(options: dict[str, str], flags: set[str]) -> list[str]:
     """Return candidates by declared capabilities, without generating a table."""
     if "--generator" in flags and "--interpreter-only" in flags:
         _fail("--generator and --interpreter-only cannot be combined")

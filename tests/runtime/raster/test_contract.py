@@ -58,6 +58,39 @@ def test_a_raster_language_has_no_template_to_instantiate() -> None:
         )
 
 
+def test_raster_freezes_integer_subclasses_before_validation_and_hashing() -> None:
+    class Channel(int):
+        __hash__ = None
+
+        def __le__(self, _other):
+            return True
+
+        def __ge__(self, _other):
+            return True
+
+        def __int__(self):
+            return 0
+
+    pixel = (Channel(1), 2, 3)
+    raster = Raster(((pixel, pixel),))
+    expected = Raster((((1, 2, 3),) * 2,))
+    assert raster == expected
+    assert hash(raster) == hash(expected)
+    assert all(
+        type(channel) is int for row in raster.rows for p in row for channel in p
+    )
+    assert Raster.from_png(raster.to_png()) == expected
+    with pytest.raises(esolangs.ProgramError, match="RGB triples"):
+        Raster((((Channel(999), 2, 3),),))
+
+
+def test_raster_png_refuses_released_input_buffers() -> None:
+    buffer = memoryview(b"")
+    buffer.release()
+    with pytest.raises(esolangs.ArgumentError, match="PNG data"):
+        Raster.from_png(buffer)
+
+
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 def test_every_raster_language_generates_shared_source(language: str) -> None:
     program = esolangs.generate(language, "01")
@@ -260,6 +293,24 @@ def test_plain_png_has_no_source_metadata() -> None:
     assert not hasattr(restored, "language")
     assert not hasattr(restored, "settings")
     assert not hasattr(restored, "scale")
+
+
+def test_raster_scale_metadata_stays_a_json_integer(tmp_path: Path) -> None:
+    api = esolangs.Language(RASTER_LANGUAGES[0])
+    pixels = Raster((((1, 2, 3),),))
+    original = esolangs.ProgramArtifact(pixels, api.name, scale=10**5000)
+    path = tmp_path / "source.png"
+    api.to_file(original, path)
+    assert api.from_file(path) == original
+    assert api.from_json(api.to_json(original)) == original
+
+    oversized = replace(original, scale=10**17000)
+    for save in (lambda: api.to_file(oversized, path), lambda: api.to_json(oversized)):
+        with pytest.raises(
+            esolangs.ProgramError, match="oversized esolangs PNG metadata"
+        ):
+            save()
+    assert api.from_file(path) == original
 
 
 def test_scaling_composes_retained_factors(native_png) -> None:

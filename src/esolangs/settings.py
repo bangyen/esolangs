@@ -67,18 +67,18 @@ def effective_settings(
     catalog: "Catalog | None" = None,
 ) -> DialectSettings | None:
     """Merge explicit choices over retained same-language source provenance."""
-    from esolangs.registry._catalog import get_catalog
+    from esolangs.artifacts import ProgramArtifact, TemplateArtifact
+    from esolangs.registry._catalog import get_catalog, resolve_origin
 
     catalog = get_catalog(catalog)
-    from esolangs.artifacts import ProgramArtifact, TemplateArtifact
 
     if settings is not None and not isinstance(settings, DialectSettings):
         raise ArgumentError(
             f"settings must be a DialectSettings object, got {type(settings).__name__}"
         )
     dialect_options(language, settings, catalog=catalog)
-    if not isinstance(program, (ProgramArtifact, TemplateArtifact)) or catalog.resolve(
-        program.language
+    if not isinstance(program, (ProgramArtifact, TemplateArtifact)) or resolve_origin(
+        program.language, catalog=catalog
     ) != catalog.resolve(language):
         return settings
     retained = program.settings

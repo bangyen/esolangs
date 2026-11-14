@@ -189,10 +189,11 @@ original_popen = _isolated.subprocess.Popen
 worker_guard = sys.argv[3]
 launched = []
 def guarded_popen(command, **kwargs):
-    assert command[:2] == [sys.executable, '-c'], command
-    assert command[2] == 'from esolangs.runtime._isolated import _worker; _worker()'
+    assert command[:-1] == [sys.executable, '-P', '-c'], command
+    assert command[-1].endswith(
+        'from esolangs.runtime._isolated import _worker; _worker()')
     launched.append(command)
-    return original_popen(command[:2] + [worker_guard + command[2]], **kwargs)
+    return original_popen(command[:-1] + [worker_guard + command[-1]], **kwargs)
 with patch.object(_isolated.subprocess, 'Popen', guarded_popen):
     assert esolangs.run(sys.argv[1], '+.') == esolangs.run(
         sys.argv[1], '+.', isolated=True)

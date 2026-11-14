@@ -44,7 +44,6 @@ from esolangs._cycles import (
     run_until_halt_or_value_growth as run_until_halt_or_value_growth,
 )
 from esolangs.exceptions import ArgumentError, steps_exhausted
-from esolangs.exceptions import EsolangError as _EsolangError
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as _IpShape
@@ -113,6 +112,8 @@ class _DelegatingVM:
         stdin: InputSource = "",
         *,
         seed: int | None = None,
+        reproducible: bool = True,
+        observe_initialization: bool = False,
         catalog: Catalog | None = None,
         io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     ) -> None:
@@ -122,28 +123,17 @@ class _DelegatingVM:
         self.language = language
         self._io = io_factory(stdin)
         self._capabilities = catalog.languages[language].runtime.capabilities
-        try:
-            self._machine = program._factory(seed=seed)(self._io)  # noqa: SLF001
-        except Exception as error:
-            # Initializers can print/read before construction fails.
-            # Refusals with no observed IO keep their unavailable observation.
-            if isinstance(error, _EsolangError) and error.observation is not None:
-                raise
-            observed = _DelegatingVM._result(self, None)
-            if (
-                observed.output
-                or observed.input_position
-                or observed.input_reads
-                or observed.input_past_end
-            ):
-                with interpreter_errors(
-                    f"the {language} interpreter recursed deeper than CPython's stack "
-                    "limit allows while loading this program",
-                    self._io,
-                    language=language,
-                ):
-                    raise
-            raise
+        with interpreter_errors(
+            f"the {language} interpreter recursed deeper than CPython's stack "
+            "limit allows while loading this program",
+            self._io,
+            language=language,
+            omit_empty_io=not observe_initialization,
+        ):
+            factory = program._factory(  # noqa: SLF001
+                seed=seed, reproducible=reproducible
+            )
+            self._machine = factory(self._io)
 
     @property
     def output(self) -> str:
@@ -347,6 +337,8 @@ def _make_vm(
     catalog: Catalog | None = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     prepared: PreparedProgram | None = None,
+    reproducible: bool = True,
+    observe_initialization: bool = False,
 ) -> VM:
     """Prepare a scoped VM with an invocation-owned input/output factory."""
     from esolangs.registry._catalog import get_catalog
@@ -379,6 +371,8 @@ def _make_vm(
             prepared,
             stdin,
             seed=seed,
+            reproducible=reproducible,
+            observe_initialization=observe_initialization,
             catalog=catalog,
             io_factory=io_factory,
         )

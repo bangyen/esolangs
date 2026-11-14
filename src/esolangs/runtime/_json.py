@@ -4,6 +4,8 @@ import json
 import re
 from typing import Any
 
+from esolangs.runtime.memory import format_integer
+
 
 def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     """Build an object, refusing repeated fields at every nesting level."""
@@ -23,6 +25,42 @@ def canonical_integer(value: Any) -> int:
     if hex(decoded) != value:
         raise ValueError("noncanonical worker integer")
     return decoded
+
+
+def record_dumps(
+    value: Any, *, ensure_ascii: bool = True, sort_keys: bool = False
+) -> str:
+    """Keep persisted record integers as JSON numbers, including large ones."""
+    try:
+        return json.dumps(
+            value, ensure_ascii=ensure_ascii, sort_keys=sort_keys, separators=(",", ":")
+        )
+    except ValueError:
+        # Persisted records have finite, shallow containers. Only their integer
+        # tokens need to bypass the decimal conversion cap.
+        def encode(item: Any) -> str:
+            if type(item) is int:
+                try:
+                    return str(item)
+                except ValueError:
+                    return format_integer(item)
+            if isinstance(item, dict):
+                keys = sorted(item) if sort_keys else item
+                return (
+                    "{"
+                    + ",".join(
+                        json.dumps(key, ensure_ascii=ensure_ascii)
+                        + ":"
+                        + encode(item[key])
+                        for key in keys
+                    )
+                    + "}"
+                )
+            if isinstance(item, (list, tuple)):
+                return "[" + ",".join(map(encode, item)) + "]"
+            return json.dumps(item, ensure_ascii=ensure_ascii)
+
+        return encode(value)
 
 
 _SURROGATES = re.compile(r"[\ud800-\udfff]")

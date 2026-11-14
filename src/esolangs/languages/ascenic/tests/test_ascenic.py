@@ -4,12 +4,31 @@ import random
 
 import pytest
 
+import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.languages.ascenic.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from tests.interpreters.runner import native_runner
 from tests.support.factories import reject_rng_options, rng_factory
+
+
+def test_step_bound_does_not_seed_an_unseeded_run(monkeypatch) -> None:
+    import secrets
+
+    api = esolangs.Language("Ascenic")
+    source = "A" * 15 + "s\nAsss"
+    limits = esolangs.ExecutionLimits(max_steps=2)
+    prepared = api.prepare(source)
+    monkeypatch.setattr(secrets, "randbelow", lambda _upper: 0)
+    assert api.run(source).output == "0"
+    assert api.run(source, limits=limits).output == "0"
+    assert prepared.run(limits=limits).output == "0"
+    assert prepared.run(limits=limits, seed=0).output == "1"
+    debugger = prepared.make_debugger()
+    assert debugger.run(limits=limits) == "halted"
+    assert debugger.output == "1"
+
 
 #: The wiki's Hello world as (SUB, ADD, PRINT, POP) arguments per character;
 #: its 52 lines are 35KB of ``s``.

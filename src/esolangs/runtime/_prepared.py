@@ -112,14 +112,16 @@ class PreparedProgram:
         code = list(self._code) if isinstance(self._code, tuple) else self._code
         return code, self._options(seed=seed, reproducible=reproducible)
 
-    def _factory(self, *, seed: int | None = None) -> MachineFactory:
+    def _factory(
+        self, *, seed: int | None = None, reproducible: bool = True
+    ) -> MachineFactory:
         runtime = self.catalog.languages[self.language].runtime
         if isinstance(self._plan, RuntimePlan):
             return self._plan
         if isinstance(self._plan, RandomRuntimePlan):
-            options = self._options(seed=seed, reproducible=True)
+            options = self._options(seed=seed, reproducible=reproducible)
             return self._plan.bind(options.get("rng"))
-        code, options = self._call(seed=seed, reproducible=True)
+        code, options = self._call(seed=seed, reproducible=reproducible)
         prepare = cast(
             MachinePreparation, getattr(self._module, runtime.machine_preparation)
         )

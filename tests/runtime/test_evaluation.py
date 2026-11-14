@@ -91,6 +91,17 @@ def test_timeout_is_not_a_boolean_answer() -> None:
     assert any("row 0" in note for note in exc.value.__notes__)
 
 
+def test_answer_rejection_keeps_successful_execution_evidence() -> None:
+    api = esolangs.Language(REFERENCE)
+    program = api.from_source(",+.")
+    result = api.run(program, stdin=api.encode_inputs([1]))
+    assert result.output == "2"
+    with pytest.raises(esolangs.ProgramError, match="no answer") as caught:
+        api.evaluate(program, [1])
+    assert caught.value.observation == result
+    assert caught.value.partial_output == result.output
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize("streaming", [False, True])
 def test_isolated_row_output_limit_resets_per_row(streaming) -> None:

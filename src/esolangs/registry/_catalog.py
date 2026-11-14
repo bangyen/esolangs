@@ -173,3 +173,11 @@ def get_catalog(catalog: Catalog | None = None) -> Catalog:
     if not isinstance(catalog, Catalog):
         raise ArgumentError("catalog must be a Catalog")
     return catalog
+
+
+def resolve_origin(origin: str, *, catalog: Catalog) -> str | None:
+    """Resolve a stored owner if the caller's catalog knows it."""
+    try:
+        return catalog.resolve(origin)
+    except UnknownLanguageError:
+        return None

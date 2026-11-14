@@ -168,6 +168,33 @@ def test_piped_text_is_utf8_across_cli_commands(tmp_path: Path) -> None:
 
 
 @pytest.mark.medium
+def test_isolated_cli_uses_utf8_with_a_different_configured_encoding(
+    tmp_path: Path,
+) -> None:
+    echo = tmp_path / "echo.bf"
+    echo.write_text(",.")
+    payload = "é".encode()
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "esolangs",
+            "run",
+            "--execution-timeout",
+            "5",
+            REFERENCE,
+            str(echo),
+        ],
+        input=payload,
+        capture_output=True,
+        timeout=15,
+        check=True,
+        env={**os.environ, "PYTHONIOENCODING": "utf-16"},
+    )
+    assert result.stdout == payload
+
+
+@pytest.mark.medium
 def test_catalog_json_uses_utf8_on_a_pipe() -> None:
     for command in (
         ["list", "--json"],

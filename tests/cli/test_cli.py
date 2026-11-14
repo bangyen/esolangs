@@ -380,6 +380,21 @@ def test_option_passes_cannot_steal_another_options_value(capsys) -> None:
         assert "--settings is not valid JSON" in error
 
 
+@pytest.mark.parametrize(
+    ("command", "flag", "arguments"),
+    [
+        ("generate", "--plain", [REFERENCE, "01"]),
+        ("describe", "--spec", [REFERENCE]),
+        ("describe", "--json", [REFERENCE]),
+        ("list", "--details", []),
+        ("list", "--generator", []),
+    ],
+)
+def test_bare_flags_refuse_repeats(capsys, command, flag, arguments) -> None:
+    _, error = _failure([command, flag, flag, *arguments], capsys)
+    assert f"{flag} given more than once" in error
+
+
 @pytest.mark.parametrize("option", [["--plain"], ["--settings", "{}"]])
 def test_bare_width_does_not_consume_a_table_past_another_option(
     capsys, option: list[str]

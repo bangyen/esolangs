@@ -28,8 +28,9 @@ from esolangs.exceptions import (
 from esolangs.raster import Raster, png
 from esolangs.registry import template_char
 from esolangs.registry._catalog import Catalog
-from esolangs.runtime._json import unique_object
+from esolangs.runtime._json import record_dumps, unique_object
 from esolangs.runtime._source import ProgramSource, explicit_path
+from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import (
     DialectSettings,
@@ -122,9 +123,11 @@ def to_file(
             encoded = (body.to_gzip(),)
         else:
             chunks = (
-                body.plain_chunks() if isinstance(body, CompressedText) else (body,)
+                body._plain_chunks_with_suffix(ending)  # noqa: SLF001
+                if isinstance(body, CompressedText)
+                else (body, ending)
             )
-            encoded = (chunk.encode("utf-8") for chunk in chain(chunks, (ending,)))
+            encoded = (chunk.encode("utf-8") for chunk in chunks)
         # The staged write's errors named the temporary file instead.
         if target.is_dir():
             raise IsADirectoryError("it is a directory")
@@ -214,12 +217,10 @@ def to_json(
     try:
         # The check ``from_json`` makes: a lone surrogate dumped as a
         # ``\ud800`` escape, which it then refused.
-        json.dumps(document, ensure_ascii=False).encode("utf-8")
+        record_dumps(document, ensure_ascii=False).encode("utf-8")
     except UnicodeEncodeError as error:
         raise ProgramError(f"program is not valid UTF-8 text: {error}") from error
-    return json.dumps(
-        document, ensure_ascii=True, sort_keys=True, separators=(",", ":")
-    )
+    return record_dumps(document, sort_keys=True)
 
 
 def _settings(
@@ -408,7 +409,9 @@ def from_json(
     if not isinstance(document, str):
         raise ArgumentError("document must be a JSON string")
     try:
-        value = json.loads(document, object_pairs_hook=unique_object)
+        value = json.loads(
+            document, object_pairs_hook=unique_object, parse_int=parse_integer
+        )
         if not isinstance(value, dict):
             raise ValueError("document must be an object")
         fields = {"format", "version", "language", "settings", "kind", "source"}
@@ -433,7 +436,7 @@ def from_json(
             raise ValueError("source must be a string")
         # Strict UTF-8 everywhere, as a program file is read: a JSON
         # "\ud800" escape in the source or a setter loaded a lone surrogate.
-        json.dumps(value, ensure_ascii=False).encode("utf-8")
+        record_dumps(value, ensure_ascii=False).encode("utf-8")
         settings = _settings(value["settings"], name, catalog=catalog)
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
@@ -444,7 +447,7 @@ def from_json(
                 raise ValueError("input_arity must be a positive integer")
             artifact = replace(artifact, input_arity=arity)
         return read_artifact(name, artifact, catalog=catalog, preserve_compression=True)
-    except (ValueError, TypeError) as error:
+    except (ValueError, TypeError, RecursionError) as error:
         # A path or native source here is the usual mistake (dogfood, 2.0.0).
         hint = (
             "; from_json reads to_json JSON text, not a path; "

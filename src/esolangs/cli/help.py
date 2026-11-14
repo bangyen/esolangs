@@ -245,7 +245,8 @@ options:
                      stop the run after this long, in a worker subprocess.
                      Unbounded by default.
   --total-timeout SECONDS
-                     bound the whole invocation, worker startup included.
+                     bound acquisition, worker startup, preparation, and execution.
+                     The CLI delivers output to stdout afterward.
   --preparation-timeout SECONDS
                      bound loading the program, before it runs.
   --scale N          override detected raster scale; 1 preserves native pixels.

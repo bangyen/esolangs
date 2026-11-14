@@ -145,8 +145,8 @@ def check_bit_count(bits: list[int], inputs: int, subject: str) -> None:
     if len(bits) != inputs:
         given = f"{len(bits)} bit{' was' if len(bits) == 1 else 's were'} given"
         raise ArgumentError(
-            f"this {subject} has {inputs} input{'' if inputs == 1 else 's'}, "
-            f"but {given}"
+            f"this {subject} has {_argument_repr(inputs)} "
+            f"input{'' if inputs == 1 else 's'}, but {given}"
         )
 
 

@@ -143,3 +143,19 @@ def test_portable_compression_respects_raw_export_budget() -> None:
         assert restored == expected
         with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
             str(restored.source)
+
+
+def test_large_record_integers_stay_json_numbers() -> None:
+    huge = 10**5000
+    budgets = esolangs.TextLimits(
+        plain_chars=huge, generation_chars=huge, gzip_bytes=huge
+    )
+    compressed = esolangs.CompressedText.from_chunks(("+.",), limits=budgets)
+    original = ProgramArtifact(compressed, REFERENCE, input_arity=huge)
+    document = esolangs.to_json(REFERENCE, original)
+    wire = json.loads(document, parse_int=str)
+    assert wire["input_arity"] == "1" + "0" * 5000
+    assert wire["limits"] == dict.fromkeys(
+        ("plain_chars", "generation_chars", "gzip_bytes"), wire["input_arity"]
+    )
+    assert esolangs.from_json(REFERENCE, document) == original
