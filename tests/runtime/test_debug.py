@@ -53,6 +53,28 @@ def test_manual_steps_rearm_a_breakpoint_after_leaving_it() -> None:
     assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "breakpoint"
 
 
+def test_debugger_breakpoint_and_watch_counts_use_integer_storage() -> None:
+    class Index(int):
+        def __hash__(self):
+            raise AssertionError("subclass hashing must not affect a watch")
+
+        def __eq__(self, _other):
+            raise AssertionError("subclass equality must not affect a breakpoint")
+
+    dbg = debugger_api.make_debugger(REFERENCE, "+.")
+    watch = dbg.watch_cell(Index(0))
+    dbg.break_at(Index(0))
+    dbg.break_on_cell(Index(0), Index(1))
+    limits = esolangs.ExecutionLimits(max_steps=2)
+    assert dbg.run(limits=limits) == "breakpoint"
+    assert dbg.observation.steps == 0
+    assert dbg.run(limits=limits) == "breakpoint"
+    assert dbg.observation.steps == 1
+    assert watch == [1]
+    assert dbg.run(limits=limits) == "halted"
+    assert dbg.output == "\x01"
+
+
 #: Two of the nine dump-on-post-halt languages, one reader and one template:
 #: the dump step is the debugger's shared code, and test_vm_protocol already
 #: checks every language's flag against its behaviour.

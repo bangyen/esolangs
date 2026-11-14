@@ -67,8 +67,8 @@ def check_memory_size(value: object) -> int:
     )
 
 
-def check_seed(seed: object) -> None:
-    """Refuse a seed that is not an integer; ``None`` is allowed.
+def check_seed(seed: object) -> int | None:
+    """Return the integer seed or ``None``.
 
     A float or a string otherwise reached ``random.Random``, which accepts
     both, so ``seed=1.5`` ran instead of failing like ``max_steps=1.5``.
@@ -76,13 +76,14 @@ def check_seed(seed: object) -> None:
     from esolangs.exceptions import ArgumentError
     from esolangs.runtime.source_hints import with_hint
 
-    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
-        raise with_hint(
-            ArgumentError(
-                f"seed must be an integer or None, got {_argument_repr(seed)}"
-            ),
-            "use an integer seed, for example seed=0",
-        )
+    if seed is None:
+        return None
+    if isinstance(seed, int) and not isinstance(seed, bool):
+        return int.__int__(seed)
+    raise with_hint(
+        ArgumentError(f"seed must be an integer or None, got {_argument_repr(seed)}"),
+        "use an integer seed, for example seed=0",
+    )
 
 
 def _timeout_noun(name: str) -> str:
@@ -92,13 +93,13 @@ def _timeout_noun(name: str) -> str:
 
 def check_timeout(
     timeout: object, name: str = "timeout", *, ceiling: float = _TIMEOUT_CEILING
-) -> None:
-    """Refuse invalid timeouts; ``None`` is allowed."""
+) -> float | None:
+    """Return a validated timeout using the underlying numeric value."""
     from esolangs.exceptions import ArgumentError
     from esolangs.runtime.source_hints import with_hint
 
     if timeout is None:
-        return
+        return None
     if isinstance(timeout, bool) or not isinstance(timeout, int | float):
         raise with_hint(
             ArgumentError(
@@ -106,6 +107,9 @@ def check_timeout(
             ),
             (f"set {_timeout_noun(name)} in seconds, for example {name}=5.0"),
         )
+    timeout = (
+        int.__int__(timeout) if isinstance(timeout, int) else float.__float__(timeout)
+    )
     if timeout != timeout or timeout in _INFINITE:
         raise with_hint(
             ArgumentError(f"{name} must be finite, got {_argument_repr(timeout)}"),
@@ -130,15 +134,16 @@ def check_timeout(
             ),
             (f"set {_timeout_noun(name)} in seconds, for example {name}=5.0"),
         )
+    return timeout
 
 
-def check_width(width: object) -> None:
-    """Refuse a width that is not a positive integer."""
+def check_width(width: object) -> int | None:
+    """Return a positive integer width or the default layout request."""
     from esolangs.exceptions import ArgumentError
     from esolangs.runtime.source_hints import with_hint
 
     if width is None:
-        return
+        return None
     if isinstance(width, bool) or not isinstance(width, int):
         raise with_hint(
             ArgumentError(
@@ -146,11 +151,13 @@ def check_width(width: object) -> None:
             ),
             ("use a positive integer column width, for example width=80"),
         )
+    width = int.__int__(width)
     if width <= 0:
         raise with_hint(
             ArgumentError(f"width must be positive, got {_argument_repr(width)}"),
             ("use a positive integer column width, for example width=80"),
         )
+    return width
 
 
 def check_bit_count(bits: list[int], inputs: int, subject: str) -> None:

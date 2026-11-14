@@ -96,7 +96,7 @@ def drive_periodic(
     step: Callable[[], None] | None = None,
 ) -> BoundaryCycle:
     """Detect a boundary cycle with Brent's rule; the stride is one whole pass."""
-    check_whole(commands_per_pass, "commands_per_pass")
+    commands_per_pass = check_whole(commands_per_pass, "commands_per_pass")
     if policy is not Completion.PERIODIC:
         raise ValueError("periodic driving requires periodic completion")
     take_step = machine.step if step is None else step

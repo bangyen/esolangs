@@ -203,9 +203,8 @@ options:
                the language's newlines are semantic or it rejects them.  A
                template wraps with each input's run kept whole, so every
                row it fills to has the same breaks; a layout language lays
-               it out instead.  A bare --width takes the
-               default, so the next word is read as the language, not as a
-               width.
+               it out instead. If --width has no integer operand, it uses
+               the default. Use --width=N to make the value explicit.
 
 examples:
   esolangs generate brainfuck 0110
@@ -237,19 +236,20 @@ exit codes: 0 ran, 1 the program broke or its output cannot be encoded,
 ran out (time, steps, output, memory), 130 interrupted.
 
 options:
-  --isolated         run in a subprocess, by default with a 30-second deadline.
+  --isolated         run in a subprocess. The default total is 30 seconds
+                     plus any --execution-timeout.
   --max-output N     cap output in Unicode characters (including zero); implies
                      --isolated.
   --max-memory BYTES cap worker address space (Linux only); implies --isolated.
   --max-steps N      bound commands cooperatively; combines with isolation and seed.
   --execution-timeout SECONDS
-                     stop the run after this long, in a worker subprocess.
-                     Unbounded by default.
+                     bound acquisition and execution separately. Worker
+                     startup uses the total and preparation deadlines.
   --total-timeout SECONDS
                      bound acquisition, worker startup, preparation, and execution.
                      The CLI delivers output to stdout afterward.
   --preparation-timeout SECONDS
-                     bound loading the program, before it runs.
+                     bound acquisition, worker startup, and preparation.
   --scale N          override detected raster scale; 1 preserves native pixels.
   -s, --settings JSON    dialect overrides; describe lists supported settings.
   --set KEY=VALUE    one dialect override without JSON, repeatable and applied

@@ -61,6 +61,23 @@ class TestInProcess:
         assert exc.value.code == 2
         assert "pixel limit" in capsys.readouterr().err
 
+    def test_raster_scale_hint_names_the_working_cli_flag(
+        self, tmp_path, capsys
+    ) -> None:
+        language = first(source_kind="raster", state_model="stack")
+        program = esolangs.generate(language, "01")
+        assert isinstance(program.source, esolangs.Raster)
+        path = tmp_path / "program.png"
+        esolangs.to_file(language, program, path)
+        invalid_scale = len(program.source.rows) + 1
+        _, error = _failure(
+            ["run", "--scale", str(invalid_scale), language, str(path)], capsys
+        )
+        assert "use --scale 1" in error
+        stdin = esolangs.encode_inputs(language, [1])
+        output = call_main(["run", "--scale", "1", language, str(path)], capsys, stdin)
+        assert esolangs.read_answer(language, output) == "1"
+
     @pytest.mark.parametrize("closed_streams", ["stdout", "both"])
     def test_a_closed_stdout_object_exits_120(self, closed_streams: str) -> None:
         """A closed stream object exited 70 (or raised, stderr closed too)."""
@@ -123,6 +140,7 @@ class TestInProcess:
         captured = capsys.readouterr()
         assert captured.out == "\x01" * 3
         assert "output limit exceeded" in captured.err
+        assert "raise --max-output" in captured.err
 
     def test_spec_json_is_the_spec(self, capsys: pytest.CaptureFixture[str]) -> None:
         """``--spec --json`` printed every fact, ignoring ``--spec``."""

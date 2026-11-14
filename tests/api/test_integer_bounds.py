@@ -80,3 +80,44 @@ def test_execution_caps_use_the_integer_backing_value(isolated):
     for name in ("max_steps", "max_output", "max_memory"):
         with pytest.raises(esolangs.ArgumentError, match=name):
             esolangs.ExecutionLimits(**{name: Limit(-1)})
+
+
+@pytest.mark.parametrize(
+    "name", ["preparation_timeout", "execution_timeout", "total_timeout"]
+)
+def test_timeout_subclasses_cannot_change_the_validated_duration(name):
+    class Duration(float):
+        def __le__(self, _other):
+            return False
+
+        def __gt__(self, _other):
+            return False
+
+        def __float__(self):
+            raise AssertionError("timeout backing value must be used")
+
+    for value in (0.0, -1.0, 1e10):
+        with pytest.raises(esolangs.ArgumentError, match=name):
+            esolangs.ExecutionLimits(**{name: Duration(value)})
+    limits = esolangs.ExecutionLimits(**{name: Duration(3.0)})
+    assert type(getattr(limits, name)) is float
+    assert getattr(limits, name) == 3.0
+
+
+def test_duration_backing_values_reach_worker_and_debugger(monkeypatch):
+    from esolangs.runtime import _controller
+
+    class Duration(int):
+        def __radd__(self, _other):
+            raise AssertionError("timeout backing value must be used")
+
+    limits = esolangs.ExecutionLimits(execution_timeout=Duration(3))
+    api = esolangs.Language(REFERENCE)
+    prepared = api.prepare("+.")
+    assert prepared.run(limits=limits).output == "\x01"
+
+    clock = iter((0.0, 3.0))
+    monkeypatch.setattr(_controller, "monotonic", clock.__next__)
+    debugger = prepared.make_debugger()
+    assert debugger.run(limits=limits) == "execution_timeout"
+    assert debugger.observation == esolangs.ExecutionResult("", 0, 0, 0, steps=0)

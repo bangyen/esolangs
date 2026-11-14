@@ -179,11 +179,12 @@ def _emit(operations: list[_Operation], plan: _Plan) -> Raster:
 
 def folded(table: str, columns: int) -> Raster:
     """Return a folded Raster program, with a thirteen-column routing floor."""
-    check_width(columns)
+    width = check_width(columns)
+    assert width is not None
     operations = _bounded_operations(table)
     return _emit(
         operations,
-        _tight_plan(operations, max(_MIN_COLUMNS, columns), columns + 1),
+        _tight_plan(operations, max(_MIN_COLUMNS, width), width + 1),
     )
 
 

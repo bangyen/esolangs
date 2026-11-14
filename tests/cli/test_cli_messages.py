@@ -11,6 +11,7 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
+from esolangs.cli.hints import _timeout_text
 from esolangs.cli.io import _StdoutEncodingError, _write_output
 from tests.support.cli_support import _failure, _refused, call_both, call_main
 from tests.support.pick import one, one_where
@@ -19,6 +20,14 @@ from tests.support.reference import REFERENCE
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
 _SPELLED = one_where(lambda d: d.input_encoding != ("0", "1"), reads_input=True)
 _STREAM = one(input_shape="char_stream")
+
+
+@pytest.mark.parametrize("bound", [None, "custom_budget", []])
+def test_unknown_budget_diagnostics_keep_their_hint(bound, monkeypatch) -> None:
+    error = esolangs.ExecutionBudgetError("budget exhausted", hint="check the bound")
+    if bound is not None:
+        monkeypatch.setattr(error, "bound", bound, raising=False)
+    assert _timeout_text(error) == "budget exhausted\nhint: check the bound"
 
 
 class TestTheHintsStayQuietWhenTheyDoNotApply:

@@ -105,6 +105,13 @@ def test_existing_gzip_counts_only_through_first_chunk_over_budget() -> None:
         Monitored(data, limits=limits)
 
 
+def test_oversized_repeat_reports_the_work_cap_without_rendering() -> None:
+    cap = 10**5000
+    limits = esolangs.TextLimits(plain_chars=0, generation_chars=cap, gzip_bytes=100)
+    with pytest.raises(esolangs.GeneratorCapError, match="character work cap"):
+        CompressedText.repeated("x", cap + 1, limits=limits)
+
+
 def test_gzip_budget_and_hash_use_builtin_bytes() -> None:
     class Buffer(bytes):
         __hash__ = None
@@ -179,6 +186,19 @@ def test_wrapping_preserves_characters_and_bounds_lines() -> None:
         program.wrapped(0)
     with pytest.raises(ValueError, match="character"):
         CompressedText.repeated("xx", 1)
+
+
+def test_wrapping_counts_the_newline_at_an_exact_width() -> None:
+    class Width(int):
+        def __int__(self) -> int:
+            return 1
+
+    limits = esolangs.TextLimits(plain_chars=3, generation_chars=3, gzip_bytes=100)
+    program = CompressedText.from_chunks(("ab",), limits=limits)
+    assert program.wrapped(Width(2)) == program.wrapped(2)
+    assert str(program.wrapped(2)) == "ab\n"
+    with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
+        program.wrapped(1)
 
 
 def test_compressed_source_retains_language_origin() -> None:

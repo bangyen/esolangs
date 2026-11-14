@@ -34,11 +34,31 @@ class TestTheStdinReaderInProcess:
         ("args", "error"),
         [
             (["NotALang"], "unknown language"),
-            (["--seed", "1", REFERENCE], "draws no random values"),
+            (["--seed", "1", REFERENCE], "hint: omit --seed"),
+            (["--seed", "2.5", REFERENCE], "--seed must be a whole number"),
             (["--scale", "1", REFERENCE], "scale is only supported for raster"),
+            (["--scale", "0", REFERENCE], "--scale must be a positive integer"),
+            (
+                ["--execution-timeout", "0", REFERENCE],
+                "--execution-timeout must be positive",
+            ),
+            (["--total-timeout", "nan", REFERENCE], "--total-timeout must be finite"),
+            (
+                ["--preparation-timeout", "1e10", REFERENCE],
+                "--preparation-timeout must be at most",
+            ),
+            (["--max-steps", "-1", REFERENCE], "--max-steps must not be negative"),
+            (
+                ["--max-output", "1.5", REFERENCE],
+                "--max-output must be a non-negative integer",
+            ),
+            (
+                ["--max-memory", "0", REFERENCE],
+                "--max-memory must be a positive integer",
+            ),
         ],
     )
-    def test_an_unanswerable_run_is_refused_before_stdin_is_read(
+    def test_an_unanswerable_run_is_refused_before_source_or_stdin_is_read(
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
@@ -58,6 +78,10 @@ class TestTheStdinReaderInProcess:
 
         argv = ["esolangs", "run", *args, str(path)]
         with (
+            patch(
+                "esolangs.cli.run._read_program",
+                side_effect=AssertionError("read file"),
+            ),
             patch.object(sys, "stdin", _NeverEnding()),
             patch.object(sys, "argv", argv),
             pytest.raises(SystemExit) as exc,

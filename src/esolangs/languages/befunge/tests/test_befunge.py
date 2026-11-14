@@ -198,6 +198,38 @@ def test_a_seeded_run_is_reproducible(monkeypatch) -> None:
     reject_rng_options(prepare_machine, "invalid", "split text", [";"])
 
 
+@pytest.mark.medium
+def test_integer_subclass_seed_keeps_native_worker_and_vm_results(monkeypatch) -> None:
+    from esolangs.runtime import _execution
+
+    class Seed(int):
+        def __int__(self):
+            raise AssertionError("seed backing value must be used")
+
+    seeds = []
+
+    def receive(seed):
+        assert type(seed) is int
+        seeds.append(seed)
+        return Seeded(seed)
+
+    monkeypatch.setattr(_execution, "Seeded", receive)
+    # All four branches after ? print and halt, with a different digit each.
+    rows = ["?1.@" + " " * 73 + "@.3", "2", ".", "@"]
+    rows += [""] * 18 + ["@", ".", "4"]
+    source = "\n".join(rows)
+    api = esolangs.Language("Befunge")
+    expected = api.run(source, seed=-7)
+    assert expected.output != api.run(source, seed=-1).output
+    seeds.clear()
+    assert api.run(source, seed=Seed(-7)) == expected
+    assert api.prepare(source).run(seed=Seed(-7), isolated=True) == expected
+    vm = api.make_vm(source, seed=Seed(-7))
+    assert run_until_halt(vm, limit=8)
+    assert vm.output == expected.output
+    assert seeds.count(-7) == 2
+
+
 def test_empty_program_is_rejected() -> None:
     with pytest.raises(ValueError, match="cannot be empty"):
         run([], IO())

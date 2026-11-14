@@ -41,6 +41,7 @@ from esolangs.runtime._validate import (
     _ISOLATED_TIMEOUT,
     _TIMEOUT_CEILING,
     check_memory_size,
+    check_seed,
     check_timeout,
     check_whole,
 )
@@ -276,10 +277,10 @@ def _decode_outcome(text: str, *, expired: bool) -> _WorkerResponse:
 _OUTPUT_LIMIT = "isolated output limit exceeded"
 
 
-def check_memory(max_memory: int | None, *, isolated: bool) -> None:
+def check_memory(max_memory: int | None, *, isolated: bool) -> int | None:
     """Validate a Linux worker address-space budget in bytes before acquisition."""
     if max_memory is None:
-        return
+        return None
     max_memory = check_memory_size(max_memory)
     if not isolated:
         raise exceptions.ArgumentError("max_memory requires isolated=True")
@@ -290,21 +291,23 @@ def check_memory(max_memory: int | None, *, isolated: bool) -> None:
         raise exceptions.ArgumentError("max_memory is supported only on Linux")
     if max_memory >= 1 << 63:
         raise exceptions.ArgumentError("max_memory exceeds the platform limit")
+    return max_memory
 
 
 def check_limits(
     max_output: int | None, max_memory: int | None, *, isolated: bool
-) -> None:
+) -> tuple[int | None, int | None]:
     """Validate the output and memory caps, which only a worker can enforce."""
-    check_memory(max_memory, isolated=isolated)
+    max_memory = check_memory(max_memory, isolated=isolated)
     if max_output is None:
-        return
-    check_whole(max_output, "max_output")
+        return None, max_memory
+    max_output = check_whole(max_output, "max_output")
     if not isolated:
         raise with_hint(
             exceptions.ArgumentError("max_output requires isolated=True"),
             "set isolated=True to bound output, or omit max_output",
         )
+    return max_output, max_memory
 
 
 def _limit_memory(max_memory: int) -> None:
@@ -406,18 +409,22 @@ def _invoke_worker(
 
     catalog = get_catalog(catalog)
 
-    check_limits(max_output, max_memory, isolated=True)
+    max_output, max_memory = check_limits(max_output, max_memory, isolated=True)
+    seed = check_seed(seed)
     if max_steps is not None:
-        check_whole(max_steps, "max_steps")
+        max_steps = check_whole(max_steps, "max_steps")
     # The default total adds worker startup time to a validated execution budget.
-    check_timeout(timeout, ceiling=_TIMEOUT_CEILING + _ISOLATED_TIMEOUT)
-    check_timeout(execution_timeout)
-    check_timeout(preparation_timeout)
-    if timeout is None:
+    checked_timeout = check_timeout(
+        timeout, ceiling=_TIMEOUT_CEILING + _ISOLATED_TIMEOUT
+    )
+    execution_timeout = check_timeout(execution_timeout)
+    preparation_timeout = check_timeout(preparation_timeout)
+    if checked_timeout is None:
         raise with_hint(
             exceptions.ArgumentError("isolated execution requires a finite timeout"),
             ("set a positive finite timeout, for example timeout=5.0"),
         )
+    timeout = checked_timeout
     name = catalog.resolve(language)
     _check_worker_runtime(name, catalog)
     scale = effective_scale(name, program, scale, catalog=catalog)

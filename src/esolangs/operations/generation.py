@@ -166,7 +166,7 @@ def generate(
         return _generate_balanced(
             resolved, truth_table, options, settings, catalog=catalog
         )
-    check_width(width)
+    width = check_width(width)
     inputs = _validate_truth_table(truth_table)
     backend.check_arity(resolved, inputs)
     fn = backend.generate
@@ -486,7 +486,7 @@ def instantiate(
     name = catalog.resolve(language)
     settings = effective_settings(name, template, settings, catalog=catalog)
     dialect_options(name, settings, catalog=catalog)
-    check_width(width)
+    width = check_width(width)
     body = (
         template.source
         if isinstance(template, (ProgramArtifact, TemplateArtifact))

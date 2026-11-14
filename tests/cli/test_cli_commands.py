@@ -1,6 +1,9 @@
 """The subcommands that run a program and judge what it printed."""
 
 import json
+import os
+import subprocess
+import sys
 from dataclasses import asdict
 from unittest.mock import patch
 
@@ -176,3 +179,32 @@ class TestTheWidthFlagDoesNotEatTheTable:
         """The hint must not fire where the width is a width."""
         out = call_main(["generate", "--width", "20", REFERENCE, "0110"], capsys)
         assert out.strip()
+
+    @pytest.mark.medium
+    def test_overlong_width_names_the_flag_in_both_forms(self) -> None:
+        digits = "9" * (sys.int_info.str_digits_check_threshold + 1)
+        env = {
+            **os.environ,
+            "PYTHONINTMAXSTRDIGITS": str(sys.int_info.str_digits_check_threshold),
+        }
+        errors = []
+        for options in (["--width", digits], [f"--width={digits}"]):
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "esolangs",
+                    "generate",
+                    *options,
+                    REFERENCE,
+                    "01",
+                ],
+                env=env,
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+            assert (result.returncode, result.stdout) == (2, b"")
+            assert result.stderr.startswith(b"--width must be an integer")
+            errors.append(result.stderr)
+        assert errors[0] == errors[1]

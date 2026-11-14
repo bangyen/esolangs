@@ -2,9 +2,11 @@
 
 import pytest
 
+from esolangs.exceptions import ExecutionCapError
 from esolangs.languages.brainfuck.interpreter import _Machine as Brainfuck
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
+    complete_vm,
     make_vm,
     run_until_halt,
     run_until_halt_or_all_branches_cycle,
@@ -89,6 +91,23 @@ def test_invalid_limit_is_refused_before_machine_acquisition(detector, limit) ->
 
     with pytest.raises(ArgumentError, match="limit"):
         detector(object(), limit=limit)
+
+
+def test_direct_vm_and_proof_caps_use_normalized_integer_values() -> None:
+    class Zero(int):
+        def __le__(self, _other):
+            return False
+
+    limit = Zero(0)
+    vm = make_vm(REFERENCE, "+.")
+    assert not run_until_halt(vm, limit)
+    with pytest.raises(TimeoutError, match="after 0 steps"):
+        run_until_halt_or_cycle(vm, limit)
+    with pytest.raises(ExecutionCapError, match="max_steps"):
+        complete_vm(vm, max_steps=limit)
+    assert vm.ip == 0
+    assert vm.output == ""
+    assert complete_vm(vm, max_steps=2) == "\x01"
 
 
 class _Climber:

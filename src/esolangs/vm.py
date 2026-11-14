@@ -81,7 +81,7 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     completion is safe: the post-halt step is idempotent by the VM contract.
     """
     if max_steps is not None:
-        check_whole(max_steps, "max_steps")
+        max_steps = check_whole(max_steps, "max_steps")
     if not vm.self_halts and not vm.halted:
         raise ArgumentError("completion requires a machine that self-halts")
     if not run_until_halt(vm, max_steps):
@@ -359,7 +359,7 @@ def _make_vm(
     from esolangs.runtime._input import check_input
 
     name = catalog.resolve(language)
-    check_seed(seed)
+    seed = check_seed(seed)
     check_seed_for(name, seed, catalog=catalog)
     check_input(stdin)
     if prepared is None:

@@ -92,15 +92,6 @@ def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> ob
     )
 
 
-def _checked_unwrap(
-    machine: object, protocol: type[Any], role: str, hint: str, limit: int | None
-) -> Any:
-    """Check ``limit`` when given, then unwrap to the detector's protocol."""
-    if limit is not None:
-        check_whole(limit, "limit")
-    return _unwrap(machine, protocol, role, hint=hint)
-
-
 def _refuse_random(machine: object, proof: str) -> None:
     """Raise when ``machine`` draws: ``proof`` assumes the next lap repeats.
 
@@ -184,14 +175,15 @@ def _drive_halt_or_cycle(
     record_commands: Callable[[int], None] | None = None,
 ) -> bool | CycleDecision:
     """Share transitions; Boolean readers need no retained branching graph."""
+    if limit is not None:
+        limit = check_whole(limit, "limit")
     machine = cast(
         _StepMachine,
-        _checked_unwrap(
+        _unwrap(
             machine,
             _StepMachine,
             "steppable with a snapshot",
-            "pass make_vm(...) or a machine with step, halted and snapshot",
-            limit,
+            hint="pass make_vm(...) or a machine with step, halted and snapshot",
         ),
     )
     # A Debugger wraps a VM (``vm``); a VM wraps interpreter state (``_machine``).
@@ -280,15 +272,15 @@ def run_until_halt_or_all_branches_cycle(
     :class:`TimeoutError`.  Every state is kept, since branches merge.
     A language with no random instruction raises :class:`TypeError`.
     """
+    limit = check_whole(limit, "limit")
     machine = cast(
         _BranchingStepMachine,
-        _checked_unwrap(
+        _unwrap(
             machine,
             _BranchingStepMachine,
             "branch-enumerable",
-            "use a machine with branching_snapshot, "
+            hint="use a machine with branching_snapshot, "
             "branching_halted and branching_successors",
-            limit,
         ),
     )
     return _branch_search(machine, limit).halts
@@ -405,16 +397,16 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     suite) -- and exhausting it raises :class:`TimeoutError`.  No call
     stack, or a random machine, raises :class:`TypeError`.
     """
+    limit = check_whole(limit, "limit")
     _refuse_random(machine, "replayed-ancestor")
     machine = cast(
         _FramedMachine,
-        _checked_unwrap(
+        _unwrap(
             machine,
             _FramedMachine,
             "framed",
-            "use a machine with frames and frame_entry_key; "
+            hint="use a machine with frames and frame_entry_key; "
             "otherwise try exact-state cycle detection",
-            limit,
         ),
     )
     ancestors: list[tuple[int, Hashable]] = []
@@ -530,16 +522,16 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     never saw).  ``limit`` is in steps and raises :class:`TimeoutError`;
     no tape, or a random machine, raises :class:`TypeError`.
     """
+    limit = check_whole(limit, "limit")
     _refuse_random(machine, "tape-growth")
     machine = cast(
         _TapeMachine,
-        _checked_unwrap(
+        _unwrap(
             machine,
             _TapeMachine,
             "a tape machine",
-            "use a compatible rightward-growing tape machine; "
+            hint="use a compatible rightward-growing tape machine; "
             "otherwise try exact-state cycle detection",
-            limit,
         ),
     )
     # One record per position holds all three certificates.  ``snapshot``
@@ -683,16 +675,16 @@ def run_until_halt_or_value_growth(
     Bounded values raise :class:`TypeError`: a climbing byte wraps.  So does a
     random machine.
     """
+    limit = check_whole(limit, "limit")
     _refuse_random(machine, "value-growth")
     machine = cast(
         _AffineMachine,
-        _checked_unwrap(
+        _unwrap(
             machine,
             _AffineMachine,
             "an affine machine",
-            "use a machine with unbounded affine values; wrapping "
+            hint="use a machine with unbounded affine values; wrapping "
             "cells need exact-state cycle detection",
-            limit,
         ),
     )
     # One slack per step in a single log, and per key the last three steps
@@ -779,7 +771,7 @@ def run_until_halt(
     (what a breakpoint means).  The machine is left where it stopped.
     """
     if limit is not None:
-        check_whole(limit, "limit")
+        limit = check_whole(limit, "limit")
     steps = 0
     while not machine.halted:
         if stop is not None and stop():

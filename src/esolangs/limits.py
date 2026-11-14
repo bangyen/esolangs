@@ -27,9 +27,10 @@ class ExecutionLimits:
 
     def __post_init__(self) -> None:
         """Refuse invalid budgets before acquiring source or input."""
-        check_timeout(self.preparation_timeout, "preparation_timeout")
-        check_timeout(self.execution_timeout, "execution_timeout")
-        check_timeout(self.total_timeout, "total_timeout")
+        for name in ("preparation_timeout", "execution_timeout", "total_timeout"):
+            value = getattr(self, name)
+            if value is not None:
+                object.__setattr__(self, name, check_timeout(value, name))
         for name in ("max_steps", "max_output"):
             value = getattr(self, name)
             if value is not None:

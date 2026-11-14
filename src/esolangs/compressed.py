@@ -12,6 +12,7 @@ from os import PathLike
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
 from esolangs.runtime._files import explicit_path, write_staged
+from esolangs.runtime._validate import _argument_repr, check_width
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -33,7 +34,8 @@ def _check_plain(limits: TextLimits, count: int) -> None:
     """Reject raw export before allocating or writing it."""
     if count > limits.plain_chars:
         raise GeneratorCapError(
-            f"raw text exceeds the {limits.plain_chars}-character cap; use gzip"
+            f"raw text exceeds the {_argument_repr(limits.plain_chars)}-character cap; "
+            "use gzip"
         )
 
 
@@ -41,7 +43,8 @@ def _check_work(limits: TextLimits, count: int) -> None:
     """Reject expanded generation work before compression."""
     if count > limits.generation_chars:
         raise GeneratorCapError(
-            f"generation exceeds the {limits.generation_chars}-character work cap"
+            f"generation exceeds the {_argument_repr(limits.generation_chars)}"
+            "-character work cap"
         )
 
 
@@ -49,7 +52,7 @@ def _check_gzip(limits: TextLimits, count: int) -> None:
     """Reject a compressed file above its byte budget."""
     if count > limits.gzip_bytes:
         raise GeneratorCapError(
-            f"gzip source exceeds the {limits.gzip_bytes}-byte file cap"
+            f"gzip source exceeds the {_argument_repr(limits.gzip_bytes)}-byte file cap"
         )
 
 
@@ -214,10 +217,9 @@ class CompressedText:
 
     def wrapped(self, width: int | None) -> CompressedText:
         """Insert line breaks at width without collecting expanded source."""
+        width = check_width(width)
         if width is None:
             return self
-        if type(width) is not int or width < 1:
-            raise ArgumentError("width must be a positive integer")
 
         if self.limits is not None:
             _check_work(self.limits, len(self) + len(self) // width)

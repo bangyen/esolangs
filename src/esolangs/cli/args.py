@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from collections.abc import Collection, Iterator
 from contextlib import contextmanager, suppress
@@ -134,13 +135,9 @@ def _pop_set_pairs(rest: list[str]) -> tuple[list[str], list[str]]:
     return args, pairs
 
 
-def _is_int(value: str) -> bool:
-    """Whether ``value`` parses as an integer."""
-    try:
-        int(value)
-    except ValueError:
-        return False
-    return True
+def _integer_spelling(value: str) -> bool:
+    """Recognize a decimal operand even when conversion would exceed its limit."""
+    return re.fullmatch(r"[+-]?\d(?:_?\d)*", value.strip()) is not None
 
 
 def _split_positional(
@@ -248,7 +245,7 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
         if arg == "--width":
             _refuse_repeat(seen, "--width")
             following = rest[i + 1] if i + 1 < len(rest) else None
-            if following is None or not _is_int(following):
+            if following is None or not _integer_spelling(following):
                 # A bare ``--width`` has no value to quote, so the option
                 # itself is what a repeat report names.
                 seen["--width"] = arg

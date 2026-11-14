@@ -45,8 +45,10 @@ def _cli_error_text(exc: BaseException) -> str:
         ("timeout=5.0", "--execution-timeout 5.0"),
         ("scale=1", "--scale 1"),
         ("omit scale", "omit --scale"),
+        ("use scale 1", "use --scale 1"),
         ("width=80", "--width 80"),
         ("seed=0", "--seed 0"),
+        ("omit seed", "omit --seed"),
         ("integer bits to instantiate()", "0/1 digits to --bits"),
     ):
         notes = notes.replace(parameter, flag)
@@ -89,14 +91,20 @@ _BOUND_FLAGS = {
     "total_timeout": "--total-timeout",
     "preparation_timeout": "--preparation-timeout",
     "max_steps": "--max-steps",
+    "max_output": "--max-output",
+    "max_memory": "--max-memory",
 }
 
 
 def _timeout_text(exc: ExecutionBudgetError) -> str:
     """Name the flag to raise; the API's hint says only "the bound"."""
-    text = _cli_error_text(exc)
-    flag = _BOUND_FLAGS.get(exc.bound)
-    return text if flag is None else text.replace("the bound", flag)
+    bound = getattr(exc, "bound", None)
+    if (
+        not isinstance(bound, str)
+        or (flag := _BOUND_FLAGS.get(str.__str__(bound))) is None
+    ):
+        return _cli_error_text(exc)
+    return str(exc) + _notes(exc).replace("the bound", flag).replace(bound, flag)
 
 
 def _shell_hint(message: str, language: str) -> str:

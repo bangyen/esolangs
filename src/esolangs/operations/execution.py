@@ -58,7 +58,7 @@ def _execute_bounded(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    check_whole(max_steps, "max_steps")
+    max_steps = check_whole(max_steps, "max_steps")
     controller = ExecutionController(
         _make_vm(
             language,
@@ -177,13 +177,13 @@ def _execute_invocation(
         scale = effective_scale(language, program, scale, catalog=catalog)
         dialect_options(language, settings, catalog=catalog)
         check_scale_for(language, scale, catalog=catalog)
-    check_seed(seed)
+    seed = check_seed(seed)
     check_seed_for(catalog.resolve(language), seed, catalog=catalog)
-    check_timeout(timeout)
+    timeout = check_timeout(timeout)
     check_flag(isolated, "isolated")
-    check_limits(max_output, max_memory, isolated=isolated)
+    max_output, max_memory = check_limits(max_output, max_memory, isolated=isolated)
     if max_steps is not None:
-        check_whole(max_steps, "max_steps")
+        max_steps = check_whole(max_steps, "max_steps")
     if isolated:
         if io_factory is not ScriptedIO:
             raise ArgumentError("custom I/O factories require in-process execution")

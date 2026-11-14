@@ -47,8 +47,7 @@ def _value_at[T](
 
 def _watch[T](histories: dict[int, list[T]], index: int, name: str) -> list[T]:
     """Register a validated slot and return its live history."""
-    check_whole(index, name)
-    return histories.setdefault(index, [])
+    return histories.setdefault(check_whole(index, name), [])
 
 
 class Debugger(_ExecutionController):
@@ -138,13 +137,17 @@ class Debugger(_ExecutionController):
         ``break_when(lambda vm: vm.ip is None)``.
         A position never reached is accepted (the protocol has no ``len``).
         """
+        if isinstance(ip, tuple):
+            ip = tuple(tuple.__iter__(ip))
         if isinstance(ip, int) and not isinstance(ip, bool):
-            pass  # Any int: AddSubJump and Subleq halt at -8 and -1.
-        elif not (
+            ip = int.__int__(ip)  # AddSubJump and Subleq halt at -8 and -1.
+        elif (
             isinstance(ip, tuple)
             and ip
             and all(isinstance(part, int) and not isinstance(part, bool) for part in ip)
         ):
+            ip = tuple(int.__int__(part) for part in ip)
+        else:
             raise ArgumentError(
                 f"ip must be an integer or a tuple of them, got {_argument_repr(ip)}"
             )
@@ -163,11 +166,12 @@ class Debugger(_ExecutionController):
 
         A non-``int`` ``value`` raises ``ArgumentError``.
         """
-        check_whole(index, "index")
+        index = check_whole(index, "index")
         if isinstance(value, bool) or not isinstance(value, int):
             raise ArgumentError(
                 f"value must be an integer, got {_argument_repr(value)}"
             )
+        value = int.__int__(value)
         self._breakpoints.append(lambda vm: _value_at(vm.memory, index) == value)
 
     def break_on_stack(self, slot: int, value: object) -> None:
@@ -175,7 +179,7 @@ class Debugger(_ExecutionController):
 
         ``value`` is unchecked: a slot holds whatever its language pushes.
         """
-        check_whole(slot, "slot")
+        slot = check_whole(slot, "slot")
         self._breakpoints.append(
             lambda vm: (
                 slot < len(vm.stack)

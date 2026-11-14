@@ -255,6 +255,31 @@ class TestWidthIsCheckedWhereverItIsTaken:
         with pytest.raises(esolangs.ArgumentError, match="width"):
             esolangs.generate(REFERENCE, "0110", width=width)
 
+    def test_width_uses_the_integer_backing_value(self) -> None:
+        class Width(int):
+            def __le__(self, _other):
+                return False
+
+            def __int__(self):
+                raise AssertionError("integer backing value must be used")
+
+            def __radd__(self, _other):
+                raise AssertionError("layout received a width subclass")
+
+        api = esolangs.Language(REFERENCE)
+        templated = esolangs.Language(TEMPLATE_LANGUAGE)
+        template = templated.generate("01")
+        with pytest.raises(esolangs.ArgumentError, match="width must be positive"):
+            api.generate("01", width=Width(0))
+        with pytest.raises(esolangs.ArgumentError, match="width must be positive"):
+            templated.instantiate(template, [1], width=Width(0))
+        program = api.generate("01", width=Width(2))
+        assert program == api.generate("01", width=2)
+        assert api.evaluate(program, [1]).answer == "1"
+        assert templated.instantiate(template, [1], width=Width(2)) == (
+            templated.instantiate(template, [1], width=2)
+        )
+
 
 class TestBitsAreBits:
     """The container as well as the elements."""
