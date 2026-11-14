@@ -214,7 +214,10 @@ def test_raster_scaling_retains_settings(balance, native_png) -> None:
     retained = restored.settings
     for scale in (1, 2):
         changed = esolangs.ProgramArtifact(
-            restored.source.upscaled(scale), raster, retained, restored.scale * scale
+            restored.source.upscaled(scale),
+            raster,
+            settings=retained,
+            scale=restored.scale * scale,
         )
         assert changed.settings is retained
     reassigned = esolangs.ProgramArtifact(restored.source, other)

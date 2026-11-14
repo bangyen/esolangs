@@ -35,7 +35,7 @@ def test_bound_template_language_runs_each_input_row() -> None:
 # waits out real stdin timeouts: drives the CLI as a subprocess.
 @pytest.mark.medium
 class TestStdinCannotHangTheCommandForever:
-    """`run` read stdin to EOF before doing anything, and --timeout missed it."""
+    """`run` read stdin to EOF first, and --execution-timeout missed it."""
 
     def _run_with_open_stdin(self, args: list[str], wait: float) -> tuple[int, str]:
         """Start the CLI with stdin held open and never written."""
@@ -62,7 +62,7 @@ class TestStdinCannotHangTheCommandForever:
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate(REFERENCE, "0110").source)
         code, err = self._run_with_open_stdin(
-            ["run", "--timeout", "2", REFERENCE, str(path)], 20
+            ["run", "--execution-timeout", "2", REFERENCE, str(path)], 20
         )
         assert code == 124
         assert "no input arrived on stdin" in err
@@ -75,7 +75,7 @@ class TestStdinCannotHangTheCommandForever:
         path = tmp_path / "p.txt"
         path.write_text("+.")
         code, err = self._run_with_open_stdin(
-            ["run", "--timeout", "30", "NotALang", str(path)], 20
+            ["run", "--execution-timeout", "30", "NotALang", str(path)], 20
         )
         assert code == 2
         assert "unknown language" in err
@@ -90,7 +90,7 @@ class TestStdinCannotHangTheCommandForever:
             ).source
         )
         code, err = self._run_with_open_stdin(
-            ["run", "--timeout", "2", "RAM0", str(path)], 20
+            ["run", "--execution-timeout", "2", "RAM0", str(path)], 20
         )
         assert code == 124
         assert "RAM0 reads no stdin" in err

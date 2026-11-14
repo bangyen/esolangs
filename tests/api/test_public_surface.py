@@ -28,6 +28,7 @@ class TestPackageSurface:
             "BooleanEvaluation",
             "Catalog",
             "CompressedText",
+            "DialectSchema",
             "DialectSettings",
             "EsolangError",
             "ExecutionBudgetError",
@@ -468,7 +469,7 @@ class TestProgramObjectsRefuseMisuse:
             esolangs.ProgramArtifact(
                 esolangs.Raster((((0, 0, 0),),)),
                 None,
-                esolangs.Language("brainfuck").settings(),
+                settings=esolangs.Language("brainfuck").settings(),
             )
 
     def test_an_uninspectable_predicate_is_refused(self) -> None:

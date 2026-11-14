@@ -130,7 +130,7 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
         shell = run_cli(
             "run",
             "--isolated",
-            "--timeout",
+            "--execution-timeout",
             "5",
             "--seed",
             str(seed),

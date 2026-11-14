@@ -178,7 +178,7 @@ def test_errors() -> None:
             assert str(public.value) == message
             assert public.value.partial_output == ""
             assert public.value.observation == ExecutionResult(
-                "", len(text), 1, 0, None, steps=None if bound is None else 0
+                "", len(text), 1, 0, completion=None, steps=None if bound is None else 0
             )
     text = "0" * 5000 + "65"
     assert _run("??!!", text + "\nQ") == "65"

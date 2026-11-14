@@ -25,7 +25,7 @@ from esolangs._dialect import DialectSchema
 schema = DialectSchema('detached_scope', {'mode': ('a', 'b')}, {'mode': 'a'})
 settings = esolangs.DialectSettings(schema, mode='b')
 values = [
-    esolangs.ProgramArtifact('', 'detached_scope', settings),
+    esolangs.ProgramArtifact('', 'detached_scope', settings=settings),
     esolangs.Raster((((0, 0, 0),),)),
     esolangs.CompressedText.from_chunks(['x']),
     esolangs.TemplateArtifact('$', 'detached_scope',

@@ -287,7 +287,7 @@ def test_isolated_seed_is_forwarded(monkeypatch) -> None:
     def execute(language, program, stdin, timeout, **kwargs):
         seen.append((language, program, stdin, timeout, kwargs))
         return esolangs.ExecutionOutcome(
-            "completed", ExecutionResult("result", 0, 0, 0, HALTED_REPORT)
+            "completed", ExecutionResult("result", 0, 0, 0, completion=HALTED_REPORT)
         )
 
     monkeypatch.setattr(_execution_operations, "_execute_isolated", execute)

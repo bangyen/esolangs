@@ -323,8 +323,8 @@ _REFUSALS = {
     "unknown_language": ("run NoSuchLanguage prog:+", "unknown language"),
     "missing_args": ("run brainfuck", "usage: esolangs run"),
     "an_option_with_no_value_is_refused": (
-        "run brainfuck prog.b --timeout",
-        "--timeout needs a value",
+        "run brainfuck prog.b --execution-timeout",
+        "--execution-timeout needs a value",
     ),
     "removed_debug_is_refused": ("debug brainfuck prog:+", "unknown command"),
     "an_unknown_option_is_named": (

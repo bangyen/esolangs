@@ -156,7 +156,7 @@ class _DelegatingVM:
             self._io.position(),
             self._io.reads,
             self._io.past_end,
-            report,
+            completion=report,
         )
 
     @property
@@ -288,7 +288,7 @@ def _capture_observation(
     if isinstance(vm, _DelegatingVM):
         # Use owned code; unrelated instance attributes remain caller-owned.
         return _DelegatingVM._result(vm, report)  # noqa: SLF001
-    return ExecutionResult(vm.output, None, None, None, report)
+    return ExecutionResult(vm.output, None, None, None, completion=report)
 
 
 def _capture_workspace(vm: VM) -> WorkspaceSnapshot:

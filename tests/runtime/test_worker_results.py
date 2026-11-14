@@ -120,7 +120,7 @@ def test_immutable_cycle_state_survives_json(interpreter_only_samples):
         2,
         1,
         3,
-        CompletionReport(Completion.PERIODIC, BoundaryCycle(state, 1, 3, 7)),
+        completion=CompletionReport(Completion.PERIODIC, BoundaryCycle(state, 1, 3, 7)),
     )
     metadata = json.loads(json.dumps(encode_result(result)))
     assert decode_result(result.output, metadata) == result
@@ -277,7 +277,7 @@ def test_step_bound_retains_an_unfinished_observation(isolated):
 
 def test_failed_worker_cannot_claim_completion():
     metadata = encode_result(
-        ExecutionResult("", 0, 0, 0, CompletionReport(Completion.HALTED))
+        ExecutionResult("", 0, 0, 0, completion=CompletionReport(Completion.HALTED))
     )
     text = json.dumps(
         {
@@ -353,7 +353,9 @@ def test_missing_worker_observations_are_rejected_with_the_prefix(failure):
     assert caught.value.partial_output == "prefix"
     if not failure:
         execution = encode_result(
-            ExecutionResult("prefix", 0, 0, 0, CompletionReport(Completion.HALTED))
+            ExecutionResult(
+                "prefix", 0, 0, 0, completion=CompletionReport(Completion.HALTED)
+            )
         )
         success = {"result": "prefix", "execution": execution}
         streamed = json.dumps({"output": "prefix"}) + "\n"

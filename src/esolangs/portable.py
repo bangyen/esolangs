@@ -292,7 +292,7 @@ def _load_png(
     metadata = png.read_metadata(data)
     if metadata is not None and record.settings != settings:
         raise ValueError("conflicting PNG and document settings")
-    return ProgramArtifact(record.source, name, settings, record.scale)
+    return ProgramArtifact(record.source, name, settings=settings, scale=record.scale)
 
 
 def _load_gzip(
@@ -318,7 +318,7 @@ def _load_gzip(
     return ProgramArtifact(
         CompressedText(base64.b64decode(value["source"], validate=True), limits=limits),
         name,
-        settings,
+        settings=settings,
     )
 
 
@@ -333,7 +333,7 @@ def _load_text(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    return ProgramArtifact(value["source"], name, settings)
+    return ProgramArtifact(value["source"], name, settings=settings)
 
 
 def _load_template(
@@ -371,8 +371,8 @@ def _load_template(
     return TemplateArtifact(
         value["source"],
         name,
-        TemplateBindings(value["char"], tuple(pairs)),
-        settings,
+        TemplateBindings(char=value["char"], setters=tuple(pairs)),
+        settings=settings,
         spans=spans,
     )
 

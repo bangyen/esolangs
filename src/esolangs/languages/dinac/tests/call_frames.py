@@ -310,7 +310,7 @@ def _execution(case, *, isolated):
         cursor,
         reads,
         past_end,
-        None if failure else CompletionReport(Completion.HALTED),
+        completion=None if failure else CompletionReport(Completion.HALTED),
     )
     if failure:
         with pytest.raises(esolangs.HaltError) as caught:

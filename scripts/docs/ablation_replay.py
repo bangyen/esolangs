@@ -310,13 +310,13 @@ def _baseline(
         except UnicodeEncodeError as error:
             raise AuditError("baseline template is not UTF-8") from error
         bindings = esolangs.TemplateBindings(
-            document["char"], tuple(tuple(pair) for pair in pairs)
+            char=document["char"], setters=tuple(tuple(pair) for pair in pairs)
         )
         return esolangs.TemplateArtifact(
             document["source"],
             language,
             bindings,
-            decode_settings(document["settings"], language),
+            settings=decode_settings(document["settings"], language),
         )
     return esolangs.from_json(language, generated.stdout)
 

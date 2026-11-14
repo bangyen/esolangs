@@ -43,7 +43,7 @@ def test_vm_runtime_error_keeps_its_hint() -> None:
 def test_cli_prints_runtime_hints(tmp_path: Path, capsys) -> None:
     source = tmp_path / "bad.mod"
     source.write_text("[JMP F]", encoding="utf-8")
-    args = ["run", "--timeout", "1", "Modulous", str(source)]
+    args = ["run", "--execution-timeout", "1", "Modulous", str(source)]
     with pytest.raises(SystemExit):
         call_both(args, capsys)
     streams = capsys.readouterr()
@@ -143,7 +143,9 @@ class TestOutputSurvivesAFailure:
         path = tmp_path / "m.txt"
         path.write_text(self.PRINTS_THEN_FAILS)
         with pytest.raises(SystemExit) as exit_code:
-            call_main(["run", "--timeout", "5", "Modulous", str(path)], capsys)
+            call_main(
+                ["run", "--execution-timeout", "5", "Modulous", str(path)], capsys
+            )
         captured = capsys.readouterr()
         assert captured.out.startswith("Hi")
         assert "stack is empty" in captured.err
@@ -156,7 +158,9 @@ class TestOutputSurvivesAFailure:
         path = tmp_path / "m.txt"
         path.write_text("[POP][END]")
         with pytest.raises(SystemExit):
-            call_main(["run", "--timeout", "5", "Modulous", str(path)], capsys)
+            call_main(
+                ["run", "--execution-timeout", "5", "Modulous", str(path)], capsys
+            )
         assert capsys.readouterr().out == ""
 
 

@@ -1,4 +1,4 @@
-"""What ``--timeout`` bounds, what it costs, and the code it exits with."""
+"""What ``--execution-timeout`` bounds, what it costs, and the code it exits with."""
 
 import time
 from pathlib import Path
@@ -15,12 +15,15 @@ from tests.support.reference import REFERENCE
 
 _BAD_TIMEOUTS = [
     # A forgotten number blamed the positional it had swallowed.
-    ("--timeout brainfuck", "--timeout must be a number"),
-    ("--timeout -inf brainfuck", "must be finite"),
+    ("--execution-timeout brainfuck", "--execution-timeout must be a number"),
+    ("--execution-timeout -inf brainfuck", "must be finite"),
     # 1e10 overflowed the source read's thread wait as a raw OverflowError.
-    ("--timeout 1e9 brainfuck", "--timeout must be at most"),
-    ("--timeout 1e10 brainfuck", "--timeout must be at most"),
-    *[(f"--timeout {v} brainfuck", "--timeout") for v in ("0", "abc", "inf", "nan")],
+    ("--execution-timeout 1e9 brainfuck", "--execution-timeout must be at most"),
+    ("--execution-timeout 1e10 brainfuck", "--execution-timeout must be at most"),
+    *[
+        (f"--execution-timeout {v} brainfuck", "--execution-timeout")
+        for v in ("0", "abc", "inf", "nan")
+    ],
 ]
 
 
@@ -40,7 +43,7 @@ class TestTimeoutValuesAreCheckedOnce:
         path = tmp_path / "p.txt"
         esolangs.to_file(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
         out = call_main(
-            ["run", "--timeout", "100000", REFERENCE, str(path)],
+            ["run", "--execution-timeout", "100000", REFERENCE, str(path)],
             capsys,
             stdin="10",
         )
@@ -56,7 +59,13 @@ class TestRunCanBeBounded:
     ) -> None:
         with pytest.raises(SystemExit) as exc:
             call_main(
-                ["run", "--timeout", _LOOPS, REFERENCE, _program(tmp_path, "+[]")],
+                [
+                    "run",
+                    "--execution-timeout",
+                    _LOOPS,
+                    REFERENCE,
+                    _program(tmp_path, "+[]"),
+                ],
                 capsys,
             )
         # 124, after timeout(1).  This was 1 -- the same code a program's
@@ -92,7 +101,9 @@ def test_run_states_no_boolean_verdict(
     path = tmp_path / "zero.txt"
     path.write_text(source)
     stdin = esolangs.encode_inputs(language, [1]) if facts.reads_input else ""
-    _, error = call_both(["run", "--timeout", "20", language, str(path)], capsys, stdin)
+    _, error = call_both(
+        ["run", "--execution-timeout", "20", language, str(path)], capsys, stdin
+    )
     assert "answer" not in error.lower()
     assert "termination" not in error.lower()
 
@@ -138,7 +149,7 @@ class TestTheDocumentedExitCodesAreTheRealOnes:
         """Measured through ``main``, which is what a script sees."""
         path = tmp_path / "p.bf"
         path.write_text(source)
-        args = ["run", "--timeout", "5", REFERENCE, str(path)]
+        args = ["run", "--execution-timeout", "5", REFERENCE, str(path)]
         if expected == 0:
             call_both(args, capsys, stdin=stdin)
             return
@@ -162,7 +173,9 @@ class TestTheDocumentedExitCodesAreTheRealOnes:
         (",[.]", ["--max-output", "3"], 124, "AAA", "output limit exceeded"),
         (",[.]", ["--max-output", "0"], 124, "", "output limit exceeded"),
         # Includes worker startup; 0.5s lost output in two full-suite runs.
-        (",.+[]", ["--timeout", "2"], 124, "A", "2.0-second timeout"),
+        (",.+[]", ["--execution-timeout", "2"], 124, "A", "2.0-second timeout"),
+        (",.+[]", ["--total-timeout", "2"], 124, "A", "--total-timeout"),
+        (",.", ["--preparation-timeout", "20"], 0, "A", ""),
         (",.", [], 0, "1", ""),
     ],
 )

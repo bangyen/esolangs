@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
 
@@ -29,5 +29,5 @@ class ExecutionResult:
     input_position: int | None
     input_reads: int | None
     input_past_end: int | None
-    completion: CompletionReport | None = None
-    steps: int | None = None
+    completion: CompletionReport | None = field(default=None, kw_only=True)
+    steps: int | None = field(default=None, kw_only=True)

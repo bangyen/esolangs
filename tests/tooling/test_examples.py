@@ -309,7 +309,7 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         program = BOOLEAN_GENERATED[stem].build(balance=True)
         raster = Raster.from_png(program.source.to_png())
         artifact = esolangs.ProgramArtifact(
-            raster, program.language, program.settings, program.scale
+            raster, program.language, settings=program.settings, scale=program.scale
         )
         monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", artifact)]))
         module.write_set("boolean")

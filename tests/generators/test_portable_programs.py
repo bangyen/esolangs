@@ -24,12 +24,14 @@ def test_restored_isolated_execution(language) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("choices", [None, esolangs.Language("brainfuck").settings()])
 def test_default_settings_distinction(choices) -> None:
-    document = esolangs.to_json(REFERENCE, ProgramArtifact("+.", REFERENCE, choices))
+    document = esolangs.to_json(
+        REFERENCE, ProgramArtifact("+.", REFERENCE, settings=choices)
+    )
     restored = esolangs.from_json(REFERENCE, document)
     assert restored.settings == choices
     assert esolangs.run("Brainfuck", restored).output == "\x01"
     empty = ProgramArtifact(
-        esolangs.CompressedText.from_chunks(("",)), REFERENCE, choices
+        esolangs.CompressedText.from_chunks(("",)), REFERENCE, settings=choices
     )
     document = esolangs.to_json(REFERENCE, empty)
     restored = esolangs.from_json(REFERENCE, document)

@@ -19,7 +19,7 @@ that computes the table, and runs it for you.
 ```bash
 pip install esolangs
 esolangs generate brainfuck 0110 > xor.bf
-for i in 00 01 10 11; do printf $i | esolangs run --timeout 5 brainfuck xor.bf; echo " <- $i"; done
+for i in 00 01 10 11; do printf $i | esolangs run --execution-timeout 5 brainfuck xor.bf; echo " <- $i"; done
 # 0 <- 00
 # 1 <- 01
 # 1 <- 10

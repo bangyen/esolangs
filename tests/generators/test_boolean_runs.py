@@ -43,7 +43,7 @@ def test_length_check_rejects_unequal_fills(language: str, table: str, monkeypat
         return esolangs.ProgramArtifact(
             program.source + (" " if any(bits) else ""),
             program.language,
-            program.settings,
+            settings=program.settings,
         )
 
     monkeypatch.setattr(esolangs, "instantiate", unequal)

@@ -286,7 +286,8 @@ class TestInstantiateCanCheckProvenance:
             original.source,
             TEMPLATED,
             esolangs.TemplateBindings(
-                bindings.char, tuple((one, zero) for zero, one in bindings.setters)
+                char=bindings.char,
+                setters=tuple((one, zero) for zero, one in bindings.setters),
             ),
         )
         with pytest.raises(esolangs.TemplateError, match="is not the template"):

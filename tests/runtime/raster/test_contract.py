@@ -268,8 +268,8 @@ def test_scaling_composes_retained_factors(native_png) -> None:
     enlarged = esolangs.ProgramArtifact(
         decoded.source.upscaled(3),
         decoded.language,
-        decoded.settings,
-        decoded.scale * 3,
+        settings=decoded.settings,
+        scale=decoded.scale * 3,
     )
     assert _check_program(source.language, native_png(enlarged)).scale == 6
 
@@ -284,7 +284,7 @@ def test_png_settings_retain_integer_choices(native_png) -> None:
         in (lang.runtime.dialect_schema.choices if lang.runtime.dialect_schema else {})
     )
     settings = esolangs.Language(owner).settings(**{key: choices[-1]})
-    source = esolangs.ProgramArtifact(Raster((((1, 2, 3),),)), owner, settings)
+    source = esolangs.ProgramArtifact(Raster((((1, 2, 3),),)), owner, settings=settings)
     assert read_png_artifact(owner, native_png(source)).settings == settings
     huge = 1 << 20_000  # Past CPython's decimal rendering cap.
     with pytest.raises(esolangs.ArgumentError, match="integer with 20001 bits"):
@@ -294,7 +294,7 @@ def test_png_settings_retain_integer_choices(native_png) -> None:
     with pytest.raises(
         esolangs.ArgumentError, match="invalid value for dialect setting"
     ):
-        esolangs.ProgramArtifact(Raster((((1, 2, 3),),)), owner, forged)
+        esolangs.ProgramArtifact(Raster((((1, 2, 3),),)), owner, settings=forged)
 
 
 def test_png_language_tag_refuses_cross_language_execution(native_png) -> None:

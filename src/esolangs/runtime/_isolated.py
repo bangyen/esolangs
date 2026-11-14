@@ -999,8 +999,8 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
         program = ProgramArtifact(
             program,
             request["language"],
-            settings,
-            request["scale"] if request["termination"] else None,
+            settings=settings,
+            scale=request["scale"] if request["termination"] else None,
         )
         prepared = None
         if request["report_prepared"]:

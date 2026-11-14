@@ -239,7 +239,13 @@ def prepare_program(
     scale = effective_scale(name, artifact, scale, catalog=catalog)
     check_scale_for(name, scale, catalog=catalog)
     prepared = PreparedProgram(
-        ProgramArtifact(artifact.source, name, settings, scale, artifact.input_arity),
+        ProgramArtifact(
+            artifact.source,
+            name,
+            settings=settings,
+            scale=scale,
+            input_arity=artifact.input_arity,
+        ),
         catalog,
     )
     if module_loader is not interpreter_module:

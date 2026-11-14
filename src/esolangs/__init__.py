@@ -25,6 +25,7 @@ Names resolve case-insensitively; deliberate errors derive from EsolangError.
 import importlib
 from typing import TYPE_CHECKING
 
+from esolangs._dialect import DialectSchema, DialectSettings
 from esolangs.artifacts import (
     Artifact,
     BooleanEvaluation,
@@ -57,7 +58,6 @@ from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource
-from esolangs.settings import DialectSettings
 
 _LAZY = {
     "Catalog": "esolangs.registry._catalog",
@@ -132,6 +132,7 @@ __all__ = [
     "BooleanEvaluation",
     "Catalog",
     "CompressedText",
+    "DialectSchema",
     "DialectSettings",
     "EsolangError",
     "ExecutionBudgetError",

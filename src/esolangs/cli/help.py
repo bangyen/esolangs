@@ -55,9 +55,10 @@ commands:
                                 print a program computing a truth table
                                 (--width wraps it; --bits fills a template)
   Caller-supplied (you supply the program):
-    run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
-        [--max-steps N] [--seed N] [--scale N] [--settings JSON]
-        [--set KEY=VALUE] <language> <file>
+    run [--execution-timeout S] [--total-timeout S] [--preparation-timeout S]
+        [--isolated] [--max-output N] [--max-memory BYTES] [--max-steps N]
+        [--seed N] [--scale N] [--settings JSON] [--set KEY=VALUE]
+        <language> <file>
                                 run a program through its interpreter
   Contract adapters (your data in, checked data out):
     encode-inputs <language> <bits>
@@ -210,7 +211,8 @@ examples:
 {_TEMPLATE_EXAMPLE}
 {_DIALECT_EXAMPLES}
 """,
-    "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
+    "run": """usage: esolangs run [--execution-timeout S] [--total-timeout S]
+                    [--preparation-timeout S] [--isolated] [--max-output N]
                     [--max-memory BYTES] [--max-steps N] [--seed N]
                     [--scale N] [--settings JSON] [--set KEY=VALUE]
                     <language> <program-file>
@@ -239,8 +241,13 @@ options:
                      --isolated.
   --max-memory BYTES cap worker address space (Linux only); implies --isolated.
   --max-steps N      bound commands cooperatively; combines with isolation and seed.
-  --timeout SECONDS  stop the run after this long, in a worker subprocess.
+  --execution-timeout SECONDS
+                     stop the run after this long, in a worker subprocess.
                      Unbounded by default.
+  --total-timeout SECONDS
+                     bound the whole invocation, worker startup included.
+  --preparation-timeout SECONDS
+                     bound loading the program, before it runs.
   --scale N          override detected raster scale; 1 preserves native pixels.
   -s, --settings JSON    dialect overrides; describe lists supported settings.
   --set KEY=VALUE    one dialect override without JSON, repeatable and applied
@@ -251,7 +258,7 @@ options:
                      nothing is refused rather than ignored.
 examples:
   printf '10' | esolangs run brainfuck prog.txt
-  printf '10' | esolangs run --timeout 5 brainfuck prog.txt
+  printf '10' | esolangs run --execution-timeout 5 brainfuck prog.txt
 """,
     "describe": """usage: esolangs describe [--json] [--spec] <language>
 
@@ -293,7 +300,7 @@ cell. `esolangs describe <language>` reports the answer convention.
 
 The languages that answer by terminating have no output to read, so they
 are refused here.  A generated program in one halts for 0 and diverges for
-1: run it with `--timeout S` and observe whether it halts.  A timeout leaves
+1: run it with `--execution-timeout S` and observe whether it halts.  A timeout leaves
 the answer undecided.  They are:
   {_TERMINATION_NAMES}
 

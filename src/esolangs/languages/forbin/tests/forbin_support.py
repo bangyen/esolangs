@@ -77,7 +77,11 @@ def check_constructor_error_observations() -> None:
             ports.append(port)
             report = _execute(source, port)
             return ExecutionResult(
-                port.getvalue(), port.position(), port.reads, port.past_end, report
+                port.getvalue(),
+                port.position(),
+                port.reads,
+                port.past_end,
+                completion=report,
             )
         if route == "vm":
             vm = make_vm("Forbin", artifact, stdin="")
@@ -124,11 +128,11 @@ def check_constructor_error_observations() -> None:
                     steps = 0 if name == "step-output-eof" and counted else None
                     assert caught.value.partial_output == output
                     assert caught.value.observation == ExecutionResult(
-                        output, 0, 0, 1, None, steps
+                        output, 0, 0, 1, completion=None, steps=steps
                     )
             else:
                 assert execute(route, source) == ExecutionResult(
-                    "A", 0, 0, 0, halted, 1 if counted else None
+                    "A", 0, 0, 0, completion=halted, steps=1 if counted else None
                 )
     # Parser refusals still have no machine or observed IO, unlike initializer EOF.
     for source in ("", "main {"):
@@ -149,7 +153,9 @@ def check_constructor_error_observations() -> None:
     assert not vm.halted
     assert _capture_observation(vm) == ExecutionResult("", 0, 0, 0)
     assert complete_vm(vm, max_steps=1) == ""
-    assert _capture_observation(vm, halted) == ExecutionResult("", 0, 0, 0, halted)
+    assert _capture_observation(vm, halted) == ExecutionResult(
+        "", 0, 0, 0, completion=halted
+    )
 
     def refuse(_source, _options):
         raise ProgramError("preparation refusal")

@@ -53,7 +53,9 @@ def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     rest, set_pairs = _pop_set_pairs(rest)
     value_options = {
-        "--timeout",
+        "--execution-timeout",
+        "--total-timeout",
+        "--preparation-timeout",
         "--seed",
         "--scale",
         "--max-output",
@@ -63,11 +65,13 @@ def _run(rest: list[str]) -> None:
     }
     rest, options = _pop_options(rest, value_options)
     # The value is checked here, before the positionals are counted.  It ran
-    # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
+    # after, so `run --execution-timeout brainfuck prog.txt` -- a forgotten number --
     # swallowed the language as the timeout's value and then reported
     # "missing <program-file>", sending the reader to look at the one
     # argument that was not the problem.
     timeout = _timeout_of(options)
+    total = _timeout_of(options, option="--total-timeout")
+    preparation = _timeout_of(options, option="--preparation-timeout")
     max_steps = None
     if "--max-steps" in options:
         max_steps = _integer(
@@ -78,8 +82,10 @@ def _run(rest: list[str]) -> None:
     # A cap selects the worker, as run(max_output=...) does; both flags
     # exited 2 with "requires --isolated".
     isolated = bool({"--isolated", "--max-output", "--max-memory"} & {*flags, *options})
-    if isolated and timeout is None:
+    if isolated and timeout is None and total is None:
         timeout = 30.0
+    # Reading the file and stdin is acquisition, which either deadline bounds.
+    waited = timeout if timeout is not None else total
     max_output = None
     if "--max-output" in options:
         max_output = _integer(
@@ -117,12 +123,12 @@ def _run(rest: list[str]) -> None:
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
-    program = _read_program(path, timeout, language=language)
-    stdin = _read_stdin(timeout, _stdin_hint(declaration))
+    program = _read_program(path, waited, language=language)
+    stdin = _read_stdin(waited, _stdin_hint(declaration))
     try:
         with (
             _unbounded_notice("run")
-            if timeout is None and max_steps is None
+            if waited is None and max_steps is None
             else nullcontext()
         ):
             output = run(
@@ -130,7 +136,9 @@ def _run(rest: list[str]) -> None:
                 program,
                 stdin=stdin,
                 limits=ExecutionLimits(
+                    preparation_timeout=preparation,
                     execution_timeout=timeout,
+                    total_timeout=total,
                     max_steps=max_steps,
                     max_output=max_output,
                     max_memory=max_memory,

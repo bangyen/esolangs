@@ -14,7 +14,7 @@ from esolangs.exceptions import (
 from esolangs.registry import SUGGESTION_CUTOFF, Language
 from esolangs.runtime.source_hints import error_text
 
-#: A run stopped by its ``--timeout``, following timeout(1).  Distinct from
+#: A run stopped by its ``--execution-timeout``, following timeout(1).  Distinct from
 #: a program error's 1, which it shared. A timeout leaves termination
 #: undecided; it does not establish a Boolean answer.
 _TIMEOUT_EXIT = 124
@@ -38,7 +38,7 @@ def _cli_error_text(exc: BaseException) -> str:
     message = str(exc)
     notes = error_text(exc)[len(message) :]
     for parameter, flag in (
-        ("timeout=5.0", "--timeout 5.0"),
+        ("timeout=5.0", "--execution-timeout 5.0"),
         ("scale=1", "--scale 1"),
         ("omit scale", "omit --scale"),
         ("width=80", "--width 80"),
@@ -81,8 +81,9 @@ def _template_hint(exc: TemplateError, language: str) -> str:
 
 #: The flag that raises each bound ``run`` can report.
 _BOUND_FLAGS = {
-    "execution_timeout": "--timeout",
-    "total_timeout": "--timeout",
+    "execution_timeout": "--execution-timeout",
+    "total_timeout": "--total-timeout",
+    "preparation_timeout": "--preparation-timeout",
     "max_steps": "--max-steps",
 }
 

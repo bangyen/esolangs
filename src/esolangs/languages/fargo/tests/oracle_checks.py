@@ -212,7 +212,12 @@ def public(case, rows, *, isolated=False, cap=None):
             assert_exact(
                 caught.observation,
                 esolangs.ExecutionResult(
-                    row.output, row.cursor, row.reads, row.past_end, None, steps=steps
+                    row.output,
+                    row.cursor,
+                    row.reads,
+                    row.past_end,
+                    completion=None,
+                    steps=steps,
                 ),
             )
         return (
@@ -225,7 +230,12 @@ def public(case, rows, *, isolated=False, cap=None):
     assert_exact(
         seen,
         esolangs.ExecutionResult(
-            row.output, row.cursor, row.reads, row.past_end, REPORT, steps=steps
+            row.output,
+            row.cursor,
+            row.reads,
+            row.past_end,
+            completion=REPORT,
+            steps=steps,
         ),
     )
     public_type_control(seen)
@@ -251,8 +261,8 @@ def advance_machines(machines, row, successful, routes):
                         row.cursor,
                         row.reads,
                         row.past_end,
-                        None,
-                        successful if route == 2 else None,
+                        completion=None,
+                        steps=successful if route == 2 else None,
                     ),
                 )
         else:
@@ -413,8 +423,8 @@ def check_case(
                         row.cursor,
                         row.reads,
                         row.past_end,
-                        REPORT if row.halted and row.error is None else None,
-                        successful,
+                        completion=REPORT if row.halted and row.error is None else None,
+                        steps=successful,
                     ),
                 )
         assert all(capture_matches(saved, reference) for saved, reference in held)

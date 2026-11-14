@@ -7,6 +7,16 @@ Releases before 0.10.0 are described on the
 
 ## Unreleased
 
+- **Breaking:** `esolangs run --timeout` is `--execution-timeout`, the
+  `ExecutionLimits` field it sets. `--total-timeout` and
+  `--preparation-timeout` are new.
+- **Breaking:** optional fields are keyword-only in `ProgramArtifact`
+  (`settings`, `scale`, `input_arity`), `TemplateArtifact` (`settings`),
+  `TemplateBindings` (`char`, `setters`), `ExecutionResult` (`completion`,
+  `steps`), `ExecutionOutcome` (`error`) and `BooleanEvaluation`
+  (`termination`).
+- `DialectSchema` is exported, so `DialectSettings(schema, ...)` can be built
+  from the public surface.
 - **Breaking:** `Debugger.run` takes `limits=ExecutionLimits(...)` in place
   of `max_steps` and `timeout`, and returns `"execution_timeout"`, not
   `"timeout"`. It honours `max_steps` and `execution_timeout` and refuses

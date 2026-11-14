@@ -46,8 +46,8 @@ def test_result_counts_unicode_characters_and_preserves_unread_input(route):
         1,
         1,
         0,
-        CompletionReport(Completion.HALTED),
-        2 if _stepped(route) else None,
+        completion=CompletionReport(Completion.HALTED),
+        steps=2 if _stepped(route) else None,
     )
 
 

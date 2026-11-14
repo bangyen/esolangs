@@ -122,8 +122,8 @@ def _generator(name: str, *, image_extra: bool) -> None:
         generated = esolangs.ProgramArtifact(
             esolangs.Raster.from_png(generated.source.to_png()),
             generated.language,
-            generated.settings,
-            generated.scale,
+            settings=generated.settings,
+            scale=generated.scale,
         )
     assert (
         _evaluate(name, generated, timeout=None, inputs=len(table).bit_length() - 1)
@@ -284,7 +284,7 @@ def _smoke_files() -> None:
             )
         assert _evaluate("brainfuck", source, timeout=None, inputs=2) == "0110"
         for program, options, code, output, diagnostic in (
-            (",.+[]", ["--timeout", "2"], 124, "A", "2.0-second timeout"),
+            (",.+[]", ["--execution-timeout", "2"], 124, "A", "2.0-second timeout"),
             (",[.]", ["--max-output", "3"], 124, "AAA", "output limit exceeded"),
         ):
             source.write_text(program, encoding="utf-8")
@@ -338,7 +338,7 @@ def _smoke_rasters(*, image_extra: bool) -> None:
                 )
                 assert "esolangs[image]" in str(refusal)
         artifact = esolangs.ProgramArtifact(
-            decoded, program.language, program.settings, program.scale
+            decoded, program.language, settings=program.settings, scale=program.scale
         )
         for row in range(4):
             bits = [row >> 1, row & 1]

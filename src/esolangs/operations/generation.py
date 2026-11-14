@@ -197,18 +197,18 @@ def generate(
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
         return ProgramArtifact(
-            generated, resolved, settings, scale=1, input_arity=inputs
+            generated, resolved, settings=settings, scale=1, input_arity=inputs
         )
     if isinstance(generated, CompressedText):
         return ProgramArtifact(
-            generated.wrapped(width), resolved, settings, input_arity=inputs
+            generated.wrapped(width), resolved, settings=settings, input_arity=inputs
         )
     slots = str(generated)
     if not lang.parameterized:
         program = (
             slots if laid_out else wrap_program(slots, lang.id, width, catalog=catalog)
         )
-        return ProgramArtifact(program, resolved, settings, input_arity=inputs)
+        return ProgramArtifact(program, resolved, settings=settings, input_arity=inputs)
     raise ProgramError(f"{resolved}'s template generator did not return slots")
 
 
@@ -238,7 +238,11 @@ def _structured_template(
         language_id, layout.source, inputs, catalog=catalog
     )
     return TemplateArtifact(
-        text, name, TemplateBindings(char, pairs), settings, spans=layout.spans
+        text,
+        name,
+        TemplateBindings(char=char, setters=pairs),
+        settings=settings,
+        spans=layout.spans,
     )
 
 
@@ -266,7 +270,7 @@ def _generate_balanced(
         return ProgramArtifact(
             source.wrapped(max(1, isqrt(CELL_ASPECT * len(source)))),
             name,
-            settings,
+            settings=settings,
             input_arity=inputs,
         )
     if isinstance(source, Raster):
@@ -279,7 +283,9 @@ def _generate_balanced(
         )
         if not isinstance(balanced, Raster):
             raise ProgramError(f"{name}'s balancer did not return a Raster")
-        return ProgramArtifact(balanced, name, settings, scale=1, input_arity=inputs)
+        return ProgramArtifact(
+            balanced, name, settings=settings, scale=1, input_arity=inputs
+        )
     if balancer is not None:
         balance_source: GeneratedProgram = source
         if isinstance(default, TemplateArtifact) and default.spans is not None:
@@ -299,7 +305,7 @@ def _generate_balanced(
             raise ProgramError(f"{name}'s template balancer did not return slots")
         if not isinstance(text, str):
             raise ProgramError(f"{name}'s balancer did not return text")
-        return ProgramArtifact(text, name, settings, input_arity=inputs)
+        return ProgramArtifact(text, name, settings=settings, input_arity=inputs)
     if isinstance(default, TemplateArtifact):
         return _balance_template(
             default,
@@ -309,7 +315,7 @@ def _generate_balanced(
     return ProgramArtifact(
         balance_program(source, lang.id, catalog=catalog),
         name,
-        settings,
+        settings=settings,
         input_arity=inputs,
     )
 
@@ -359,8 +365,8 @@ def _is_template_for(
         return False
     bindings = canonical.bindings
     expected = TemplateBindings(
-        bindings.char,
-        template_setters(
+        char=bindings.char,
+        setters=template_setters(
             catalog.languages[name].id,
             template.source,
             bindings.inputs,
@@ -501,5 +507,5 @@ def instantiate(
         or settings is not filled.settings
         or filled.language != name
     ):
-        filled = ProgramArtifact(program, name, settings)
+        filled = ProgramArtifact(program, name, settings=settings)
     return filled

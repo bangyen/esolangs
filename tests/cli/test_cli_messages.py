@@ -209,10 +209,12 @@ def test_reader_template_hint_names_cli_encode(capsys) -> None:
 def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys) -> None:
     path = tmp_path / "program.bf"
     path.write_text("+.")
-    _, err = _failure(["run", "--timeout", "0", REFERENCE, str(path)], capsys)
-    assert err.startswith("--timeout must be positive, got 0.0\n")
-    assert "hint: set a timeout in seconds, for example --timeout 5.0" in err
-    output, err = call_both(["run", "--timeout", "5.0", REFERENCE, str(path)], capsys)
+    _, err = _failure(["run", "--execution-timeout", "0", REFERENCE, str(path)], capsys)
+    assert err.startswith("--execution-timeout must be positive, got 0.0\n")
+    assert "hint: set a timeout in seconds, for example --execution-timeout 5.0" in err
+    output, err = call_both(
+        ["run", "--execution-timeout", "5.0", REFERENCE, str(path)], capsys
+    )
     assert output == "\x01"
     assert err == ""
     # The hint said "the bound" for both; it names the flag that raises it.
@@ -228,7 +230,7 @@ def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes() -> 
     error.add_note("hint: set timeout=5.0 or scale=1")
     error.add_note("unrelated context")
     assert _cli_error_text(error) == (
-        "bad timeout=5.0\nscale=1\nhint: set --timeout 5.0 or --scale 1"
+        "bad timeout=5.0\nscale=1\nhint: set --execution-timeout 5.0 or --scale 1"
     )
     assert error.__notes__ == ["hint: set timeout=5.0 or scale=1", "unrelated context"]
 

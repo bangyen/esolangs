@@ -56,4 +56,6 @@ def test_empty_source_has_one_output_transition() -> None:
     assert vm.snapshot() == (True, 0)
     assert _capture_observation(
         vm, CompletionReport(Completion.HALTED)
-    ) == ExecutionResult("Nope.", 0, 0, 0, CompletionReport(Completion.HALTED))
+    ) == ExecutionResult(
+        "Nope.", 0, 0, 0, completion=CompletionReport(Completion.HALTED)
+    )

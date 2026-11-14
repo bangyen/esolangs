@@ -47,6 +47,9 @@ class Language:
     def settings(self, **choices: Scalar) -> DialectSettings:
         """Return overrides validated within this language's dialect schema.
 
+        Its keywords are the dialect's own names, ``catalog`` included, so it
+        has no module-level twin: that would need a ``catalog`` argument.
+
         Raises:
             ArgumentError: A choice is unknown or outside its declared values.
         """

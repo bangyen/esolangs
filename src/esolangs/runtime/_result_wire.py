@@ -362,8 +362,8 @@ def decode_result(output: Any, metadata: Any) -> ExecutionResult:
         counters[0],
         counters[1],
         counters[2],
-        report,
-        None if steps is None else _counter(steps),
+        completion=report,
+        steps=None if steps is None else _counter(steps),
     )
 
 

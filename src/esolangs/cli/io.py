@@ -32,7 +32,7 @@ _MAX_PROGRAM_BYTES = 1024 * 1024
 
 
 #: How long to wait for a program file that is not delivering, when no
-#: ``--timeout`` was given to bound it instead.
+#: ``--execution-timeout`` was given to bound it instead.
 _READ_DEADLINE = 10.0
 
 
@@ -68,7 +68,7 @@ def _unbounded_notice(command: str) -> _DelayedNotice:
         _UNBOUNDED_NOTICE_AFTER,
         f"still running after {_UNBOUNDED_NOTICE_AFTER:.0f}s with no bound; "
         f"several of these languages loop forever by design -- "
-        f"`esolangs {command} --timeout SECONDS` stops one\n",
+        f"`esolangs {command} --execution-timeout SECONDS` stops one\n",
     )
 
 
@@ -198,8 +198,8 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
     """Return this command's stdin, or exit if it is not text or never comes.
 
     ``sys.stdin.read()`` blocks until EOF, so an open, unwritten pipe hung
-    the command before ``--timeout`` could apply.  The read runs on a
-    daemon thread bounded by ``--timeout``, announced if still waiting; a
+    the command before ``--execution-timeout`` could apply.  The read runs on a
+    daemon thread bounded by ``--execution-timeout``, announced if still waiting; a
     thread rather than :func:`select.select` because tests supply an
     object with no ``fileno``.
     """

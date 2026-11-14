@@ -284,7 +284,7 @@ def test_public_records_canonicalize_and_validate_metadata():
     generated = esolangs.generate(name, "01")
     settings = esolangs.Language(name).settings()
     native = esolangs.Raster(generated.source.rows)
-    retained = ProgramArtifact(native, name, settings, generated.scale)
+    retained = ProgramArtifact(native, name, settings=settings, scale=generated.scale)
     assert retained.settings is settings
     assert retained.scale == generated.scale
     assert esolangs.run(name, retained, stdin="1\n").output == "1"

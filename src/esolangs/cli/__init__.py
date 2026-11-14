@@ -23,7 +23,7 @@ which were otherwise readable only from Python.
 Exit codes: **2** is a usage error (unknown command, option, or language;
 nothing ran), **1** is the program's own failure (read past its input, halted
 on an invalid operation, printed no readable answer), and **124** is a run stopped by
-``--timeout``, after timeout(1), from every command that takes one, or by
+``--execution-timeout``, after timeout(1), from every command that takes one, or by
 ``--max-steps``, ``--max-output`` or ``--max-memory``.  124 is
 distinct from 1 so the three languages whose answer *is* a timeout are not
 confused with a crash.  Only an unexpected error reaches the terminal as a
@@ -542,7 +542,8 @@ def _read_answer(rest: list[str]) -> None:
         _fail(
             f"{declaration.name} answers 0 if it {zero} and 1 if it {one}, so "
             f"there is no output to read; use: esolangs run "
-            f"--timeout <seconds> {declaration.name} <program-file> and observe "
+            f"--execution-timeout <seconds> {declaration.name} <program-file> "
+            "and observe "
             f"whether it halts"
         )
     output = _read_stdin(hint="; pipe a program's output in, or close stdin")

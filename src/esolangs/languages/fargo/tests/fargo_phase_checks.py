@@ -86,8 +86,8 @@ def check_phases():
                             landed.cursor,
                             landed.reads,
                             landed.past_end,
-                            None,
-                            at - 1 if route == 2 else None,
+                            completion=None,
+                            steps=at - 1 if route == 2 else None,
                         ),
                     )
             else:
@@ -118,8 +118,8 @@ def check_phases():
                 landed.cursor,
                 landed.reads,
                 landed.past_end,
-                checker.REPORT,
-                at,
+                completion=checker.REPORT,
+                steps=at,
             ),
         )
         assert (io.getvalue(), io.position(), io.progress(), io.reads, io.past_end) == (
@@ -148,7 +148,7 @@ def check_phases():
                     landed.cursor,
                     landed.reads,
                     landed.past_end,
-                    None,
+                    completion=None,
                     steps=at - 1,
                 ),
             )

@@ -95,7 +95,9 @@ def evaluate_artifact(
         )
     answer = "halts" if proof.decision.halts else "diverges"
     return BooleanEvaluation(
-        str(contract.answer_values.index(answer)), proof.observation, proof.decision
+        str(contract.answer_values.index(answer)),
+        proof.observation,
+        termination=proof.decision,
     )
 
 

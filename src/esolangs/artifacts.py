@@ -39,7 +39,7 @@ class BooleanEvaluation:
 
     answer: str
     observation: ExecutionResult
-    termination: CycleDecision | None = None
+    termination: CycleDecision | None = field(default=None, kw_only=True)
 
 
 def _origin(language: str, settings: DialectSettings | None) -> str:
@@ -63,9 +63,9 @@ class ProgramArtifact[Source: Program]:
 
     source: Source
     language: str
-    settings: DialectSettings | None = None
-    scale: int | None = None
-    input_arity: int | None = None
+    settings: DialectSettings | None = field(default=None, kw_only=True)
+    scale: int | None = field(default=None, kw_only=True)
+    input_arity: int | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         """Validate source storage and explicit provenance."""
@@ -100,8 +100,8 @@ class ProgramArtifact[Source: Program]:
 class TemplateBindings:
     """Ordered, equal-width input bindings, independent of source storage."""
 
-    char: str = TEMPLATE_CHAR
-    setters: Setters = ()
+    char: str = field(default=TEMPLATE_CHAR, kw_only=True)
+    setters: Setters = field(default=(), kw_only=True)
 
     def __post_init__(self) -> None:
         """Freeze bindings and require equal-width alternatives."""
@@ -140,7 +140,7 @@ class TemplateArtifact:
     source: str
     language: str
     bindings: TemplateBindings
-    settings: DialectSettings | None = None
+    settings: DialectSettings | None = field(default=None, kw_only=True)
     spans: tuple[tuple[int, int], ...] | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
@@ -175,13 +175,17 @@ class TemplateArtifact:
         return evaluate_artifact(self, bits, limits=limits)
 
     def fill(self, bits: list[int] | tuple[int, ...]) -> ProgramArtifact[str]:
-        """Bind inputs without rescanning the immutable template's runs."""
+        """Bind inputs without rescanning the immutable template's runs.
+
+        Needs no catalog, unlike :func:`esolangs.instantiate`, which also
+        checks the language and table and re-wraps.
+        """
         bits = check_bits(bits, "bits")
         check_bit_count(bits, self.bindings.inputs, f"{self.language} template")
         return ProgramArtifact(
             self.bindings.fill(self.source, bits, spans=self.spans),
             self.language,
-            self.settings,
+            settings=self.settings,
         )
 
 

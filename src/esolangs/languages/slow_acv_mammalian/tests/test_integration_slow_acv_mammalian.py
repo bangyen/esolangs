@@ -23,7 +23,7 @@ def test_partial_overrides_merge_and_validate() -> None:
     language = esolangs.Language("SLOW ACV MAMMALIAN")
     settings = language.settings(cell_modulus=256)
     source = esolangs.ProgramArtifact(
-        "SEED " * 255 + "DIGEST PRONOUNCE", "SLOW ACV MAMMALIAN", settings
+        "SEED " * 255 + "DIGEST PRONOUNCE", "SLOW ACV MAMMALIAN", settings=settings
     )
     assert run("SLOW ACV MAMMALIAN", source).output == chr(0)
     # A choice the artifact does not retain merges in; one it does is fixed.

@@ -83,7 +83,7 @@ def execute_prepared(
             io_obj.position(),
             io_obj.reads,
             io_obj.past_end,
-            value,
+            completion=value,
         ),
     )
 

@@ -93,6 +93,7 @@ PUBLIC_MEMBERS = {
         "upscaled",
     },
     esolangs.DialectSettings: {"language", "options"},
+    esolangs.DialectSchema: {"language", "choices", "defaults", "validate"},
     debugger_api.Debugger: {
         "break_at",
         "break_on_cell",

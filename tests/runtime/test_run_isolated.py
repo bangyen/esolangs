@@ -478,7 +478,7 @@ def test_process_creation_consumes_the_worker_deadline(
                 {
                     "result": "",
                     "execution": encode_result(
-                        ExecutionResult("", 0, 0, 0, HALTED_REPORT)
+                        ExecutionResult("", 0, 0, 0, completion=HALTED_REPORT)
                     ),
                 }
             ), ""
@@ -490,7 +490,7 @@ def test_process_creation_consumes_the_worker_deadline(
     def bounded(_child, _request, timeout):
         calls.append(timeout)
         return esolangs.ExecutionOutcome(
-            "completed", ExecutionResult("", 0, 0, 0, HALTED_REPORT)
+            "completed", ExecutionResult("", 0, 0, 0, completion=HALTED_REPORT)
         )
 
     monkeypatch.setattr(_isolated, "monotonic", lambda: clock[0])
@@ -534,7 +534,7 @@ def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
                 None,
                 None,
                 None,
-                HALTED_REPORT,
+                completion=HALTED_REPORT,
             ),
         ),
     )

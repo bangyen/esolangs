@@ -28,7 +28,9 @@ Options, each explained in full by its command's `--help`:
 | `--scale N` | generate, run | enlarge raster pixels after layout; on `run`, override the detected scale |
 | `-s`, `--settings JSON` | generate, run | dialect overrides as JSON |
 | `--set KEY=VALUE` | generate, run | one dialect override, repeatable, applied after `--settings` |
-| `--timeout SECONDS` | run | stop the run after this long; unbounded by default |
+| `--execution-timeout SECONDS` | run | stop the run after this long; unbounded by default |
+| `--total-timeout SECONDS` | run | bound the whole invocation, worker startup included |
+| `--preparation-timeout SECONDS` | run | bound loading the program, before it runs |
 | `--isolated` | run | run in a subprocess, 30 seconds by default |
 | `--max-output N` | run | cap output in characters; implies `--isolated` |
 | `--max-memory BYTES` | run | cap the worker's address space (Linux); implies `--isolated` |
@@ -277,6 +279,7 @@ Types:
 - `esolangs.BooleanEvaluation` -- answer bit as `read_answer` spells it, the observed IO, and any proof
 - `esolangs.Catalog` -- own a frozen declaration set; derived indexes share the same scope
 - `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
+- `esolangs.DialectSchema` -- a language's enumerated choices and defaults, frozen at declaration
 - `esolangs.DialectSettings` -- validated overrides bound to one language schema
 - `esolangs.ExecutionLimits` -- preparation, execution and whole-invocation budgets
 - `esolangs.ExecutionOutcome` -- one completed result or failed observation, retaining its original error
@@ -460,7 +463,9 @@ Windows and in worker threads. A timeout kills and reaps the child; errors retai
 
 | Bound | `ExecutionLimits` | CLI | Notes |
 | --- | --- | --- | --- |
-| Time | `execution_timeout` | `--timeout` | `--isolated` defaults to 30 seconds |
+| Time | `execution_timeout` | `--execution-timeout` | `--isolated` defaults to 30 seconds |
+| Whole invocation | `total_timeout` | `--total-timeout` | includes worker startup |
+| Loading | `preparation_timeout` | `--preparation-timeout` | selects isolation when source needs preparing |
 | Commands | `max_steps` | `--max-steps` | combines with time, isolation and seed |
 | Memory | `max_memory` | `--max-memory BYTES` | Linux only, selects isolation; other platforms refuse it |
 | Output | `max_output` | `--max-output` | selects isolation; counts Unicode characters |
@@ -486,7 +491,7 @@ except esolangs.ExecutionCapError as exc:
     assert exc.partial_output == "y" * 12
 ```
 
-On the CLI: `esolangs run --isolated --timeout 3 --max-output 4096 brainfuck program.txt`.
+On the CLI: `esolangs run --isolated --execution-timeout 3 --max-output 4096 brainfuck program.txt`.
 File acquisition, stdin acquisition, and subprocess execution each use that
 bound separately.
 

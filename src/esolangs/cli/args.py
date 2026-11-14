@@ -52,7 +52,9 @@ _VALUE_OPTIONS = {
     "--scale",
     "--settings",
     "--set",
-    "--timeout",
+    "--execution-timeout",
+    "--total-timeout",
+    "--preparation-timeout",
     "--max-output",
     "--max-memory",
     "--max-steps",
@@ -310,14 +312,16 @@ def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str,
     return args, found
 
 
-def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float | None:
-    """Return the ``--timeout`` seconds, or None, refusing a bad value.
+def _timeout_of(
+    options: dict[str, str], *, option: str = "--execution-timeout"
+) -> float | None:
+    """Return a deadline flag's seconds, or None, refusing a bad value.
 
     The *value* checks are the private stdin check's neighbour
     :func:`esolangs.runtime._validate.check_timeout`, not a second copy: this had
     its own rules for zero, negatives and non-finite values, and the
     library then grew a ceiling that this did not know about.
-    A ``--timeout 1e10`` therefore got past here and overflowed a C
+    A ``--execution-timeout 1e10`` therefore got past here and overflowed a C
     wait later, as a raw ``OverflowError``.
     """
     if option not in options:
@@ -329,12 +333,12 @@ def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float 
     try:
         check_timeout(seconds)
     except EsolangError as exc:
-        # Re-worded from ``timeout`` to ``--timeout``: the library names the
+        # Re-worded from ``timeout`` to the flag: the library names the
         # parameter, and this names the flag the reader typed.
         _fail(
             _cli_error_text(exc)
             .replace("timeout must", f"{option} must", 1)
-            .replace("--timeout 5.0", f"{option} 5.0")
+            .replace("--execution-timeout 5.0", f"{option} 5.0")
         )
     return seconds
 

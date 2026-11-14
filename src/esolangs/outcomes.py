@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import wraps
 from typing import Literal
 
@@ -52,7 +52,7 @@ class ExecutionOutcome:
 
     status: OutcomeStatus
     observation: ExecutionResult
-    error: EsolangError | None = None
+    error: EsolangError | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         """Require completion evidence or a matching unfinished failure."""
@@ -89,7 +89,7 @@ def _failed_outcome(error: EsolangError) -> ExecutionOutcome:
     observation = error.observation
     if observation is None:
         observation = ExecutionResult(error.partial_output, None, None, None)
-    return ExecutionOutcome(_failure_status(error), observation, error)
+    return ExecutionOutcome(_failure_status(error), observation, error=error)
 
 
 def _capture_outcome[**P](

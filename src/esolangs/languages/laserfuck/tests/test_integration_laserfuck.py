@@ -231,7 +231,15 @@ class TestASeedMakesARunRepeat:
         """And repeats, which is the whole point of the flag."""
         path = tmp_path / "lf.txt"
         path.write_text(self.PROGRAM)
-        args = ["run", "--timeout", "5", "--seed", "0", "LaserFuck", str(path)]
+        args = [
+            "run",
+            "--execution-timeout",
+            "5",
+            "--seed",
+            "0",
+            "LaserFuck",
+            str(path),
+        ]
         assert call_both(args, capsys)[0] == call_both(args, capsys)[0] == "3"
 
     def test_the_cli_refuses_a_seed_that_is_not_a_number(
@@ -242,7 +250,15 @@ class TestASeedMakesARunRepeat:
         path.write_text(self.PROGRAM)
         with pytest.raises(SystemExit):
             call_main(
-                ["run", "--timeout", "5", "--seed", "abc", "LaserFuck", str(path)],
+                [
+                    "run",
+                    "--execution-timeout",
+                    "5",
+                    "--seed",
+                    "abc",
+                    "LaserFuck",
+                    str(path),
+                ],
                 capsys,
             )
         assert "--seed must be a whole number" in capsys.readouterr().err

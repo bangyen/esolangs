@@ -120,18 +120,18 @@ class TestReadingTheProgramFileIsBounded:
 
     def test_a_character_device_is_refused_by_size(self) -> None:
         """`/dev/zero` reached 3.9 GB of resident memory and never returned."""
-        result = run_cli("run", "--timeout", "2", REFERENCE, "/dev/zero")
+        result = run_cli("run", "--execution-timeout", "2", REFERENCE, "/dev/zero")
         assert result.returncode == 2
         assert "larger than" in result.stderr
 
     @pytest.mark.slow
     def test_a_fifo_with_no_writer_is_bounded(self, tmp_path: Path) -> None:
-        """`--timeout` bounds the *run*, and this happens before one."""
+        """`--execution-timeout` bounds the *run*, and this happens before one."""
         import os
 
         fifo = tmp_path / "fifo"
         os.mkfifo(fifo)
-        result = run_cli("run", "--timeout", "2", REFERENCE, str(fifo))
+        result = run_cli("run", "--execution-timeout", "2", REFERENCE, str(fifo))
         assert result.returncode == 124
         assert "not delivering data" in result.stderr
 
@@ -278,7 +278,7 @@ class TestAClosedPipeIsNotAnError:
                 "esolangs",
                 "run",
                 "--isolated",
-                "--timeout",
+                "--execution-timeout",
                 "60",
                 REFERENCE,
                 str(path),
@@ -358,7 +358,7 @@ class TestProgramFilesLoad:
         assert call_main(["run", name, str(path)], capsys, stdin=stdin)
 
 
-@pytest.mark.parametrize("filename", ["--timeout", "--help"])
+@pytest.mark.parametrize("filename", ["--execution-timeout", "--help"])
 def test_run_flag_filename_after_separator(
     filename: str,
     tmp_path: Path,
