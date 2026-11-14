@@ -15,7 +15,7 @@ from time import monotonic
 from typing import BinaryIO, cast
 
 from esolangs.artifacts import ProgramArtifact
-from esolangs.cli.args import _fail
+from esolangs.cli.args import _diagnostic, _fail
 from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
 from esolangs.exceptions import EsolangError
 from esolangs.operations.source import _check_program
@@ -53,7 +53,7 @@ class _DelayedNotice:
 
     def __init__(self, after: float, message: str) -> None:
         """Arm the notice to write ``message`` after ``after`` seconds."""
-        self._timer = threading.Timer(after, sys.stderr.write, args=(message,))
+        self._timer = threading.Timer(after, _diagnostic, args=(message,))
         self._timer.daemon = True
 
     def __enter__(self) -> None:
@@ -119,7 +119,7 @@ def _read_program(
 
 def _note(message: str) -> None:
     """Write one advisory line to stderr, without Python's warning framing."""
-    sys.stderr.write(f"{message}\n")
+    _diagnostic(f"{message}\n")
 
 
 def _slurp_thread[SlurpT](

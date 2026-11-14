@@ -11,13 +11,13 @@ from esolangs.exceptions import (
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
+from esolangs.runtime._files import explicit_path
 from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import (
     ProgramSource,
     _FileSource,
     _read_container,
-    explicit_path,
     source_for,
 )
 from esolangs.runtime._validate import check_flag, check_scale
@@ -119,18 +119,20 @@ def read_artifact(
             scale=program.scale,
             input_arity=program.input_arity,
         )
-    value, file = _read_container(program)
+    value, path = _read_container(program)
     if isinstance(value, bytes) and value.startswith(b"\x89PNG\r\n\x1a\n"):
         return read_png_artifact(name, value, catalog=catalog)
     # Re-wrap file bytes so a decoding error names the file, not its bytes.
     named = (
-        _FileSource(str(program), value) if file and isinstance(value, bytes) else value
+        _FileSource(path, value)
+        if path is not None and isinstance(value, bytes)
+        else value
     )
     source = source_for(
         name,
         named,
         catalog=catalog,
-        native=file and normalize,
+        native=path is not None and normalize,
         preserve_compression=preserve_compression,
     )
     return ProgramArtifact(source, name)

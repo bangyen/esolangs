@@ -2,6 +2,7 @@
 
 import threading
 from dataclasses import replace
+from functools import partial
 from io import StringIO
 from pathlib import Path
 
@@ -101,6 +102,84 @@ def test_answer_rejection_keeps_successful_execution_evidence() -> None:
         api.evaluate(program, [1])
     assert caught.value.observation == result
     assert caught.value.partial_output == result.output
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"answer_mode": "termination"}, "invalid termination answer encoding"),
+        ({"answer_mode": "unknown"}, "invalid answer mode"),
+        ({"answer_values": ("1", "1")}, "invalid answer encoding"),
+        ({"answer_values": ("1",)}, "invalid answer encoding"),
+        ({"answer_pattern": "("}, "invalid answer pattern"),
+    ],
+)
+def test_invalid_answer_contracts_stop_before_execution(
+    monkeypatch, changes, message
+) -> None:
+    from esolangs.runtime import _execution, _isolated
+
+    api = esolangs.Language(REFERENCE)
+    declaration = api.catalog.languages[api.name]
+    contract = replace(declaration.contract, **changes)
+    scoped = esolangs.Catalog([replace(declaration, contract=contract)]).bind(api.name)
+    artifact = scoped.from_source(",.")
+    prepared = scoped.prepare(artifact)
+    assert scoped.encode_inputs([0]) == "0"
+    assert prepared.run(stdin="0").output == "0"
+
+    def unexpected_execution(*_args, **_kwargs):
+        pytest.fail("invalid answer contract started execution")
+
+    monkeypatch.setattr(_execution, "invoke", unexpected_execution)
+    monkeypatch.setattr(_isolated, "_invoke_worker", unexpected_execution)
+    for evaluate in (
+        partial(scoped.evaluate, artifact, [0]),
+        partial(prepared.evaluate, [0]),
+    ):
+        for limits in (esolangs.ExecutionLimits(max_steps=4), None):
+            with pytest.raises(esolangs.ProgramError, match=message) as caught:
+                evaluate(limits=limits)
+            assert caught.value.observation is None
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"input_shape": "unknown"}, "invalid input shape"),
+        ({"alphabet": ("0",)}, "invalid input encoding"),
+        ({"alphabet": (1, "1")}, "invalid input encoding"),
+    ],
+)
+def test_input_contract_validation_does_not_affect_answer_decoding(
+    changes, message
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    declaration = api.catalog.languages[api.name]
+    contract = replace(declaration.contract, **changes)
+    scoped = esolangs.Catalog([replace(declaration, contract=contract)]).bind(api.name)
+    assert scoped.read_answer("1") == "1"
+    with pytest.raises(esolangs.ProgramError, match=message):
+        scoped.encode_inputs([1])
+    with pytest.raises(esolangs.ProgramError, match=message):
+        scoped.evaluate(scoped.from_source(",."), [1])
+
+
+def test_reversed_termination_contract_uses_its_declared_bit_order() -> None:
+    api = esolangs.Language(REFERENCE)
+    declaration = api.catalog.languages[api.name]
+    contract = replace(
+        declaration.contract,
+        answer_mode="termination",
+        answer_values=("diverges", "halts"),
+        answer_pattern="(",
+    )
+    scoped = esolangs.Catalog([replace(declaration, contract=contract)]).bind(api.name)
+    limits = esolangs.ExecutionLimits(max_steps=5)
+    for program, expected in (("[.]", "1"), ("+[]", "0")):
+        artifact = scoped.from_source(program)
+        assert scoped.evaluate(artifact, [0], limits=limits).answer == expected
+        assert scoped.prepare(artifact).evaluate([0], limits=limits).answer == expected
 
 
 def _termination_language(*, random: bool = False) -> esolangs.Language:

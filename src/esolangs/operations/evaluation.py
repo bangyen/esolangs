@@ -10,7 +10,11 @@ from esolangs.artifacts import (
 )
 from esolangs.exceptions import ArgumentError, ProgramError, TemplateError
 from esolangs.limits import ExecutionLimits
-from esolangs.operations.boolean_io import encode_inputs, read_answer
+from esolangs.operations.boolean_io import (
+    _answer_codec,
+    _read_output_answer,
+    encode_inputs,
+)
 from esolangs.operations.execution import _execute_outcome, _execution_route
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._prepared import PreparedProgram
@@ -35,6 +39,7 @@ def evaluate_artifact(
     name = catalog.resolve(artifact.language)
     declaration = catalog.languages[name]
     contract = declaration.contract
+    values, pattern = _answer_codec(name, contract)
     row = check_bits(bits, "bits")
     program: ProgramArtifact[Program]
     if isinstance(artifact, TemplateArtifact):
@@ -63,7 +68,9 @@ def evaluate_artifact(
             prepared=prepared,
         ).unwrap()
         try:
-            answer = read_answer(name, result.output, catalog=catalog)
+            answer = _read_output_answer(
+                name, result.output, values, pattern, contract.note
+            )
         except ProgramError as error:
             error.observation = result
             error.partial_output = result.output
@@ -103,7 +110,7 @@ def evaluate_artifact(
         )
     answer = "halts" if proof.decision.halts else "diverges"
     return BooleanEvaluation(
-        str(contract.answer_values.index(answer)),
+        str(values.index(answer)),
         proof.observation,
         termination=proof.decision,
     )
@@ -121,8 +128,8 @@ def evaluate(
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
-        ProgramError: ``artifact`` is not an artifact, or belongs to
-            another language.
+        ProgramError: ``artifact`` is not an artifact, belongs to another
+            language, or that language's Boolean contract is invalid.
         ArgumentError: ``bits`` is not one 0 or 1 per input, or an embedded
             input requires the unfilled template.
         TemplateError: ``artifact`` is a template for a stdin language.

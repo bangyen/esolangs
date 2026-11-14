@@ -22,7 +22,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from math import isqrt
 
-from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -32,9 +31,8 @@ from esolangs.generation.lookup import packed_cells
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
-from esolangs.languages.befunge import descriptor
+from esolangs.languages.befunge.descriptor import check_arity as _check_cap
 from esolangs.runtime._program import Program
-from esolangs.runtime.source_hints import with_hint
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
 _ASCII_ZERO = "68*"
@@ -52,19 +50,6 @@ _BOUND_PACKED = 64
 #: counts 1 and 2 and loses at counts 4 and 8, so the wide layout keeps
 #: every larger table ([ablations.sqrt_width_layout]).
 _NATURAL_LAYOUT_MAX_COUNT = 2
-
-
-def _check_cap(n: int) -> None:
-    if n > descriptor.MAX_INPUTS:
-        raise with_hint(
-            GeneratorCapError(
-                "Befunge supports at most thirteen inputs on its 80x25 grid"
-            ),
-            (
-                "check another generator's limits; width "
-                "cannot enlarge Befunge's fixed 80x25 grid"
-            ),
-        )
 
 
 def _min_columns(count: int, bound: int) -> int:

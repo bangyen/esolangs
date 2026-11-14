@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Unary."""
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.languages.unary.lifecycle import CAPABILITIES
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import (
@@ -12,6 +13,14 @@ from esolangs.runtime._definition import (
     CompressedSourcePolicy,
     RuntimeSpec,
 )
+
+MAX_INPUTS = 9
+
+
+def check_arity(inputs: int) -> None:
+    """Each unrolled input read costs one of the available commands."""
+    if inputs > MAX_INPUTS:
+        raise GeneratorCapError("Unary unrolled construction: max-inputs=9")
 
 
 def _backend() -> BackendDefinition:
@@ -26,7 +35,8 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.unary.generator", "unary_request"
         ),
         layout_width=False,
-        max_inputs=9,
+        max_inputs=MAX_INPUTS,
+        arity_guard=check_arity,
         restrictions=(
             "raw export 32 Mi characters; generation 256 Mi characters; "
             "gzip 256 KiB; table-dependent caps"

@@ -8,9 +8,10 @@ are written once rather than per command.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from collections.abc import Collection, Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import NoReturn
 
 from esolangs._language import Language
@@ -38,10 +39,21 @@ _ARGUMENTS = {
 }
 
 
+def _diagnostic(message: str) -> None:
+    """Write to stderr without changing the command's outcome if it fails."""
+    try:
+        sys.stderr.write(message)
+        sys.stderr.flush()
+    except OSError:
+        # Python retries a failed flush at shutdown and overrides the exit code.
+        with suppress(OSError, ValueError), open(os.devnull, "wb") as sink:
+            os.dup2(sink.fileno(), sys.stderr.fileno())
+
+
 def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
     if isinstance(message, BaseException):
         message = _cli_error_text(message)
-    sys.stderr.write(message + "\n")
+    _diagnostic(message + "\n")
     sys.exit(code)
 
 

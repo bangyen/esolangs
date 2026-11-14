@@ -31,13 +31,12 @@ Decisions:
 
 from __future__ import annotations
 
-from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_chars
+from esolangs.languages.malbolge.descriptor import check_arity, input_cap_error
 from esolangs.runtime._program import Program
-from esolangs.runtime.source_hints import with_hint
 
 from .constant import _constant_program
 from .digits import _DIGITS_N, _digits_program, _seventeen_program
@@ -51,32 +50,15 @@ def malbolge(truth_table: str) -> str:
     constant on Hamming-weight classes; else ``n`` <= 16.
     """
     n = _validate_truth_table(truth_table)
-    if n <= _DIGITS_N + 1 and (constant := constant_output(truth_table)) is not None:
+    check_arity(n)
+    if (constant := constant_output(truth_table)) is not None:
         return _constant_program(n, int(constant))
     if n > _DIGITS_N:
-        if n == _DIGITS_N + 1 and (
-            program := _seventeen_program(truth_table)
-            or _symmetric_program(truth_table)
+        if program := _seventeen_program(truth_table) or _symmetric_program(
+            truth_table
         ):
             return program
-        detail = (
-            "seventeen is built only for a table that ignores an input or "
-            "is constant on Hamming-weight classes, and this one does "
-            "neither; every row pair owns a cell, and seventeen inputs "
-            "would need 65,536 of the store's 59,049"
-            if n == _DIGITS_N + 1
-            else "every row pair owns a cell, and seventeen inputs would need "
-            "65,536 of the store's 59,049"
-        )
-        raise with_hint(
-            GeneratorCapError(
-                f"Malbolge builds at most {_DIGITS_N} inputs, got {n}: {detail}"
-            ),
-            (
-                "use fewer inputs or check another generator's "
-                "limits; width cannot enlarge Malbolge's store"
-            ),
-        )
+        raise input_cap_error(n)
     return _digits_program(truth_table, n)
 
 

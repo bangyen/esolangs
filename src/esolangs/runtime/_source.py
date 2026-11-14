@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
-from pathlib import Path
 from typing import IO, TYPE_CHECKING
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
@@ -13,6 +12,7 @@ from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
 from esolangs.raster import Raster
 from esolangs.runtime._definition import SourceLoader
+from esolangs.runtime._files import explicit_path
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error, with_hint
@@ -38,49 +38,41 @@ class _FileSource:
         return self.path
 
 
-def explicit_path(path: str | os.PathLike[str]) -> Path:
-    """Validate a path argument before opening or reading a file."""
-    try:
-        spelling = os.fspath(path)
-    except (TypeError, ValueError) as error:
-        raise ArgumentError("path must be a str or PathLike returning str") from error
-    if not isinstance(spelling, str):
-        raise ArgumentError("path must be a str or PathLike returning str")
-    if not spelling:
-        raise ArgumentError("path must not be empty")
-    return Path(spelling)
-
-
 def _read_container(
     source: ProgramSource | _FileSource,
-) -> tuple[Program | bytes, bool]:
+) -> tuple[Program | bytes, str | None]:
+    """Return the underlying data and the filename if it came from a file."""
+    label = "the program"
     try:
         if isinstance(source, (ProgramArtifact, TemplateArtifact)):
             source = source.source
         if isinstance(source, _FileSource):
-            return source.read(), True
+            return source.read(), source.path
         if isinstance(source, os.PathLike):
-            return explicit_path(source).read_bytes(), True
+            path = explicit_path(source)
+            label = str(path)
+            return path.read_bytes(), label
         if isinstance(source, (Raster, CompressedText)):
-            return source, False
+            return source, None
         value = source
         if not isinstance(source, (str, bytes)) and callable(
             getattr(source, "read", None)
         ):
+            label = "the program stream"
             value = source.read()
         if isinstance(value, str):
-            return str.__str__(value), False
+            return str.__str__(value), None
         if isinstance(value, bytes):
-            return bytes.__bytes__(value), False
+            return bytes.__bytes__(value), None
     except FileNotFoundError as exc:
         raise syntax_error(
-            f"cannot read {source!s}: {exc}",
+            f"cannot read {label}: {exc}",
             "check that the source path exists and names the intended program file",
             error_type=ProgramNotFoundError,
         ) from exc
     except (OSError, TypeError, ValueError) as exc:
         raise syntax_error(
-            f"cannot read {source!s}: {exc}",
+            f"cannot read {label}: {exc}",
             "check that the program file or stream is readable",
             error_type=ProgramError,
         ) from exc
@@ -92,19 +84,13 @@ def _read_container(
     )
 
 
-def _label(source: object) -> str:
-    """Name a source in errors: its path, never its (possibly huge) bytes."""
-    if isinstance(source, (os.PathLike, _FileSource)):
-        return str(source)
-    return "the program"
-
-
 def text_source(
     source: ProgramSource | _FileSource, *, label: str | None = None
 ) -> str:
     """Decode UTF-8 source without changing line endings or terminators."""
-    label = _label(source) if label is None else label
-    value, _path = _read_container(source)
+    value, path = _read_container(source)
+    if label is None:
+        label = path or "the program"
     if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
         value = CompressedText(value)
     if isinstance(value, CompressedText):
@@ -166,12 +152,12 @@ def _native_compressed_source(
 
 def compressed_text_source(source: ProgramSource | _FileSource) -> str | CompressedText:
     """Keep gzip source compressed; accept ordinary text containers too."""
-    value, _path = _read_container(source)
+    value, path = _read_container(source)
     if isinstance(value, CompressedText):
         return value
     if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
         return CompressedText(value)
-    return text_source(value, label=_label(source))
+    return text_source(value, label=path)
 
 
 def raster_source(source: ProgramSource | _FileSource) -> Raster:

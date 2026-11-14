@@ -12,9 +12,48 @@ from esolangs.exceptions import (
     ProgramError,
 )
 from esolangs.registry._catalog import Catalog
-from esolangs.registry._contracts import CHAR_STREAMS
+from esolangs.registry._contracts import CHAR_STREAMS, BooleanContract
 from esolangs.results import ExecutionResult
 from esolangs.runtime._validate import check_bits
+
+
+def _symbol_pair(name: str, values: object, encoding: str) -> tuple[str, str]:
+    """Validate a scoped contract's two distinct spellings for the bits."""
+    if isinstance(values, tuple) and tuple.__len__(values) == 2:
+        zero, one = tuple.__iter__(values)
+        if isinstance(zero, str) and isinstance(one, str):
+            zero, one = str.__str__(zero), str.__str__(one)
+            if zero != one:
+                return zero, one
+    raise ProgramError(
+        f"{name} has an invalid {encoding}; expected two distinct strings"
+    )
+
+
+def _answer_codec(
+    name: str, contract: BooleanContract
+) -> tuple[tuple[str, str], re.Pattern[str] | None]:
+    """Validate and prepare the answer side before executing a Boolean row."""
+    if contract.answer_mode not in ("output", "dump", "termination"):
+        raise ProgramError(f"{name} has an invalid answer mode")
+    values = _symbol_pair(name, contract.answer_values, "answer encoding")
+    if contract.answer_mode == "termination":
+        if values not in (("halts", "diverges"), ("diverges", "halts")):
+            raise ProgramError(
+                f"{name} has an invalid termination answer encoding; "
+                "expected 'halts' and 'diverges'"
+            )
+        return values, None
+    source: object = contract.answer_pattern
+    if isinstance(source, re.Pattern) and isinstance(source.pattern, str):
+        return values, source
+    if not isinstance(source, str):
+        raise ProgramError(f"{name} has an invalid answer pattern; expected text")
+    source = str.__str__(source)
+    try:
+        return values, re.compile(source) if source else None
+    except (re.error, OverflowError, RecursionError) as error:
+        raise ProgramError(f"{name} has an invalid answer pattern: {error}") from error
 
 
 def encode_inputs(
@@ -43,6 +82,7 @@ def encode_inputs(
             ``truth_table``'s input count.
         TruthTableError: ``truth_table`` is not a binary string of length
             ``2**n``.
+        ProgramError: The language's input shape or alphabet is invalid.
     """
     from esolangs.registry._catalog import get_catalog
 
@@ -70,10 +110,11 @@ def encode_inputs(
                 f"but {len(bits)} bit{' was' if len(bits) == 1 else 's were'} "
                 f"given; a {name} program built from it reads {arity}"
             )
-    if contract.input_shape in {"row_index", "row_number"}:
+    shape = contract.input_shape
+    if shape in ("row_index", "row_number"):
         # A row number counts from one, for an input that must be positive.
         row = sum(bit << (len(bits) - 1 - i) for i, bit in enumerate(bits))
-        row += contract.input_shape == "row_number"
+        row += shape == "row_number"
         try:
             return f"{row}\n"
         except ValueError as exc:
@@ -83,9 +124,11 @@ def encode_inputs(
                 f"{name} reads a decimal row, and {len(bits)} bits name "
                 f"an integer too large to render as one: {exc}"
             ) from exc
-    zero, one = contract.alphabet
+    if shape not in ("line_per_bit", "char_stream", "char_stream_cyclic"):
+        raise ProgramError(f"{name} has an invalid input shape")
+    zero, one = _symbol_pair(name, contract.alphabet, "input encoding")
     digits = [one if bit else zero for bit in bits]
-    if contract.input_shape in CHAR_STREAMS:
+    if shape in CHAR_STREAMS:
         return "".join(digits)
     return "".join(f"{digit}\n" for digit in digits)
 
@@ -104,7 +147,7 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
             whether it halts, not anything printed; or ``output`` is not a
             string.
         ProgramError: ``output`` holds no readable answer or the language's
-            answer pattern cannot be compiled.
+            answer contract is invalid.
     """
     from esolangs.registry._catalog import get_catalog
 
@@ -122,19 +165,25 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
         raise ArgumentError(
             f"{name} answers by terminating, not by printing; a timeout is undecided"
         )
-    if contract.answer_pattern:
-        try:
-            matches = re.finditer(contract.answer_pattern, output)
-        except (re.error, OverflowError, RecursionError) as error:
-            raise ProgramError(
-                f"{name} has an invalid answer pattern: {error}"
-            ) from error
+    values, pattern = _answer_codec(name, contract)
+    return _read_output_answer(name, output, values, pattern, contract.note)
+
+
+def _read_output_answer(
+    name: str,
+    output: str,
+    values: tuple[str, str],
+    pattern: re.Pattern[str] | None,
+    note: str,
+) -> str:
+    """Read output using validated encodings and the compiled pattern, if any."""
+    if pattern is not None:
         raw = None
-        for match in matches:
+        for match in pattern.finditer(output):
             raw = match[1 if match.re.groups else 0]
     else:
         raw = output.strip()[-1:] or None
-    zero, one = contract.answer_values
+    zero, one = values
     if raw == one:
         return "1"
     if raw == zero:
@@ -142,10 +191,10 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
     # The note says in plain words where the answer lives, for every language
     # that has one: "as the last character" names the mechanism, not the
     # place, for a state dump.  The regex follows for maintainers.
-    where = "in its final state" if contract.answer_pattern else "as the last character"
-    detail = f" -- {contract.note}" if contract.note else ""
-    if contract.answer_pattern:
-        detail += f" (matched with {contract.answer_pattern!r})"
+    where = "in its final state" if pattern is not None else "as the last character"
+    detail = f" -- {note}" if note else ""
+    if pattern is not None:
+        detail += f" (matched with {pattern.pattern!r})"
     raise ProgramError(
         f"{name} produced no answer this could read: expected {zero!r} or "
         f"{one!r} {where}, got {output[-40:]!r}{detail}"

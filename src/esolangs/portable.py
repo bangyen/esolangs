@@ -7,8 +7,6 @@ import json
 from collections.abc import Iterable, Iterator
 from dataclasses import asdict, replace
 from os import PathLike
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any, Protocol
 
 from esolangs.artifacts import (
@@ -27,10 +25,10 @@ from esolangs.exceptions import (
 from esolangs.raster import Raster, png
 from esolangs.registry import template_char
 from esolangs.registry._catalog import Catalog
+from esolangs.runtime._files import explicit_path, write_staged
 from esolangs.runtime._json import record_dumps, unique_object
 from esolangs.runtime._source import (
     ProgramSource,
-    explicit_path,
     native_file_terminator,
 )
 from esolangs.runtime.memory import parse_integer
@@ -150,20 +148,11 @@ def to_file(
                 encoded = (CompressedText.from_chunks(chunks, limits=limits).to_gzip(),)
             else:
                 encoded = (chunk.encode("utf-8") for chunk in chunks)
-        # The staged write's errors named the temporary file instead.
-        if target.is_dir():
-            raise IsADirectoryError("it is a directory")
-        if not target.parent.is_dir():
-            raise FileNotFoundError("its directory does not exist")
-        with TemporaryDirectory(dir=target.parent) as temporary:
-            staged = Path(temporary) / "source"
-            with staged.open("wb") as stream:
-                stream.writelines(encoded)
-            staged.replace(target)
+        write_staged(target, encoded)
     except (GeneratorCapError, ProgramError, TemplateError):
         raise
     except (OSError, TypeError, ValueError) as exc:
-        raise ProgramError(f"cannot save program to {path!s}: {exc}") from exc
+        raise ProgramError(f"cannot save program to {target}: {exc}") from exc
 
 
 def to_json(

@@ -213,6 +213,46 @@ def test_catalog_json_uses_utf8_on_a_pipe() -> None:
         assert json.loads(report.stdout.decode("utf-8"))
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("destination", ["read-only", "broken-pipe"])
+@pytest.mark.parametrize(
+    ("source", "options", "code", "output"),
+    [
+        ("", [], 0, b""),
+        ("[", [], 2, b""),
+        ("+.,.", [], 1, b"\x01"),
+        ("+.,.", ["--max-steps", "2"], 124, b"\x01"),
+    ],
+)
+def test_unwritable_stderr_preserves_status_and_output(
+    destination: str,
+    source: str,
+    options: list[str],
+    code: int,
+    output: bytes,
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "program.txt"
+    path.write_text(source, encoding="utf-8")
+    if destination == "read-only":
+        stderr = os.open(os.devnull, os.O_RDONLY)
+    else:
+        reader, stderr = os.pipe()
+        os.close(reader)
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "esolangs", "run", *options, REFERENCE, str(path)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=stderr,
+            timeout=15,
+            check=False,
+        )
+    finally:
+        os.close(stderr)
+    assert (result.returncode, result.stdout) == (code, output)
+
+
 # 8.5s over 9 tests: drives the CLI as a subprocess.
 @pytest.mark.medium
 class TestReadingTheProgramFileIsBounded:

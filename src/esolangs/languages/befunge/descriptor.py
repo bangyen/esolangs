@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Befunge."""
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.languages.befunge.lifecycle import CAPABILITIES
 from esolangs.registry._language import (
     BackendDefinition,
@@ -8,8 +9,23 @@ from esolangs.registry._language import (
     LanguageDeclaration,
 )
 from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
+from esolangs.runtime.source_hints import with_hint
 
 MAX_INPUTS = 13
+
+
+def check_arity(inputs: int) -> None:
+    """Refuse a table that cannot fit the fixed grid."""
+    if inputs > MAX_INPUTS:
+        raise with_hint(
+            GeneratorCapError(
+                "Befunge supports at most thirteen inputs on its 80x25 grid"
+            ),
+            (
+                "check another generator's limits; width "
+                "cannot enlarge Befunge's fixed 80x25 grid"
+            ),
+        )
 
 
 def _backend() -> BackendDefinition:
@@ -20,6 +36,7 @@ def _backend() -> BackendDefinition:
 
     return BooleanBackend(
         max_inputs=MAX_INPUTS,
+        arity_guard=check_arity,
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.befunge.generator", "befunge_request"
         ),

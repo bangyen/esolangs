@@ -9,9 +9,9 @@ import zlib
 from collections.abc import Iterable, Iterator
 from dataclasses import KW_ONLY, dataclass, field
 from os import PathLike
-from pathlib import Path
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
+from esolangs.runtime._files import explicit_path, write_staged
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -198,15 +198,19 @@ class CompressedText:
         return self.data
 
     def to_file(self, path: str | PathLike[str]) -> None:
-        """Write a gzip source file.
+        """Write a gzip source file, replacing it only after writing succeeds.
 
         Raises:
             ProgramError: The file cannot be written.
         """
         try:
-            Path(path).write_bytes(self.data)
+            target = explicit_path(path)
+        except ArgumentError as exc:
+            raise ProgramError(f"cannot save program: {exc}") from exc
+        try:
+            write_staged(target, (self.data,))
         except (OSError, TypeError, ValueError) as exc:
-            raise ProgramError(f"cannot save program to {path!s}: {exc}") from exc
+            raise ProgramError(f"cannot save program to {target}: {exc}") from exc
 
     def wrapped(self, width: int | None) -> CompressedText:
         """Insert line breaks at width without collecting expanded source."""

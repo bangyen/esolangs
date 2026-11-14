@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from esolangs._bindings import TEMPLATE_CHAR, Setters, check_setters
+from esolangs.exceptions import GeneratorCapError
 from esolangs.generation.requests import (
     BalanceRequest,
     GeneratedProgram,
@@ -79,6 +80,19 @@ class BooleanBackend:
     same_layout: Callable[[str, str, Callable[[int], str]], bool] | None = None
     #: ``balance(table, default)``: the squarest layout a reflow cannot find.
     balance: OperationRef[BalanceRequest, GeneratedProgram] | Balancer | None = None
+    #: Native arity check, shared with direct generator calls for its diagnostic.
+    arity_guard: Callable[[int], None] | None = None
+
+    def check_arity(self, language: str, inputs: int) -> None:
+        """Enforce the catalog cap before loading or calling its generator."""
+        cap = self.max_inputs
+        if cap is None or inputs <= cap:
+            return
+        if self.arity_guard is not None:
+            self.arity_guard(inputs)
+        raise GeneratorCapError(
+            f"{language} declares max-inputs={cap}, got {inputs} inputs"
+        )
 
     @property
     def generate(self) -> Generator:
@@ -94,5 +108,9 @@ class BooleanBackend:
             raise TypeError("backend operations require typed request references")
         if not callable(self.entrypoint):
             raise ValueError("a Boolean backend requires a callable generator")
+        if self.max_inputs is not None and (
+            type(self.max_inputs) is not int or self.max_inputs < 1
+        ):
+            raise ValueError("max_inputs must be a positive integer")
         if self.wrap is not None and self.no_wrap:
             raise ValueError("wrap and no_wrap exclude each other")

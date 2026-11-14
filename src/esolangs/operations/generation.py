@@ -167,6 +167,7 @@ def generate(
         )
     check_width(width)
     inputs = _validate_truth_table(truth_table)
+    backend.check_arity(resolved, inputs)
     fn = backend.generate
     laid_out = width is not None and backend.layout_width
     try:

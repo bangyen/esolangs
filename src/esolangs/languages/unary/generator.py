@@ -33,6 +33,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.requests import GenerationRequest
+from esolangs.languages.unary.descriptor import check_arity
 from esolangs.runtime._program import Program
 
 _MAX_SOURCE = 256 * 1024 * 1024
@@ -118,10 +119,7 @@ def _decoded(truth_table: str) -> str:
 
 def unary(truth_table: str) -> CompressedText:
     """Return gzip source within the file and expanded-work budgets."""
-    n = _validate_truth_table(truth_table)
-    # This construction unrolls each read, so its own source needs n commands.
-    if n > 9:
-        raise GeneratorCapError("Unary unrolled construction: max-inputs=9")
+    check_arity(_validate_truth_table(truth_table))
     return CompressedText.repeated("0", _zeros(_decoded(truth_table)), limits=_LIMITS)
 
 

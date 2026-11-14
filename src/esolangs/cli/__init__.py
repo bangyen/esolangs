@@ -54,6 +54,7 @@ from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli.args import (
     _VALUE_OPTIONS,
     _check_count,
+    _diagnostic,
     _errors,
     _fail,
     _normalize_options,
@@ -368,13 +369,13 @@ def _generate(rest: list[str]) -> None:
     if (width is not None or bare or balance) and _layout_ignored(
         LANGUAGES[artifact.language], balance=balance
     ):
-        sys.stderr.write(
+        _diagnostic(
             f"note: {'--balance' if balance else '--width'} has no effect on "
             f"{artifact.language} -- "
             f"the generator retains its original layout\n"
         )
     if "--plain" in flags and isinstance(program, Raster):
-        sys.stderr.write("note: --plain has no effect on a raster; it is PNG\n")
+        _diagnostic("note: --plain has no effect on a raster; it is PNG\n")
     binary = (
         gzip
         or isinstance(program, Raster)
@@ -393,7 +394,7 @@ def _generate(rest: list[str]) -> None:
     if isinstance(artifact, TemplateArtifact):
         # `run` takes the unfilled template as source and answers nonsense
         # with exit 0, where the API refuses it (dogfood, 2.0.0).
-        sys.stderr.write(
+        _diagnostic(
             f"note: this is a template with unfilled {artifact.bindings.char!r} "
             f"input slots; fill them with: esolangs generate "
             f"--bits <bits> {_as_argument(rest[0])} {rest[1]}\n"
@@ -585,7 +586,8 @@ def main() -> None:
     terminating prints "will run until you stop it", inviting the interrupt;
     exit 130 is the shell convention for SIGINT.
 
-    Output destination errors exit 120. An early-closing pipe is silent.
+    Stdout errors exit 120. An early-closing pipe is silent. Stderr failures
+    leave the command's status unchanged.
 
     Anything else is a bug in this package, not the program being run, and
     exits 70 with a one-line report instead of a traceback.
@@ -607,7 +609,7 @@ def main() -> None:
         # Started with fd 1 closed (``esolangs list >&-``): ``print`` drops
         # silently and the flush below raised AttributeError, exit 70.  The
         # same outcome as a pipe closed early, so the same exit.
-        sys.stderr.write("stdout is closed; nothing was written\n")
+        _diagnostic("stdout is closed; nothing was written\n")
         sys.exit(120)
     try:
         try:
@@ -624,7 +626,7 @@ def main() -> None:
         # finished.
         _flush_stdout()
     except KeyboardInterrupt:
-        sys.stderr.write("interrupted\n")
+        _diagnostic("interrupted\n")
         sys.exit(130)
     except _StdoutError as exc:
         # Python flushes stdout at exit and would report the same error
@@ -632,13 +634,13 @@ def main() -> None:
         with suppress(OSError, ValueError), open(os.devnull, "wb") as sink:
             os.dup2(sink.fileno(), sys.stdout.fileno())
         if not isinstance(exc.error, BrokenPipeError):
-            sys.stderr.write(f"cannot write stdout: {exc}\n")
+            _diagnostic(f"cannot write stdout: {exc}\n")
         sys.exit(120)
     except Exception as exc:
         # Anything reaching here is a package bug (three interpreters once
         # raised ``OverflowError`` through ``main``): one line and an exit
         # code nothing else uses, not a traceback.
-        sys.stderr.write(
+        _diagnostic(
             f"internal error: {type(exc).__name__}: {exc}\n"
             f"This is a bug in esolangs, not in your program; please report "
             f"it with the command you ran.\n"
@@ -650,7 +652,7 @@ def _dispatch() -> None:
     """Dispatch the ``esolangs`` subcommands."""
     argv = sys.argv[1:]
     if not argv:
-        sys.stderr.write(USAGE)
+        _diagnostic(USAGE)
         sys.exit(2)
 
     cmd, rest = argv[0], argv[1:]

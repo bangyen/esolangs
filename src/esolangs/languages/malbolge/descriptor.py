@@ -1,5 +1,6 @@
 """Runtime and compiler capabilities for Malbolge."""
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.languages.malbolge.lifecycle import CAPABILITIES
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import (
@@ -8,9 +9,40 @@ from esolangs.registry._language import (
     LanguageDeclaration,
 )
 from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime.source_hints import with_hint
 
 _DIGITS_N = 16
 MAX_INPUTS = _DIGITS_N
+
+
+def input_cap_error(inputs: int) -> GeneratorCapError:
+    """Explain the unconditional store limit and the conditional extension."""
+    storage = (
+        "every row pair owns a cell, and seventeen inputs would need "
+        "65,536 of the store's 59,049"
+    )
+    detail = (
+        "seventeen is built only for a table that ignores an input or "
+        "is constant on Hamming-weight classes, and this one does neither; "
+        if inputs == MAX_INPUTS + 1
+        else ""
+    )
+    return with_hint(
+        GeneratorCapError(
+            f"Malbolge builds at most {_DIGITS_N} inputs, got {inputs}: "
+            f"{detail}{storage}"
+        ),
+        (
+            "use fewer inputs or check another generator's "
+            "limits; width cannot enlarge Malbolge's store"
+        ),
+    )
+
+
+def check_arity(inputs: int) -> None:
+    """Refuse beyond the largest arity the store can accommodate."""
+    if inputs > MAX_INPUTS + 1:
+        raise input_cap_error(inputs)
 
 
 def _backend() -> BackendDefinition:
@@ -22,6 +54,7 @@ def _backend() -> BackendDefinition:
 
     return BooleanBackend(
         max_inputs=MAX_INPUTS + 1,
+        arity_guard=check_arity,
         restrictions=(
             "seventeen inputs only for a table that ignores an input "
             "or is constant on Hamming-weight classes"

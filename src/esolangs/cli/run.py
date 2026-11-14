@@ -218,7 +218,7 @@ def _run(rest: list[str]) -> None:
     # the alternative is a blank line and no way to tell the two apart; a
     # pipe still receives exactly the empty output.
     if not output and sys.stdout.isatty():
-        sys.stderr.write(
+        _note(
             f"{language}: the program ran and printed nothing"
-            f"{' (the file is empty)' if empty else ''}\n"
+            f"{' (the file is empty)' if empty else ''}"
         )

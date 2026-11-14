@@ -55,6 +55,16 @@ def _invalid_generated_source() -> None:
     scoped.generate("01")
 
 
+def _invalid_input_encoding() -> str:
+    from dataclasses import replace
+
+    api = esolangs.Language(R)
+    declaration = api.catalog.languages[R]
+    contract = replace(declaration.contract, alphabet=("", ""))
+    scoped = esolangs.Catalog([replace(declaration, contract=contract)])
+    return esolangs.encode_inputs(R, [1], catalog=scoped)
+
+
 def _raises(name: str) -> set[str]:
     """Return the exception names a function's ``Raises:`` lists."""
     doc = inspect.getdoc(_functions()[name]) or ""
@@ -446,6 +456,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         lambda: esolangs.encode_inputs(R, [1], truth_table="012"),
         None,
     ),
+    ("encode_inputs", x.ProgramError, _invalid_input_encoding, None),
     (
         "read_answer",
         x.UnknownLanguageError,

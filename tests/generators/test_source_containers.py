@@ -173,6 +173,38 @@ def test_explicit_paths_are_validated_on_import_and_export(spelling) -> None:
             esolangs.to_file(REFERENCE, "+.", path)
 
 
+def test_file_diagnostics_use_the_validated_path_once(tmp_path: Path) -> None:
+    class ProgramPath:
+        def __init__(self, path: Path) -> None:
+            self.path = path
+            self.reads = 0
+
+        def __fspath__(self) -> str:
+            self.reads += 1
+            assert self.reads == 1
+            return str(self.path)
+
+        def __str__(self) -> str:
+            raise RuntimeError("the path protocol supplies the filename")
+
+    source = tmp_path / "invalid.bf"
+    source.write_bytes(b"\xff")
+    api = esolangs.Language(REFERENCE)
+    for read in (api.run, api.prepare, api.to_json, api.from_file):
+        wrapped = ProgramPath(source)
+        with pytest.raises(esolangs.ProgramError, match="invalid UTF-8") as caught:
+            read(wrapped)
+        assert str(source) in str(caught.value)
+        assert wrapped.reads == 1
+
+    missing = ProgramPath(tmp_path / "missing.bf")
+    with pytest.raises(esolangs.ProgramNotFoundError, match=r"missing\.bf"):
+        api.run(missing)
+    blocked = ProgramPath(tmp_path / "missing" / "destination.bf")
+    with pytest.raises(esolangs.ProgramError, match=r"destination\.bf"):
+        api.to_file("+.", blocked)
+
+
 @pytest.mark.parametrize("compressed", [False, True])
 @pytest.mark.parametrize(
     "language", one_where(lambda info: LANGUAGES[info.name].runtime.compressed_source)

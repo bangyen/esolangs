@@ -31,6 +31,53 @@ def test_streaming_text_round_trip_and_size(tmp_path: Path) -> None:
         CompressedText(b"")
 
 
+def test_compressed_writers_publish_only_after_success(
+    tmp_path: Path, monkeypatch
+) -> None:
+    program = CompressedText.repeated("+", 1)
+    destination = tmp_path / "source.gz"
+    destination.write_bytes(b"existing file")
+
+    def refuse_replace(staged, requested):
+        assert requested == destination
+        assert staged.read_bytes() == program.to_gzip()
+        raise PermissionError("replacement refused")
+
+    monkeypatch.setattr(Path, "replace", refuse_replace)
+    for save in (
+        program.to_file,
+        lambda path: esolangs.to_file(REFERENCE, program, path, gzip=True),
+    ):
+        with pytest.raises(
+            esolangs.ProgramError, match=r"source\.gz.*replacement refused"
+        ):
+            save(destination)
+        assert destination.read_bytes() == b"existing file"
+        assert list(tmp_path.iterdir()) == [destination]
+
+
+def test_compressed_writers_replace_links_without_changing_the_referent(
+    tmp_path: Path,
+) -> None:
+    program = CompressedText.repeated("+", 1)
+    original = tmp_path / "original.gz"
+    original.write_bytes(b"original")
+    destination = tmp_path / "link.gz"
+    for save in (
+        program.to_file,
+        lambda path: esolangs.to_file(REFERENCE, program, path, gzip=True),
+    ):
+        try:
+            destination.symlink_to(original)
+        except OSError as error:
+            pytest.skip(f"symlinks unavailable: {error}")
+        save(destination)
+        assert not destination.is_symlink()
+        assert destination.read_bytes() == program.to_gzip()
+        assert original.read_bytes() == b"original"
+        destination.unlink()
+
+
 @pytest.mark.parametrize(
     "data",
     [
