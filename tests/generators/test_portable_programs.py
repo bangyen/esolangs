@@ -166,6 +166,28 @@ def test_ordered_template_setters_round_trip(language: str) -> None:
 
 
 @pytest.mark.parametrize("language", one(parameterized=True))
+def test_template_owner_cannot_be_reassigned_by_an_alias(language: str) -> None:
+    owner = esolangs.Language(language)
+    declaration = owner.catalog.languages[language]
+    renamed = replace(declaration, name="Scoped Template", id="", aliases=(language,))
+    api = esolangs.Catalog([renamed]).bind(language)
+    original = owner.generate("01", settings=owner.settings())
+    native = api.generate("01", settings=api.settings())
+    assert isinstance(original, esolangs.TemplateArtifact)
+    assert isinstance(native, esolangs.TemplateArtifact)
+    assert api.name == renamed.name
+    assert api.instantiate(native, [1]) == native.fill([1])
+    assert api.evaluate(native, [1]).answer == "1"
+    assert owner.evaluate(original, [1]).answer == "1"
+    with pytest.raises(esolangs.TemplateError, match="template belongs to"):
+        api.instantiate(original, [1])
+    with pytest.raises(esolangs.ProgramError, match="generated for"):
+        original.evaluate([1], catalog=api.catalog)
+    with pytest.raises(esolangs.ProgramError, match="program language must be"):
+        api.from_json(owner.to_json(original))
+
+
+@pytest.mark.parametrize("language", one(parameterized=True))
 def test_explicit_template_marker_round_trips_in_its_catalog(language: str) -> None:
     declaration = esolangs.Language(language).catalog.languages[language]
     alias = "Private Alias"

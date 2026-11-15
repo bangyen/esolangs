@@ -421,8 +421,43 @@ class TestReadingTheProgramFileIsBounded:
         path = tmp_path / "p.txt"
         esolangs.to_file(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
         result = run_cli("run", REFERENCE, str(path), stdin="10")
-        assert result.returncode == 0
-        assert result.stdout.strip() == "1"
+        expected = esolangs.run(REFERENCE, path, stdin="10").output
+        assert (result.returncode, result.stdout, result.stderr) == (0, expected, "")
+        assert esolangs.read_answer(REFERENCE, expected) == "1"
+
+    @pytest.mark.parametrize(
+        ("directory", "error_type", "hint"),
+        [
+            (
+                False,
+                esolangs.ProgramNotFoundError,
+                "check that the source path exists and names the intended program file",
+            ),
+            (
+                True,
+                esolangs.ProgramError,
+                "check that the program file or stream is readable",
+            ),
+        ],
+        ids=["missing", "directory"],
+    )
+    def test_source_open_error_keeps_python_repair_hint(
+        self,
+        tmp_path: Path,
+        *,
+        directory: bool,
+        error_type: type[esolangs.ProgramError],
+        hint: str,
+    ) -> None:
+        path = tmp_path / "native source"
+        if directory:
+            path.mkdir()
+        with pytest.raises(error_type) as caught:
+            esolangs.run(REFERENCE, path)
+        assert type(caught.value) is error_type
+        opened = run_cli("run", REFERENCE, str(path))
+        assert (opened.returncode, opened.stdout) == (2, "")
+        assert opened.stderr.splitlines() == [str(caught.value), f"hint: {hint}"]
 
 
 class TestTheBoundedReaderInProcess:

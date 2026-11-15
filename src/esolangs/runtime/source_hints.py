@@ -3,7 +3,7 @@
 from collections.abc import Iterable
 from difflib import get_close_matches
 
-from esolangs.exceptions import ProgramError
+from esolangs.exceptions import ProgramError, ProgramNotFoundError
 
 
 def syntax_error(
@@ -21,6 +21,19 @@ def program_error_context(message: str, cause: BaseException) -> ProgramError:
     for note in getattr(cause, "__notes__", ()):
         failure.add_note(note)
     return failure
+
+
+def source_read_error(label: str, cause: BaseException) -> ProgramError:
+    """Describe a failed source read with its repair hint."""
+    message = f"cannot read {label}: {cause}"
+    if isinstance(cause, FileNotFoundError):
+        return with_hint(
+            ProgramNotFoundError(message),
+            "check that the source path exists and names the intended program file",
+        )
+    return with_hint(
+        ProgramError(message), "check that the program file or stream is readable"
+    )
 
 
 def keyword_hint(word: str, known: Iterable[str], fallback: str) -> str:

@@ -95,7 +95,9 @@ def read_png_metadata(
         if origin is not None and not isinstance(origin, str):
             raise ValueError("PNG language must be a string")
         check_origin(name, origin, catalog=catalog)
-        settings = decode_settings(metadata.get("settings"), origin, catalog=catalog)
+        settings = decode_settings(
+            metadata.get("settings"), None if origin is None else name, catalog=catalog
+        )
         scale = metadata.get("scale")
         scale = None if scale is None else check_scale(scale)
         arity = positive_metadata_field(metadata, "input_arity")
@@ -255,7 +257,7 @@ def from_file(
     """Read lossless source with retained metadata.
 
     Gzip and PNG are detected by content. The default import retains the
-    original gzip bytes. PNG can retain the program's input arity.
+    original gzip bytes. PNG can retain the input arity and canonical owner.
     ``normalize=True`` applies the language's native file newline policy.
 
     Raises:

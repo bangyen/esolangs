@@ -9,18 +9,18 @@ from typing import IO, TYPE_CHECKING
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
-from esolangs.exceptions import (
-    ArgumentError,
-    EsolangError,
-    ProgramError,
-    ProgramNotFoundError,
-)
+from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
 from esolangs.raster import Raster
 from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._files import explicit_path, read_snapshot
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_scale
-from esolangs.runtime.source_hints import program_error_context, syntax_error, with_hint
+from esolangs.runtime.source_hints import (
+    program_error_context,
+    source_read_error,
+    syntax_error,
+    with_hint,
+)
 
 if TYPE_CHECKING:
     from esolangs.registry._catalog import Catalog
@@ -75,17 +75,7 @@ def _read_container(
     except (OSError, TypeError, ValueError) as exc:
         if reading_stream and isinstance(exc, EsolangError):
             raise
-        if isinstance(exc, FileNotFoundError):
-            raise syntax_error(
-                f"cannot read {label}: {exc}",
-                "check that the source path exists and names the intended program file",
-                error_type=ProgramNotFoundError,
-            ) from exc
-        raise syntax_error(
-            f"cannot read {label}: {exc}",
-            "check that the program file or stream is readable",
-            error_type=ProgramError,
-        ) from exc
+        raise source_read_error(label, exc) from exc
     raise syntax_error(
         "program must be a string of source, bytes, a Raster, a Path, "
         f"or a readable stream, got {type(source).__name__}",

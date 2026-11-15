@@ -23,7 +23,7 @@ from esolangs.outcomes import ExecutionOutcome, _capture_outcome, _failed_outcom
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
-from esolangs.runtime._execution import interpreter_errors
+from esolangs.runtime._execution import check_worker_runtime, interpreter_errors
 from esolangs.runtime._files import stream_read_deadline
 from esolangs.runtime._input import InputSource, check_input, read_input
 from esolangs.runtime._json import canonical_integer, worker_dumps, worker_loads
@@ -50,7 +50,6 @@ from esolangs.settings import (
     DialectSettings,
     _settings_for,
     dialect_options,
-    effective_settings,
 )
 
 type _WorkerResponse = ExecutionOutcome | TerminationResult
@@ -319,22 +318,6 @@ def _limit_memory(max_memory: int) -> None:
     resource.setrlimit(resource.RLIMIT_AS, (ceiling, hard))
 
 
-def _check_worker_runtime(name: str, catalog: Catalog) -> None:
-    """Refuse scoped declarations that the fresh worker cannot reproduce."""
-    from esolangs.registry._table import LANGUAGES
-
-    default = LANGUAGES.get(name)
-    selected = catalog.languages[name]
-    if (
-        default is None
-        or selected.id != default.id
-        or selected.runtime != default.runtime
-    ):
-        raise exceptions.ArgumentError(
-            "isolated execution requires a runtime declared in the installed catalog"
-        )
-
-
 @_capture_outcome
 def execute_isolated(
     language: str,
@@ -406,6 +389,7 @@ def _invoke_worker(
     """Acquire source and enforce phase budgets for execution or proof."""
     from esolangs.operations.source import _check_program
     from esolangs.registry._catalog import get_catalog
+    from esolangs.runtime._prepared import _check_source_options
 
     catalog = get_catalog(catalog)
 
@@ -426,10 +410,10 @@ def _invoke_worker(
         )
     timeout = checked_timeout
     name = catalog.resolve(language)
-    _check_worker_runtime(name, catalog)
-    scale = effective_scale(name, program, scale, catalog=catalog)
-    settings = effective_settings(name, program, settings, catalog=catalog)
-    dialect_options(name, settings, catalog=catalog)
+    check_worker_runtime(name, catalog)
+    settings, scale = _check_source_options(
+        name, program, settings, scale, catalog=catalog
+    )
     started = _ACQUISITION_STARTED.get()
     if started is None:
         started = monotonic()

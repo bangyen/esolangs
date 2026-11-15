@@ -31,12 +31,18 @@ def evaluate_artifact(
     prepared: PreparedProgram | None = None,
 ) -> BooleanEvaluation:
     """Bind or encode one row, then decode the answer using its contract."""
-    from esolangs.registry._catalog import get_catalog
+    from esolangs.registry._catalog import get_catalog, resolve_origin
 
     if limits is not None and not isinstance(limits, ExecutionLimits):
         raise ArgumentError("limits must be ExecutionLimits or None")
     catalog = get_catalog(catalog)
-    name = catalog.resolve(artifact.language)
+    origin = artifact.language
+    name = resolve_origin(origin, catalog=catalog)
+    if name is None:
+        from esolangs.operations.source import check_origin
+
+        name = catalog.resolve(origin)
+        check_origin(name, origin, catalog=catalog)
     declaration = catalog.languages[name]
     contract = declaration.contract
     values, pattern = _answer_codec(name, contract)

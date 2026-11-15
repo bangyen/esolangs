@@ -1,11 +1,14 @@
 """Grapheme through the shared API, CLI and machinery."""
 
+from dataclasses import replace
+
 import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
 from esolangs.debugger import make_debugger
+from esolangs.registry._functions import FunctionRef
 from tests.support.cli_support import call_both, call_main
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
@@ -59,6 +62,18 @@ def test_conversion_reaches_debugger_and_bound_language(monkeypatch) -> None:
         cases=(("A", "A10"), ("Z", "Z10"), ("Q", "Q10")),
         settings=settings,
     )
+
+
+def test_isolated_execution_accepts_a_copied_dialect_reference() -> None:
+    api = esolangs.Language("Grapheme")
+    declaration = api.catalog.languages[api.name]
+    dialect = declaration.runtime.dialect
+    assert isinstance(dialect, FunctionRef)
+    runtime = replace(declaration.runtime, dialect=replace(dialect))
+    assert runtime.dialect is not dialect
+    scope = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    settings = scope.settings(integer_conversion="after_each_letter")
+    assert scope.run("FAFY", settings=settings, isolated=True).output == "10"
 
 
 # The dialect is machine-wide; one string call and one Z rewind witness it.

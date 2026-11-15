@@ -6,6 +6,7 @@ import importlib
 import shlex
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from dataclasses import fields, is_dataclass
 from types import ModuleType
 from typing import Any
 
@@ -20,7 +21,7 @@ from esolangs.outcomes import ExecutionOutcome, _capture_outcome
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
-from esolangs.runtime._lifecycle import CompletionReport
+from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.memory import _hit_digit_cap
@@ -184,6 +185,52 @@ def check_seed_for(
     catalog = get_catalog(catalog)
     if seed is not None and not catalog.languages[name].runtime.random:
         raise _seed_refusal(name, catalog=catalog)
+
+
+def _matches_installed_value(selected: object, installed: object) -> bool:
+    """Compare declared worker values without invoking caller equality methods."""
+    if selected is installed:
+        return True
+    if type(selected) is not type(installed):
+        return False
+    if type(installed) in (str, int, bool):
+        return selected == installed
+    if type(selected) is tuple and type(installed) is tuple:
+        return len(selected) == len(installed) and all(
+            _matches_installed_value(value, expected)
+            for value, expected in zip(selected, installed, strict=True)
+        )
+    if type(selected) is frozenset:
+        # Native completion sets contain only the installed enum members.
+        return (
+            all(type(item) is Completion for item in selected) and selected == installed
+        )
+    if is_dataclass(installed):
+        return all(
+            _matches_installed_value(
+                getattr(selected, field.name), getattr(installed, field.name)
+            )
+            for field in fields(installed)
+        )
+    # A distinct callable is unavailable in the worker. FunctionRef values
+    # match by their stored declaration fields above.
+    return False
+
+
+def check_worker_runtime(name: str, catalog: Catalog) -> None:
+    """Refuse scoped declarations that the fresh worker cannot reproduce."""
+    from esolangs.registry._table import LANGUAGES
+
+    default = LANGUAGES.get(name)
+    selected = catalog.languages[name]
+    if (
+        default is None
+        or selected.id != default.id
+        or not _matches_installed_value(selected.runtime, default.runtime)
+    ):
+        raise ArgumentError(
+            "isolated execution requires a runtime declared in the installed catalog"
+        )
 
 
 def prepare_call(

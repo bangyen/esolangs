@@ -141,7 +141,7 @@ def _execute_invocation(
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    if prepared is None or isolated:
+    if not isolated and prepared is None:
         settings, scale = _check_source_options(
             name, program, settings, scale, catalog=catalog
         )

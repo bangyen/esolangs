@@ -88,7 +88,17 @@ def _catalog_facts(lang: LanguageDeclaration, *, catalog: Catalog) -> _CatalogFa
     """Return the listing metadata without loading interpreter documentation."""
     from esolangs.registry._catalog import get_catalog
 
-    packaged = lang == get_catalog().languages.get(lang.name)
+    installed = get_catalog().languages.get(lang.name)
+    backend = lang.backend
+    # Example and proof evidence belongs to the shipped implementation.
+    packaged = (
+        installed is not None
+        and lang.id == installed.id
+        and lang.runtime is installed.runtime
+        and backend is installed.backend
+        and lang.contract is installed.contract
+        and lang.example is installed.example
+    )
     # Package-relative paths survive a chdir or installation.
     examples: tuple[str, ...] = ()
     if packaged:
@@ -99,7 +109,6 @@ def _catalog_facts(lang: LanguageDeclaration, *, catalog: Catalog) -> _CatalogFa
                 for p in (_LANGUAGES_DIR / lang.id).glob(f"{stem}{lang.source_suffix}")
             )
         )
-    backend = lang.backend
     return {
         "name": lang.name,
         "generator_scaling": _SCALING.get(lang.id) if packaged else None,

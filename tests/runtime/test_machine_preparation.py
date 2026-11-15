@@ -157,3 +157,68 @@ def test_worker_runtime_guard_uses_the_shipped_catalog(monkeypatch) -> None:
     refuses(custom.bind(api.name))
     monkeypatch.setattr(_table, "CATALOG", custom)
     refuses(esolangs.Language(api.name))
+
+
+def test_worker_rejects_scoped_runtime_before_dialect_hook() -> None:
+    api = esolangs.Language(REFERENCE)
+    declaration = api.catalog.languages[api.name]
+    calls = []
+    allow_hook = True
+
+    class Validator:
+        __hash__ = object.__hash__
+
+        def __eq__(self, other):
+            pytest.fail("worker preflight compared a caller's dialect hook")
+
+        def __call__(self, *, mode="default"):
+            if not allow_hook:
+                pytest.fail("worker preflight called an unsupported dialect hook")
+            calls.append(mode)
+
+    schema = esolangs.DialectSchema(
+        api.name, {"mode": ("default",)}, {"mode": "default"}
+    )
+    runtime = replace(declaration.runtime, dialect=Validator(), dialect_schema=schema)
+    scope = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    # An empty override uses the scoped hook's default without adding a runner keyword.
+    settings = scope.settings()
+    prepared = scope.prepare(",.", settings=settings)
+    calls.clear()
+    assert scope.run(",.", stdin="A", settings=settings).output == "A"
+    assert calls
+    assert all(mode == "default" for mode in calls)
+    assert prepared.run(stdin="A").output == "A"
+
+    allow_hook = False
+    for options in (
+        {"isolated": True},
+        {"limits": esolangs.ExecutionLimits(total_timeout=5)},
+    ):
+        source, stdin = StringIO(",."), StringIO("A")
+        for outcome in (
+            scope.execute(source, stdin=stdin, settings=settings, **options),
+            prepared.execute(stdin=stdin, **options),
+        ):
+            assert isinstance(outcome.error, esolangs.ArgumentError)
+            assert "runtime declared in the installed catalog" in str(outcome.error)
+        assert source.tell() == stdin.tell() == 0
+
+
+def test_worker_rejects_unmatched_hook_name_without_custom_equality() -> None:
+    api = esolangs.Language(REFERENCE)
+    declaration = api.catalog.languages[api.name]
+
+    class OtherHook(str):
+        __hash__ = str.__hash__
+
+        def __eq__(self, other):
+            pytest.fail("worker preflight compared a caller's hook name")
+
+    changed = replace(
+        declaration.runtime, completion_entrypoint=OtherHook("extra_hook")
+    )
+    scope = esolangs.Catalog([replace(declaration, runtime=changed)]).bind(api.name)
+    outcome = scope.execute(",.", stdin="A", isolated=True)
+    assert isinstance(outcome.error, esolangs.ArgumentError)
+    assert "runtime declared in the installed catalog" in str(outcome.error)

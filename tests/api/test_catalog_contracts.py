@@ -36,6 +36,42 @@ def test_catalog_aliases_use_the_same_normalization_as_lookup() -> None:
             esolangs.Catalog([replace(original, aliases=(alias,))])
 
 
+def test_only_alias_changes_keep_examples_and_proof_bounds() -> None:
+    original = LANGUAGES[REFERENCE]
+    expected = esolangs.describe(REFERENCE)
+    assert expected.examples
+    assert expected.generator_scaling
+    alias = "Scoped Reference"
+    aliased = replace(original, aliases=(alias,))
+    scoped = esolangs.Catalog([aliased]).bind(alias)
+    assert scoped.describe() == expected
+
+    no_backend = esolangs.Catalog([replace(aliased, backend=None)]).bind(alias)
+    facts = no_backend.describe()
+    assert facts.examples == ()
+    assert facts.generator_scaling is None
+
+
+def test_custom_emitter_does_not_inherit_shipped_evidence() -> None:
+    class Emitter:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise AssertionError("compared the custom emitter")
+
+        def __call__(self, _request):
+            return "+."
+
+    original = LANGUAGES[REFERENCE]
+    backend = replace(original.backend, entrypoint=Emitter())
+    scoped = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    facts = scoped.describe()
+    assert facts.examples == ()
+    assert facts.generator_scaling is None
+    artifact = scoped.generate("01")
+    assert scoped.run(artifact, stdin="1").output == "\x01"
+
+
 def test_catalog_identifiers_cannot_be_shadowed_by_aliases() -> None:
     original = LANGUAGES[REFERENCE]
     owner = replace(original, name="Private owner", id="private_owner")

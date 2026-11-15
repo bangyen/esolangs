@@ -29,7 +29,7 @@ def test_unsupported_text_scale_does_not_consume_source() -> None:
         assert api.run(source).output == "\x01"
 
 
-def test_prepared_constructor_accepts_artifact_alias_and_refuses_invalid_types():
+def test_prepared_constructor_accepts_owner_spelling_and_refuses_invalid_types():
     api = esolangs.Language(REFERENCE)
     artifact = esolangs.ProgramArtifact(",+.", api.name.upper())
     direct = esolangs.PreparedProgram(artifact, api.catalog)
@@ -39,6 +39,55 @@ def test_prepared_constructor_accepts_artifact_alias_and_refuses_invalid_types()
         esolangs.PreparedProgram(artifact.source, api.catalog)
     with pytest.raises(esolangs.ArgumentError, match="catalog must be a Catalog"):
         esolangs.PreparedProgram(artifact, object())
+
+
+@pytest.mark.parametrize("use_id", [False, True], ids=["alias", "id"])
+@pytest.mark.parametrize("retain_settings", [False, True], ids=["plain", "settings"])
+def test_prepared_constructor_refuses_foreign_ownership(
+    *, use_id: bool, retain_settings: bool
+) -> None:
+    owner = esolangs.Language(REFERENCE)
+    declaration = owner.catalog.languages[owner.name]
+    renamed = replace(
+        declaration,
+        name="Scoped Runtime",
+        id=owner.name if use_id else "",
+        aliases=() if use_id else (owner.name,),
+    )
+    api = esolangs.Catalog([renamed]).bind(owner.name)
+    assert api.name == renamed.name
+    assert api.run(api.from_source("+.")).output == "\x01"
+    settings = owner.settings() if retain_settings else None
+    artifact = owner.from_source("+.", settings=settings)
+    assert owner.run(artifact).output == "\x01"
+    for use in (
+        lambda: api.run(artifact),
+        lambda: api.prepare(artifact),
+        lambda: esolangs.PreparedProgram(artifact, api.catalog),
+        lambda: api.to_json(artifact),
+        lambda: artifact.evaluate([1], catalog=api.catalog),
+    ):
+        with pytest.raises(esolangs.ProgramError, match="generated for"):
+            use()
+    with pytest.raises(esolangs.ProgramError, match="program language must be"):
+        api.from_json(owner.to_json(artifact))
+
+
+def test_stored_owner_slug_is_independent_of_a_lookup_alias() -> None:
+    declaration = esolangs.Language(REFERENCE).catalog.languages[REFERENCE]
+    owner = replace(declaration, name="Scoped Runtime", id="")
+    decoy = replace(
+        declaration, name="Alias Runtime", id="", aliases=("scoped-runtime",)
+    )
+    catalog = esolangs.Catalog([owner, decoy])
+    assert catalog.bind("scoped-runtime").name == decoy.name
+    api = catalog.bind(owner.name)
+    artifact = esolangs.ProgramArtifact(",.", " scoped-runtime ")
+    direct = esolangs.PreparedProgram(artifact, catalog)
+    assert direct.language == owner.name
+    assert direct.run(stdin="1").output == "1"
+    assert artifact.evaluate([1], catalog=catalog).answer == "1"
+    assert api.evaluate(artifact, [1]).answer == "1"
 
 
 @pytest.mark.medium

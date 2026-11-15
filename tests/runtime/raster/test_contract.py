@@ -423,6 +423,59 @@ def test_portable_png_accepts_embedded_arity_when_claims_agree(
         api.from_json(json.dumps({**document, "input_arity": 2}))
 
 
+def test_png_owner_cannot_be_reassigned_by_a_catalog_alias(tmp_path: Path) -> None:
+    owner = esolangs.Language(RASTER_LANGUAGES[0])
+    declaration = owner.catalog.languages[owner.name]
+    renamed = replace(declaration, name="Scoped Drawing", id="", aliases=(owner.name,))
+    api = esolangs.Catalog([renamed]).bind(owner.name)
+    artifact = owner.generate("01", settings=owner.settings(), scale=2)
+    path = tmp_path / "source.png"
+    owner.to_file(artifact, path)
+    assert owner.from_file(path) == artifact
+    assert owner.evaluate(owner.from_file(path), [1]).answer == "1"
+    assert api.name == renamed.name
+    assert api.from_source(artifact.source).language == api.name
+
+    for load in (lambda: api.from_file(path), lambda: api.prepare(path)):
+        with pytest.raises(esolangs.ProgramError, match="generated for"):
+            load()
+    document = json.loads(owner.to_json(artifact))
+    with pytest.raises(esolangs.ProgramError, match="program language must be"):
+        api.from_json(json.dumps(document))
+    document["language"] = api.name
+    with pytest.raises(esolangs.ProgramError, match="generated for"):
+        api.from_json(json.dumps(document))
+
+
+def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
+    declaration = esolangs.Language(RASTER_LANGUAGES[0]).catalog.languages[
+        RASTER_LANGUAGES[0]
+    ]
+    owner = replace(declaration, name="Scoped Drawing!", id="")
+    decoy = replace(
+        declaration, name="Alias Drawing", id="", aliases=("scoped-drawing",)
+    )
+    catalog = esolangs.Catalog([owner, decoy])
+    assert catalog.bind("scoped-drawing").name == decoy.name
+    api = catalog.bind(owner.name)
+    raster = Raster((((1, 2, 3),),))
+    path = tmp_path / "source.png"
+    for spelling in (" SCOPED-DRAWING ", " scoped_drawing! "):
+        path.write_bytes(
+            png.write_metadata(
+                raster.to_png(), {"version": 1, "language": spelling, "settings": {}}
+            )
+        )
+        assert api.from_file(path) == api.from_source(raster, settings=api.settings())
+    path.write_bytes(
+        png.write_metadata(
+            raster.to_png(), {"version": 1, "language": "Scoped Drawing?"}
+        )
+    )
+    with pytest.raises(esolangs.ProgramError, match="generated for"):
+        api.from_file(path)
+
+
 def test_portable_png_checks_record_metadata_before_pillow(monkeypatch) -> None:
     api = esolangs.Language(RASTER_LANGUAGES[0])
     pixels = Raster((((1, 2, 3),),)).upscaled(2)

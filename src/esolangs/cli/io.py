@@ -36,6 +36,7 @@ from esolangs.runtime._files import (
 )
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
+from esolangs.runtime.source_hints import source_read_error
 from esolangs.settings import DialectSettings
 
 #: How long a blocking stdin read waits before it says that it is waiting.
@@ -224,7 +225,7 @@ def _bounded_read(
         except StreamReadTimeoutError:
             raise
         except OSError as exc:
-            _fail(f"cannot read {path}: {exc}")
+            _fail(source_read_error(path, exc))
 
     def _on_timeout() -> None:
         bound = f" ({timeout_flag})" if timeout_flag else ""

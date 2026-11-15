@@ -14,7 +14,7 @@ from esolangs.debugger import Debugger
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome
-from esolangs.registry._catalog import Catalog, get_catalog
+from esolangs.registry._catalog import Catalog, get_catalog, resolve_origin
 from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
@@ -96,8 +96,10 @@ class PreparedProgram:
         if not isinstance(self.artifact, ProgramArtifact):
             raise ProgramError("a prepared program requires a program artifact")
         catalog = get_catalog(self.catalog)
+        origin = self.artifact.language
+        name = resolve_origin(origin, catalog=catalog)
         artifact = _check_program(
-            self.artifact.language,
+            name or origin,
             self.artifact,
             catalog=catalog,
             preserve_compression=True,

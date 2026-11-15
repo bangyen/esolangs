@@ -180,8 +180,21 @@ def get_catalog(catalog: Catalog | None = None) -> Catalog:
 
 
 def resolve_origin(origin: str, *, catalog: Catalog) -> str | None:
-    """Resolve a stored owner if the caller's catalog knows it."""
-    try:
-        return catalog.resolve(origin)
-    except UnknownLanguageError:
-        return None
+    """Resolve canonical display-name spellings used as stored ownership."""
+    origin = str.__str__(origin)
+    if origin in catalog.languages:
+        return origin
+    folded = origin.strip().casefold()
+    owner = catalog._by_folded.get(folded)  # noqa: SLF001 - catalog-owned index
+    if owner is not None and folded == owner.strip().casefold():
+        return owner
+    slug = canonical_id(origin)
+    owner = catalog._by_id.get(slug)  # noqa: SLF001 - catalog-owned index
+    # A lookup alias or unrelated ID can name a different owner in another scope.
+    if (
+        owner is not None
+        and slug == canonical_id(owner)
+        and not (_symbols(origin) - _symbols(owner))
+    ):
+        return owner
+    return None
