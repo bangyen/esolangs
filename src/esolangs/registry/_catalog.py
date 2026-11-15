@@ -111,7 +111,7 @@ class Catalog:
 
     def with_language(self, language: LanguageDeclaration) -> Catalog:
         """Return a new scope with one declaration added or replaced."""
-        if not isinstance(language, LanguageDeclaration):
+        if not _has_backing_type(language, LanguageDeclaration):
             raise ArgumentError("catalog entries must be LanguageDeclaration records")
         return Catalog(({**self.languages, language.name: language}).values())
 

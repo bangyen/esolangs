@@ -228,23 +228,69 @@ def test_halt_driver_requires_a_stepper_before_inspecting_state() -> None:
 
 def test_branch_search_does_not_hide_an_unexpected_or_global_failure() -> None:
     class _BranchOnly:
-        def __init__(self, error_type):
-            self.error_type = error_type
+        halted = False
+
+        def __init__(self, error, *, phase, outcomes=(1, 2)):
+            self.error = error
+            self.phase = phase
+            self.outcomes = outcomes
+
+        def step(self):
+            pytest.fail("detached proof must not step the live machine")
+
+        def snapshot(self):
+            return 0
 
         def branching_snapshot(self) -> int:
             return 0
 
         def branching_halted(self, state: int) -> bool:
+            if (self.phase, state) in (("halt", 1), ("root", 0)):
+                raise self.error
             return state == 2
 
         def branching_successors(self, state: int, _limit: int) -> tuple[int, ...]:
             if state == 0:
-                return (1, 2)
-            raise self.error_type("branch callback failed")
+                return self.outcomes
+            raise self.error
 
-    for error_type in (TypeError, AssertionError, ValueError, ExecutionTimeoutError):
-        with pytest.raises(error_type, match="branch callback failed"):
-            run_until_halt_or_all_branches_cycle(_BranchOnly(error_type), limit=3)
+    for phase in ("halt", "step"):
+        for error_type in (
+            TypeError,
+            AssertionError,
+            ValueError,
+            ExecutionTimeoutError,
+        ):
+            error = error_type("branch callback failed")
+            with pytest.raises(error_type, match="branch callback failed") as caught:
+                run_until_halt_or_all_branches_cycle(
+                    _BranchOnly(error, phase=phase), limit=3
+                )
+            assert caught.value is error
+
+        for error_type in (HaltError, TimeoutError):
+            error = error_type("detached arm failed")
+            for outcomes in ((1, 2), (2, 1)):
+                machine = _BranchOnly(error, phase=phase, outcomes=outcomes)
+                assert run_until_halt_or_all_branches_cycle(machine, limit=3)
+                with pytest.raises(TypeError, match="depends on its own draws"):
+                    run_until_halt_or_cycle(machine, limit=3)
+            for proof in (
+                run_until_halt_or_cycle,
+                run_until_halt_or_all_branches_cycle,
+            ):
+                machine = _BranchOnly(error, phase=phase, outcomes=(1,))
+                with pytest.raises(error_type, match="detached arm failed") as caught:
+                    proof(machine, limit=2)
+                assert caught.value is error
+                assert getattr(error, "observation", None) is None
+
+    failure = TimeoutError("root halt check failed")
+    with pytest.raises(TimeoutError, match="root halt check failed") as caught:
+        run_until_halt_or_all_branches_cycle(
+            _BranchOnly(failure, phase="root"), limit=3
+        )
+    assert caught.value is failure
 
 
 class _SwitchingDebugger(Debugger):
@@ -680,57 +726,82 @@ def _check_branch_root_faults(api, artifact, machine, monkeypatch):
     def refuse(*_args):
         raise failure
 
-    class CallerBranch(Debugger):
-        branching_snapshot = refuse
+    class RefusedHash:
+        def __hash__(self):
+            return refuse()
 
-        def branching_halted(self, _state):
-            pytest.fail("branch root fault must precede traversal")
+    class CallerBranch(Debugger):
+        def branching_snapshot(self):
+            return machine.branching_snapshot(self)
+
+        def branching_halted(self, state):
+            return machine.branching_halted(self, state)
 
         def branching_successors(self, _state, _limit):
             pytest.fail("branch root fault must precede traversal")
 
-    with monkeypatch.context() as hooks:
-        hooks.setattr(machine, "branching_snapshot", refuse)
-        for make, expected in (
-            (lambda: api.make_vm(artifact, stdin="1"), initial),
-            (lambda: Debugger(prepared.make_debugger(stdin="1")), initial),
-            (lambda: machine(ScriptedIO("1")), None),
-            (lambda: CallerBranch(prepared.make_vm(stdin="1")), None),
-        ):
-            for detector in detectors:
-                live = make()
-                for observation, output in (
-                    (None, ""),
-                    (foreign, "caller"),
-                    (None, "caller"),
-                ):
-                    failure = HaltError("branch root fault")
-                    failure.observation = observation
-                    failure.partial_output = output
-                    with pytest.raises(HaltError, match="branch root fault") as caught:
-                        detector(live, limit=2)
-                    assert caught.value is failure
-                    if observation is None and not output and expected is not None:
-                        assert failure.observation == expected
-                        assert failure.partial_output == expected.output
-                    else:
-                        assert failure.observation is observation
-                        assert failure.partial_output == output
-                assert not live.halted
-                if isinstance(live, Debugger):
-                    assert live.observation == replace(initial, steps=0)
+    for name, hook in (
+        ("branching_snapshot", refuse),
+        ("branching_snapshot", lambda *_args: RefusedHash()),
+        ("branching_halted", refuse),
+    ):
+        with monkeypatch.context() as hooks:
+            hooks.setattr(machine, name, hook)
+            for make, expected in (
+                (lambda: api.make_vm(artifact, stdin="1"), initial),
+                (lambda: Debugger(prepared.make_debugger(stdin="1")), initial),
+                (lambda: machine(ScriptedIO("1")), None),
+                (lambda: CallerBranch(prepared.make_vm(stdin="1")), None),
+            ):
+                for detector in detectors:
+                    live = make()
+                    for observation, output in (
+                        (None, ""),
+                        (foreign, "caller"),
+                        (None, "caller"),
+                    ):
+                        failure = HaltError("branch root fault")
+                        failure.observation = observation
+                        failure.partial_output = output
+                        with pytest.raises(
+                            HaltError, match="branch root fault"
+                        ) as caught:
+                            detector(live, limit=2)
+                        assert caught.value is failure
+                        if observation is None and not output and expected is not None:
+                            assert failure.observation == expected
+                            assert failure.partial_output == expected.output
+                        else:
+                            assert failure.observation is observation
+                            assert failure.partial_output == output
+                    assert not live.halted
+                    if isinstance(live, Debugger):
+                        assert live.observation == replace(initial, steps=0)
 
-    with monkeypatch.context() as hooks:
-        hooks.setattr(machine, "branching_successors", refuse)
-        for detector in detectors:
-            failure = HaltError("detached successor fault")
-            live = prepared.make_debugger(stdin="1")
-            with pytest.raises(HaltError, match="detached successor fault") as caught:
-                detector(live, limit=2)
+            failure = HaltError("branch root fault")
+            with pytest.raises(HaltError, match="branch root fault") as caught:
+                prepared.evaluate([1], limits=ExecutionLimits(max_steps=2))
             assert caught.value is failure
-            assert failure.observation is None
-            assert failure.partial_output == ""
-            assert live.observation == replace(initial, steps=0)
+            assert failure.observation == initial
+            assert failure.partial_output == initial.output
+
+    for name, hook in (
+        ("branching_successors", refuse),
+        ("branching_halted", lambda _vm, state: refuse() if state == (1,) else False),
+    ):
+        with monkeypatch.context() as hooks:
+            hooks.setattr(machine, name, hook)
+            for detector in detectors:
+                failure = HaltError("detached successor fault")
+                live = prepared.make_debugger(stdin="1")
+                with pytest.raises(
+                    HaltError, match="detached successor fault"
+                ) as caught:
+                    detector(live, limit=2)
+                assert caught.value is failure
+                assert failure.observation is None
+                assert failure.partial_output == ""
+                assert live.observation == replace(initial, steps=0)
 
 
 def _check_branch_successor_containers(api, artifact, limits, machine, monkeypatch):

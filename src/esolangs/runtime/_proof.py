@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from reprlib import recursive_repr
 from typing import TYPE_CHECKING, NamedTuple, cast
 
-from esolangs.exceptions import EsolangError
+from esolangs.exceptions import EsolangError, ExecutionBudgetError
 from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import _AncestorEntry
-from esolangs.runtime._drive import _checked_halted
+from esolangs.runtime._drive import _check_snapshot_hash, _checked_halted
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.source_hints import with_hint
@@ -122,6 +122,12 @@ def _freeze_transitions(
             raise ValueError("invalid branching evidence containers")
         rows.append((state, tuple(tuple.__iter__(successors))))
     return tuple(rows)
+
+
+class _BranchResult(NamedTuple):
+    halts: bool
+    forked: bool
+    proof: BranchProof | None
 
 
 class CycleDecision(NamedTuple):
@@ -251,22 +257,44 @@ def _check_branch_halt(halted: object, error_type: type[TypeError]) -> None:
         raise error_type("branching_halted must return a bool")
 
 
-def _read_branch_root(machine: _BranchingStepMachine, adapter: object) -> Hashable:
-    """Read a detached root, retaining owned IO if the live snapshot fails."""
+def _read_branch_root(
+    machine: _BranchingStepMachine, adapter: object, error_type: type[TypeError]
+) -> tuple[Hashable, set[Hashable]]:
+    """Read and hash a detached root, retaining owned IO on failure."""
     try:
-        return machine.branching_snapshot()
+        root = machine.branching_snapshot()
+        try:
+            return root, {root}
+        except TypeError:
+            _check_snapshot_hash(root, error_type)
+            raise
     except EsolangError as error:
-        from esolangs.vm import _capture_observation, _DelegatingVM, _record_vm_fault
-
-        if isinstance(adapter, _DelegatingVM):
-            owner: object = adapter._machine  # noqa: SLF001 - enforce ownership
-            if (
-                machine is owner
-                and error.observation is None
-                and not error.partial_output
-            ):
-                _record_vm_fault(adapter, error, _capture_observation(adapter))
+        _retain_branch_root_fault(machine, adapter, error)
         raise
+
+
+def _branch_halt_fault_escapes(
+    machine: _BranchingStepMachine,
+    adapter: object,
+    error: EsolangError | TimeoutError,
+    *,
+    at_root: bool,
+) -> bool:
+    """Root and budget faults abort the search; a detached arm may fail."""
+    if at_root and _has_backing_type(error, EsolangError):
+        _retain_branch_root_fault(machine, adapter, error)
+    return at_root or _has_backing_type(error, ExecutionBudgetError)
+
+
+def _retain_branch_root_fault(
+    machine: _BranchingStepMachine, adapter: object, error: EsolangError
+) -> None:
+    from esolangs.vm import _capture_observation, _DelegatingVM, _record_vm_fault
+
+    if isinstance(adapter, _DelegatingVM):
+        owner: object = adapter._machine  # noqa: SLF001 - enforce ownership
+        if machine is owner and error.observation is None and not error.partial_output:
+            _record_vm_fault(adapter, error, _capture_observation(adapter))
 
 
 def _drive_ancestor(

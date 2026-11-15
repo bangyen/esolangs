@@ -133,10 +133,12 @@ class LanguageDeclaration:
                     "catalog identifiers and aliases must be nonblank strings"
                 )
             aliases.append(text)
-        if not isinstance(self.runtime, RuntimeSpec):
+        if not _has_backing_type(self.runtime, RuntimeSpec):
             raise ArgumentError("language runtime must be a RuntimeSpec")
-        if not isinstance(self.runtime.capabilities, MachineCapabilities):
+        if not _has_backing_type(self.runtime.capabilities, MachineCapabilities):
             raise TypeError("runtime capabilities must be declared")
+        if not _has_backing_type(self.contract, BooleanContract):
+            raise ArgumentError("language contract must be a BooleanContract")
         schema = self.runtime.dialect_schema
         if schema is not None and schema.language != name:
             raise ValueError("dialect schema must belong to the declaring language")

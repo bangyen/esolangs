@@ -58,7 +58,7 @@ def evaluate_artifact(
     if _has_backing_type(artifact, TemplateArtifact):
         if not declaration.parameterized:
             raise TemplateError(f"{name} has no template generator")
-        program = artifact.fill(row)
+        program = TemplateArtifact.fill(artifact, row)
         stdin = ""
     else:
         if declaration.parameterized:

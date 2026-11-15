@@ -215,7 +215,20 @@ def test_ordered_template_setters_round_trip(language: str, tmp_path: Path) -> N
     converted = replace(template, bindings=alternate)
     assert type(converted.bindings) is esolangs.TemplateBindings
     assert api.to_json(converted) == document
-    restored = api.from_json(api.to_json(converted))
+
+    class InvertedFill(esolangs.TemplateArtifact):
+        def fill(self, bits):
+            return super().fill([1 - bit for bit in bits])
+
+    customized = InvertedFill(
+        template.source,
+        template.language,
+        template.bindings,
+        settings=template.settings,
+        spans=template.spans,
+    )
+    assert api.to_json(customized) == document
+    restored = api.from_json(api.to_json(customized))
     legacy = replace(template)
     object.__setattr__(legacy, "bindings", alternate)
     path = tmp_path / "program"
@@ -231,7 +244,10 @@ def test_ordered_template_setters_round_trip(language: str, tmp_path: Path) -> N
             assert (
                 alternate.fill(template.source, [bit], spans=supplied_spans) == expected
             )
-        for candidate in (template, converted, restored, legacy):
+        assert api.read_answer(api.run(customized.fill([bit])).output) == str(1 - bit)
+        assert customized.evaluate([bit]).answer == str(bit)
+        assert api.instantiate(customized, [bit]).source == expected
+        for candidate in (template, converted, customized, restored, legacy):
             assert api.evaluate(candidate, [bit]).answer == str(bit)
             filled = api.instantiate(candidate, [bit], truth_table="01")
             assert filled.source == expected

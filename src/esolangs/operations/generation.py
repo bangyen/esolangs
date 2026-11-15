@@ -774,7 +774,7 @@ def _fill_checked_template(
     catalog: Catalog,
 ) -> ProgramArtifact[str]:
     """Fill and wrap a template after its owner, dialect and row are checked."""
-    filled = template.fill(bits)
+    filled = TemplateArtifact.fill(template, bits)
     program = wrap_program(
         filled.source, catalog.languages[name].id, width, catalog=catalog
     )

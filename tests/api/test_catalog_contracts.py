@@ -163,7 +163,7 @@ def test_template_metadata_uses_the_backing_identifier() -> None:
             template_char(bad)
 
 
-def test_bad_declaration_name_is_a_public_argument_error() -> None:
+def test_bad_declaration_fields_raise_public_errors() -> None:
     declaration = LANGUAGES[REFERENCE]
     for bad in (42, _PretendsToBe(str)):
         with pytest.raises(esolangs.ArgumentError, match="nonblank strings"):
@@ -172,6 +172,30 @@ def test_bad_declaration_name_is_a_public_argument_error() -> None:
         replace(declaration, id=_PretendsToBe(str))
     with pytest.raises(esolangs.ArgumentError, match="aliases must be immutable"):
         replace(declaration, aliases=_PretendsToBe(tuple))
+
+    runtime = declaration.runtime
+    for bad in (object(), _PretendsToBe(type(runtime))):
+        with pytest.raises(
+            esolangs.ArgumentError, match="runtime must be a RuntimeSpec"
+        ):
+            replace(declaration, runtime=bad)
+
+    for bad in (object(), _PretendsToBe(type(runtime.capabilities))):
+        with pytest.raises(TypeError, match="capabilities must be declared"):
+            replace(declaration, runtime=replace(runtime, capabilities=bad))
+
+    for bad in (object(), _PretendsToBe(type(declaration.contract))):
+        with pytest.raises(
+            esolangs.ArgumentError, match="contract must be a BooleanContract"
+        ):
+            replace(declaration, contract=bad)
+
+    catalog = esolangs.Catalog([])
+    for bad in (object(), _PretendsToBe(esolangs.LanguageDeclaration)):
+        with pytest.raises(esolangs.ArgumentError, match="LanguageDeclaration records"):
+            esolangs.Catalog([bad])
+        with pytest.raises(esolangs.ArgumentError, match="LanguageDeclaration records"):
+            catalog.with_language(bad)
 
 
 @pytest.mark.parametrize("identifier", ["", "private_interpreter"])

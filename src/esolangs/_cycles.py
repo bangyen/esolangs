@@ -7,7 +7,7 @@ from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
 from inspect import getattr_static
 from itertools import islice
-from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
 from esolangs.runtime._drive import (
@@ -20,6 +20,8 @@ from esolangs.runtime._proof import (
     BranchFailure,
     BranchProof,
     CycleDecision,
+    _branch_halt_fault_escapes,
+    _BranchResult,
     _check_branch_halt,
     _drive_ancestor,
     _proof_receiver_check,
@@ -550,12 +552,6 @@ def run_until_halt_or_all_branches_cycle(
     return _branch_search(state, limit, adapter=adapter).halts
 
 
-class _BranchResult(NamedTuple):
-    halts: bool
-    forked: bool
-    proof: BranchProof | None
-
-
 def _unforkable_branch() -> TimeoutError:
     return with_hint(
         TimeoutError(
@@ -602,14 +598,6 @@ def _branch_fault(error: Exception, language: str) -> EsolangError:
         return translated
 
 
-def _branch_root_states(root: Hashable) -> set[Hashable]:
-    try:
-        return {root}
-    except TypeError:
-        _check_snapshot_hash(root, _ProofSnapshotUnavailableError)
-        raise
-
-
 def _bounded_branch_sequence(result: object, limit: int) -> tuple[Hashable, ...] | None:
     """Capture foreign successor containers within the declared state budget."""
     if not isinstance(result, Sequence):
@@ -644,10 +632,11 @@ def _branch_search(
     """Find a clean halt, or prove that every reachable state stays in the graph."""
     if not limit:
         raise _branch_budget(limit, evidence=evidence)
-    root = _read_branch_root(machine, adapter)
+    root, discovered = _read_branch_root(
+        machine, adapter, _ProofSnapshotUnavailableError
+    )
     language, _ = _proof_runtime(adapter)
     pending = deque([root])
-    discovered = _branch_root_states(root)
     exceeded = False
     # Collecting for Boolean readers cost Caballo 11.5-11.6% at n=2/3.
     transitions: list[tuple[Hashable, tuple[Hashable, ...]]] | None = (
@@ -657,7 +646,16 @@ def _branch_search(
     forked = False
     while pending:
         state = pending.popleft()
-        if (halted := machine.branching_halted(state)) is not False:
+        try:
+            halted = machine.branching_halted(state)
+        except (EsolangError, TimeoutError) as error:
+            if _branch_halt_fault_escapes(
+                machine, adapter, error, at_root=state is root
+            ):
+                raise
+            failure = error if failure is None else failure
+            continue
+        if halted is not False:
             _check_branch_halt(halted, _BranchingUnavailableError)
             proof = (
                 BranchProof(root, tuple(transitions), halts=True, terminal=state)
@@ -670,8 +668,7 @@ def _branch_search(
         except ExecutionBudgetError:
             raise
         except (EsolangError, TimeoutError) as error:
-            if failure is None:
-                failure = error
+            failure = error if failure is None else failure
             continue
         except (ValueError, OverflowError, RecursionError, MemoryError) as error:
             if language is None:
@@ -714,10 +711,10 @@ def _branch_search(
             except TypeError:
                 _check_snapshot_hash(outcome, _ProofSnapshotUnavailableError)
                 raise
-    if failure is not None:
-        raise failure
-    if exceeded:
-        raise _branch_budget(limit, evidence=evidence)
+    if failure is not None or exceeded:
+        raise (
+            failure if failure is not None else _branch_budget(limit, evidence=evidence)
+        )
     proof = (
         BranchProof(root, tuple(transitions), halts=False)
         if transitions is not None
