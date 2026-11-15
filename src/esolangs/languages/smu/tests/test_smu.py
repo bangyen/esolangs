@@ -1,10 +1,14 @@
 """Smu: the wiki cat, command edges, the preprocessor, and generated programs."""
 
+from functools import partial
+
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.smu.generator import smu
 from esolangs.languages.smu.interpreter import preprocess, run
+from esolangs.vm import _capture_workspace, complete_vm
 from tests.interpreters.runner import native_runner
 from tests.support.witness_tables import witnesses
 
@@ -91,6 +95,50 @@ def test_malformed_source(code: str, match: str) -> None:
 def test_runtime_halts(code: str) -> None:
     with pytest.raises(HaltError):
         _run(code)
+
+
+@pytest.mark.parametrize("debugger", [False, True])
+@pytest.mark.parametrize(
+    ("code", "message", "output", "stack", "phase", "steps"),
+    [
+        ("(())", "cannot output", "", ("=", "()"), False, 2),
+        ("(())|(+|||||+|)", "is unbalanced", "A", ("=", ")", "("), None, 4),
+    ],
+)
+def test_failed_run_boundary_can_be_retried(
+    code, message, output, stack, phase, steps, *, debugger: bool
+) -> None:
+    api = Language("Smu")
+    limits = ExecutionLimits(max_steps=6)
+    if debugger:
+        debug = api.make_debugger(code)
+        vm = debug.vm
+        drive = partial(debug.run, limits=limits)
+    else:
+        vm = api.make_vm(code)
+        drive = partial(complete_vm, vm, max_steps=6)
+    snapshots = []
+    for _ in range(2):
+        with pytest.raises(HaltError, match=message) as stopped:
+            drive()
+        assert not vm.halted
+        assert stopped.value.partial_output == vm.output == output
+        assert stopped.value.observation == ExecutionResult(
+            output, 0, 0, 1, steps=steps if debugger else None
+        )
+        snapshots.append((vm.snapshot(), _capture_workspace(vm)))
+    assert snapshots[0] == snapshots[1]
+    assert vm.stack == list(stack)
+    _, workspace = snapshots[0]
+    parts = dict(zip(workspace.model.components, workspace.parts, strict=True))
+    assert parts["fresh"] is phase
+    assert parts["stack"] == stack
+
+
+def test_valid_run_boundary_halts_at_the_exact_budget() -> None:
+    vm = Language("Smu").make_vm("(+)")
+    assert complete_vm(vm, max_steps=6) == "\x01"
+    assert vm.halted
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])

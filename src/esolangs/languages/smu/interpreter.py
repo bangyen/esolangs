@@ -27,8 +27,7 @@ Errors:
         definition that is neither defined nor the open one; a definition
         left open.
     HaltError: Output of a string holding ``(`` or ``)`` (before any of it
-        prints); an unbalanced string popped as the next program (before it
-        runs).
+        prints); an unbalanced next program (before it runs).
 
 Decisions:
     * An unset variable reads as the empty string.  The wiki cat needs it: at
@@ -181,7 +180,8 @@ class _Machine:
             _prepare_source(code) if isinstance(code, str) else code
         )
         self.pc = 0
-        self.fresh = True  # the run's input bit is not pushed yet
+        # True reads the input bit. None means only next-program loading remains.
+        self.fresh: bool | None = True
         self.done = False
         self._stack: list[str] = []
         self.values: dict[str, str] = {}
@@ -256,26 +256,30 @@ class _Machine:
 
     def _end_run(self) -> None:
         """Output the top string and load the next one, or halt."""
-        if self._stack:
-            self._write(self._stack.pop())
+        if self.fresh is not None and self._stack:
+            self._write(self._stack[-1])
+            self._stack.pop()
+            self.fresh = None
         if not self._stack:
             full = flush_byte((self.outgoing, self.used))
             if full is not None:
                 self.io.print_char(chr(full))
                 self.outgoing = self.used = 0
+            self.fresh = False
             self.done = True
             return
-        code = self._stack.pop()
+        code = self._stack[-1]
         try:
             closes = literals(code)
         except ValueError as error:
             raise HaltError(f"Smu program {code!r} is unbalanced: {error}") from None
+        self._stack.pop()
         self.code, self.closes, self.pc, self.fresh = code, closes, 0, True
 
     def step(self) -> None:
         if self.done:
             return
-        if self.fresh:
+        if self.fresh is True:
             self._stack.append(self._read_bit())
             self.fresh = False
         elif self.pc < len(self.code):

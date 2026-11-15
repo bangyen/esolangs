@@ -43,6 +43,7 @@ LANGUAGE = LanguageDeclaration(
     "REFRACTRAN",
     RuntimeSpec(
         "refractran",
+        reads_stdin=False,
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,

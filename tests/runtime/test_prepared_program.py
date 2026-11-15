@@ -41,6 +41,49 @@ def test_prepared_constructor_accepts_artifact_alias_and_refuses_invalid_types()
         esolangs.PreparedProgram(artifact, object())
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("direct", [False, True], ids=["prepare", "constructor"])
+def test_prepared_gzip_keeps_export_limits_without_decoding_again(
+    tmp_path, monkeypatch, direct
+):
+    api = esolangs.Language(REFERENCE)
+    limits = esolangs.TextLimits(plain_chars=0, generation_chars=2, gzip_bytes=100)
+    source = esolangs.CompressedText.from_chunks((",.",), limits=limits)
+    document = api.to_json(esolangs.ProgramArtifact(source, api.name, input_arity=1))
+    restored = api.from_json(document)
+    reads = []
+    chunks = esolangs.CompressedText.chunks
+
+    def count_decodes(compressed):
+        if compressed is restored.source:
+            reads.append(compressed)
+        return chunks(compressed)
+
+    monkeypatch.setattr(esolangs.CompressedText, "chunks", count_decodes)
+    prepared = (
+        esolangs.PreparedProgram(restored, api.catalog)
+        if direct
+        else api.prepare(restored)
+    )
+    assert prepared.artifact.source is restored.source
+    assert api.to_json(prepared.artifact) == document
+    path = tmp_path / "source"
+    with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
+        api.to_file(prepared.artifact, path)
+    assert not path.exists()
+    api.to_file(prepared.artifact, path, gzip=True)
+    assert path.read_bytes() == source.to_gzip()
+    assert prepared.run(stdin="1").output == "1"
+    assert (
+        prepared.run(stdin="1", limits=esolangs.ExecutionLimits(max_steps=2)).output
+        == "1"
+    )
+    assert prepared.run(stdin="1", isolated=True).output == "1"
+    assert complete_vm(prepared.make_vm(stdin="1"), max_steps=2) == "1"
+    assert prepared.evaluate([1]).answer == "1"
+    assert reads == [restored.source]
+
+
 def test_prepared_termination_uses_its_retained_preparation():
     api = esolangs.Language(first(answer_mode="termination", reads_input=True))
     prepared = api.prepare(api.generate("01"))

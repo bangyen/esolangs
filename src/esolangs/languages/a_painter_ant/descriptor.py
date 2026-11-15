@@ -36,6 +36,7 @@ LANGUAGE = LanguageDeclaration(
     "A Painter Ant",
     RuntimeSpec(
         "a_painter_ant",
+        reads_stdin=False,
         completion_entrypoint="_execute",
         category="grid_based",
         machine_preparation="prepare_machine",

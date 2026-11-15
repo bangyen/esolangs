@@ -48,6 +48,7 @@ LANGUAGE = LanguageDeclaration(
     "Bitdeque",
     RuntimeSpec(
         "bitdeque",
+        reads_stdin=False,
         category="queue_based",
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",

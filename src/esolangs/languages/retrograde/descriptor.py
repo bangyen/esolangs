@@ -33,6 +33,7 @@ LANGUAGE = LanguageDeclaration(
     "Retrograde",
     RuntimeSpec(
         "retrograde",
+        reads_stdin=False,
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,

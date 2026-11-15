@@ -37,6 +37,7 @@ LANGUAGE = LanguageDeclaration(
     "Back",
     RuntimeSpec(
         "back",
+        reads_stdin=False,
         category="tape_based",
         source_policy=LineSourcePolicy(),
         empty_program="Back program cannot be empty",

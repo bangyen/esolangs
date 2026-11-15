@@ -37,6 +37,7 @@ LANGUAGE = LanguageDeclaration(
     "Bitwise Cyclic Tag",
     RuntimeSpec(
         "bitwise_cyclic_tag",
+        reads_stdin=False,
         category="queue_based",
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",

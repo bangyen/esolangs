@@ -47,12 +47,15 @@ def _model(code, stdin):
     reads = 0
     steps = 0
     error = None
+    pending_program = False
     while steps < 64:
         try:
             instructions = list(_instructions(code))
         except ValueError:
             error = "halt"
             break
+        if pending_program:
+            stack.pop()
         stack.append(bits[reads] if reads < len(bits) else "=")
         reads += reads < len(bits)
         steps += len(instructions) + 2
@@ -69,14 +72,17 @@ def _model(code, stdin):
                     variables[right] = left
                 else:
                     stack.append(variables.get(left, "") + variables.get(right, ""))
-        text = stack.pop() if stack else ""
+        text = stack[-1] if stack else ""
         if re.search(r"[^|+=]", text):
             error = "halt"
             break
+        if stack:
+            stack.pop()
         output.extend(int(char == "+") for char in text if char != "=")
         if not stack:
             break
-        code = stack.pop()
+        code = stack[-1]
+        pending_program = True
     else:
         raise AssertionError("oracle corpus must terminate")
     packed = "".join(
@@ -152,10 +158,12 @@ def _trace(code, stdin):
         elif pc < len(code):
             pc = _command(code, pc, stack, variables)
         else:
-            text = stack.pop() if stack else ""
+            text = stack[-1] if stack else ""
             if set(text) - set("|+="):
                 error = "halt"
             else:
+                if stack:
+                    stack.pop()
                 for bit in text:
                     if bit != "=":
                         outgoing += (bit == "+") * 2**used
@@ -169,12 +177,14 @@ def _trace(code, stdin):
                         outgoing = used = 0
                     stopped = True
                 else:
-                    candidate = stack.pop()
+                    candidate = stack[-1]
                     try:
                         list(_instructions(candidate))
                     except ValueError:
+                        fresh = None
                         error = "halt"
                     else:
+                        stack.pop()
                         code, pc, fresh = candidate, 0, True
         trace.append(row())
         if error:

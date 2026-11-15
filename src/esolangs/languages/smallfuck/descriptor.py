@@ -46,6 +46,7 @@ LANGUAGE = LanguageDeclaration(
     "Smallfuck",
     RuntimeSpec(
         "smallfuck",
+        reads_stdin=False,
         category="tape_based",
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",

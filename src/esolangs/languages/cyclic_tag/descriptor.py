@@ -35,6 +35,7 @@ LANGUAGE = LanguageDeclaration(
     "Cyclic tag",
     RuntimeSpec(
         "cyclic_tag",
+        reads_stdin=False,
         completion_entrypoint="_execute",
         machine_preparation="prepare_machine",
         capabilities=CAPABILITIES,

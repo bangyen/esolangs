@@ -78,6 +78,7 @@ from esolangs.cli.hints import (
     _shell_hint,
 )
 from esolangs.cli.io import (
+    _complete_stdout_writes,
     _flush_stdout,
     _read_stdin,
     _StdoutEncodingError,
@@ -661,19 +662,17 @@ def main() -> None:
         _diagnostic("stdout is closed; nothing was written\n")
         sys.exit(120)
     try:
-        try:
-            _dispatch()
-        except SystemExit:
-            # An early exit flushes here too: `debug`'s exit 1 into a closed
-            # pipe printed "Exception ignored while flushing sys.stdout".
+        with _complete_stdout_writes():
+            try:
+                _dispatch()
+            except SystemExit:
+                # An early exit flushes here too: `debug`'s exit 1 into a closed
+                # pipe printed "Exception ignored while flushing sys.stdout".
+                _flush_stdout()
+                raise
+            # Flushed here, where the failure is catchable. Python flushes
+            # stdout again during interpreter shutdown.
             _flush_stdout()
-            raise
-        # Flushed here, where the failure is catchable.  Python flushes
-        # stdout again during interpreter shutdown, and a pipe closed
-        # before the first write made *that* print "Exception ignored
-        # while flushing sys.stdout" after the command had otherwise
-        # finished.
-        _flush_stdout()
     except KeyboardInterrupt:
         _diagnostic("interrupted\n")
         sys.exit(130)

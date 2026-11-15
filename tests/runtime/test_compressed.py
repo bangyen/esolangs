@@ -1,6 +1,8 @@
 """Compressed transport preserves source, provenance and expanded size."""
 
 import gzip
+import os
+import stat
 from os import fspath
 from pathlib import Path
 
@@ -8,6 +10,7 @@ import pytest
 
 import esolangs
 from esolangs.compressed import CompressedText
+from esolangs.runtime._files import explicit_path, write_staged
 from esolangs.runtime._source import text_source
 from scripts.source_units import source_units
 from tests.support.reference import REFERENCE
@@ -77,6 +80,60 @@ def test_compressed_writers_replace_links_without_changing_the_referent(
         assert destination.read_bytes() == program.to_gzip()
         assert original.read_bytes() == b"original"
         destination.unlink()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX permission bits")
+def test_native_writers_preserve_regular_destination_permissions(
+    tmp_path: Path,
+) -> None:
+    program = CompressedText.repeated("+", 1)
+    original = tmp_path / "private-source"
+    original.write_bytes(b"original")
+    original.chmod(0o600)
+    destination = tmp_path / "export"
+    previous_mask = os.umask(0o022)
+    try:
+        for save in (
+            program.to_file,
+            lambda path: esolangs.to_file(REFERENCE, program, path, gzip=True),
+        ):
+            destination.hardlink_to(original)
+            save(destination)
+            assert destination.read_bytes() == program.to_gzip()
+            assert stat.S_IMODE(destination.stat().st_mode) == 0o600
+            assert original.read_bytes() == b"original"
+            assert stat.S_IMODE(original.stat().st_mode) == 0o600
+
+            destination.unlink()
+            save(destination)
+            assert stat.S_IMODE(destination.stat().st_mode) == 0o644
+
+            destination.unlink()
+            destination.symlink_to(original)
+            save(destination)
+            assert not destination.is_symlink()
+            assert stat.S_IMODE(destination.stat().st_mode) == 0o644
+            assert stat.S_IMODE(original.stat().st_mode) == 0o600
+            destination.unlink()
+    finally:
+        os.umask(previous_mask)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX permission bits")
+def test_staged_write_uses_mode_tightened_during_writing(tmp_path: Path) -> None:
+    destination = tmp_path / "export"
+    destination.write_bytes(b"old source")
+    destination.chmod(0o644)
+
+    def chunks():
+        yield b"new "
+        assert destination.read_bytes() == b"old source"
+        destination.chmod(0o600)
+        yield b"source"
+
+    write_staged(explicit_path(destination), chunks())
+    assert destination.read_bytes() == b"new source"
+    assert stat.S_IMODE(destination.stat().st_mode) == 0o600
 
 
 @pytest.mark.parametrize(

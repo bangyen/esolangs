@@ -7,8 +7,9 @@ import select
 import shlex
 import subprocess
 import sys
-from collections.abc import Iterator
-from io import FileIO
+from collections.abc import Buffer, Iterator
+from contextlib import suppress
+from io import FileIO, TextIOWrapper
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -19,6 +20,8 @@ import esolangs
 from esolangs.cli import main
 from esolangs.cli.io import (
     _bounded_read,
+    _complete_stdout_writes,
+    _write_output,
 )
 from tests.support.cli_support import PACKAGE, call_main, run_cli
 from tests.support.pick import languages, one_where
@@ -465,6 +468,62 @@ class TestTheBoundedReaderInProcess:
                     _bounded_read(str(path), 1.0, max_bytes=2)
                 assert exc.value.code == 2
         assert ("larger than" in capsys.readouterr().err) == (len(data) > 2)
+
+
+def test_unbuffered_stdout_retries_short_writes_and_restores_writer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "output"
+    with (
+        FileIO(path, "w") as raw,
+        TextIOWrapper(
+            raw, encoding="utf-16", newline="\r", write_through=True
+        ) as stdout,
+    ):
+        stdout.write("before\n")
+        write = raw.write
+        writes: list[int | None] = []
+
+        def short(data: Buffer) -> int | None:
+            count = write(memoryview(data)[:2])
+            writes.append(count)
+            return count
+
+        vars(raw)["write"] = short
+        monkeypatch.setattr(sys, "stdout", stdout)
+        with _complete_stdout_writes():
+            _write_output("éλ\n", utf8=False)
+        assert raw.write is short
+    assert writes == [2, 2, 2]
+    assert path.read_bytes() == "before\réλ\r".encode("utf-16")
+
+
+@pytest.mark.medium
+@pytest.mark.skipif(os.name != "posix", reason="requires a POSIX nonblocking pipe")
+@pytest.mark.parametrize(
+    "args", [("encode-inputs", REFERENCE, "01"), ("list",)], ids=["raw", "display"]
+)
+def test_unbuffered_stdout_refuses_a_full_pipe(args: tuple[str, ...]) -> None:
+    read_fd, write_fd = os.pipe()
+    with os.fdopen(read_fd, "rb") as reader, os.fdopen(write_fd, "wb") as writer:
+        fd = writer.fileno()
+        os.set_blocking(fd, False)
+        for block in (b"x" * 512, b"x"):
+            with suppress(BlockingIOError):
+                while True:
+                    os.write(fd, block)
+        result = subprocess.run(
+            [sys.executable, "-u", "-m", "esolangs", *args],
+            stdout=writer,
+            stderr=subprocess.PIPE,
+            timeout=10,
+            check=False,
+        )
+        assert not os.get_blocking(fd)
+        writer.close()
+        assert set(reader.read()) == {ord("x")}
+    assert result.returncode == 120
+    assert b"cannot write stdout:" in result.stderr
 
 
 # 2.2s over 6 tests: drives the CLI as a subprocess.

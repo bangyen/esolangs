@@ -37,6 +37,7 @@ LANGUAGE = LanguageDeclaration(
     "ArrowQueue",
     RuntimeSpec(
         "arrowqueue",
+        reads_stdin=False,
         category="grid_based",
         source_policy=LineSourcePolicy(),
         machine_preparation="prepare_machine",

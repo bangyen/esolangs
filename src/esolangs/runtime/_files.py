@@ -4,7 +4,7 @@ import os
 import select
 import stat
 from collections.abc import Callable, Iterable, Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from contextvars import ContextVar
 from dataclasses import dataclass
 from io import BufferedReader, BufferedRWPair, FileIO, IOBase
@@ -193,4 +193,13 @@ def write_staged(target: _ExplicitPath, chunks: Iterable[bytes]) -> None:
         staged = Path(temporary) / "source"
         with staged.open("wb") as stream:
             stream.writelines(chunks)
+        permissions = None
+        if os.name == "posix":
+            with suppress(FileNotFoundError):
+                mode = os.lstat(target).st_mode
+                if stat.S_ISREG(mode):
+                    # Use current access bits after a potentially slow write.
+                    permissions = mode & 0o777
+        if permissions is not None:
+            staged.chmod(permissions)
         staged.replace(target)

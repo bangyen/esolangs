@@ -35,6 +35,7 @@ LANGUAGE = LanguageDeclaration(
     "Home Row",
     RuntimeSpec(
         "home_row",
+        reads_stdin=False,
         category="tape_based",
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",

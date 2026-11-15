@@ -9,6 +9,7 @@ from types import ModuleType
 from typing import Any, cast
 
 from esolangs.artifacts import BooleanEvaluation, ProgramArtifact
+from esolangs.compressed import CompressedText
 from esolangs.debugger import Debugger
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.limits import ExecutionLimits
@@ -33,7 +34,12 @@ from esolangs.runtime._machine import (
     RuntimePlan,
 )
 from esolangs.runtime._program import Program, RunnerProgram
-from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
+from esolangs.runtime._source import (
+    ProgramSource,
+    check_scale_for,
+    effective_scale,
+    source_for,
+)
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO, _scripted_io
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
@@ -66,11 +72,15 @@ class PreparedProgram:
     language-owned parsed data and bind fresh randomness for each invocation;
     other hooks may defer parsing.
     Native runners retain their own compiled representations and caches.
+    The public artifact retains compressed source and its export limits.
     """
 
     artifact: ProgramArtifact[Program]
     catalog: Catalog = field(repr=False)
     _module: ModuleType = field(init=False, repr=False, compare=False)
+    _runnable_artifact: ProgramArtifact[Program] = field(
+        init=False, repr=False, compare=False
+    )
     _code: Program | tuple[str, ...] = field(init=False, repr=False, compare=False)
     _source_options: tuple[tuple[str, Any], ...] = field(
         init=False, repr=False, compare=False
@@ -87,11 +97,27 @@ class PreparedProgram:
             raise ProgramError("a prepared program requires a program artifact")
         catalog = get_catalog(self.catalog)
         artifact = _check_program(
-            self.artifact.language, self.artifact, catalog=catalog
+            self.artifact.language,
+            self.artifact,
+            catalog=catalog,
+            preserve_compression=True,
         )
         check_scale_for(artifact.language, artifact.scale, catalog=catalog)
+        source = artifact.source
+        if isinstance(source, CompressedText):
+            source = source_for(artifact.language, source, catalog=catalog)
+        runnable = artifact
+        if source is not artifact.source:
+            runnable = ProgramArtifact(
+                source,
+                artifact.language,
+                settings=artifact.settings,
+                scale=artifact.scale,
+                input_arity=artifact.input_arity,
+            )
         object.__setattr__(self, "artifact", artifact)
         object.__setattr__(self, "catalog", catalog)
+        object.__setattr__(self, "_runnable_artifact", runnable)
         with interpreter_errors(
             f"the {self.language} interpreter recursed deeper than CPython's "
             "stack limit allows while loading this program",
@@ -101,7 +127,7 @@ class PreparedProgram:
         object.__setattr__(self, "_module", module)
         code, options = prepare_call(
             self.language,
-            self.artifact.source,
+            runnable.source,
             ExecutionContext(
                 scale=self.artifact.scale, settings=self.artifact.settings
             ),
@@ -188,7 +214,7 @@ class PreparedProgram:
             if options:
                 runner = partial(runner, **options)
         else:
-            code = self.artifact.source
+            code = self._runnable_artifact.source
             if isinstance(plan, RandomRuntimePlan):
                 plan = plan.bind(self._options(seed=seed).get("rng"))
             runner = partial(_run_plan, plan)
@@ -213,7 +239,7 @@ class PreparedProgram:
 
         return _execute_outcome(
             self.language,
-            self.artifact,
+            self._runnable_artifact,
             stdin=stdin,
             limits=limits,
             seed=seed,
@@ -232,7 +258,11 @@ class PreparedProgram:
         from esolangs.operations.evaluation import evaluate_artifact
 
         return evaluate_artifact(
-            self.artifact, bits, limits=limits, catalog=self.catalog, prepared=self
+            self._runnable_artifact,
+            bits,
+            limits=limits,
+            catalog=self.catalog,
+            prepared=self,
         )
 
     def run(
@@ -260,7 +290,7 @@ class PreparedProgram:
 
         return _make_vm(
             self.language,
-            self.artifact,
+            self._runnable_artifact,
             stdin=stdin,
             seed=seed,
             catalog=self.catalog,
@@ -324,7 +354,9 @@ def _prepare_checked_program(
     """Load source after preflight, applying any further file metadata."""
     from esolangs.operations.source import _check_program
 
-    artifact = _check_program(name, program, settings=settings, catalog=catalog)
+    artifact = _check_program(
+        name, program, settings=settings, catalog=catalog, preserve_compression=True
+    )
     settings = artifact.settings
     scale = effective_scale(name, artifact, scale, catalog=catalog)
     check_scale_for(name, scale, catalog=catalog)

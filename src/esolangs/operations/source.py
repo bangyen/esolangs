@@ -170,6 +170,7 @@ def _check_program(
     settings: DialectSettings | None = None,
     catalog: "Catalog | None" = None,
     normalize: bool = False,
+    preserve_compression: bool = False,
 ) -> ProgramArtifact[Program]:
     """Acquire a runnable record without consuming stdin or parsing commands."""
     from esolangs.registry._catalog import get_catalog
@@ -179,7 +180,12 @@ def _check_program(
     if isinstance(program, TemplateArtifact):
         raise TemplateError("fill the template before execution")
     record = read_artifact(
-        name, program, settings=settings, catalog=catalog, normalize=normalize
+        name,
+        program,
+        settings=settings,
+        catalog=catalog,
+        normalize=normalize,
+        preserve_compression=preserve_compression,
     )
     assert isinstance(record, ProgramArtifact)
     check_input(stdin)

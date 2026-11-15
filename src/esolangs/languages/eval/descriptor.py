@@ -37,6 +37,7 @@ LANGUAGE = LanguageDeclaration(
     "Eval",
     RuntimeSpec(
         "eval",
+        reads_stdin=False,
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,

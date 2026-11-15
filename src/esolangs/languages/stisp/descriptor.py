@@ -36,6 +36,7 @@ LANGUAGE = LanguageDeclaration(
     "Stisp",
     RuntimeSpec(
         "stisp",
+        reads_stdin=False,
         category="other",
         empty_program="a Stisp program needs a stack expression",
         machine_preparation="prepare_machine",

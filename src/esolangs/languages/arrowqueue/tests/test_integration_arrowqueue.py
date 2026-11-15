@@ -1,10 +1,40 @@
 """ArrowQueue through the shared API, CLI and machinery."""
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
 from tests.support.evaluation import _evaluate
+
+
+@pytest.mark.medium
+def test_run_does_not_wait_for_stdin_eof(tmp_path: Path) -> None:
+    path = tmp_path / "program"
+    path.write_text("~")
+    reader, writer = os.pipe()
+    with os.fdopen(reader, "rb") as source, os.fdopen(writer, "wb"):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "esolangs",
+                "run",
+                "--execution-timeout",
+                "2",
+                "ArrowQueue",
+                str(path),
+            ],
+            stdin=source,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"0", b"")
 
 
 def test_termination_input_exhaustion_is_a_fault(

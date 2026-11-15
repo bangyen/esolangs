@@ -11,9 +11,10 @@ import select
 import stat
 import sys
 import threading
-from collections.abc import Callable
-from contextlib import AbstractContextManager
+from collections.abc import Buffer, Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager
 from contextvars import copy_context
+from errno import EAGAIN
 from io import BufferedReader, FileIO
 from math import ceil
 from time import monotonic, sleep
@@ -372,6 +373,44 @@ class _StdoutError(Exception):
 
 class _StdoutEncodingError(Exception):
     """Output text cannot be written as UTF-8."""
+
+
+@contextmanager
+def _complete_stdout_writes() -> Iterator[None]:
+    """Check unbuffered stdout writes without changing the text encoder."""
+    raw = getattr(sys.stdout, "buffer", None)
+    if not isinstance(raw, FileIO):
+        yield
+        return
+    write = raw.write
+    attributes = vars(raw)
+    shadowed = "write" in attributes
+    previous = attributes.get("write")
+
+    def complete(data: Buffer) -> int:
+        remaining = memoryview(data).cast("B")
+        total = len(remaining)
+        while remaining:
+            written = write(remaining)
+            if not written:
+                raise BlockingIOError(
+                    EAGAIN,
+                    "write could not complete without blocking",
+                    total - len(remaining),
+                )
+            remaining = remaining[written:]
+        return total
+
+    # TextIOWrapper discards the raw write count. Guard the existing FileIO
+    # rather than replacing the wrapper and losing its encoder state.
+    attributes["write"] = complete
+    try:
+        yield
+    finally:
+        if shadowed:
+            attributes["write"] = previous
+        else:
+            del attributes["write"]
 
 
 def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
