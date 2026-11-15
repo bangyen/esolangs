@@ -900,6 +900,75 @@ def test_metadata_writer_refuses_nonstandard_json_numbers(number: float) -> None
 
 
 @pytest.mark.parametrize("language", one(source_kind="raster"))
+def test_png_writer_retains_dialect_owner(language: str, tmp_path: Path) -> None:
+    installed = esolangs.Language(language)
+    original = installed.catalog.languages[language]
+    name, alias = "Scoped Raster", "Private Drawing"
+    schema = esolangs.DialectSchema(name, {"ink": (0, 1)}, {"ink": 0})
+    runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
+    declaration = replace(
+        original,
+        name=name,
+        runtime=runtime,
+        id="",
+        aliases=(alias, language),
+        backend=None,
+    )
+    api = esolangs.Catalog([declaration]).bind(name)
+    pixels = esolangs.Raster((((1, 2, 3),),))
+    raw = pixels.to_png()
+    settings = api.settings(ink=1)
+    expected = esolangs.ProgramArtifact(pixels, name, settings=settings, scale=1)
+    canonical = png.attach_source_metadata(raw, name, settings, 1)
+    path = tmp_path / "source.png"
+
+    for owner, options in (
+        (None, {}),
+        (None, {"catalog": api.catalog}),
+        (name, {}),
+        ("scoped raster", {}),
+        (alias, {"catalog": api.catalog}),
+    ):
+        tagged = png.attach_source_metadata(raw, owner, settings, 1, **options)
+        assert tagged == png.write_source(pixels.rows, owner, settings, 1, **options)
+        assert tagged == canonical
+        assert png.read_metadata(tagged)["language"] == name
+        path.write_bytes(tagged)
+        assert api.from_file(path) == expected
+
+    # An installed name can be an alias in a separate catalog. An empty
+    # settings object could otherwise be silently accepted by either owner.
+    empty = api.settings()
+    path.write_bytes(
+        png.attach_source_metadata(raw, language, empty, None, catalog=api.catalog)
+    )
+    assert api.from_file(path).settings == empty
+    with pytest.raises(esolangs.ProgramError, match="generated for Scoped Raster"):
+        installed.from_file(path)
+    other = esolangs.Catalog([replace(original, aliases=(name,))])
+    with pytest.raises(esolangs.ArgumentError, match="dialect settings belong to"):
+        png.attach_source_metadata(raw, None, settings, 1, catalog=other)
+    with pytest.raises(esolangs.ArgumentError, match="catalog must be a Catalog"):
+        png.attach_source_metadata(raw, name, settings, 1, catalog=object())
+
+    unscoped = png.attach_source_metadata(raw, alias, None, None)
+    assert png.read_metadata(unscoped)["language"] == alias
+
+
+@pytest.mark.parametrize("language", one(source_kind="raster"))
+def test_png_writer_refuses_foreign_dialect_owner(language: str) -> None:
+    pixels = esolangs.Raster((((1, 2, 3),),))
+    raw = pixels.to_png()
+    settings = esolangs.Language(REFERENCE).settings()
+    for write in (
+        lambda: png.attach_source_metadata(raw, language, settings, 1),
+        lambda: png.write_source(pixels.rows, language, settings, 1),
+    ):
+        with pytest.raises(esolangs.ArgumentError, match="dialect settings belong to"):
+            write()
+
+
+@pytest.mark.parametrize("language", one(source_kind="raster"))
 def test_non_ascii_dialect_metadata_uses_utf8_only_when_needed(
     language, tmp_path
 ) -> None:

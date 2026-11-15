@@ -1,6 +1,10 @@
 """Befunge through the shared API, CLI and machinery."""
 
 import io
+import os
+import subprocess
+import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,6 +15,8 @@ from esolangs.debugger import make_debugger
 from tests.proofs._ledger import load
 from tests.support.cli_support import _failure, run_cli
 from tests.support.input_convention import assert_reads_tokens_on_one_line
+
+_RANDOM_BRANCH = "?.@\n. @\n@ @"
 
 
 def test_generator_cap_hint_reaches_cli(capsys) -> None:
@@ -90,7 +96,7 @@ def test_befunge_refusal_is_an_explicit_totality_exception() -> None:
 def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
     from esolangs.vm import complete_vm, make_vm
 
-    source = "?.@\n. @\n@ @"
+    source = _RANDOM_BRANCH
     observed = {}
     for seed in range(8):
         native = run("Befunge", source, seed=seed).output
@@ -143,3 +149,46 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
         )
         assert shell.returncode == 0, shell.stderr
         assert shell.stdout == output
+
+
+@pytest.mark.medium
+def test_cli_large_decimal_seed_matches_python(tmp_path: Path) -> None:
+    path = tmp_path / "draw.bf"
+    path.write_text(_RANDOM_BRANCH, encoding="utf-8")
+    limits = esolangs.ExecutionLimits(max_steps=100)
+    magnitude = 10**4401 + 1
+    above_cap = "0" * 4400 + "1"
+    cases = [
+        ("0", 0),
+        ("1", 1),
+        (f"1{above_cap}", magnitude),
+        (f" \u00a0-1_{above_cap}\t", -magnitude),
+    ]
+    outputs = []
+    for operand, seed in cases:
+        expected = run("Befunge", _RANDOM_BRANCH, seed=seed, limits=limits).output
+        shell = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "esolangs",
+                "run",
+                "--isolated",
+                "--max-steps=100",
+                f"--seed={operand}",
+                "Befunge",
+                str(path),
+            ],
+            env={**os.environ, "PYTHONINTMAXSTRDIGITS": "4300"},
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+        assert (shell.returncode, shell.stdout, shell.stderr) == (
+            0,
+            expected.encode(),
+            b"",
+        )
+        outputs.append(expected)
+    assert outputs[0] != outputs[1]

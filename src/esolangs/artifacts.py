@@ -50,7 +50,11 @@ class BooleanEvaluation:
 
     def __post_init__(self) -> None:
         """Require a bit backed by completed execution or a termination proof."""
-        if not isinstance(self.answer, str) or self.answer not in ("0", "1"):
+        answer = self.answer
+        if type(answer) is not str and issubclass(type(answer), str):
+            answer = str.__str__(answer)
+            object.__setattr__(self, "answer", answer)
+        if type(answer) is not str or answer not in ("0", "1"):
             raise ArgumentError("a Boolean evaluation requires an answer bit")
         if not isinstance(self.observation, ExecutionResult):
             raise ArgumentError(

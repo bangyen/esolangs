@@ -23,7 +23,7 @@ from esolangs.exceptions import EsolangError
 from esolangs.registry import resolve
 from esolangs.runtime._json import record_loads
 from esolangs.runtime._validate import check_scale, check_timeout
-from esolangs.runtime.memory import format_integer
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.settings import DialectSettings, dialect_choices
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -412,9 +412,18 @@ def _seed_of(options: dict[str, str]) -> int | None:
     seed is a usage error naming the flag rather than a ``ValueError`` from
     somewhere further in.
     """
-    if "--seed" not in options:
+    value = options.get("--seed")
+    if value is None:
         return None
-    return _integer(options["--seed"], "--seed", kind="a whole number")
+    try:
+        digits = value.strip()
+        if digits and digits != value:
+            # Validate padding with int's whitespace rules before stripping it.
+            prefix, _, suffix = value.partition(digits)
+            int(prefix + "0" + suffix)
+        return parse_integer(digits)
+    except ValueError:
+        _fail(f"--seed must be a whole number, got {value!r}")
 
 
 def _scale_of(options: dict[str, str]) -> int | None:

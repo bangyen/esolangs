@@ -102,6 +102,44 @@ def test_public_records_require_valid_evidence() -> None:
         BooleanEvaluation("1", completed, termination=proof)
 
 
+def test_execution_records_use_the_backing_text() -> None:
+    class WrappedText(str):
+        __hash__ = None
+
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+        def __repr__(self):
+            raise AssertionError("called the text wrapper")
+
+    report = CompletionReport(Completion.HALTED)
+    completed = ExecutionResult(WrappedText("é"), 0, 0, 0, completion=report)
+    assert type(completed.output) is str
+    assert completed.output == "é"
+    assert "output='é'" in repr(completed)
+
+    evaluation = BooleanEvaluation(WrappedText("1"), completed)
+    assert type(evaluation.answer) is str
+    assert evaluation.answer == "1"
+    with pytest.raises(ArgumentError, match="answer bit"):
+        BooleanEvaluation(WrappedText("2"), completed)
+
+    unfinished = ExecutionResult("", 0, 0, 1)
+    fault = InputExhaustedError(0, 0)
+    for status, result, error in (
+        ("completed", completed, None),
+        ("input_exhausted", unfinished, fault),
+    ):
+        outcome = ExecutionOutcome(WrappedText(status), result, error=error)
+        assert type(outcome.status) is str
+        assert outcome.status == status
+        with pytest.raises(ArgumentError, match="outcome"):
+            ExecutionOutcome(WrappedText("invalid"), result, error=error)
+
+
 def test_execution_record_repr_keeps_ordinary_diagnostics() -> None:
     assert repr(ExecutionLimits(max_steps=3)) == (
         "ExecutionLimits(preparation_timeout=None, execution_timeout=None, "

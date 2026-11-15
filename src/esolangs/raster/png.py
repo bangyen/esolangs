@@ -10,12 +10,13 @@ import zlib
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
-from esolangs.exceptions import MissingDependencyError, ProgramError
+from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime.source_hints import syntax_error
 
 if TYPE_CHECKING:
     from esolangs.raster import Pixel, Rows
+    from esolangs.registry._catalog import Catalog
     from esolangs.settings import DialectSettings
 
 _UNLOADED = object()
@@ -565,12 +566,13 @@ def write_source(
     scale: int | None,
     *,
     input_arity: int | None = None,
+    catalog: Catalog | None = None,
 ) -> bytes:
     """Encode pixels and explicit native source metadata without retagging."""
     image = write_rgb(pixels)
     try:
         return attach_source_metadata(
-            image, language, settings, scale, input_arity=input_arity
+            image, language, settings, scale, input_arity=input_arity, catalog=catalog
         )
     except SourceMetadataSizeError as error:
         raise ProgramError(str(error)) from error
@@ -583,10 +585,33 @@ def attach_source_metadata(
     scale: int | None,
     *,
     input_arity: int | None = None,
+    catalog: Catalog | None = None,
 ) -> bytes:
-    """Add program metadata to already encoded, untagged pixels."""
+    """Tag PNG pixels with the settings owner, resolving aliases in ``catalog``."""
+    if catalog is not None:
+        from esolangs.registry._catalog import get_catalog
+
+        catalog = get_catalog(catalog)
     if language is None and settings is None and scale is None and input_arity is None:
         return data
+    if settings is not None:
+        owner = settings.language
+        if language is not None and not isinstance(language, str):
+            raise ArgumentError("PNG language must be a string")
+        spelling = owner if language is None else str.__str__(language)
+        if (
+            catalog is not None
+            or spelling.strip().casefold() != owner.strip().casefold()
+        ):
+            # A distinct spelling needs the catalog that declares the alias.
+            from esolangs.registry._catalog import get_catalog
+
+            claimed = get_catalog(catalog).resolve(spelling)
+            if claimed != owner:
+                raise ArgumentError(
+                    f"dialect settings belong to {owner}, not {claimed}"
+                )
+        language = owner
     metadata: dict[str, Any] = {
         "version": 1,
         "language": language,

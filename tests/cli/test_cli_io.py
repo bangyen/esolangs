@@ -42,6 +42,7 @@ class TestTheStdinReaderInProcess:
             (["NotALang"], "unknown language"),
             (["--seed", "1", REFERENCE], "hint: omit --seed"),
             (["--seed", "2.5", REFERENCE], "--seed must be a whole number"),
+            (["--seed", "\x1c1", REFERENCE], "--seed must be a whole number"),
             (["--scale", "1", REFERENCE], "scale is only supported for raster"),
             (["--scale", "0", REFERENCE], "--scale must be a positive integer"),
             (

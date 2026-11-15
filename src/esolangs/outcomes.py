@@ -58,14 +58,20 @@ class ExecutionOutcome:
         """Require completion evidence or a matching unfinished failure."""
         if not isinstance(self.observation, ExecutionResult):
             raise ArgumentError("an outcome requires an execution observation")
+        status: str = self.status
+        if type(status) is not str:
+            if not issubclass(type(status), str):
+                raise ArgumentError("an outcome requires a text status")
+            status = str.__str__(status)
+            object.__setattr__(self, "status", status)
         if self.error is None:
-            if self.status != "completed" or not isinstance(
+            if status != "completed" or not isinstance(
                 self.observation.completion, CompletionReport
             ):
                 raise ArgumentError("a completed outcome requires completion evidence")
         elif (
             not isinstance(self.error, EsolangError)
-            or self.status != _failure_status(self.error)
+            or status != _failure_status(self.error)
             or self.observation.completion is not None
         ):
             raise ArgumentError(

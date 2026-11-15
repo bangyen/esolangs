@@ -7,6 +7,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from threading import Event
+from time import monotonic
 
 import pytest
 
@@ -498,7 +499,7 @@ def test_capped_protocol_truncated_record_retains_prefix(protocol_child) -> None
     ):
         child = protocol_child(['{"output":"prefix"}\n', malformed])
         with pytest.raises(esolangs.InterpreterLimitError) as caught:
-            _bounded_output(child, "{}", 1).unwrap()
+            _bounded_output(child, "{}", monotonic() + 1).unwrap()
         assert caught.value.partial_output == "prefix"
         assert child.killed
         assert child.reaped
@@ -521,7 +522,7 @@ def test_broken_request_pipe_still_drains_worker_failure(protocol_child) -> None
     with pytest.raises(
         esolangs.InterpreterLimitError, match="worker rejected request"
     ) as caught:
-        _bounded_output(child, "{}", 1).unwrap()
+        _bounded_output(child, "{}", monotonic() + 1).unwrap()
     assert caught.value.partial_output == "prefix"
     assert caught.value.observation is None
     assert child.reaped
@@ -544,7 +545,7 @@ def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(
 
     child.wait = wait
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        _bounded_output(child, "{}", 1).unwrap()
+        _bounded_output(child, "{}", monotonic() + 1).unwrap()
     assert caught.value.partial_output == "prefix"
     assert child.killed
     assert child.reaped
@@ -603,8 +604,8 @@ def test_process_creation_consumes_the_worker_deadline(
         clock[0] += startup
         return Child()
 
-    def bounded(_child, _request, timeout):
-        calls.append(timeout)
+    def bounded(_child, _request, deadline):
+        calls.append(deadline - clock[0])
         return esolangs.ExecutionOutcome(
             "completed", ExecutionResult("", 0, 0, 0, completion=HALTED_REPORT)
         )
@@ -619,6 +620,47 @@ def test_process_creation_consumes_the_worker_deadline(
     else:
         assert _launch("{}", 1, max_output=max_output).unwrap().output == ""
         assert calls == [pytest.approx(0.6)]
+
+
+@pytest.mark.parametrize(
+    ("preparation", "total", "startup", "bound"),
+    [
+        (2, 4, 0, None),
+        (2, 4, 3, "preparation_timeout"),
+        (2, 4, 5, "preparation_timeout"),
+        (4, 2, 5, "total_timeout"),
+        (2, 2, 5, "total_timeout"),
+    ],
+)
+def test_worker_startup_reports_the_first_expired_deadline(
+    monkeypatch, spawned, preparation, total, startup, bound
+) -> None:
+    from esolangs.runtime import _isolated
+
+    displacement = 0
+    spawn = _isolated.subprocess.Popen
+
+    def spawn_with_delay(*args, **kwargs):
+        nonlocal displacement
+        child = spawn(*args, **kwargs)
+        displacement = startup
+        return child
+
+    monkeypatch.setattr(_isolated, "monotonic", lambda: monotonic() + displacement)
+    monkeypatch.setattr(_isolated.subprocess, "Popen", spawn_with_delay)
+    limits = esolangs.ExecutionLimits(
+        preparation_timeout=preparation, total_timeout=total
+    )
+    outcome = esolangs.execute(REFERENCE, ",.", stdin="A", limits=limits)
+    assert outcome.bound == bound
+    if bound is None:
+        assert outcome.unwrap().output == "A"
+    else:
+        assert isinstance(outcome.error, esolangs.ExecutionTimeoutError)
+        assert outcome.error.observation is None
+        assert outcome.observation == ExecutionResult("", None, None, None)
+    assert len(spawned) == 1
+    assert spawned[0].poll() is not None
 
 
 @pytest.mark.parametrize(

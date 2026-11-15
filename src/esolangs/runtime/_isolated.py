@@ -515,11 +515,11 @@ def _invoke_worker(
         raise request
     with _timeout_named(timeout):
         if preparation_deadline is None and execution_timeout is None:
-            result = _launch(request, deadline - now, max_output=max_output)
+            result = _launch(request, deadline, max_output=max_output)
         else:
             result = _launch(
                 request,
-                deadline - now,
+                deadline,
                 max_output=max_output,
                 preparation_deadline=preparation_deadline,
                 execution_timeout=execution_timeout,
@@ -546,15 +546,18 @@ def _timeout_named(timeout: float) -> Iterator[None]:
         raise
 
 
-def _preparation_expired() -> exceptions.ExecutionTimeoutError:
+def _preparation_expired(
+    *, partial_output: str = ""
+) -> exceptions.ExecutionTimeoutError:
     error = exceptions.ExecutionTimeoutError("execution timed out during preparation")
     error.bound = "preparation_timeout"
+    error.partial_output = partial_output
     return error
 
 
 def _launch(
     request: str,
-    timeout: float,
+    deadline: float,
     *,
     max_output: int | None = None,
     preparation_deadline: float | None = None,
@@ -564,7 +567,6 @@ def _launch(
     env = dict(os.environ)
     env.pop("PYTHONPATH", None)
     env["PYTHONIOENCODING"] = "utf-8"
-    deadline = monotonic() + timeout
     report_prepared = preparation_deadline is not None or execution_timeout is not None
     streaming = max_output is not None or report_prepared
     with subprocess.Popen(  # fixed executable and code, no shell.
@@ -582,24 +584,29 @@ def _launch(
         encoding="utf-8",
         env=env,
     ) as child:
-        remaining = deadline - monotonic()
-        if remaining <= 0:
+        now = monotonic()
+        if now >= deadline or (
+            preparation_deadline is not None and now >= preparation_deadline
+        ):
             child.kill()
             output, _stderr = child.communicate()
-            return _decode_outcome(output, expired=True)
+            result = _decode_outcome(output, expired=True)
+            if preparation_deadline is not None and preparation_deadline < deadline:
+                raise _preparation_expired(partial_output=result.observation.output)
+            return result
         if report_prepared:
             return _bounded_output(
                 child,
                 request,
-                remaining,
+                deadline,
                 preparation_deadline=preparation_deadline,
                 execution_timeout=execution_timeout,
             )
         if streaming:
-            return _bounded_output(child, request, remaining)
+            return _bounded_output(child, request, deadline)
         expired = False
         try:
-            output, _stderr = child.communicate(request, timeout=remaining)
+            output, _stderr = child.communicate(request, timeout=deadline - now)
         except subprocess.TimeoutExpired:
             expired = True
             child.kill()
@@ -614,7 +621,7 @@ def _launch(
 def _bounded_output(
     child: subprocess.Popen[str],
     request: str,
-    timeout: float,
+    deadline: float,
     *,
     preparation_deadline: float | None = None,
     execution_timeout: float | None = None,
@@ -649,7 +656,6 @@ def _bounded_output(
             publish(None)
 
     reader = Thread(target=transfer, daemon=True)
-    deadline = monotonic() + timeout
     reader.start()
     try:
         return _read_worker_output(
@@ -749,9 +755,7 @@ def _read_worker_output(
             expired = True
     result = _decode_outcome("".join(output), expired=expired)
     if expired and preparation_deadline is not None and preparation_deadline < deadline:
-        error = _preparation_expired()
-        error.partial_output = result.observation.output
-        raise error
+        raise _preparation_expired(partial_output=result.observation.output)
     if (
         expired
         and execution_deadline is not None

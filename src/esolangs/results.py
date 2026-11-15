@@ -51,10 +51,12 @@ class ExecutionResult:
             from esolangs.exceptions import ArgumentError
 
             raise ArgumentError(problem)
+        if type(self.output) is not str:
+            object.__setattr__(self, "output", str.__str__(self.output))
 
     def _invalid_fields(self) -> str | None:
         output: object = self.output
-        if not isinstance(output, str):
+        if type(output) is not str and not issubclass(type(output), str):
             return "invalid execution result: output must be text"
         counters = (self.input_position, self.input_reads, self.input_past_end)
         for value in counters:

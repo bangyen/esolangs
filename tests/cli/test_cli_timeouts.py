@@ -67,9 +67,9 @@ def test_cli_and_worker_share_acquisition_and_total_budgets(
         return ""
 
     def launch(
-        _request, timeout, *, preparation_deadline, execution_timeout, **_options
+        _request, deadline, *, preparation_deadline, execution_timeout, **_options
     ):
-        assert timeout == worker_total - 3
+        assert deadline == 100 + worker_total
         assert preparation_deadline == 106
         assert execution_timeout == int(options[-1])
         return esolangs.execute(REFERENCE, "+.")
