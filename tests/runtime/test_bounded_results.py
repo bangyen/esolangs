@@ -252,6 +252,8 @@ def test_a_failed_halt_cannot_be_completed_by_a_peer(monkeypatch):
 
     _check_halt_read_fault_evidence(api, monkeypatch)
     _check_caller_halt_read_evidence()
+    _check_observer_failure_evidence(api, monkeypatch)
+    _check_raw_watch_preserves_failure()
 
 
 def _check_halt_read_fault_evidence(api, monkeypatch):
@@ -365,6 +367,163 @@ def _check_caller_halt_read_evidence():
     assert caught.value is original
     assert original.observation is expected
     assert original.partial_output == expected.output
+
+
+def _check_observer_failure_evidence(api, monkeypatch):
+    from esolangs.debugger import Debugger
+    from esolangs.runtime._execution import interpreter_module
+    from esolangs.vm import run_until_halt_or_cycle
+
+    mode = "snapshot"
+    errors = []
+    foreign = esolangs.HaltError("foreign snapshot fault")
+    foreign.observation = esolangs.ExecutionResult("inner", 2, 1, 0, steps=7)
+    foreign.partial_output = "inner"
+
+    class Machine:
+        index = 0
+
+        def __init__(self, io):
+            self.io = io
+
+        @property
+        def halted(self):
+            return self.index >= (1 if mode == "watch" else 2)
+
+        def step(self):
+            if not self.index:
+                self.io.print_char(chr(self.io.input_char()))
+            self.index += 1
+
+        def fail(self, message):
+            error = esolangs.HaltError(message)
+            errors.append(error)
+            raise error
+
+        def snapshot(self):
+            if self.index and mode == "snapshot":
+                self.fail("snapshot read failed")
+            if self.index and mode == "foreign":
+                raise foreign
+            return (self.index,)
+
+        @property
+        def memory(self):
+            if self.index and mode in ("watch", "resumed_watch"):
+                self.fail("watch read failed")
+            return [self.index]
+
+    monkeypatch.setattr(
+        interpreter_module(api.name),
+        "failing_observer",
+        lambda *_args: Machine,
+        raising=False,
+    )
+    declaration = api.catalog.languages[api.name]
+    runtime = replace(declaration.runtime, machine_preparation="failing_observer")
+    contract = replace(
+        declaration.contract,
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+    )
+    scoped = esolangs.Catalog(
+        [replace(declaration, runtime=runtime, contract=contract)]
+    ).bind(api.name)
+    artifact = scoped.from_source("+.")
+    limits = esolangs.ExecutionLimits(max_steps=2)
+    expected = esolangs.ExecutionResult("1", 1, 1, 0, steps=1)
+    for invoke in (
+        lambda: run_until_halt_or_cycle(scoped.make_vm(artifact, stdin="1"), limit=2),
+        lambda: run_until_halt_or_cycle(
+            scoped.make_debugger(artifact, stdin="1"), limit=2
+        ),
+        lambda: scoped.evaluate(artifact, [1], limits=limits),
+    ):
+        with pytest.raises(esolangs.HaltError, match="snapshot read") as caught:
+            invoke()
+        assert caught.value is errors[-1]
+        assert caught.value.partial_output == "1"
+        assert caught.value.observation == expected
+
+    mode = "foreign"
+    live = scoped.make_debugger(artifact, stdin="1")
+    with pytest.raises(esolangs.HaltError, match="foreign snapshot") as caught:
+        run_until_halt_or_cycle(live, limit=2)
+    assert caught.value is foreign
+    assert foreign.observation == esolangs.ExecutionResult("inner", 2, 1, 0, steps=7)
+    assert foreign.partial_output == "inner"
+
+    mode = "watch"
+    for nested in (False, True):
+        inner = scoped.make_debugger(artifact, stdin="1")
+        history = inner.watch_cell(0)
+        live = Debugger(inner) if nested else inner
+        with pytest.raises(esolangs.HaltError, match="watch read") as caught:
+            complete_vm(live, max_steps=2)
+        assert caught.value is errors[-1]
+        assert caught.value.observation == expected
+        assert caught.value.partial_output == "1"
+        assert live.observation.steps == inner.observation.steps == 1
+        assert live.observation.completion.kind is Completion.HALTED
+        assert not history
+        assert live.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
+
+    mode = "resumed_watch"
+    for invoke in (complete_vm, run_until_halt_or_cycle):
+        live = scoped.make_debugger(artifact, stdin="1")
+        live.step()
+        live.watch_cell(0)
+        with pytest.raises(esolangs.HaltError, match="watch read") as caught:
+            invoke(live, 2)
+        assert caught.value is errors[-1]
+        assert caught.value.observation == expected
+        assert live.observation.steps == 2
+        assert live.observation.completion.kind is Completion.HALTED
+
+    mode = "valid"
+    live = scoped.make_debugger(artifact, stdin="1")
+    assert run_until_halt_or_cycle(live, limit=2)
+    assert live.observation == replace(
+        expected, steps=2, completion=live.observation.completion
+    )
+    live = scoped.make_debugger(artifact, stdin="1")
+    history = live.watch_cell(0)
+    assert live.run(limits=limits) == "halted"
+    assert history == [1, 2]
+
+
+def _check_raw_watch_preserves_failure():
+    from esolangs.debugger import Debugger
+
+    class Custom:
+        halted = False
+        self_halts = steppable_to_answer = True
+        dumps_on_the_post_halt_step = False
+
+        def step(self):
+            self.halted = True
+
+        @property
+        def memory(self):
+            raise raw_error
+
+        @property
+        def output(self):
+            raise RuntimeError("caller output unavailable")
+
+    for observation in (None, esolangs.ExecutionResult("foreign", 2, 1, 0, steps=4)):
+        raw_error = esolangs.HaltError("raw watch failed")
+        if observation is not None:
+            raw_error.observation = observation
+            raw_error.partial_output = observation.output
+        inner = Debugger(Custom())
+        inner.watch_cell(0)
+        live = Debugger(inner)
+        with pytest.raises(esolangs.HaltError, match="raw watch failed") as caught:
+            live.run(limits=esolangs.ExecutionLimits(max_steps=1))
+        assert caught.value is raw_error
+        assert raw_error.observation is observation
+        assert live.halted
 
 
 def test_post_halt_completion_stays_pending_until_dump():

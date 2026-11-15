@@ -396,6 +396,24 @@ def _balance_template(
     return replace(template, source=balanced.source, spans=balanced.spans)
 
 
+def _matches_width_layout(
+    text: str, layout: Callable[[int], str], width: int | None
+) -> bool:
+    """Compare a requested width and bounded candidates inferred from source."""
+    if width is not None and text == layout(width):
+        return True
+    # A narrow layout can switch representations. Either it or the widest
+    # stored line can exceed a backend cap.
+    widest = max(map(len, text.splitlines()), default=0)
+    for inferred_width in (1, widest) if widest > 1 else (1,):
+        try:
+            if text == layout(inferred_width):
+                return True
+        except GeneratorCapError:
+            continue
+    return False
+
+
 def _is_template_for(
     template: TemplateArtifact,
     name: str,
@@ -464,16 +482,7 @@ def _is_template_for(
             raise TemplateError("template layouts must return text")
         return source
 
-    # Layouts may switch representations; their floor is a named candidate,
-    # unlike whitespace wrapping, so compare that template exactly too.
-    if width_aware and width is not None and text == layout(width):
-        return True
-    if width_aware and text == layout(1):
-        return True
-    # Reproduce a layout at its widest line. Arbitrary newlines can change
-    # a fraction or literal.
-    widest = max(map(len, text.splitlines()), default=0)
-    if width_aware and widest and text == layout(widest):
+    if width_aware and _matches_width_layout(text, layout, width):
         return True
     if backend.same_layout is not None:
         matches: object = call_backend(backend.same_layout, text, plain, layout)

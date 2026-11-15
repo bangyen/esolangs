@@ -774,6 +774,51 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
         assert filled == restored.fill([bit])
         assert api.run(filled).output == str(bit)
 
+    cap = esolangs.GeneratorCapError("renderer cannot lay out this width")
+
+    def restricted_emit(request: GenerationRequest) -> TemplateLayout:
+        if request.width in (1, 9):
+            raise cap
+        return _identity_layout(request.width)
+
+    declaration = replace(
+        original, backend=replace(backend, entrypoint=restricted_emit)
+    )
+    scoped = esolangs.Catalog([declaration]).bind(REFERENCE)
+    saved = scoped.generate("01", width=8)
+    portable = scoped.from_json(scoped.to_json(saved))
+    assert isinstance(portable, esolangs.TemplateArtifact)
+    assert portable == saved
+    assert max(map(len, portable.source.splitlines())) == 8
+    for bit in (0, 1):
+        expanded = scoped.instantiate(portable, [bit], truth_table="01")
+        assert expanded == saved.fill([bit])
+        assert scoped.run(expanded).output == str(bit)
+    with pytest.raises(esolangs.GeneratorCapError) as caught:
+        scoped.instantiate(portable, [1], truth_table="01", width=1)
+    assert caught.value is cap
+
+    changed = replace(
+        portable,
+        source="+" + portable.source,
+        spans=tuple((start + 1, end + 1) for start, end in portable.spans),
+    )
+    assert scoped.run(changed.fill([0])).output == "1"
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        scoped.instantiate(changed, [0], truth_table="01")
+
+    def matcher(text, _plain, layout):
+        return text == layout(9)
+
+    custom = replace(
+        declaration, backend=replace(declaration.backend, same_layout=matcher)
+    )
+    with pytest.raises(esolangs.GeneratorCapError) as caught:
+        esolangs.Catalog([custom]).bind(REFERENCE).instantiate(
+            changed, [0], truth_table="01"
+        )
+    assert caught.value is cap
+
 
 @pytest.mark.parametrize("layout", [{"width": 8}, {"balance": True}])
 def test_token_layout_keeps_the_custom_marker_in_portable_templates(layout) -> None:

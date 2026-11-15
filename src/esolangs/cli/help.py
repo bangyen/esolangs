@@ -343,10 +343,10 @@ def help_text(
         from esolangs.generation.wrap import DEFAULT_WIDTH
 
         template, dialects = _capability_examples(catalog, encoding=encoding)
-        text = (
-            text.replace("{DEFAULT_WIDTH}", str(DEFAULT_WIDTH))
-            .replace("{_TEMPLATE_EXAMPLE}", template)
-            .replace("{_DIALECT_EXAMPLES}", dialects)
+        text = text.format(
+            DEFAULT_WIDTH=DEFAULT_WIDTH,
+            _TEMPLATE_EXAMPLE=template,
+            _DIALECT_EXAMPLES=dialects,
         )
     elif command == "read-answer":
         terminating = {

@@ -96,6 +96,31 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch, capsys) -> Non
     )
     assert help_module._capability_examples(esolangs.Catalog([unreachable])) == ("", "")
 
+    name = "A {_DIALECT_EXAMPLES} Compiler"
+    original = LANGUAGES[
+        first(parameterized=True, source_kind="text", answer_mode="output")
+    ]
+    scoped = esolangs.Catalog(
+        [replace(original, name=name, id="scoped_template"), declaration]
+    )
+    with monkeypatch.context() as active:
+        active.setattr(_table, "CATALOG", scoped)
+        for invocation in (["generate", "--help"], ["help", "generate"]):
+            page, diagnostic = _failure(invocation, capsys, code=0)
+            assert not diagnostic
+            assert dialect in page
+            command = shlex.split(
+                next(
+                    line
+                    for line in page.splitlines()
+                    if line.startswith("  esolangs generate --bits ")
+                )
+            )
+            assert command == ["esolangs", "generate", "--bits", "10", name, "0110"]
+            program = call_main(command[1:], capsys)
+            bound = scoped.bind(name)
+            assert bound.read_answer(bound.run(program).output) == "1"
+
     error = esolangs.ArgumentError("scoped generator backend is disabled")
     error.add_note("hint: enable its provider")
 

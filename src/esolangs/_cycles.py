@@ -297,7 +297,9 @@ def _proof_snapshot_reader(
     return read_live, True
 
 
-def _proof_snapshot(reader: Callable[[], Hashable], adapter: object) -> Hashable:
+def _proof_snapshot(
+    reader: Callable[[], Hashable], adapter: object, steps: int | None
+) -> Hashable:
     try:
         state = reader()
     except _SnapshotUnavailableError as error:
@@ -309,6 +311,12 @@ def _proof_snapshot(reader: Callable[[], Hashable], adapter: object) -> Hashable
             ),
             "provide a machine with a snapshot of its complete state",
         ) from error
+    except EsolangError as error:
+        from esolangs.vm import _DelegatingVM, _retain_fault_steps
+
+        if steps is not None and isinstance(adapter, _DelegatingVM):
+            _retain_fault_steps(adapter, error, steps)
+        raise
     return state
 
 
@@ -378,7 +386,8 @@ def _drive_halt_or_cycle(
         return CycleDecision(halts=True, commands=0) if evidence else True
     reader, check_each_snapshot = _proof_snapshot_reader(machine)
     tortoise = _check_snapshot_hash(
-        _proof_snapshot(reader, adapter), _ProofSnapshotUnavailableError
+        _proof_snapshot(reader, adapter, None if evidence else 0),
+        _ProofSnapshotUnavailableError,
     )
     first_step = 0
     power = 1
@@ -394,7 +403,14 @@ def _drive_halt_or_cycle(
                 ),
                 "increase limit; for growing states try a supported growth detector",
             )
-        machine.step()
+        try:
+            machine.step()
+        except EsolangError as error:
+            if not evidence:
+                from esolangs.vm import _retain_observer_steps
+
+                _retain_observer_steps(machine, error, steps)
+            raise
         steps += 1
         if record_commands is not None:
             record_commands(steps)
@@ -404,7 +420,7 @@ def _drive_halt_or_cycle(
         halted: bool = machine.halted
         if halted:
             return CycleDecision(halts=True, commands=steps) if evidence else True
-        state = _proof_snapshot(reader, adapter)
+        state = _proof_snapshot(reader, adapter, None if evidence else steps)
         if check_each_snapshot:
             _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
         if state == tortoise:

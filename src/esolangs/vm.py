@@ -119,9 +119,27 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     return vm.output
 
 
+def _retain_observer_steps(vm: object, error: EsolangError, steps: int) -> bool:
+    """Treat a failed observation separately from the accepted command or dump."""
+    if isinstance(vm, _DelegatingVM):
+        return False
+    from esolangs.runtime._controller import ExecutionController
+
+    if not isinstance(vm, ExecutionController):
+        return False
+    observer_fault = vm._observer_fault  # noqa: SLF001
+    if observer_fault is None or observer_fault[0] is not error:
+        return False
+    owner = _controller_vm(vm)
+    if isinstance(owner, _DelegatingVM) and error.observation is not None:
+        observation = replace(error.observation, steps=steps + int(observer_fault[1]))
+        _record_vm_fault(owner, error, observation)
+    return True
+
+
 def _retain_fault_steps(vm: VM, error: EsolangError, steps: int) -> None:
     """Add measured commands to a fault observed by this VM."""
-    if error.observation is not None:
+    if error.observation is not None and not _retain_observer_steps(vm, error, steps):
         owner = _controller_vm(vm)
         observation = replace(error.observation, steps=steps)
         if isinstance(owner, _DelegatingVM):
@@ -326,12 +344,18 @@ class _DelegatingVM:
         """Read a state for a consumer that handles its own evidence validation."""
         snapshot: Callable[[], Hashable] | None
         try:
-            snapshot = self._machine.snapshot
-        except AttributeError:
-            snapshot = None
-        if not callable(snapshot):
-            raise _SnapshotUnavailableError(self)
-        return snapshot()
+            try:
+                snapshot = self._machine.snapshot
+            except AttributeError:
+                snapshot = None
+            if not callable(snapshot):
+                raise _SnapshotUnavailableError(self)
+            return snapshot()
+        except _SnapshotUnavailableError:
+            raise
+        except EsolangError as error:
+            _record_vm_fault(self, error, self._result(None))
+            raise
 
     # The views come off the machine by ``getattr`` too, so a language
     # with no stack or no addressable cells says nothing, and one whose

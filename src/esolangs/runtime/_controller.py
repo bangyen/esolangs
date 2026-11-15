@@ -54,6 +54,7 @@ class ExecutionController:
         self._steps = 0
         self._faulted_owner: VM | None = None
         self._active_fault: tuple[VM, VM, EsolangError] | None = None
+        self._observer_fault: tuple[EsolangError, bool] | None = None
 
     def _record(self) -> None:
         """Observe a completed step; debugger subclasses record watches."""
@@ -69,7 +70,7 @@ class ExecutionController:
         try:
             return wrapped.halted
         except EsolangError as error:
-            self._observe_halt_fault(wrapped, error)
+            self._observe_inspection_fault(wrapped, error)
             raise
 
     @property
@@ -143,34 +144,50 @@ class ExecutionController:
         observation = replace(_capture_observation(vm), steps=self._steps)
         _record_vm_fault(vm, error, observation)
 
-    def _observe_halt_fault(self, vm: VM, error: EsolangError) -> None:
+    def _observe_inspection_fault(self, vm: VM, error: EsolangError) -> None:
         owner = _controller_vm(vm)
-        if isinstance(owner, _DelegatingVM) or (
-            error.observation is None and not error.partial_output
-        ):
+        if isinstance(owner, _DelegatingVM):
             self._observe_fault(owner, error)
+        elif error.observation is None and not error.partial_output:
+            try:
+                self._observe_fault(owner, error)
+            except Exception:
+                # Reading caller-owned output cannot replace the original fault.
+                return
 
     def _take_step(self) -> None:
         """Drive a command or finalization step, accounting for its effects."""
+        self._observer_fault = None
         wrapped = self.vm
         try:
             active = not wrapped.halted
         except EsolangError as error:
-            self._observe_halt_fault(wrapped, error)
+            self._observe_inspection_fault(wrapped, error)
             raise
-        owner = (
-            _controller_vm(wrapped)
-            if isinstance(wrapped, ExecutionController)
-            else wrapped
-        )
+        controller = wrapped if isinstance(wrapped, ExecutionController) else None
+        owner = _controller_vm(controller) if controller is not None else wrapped
+        if controller is not None:
+            controller._observer_fault = None  # noqa: SLF001
+        observer_fault = None
         try:
             wrapped.step()
         except EsolangError as exc:
-            self._faulted_owner = None if isinstance(owner, _DelegatingVM) else owner
-            if active and self._faulted_owner is not None:
-                self._active_fault = (wrapped, owner, exc)
-            self._observe_fault(owner, exc)
-            raise
+            nested_fault = (
+                controller._observer_fault  # noqa: SLF001 - same controller protocol
+                if controller is not None
+                else None
+            )
+            if nested_fault is not None and nested_fault[0] is exc:
+                # This controller also saw the command complete.
+                observer_fault = exc
+            else:
+                self._faulted_owner = (
+                    None if isinstance(owner, _DelegatingVM) else owner
+                )
+                if active and self._faulted_owner is not None:
+                    self._active_fault = (wrapped, owner, exc)
+                self._observe_fault(owner, exc)
+                raise
         if active:
             self._faulted_owner = None
             self._active_fault = None
@@ -179,7 +196,14 @@ class ExecutionController:
             self._faulted_owner = None
             if not isinstance(owner, _DelegatingVM):
                 self._dumped = (wrapped, owner)
-        self._record()
+        try:
+            if observer_fault is not None:
+                raise observer_fault
+            self._record()
+        except EsolangError as error:
+            self._observer_fault = (error, active)
+            self._observe_inspection_fault(owner, error)
+            raise
 
     def _has_dumped(self) -> bool:
         """Read registered finalization or a dump observed for the current raw VM."""
