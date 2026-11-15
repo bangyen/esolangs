@@ -37,6 +37,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _FRACTION = re.compile("([0-9]+)/([0-9]+)")
@@ -60,15 +61,18 @@ def _parse(code: str) -> _Image:
     initial = 1
     for term in tokens[0][0].split("*"):
         match = re.fullmatch(r"([0-9]+)(?:\^([0-9]+))?", term)
-        if match is None or int(match[1]) <= 0:
+        if match is None or not (base := parse_integer(match[1])):
             raise syntax_error("invalid initial integer", "use positive factors")
-        initial *= int(match[1]) ** int(match[2] or "1")
+        initial *= base ** (parse_integer(match[2]) if match[2] is not None else 1)
     fractions = []
     for token in tokens[1:]:
         match = _FRACTION.fullmatch(token[0])
-        if match is None or int(match[1]) <= 0 or int(match[2]) <= 0:
+        if (
+            match is None
+            or not (a := parse_integer(match[1]))
+            or not (b := parse_integer(match[2]))
+        ):
             raise syntax_error("invalid fraction", "use positive numerator/denominator")
-        a, b = int(match[1]), int(match[2])
         divisor = math.gcd(a, b)
         fractions.append((a // divisor, b // divisor))
     return initial, tuple(fractions), tuple(token.start() for token in tokens[1:])

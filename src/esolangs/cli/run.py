@@ -39,6 +39,7 @@ from esolangs.cli.io import (
     _unbounded_notice,
     _write_output,
 )
+from esolangs.compressed import CompressedText
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -214,12 +215,13 @@ def _run(rest: list[str]) -> None:
     # result with no trailing newline runs into the next shell prompt.
     if output and not output.endswith("\n") and _is_terminal(sys.stdout):
         _write_output("\n")
-    empty = isinstance(program.source, str) and not program.source
+    source = program.source
+    empty = isinstance(source, (str, CompressedText)) and not source
     if empty:
         # Legal, and almost never what was meant: an empty file is what you
         # get from a redirect that failed or a generate that was never run.
         # Said on stderr, so a pipeline still receives the empty output.
-        _note(f"note: {path} is empty, so there was no program to run")
+        _note(f"note: {path} contains no source, so there was no program to run")
     # A program that printed nothing is a legal program, and also what you
     # get from an empty file or the wrong path.  Say so on a terminal, where
     # the alternative is a blank line and no way to tell the two apart; a
@@ -227,5 +229,5 @@ def _run(rest: list[str]) -> None:
     if not output and _is_terminal(sys.stdout):
         _note(
             f"{language}: the program ran and printed nothing"
-            f"{' (the file is empty)' if empty else ''}"
+            f"{' (the file contains no source)' if empty else ''}"
         )

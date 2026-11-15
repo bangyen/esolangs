@@ -312,7 +312,7 @@ def decode_settings(
         raise ValueError("settings need a language to apply to")
     if (
         checked_settings is not None
-        and checked_settings.language == language
+        and checked_settings._schema.language == language  # noqa: SLF001
         and all(type(item) in (int, str) for item in choices.values())
         and choices == DialectSettings.options(checked_settings)
     ):

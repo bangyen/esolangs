@@ -66,12 +66,13 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.freestajlo.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
-from esolangs.runtime.memory import parse_integer, trunc_div
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
+from esolangs.runtime.memory import format_integer, parse_integer, trunc_div
 from esolangs.runtime.source_hints import syntax_error
 
 #: Stack cells, top first: ``(top, rest)``, or ``None`` when empty.
@@ -425,6 +426,9 @@ class _Machine:
         self.index = 0
         #: The inactive stacks by index; the current one lives in ``state``.
         self.others: dict[int, _Stack] = {}
+        self._number_prefix = (False, "")
+        self._rejected = RejectedInput()
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -460,8 +464,15 @@ class _Machine:
         while rest is not None:
             call, rest = rest
             calls.append(call)
+        accepted = self._writer.accepted
+        cursor = self._rejected.cursor(self.io.progress())
+        negative, digits = self._number_prefix
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state.ip,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.state.ip, accepted))
+                if accepted
+                else self.state.ip
+            ),
             stack=stack(self.state.stack),
             transfer=stack(self.state.transfer),
             calls=tuple(calls),
@@ -470,57 +481,90 @@ class _Machine:
             other_stacks=frozenset(
                 (k, stack(v)) for k, v in self.others.items() if v[0]
             ),
-            input_cursor=self.io.progress(),
+            input_cursor=(
+                WorkspaceVariant("pending_number", (cursor, negative, digits))
+                if negative or digits
+                else cursor
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         others = frozenset((k, v) for k, v in self.others.items() if v[0])
-        return (*self.state, self.index, others, self.io.progress())
+        boundary: tuple[object, ...] = (
+            *self.state,
+            self.index,
+            others,
+            self.io.progress(),
+        )
+        negative, digits = self._number_prefix
+        if negative or digits:
+            boundary = (*boundary, self._number_prefix)
+        accepted = self._writer.accepted
+        if accepted:
+            boundary = (*boundary, accepted)
+        return self._rejected.snapshot(boundary)
 
     def _read(self, kind: str) -> int:
         if kind == ",":
             try:
-                return self.io.input_char()
+                return self._rejected.read(self.io, self.io.input_char)
             except EOFError:
                 return -1
         return self._read_number()
 
     def _read_number(self) -> int:
         """Scan to the next decimal integer; 0 at EOF."""
-        negative, digits = False, ""
-        while True:
-            try:
-                char = chr(self.io.input_char())
-            except EOFError:
-                break
-            if char in _DIGITS:
-                digits += char
-            elif digits:
-                break
-            else:
-                negative = char == "-"
-        if not digits:
-            return 0
-        return parse_integer("-" + digits if negative else digits)
+        negative, digits = self._number_prefix
+        read_char = self.io.input_char
+        try:
+            while True:
+                char = chr(self._rejected.read(self.io, read_char))
+                if char in _DIGITS:
+                    digits += char
+                elif digits:
+                    break
+                else:
+                    negative = char == "-"
+        except EOFError:
+            pass
+        except BaseException:
+            self._number_prefix = (negative, digits)
+            raise
+        self._number_prefix = (False, "")
+        return parse_integer("-" + digits if negative else digits) if digits else 0
 
     def step(self) -> None:
         if self.halted:
             return
         kind = self.ops[self.state.ip][0]
         read = self._read(kind) if kind in ",;" else None
-        self.state, effect = _advance(self.state, self.ops, read)
-        if effect is None:
-            return
-        command, value = effect
-        if command == ":":
-            self.io.print_num(value)
-        elif command == ".":
-            self.io.print_char(chr(value))
-        elif value != self.index:
-            self.others[self.index] = self.state.stack
-            self.state = self.state._replace(stack=self.others.pop(value, _EMPTY))
-            self.index = value
+        state, effect = _advance(self.state, self.ops, read)
+        if effect is not None:
+            command, value = effect
+            if command == "!":
+                if value != self.index:
+                    self.others[self.index] = state.stack
+                    state = state._replace(stack=self.others.pop(value, _EMPTY))
+                    self.index = value
+            else:
+                self._write(command, value)
+        self.state = state
+
+    def _write(self, command: str, value: int) -> None:
+        io = self.io
+        if command == ".":
+            char = chr(value)
+            if isinstance(io, ScriptedIO):
+                self._writer.write(io, char, first=lambda: io.print_char(char))
+            else:
+                io.print_char(char)
+        elif isinstance(io, ScriptedIO):
+            self._writer.write(
+                io, format_integer(value), first=lambda: io.print_num(value)
+            )
+        else:
+            io.print_num(value)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

@@ -87,13 +87,20 @@ def effective_settings(
 
     catalog = get_catalog(catalog)
 
-    dialect_options(language, settings, catalog=catalog)
+    explicit_options = dialect_options(language, settings, catalog=catalog)
     if not (
         _has_backing_type(program, ProgramArtifact)
         or _has_backing_type(program, TemplateArtifact)
     ) or resolve_origin(program.language, catalog=catalog) != catalog.resolve(language):
         return settings
     retained = program.settings
+    if retained is settings or (
+        settings is not None
+        and _has_backing_type(retained, DialectSettings)
+        and retained._schema == settings._schema  # noqa: SLF001
+        and DialectSettings.options(retained) == explicit_options
+    ):
+        return retained
     dialect_options(language, retained, catalog=catalog)
     return _merge_settings(language, retained, settings, catalog=catalog)
 
@@ -108,7 +115,7 @@ def _merge_settings(
     """Combine validated choices that apply to the same language."""
     if retained is None:
         return settings
-    if settings is None:
+    if settings is None or settings is retained:
         return retained
     retained_values = dict(retained._items)  # noqa: SLF001
     explicit_values = dict(settings._items)  # noqa: SLF001

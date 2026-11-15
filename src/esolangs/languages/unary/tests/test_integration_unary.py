@@ -56,6 +56,7 @@ def test_compressed_and_plain_sources_share_execution(tmp_path) -> None:
 
 
 def test_cli_exports_gzip_by_default_and_plain_on_request(tmp_path) -> None:
+    import gzip
     import subprocess
     import sys
 
@@ -76,6 +77,23 @@ def test_cli_exports_gzip_by_default_and_plain_on_request(tmp_path) -> None:
             **options,
         )
         assert native.stdout == b"Input: "
+
+    note = f"note: {path} contains no source, so there was no program to run\n"
+    for source, expected, diagnostic in (
+        (b"", b"", note.encode()),
+        (b" ", b"", b""),
+        (b"0" * 84, b"\x01", b""),
+    ):
+        for body in (source, gzip.compress(source, mtime=0)):
+            path.write_bytes(body)
+            result = subprocess.run(
+                [sys.executable, "-m", "esolangs", "run", "Unary", str(path)],
+                input=b"",
+                check=True,
+                **options,
+            )
+            assert result.stdout == expected
+            assert result.stderr == diagnostic
 
 
 @pytest.mark.medium

@@ -70,13 +70,21 @@ def read_png_artifact(
     *,
     settings: DialectSettings | None = None,
     catalog: "Catalog | None" = None,
+    _settings_validated: bool = False,
 ) -> ProgramArtifact[Raster]:
     """Decode native metadata into its owning artifact, leaving pixels untagged."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    _, retained, scale, arity = read_png_metadata(name, data, catalog=catalog)
+    if not _settings_validated:
+        dialect_options(name, settings, catalog=catalog)
+    _, retained, scale, arity = read_png_metadata(
+        name,
+        data,
+        catalog=catalog,
+        checked_settings=settings,
+    )
     merged = _merge_settings(name, retained, settings, catalog=catalog)
     return ProgramArtifact(
         Raster.from_png(data), name, settings=merged, scale=scale, input_arity=arity
@@ -200,7 +208,11 @@ def _read_source_artifact(
         with _track_acquisition_failures():
             try:
                 return read_png_artifact(
-                    name, value, settings=settings, catalog=catalog
+                    name,
+                    value,
+                    settings=settings,
+                    catalog=catalog,
+                    _settings_validated=True,
                 )
             except ProgramError as error:
                 if (

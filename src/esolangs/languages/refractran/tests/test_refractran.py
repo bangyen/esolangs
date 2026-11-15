@@ -1,7 +1,10 @@
 """REFRACTRAN's multiply/divide directions and fraction cursor."""
 
+import sys
+
 import pytest
 
+import esolangs
 from esolangs.languages.refractran import interpreter as native
 from esolangs.languages.refractran.interpreter import _Machine, run
 from esolangs.languages.refractran.tests.test_integration_refractran import (
@@ -32,6 +35,7 @@ def test_fraction_search(monkeypatch: pytest.MonkeyPatch) -> None:
     for source in ["", "0", "-1", "2^-1", "2 0/3", "2 3/0", "2 abc"]:
         with pytest.raises(ValueError, match=r"initial|fraction"):
             run(source, ScriptedIO())
+    _check_large_operands()
 
     machine = _Machine("2 3/5 3/2", ScriptedIO())
     machine.step()
@@ -50,3 +54,20 @@ def test_fraction_search(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch,
         cases=(("", "101"),) * 3,
     )
+
+
+def _check_large_operands() -> None:
+    huge = "9" * 641
+    api = esolangs.Language("REFRACTRAN")
+    limits = esolangs.ExecutionLimits(max_steps=4)
+    original = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        code = f"1^{huge} 2/1"
+        assert api.run(code).output == "10"
+        assert api.run(code, limits=limits).output == "10"
+        assert api.run(code, isolated=True, limits=limits).output == "10"
+        code = f"{huge} {huge}/{huge}"
+        assert api.run(code, limits=limits).output == format(10**641 - 1, "b")
+    finally:
+        sys.set_int_max_str_digits(original)

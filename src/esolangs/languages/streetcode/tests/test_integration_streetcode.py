@@ -82,11 +82,11 @@ class TestTheAdvisoryNotesAreRenderedOnce:
     def test_an_empty_program_file_is_noted(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """It ran and printed nothing, at exit 0, with no explanation."""
+        """Explain the empty source on stderr."""
         path = tmp_path / "empty.txt"
         path.write_text("")
         _out, err = call_both(["run", REFERENCE, str(path)], capsys, stdin="0\n0\n")
-        assert "is empty" in err
+        assert "contains no source" in err
 
 
 def test_width_floor_matches_its_source_and_overrun_count() -> None:

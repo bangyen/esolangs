@@ -134,7 +134,7 @@ class TestRoundSixQol:
         captured = capsys.readouterr()
         assert captured.out == ""
         assert "printed nothing" in captured.err
-        assert "the file is empty" in captured.err
+        assert "the file contains no source" in captured.err
 
     def test_a_pipe_still_receives_exactly_nothing(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -144,7 +144,7 @@ class TestRoundSixQol:
         empty.write_text("")
         output, error = call_both(["run", REFERENCE, str(empty)], capsys)
         assert not output
-        assert "is empty, so there was no program to run" in error
+        assert "contains no source, so there was no program to run" in error
 
 
 class TestTheLastResortPaths:

@@ -7,6 +7,7 @@ import pytest
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
 from esolangs.exceptions import ArgumentError, ProgramError
+from esolangs.operations.source import read_png_artifact
 from esolangs.raster import Raster, png
 from esolangs.raster.scale import detect_scale, normalize
 from esolangs.registry import LANGUAGES
@@ -143,7 +144,15 @@ def test_native_png_checks_explicit_settings_before_pillow(
         {"level": (0, 1), "mode": ("x", "y")},
         {"level": 0, "mode": "x"},
     )
-    runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
+    validations = []
+    once = False
+
+    def validate(**choices):
+        if once and validations:
+            raise esolangs.ProgramError("dialect already validated")
+        validations.append(choices)
+
+    runtime = replace(original.runtime, dialect=validate, dialect_schema=schema)
     api = esolangs.Catalog([replace(original, runtime=runtime)]).bind(name)
     generated = esolangs.generate(name, "01", scale=2)
     source = replace(generated, settings=api.settings(level=0))
@@ -151,7 +160,9 @@ def test_native_png_checks_explicit_settings_before_pillow(
     destination = tmp_path / "destination.png"
     api.to_file(source, path)
     additions = api.settings(mode="y")
+    validations.clear()
     retained = api.from_file(path, settings=additions)
+    assert validations == [{"mode": "y"}, {"level": 0}, {"mode": "y", "level": 0}]
     assert retained == replace(source, settings=api.settings(level=0, mode="y"))
     assert api.from_json(api.to_json(path, settings=additions)) == retained
     api.to_file(path, destination, settings=additions)
@@ -180,6 +191,38 @@ def test_native_png_checks_explicit_settings_before_pillow(
         )
         == copied
     )
+    document = api.to_json(retained)
+    same = api.settings(level=0, mode="y")
+    assert same is not retained.settings
+    pixels = generated.source.to_png()
+    bare = api.from_source(generated.source, settings=same)
+    copy = tmp_path / "matching.png"
+    invalid = tmp_path / "invalid.png"
+    invalid.write_bytes(
+        png.write_metadata(
+            pixels,
+            {"version": 1, "language": name, "settings": {"level": True}},
+        )
+    )
+    once = True
+    for supplied in (retained.settings, same, alternate):
+        for operation, expected in (
+            (lambda choices: api.from_file(destination, settings=choices), retained),
+            (lambda choices: api.to_json(retained, settings=choices), document),
+            (lambda choices: api.to_file(destination, copy, settings=choices), None),
+        ):
+            validations.clear()
+            assert operation(supplied) == expected
+            assert validations == [{"level": 0, "mode": "y"}]
+    for data, expected in ((copied, retained), (pixels, bare)):
+        validations.clear()
+        assert (
+            read_png_artifact(name, data, settings=same, catalog=api.catalog)
+            == expected
+        )
+        assert validations == [{"level": 0, "mode": "y"}]
+    assert copy.read_bytes() == copied
+    once = False
 
     module = _execution_runtime.interpreter_module(name)
     run = getattr(module, runtime.completion_entrypoint)
@@ -200,6 +243,10 @@ def test_native_png_checks_explicit_settings_before_pillow(
 
     monkeypatch.setattr(png, "Image", None)
     conflicting = api.settings(level=1)
+    with pytest.raises(
+        esolangs.ProgramError, match="invalid value for dialect setting"
+    ):
+        api.from_file(invalid, settings=conflicting)
     for load in (
         lambda: api.from_file(path, settings=conflicting),
         lambda: api.prepare(path, settings=conflicting),
