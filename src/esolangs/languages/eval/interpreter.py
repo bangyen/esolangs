@@ -57,8 +57,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
+from esolangs.runtime.memory import format_integer
 
 #: A value on a stack: Eval's stacks hold both.
 type _Val = int | str
@@ -197,6 +198,7 @@ class _Machine:
         self.ptr = 0
         self.stk = ((), ())
         self.io = io
+        self._writer = _BufferedOutput()
         self.sym = code
         self.frames = ((code, 0),) if code else ()
 
@@ -246,10 +248,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        frames = tuple((body, pc) for body, pc in self.frames)
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             pointer=self.ptr,
             stacks=self.stk,
-            frames=tuple((body, pc) for body, pc in self.frames),
+            frames=(
+                WorkspaceVariant("pending_output", (frames, accepted))
+                if accepted
+                else frames
+            ),
             input_cursor=self.io.progress(),
         )
 
@@ -261,12 +269,9 @@ class _Machine:
         to different places if their callers differ.  That is what lets a
         nested loop be proved rather than merely time out.
         """
-        return (
-            self.ptr,
-            self.stk,
-            self.frames,
-            self.io.progress(),
-        )
+        boundary = (self.ptr, self.stk, self.frames, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     @property
     def _state(self) -> _State:
@@ -322,13 +327,25 @@ class _Machine:
         except _Fault:
             raise HaltError from None
         if output is not None:
-            self.io.print_value(output)
+            self._print_value(output)
         frames = (*frames[:-1], (sym, ind))
         if call is not None:
             # The nested program becomes a frame of its own rather than
             # running here, which is what makes its commands steps.
             frames = (*frames, (call, 0))
         self._restore((core, frames))
+
+    def _print_value(self, output: _Val) -> None:
+        io = self.io
+        if not isinstance(io, ScriptedIO):
+            io.print_value(output)
+            return
+        text = format_integer(output) if isinstance(output, int) else output
+        resuming = bool(self._writer.accepted)
+        self._writer.write(io, text, first=partial(io.print_value, output))
+        if resuming:
+            # print_value always leaves the prompt mid-line, even after LF.
+            io._newline = True  # noqa: SLF001 - match the typed write on suffix retry
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

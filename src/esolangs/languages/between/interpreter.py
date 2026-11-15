@@ -79,8 +79,8 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -325,6 +325,7 @@ class _Machine:
     def __init__(self, code: str | tuple[_Instr, ...], io: IO) -> None:
         self.code = _parse(code) if isinstance(code, str) else code
         self.io = io
+        self._writer = _BufferedOutput()
         self._rejected = RejectedInput()
         self.variables: _Vars = MappingProxyType({})
         self.ind = 0
@@ -340,8 +341,13 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.ind,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.ind, accepted))
+                if accepted
+                else self.ind
+            ),
             variables=frozenset(self.variables.items()),
             exited=self.exited,
             input_cursor=self._rejected.cursor(self.io.progress()),
@@ -349,7 +355,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self._rejected.snapshot(
+        boundary = self._rejected.snapshot(
             (
                 self.ind,
                 tuple(sorted(self.variables.items())),
@@ -357,6 +363,8 @@ class _Machine:
                 self.io.progress(),
             )
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Run one instruction; an ``i`` reads its line here."""
@@ -368,15 +376,14 @@ class _Machine:
             else None
         )
         try:
-            (self.variables, self.ind, self.exited), out = _advance(
-                self._state, self.code, line
-            )
+            state, out = _advance(self._state, self.code, line)
         except HaltError as error:
             if line is not None:
                 self._rejected.remember(error)
             raise
         if out is not None:
-            self.io.print_str(out)
+            self._writer.write(self.io, out)
+        self.variables, self.ind, self.exited = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

@@ -12,7 +12,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.circuit_diagram import interpreter as native
 from esolangs.languages.circuit_diagram.interpreter import _Machine, prepare_machine
-from esolangs.runtime._state import WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed, reject_faults
 from tests.support import workspace_oracle as workspace
@@ -234,10 +234,11 @@ def _output_failure():
         machine.step()
     assert type(caught.value) is HaltError
     assert caught.value.args == ("witness output failure",)
-    assert machine.snapshot() == before
+    pending = WorkspaceVariant("pending_generation", (1, (0, 2)))
+    assert machine.snapshot() == (*before[:-1], pending)
     witness.sample(
         machine.workspace_snapshot(),
-        _parts(machine, expected[1], _CLOCK_PORTS, "stamp", 1),
+        _parts(machine, expected[1], _CLOCK_PORTS, "stamp", pending),
     )
     assert (io.getvalue(), io.position(), io.progress(), io.reads, io.past_end) == (
         "00",

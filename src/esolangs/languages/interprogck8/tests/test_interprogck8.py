@@ -23,6 +23,7 @@ from esolangs.vm import (
     run_until_halt_or_all_branches_cycle,
     run_until_halt_or_cycle,
 )
+from tests.support.vm_support import assert_rejected_output_retry
 
 # The wiki's Hello World, verbatim.
 HELLO = """nNnN
@@ -233,11 +234,49 @@ class TestCommands:
         outputs = {go("~", "") for _ in range(1)}
         assert outputs <= {"", "Interprogck8\n"}
 
-    def test_tilde_prints_exactly_on_the_zero_draw(self) -> None:
+    def test_tilde_prints_exactly_on_the_zero_draw(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         for first, expected in ((0, "Interprogck8\n"), (1, ""), (9, "")):
             io = ScriptedIO("")
             native.run("~", io, FirstDraw(first))
             assert io.getvalue() == expected
+        assert_rejected_output_retry(
+            "Interprogck8",
+            "div",
+            "\0",
+            "\0",
+            prefix=0,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
+
+        output = "Interprogck8\n"
+        write = ScriptedIO._write
+        attempts = []
+
+        def refuse(io: ScriptedIO, value: object) -> None:
+            attempts.append(value)
+            if len(attempts) == 1:
+                write(io, output[:3])
+                raise HaltError("sink unavailable")
+            write(io, value)
+
+        draws = iter((0, 1))
+        with monkeypatch.context() as patch:
+            patch.setattr(Seeded, "randbelow", lambda _self, _upper: next(draws))
+            patch.setattr(ScriptedIO, "_write", refuse)
+            debugger = esolangs.Language("Interprogck8").make_debugger("~\n~", seed=0)
+            limits = esolangs.ExecutionLimits(max_steps=2)
+            with pytest.raises(HaltError, match="sink unavailable"):
+                debugger.run(limits=limits)
+            assert debugger.observation.steps == 0
+            assert debugger.snapshot()[-1] == (output, 3)
+            assert debugger.run(limits=limits) == "halted"
+            assert debugger.observation.steps == 2
+            assert debugger.observation.output == output
+            assert attempts == [output, output[3:]]
 
 
 class TestDownAccLines:

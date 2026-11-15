@@ -6,6 +6,7 @@ from esolangs.languages.object_disoriented.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_output_retry
 
 CAT = """
 dcatloop.
@@ -82,8 +83,18 @@ def test_hello_world_repaired_pops_its_stack_last_in_first() -> None:
     )
 
 
-def test_bits_pack_most_significant_first() -> None:
+def test_bits_pack_most_significant_first(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _run(_bits("z", "i", *["z"] * 5, "i"), "\x80") == "\x40"
+    assert_rejected_output_retry(
+        "Object disoriented",
+        "dmain." + "oz" * 8 + "rzzz",
+        "\0",
+        "\0",
+        prefix=22,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
 
 def test_output_zero_is_structural_not_the_call_result() -> None:

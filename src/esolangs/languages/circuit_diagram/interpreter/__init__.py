@@ -115,7 +115,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 
 # ``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER`` (repaired, replayed over
 # sixteen inputs) and ``PRIME_TESTER_AS_DRAWN`` (silence pinned).
@@ -437,6 +437,7 @@ class _Machine:
             (None,) * len(gate.inputs) for gate in self.gates
         )
         self._emitted_count = 0
+        self._writer = _BufferedOutput()
         self._clock_samples: list[int] = []
         self._load_inputs()
         self._load_sources()
@@ -568,7 +569,7 @@ class _Machine:
         """
         emitted = _emitted(self.values, self.topology)
         for index in range(self._emitted_count, len(emitted)):
-            self.io.print_str(emitted[index])
+            self._writer.write(self.io, emitted[index])
             self._emitted_count += 1
         while True:
             try:
@@ -580,10 +581,12 @@ class _Machine:
         self._clock_samples.clear()
 
     def _clock_cursor(self) -> int | WorkspaceVariant:
-        if self._emitted_count or self._clock_samples:
+        accepted = self._writer.accepted
+        emitted = (self._emitted_count, accepted) if accepted else self._emitted_count
+        if emitted or self._clock_samples:
             return WorkspaceVariant(
                 "pending_generation",
-                (self.clock.position, self._emitted_count, *self._clock_samples),
+                (self.clock.position, emitted, *self._clock_samples),
             )
         return self.clock.position
 

@@ -2,11 +2,13 @@
 
 import pytest
 
+from esolangs import ExecutionLimits, HaltError, Language, ProgramError
 from esolangs.languages.s_bleq.interpreter import _Machine, prepare_machine, run
 from esolangs.languages.s_bleq.interpreter import _Machine as Sbleq
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
+from tests.support.vm_support import assert_rejected_output_retry
 
 
 def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
@@ -28,13 +30,81 @@ def stepped(
     return machine
 
 
+def _check_input_during_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    source = "-3 -2 3 0 0 7 65 9"
+    language = Language("S*bleq")
+    limits = ExecutionLimits(max_steps=2)
+    write = ScriptedIO._write
+    for stdin, output, reads, eof in (("AB", "A", 1, 0), ("", "\0", 0, 1)):
+        expected = language.run(source, stdin=stdin, limits=limits)
+        assert (expected.output, expected.input_reads, expected.input_past_end) == (
+            output,
+            reads,
+            eof,
+        )
+        for accepted in (0, 1):
+            calls = []
+
+            def refuse(io, value, *, log=calls, prefix=output[:accepted]):
+                log.append(value)
+                if len(log) == 1:
+                    write(io, prefix)
+                    raise HaltError("temporary writer refusal")
+                write(io, value)
+
+            with monkeypatch.context() as port:
+                port.setattr(ScriptedIO, "_write", refuse)
+                dbg = language.make_debugger(source, stdin=stdin)
+                with pytest.raises(
+                    HaltError, match="temporary writer refusal"
+                ) as fault:
+                    dbg.run(limits=limits)
+                partial = fault.value.observation
+                assert partial == dbg.observation
+                assert (
+                    partial.output,
+                    partial.input_reads,
+                    partial.input_past_end,
+                    partial.steps,
+                ) == (
+                    output[:accepted],
+                    reads,
+                    eof,
+                    0,
+                )
+                assert dbg.ip == 0
+                assert dbg.snapshot()[-1] == (ord(output), accepted, False)
+                assert dbg.run(limits=limits) == "halted"
+                assert dbg.observation == expected
+                assert fault.value.observation == partial
+            assert calls == [output] * (1 if accepted else 2)
+
+
 class TestSpecialAddresses:
     """The -1 (IP), -2 (input) and -3 (output) addresses, and branch operands."""
 
-    def test_a_branch_address_is_never_negative(self) -> None:
+    def test_a_branch_address_is_never_negative(self, monkeypatch) -> None:
         """``c`` is an address, not an operand port."""
         with pytest.raises(ValueError, match=r"invalid S\*bleq branch address"):
             run_bounded("0 0 -1")
+
+        assert_rejected_output_retry(
+            "S*bleq",
+            "-3 6 3 0 0 7 65 9",
+            "A",
+            "A",
+            prefix=0,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
+        _check_input_during_output_retry(monkeypatch)
+
+        dbg = Language("S*bleq").make_debugger("-3 -2 -1", stdin="AB")
+        for _ in range(2):
+            with pytest.raises(ProgramError, match=r"invalid S\*bleq branch address"):
+                dbg.step()
+            assert (dbg.output, dbg.observation.input_reads, dbg.ip) == ("A", 1, 0)
 
     @pytest.mark.parametrize(
         ("program", "stdin", "expected"),

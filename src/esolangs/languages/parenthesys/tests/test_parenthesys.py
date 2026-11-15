@@ -11,6 +11,7 @@ from esolangs.languages.parenthesys.interpreter import _Acc, _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import run_program
+from tests.support.vm_support import assert_rejected_output_retry
 
 _TRUTH = "[$|a]{[a]|(1)}(0)"
 _BOTTLES = (
@@ -41,6 +42,17 @@ def test_wiki_hello_cat_and_a_plus_b(monkeypatch) -> None:
     assert _run("(Hello, world!)") == "Hello, world!"
     assert _run("($)", "abc 12\n") == "abc 12"
     assert _run("([+|$|$])", "2\n3\n") == "5"
+    assert_rejected_output_retry(
+        "Parenthesys",
+        "($)",
+        "abc 12",
+        "abc 12",
+        stdin="abc 12\n",
+        prefix=1,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
     from esolangs.languages.parenthesys import interpreter
     from tests.support.prepared_support import check_image_reuse

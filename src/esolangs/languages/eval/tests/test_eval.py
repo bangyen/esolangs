@@ -10,6 +10,7 @@ from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_printing
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = partial(run_printing, run)
 
@@ -38,7 +39,9 @@ class TestEval:
     def test_output(self, code: str, expected: str) -> None:
         assert run_and_capture(code) == expected
 
-    def test_only_the_two_quotes_start_a_literal(self) -> None:
+    def test_only_the_two_quotes_start_a_literal(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """No other character opens stringmode -- the rest are commands or no-ops."""
         commands = set("`^0+-.=;~*?!\"'")
         for char in map(chr, range(0x20, 0x7F)):
@@ -48,6 +51,39 @@ class TestEval:
             state.step()
             assert state.stk == ((), ()), f"{char!r} was not a no-op"
             assert state.ind == 1
+
+        for source, value, prefix in (
+            ("0.", 0, 1),
+            ('"ab".', "ab", 1),
+            ('"0."!', 0, 3),
+        ):
+            assert_rejected_output_retry(
+                "Eval",
+                source,
+                value,
+                str(value),
+                prefix=prefix,
+                monkeypatch=monkeypatch,
+                unchanged_if_unwritten=True,
+                following_writes=(),
+            )
+
+        io = ScriptedIO()
+        machine = _Machine('"ab\n".', io)
+        machine.step()
+        write = io._write
+
+        def fail_after_acceptance(value: object) -> None:
+            write(value)
+            raise HaltError("temporary write refusal")
+
+        with monkeypatch.context() as scoped:
+            scoped.setattr(io, "_write", fail_after_acceptance)
+            with pytest.raises(HaltError, match="write refusal"):
+                machine.step()
+        machine.step()
+        assert io.getvalue() == "ab\n"
+        assert io._newline
 
     def test_reverse_turns_the_stack_over(self) -> None:
         """* reverses the current stack, so the bottom becomes the top."""

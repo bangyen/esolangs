@@ -48,6 +48,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Any, NamedTuple
 
 from esolangs.languages.object_disoriented.lifecycle import CAPABILITIES
@@ -56,8 +57,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.persistent import CHUNK, Chunked, append, chunked, get, put
 
 _LVALUES = frozenset("abstp")
@@ -415,6 +416,7 @@ class _Machine:
 
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self.program, boot = _prepare_source(code) if isinstance(code, str) else code
         # The boot call runs ``flmain.z``; its self and parameter are its ``t``.
         self.state = tuple.__new__(
@@ -451,8 +453,13 @@ class _Machine:
             frame, rest = rest
             code, pc, owner, param, base, pending, stack = frame
             frames.append((code, pc, owner, param, base, pending, tuple(stack)))
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            frames=tuple(frames),
+            frames=(
+                WorkspaceVariant("pending_output", (tuple(frames), accepted))
+                if accepted
+                else tuple(frames)
+            ),
             store=tuple(obj for chunk in self.state.store for obj in chunk),
             extent=self.state.size,
             input_bits=self.state.in_bits,
@@ -462,7 +469,9 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one op, reading a byte first if it needs one."""
@@ -473,9 +482,10 @@ class _Machine:
         byte = None
         if self.program.codes[code][pc][0] == "in" and not self.state.in_bits:
             byte = self.io.input_char() % 256
-        self.state, out = _advance(self.state, self.program, byte)
+        state, out = _advance(self.state, self.program, byte)
         if out is not None:
-            self.io.print_char(out)
+            self._writer.write(self.io, out, first=partial(self.io.print_char, out))
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

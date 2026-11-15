@@ -53,8 +53,8 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
-from esolangs.runtime.memory import parse_integer
+from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 #: Values each command dequeues.
@@ -133,6 +133,7 @@ class _Machine:
         self.queue: deque[int] | None = None
         self._rejected_input: str | None = None
         self.done = False
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -141,10 +142,13 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
         cursor = self.io.progress()
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=self.ind,
             queue=None if self.queue is None else tuple(self.queue),
-            stopped=self.done,
+            stopped=WorkspaceVariant("pending_output", (self.done, accepted))
+            if accepted
+            else self.done,
             input_cursor=(
                 cursor
                 if self._rejected_input is None
@@ -156,7 +160,10 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         queue = None if self.queue is None else tuple(self.queue)
         state = (self.ind, queue, self.done, self.io.progress())
-        return state if self._rejected_input is None else (*state, self._rejected_input)
+        if self._rejected_input is not None:
+            return (*state, self._rejected_input)
+        accepted = self._writer.accepted
+        return (*state, accepted) if accepted else state
 
     def _read_queue(self) -> deque[int]:
         parsed = self._rejected_input
@@ -179,7 +186,10 @@ class _Machine:
         queue = self.queue
         c = self.commands[self.ind]
         if c == "V" and len(queue) == 1:
-            self.io.print_num(queue[0])
+            value = queue[0]
+            self._writer.write(
+                self.io, format_integer(value), first=lambda: self.io.print_num(value)
+            )
             self.done = True
             return
         if len(queue) < _POPS[c]:

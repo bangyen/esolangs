@@ -47,6 +47,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from functools import partial
 from itertools import product
 from math import prod
 from types import MappingProxyType
@@ -61,7 +62,8 @@ from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import with_hint
 
@@ -129,7 +131,7 @@ type _Boundary = tuple[
     tuple[str, ...],
     bool,
 ]
-type _Replay = tuple[tuple[int | None, ...], tuple[int, ...], int]
+type _Replay = tuple[tuple[int | None, ...], tuple[int, ...], int | tuple[int, int]]
 type _State = _Boundary | tuple[*_Boundary, _Replay]
 
 
@@ -673,6 +675,7 @@ class _Machine:
         self._cycle_inputs: tuple[int | None, ...] = ()
         self._cycle_draws: tuple[int, ...] = ()
         self._cycle_output = 0
+        self._writer = _BufferedOutput()
 
     @property
     def pointers(self) -> tuple[_Pointer, ...]:
@@ -756,8 +759,10 @@ class _Machine:
         return boundary if pending is None else (*boundary, pending)
 
     def _pending_cycle(self) -> _Replay | None:
-        if self._cycle_inputs or self._cycle_draws or self._cycle_output:
-            return self._cycle_inputs, self._cycle_draws, self._cycle_output
+        accepted = self._writer.accepted
+        written = (self._cycle_output, accepted) if accepted else self._cycle_output
+        if self._cycle_inputs or self._cycle_draws or written:
+            return self._cycle_inputs, self._cycle_draws, written
         return None
 
     def branching_snapshot(self) -> _State:
@@ -870,12 +875,13 @@ class _Machine:
             following=following,
         )
 
-    def _flush(self, effects: tuple[int, ...], flushed: int, *, pending: bool) -> None:
+    def _flush(self, effects: tuple[int, ...]) -> None:
         """Write prints beyond the accepted prefix, tracking incomplete cycles."""
-        for value in effects[flushed:]:
-            self.io.print_num(value)
-            if pending:
-                self._cycle_output += 1
+        for value in effects[self._cycle_output :]:
+            self._writer.write(
+                self.io, format_integer(value), first=partial(self.io.print_num, value)
+            )
+            self._cycle_output += 1
 
     def step(self) -> None:
         """Execute one cycle, reading, drawing and writing as the shell.
@@ -893,7 +899,7 @@ class _Machine:
                     self.state, self.grid, self._cycle_inputs, self._cycle_draws
                 )
             except _NeedInputError as need:
-                self._flush(need.effects, self._cycle_output, pending=True)
+                self._flush(need.effects)
                 # One IO attempt per ``◇`` read, EOF included, so the port
                 # sees exactly the reads the single-pass original made.
                 try:
@@ -902,18 +908,17 @@ class _Machine:
                 except EOFError:
                     self._cycle_inputs = (*self._cycle_inputs, None)
             except _NeedDrawError as need:
-                self._flush(need.effects, self._cycle_output, pending=True)
+                self._flush(need.effects)
                 self._cycle_draws = (*self._cycle_draws, draw(self.rng, need.upper))
             except _FaultError as fault:
-                self._flush(fault.effects, self._cycle_output, pending=True)
+                self._flush(fault.effects)
                 raise fault.cause from None
             else:
+                self._flush(effects)
                 self.state = core
-                flushed = self._cycle_output
-                if self._cycle_inputs or self._cycle_draws or flushed:
+                if self._cycle_inputs or self._cycle_draws or self._cycle_output:
                     self._cycle_inputs = self._cycle_draws = ()
                     self._cycle_output = 0
-                self._flush(effects, flushed, pending=False)
                 return
 
 

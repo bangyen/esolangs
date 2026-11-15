@@ -11,7 +11,10 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import native_runner
 from tests.support.execution import assert_digit_cap_independent
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 #: Directive and allocation lines for a few variables, wrapping bytes.
 WRAP = "#basicfuck t=unbounded r=0~255 o=wrap\n"
@@ -154,6 +157,17 @@ def test_read_takes_characters_including_newlines(monkeypatch) -> None:
     code = WRAP + "#allocate a\nread -> a; write <- a; read -> a; write <- a;"
     assert _run(code, "x\n") == "x\n"
     _check_read_rejection()
+    assert_rejected_output_retry(
+        "Basicfuck",
+        WRAP + "#allocate a\nread -> a; write <- a;",
+        "A",
+        "A",
+        prefix=1,
+        monkeypatch=monkeypatch,
+        stdin="Aq",
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
 
 def test_comments_and_blank_lines_are_ignored() -> None:

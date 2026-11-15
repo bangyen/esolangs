@@ -74,7 +74,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.randomness import Randomness, draw
 
 _TRUE, _FALSE = 84, 81  # ASCII "T" and "Q", what ``{values...}`` stores
@@ -625,6 +625,8 @@ class _Machine:
     ) -> None:
         self.io = io
         self.rng = rng
+        self._writer = _BufferedOutput()
+        self._pending_print: tuple[_State, str] | None = None
         self._loaded, self._program = (
             _prepare_source(code) if isinstance(code, (str, list)) else code
         )
@@ -666,12 +668,22 @@ class _Machine:
         """Capture semantic components independently of storage and cycle grouping."""
         return _WORKSPACE_MODEL.capture(
             program=self.state.lines,
-            instruction=self.state.ip,
+            instruction=self._instruction(),
             accumulator=self.state.acc,
             captured_body=self.state.slot,
             call_frames=self.state.frames,
             input_cursor=self._input_cursor(),
         )
+
+    def _instruction(self) -> int | WorkspaceVariant:
+        accepted = self._writer.accepted or 0
+        if pending := self._pending_print:
+            return WorkspaceVariant(
+                "pending_output", (self.state.ip, pending[1], accepted)
+            )
+        if accepted:
+            return WorkspaceVariant("pending_output", (self.state.ip, accepted))
+        return self.state.ip
 
     def _input_cursor(self) -> int | WorkspaceVariant:
         cursor = self._rejected.cursor(self.io.progress())
@@ -682,7 +694,11 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete state, hashable, with the input cursor."""
         s = self.state
-        return (s.lines, s.ip, s.acc, s.slot, s.frames, self._input_cursor())
+        boundary = (s.lines, s.ip, s.acc, s.slot, s.frames, self._input_cursor())
+        if pending := self._pending_print:
+            return (*boundary, (pending[1], self._writer.accepted or 0))
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     # The branching-search protocol.  ``[a b]``, ``~`` and range arguments
     # in ``{values}`` draw, so a hang proof must cover *every* draw.  A line
@@ -727,6 +743,12 @@ class _Machine:
         """Execute one line; the two ports live here and nowhere else."""
         if self.halted:
             return
+        if pending := self._pending_print:
+            state, text = pending
+            self._writer.write(self.io, text)
+            self.state = state
+            self._pending_print = None
+            return
         state = self.state
         if state.lines is not self._loaded:
             self._load(state.lines)
@@ -736,11 +758,20 @@ class _Machine:
         else:
             instr = self._program[state.ip]
         if instr.reads:
-            self.state, out = self._advance_with_input(state, instr)
+            state, out = self._advance_with_input(state, instr)
         else:
-            self.state, out = _advance(state, self.rng, instr=instr)
+            state, out = _advance(state, self.rng, instr=instr)
         if out:
-            self.io.print_str(out)
+            try:
+                self._writer.write(self.io, out)
+            except BaseException:
+                # A successful tilde draw cannot be taken again on retry.
+                if instr.op == "tilde":
+                    self._pending_print = (state, out)
+                raise
+        self.state = state
+        if instr.reads:
+            self._reads.clear()
 
     def _advance_with_input(
         self, state: _State, instr: _Instr
@@ -752,7 +783,6 @@ class _Machine:
         except HaltError as error:
             self._rejected.remember(error)
             raise
-        self._reads.clear()
         return result
 
     def _read_operands(self, kinds: tuple[str, ...]) -> None:

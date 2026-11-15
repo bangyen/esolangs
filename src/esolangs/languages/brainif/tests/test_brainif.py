@@ -19,6 +19,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.runner import run_lines
 from tests.support.raises import assert_rejected_with_hint, raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = run_lines(run)
 
@@ -37,9 +38,20 @@ class TestBrainIfBasicCommands:
             vm.step()
         assert vm.output == "\x00"
 
-    def test_input_preserves_newlines(self) -> None:
+    def test_input_preserves_newlines(self, monkeypatch) -> None:
         """Input stores a newline rather than skipping it."""
         assert run_and_capture(["if 0 input", "if 10 output"], inputs=["", "A"]) == "\n"
+        assert_rejected_output_retry(
+            "BrainIf",
+            "if 0 input\nif 10 output",
+            "\n",
+            "\n",
+            prefix=1,
+            monkeypatch=monkeypatch,
+            stdin="\n",
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     def test_move_left_of_cell_zero_is_a_fresh_zero_cell(self) -> None:
         code = ["if 0 increment", "if 1 left", "if 0 output", "if 1 output"]

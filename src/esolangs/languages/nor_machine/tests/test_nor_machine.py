@@ -2,8 +2,11 @@
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, HaltError, Language
 from esolangs.languages.nor_machine.interpreter import _Machine, run
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
 from tests.support.vm_support import assert_rejected_input_retry
 
@@ -18,8 +21,51 @@ def test_rejected_input_stays_with_the_failed_step() -> None:
 _out = native_runner(run)
 
 
-def test_lone_nor_prints_the_value_itself() -> None:
+def test_lone_nor_prints_the_value_itself(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _out("V", "5") == "5"
+    api = Language("NOR machine")
+    limits = ExecutionLimits(max_steps=1)
+    complete = api.run("V", stdin="123", limits=limits)
+    assert (complete.output, complete.steps) == ("123", 1)
+    write = ScriptedIO._write
+
+    def check(accepted: int) -> None:
+        attempts: list[object] = []
+        fault = HaltError("transient output refusal")
+
+        def refuse(io: ScriptedIO, value: object) -> None:
+            attempts.append(value)
+            if len(attempts) == 1:
+                write(io, "123"[:accepted])
+                raise fault
+            write(io, value)
+
+        with monkeypatch.context() as port:
+            port.setattr(ScriptedIO, "_write", refuse)
+            debug = api.make_debugger("V", stdin="123")
+            with pytest.raises(HaltError, match="output refusal") as caught:
+                debug.run(limits=limits)
+            assert caught.value is fault
+            partial = ExecutionResult("123"[:accepted], 3, 1, 0, steps=0)
+            assert debug.observation == fault.observation == partial
+            assert not debug.halted
+            state = (0, (123,), False, 3)
+            assert debug.snapshot() == ((*state, accepted) if accepted else state)
+            assert _capture_workspace(debug.vm).parts[2] == (
+                WorkspaceVariant("pending_output", (False, accepted))
+                if accepted
+                else False
+            )
+            assert debug.run(limits=limits) == "halted"
+            assert debug.observation == complete
+            assert fault.observation == partial
+        assert type(attempts[0]) is int
+        assert attempts == [123] + (
+            ["123"[accepted:] if accepted else 123] if accepted < 3 else []
+        )
+
+    for accepted in range(4):
+        check(accepted)
 
 
 @pytest.mark.parametrize("part", [0, 1])

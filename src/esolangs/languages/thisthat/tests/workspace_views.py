@@ -280,7 +280,9 @@ class Observer:
             "_cycle_inputs",
             "_cycle_draws",
             "_cycle_output",
+            "_writer",
         }
+        assert raw._writer.accepted is None
         exact(
             (raw._cycle_inputs, raw._cycle_draws, raw._cycle_output),
             row.pending or ((), (), 0),

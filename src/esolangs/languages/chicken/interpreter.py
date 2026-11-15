@@ -73,9 +73,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._validate import check_address
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -261,6 +261,7 @@ class _Machine:
     def __init__(self, code: str | tuple[int, ...], io: IO) -> None:
         counts = _prepare_source(code) if isinstance(code, str) else code
         self.io = io
+        self._writer = _BufferedOutput()
         self.cells: list[_Value] = [SELF, io.input_all(), *counts, 0]
         self.pointer = 2
         self.done = False
@@ -281,19 +282,26 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
         # The array reference stores no bits, but differs from undefined (None).
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.pointer,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.pointer, accepted))
+                if accepted
+                else self.pointer
+            ),
             cells=tuple(() if value is SELF else value for value in self.cells),
             stopped=self.done,
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        return (
+        boundary = (
             self.pointer,
             tuple(map(_snapshot_value, self.cells)),
             self.io.progress(),
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _operand(self, depth: int) -> _Value:
         return self.cells[-depth] if len(self.cells) >= depth else None
@@ -353,7 +361,7 @@ class _Machine:
 
     def _exit(self) -> None:
         text = _text(self._operand(1))
-        self.io.print_str(_ENTITY.sub(_unescape, text))
+        self._writer.write(self.io, _ENTITY.sub(_unescape, text))
         if self.cells:
             self.cells.pop()
         self.done = True

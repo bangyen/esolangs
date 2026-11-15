@@ -27,9 +27,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.brackets import unmatched
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 
 #: One instant of a run: ``(ind, cell, tape)`` -- the code cursor, the
 #: pointer, and the bit pool.  A value, not a record: every transition below
@@ -126,6 +126,7 @@ class _Machine:
         # and once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
         self.state: _State = (0, 0, (0,) * 8)
+        self._writer = _BufferedOutput()
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -156,10 +157,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        instruction = self.state[0]
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             tape=self.state[2],
             pointer=self.state[1],
-            instruction=self.state[0],
+            instruction=(
+                WorkspaceVariant("pending_output", (instruction, accepted))
+                if accepted
+                else instruction
+            ),
             input_cursor=self.io.progress(),
         )
 
@@ -168,7 +175,9 @@ class _Machine:
         # The pool is already a tuple, so it goes in as it stands, in the
         # order this returned before the fields moved into a state value.
         ind, cell, tape = self.state
-        return (tape, cell, ind, self.io.progress())
+        boundary = (tape, cell, ind, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one character, advancing the cursor.
@@ -184,7 +193,10 @@ class _Machine:
             byte = self.io.input_char() % 256  # As Boolfuck: a byte, not U+0100.
         elif char == "(":
             val = tape[cell : cell + 8]
-            self.io.print_char(chr(int("".join(map(str, val)), 2)))
+            output = chr(int("".join(map(str, val)), 2))
+            self._writer.write(
+                self.io, output, first=partial(self.io.print_char, output)
+            )
         elif char == "{" and not tape[cell]:
             target = _match(self.code, ind, 1)
         elif char == "}" and tape[cell]:

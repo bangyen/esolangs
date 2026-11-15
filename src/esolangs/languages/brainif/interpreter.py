@@ -26,7 +26,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from functools import cache
+from functools import cache, partial
 from typing import Any
 
 from esolangs.languages.brainif.lifecycle import CAPABILITIES
@@ -36,8 +36,8 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.persistent import (
     Chunked,
@@ -187,6 +187,7 @@ class _Machine:
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
         self.state: _State = (0, 0, chunked((0,)))
+        self._writer = _BufferedOutput()
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -240,9 +241,14 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             cells=self.cells,
-            instruction=self.ind,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.ind, accepted))
+                if accepted
+                else self.ind
+            ),
             pointer=self.ptr,
             input_cursor=self.io.progress(),
         )
@@ -253,7 +259,9 @@ class _Machine:
         # input cursor joins them because a repeat that ignores consumed
         # input is not a real cycle.
         ind, ptr, cells = self.state
-        return (cells, ind, ptr, self.io.progress())
+        boundary = (cells, ind, ptr, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one line, advancing the cursor.
@@ -270,7 +278,10 @@ class _Machine:
             value, command, _target = parsed
             if get(cells, ptr) == value:
                 if command == "output":
-                    self.io.print_char(chr(value))
+                    output = chr(value)
+                    self._writer.write(
+                        self.io, output, first=partial(self.io.print_char, output)
+                    )
                 elif command == "input":
                     byte = self.io.input_char()
         self.state = _advance(self.state, parsed, byte)

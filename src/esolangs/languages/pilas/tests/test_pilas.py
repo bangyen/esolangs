@@ -4,6 +4,7 @@ import pytest
 
 from esolangs.languages.pilas.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_output_retry
 
 _out = native_runner(run)
 
@@ -41,6 +42,17 @@ def test_reads_bytes(tmp_path, monkeypatch) -> None:
 
     source = ",.\n  "
     assert _out(source, "A") == "A"
+    assert_rejected_output_retry(
+        "Pilas",
+        source,
+        "A",
+        "A",
+        prefix=2,
+        stdin="A",
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
     api = esolangs.Language("Pilas")
     path = tmp_path / "source.txt"
     path.write_bytes((source + "\r\n").encode())

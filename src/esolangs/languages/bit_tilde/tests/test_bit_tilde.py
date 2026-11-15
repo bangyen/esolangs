@@ -16,6 +16,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.runner import run_program
 from tests.support.raises import raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 
 def run_and_capture(code: str) -> str:
@@ -61,8 +62,19 @@ class TestBitTilde:
     def test_result(self, code, expected) -> None:
         assert run_and_capture(code) == expected
 
-    def test_input_reads_first_character_of_a_line(self) -> None:
+    def test_input_reads_first_character_of_a_line(self, monkeypatch) -> None:
         assert run_scripted(")(", "hello") == "h"
+        assert_rejected_output_retry(
+            "bit~",
+            ")(",
+            "A",
+            "A",
+            prefix=1,
+            monkeypatch=monkeypatch,
+            stdin="A",
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     def test_input_writes_at_the_pointer(self) -> None:
         """``)`` writes the 8 bits starting at the pointer, so reading at

@@ -41,6 +41,7 @@ Decisions:
 """
 
 from collections.abc import Mapping, Sequence
+from functools import partial
 from typing import Any
 
 from esolangs.languages.s_bleq.lifecycle import CAPABILITIES
@@ -49,9 +50,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._validate import check_address
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.memory import parse_int_memory as _parse
 from esolangs.runtime.source_hints import syntax_error
@@ -205,6 +206,9 @@ class _Machine:
         self.store = store
         self.indirect = indirect
         self._halted = False
+        self._writer = _BufferedOutput()
+        self._output_byte: int | None = None
+        self._output_done = False
         if store not in _STORES:
             raise syntax_error(
                 f"unknown store target: {store!r}", "choose store a, ab or b"
@@ -225,16 +229,29 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        pending = self._pending_output()
         return _WORKSPACE_MODEL.capture(
             memory=tuple(self.mem),
-            instruction=self.ip,
+            instruction=(
+                self.ip
+                if pending is None
+                else WorkspaceVariant("pending_output", (self.ip, pending))
+            ),
             input_cursor=self.io.progress(),
             stopped=self._halted,
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (tuple(self.mem), self.ip, self.io.progress(), self._halted)
+        boundary = (tuple(self.mem), self.ip, self.io.progress(), self._halted)
+        pending = self._pending_output()
+        return boundary if pending is None else (*boundary, pending)
+
+    def _pending_output(self) -> int | tuple[int | None, int, bool] | None:
+        accepted = self._writer.accepted or 0
+        if self._output_byte is not None or self._output_done:
+            return self._output_byte, accepted, self._output_done
+        return accepted or None
 
     def input_byte(self) -> int:
         # -2 returns the next byte of input; EOF reads as zero
@@ -244,7 +261,8 @@ class _Machine:
             return 0
 
     def output(self, value: int) -> None:
-        self.io.print_char(chr(value & 0xFF))
+        char = chr(value & 0xFF)
+        self._writer.write(self.io, char, first=partial(self.io.print_char, char))
 
     def step(self) -> None:
         """Execute one instruction (``a b c``), advancing or branching.
@@ -255,11 +273,18 @@ class _Machine:
         if self.halted:
             return
         a, b = _operands(self.mem, self.ip, indirect=self.indirect)
-        byte = self.input_byte() if -2 in (a, b) else None
-        if a == -3 or b == -3:
-            other = b if a == -3 else a
-            self.output(_read(self.mem, self.ip, other, byte))
+        outputting = a == -3 or b == -3
+        if outputting:
             byte = None
+            other = b if a == -3 else a
+            if not self._output_done:
+                # The input operand was already consumed if the write failed.
+                if other == -2 and self._output_byte is None:
+                    self._output_byte = self.input_byte()
+                self.output(_read(self.mem, self.ip, other, self._output_byte))
+                self._output_done = True
+        else:
+            byte = self.input_byte() if -2 in (a, b) else None
         (self.ip, self._halted), writes = _advance(
             (self.ip, self._halted),
             self.mem,
@@ -267,6 +292,9 @@ class _Machine:
             byte,
             indirect=self.indirect,
         )
+        if outputting:
+            self._output_byte = None
+            self._output_done = False
         for addr, value in writes:
             if addr >= len(self.mem):
                 self.mem.extend([0] * (addr + 1 - len(self.mem)))

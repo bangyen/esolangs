@@ -51,8 +51,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 #: Commands that pop, with how many values each needs.
@@ -161,6 +161,7 @@ class _Machine:
         self.lines, self.jumps = image
         self.io = io
         self.state = tuple.__new__(_State, ((0, 0), ((), ()), 0))
+        self._writer = _BufferedOutput()
 
     @property
     def ip(self) -> tuple[int, int]:
@@ -175,16 +176,21 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction_pointers=self.state.ips,
             stacks=self.state.stks,
-            turn=self.state.turn,
+            turn=WorkspaceVariant("pending_output", (self.state.turn, accepted))
+            if accepted
+            else self.state.turn,
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Run the current line's command; reads and writes happen here."""
@@ -204,9 +210,10 @@ class _Machine:
                 hint="keep printed values between 0 and 0x10FFFF",
             )
         byte = self.io.input_char() if char == "," else None
-        self.state, out = _advance(self.state, self.lines, self.jumps, byte)
+        state, out = _advance(self.state, self.lines, self.jumps, byte)
         if out is not None:
-            self.io.print_char(out)
+            self._writer.write(self.io, out, first=lambda: self.io.print_char(out))
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

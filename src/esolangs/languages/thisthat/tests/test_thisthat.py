@@ -116,7 +116,9 @@ def test_a_retried_tick_flushes_each_print_once_in_order() -> None:
     assert io.events == ["write:1", "read", "write:2", "read"]
 
 
-def test_a_failed_cycle_retries_with_the_same_draw_input_and_output() -> None:
+def test_a_failed_cycle_retries_with_the_same_draw_input_and_output(
+    monkeypatch,
+) -> None:
     source = "▣───◘───▣\n\n▣─■═◇\n\n▣───◇\n    ║\n    ◇"
     language = Language("thisthat")
     dbg = language.make_debugger(source, stdin="21", seed=4)
@@ -161,6 +163,57 @@ def test_a_failed_cycle_retries_with_the_same_draw_input_and_output() -> None:
     control.run(limits=ExecutionLimits(max_steps=10))
     assert control.halted
     assert control.output == "11"
+
+    _check_cycle_output_retry(monkeypatch, source, "1", (1, 1), (0,))
+    _check_cycle_output_retry(monkeypatch, "▣─■═◇\n\n▣─□═◇", "", (1, 0), ())
+
+
+def _check_cycle_output_retry(monkeypatch, source, stdin, writes, draws) -> None:
+    language = Language("thisthat")
+    limit = ExecutionLimits(max_steps=10)
+    expected = language.run(source, stdin=stdin, seed=4, limits=limit)
+    assert expected.output == "".join(map(str, writes))
+    write = ScriptedIO._write
+    for accepted in (0, 1):
+        calls = []
+
+        def refuse(io, value, *, log=calls, prefix="1"[:accepted]):
+            log.append(value)
+            if len(log) == 1:
+                write(io, prefix)
+                raise HaltError("temporary writer refusal")
+            write(io, value)
+
+        with monkeypatch.context() as port:
+            port.setattr(ScriptedIO, "_write", refuse)
+            dbg = language.make_debugger(source, stdin=stdin, seed=4)
+            for _ in range(4):
+                dbg.step()
+            boundary = dbg.snapshot()
+            position = dbg.ip
+            with pytest.raises(HaltError, match="temporary writer refusal") as fault:
+                dbg.step()
+            partial = fault.value.observation
+            assert dbg.observation == partial
+            assert (partial.output, partial.steps, partial.input_reads) == (
+                "1"[:accepted],
+                4,
+                0,
+            )
+            assert dbg.ip == position
+            assert not dbg.halted
+            if accepted or draws:
+                pending = ((), draws, (0, accepted) if accepted else 0)
+                assert dbg.snapshot() == (*boundary, pending)
+                workspace = _capture_workspace(dbg.vm).parts[0]
+                assert workspace.kind == "pending_cycle"
+                assert workspace.values[1:] == pending
+            else:
+                assert dbg.snapshot() == boundary
+            assert dbg.run(limits=limit) == "halted"
+            assert dbg.observation == expected
+            assert fault.value.observation == partial
+        assert tuple(calls) == (writes if accepted else (writes[0], *writes))
 
 
 def test_a_detached_branch_keeps_the_already_accepted_draw() -> None:

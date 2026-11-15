@@ -52,8 +52,8 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -142,6 +142,7 @@ class _Machine:
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.lines, self.index = _parse(code) if isinstance(code, str) else code
         self.io = io
+        self._writer = _BufferedOutput()
         self.ind = 0
         self._rejected = RejectedInput()
 
@@ -151,13 +152,21 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.ind, input_cursor=self._rejected.cursor(self.io.progress())
+            instruction=(
+                WorkspaceVariant("pending_output", (self.ind, accepted))
+                if accepted
+                else self.ind
+            ),
+            input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self._rejected.snapshot((self.ind, self.io.progress()))
+        boundary = self._rejected.snapshot((self.ind, self.io.progress()))
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Run one line; a menu's choice is read here."""
@@ -167,9 +176,10 @@ class _Machine:
         choice = None
         if line.op == "GOTO" and len(line.targets) > 1:
             choice = self._read_choice(len(line.targets))
-        self.ind, out = _advance(self.ind, self.lines, self.index, choice)
+        ind, out = _advance(self.ind, self.lines, self.index, choice)
         if out is not None:
-            self.io.print_str(out)
+            self._writer.write(self.io, out)
+        self.ind = ind
 
     def _read_choice(self, count: int) -> int:
         raw = self._rejected.read(self.io, self.io.input_str).strip()

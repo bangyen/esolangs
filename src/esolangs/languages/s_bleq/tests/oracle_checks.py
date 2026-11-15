@@ -18,11 +18,11 @@ def _model(words, stdin, store, *, indirect):
     ip = cursor = 0
     stopped = False
     output = ""
-    error = None
+    error = delivered = None
     trace = []
     for step in range(13):
         halted = stopped or not 0 <= ip <= size - 3
-        view = ip, tuple(cells.get(i, 0) for i in range(size)), stopped
+        view = ip, tuple(cells.get(i, 0) for i in range(size)), stopped, delivered
         trace.append((view, halted, output, cursor, cursor))
         if error:
             break
@@ -50,10 +50,13 @@ def _model(words, stdin, store, *, indirect):
 
         try:
             if -3 in (a, b):
-                output += chr(read(b if a == -3 else a) % 256)
+                other = b if a == -3 else a
+                output += chr(read(other) % 256)
+                delivered = ({-2: incoming}.get(other), 0, True)
             if c < 0:
                 raise KeyError(c)
             if -3 in (a, b):
+                delivered = None
                 ip += 3
                 continue
             difference = read(a) - read(b)
@@ -81,12 +84,18 @@ def _check(factory, words, stdin, store, *, indirect):
     def machine(code, io):
         return factory(code, io, store, indirect=indirect)
 
+    def parts(row):
+        ind, mem, stopped, delivered = row[0]
+        if delivered is not None:
+            ind = workspace.WorkspaceVariant("pending_output", (ind, delivered))
+        return mem, ind, row[-1], stopped
+
     code = " ".join(map(str, words))
     workspace.agrees(
         _model(words, stdin, store, indirect=indirect),
         (machine, code, stdin),
-        (_WORKSPACE, lambda row: (row[0][1], row[0][0], row[-1], row[0][2])),
-        lambda m: (m.ip, tuple(m.memory), m._halted),
+        (_WORKSPACE, parts),
+        lambda m: (m.ip, tuple(m.memory), m._halted, m._pending_output()),
         cap=12,
         context=(words, stdin, store, indirect),
     )

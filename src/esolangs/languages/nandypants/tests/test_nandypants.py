@@ -2,8 +2,11 @@
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, HaltError, Language
 from esolangs.languages.nandypants.interpreter import run
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
 
 CAT = r"0}/>v>^<<^>^\}^0"
 
@@ -38,6 +41,61 @@ def test_input_is_reduced_modulo_256(monkeypatch) -> None:
         monkeypatch,
         cases=(("\x00", "\x01"), ("\x01", "\x00"), ("\x00", "\x01")),
     )
+    _check_output_retry(monkeypatch)
+
+
+def _check_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    api = Language("Nandypants")
+    limits = ExecutionLimits(max_steps=8)
+    write = ScriptedIO._write
+
+    def check(source: str, stdin: str, output: str, accepted: int) -> None:
+        clean = api.make_debugger(source, stdin=stdin)
+        assert clean.run(limits=limits) == "halted"
+        complete = clean.observation
+        final = clean.snapshot()
+        assert complete.output == output
+        attempts: list[object] = []
+        fault = HaltError("transient byte refusal")
+
+        def refuse(io: ScriptedIO, char: object) -> None:
+            attempts.append(char)
+            if len(attempts) == 1:
+                write(io, output[:accepted])
+                raise fault
+            write(io, char)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(ScriptedIO, "_write", refuse)
+            debug = api.make_debugger(source, stdin=stdin)
+            with pytest.raises(HaltError, match="byte refusal") as caught:
+                debug.run(limits=limits)
+            assert caught.value is fault
+            partial = ExecutionResult(
+                output[:accepted], len(stdin), len(stdin), 0, steps=len(source) - 1
+            )
+            assert not debug.halted
+            assert fault.observation == debug.observation == partial
+            control, tape_a, tape_b, cursor, pending = debug.snapshot()
+            assert (tape_a, tape_b, cursor) == final[1:]
+            assert pending == (final[0], ord(output), accepted)
+            assert _capture_workspace(debug.vm).parts[0] == WorkspaceVariant(
+                "pending_output", (tuple(control), *pending)
+            )
+            assert debug.run(limits=limits) == "halted"
+            assert debug.observation == complete
+            assert fault.observation == partial
+            assert debug.snapshot() == final
+        assert attempts == [output] * (1 if accepted else 2)
+
+    for source, stdin, output in (
+        ("\\", "", "\0"),
+        ("\\" * 8, "", "\0"),
+        ("\\/", "A", "\0"),
+        ("v^\\^", "", "\1"),
+    ):
+        for accepted in (0, 1):
+            check(source, stdin, output, accepted)
 
 
 @pytest.mark.parametrize(

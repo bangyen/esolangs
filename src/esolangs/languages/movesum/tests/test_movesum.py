@@ -9,6 +9,7 @@ from esolangs.languages.movesum.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_output_retry
 
 out = native_runner(run)
 
@@ -140,6 +141,37 @@ def test_failed_output_does_not_commit_a_quiet_step(monkeypatch) -> None:
     machine.step()
     assert machine.halted
     assert io.getvalue() == "1 1"
+    source = "0=12\nmove 0 -1"
+    assert_rejected_output_retry(
+        "Movesum",
+        source,
+        "12",
+        "12 12",
+        prefix=1,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(" 12",),
+    )
+    io = ScriptedIO()
+    machine = _Machine(source, io)
+    machine.step()
+    machine.step()
+    write = io.print_str
+
+    def accept_prefix(text: str) -> None:
+        assert text == " 12"
+        write(text[:2])
+        raise HaltError("write refused")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(io, "print_str", accept_prefix)
+        with pytest.raises(HaltError, match="write refused"):
+            machine.step()
+    assert io.getvalue() == "12 1"
+    assert not machine.halted
+    machine.step()
+    assert io.getvalue() == "12 12"
+    assert machine.halted
 
 
 _ADD_TWO = "1=42 2=42\nsum\nmove 0 -1\nmove 0 0"

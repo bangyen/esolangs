@@ -43,9 +43,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import parse_integer
 
 _TOKEN = re.compile(r"\d+|[{}<>^v\\/]")
@@ -171,6 +171,8 @@ class _Machine:
         self.state = _State(0, 0, 0, 0, 0, 0, 0)
         self.a_ones: set[int] = set()
         self.b_ones: set[int] = set()
+        self._writer = _BufferedOutput()
+        self._pending_output: tuple[_State, int] | None = None
 
     @property
     def halted(self) -> bool:
@@ -191,38 +193,55 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
-        s = self.state
+        control = tuple(self.state)
+        pending = self._output_boundary()
         return _WORKSPACE_MODEL.capture(
-            control=(
-                s.pc,
-                s.a_ptr,
-                s.b_ptr,
-                s.incoming,
-                s.remaining,
-                s.outgoing,
-                s.used,
-            ),
+            control=WorkspaceVariant("pending_output", (control, *pending))
+            if pending is not None
+            else control,
             first_tape=frozenset(self.a_ones),
             second_tape=frozenset(self.b_ones),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        return (
+        boundary = (
             self.state,
             frozenset(self.a_ones),
             frozenset(self.b_ones),
             self.io.progress(),
         )
+        pending = self._output_boundary()
+        return (*boundary, pending) if pending is not None else boundary
+
+    def _output_boundary(self) -> tuple[_State, int, int] | None:
+        if self._pending_output is None:
+            return None
+        return (*self._pending_output, self._writer.accepted or 0)
+
+    def _write_byte(self, state: _State, byte: int) -> None:
+        char = chr(byte)
+        try:
+            self._writer.write(self.io, char, first=lambda: self.io.print_char(char))
+        except BaseException:
+            # Terminal padding can follow a read or tape edit in this command.
+            self._pending_output = state, byte
+            raise
+        self.state = state
+        self._pending_output = None
 
     def step(self) -> None:
         if self.halted:
+            return
+        if self._pending_output is not None:
+            self._write_byte(*self._pending_output)
             return
         state = self.state
         token = self.program.tokens[state.pc]
         a = int(state.a_ptr in self.a_ones)
         b = int(state.b_ptr in self.b_ones)
         nand = 1 - (a & b)
+        full = None
         if token == "^":
             _set(self.a_ones, state.a_ptr, nand)
         elif token == "v":
@@ -244,8 +263,6 @@ class _Machine:
             )
         elif token == "\\":
             (outgoing, used), full = put_bit((state.outgoing, state.used), a)
-            if full is not None:
-                self.io.print_char(chr(full))
             state = _State(
                 state.pc,
                 state.a_ptr,
@@ -255,20 +272,23 @@ class _Machine:
                 outgoing,
                 used,
             )
-        self.state = _advance(state, token, nand, self.program)
-        if self.state.pc >= len(self.program.tokens):
-            full = flush_byte((self.state.outgoing, self.state.used))
-            if full is not None:
-                self.io.print_char(chr(full))
-            self.state = _State(
-                self.state.pc,
-                self.state.a_ptr,
-                self.state.b_ptr,
-                self.state.incoming,
-                self.state.remaining,
+        state = _advance(state, token, nand, self.program)
+        if state.pc >= len(self.program.tokens):
+            if full is None:
+                full = flush_byte((state.outgoing, state.used))
+            state = _State(
+                state.pc,
+                state.a_ptr,
+                state.b_ptr,
+                state.incoming,
+                state.remaining,
                 0,
                 0,
             )
+        if full is None:
+            self.state = state
+        else:
+            self._write_byte(state, full)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

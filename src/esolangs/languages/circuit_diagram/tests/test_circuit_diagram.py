@@ -31,8 +31,9 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
     _Grid,
     _Parser,
 )
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import run_until_halt_or_cycle
+from esolangs.vm import _capture_workspace, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
 from tests.support.fixtures import grid
 
@@ -828,3 +829,42 @@ def test_circuit_retry_keeps_emitted_output_and_clock_samples(monkeypatch):
     assert dbg.observation.steps == 0
     assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=8)) == "halted"
     assert dbg.output == f"1{5:032b}0{6:032b}0"
+
+    source = ")-3-:\n\n(-3-:"
+    limits = esolangs.ExecutionLimits(max_steps=2)
+    expected = api.run(source, limits=limits)
+    assert expected.output == "111000"
+    write = ScriptedIO._write
+    for accepted in range(4):
+        calls = []
+
+        def refuse(io, value, *, log=calls, prefix="000"[:accepted]):
+            log.append(value)
+            if len(log) == 2:
+                write(io, prefix)
+                raise esolangs.HaltError("temporary writer refusal")
+            write(io, value)
+
+        debugger = api.make_debugger(source)
+        with monkeypatch.context() as port:
+            port.setattr(ScriptedIO, "_write", refuse)
+            with pytest.raises(
+                esolangs.HaltError, match="temporary writer refusal"
+            ) as fault:
+                debugger.run(limits=limits)
+            partial = fault.value.observation
+            assert partial == debugger.observation
+            assert (partial.output, partial.steps) == ("111" + "000"[:accepted], 0)
+            count = (1, accepted) if accepted else 1
+            assert (
+                debugger.snapshot()[-1]
+                == _capture_workspace(debugger.vm).parts[-1]
+                == WorkspaceVariant(
+                    "pending_generation",
+                    (0, count),
+                )
+            )
+            assert debugger.run(limits=limits) == "halted"
+            assert debugger.observation == expected
+            assert fault.value.observation == partial
+        assert calls == ["111", "000"] + (["000"[accepted:]] if accepted < 3 else [])

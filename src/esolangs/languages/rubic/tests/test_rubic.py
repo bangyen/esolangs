@@ -8,6 +8,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_output_retry
 
 HELLO = (
     ".ww ( +ww ) ! +ww +ww +ww +ww r -wg ! +oo b -og ! ! +wo' ! b' .wg "
@@ -41,6 +42,16 @@ def test_the_wiki_cat_never_reads_and_its_repair_echoes(
     assert _run("r b -go ( ! ) !", "A") == "\x00"
     assert _run("r b -og ( ! ) !", "A") == "A"
     check_image_reuse("Rubic", "r b -og ( ! ) !", native, "parse", monkeypatch)
+    assert_rejected_output_retry(
+        "Rubic",
+        "!",
+        "\0",
+        "\0",
+        prefix=0,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
 
 @pytest.mark.parametrize("face", "rulfdbmes")

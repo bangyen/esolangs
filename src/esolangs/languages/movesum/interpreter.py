@@ -57,7 +57,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -158,6 +158,7 @@ class _Machine:
         self.state: _State | None = None
         self._seed_inputs: list[int] = []
         self._rejected_input = RejectedInput()
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -180,6 +181,7 @@ class _Machine:
             instruction, array, quiet, printed = self.state
             cells = frozenset(array.items())
         pending = self._pending_input()
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=(
                 instruction
@@ -188,7 +190,9 @@ class _Machine:
             ),
             cells=cells,
             quiet=quiet,
-            printed=printed,
+            printed=WorkspaceVariant("pending_output", (printed, accepted))
+            if accepted
+            else printed,
             input_cursor=self.io.progress(),
         )
 
@@ -206,7 +210,10 @@ class _Machine:
                 self.io.progress(),
             )
         pending = self._pending_input()
-        return boundary if pending is None else (*boundary, pending)
+        if pending is not None:
+            return (*boundary, pending)
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _pending_input(
         self,
@@ -264,7 +271,7 @@ class _Machine:
         pending, out = _advance(self.state, self.program, value)
         if out is not None:
             text = format_integer(out)
-            self.io.print_str(" " + text if spaced else text)
+            self._writer.write(self.io, " " + text if spaced else text)
         self.state = pending
 
 

@@ -92,7 +92,8 @@ def wanted_capture(row, context):
 
 
 def readonly(raw, program, context):
-    assert set(vars(raw)) == {"io", "program", "state"}
+    assert set(vars(raw)) == {"io", "program", "state", "_writer"}
+    assert raw._writer.accepted is None
     assert type(raw.program) is context.native._Program
     exact(raw.program.codes, program.codes)
     exact(raw.program.one, (1, 0, 0))

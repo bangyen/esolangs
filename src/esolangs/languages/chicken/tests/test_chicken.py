@@ -17,6 +17,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm
 from tests.support.execution import termination_observed
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
+from tests.support.vm_support import assert_rejected_output_retry
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -267,11 +268,25 @@ def test_fault_preserves_operands_and_instruction_on_retry(
         assert _capture_workspace(vm) == workspace
 
 
-def test_successful_output_finishes_at_the_exact_budget() -> None:
+def test_successful_output_finishes_at_the_exact_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     vm = Language("Chicken").make_vm(_lines(11, 6, 0), stdin="&#65;")
     assert complete_vm(vm, max_steps=3) == "A"
     assert vm.halted
     assert vm.ip == 6
+    for source, value, prefix in (("", "0", 0), ("chicken", "chicken", 1)):
+        assert_rejected_output_retry(
+            "Chicken",
+            source,
+            value,
+            value,
+            prefix=prefix,
+            monkeypatch=monkeypatch,
+            stdin="unused",
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
 
 def test_code_point_past_unicode_halts() -> None:

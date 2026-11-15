@@ -7,6 +7,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.rubic.interpreter import _Machine, prepare_machine
+from esolangs.runtime._state import WorkspaceVariant as Variant
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import decorate_io, reject_faults
 from tests.support import workspace_oracle as workspace
@@ -190,14 +191,10 @@ def _history(source, stdin, *, output_failure=False):
 
     def row():
         cube = tuple(tuple(_NORMALS).index(stickers[slot]) for slot in positions)
-        parts = pc, value, cube, tuple(frames), cursor
-        return (
-            (parts, reads, past_end),
-            not frames and pc >= len(tokens),
-            output,
-            cursor,
-            cursor,
-        )
+        instruction = Variant("pending_output", (pc, 1)) if failure == "halt" else pc
+        parts = instruction, value, cube, tuple(frames), cursor
+        halted = not frames and pc >= len(tokens)
+        return (parts, reads, past_end), halted, output, cursor, cursor
 
     trace.append(row())
     for _ in range(80):
@@ -233,7 +230,7 @@ def _history(source, stdin, *, output_failure=False):
             value = _arithmetic(
                 token[0], value, _count(stickers, token[1:]), backwards=backwards
             )
-        if failure != "input":
+        if failure is None:
             pc = nxt
         trace.append(row())
         if failure:
@@ -245,8 +242,10 @@ def _history(source, stdin, *, output_failure=False):
 
 def _view(machine):
     state = machine.state
+    pc, sent = state.ind, machine._writer.accepted
+    instruction = Variant("pending_output", (pc, sent)) if sent else pc
     parts = (
-        state.ind,
+        instruction,
         state.v,
         tuple(state.cube),
         tuple(map(tuple, state.frames)),

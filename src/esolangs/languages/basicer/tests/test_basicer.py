@@ -6,6 +6,7 @@ from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.basicer.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_output_retry
 
 ADDER = """10 PRINT First digit please! (1 = 0, 2 = 1, 3 = exit)
 20 GOTO 50 70 200
@@ -84,6 +85,16 @@ def test_numbered_and_unnumbered_jump_targets(monkeypatch) -> None:
         cases=(("", "yes\n"), ("", "yes\n"), ("", "yes\n")),
     )
     assert _out("GOTO 3\nPRINT no\nPRINT yes") == "yes\n"
+    assert_rejected_output_retry(
+        "BASICER",
+        "10 PRINT hello",
+        "hello\n",
+        "hello\n",
+        prefix=0,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
     from tests.support.execution import assert_digit_cap_independent
 

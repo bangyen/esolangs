@@ -37,6 +37,7 @@ from __future__ import annotations
 import re
 from bisect import bisect_left
 from collections.abc import Mapping
+from functools import partial
 from typing import Any, cast
 
 from esolangs.languages.collatz_multiverse.lifecycle import CAPABILITIES
@@ -47,7 +48,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 #: The registers, as an immutable name->value mapping.
@@ -160,6 +161,7 @@ class _Machine:
     def __init__(self, code: str | tuple[_Line, ...], io: IO) -> None:
         """Parse ``code`` into lines and start at line 1."""
         self.io = io
+        self._writer = _BufferedOutput()
         self.parsed = _prepare_source(code) if isinstance(code, str) else code
         self.n = len(self.parsed)
         # ``negativeOne`` starts at -1; every other name starts at 0.
@@ -201,16 +203,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
-        ip = self.state[0]
+        ip: int | WorkspaceVariant = self.state[0]
         pending = self._pending_input()
+        if pending is not None:
+            ip = WorkspaceVariant("pending_input", (ip, *pending))
+        if accepted := self._writer.accepted:
+            ip = WorkspaceVariant("pending_output", (ip, accepted))
         return _WORKSPACE_MODEL.capture(
             registers=frozenset(self.state[1]),
             arrays=frozenset((name, frozenset(cells)) for name, cells in self.state[2]),
-            instruction=(
-                ip
-                if pending is None
-                else WorkspaceVariant("pending_input", (ip, *pending))
-            ),
+            instruction=ip,
             input_cursor=self.io.progress(),
         )
 
@@ -226,7 +228,9 @@ class _Machine:
             self.io.progress(),
         )
         pending = self._pending_input()
-        return state if pending is None else (*state, pending)
+        boundary = state if pending is None else (*state, pending)
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _pending_input(self) -> tuple[tuple[int, ...], str | None] | None:
         fault = self._rejected_input.details
@@ -239,10 +243,12 @@ class _Machine:
         if self.halted:
             return
         line = self.parsed[self.state[0] - 1]
-        value, self.state = _advance(self.state, line, self._collect_reads(line))
-        self._line_inputs.clear()
+        value, state = _advance(self.state, line, self._collect_reads(line))
         if line[-1] == "DO":
-            self.io.print_char(chr(value & 0xFF))
+            char = chr(value & 0xFF)
+            self._writer.write(self.io, char, first=partial(self.io.print_char, char))
+        self.state = state
+        self._line_inputs.clear()
 
     def _collect_reads(self, line: _Line) -> tuple[int, ...]:
         """Read the remaining operands, retaining accepted input until commit."""

@@ -5,7 +5,13 @@ from functools import partial
 
 import pytest
 
-from esolangs import ArgumentError, ExecutionLimits, InputExhaustedError, Language
+from esolangs import (
+    ArgumentError,
+    ExecutionLimits,
+    HaltError,
+    InputExhaustedError,
+    Language,
+)
 from esolangs.debugger import Debugger
 from esolangs.languages.collatz_multiverse.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -328,8 +334,11 @@ def test_a_rejected_operand_does_not_advance_on_retry() -> None:
     assert (control.output, control.input_reads, control.steps) == ("A", 3, 2)
 
 
-def test_an_existing_operand_survives_an_eof_retry() -> None:
-    dbg = Language("Collatz Multiverse").make_debugger(_TWO_INPUTS, stdin="3 20")
+def test_an_existing_operand_survives_an_eof_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lang = Language("Collatz Multiverse")
+    dbg = lang.make_debugger(_TWO_INPUTS, stdin="3 20")
     dbg.step()
     for attempts in (1, 2):
         with pytest.raises(InputExhaustedError):
@@ -358,3 +367,37 @@ def test_an_existing_operand_survives_an_eof_retry() -> None:
     assert machine.halted
     assert port.getvalue() == "A"
     assert port.attempts == 4
+
+    write = ScriptedIO._write
+
+    def check(accepted: str) -> None:
+        attempts = []
+
+        def refuse(io: ScriptedIO, value: object) -> None:
+            attempts.append(value)
+            if len(attempts) == 1:
+                write(io, accepted)
+                raise HaltError("sink unavailable")
+            write(io, value)
+
+        data = "3 20 5 99"
+        expected = lang.run(
+            _TWO_INPUTS, stdin=data, limits=ExecutionLimits(max_steps=2)
+        )
+        with monkeypatch.context() as patch:
+            patch.setattr(ScriptedIO, "_write", refuse)
+            dbg = lang.make_debugger(_TWO_INPUTS, stdin=data)
+            with pytest.raises(HaltError, match="sink unavailable"):
+                dbg.run(limits=ExecutionLimits(max_steps=2))
+            assert (dbg.ip, dbg.observation.steps, dbg.observation.input_reads) == (
+                2,
+                1,
+                3,
+            )
+            assert dbg.observation.output == accepted
+            assert dbg.run(limits=ExecutionLimits(max_steps=2)) == "halted"
+            assert dbg.observation == expected
+            assert attempts == (["A"] if accepted else ["A", "A"])
+
+    for accepted in ("", "A"):
+        check(accepted)

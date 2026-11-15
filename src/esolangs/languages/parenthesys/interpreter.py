@@ -74,8 +74,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 
 _NUMBER = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
@@ -502,6 +502,7 @@ class _Machine:
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.end, self.ops = _prepare_source(code) if isinstance(code, str) else code
         self.io = io
+        self._writer = _BufferedOutput()
         self.state: _State = (0, None, None)
         self.globals: dict[str, _Value] = {}
         self.functions: dict[str, _Function] = {}
@@ -547,8 +548,14 @@ class _Machine:
         while calls is not None:
             frame, calls = calls
             frames.append(frame)
+        instruction = self.state[0]
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state[0],
+            instruction=(
+                WorkspaceVariant("pending_output", (instruction, accepted))
+                if accepted
+                else instruction
+            ),
             stack=tuple(stack),
             frames=tuple(frames),
             globals=frozenset(self.globals.items()),
@@ -562,13 +569,15 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        boundary = (
             *self.state,
             frozenset(self.globals.items()),
             frozenset(self.functions.items()),
             frozenset((f, frozenset(v.items())) for f, v in self.locals.items()),
             self.io.progress(),
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _scope(self, name: str) -> dict[str, _Value]:
         """The running function's locals if ``name`` is one, else globals."""
@@ -594,7 +603,10 @@ class _Machine:
         elif kind == "call":
             f = _pop(_pop(_pop(stack)[1])[1])[0]
             function = self.functions.get(f[0])
-        self.state, effects, out = _advance(self.state, self.ops, line, value, function)
+        state, effects, out = _advance(self.state, self.ops, line, value, function)
+        if out is not None:
+            self._writer.write(self.io, out)
+        self.state = state
         for effect in effects:
             match effect:
                 case ("set", name, item):
@@ -603,8 +615,6 @@ class _Machine:
                     self.functions[name] = body
                 case ("call", name, pairs):
                     self.locals[name] = dict(pairs)
-        if out is not None:
-            self.io.print_str(out)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

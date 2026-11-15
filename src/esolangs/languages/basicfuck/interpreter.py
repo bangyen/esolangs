@@ -55,6 +55,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from functools import partial
 from typing import Any
 
 from esolangs.exceptions import HaltError, ProgramError
@@ -65,8 +66,8 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import parse_integer
 
 _NAME = r"[A-Za-z_]\w*"
@@ -311,6 +312,7 @@ class _Machine:
 
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self._rejected = RejectedInput()
         self.ops, length, self.range = _compile(code) if isinstance(code, str) else code
         self.state: _State = (0, (0,) * length)
@@ -331,15 +333,22 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state[0],
+            instruction=(
+                WorkspaceVariant("pending_output", (self.state[0], accepted))
+                if accepted
+                else self.state[0]
+            ),
             cells=self.state[1],
             input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self._rejected.snapshot((*self.state, self.io.progress()))
+        boundary = self._rejected.snapshot((*self.state, self.io.progress()))
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one statement; the shell owns ``read`` and ``write``."""
@@ -349,13 +358,14 @@ class _Machine:
         if self.ops[self.state[0]][0] == _READ:
             byte = self._rejected.read(self.io, self.io.input_char)
         try:
-            self.state, out = _advance(self.state, self.ops, self.range, byte)
+            state, out = _advance(self.state, self.ops, self.range, byte)
         except HaltError as error:
             if byte is not None:
                 self._rejected.remember(error)
             raise
         if out is not None:
-            self.io.print_char(out)
+            self._writer.write(self.io, out, first=partial(self.io.print_char, out))
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

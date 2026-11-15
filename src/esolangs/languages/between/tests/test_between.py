@@ -9,6 +9,7 @@ from esolangs import run as run_public
 from esolangs.exceptions import HaltError
 from esolangs.languages.between.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_output_retry
 
 out = native_runner(run)
 
@@ -57,6 +58,17 @@ def test_apostrophes_in_strings() -> None:
 def test_line_input_and_output_caps_preserve_python_code_points(monkeypatch) -> None:
     api = Language("Between")
     code = "'x'v.\n[x]i.\n[x]p."
+    assert_rejected_output_retry(
+        "Between",
+        code,
+        "AB",
+        "AB",
+        prefix=2,
+        monkeypatch=monkeypatch,
+        stdin="AB\nZ",
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
     text = "\U0001f600\ud800\udfff\r"
     prepared = api.prepare(code)
     result = api.run(code, stdin=text)
