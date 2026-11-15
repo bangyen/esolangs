@@ -70,6 +70,15 @@ class _BranchingStepMachine(Protocol):
         """
 
 
+def _raise_recorded_halt_fault(machine: object) -> None:
+    """Check registered adapters before inspecting a stopped machine."""
+    from esolangs.runtime._controller import ExecutionController
+    from esolangs.vm import _raise_halt_fault
+
+    adapter = machine.vm if isinstance(machine, ExecutionController) else machine
+    _raise_halt_fault(adapter)
+
+
 def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> object:
     """Return ``machine``, or the interpreter state a :class:`VM` wraps.
 
@@ -78,6 +87,7 @@ def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> ob
     ``protocol`` is ``type[Any]`` with a ``cast`` at each caller: mypy
     refuses a protocol class where ``type[T]`` is expected.
     """
+    _raise_recorded_halt_fault(machine)
     if isinstance(machine, protocol):
         return machine
     inner = getattr(machine, "_machine", None)
@@ -784,6 +794,7 @@ def _drive_until_halt(
     on_fault: Callable[[EsolangError, int], None] | None = None,
 ) -> int | None:
     """Count completed commands on halt or fault, returning None on a stop."""
+    _raise_recorded_halt_fault(machine)
     steps = 0
     try:
         while not machine.halted:

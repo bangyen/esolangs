@@ -110,6 +110,10 @@ def test_answer_rejection_keeps_successful_execution_evidence() -> None:
     ("changes", "message"),
     [
         ({"answer_mode": "termination"}, "invalid termination answer encoding"),
+        (
+            {"answer_mode": "termination", "answer_values": ("halts",)},
+            "invalid answer encoding",
+        ),
         ({"answer_mode": "unknown"}, "invalid answer mode"),
         ({"answer_values": ("1", "1")}, "invalid answer encoding"),
         ({"answer_values": ("1",)}, "invalid answer encoding"),
@@ -151,9 +155,10 @@ def test_invalid_answer_contracts_stop_before_execution(
             with pytest.raises(esolangs.ProgramError, match=message) as caught:
                 evaluate(limits=limits)
             assert caught.value.observation is None
-    if changes.get("answer_mode") != "termination":
-        with pytest.raises(esolangs.ProgramError, match=message):
-            scoped.read_answer("0")
+    with pytest.raises(esolangs.ArgumentError, match="output must be a string"):
+        scoped.read_answer(None)  # type: ignore[arg-type]
+    with pytest.raises(esolangs.ProgramError, match=message):
+        scoped.read_answer("0")
 
 
 @pytest.mark.parametrize(

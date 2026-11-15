@@ -177,11 +177,11 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
         )
     output = str.__str__(output)
     contract = catalog.languages[name].contract
+    values, pattern = _answer_codec(name, contract)
     if contract.answer_mode == "termination":
         raise ArgumentError(
             f"{name} answers by terminating, not by printing; a timeout is undecided"
         )
-    values, pattern = _answer_codec(name, contract)
     return _read_output_answer(name, output, values, pattern, contract.note)
 
 

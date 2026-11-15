@@ -17,7 +17,9 @@ from esolangs.vm import (
     _capture_observation,
     _capture_result,
     _DelegatingVM,
+    _halt_faulted,
     _post_halt_dumped,
+    _raise_halt_fault,
     _record_vm_fault,
 )
 
@@ -75,7 +77,7 @@ class ExecutionController:
         completion dump calls are excluded. Caller-owned IO counters stay None.
         """
         report = None
-        if self.halted and self.steppable_to_answer:
+        if self.halted and self.steppable_to_answer and not _halt_faulted(self.vm):
             if self.dumps_on_the_post_halt_step:
                 if _post_halt_dumped(self.vm) or (self._dumped and not self._faulted):
                     report = CompletionReport(Completion.POST_HALT)
@@ -132,7 +134,7 @@ class ExecutionController:
         try:
             self.vm.step()
         except EsolangError as exc:
-            self._faulted = True
+            self._faulted = not isinstance(self.vm, _DelegatingVM)
             observation = replace(_capture_observation(self.vm), steps=self._steps)
             _record_vm_fault(self.vm, exc, observation)
             raise
@@ -182,6 +184,7 @@ class ExecutionController:
 
     def _run(self, max_steps: int | None, timeout: float | None) -> StopReason:
         """Drive to a halt, breakpoint or bound; the limits are already checked."""
+        _raise_halt_fault(self.vm)
         deadline = None if timeout is None else monotonic() + timeout
         start = self._steps
         while not self.halted:

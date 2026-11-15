@@ -549,6 +549,39 @@ def test_template_balancer_preserves_the_last_zero_width_slot() -> None:
         assert api.evaluate(restored, [bit]).answer == "0"
 
 
+def test_checked_portable_instantiation_accepts_balanced_eof_slot() -> None:
+    original = LANGUAGES[REFERENCE]
+    slot = InputSlot(0)
+    plain = layout_tokens(["+" * 48 + ".", slot], separator="")
+    balanced = layout_tokens(["+" * 24 + "\n" + "+" * 24 + ".", slot], separator="")
+    backend = replace(
+        original.backend,
+        entrypoint=lambda _: plain,
+        template=TemplateSpec(pair=("", "")),
+        balance=lambda _: balanced,
+    )
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    record = api.generate("00", balance=True)
+    restored = api.from_json(api.to_json(record))
+    assert isinstance(restored, esolangs.TemplateArtifact)
+    assert restored == record
+    assert restored.spans == ((50, 50),)
+    default = api.generate("00")
+    assert api.run(api.instantiate(default, [1], truth_table="00")).output == "0"
+    with pytest.raises(esolangs.ProgramError, match="requires a slot-aware wrapper"):
+        api.generate("00", width=1)
+    for bit in (0, 1):
+        assert api.evaluate(restored, [bit]).answer == "0"
+        filled = api.instantiate(restored, [bit], truth_table="00")
+        assert filled == restored.fill([bit])
+        assert api.run(filled).output == "0"
+
+    changed = replace(restored, source="+" + restored.source, spans=((51, 51),))
+    assert api.run(changed.fill([0])).output == "1"
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        api.instantiate(changed, [0], truth_table="00")
+
+
 @pytest.mark.parametrize("source", ["", "+\n"])
 def test_template_layout_keeps_eof_slots_on_an_empty_line(source: str) -> None:
     layout = layout_tokens([source, InputSlot(0)], separator="")

@@ -127,6 +127,8 @@ class _DelegatingVM:
 
     _machine: _cycles._StepMachine
     _fault_observation: ExecutionResult | None = None
+    _halt_fault: EsolangError | None = None
+    _replayed_halt_fault = False
 
     def __init__(
         self,
@@ -190,19 +192,32 @@ class _DelegatingVM:
         becomes :class:`~esolangs.exceptions.ProgramError`, a
         ``RecursionError`` :class:`~esolangs.exceptions.InterpreterLimitError`.
         """
+        dumping: bool | None = False
         try:
             dumping = self._dump_pending and self._machine.halted
             self._machine.step()
         except Exception:
             # Translation is needed only on failure; a context per instruction
             # dominated the wrapper cost in the generator-size sweep.
-            with interpreter_errors(
-                f"the {self.language} interpreter recursed deeper than "
-                "CPython's stack limit allows on this program",
-                self._io,
-                language=self.language,
-                on_observation=self._remember_fault,
-            ):
+            try:
+                with interpreter_errors(
+                    f"the {self.language} interpreter recursed deeper than "
+                    "CPython's stack limit allows on this program",
+                    self._io,
+                    language=self.language,
+                    on_observation=self._remember_fault,
+                ):
+                    raise
+            except EsolangError as error:
+                # A pending dump can be retried. A failed command that moved
+                # the machine to its halt position supplies no completion.
+                if (
+                    not dumping
+                    and self._dump_pending is not False
+                    and self._halt_fault is None
+                    and self._machine.halted
+                ):
+                    self._halt_fault = error
                 raise
         if dumping:
             self._dump_pending = False
@@ -305,6 +320,7 @@ class _DelegatingVM:
 
 def _capture_result(vm: VM) -> ExecutionResult:
     """Capture a finalized, halted VM without taking another step."""
+    _raise_halt_fault(vm)
     if not vm.halted:
         raise ArgumentError("execution result requires a halted VM")
     if isinstance(vm, _DelegatingVM) and vm._dump_pending:  # noqa: SLF001
@@ -313,6 +329,18 @@ def _capture_result(vm: VM) -> ExecutionResult:
         Completion.POST_HALT if vm.dumps_on_the_post_halt_step else Completion.HALTED
     )
     return _capture_observation(vm, report)
+
+
+def _halt_faulted(vm: VM) -> bool:
+    """Whether a registered VM's halt position followed a failed command."""
+    return isinstance(vm, _DelegatingVM) and vm._halt_fault is not None  # noqa: SLF001
+
+
+def _raise_halt_fault(vm: object) -> None:
+    """Re-raise a prior fault that left a registered VM at its halt position."""
+    if isinstance(vm, _DelegatingVM) and vm._halt_fault is not None:  # noqa: SLF001
+        vm._replayed_halt_fault = True  # noqa: SLF001
+        raise vm._halt_fault  # noqa: SLF001
 
 
 def _post_halt_dumped(vm: VM) -> bool:
@@ -333,6 +361,9 @@ def _capture_observation(
 def _record_vm_fault(vm: VM, error: EsolangError, observation: ExecutionResult) -> None:
     """Update a VM's own fault evidence while preserving a propagated error."""
     if isinstance(vm, _DelegatingVM):
+        # Another driver replaying an error executed no additional command.
+        if vm._replayed_halt_fault and error is vm._halt_fault:  # noqa: SLF001
+            return
         previous = error.observation
         if previous is not None and previous is not vm._fault_observation:  # noqa: SLF001
             return

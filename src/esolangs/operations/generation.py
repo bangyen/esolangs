@@ -185,9 +185,9 @@ def generate(
                 f"{resolved}'s generator returned an undeclared template"
             )
         if width is not None and not laid_out and backend.wrap is not None:
-            if backend.wrap is wrap_chars and _character_slots(generated):
-                generated = wrap_character_slots(generated, width)
-            elif isinstance(backend.wrap, TokenWrapper):
+            if not _can_wrap_template(generated, backend.wrap):
+                raise ProgramError(f"{resolved} requires a slot-aware wrapper")
+            if isinstance(backend.wrap, TokenWrapper):
                 generated = call_backend(
                     backend.wrap.wrap_template,
                     generated,
@@ -195,7 +195,7 @@ def generate(
                     char=backend.template.char,
                 )
             else:
-                raise ProgramError(f"{resolved} requires a slot-aware wrapper")
+                generated = wrap_character_slots(generated, width)
         return _structured_template(
             generated,
             lang.id,
@@ -350,6 +350,15 @@ def _character_slots(layout: TemplateLayout) -> bool:
     )
 
 
+def _can_wrap_template(
+    layout: TemplateLayout, wrapper: Callable[[str, int], str] | None
+) -> bool:
+    """Whether the wrapper can lay out this template's slots."""
+    return isinstance(wrapper, TokenWrapper) or (
+        wrapper is wrap_chars and _character_slots(layout)
+    )
+
+
 def _balance_template(
     template: TemplateArtifact,
     name: str,
@@ -423,7 +432,10 @@ def _is_template_for(
         return True
     backend = catalog.languages[name].backend
     assert backend is not None  # generate above refuses absent backends
-    width_aware = backend.layout_width or backend.wrap is not None
+    assert canonical.spans is not None
+    width_aware = backend.layout_width or _can_wrap_template(
+        TemplateLayout(plain, canonical.spans), backend.wrap
+    )
 
     @cache
     def layout(width: int) -> str:

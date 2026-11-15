@@ -2,10 +2,12 @@
 
 import subprocess
 import sys
+from dataclasses import replace
 
 import pytest
 
 from esolangs import ExecutionLimits, ExecutionResult, Language, encode_inputs
+from esolangs.debugger import Debugger
 from esolangs.exceptions import (
     ArgumentError,
     HaltError,
@@ -13,7 +15,9 @@ from esolangs.exceptions import (
     ProgramError,
 )
 from esolangs.languages.whitespace.interpreter import _advance, run
+from esolangs.results import Completion, CompletionReport
 from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.vm import complete_vm
 from tests.interpreters.runner import run_program
 
 S, T, L = " ", "\t", "\n"
@@ -132,6 +136,30 @@ def test_char_read_with_destination_still_echoes() -> None:
     result = api.run(source, stdin="A", isolated=True)
     assert result == api.run(source, stdin="A")
     assert (result.output, result.input_position, result.input_reads) == ("A", 1, 1)
+
+
+@pytest.mark.parametrize("resume", ["complete_vm", "debugger"])
+def test_debugger_sees_recovery_through_another_driver(resume) -> None:
+    api = Language("Whitespace")
+    source = push(0) + READ_NUM + push(0) + RETRIEVE + OUT_CHAR + END
+    debugger = api.make_debugger(source, stdin="bad\n65\n")
+    debugger.step()
+    with pytest.raises(ArgumentError) as caught:
+        debugger.step()
+    fault = ExecutionResult("", 4, 1, 0, steps=1)
+    assert debugger.observation == caught.value.observation == fault
+
+    other = Debugger(debugger.vm)
+    if resume == "debugger":
+        assert other.run(limits=ExecutionLimits(max_steps=5)) == "halted"
+    else:
+        assert complete_vm(debugger.vm, max_steps=5) == "A"
+    assert debugger.run(limits=ExecutionLimits(max_steps=0)) == "halted"
+    report = CompletionReport(Completion.HALTED)
+    result = ExecutionResult("A", 7, 2, 0, steps=1, completion=report)
+    assert debugger.observation == result
+    assert other.observation == replace(result, steps=5 if resume == "debugger" else 0)
+    assert caught.value.observation == fault
 
 
 def test_advancing_a_done_state_is_a_no_op() -> None:

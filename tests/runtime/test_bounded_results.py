@@ -1,5 +1,7 @@
 """Cooperative results retain finalized output and known VM input usage."""
 
+from dataclasses import replace
+
 import pytest
 
 import esolangs
@@ -159,6 +161,66 @@ def test_debugger_completion_does_not_count_idle_steps():
     debugger.step()
     assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
     assert debugger.observation == result
+
+
+def test_a_failed_halt_cannot_be_completed_by_a_peer(monkeypatch):
+    from esolangs.debugger import Debugger
+    from esolangs.runtime._execution import interpreter_module
+    from esolangs.vm import run_until_halt, run_until_halt_or_cycle
+
+    api = esolangs.Language(REFERENCE)
+    declaration = api.catalog.languages[api.name]
+    failure = esolangs.HaltError("last command failed")
+
+    def prepare(_source, _options):
+        def bind(io):
+            class Machine:
+                halted = False
+                started = False
+
+                def step(self):
+                    if not self.started:
+                        self.started = True
+                    elif not self.halted:
+                        self.halted = True
+                        io.print_str("prefix")
+                        raise failure
+
+                def snapshot(self):
+                    return self.started, self.halted
+
+            return Machine()
+
+        return bind
+
+    monkeypatch.setattr(
+        interpreter_module(api.name), "failed_halt", prepare, raising=False
+    )
+    runtime = replace(declaration.runtime, machine_preparation="failed_halt")
+    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    first = scoped.make_debugger("+.")
+    first.step()
+    with pytest.raises(esolangs.HaltError) as caught:
+        first.step()
+    assert caught.value is failure
+    expected = esolangs.ExecutionResult("prefix", 0, 0, 0, steps=1)
+    assert first.observation == failure.observation == expected
+
+    peer = Debugger(first.vm)
+    assert peer.observation == replace(expected, steps=0)
+    assert peer.halted
+    peer.step()
+    assert peer.observation == replace(expected, steps=0)
+    for resume in (
+        lambda: peer.run(limits=esolangs.ExecutionLimits(max_steps=0)),
+        lambda: complete_vm(peer.vm, max_steps=0),
+        lambda: run_until_halt(peer.vm, 1),
+        lambda: run_until_halt_or_cycle(peer, 1),
+    ):
+        with pytest.raises(esolangs.HaltError) as caught:
+            resume()
+        assert caught.value is failure
+        assert failure.observation == expected
 
 
 def test_post_halt_completion_stays_pending_until_dump():
