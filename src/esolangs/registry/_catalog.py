@@ -150,9 +150,7 @@ class Catalog:
             own = _symbols(match, *self.languages[match].aliases)
             if not _symbols(name) - own:
                 return match
-        close = difflib.get_close_matches(
-            canonical_id(name), self._by_id, n=2, cutoff=SUGGESTION_CUTOFF
-        )
+        close = self._close_ids(name, SUGGESTION_CUTOFF)
         if not close:
             # A head of a long name is too far for difflib: "lol" scores 0.18
             # against lol_waht_i_cant_edit_talk_pages.  Suggest, never resolve:
@@ -163,6 +161,18 @@ class Catalog:
         raise UnknownLanguageError(
             name, suggestions=tuple(self._by_id[c] for c in close)
         )
+
+    def _close_ids(self, name: str, cutoff: float) -> list[str]:
+        """Match slugs, preserving a name's terminal period as fuzzy evidence."""
+        key = canonical_id(name)
+        punctuated = key + "." if name.rstrip().endswith(".") else key
+        candidates = (
+            slug
+            for slug, display in self._by_id.items()
+            if not display.endswith(".")
+            or difflib.SequenceMatcher(None, punctuated, slug + ".").ratio() >= cutoff
+        )
+        return difflib.get_close_matches(key, candidates, n=2, cutoff=cutoff)
 
 
 def _symbols(*names: str) -> Counter[str]:

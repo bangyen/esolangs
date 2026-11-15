@@ -58,11 +58,16 @@ def _mentions(path: str) -> Counter[str]:
                 found[node.value] += 1
         elif isinstance(node, ast.ImportFrom) and node.module:
             # A module, or a module imported from its package by name.
-            found["." + node.module.rsplit(".", 1)[-1]] += 1
+            if node.module != "esolangs.cli.help":
+                found["." + node.module.rsplit(".", 1)[-1]] += 1
             if node.module.startswith(("esolangs.generation", "esolangs.runtime")):
                 found.update("." + alias.name for alias in node.names)
         elif isinstance(node, ast.Import):
-            found.update("." + alias.name.rsplit(".", 1)[-1] for alias in node.names)
+            found.update(
+                "." + alias.name.rsplit(".", 1)[-1]
+                for alias in node.names
+                if alias.name != "esolangs.cli.help"
+            )
         elif (
             isinstance(node, ast.Attribute)
             and isinstance(node.value, ast.Name)
@@ -251,10 +256,10 @@ def _counts() -> dict[str, int]:
             for spellings, prefixes in owned
             if not path.startswith(prefixes)
             for spelling in spellings
-            # ``line``, ``eval`` and ``between`` name a language and a common
-            # word: only an import or attribute of the module counts for those.
+            # Some language IDs are common words or argument names. Their
+            # module imports and attributes still count as coupling.
             if spelling.startswith(".")
-            or spelling not in {"line", "eval", "false", "between"}
+            or spelling not in {"line", "eval", "false", "between", "help"}
         )
         if total:
             counts[path] = total

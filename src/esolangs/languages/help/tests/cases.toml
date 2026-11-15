@@ -1,0 +1,49 @@
+language = "Help."
+oldid = 97030
+
+[[examples]]
+id = "hello"
+source = "out 48 65 6c 6c 6f 20 57 6f 72 6c 64 21"
+expected = "Hello World!"
+
+[[examples]]
+id = "cat"
+source = "inp one $0\nout $0\njmp 0"
+stdin = "Hi!"
+expected = "Hi!"
+stop = "eof"
+
+[[examples]]
+id = "truth-machine-zero"
+source = "inp one $0\nsub $0 30 $0\nif_ $0\njmp 6\nout 30\nend\nout 31\njmp 6"
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-machine-one"
+source = "inp one $0\nsub $0 30 $0\nif_ $0\njmp 6\nout 30\nend\nout 31\njmp 6"
+stdin = "1"
+expected = "1111"
+stop = "steps"
+max_steps = 30
+
+[[spec_triggers]]
+program = "add 1 2 invalid"
+expect = "ProgramError"
+claim = "a write requires a memory address"
+
+[[spec_triggers]]
+program = "inp one $0"
+expect = "InputExhaustedError"
+claim = "a read at EOF"
+
+[[spec_triggers]]
+program = "inp mny $0"
+stdin = "aλ"
+expect = "ArgumentError"
+claim = "non-byte input"
+
+[[spec_triggers]]
+program = "div 1 0 $0"
+expect = "HaltError"
+claim = "division by zero"

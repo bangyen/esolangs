@@ -1,6 +1,5 @@
 """Shared public contracts, independent of language ownership."""
 
-import difflib
 import sys
 from unittest.mock import patch
 
@@ -50,14 +49,9 @@ class TestASuggestionIsWorthLessThanSilence:
         for name in esolangs.list_languages():
             for typo in self._typos(name):
                 tried += 1
-                close = difflib.get_close_matches(
-                    canonical_id(typo), _BY_ID, n=2, cutoff=cutoff
-                )
+                close = CATALOG._close_ids(typo, cutoff)
                 rescued += name in [_BY_ID[c] for c in close]
-        junk = sum(
-            bool(difflib.get_close_matches(canonical_id(w), _BY_ID, n=2, cutoff=cutoff))
-            for w in self._JUNK
-        )
+        junk = sum(bool(CATALOG._close_ids(word, cutoff)) for word in self._JUNK)
         return rescued, tried, junk
 
     def test_the_cutoff_is_the_best_available_number(self) -> None:
