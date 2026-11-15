@@ -6,22 +6,14 @@ preclude generation. Record rejections in [limitations](limitations.md).
 
 ## Start here
 
-1. `just install-dev` (requires just >= 1.37), then `just test-quick`.
-   Without `just`, run `uv sync --group dev` and
-   `git config core.hooksPath .githooks`, then
-   `uv run python scripts/verify/gate.py`.
-2. Improve a language, or check a new one's [admission](#what-makes-a-candidate-worth-adding).
-3. `just new-language "Name" --category <category>` creates interpreter,
-   generator and test stubs; `just new-language --help` lists the categories.
-   Follow [interpreter conventions](#interpreter-conventions) and the
-   [Boolean I/O contract](#the-boolean-io-contract).
-4. Run `just test-quick` while editing; `just check-language "Name"` lists
-   missing integration, then lints and tests the language.
-5. Run `just test` before committing. For a new language,
-   `just finish-language "Name"` regenerates artifacts and runs the full gate.
+Run `just install-dev` (just >= 1.37), then `just test-quick`. Without
+`just`, run `uv sync --group dev`, `git config core.hooksPath .githooks`
+and `uv run python scripts/verify/gate.py`.
 
-A small fix (a doc, help text, one bug) needs only steps 1 and 5:
-`just test`, then a commit with a short imperative subject.
+For an existing language or a small fix, run `just test-quick` while editing
+and `just test` before committing. For a new language, check the
+[admission criteria](#what-makes-a-candidate-worth-adding) and follow the
+[new-language checklist](#checklist).
 
 Read [Code shape](#code-shape) before refactoring and the
 [optimization gate](#what-makes-a-generator-optimization-worth-shipping)
@@ -303,7 +295,10 @@ steps; bound each piece's upside before choosing it.
 
 1. `just new-language "Name" --category <category>` (`--interpreter-only`
    requires fame admission) creates stubs and records
-   `[curation] unassessed = true` in `language.toml`. Replace placeholders.
+   `[curation] unassessed = true` in `language.toml`. Use
+   `just new-language --help` for categories. Replace placeholders using the
+   [interpreter conventions](#interpreter-conventions) and
+   [Boolean I/O contract](#the-boolean-io-contract).
 2. Repeat `just check-language "Name"` until no integration is missing.
    It names files and entries: registry, exports, contract, example, width
    policy, VM samples (derived for generators), curation, proof ledger and

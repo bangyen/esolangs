@@ -16,35 +16,10 @@ hides this using [`describe`](#describe) metadata.
 | `list` | list the languages; `--details` adds the generator, template and example markers; `--json --details` gives a record of `describe` fields per language to filter with `jq` |
 | `describe` | how one language reads input and where its answer lands |
 
-Options, each explained in full by its command's `--help`:
-
-| Option | Commands | Does |
-| --- | --- | --- |
-| `--width [N]` | generate | wrap or lay out to N columns (default 80); what it does per language is `describe`'s `width_effect` |
-| `--balance` | generate | pick the layout fitting the smallest on-screen square; excludes `--width` |
-| `--bits BITS` | generate | fill a template's input slots, printing a runnable program |
-| `--plain` | generate | write compressed text as plain text instead of gzip |
-| `--gzip` | generate | compress any text export; excludes `--plain` and raster PNGs |
-| `--scale N` | generate, run | enlarge raster pixels after layout; on `run`, override the detected scale |
-| `-s`, `--settings JSON` | generate, run | dialect overrides as JSON |
-| `--set KEY=VALUE` | generate, run | one dialect override, repeatable, applied after `--settings` |
-| `--execution-timeout SECONDS` | run | stop the run after this long; unbounded by default |
-| `--total-timeout SECONDS` | run | bound input acquisition, worker startup, preparation, and execution |
-| `--preparation-timeout SECONDS` | run | bound loading the program, before it runs |
-| `--isolated` | run | run in a subprocess, 30 seconds by default |
-| `--max-output N` | run | cap output in characters; implies `--isolated` |
-| `--max-memory BYTES` | run | cap the worker's address space (Linux); implies `--isolated` |
-| `--max-steps N` | run | bound commands cooperatively, with optional isolation |
-| `--seed N` | run | fix a random language's draws |
-| `--details` | list | add the marker column |
-| `--json` | list, describe | print JSON |
-| `--generator`, `--interpreter-only` | list | only languages with, or without, a generator |
-| `--grep REGEX` | list | only languages whose spec matches |
-| `--source-kind KIND` | list | text or raster source |
-| `--input-shape SHAPE` | list | stdin interface, or template for embedded inputs |
-| `--answer-mode MODE` | list | output, dump, or termination |
-| `--inputs N` | list | declared generator cap permits N; table restrictions still apply |
-| `--spec` | describe | print the interpreter's own description of the language |
+See [layout](#balance-and-scale), [dialect settings](#dialect-settings)
+and [execution limits](#bounded-execution) for options that affect a run.
+`list --inputs N` filters by the declared generator cap. Individual table
+restrictions still apply.
 
 `encode-inputs` and `read-answer` wrap `run` for one input row:
 
@@ -88,23 +63,16 @@ One kind of language needs a different call:
   assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin).output) == "1"
   ```
 
-`generate` returns an immutable `ProgramArtifact` or `TemplateArtifact`.
-Both carry explicit `.source`, language and dialect settings; raster programs
-also retain scale, and a generated `ProgramArtifact` its `input_arity`, which
-`evaluate` checks `bits` against. Native files carry none of these but
-raster metadata; `to_file` refuses an unfilled template. `TemplateArtifact.fill(bits)` returns a runnable record.
-`run`, `instantiate`, `to_json` and `to_file` accept records;
-`from_json` restores them, including template bindings. Template artifacts
-must be filled before execution. `TemplateArtifact.fill` uses the retained
-bindings. An artifact's `evaluate(bits, catalog=...)` uses its own language
-and the supplied catalog, defaulting to the installed one.
+### Saving and loading artifacts
 
-`to_file(language, record, path, gzip=True)` compresses native text exports;
-gzip input loads as `run` loads it, so `gzip=False` writes it decompressed;
-`generate --gzip` does the same on the CLI. API exports are lossless by default.
-CLI generation adds native terminators where needed and preserves generated
-compressed text exactly in both gzip and plain exports.
-Use `to_json` to preserve dialect settings and template bindings on disk.
+A generated artifact retains its language, settings, and applicable scale
+and input arity. `evaluate` checks the row against a retained arity and
+uses the installed catalog unless you pass `catalog=`. See [Templates](#templates)
+for artifacts with inputs embedded in source.
+
+Use `to_json` and `from_json` to retain settings and template bindings.
+Native exports contain the program and, for PNG, raster metadata.
+Export templates after filling them.
 
 ```python
 from pathlib import Path
@@ -116,20 +84,16 @@ text = esolangs.to_json("brainfuck", program)  # JSON keeps settings
 esolangs.from_json("brainfuck", text)  # takes the JSON text, not a path
 ```
 
-`Language.from_source(source)` declares runnable source explicitly, including
-text that resembles a filename. `Language.from_file(path)` preserves decoded text
-exactly and retains embedded dialect settings and scale. Use `normalize=True`
-on import or `to_file(..., normalize=True)` on export for native file
-terminators. Direct `run(Path(...))` is lossless; strings are always source.
-The CLI explicitly loads native files with newline normalization.
-Both return `ProgramArtifact`; parsing still happens when the program executes.
+`Language.from_source(source)` and `Language.from_file(path)` return runnable
+artifacts. A string passed to `run` is source, and a `Path` loads a file.
+API imports and exports preserve native text by default. Use `normalize=True`
+for native terminators. CLI file loading normalizes newlines, and CLI
+generation adds native terminators where needed while preserving generated
+compressed text.
 
-`generate` and `from_json` return artifacts; `instantiate` returns a filled
-`ProgramArtifact`. `run` returns `ExecutionResult`.
-Extract `.source` for native source operations and `.output` for output text.
-Raw rasters and compressed text contain payload only. Artifacts own language,
-settings and scale; `Language(...).from_file(...)` retains native PNG metadata.
-Source is a string, `Raster`, or `CompressedText` (Unary).
+`to_file(..., gzip=True)` and `generate --gzip` compress text exports.
+`to_file(..., gzip=False)` writes compressed text decompressed. For
+`.source`, expect a string, `Raster`, or `CompressedText` (Unary).
 
 `str()` of a `Raster` is a summary, not source; of a `CompressedText`, the
 expanded text. A `CompressedText` carries its `limits`, a
@@ -407,7 +371,8 @@ Piped text from `generate`, `encode-inputs`, `run`, and `read-answer` also uses 
 
 Some Boolean generators embed the input bits in source. For these, `generate`
 returns a template with one ordered placeholder run per input, exactly as long as
-its replacement. Fill it with `esolangs.instantiate(language, template, bits)`.
+its replacement. Fill it with `template.fill(bits)`,
+`esolangs.instantiate(language, template, bits)`, or `generate --bits BITS` on the CLI.
 Portable JSON stores the marker and each slot's offsets and setters.
 With `truth_table=`, `instantiate` checks the generated layout and setters.
 Relabeling the marker preserves this match.
@@ -447,11 +412,9 @@ defaults. Create overrides with
 them as `settings=` to `generate`, `run` or `make_debugger`. On the CLI, use
 `--settings JSON` or the repeatable `--set KEY=VALUE`.
 
-A generated program retains its settings, defaults included. Plain text
-saved to a file does not, so `run` needs them again; `to_json` keeps
-them. Explicit `settings=` may add a choice an artifact does not retain, but
-contradicting a retained one raises `ProgramError`: the same source read in
-another dialect is another program. Pass `.source` to drop retained settings.
+Generated artifacts retain dialect defaults and overrides. Explicit
+`settings=` can add choices. A conflicting choice raises `ProgramError`.
+Pass `.source` to run the payload with a different dialect.
 
 ## Bounded execution
 
