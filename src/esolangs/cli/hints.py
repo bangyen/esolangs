@@ -77,12 +77,13 @@ def _generate_hint(
     message = str(exc)
     notes = _notes(exc)
     operand = _as_argument(language, catalog=catalog)
-    for target in ("the generated program", "the raster"):
-        notes = notes.replace(
-            f"run {target} with stdin=encode_inputs(language, bits)",
-            f"pipe input from esolangs encode-inputs {operand} <bits> "
-            f"when running {target}",
-        )
+    if operand is not None:
+        for target in ("the generated program", "the raster"):
+            notes = notes.replace(
+                f"run {target} with stdin=encode_inputs(language, bits)",
+                f"pipe input from esolangs encode-inputs {operand} <bits> "
+                f"when running {target}",
+            )
     if isinstance(exc, UnknownLanguageError):
         message += _swapped_hint(language, table, options_for, catalog=catalog)
     return message + notes
@@ -99,6 +100,8 @@ def _template_hint(
         return message + notes
     head = message.split(pointer)[0]
     operand = _as_argument(language, catalog=get_catalog(catalog))
+    if operand is None:
+        return message + notes
     return (
         f"{head}fill them with: esolangs generate --bits <bits> "
         f"{operand} <table>{notes}"
@@ -134,6 +137,8 @@ def _shell_hint(message: str, language: str, *, catalog: Catalog) -> str:
     --bits`` is.
     """
     operand = _as_argument(language, catalog=catalog)
+    if operand is None:
+        return message
     return message.replace(
         "pass the bits to instantiate() to embed them in source",
         f"embed them in source with: esolangs generate --bits <bits> {operand} <table>",
@@ -175,8 +180,8 @@ def _swapped_hint(
     operand = _as_argument(
         table, catalog=catalog, encoding=encoding, force_separator=table.startswith("-")
     )
-    if not _can_render_argument(operand, encoding):
-        return f"{guidance}. Use the original language operand {table!a}."
+    if operand is None:
+        return guidance
     return f"{guidance}: esolangs generate {flags}{operand} {language}"
 
 
@@ -189,11 +194,6 @@ def _did_you_mean(word: str, known: Iterable[str]) -> str:
     if not close:
         return ""
     return f"; did you mean {' or '.join(close)}?"
-
-
-def _decode_note(exc: UnicodeDecodeError) -> str:
-    """Describe where a decode failed, without the codec's full sentence."""
-    return f"invalid UTF-8 at byte {exc.start}"
 
 
 def _input_sentence(facts: LanguageInfo) -> str:
@@ -242,8 +242,8 @@ def _as_argument(
     catalog: Catalog,
     encoding: str | None = None,
     force_separator: bool = False,
-) -> str:
-    """Quote a language ID or name and add an option separator when needed."""
+) -> str | None:
+    """Quote a renderable language operand, protecting option-shaped names."""
     codec = encoding or _display_encoding(sys.stderr)
     if _is_option(language) or not _can_render_argument(language, codec):
         with suppress(UnknownLanguageError):
@@ -260,5 +260,7 @@ def _as_argument(
                 ),
                 language,
             )
+    if not _can_render_argument(language, codec):
+        return None
     separator = "-- " if force_separator or _is_option(language) else ""
     return separator + shlex.quote(language)

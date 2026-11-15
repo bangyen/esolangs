@@ -496,7 +496,7 @@ def from_json(
             ``language``, including invalid settings.
         MissingDependencyError: A PNG source needs ``esolangs[image]``.
     """
-    from esolangs.registry._catalog import get_catalog
+    from esolangs.registry._catalog import get_catalog, resolve_origin
 
     catalog = get_catalog(catalog)
     from esolangs.operations.source import positive_metadata_field
@@ -526,7 +526,8 @@ def from_json(
             or value["version"] != 1
         ):
             raise ValueError("unsupported program format or version")
-        if value["language"] != name:
+        owner = value["language"]
+        if not isinstance(owner, str) or resolve_origin(owner, catalog=catalog) != name:
             raise ValueError(f"program language must be {name}")
         if not isinstance(value["source"], str):
             raise ValueError("source must be a string")

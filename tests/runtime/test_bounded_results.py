@@ -1,6 +1,7 @@
 """Cooperative results retain finalized output and known VM input usage."""
 
 from dataclasses import replace
+from itertools import product
 
 import pytest
 
@@ -372,9 +373,15 @@ def _check_caller_halt_read_evidence():
 def _check_observer_failure_evidence(api, monkeypatch):
     from esolangs.debugger import Debugger
     from esolangs.runtime._execution import interpreter_module
-    from esolangs.vm import run_until_halt_or_cycle
+    from esolangs.vm import (
+        run_until_halt_or_ancestor,
+        run_until_halt_or_cycle,
+        run_until_halt_or_growth,
+        run_until_halt_or_value_growth,
+    )
 
     mode = "snapshot"
+    resumed_steps = 2
     errors = []
     foreign = esolangs.HaltError("foreign snapshot fault")
     foreign.observation = esolangs.ExecutionResult("inner", 2, 1, 0, steps=7)
@@ -382,15 +389,34 @@ def _check_observer_failure_evidence(api, monkeypatch):
 
     class Machine:
         index = 0
+        frames = (0,)
+        tape = values = (0, 0, 0)
+        clamp_slack = None
+
+        @property
+        def ip(self):
+            return self.index
+
+        key = ptr = ip
+
+        def input_position(self):
+            return min(self.index, 1)
+
+        def frame_entry_key(self, frame):
+            return frame
 
         def __init__(self, io):
             self.io = io
 
         @property
         def halted(self):
-            return self.index >= (1 if mode == "watch" else 2)
+            return self.index >= {"watch": 1, "resumed_watch": resumed_steps}.get(
+                mode, 2
+            )
 
         def step(self):
+            if self.index == 1 and mode == "command_fault":
+                self.fail("command failed")
             if not self.index:
                 self.io.print_char(chr(self.io.input_char()))
             self.index += 1
@@ -409,7 +435,9 @@ def _check_observer_failure_evidence(api, monkeypatch):
 
         @property
         def memory(self):
-            if self.index and mode in ("watch", "resumed_watch"):
+            if (self.index and mode == "watch") or (
+                mode == "resumed_watch" and self.index == resumed_steps
+            ):
                 self.fail("watch read failed")
             return [self.index]
 
@@ -468,19 +496,40 @@ def _check_observer_failure_evidence(api, monkeypatch):
         assert not history
         assert live.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
 
+    lap_proofs = (
+        run_until_halt_or_ancestor,
+        run_until_halt_or_growth,
+        run_until_halt_or_value_growth,
+    )
     mode = "resumed_watch"
-    for invoke in (complete_vm, run_until_halt_or_cycle):
+    for invoke, resumed_steps, nested in product(
+        (complete_vm, run_until_halt_or_cycle, *lap_proofs),
+        (2, 3),
+        (False, True),
+    ):
+        inner = scoped.make_debugger(artifact, stdin="1")
+        live = Debugger(inner) if nested else inner
+        _check_resumed_watch(invoke, live, inner, expected, errors, resumed_steps)
+
+    mode = "command_fault"
+    for proof in (run_until_halt_or_cycle, *lap_proofs):
         live = scoped.make_debugger(artifact, stdin="1")
         live.step()
-        live.watch_cell(0)
-        with pytest.raises(esolangs.HaltError, match="watch read") as caught:
-            invoke(live, 2)
+        with pytest.raises(esolangs.HaltError, match="command failed") as caught:
+            proof(live, 2)
         assert caught.value is errors[-1]
         assert caught.value.observation == expected
-        assert live.observation.steps == 2
-        assert live.observation.completion.kind is Completion.HALTED
+        assert live.observation.steps == 1
+        assert not live.halted
 
     mode = "valid"
+    for proof in lap_proofs:
+        live = scoped.make_debugger(artifact, stdin="1")
+        live.step()
+        assert proof(live, 1) is True
+        assert live.output == "1"
+        assert live.observation.steps == 2
+
     live = scoped.make_debugger(artifact, stdin="1")
     assert run_until_halt_or_cycle(live, limit=2)
     assert live.observation == replace(
@@ -490,6 +539,17 @@ def _check_observer_failure_evidence(api, monkeypatch):
     history = live.watch_cell(0)
     assert live.run(limits=limits) == "halted"
     assert history == [1, 2]
+
+
+def _check_resumed_watch(invoke, live, inner, expected, errors, resumed_steps):
+    live.step()
+    inner.watch_cell(0)
+    with pytest.raises(esolangs.HaltError, match="watch read") as caught:
+        invoke(live, 2)
+    assert caught.value is errors[-1]
+    assert caught.value.observation == replace(expected, steps=resumed_steps - 1)
+    assert live.observation.steps == resumed_steps
+    assert live.observation.completion.kind is Completion.HALTED
 
 
 def _check_raw_watch_preserves_failure():

@@ -21,7 +21,7 @@ from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec, VerbatimSourcePolicy
 from esolangs.runtime.memory import format_integer, parse_integer
-from tests.support.cli_support import _failure, call_main
+from tests.support.cli_support import _failure, call_both, call_main
 from tests.support.pick import first, one_where
 from tests.support.reference import REFERENCE
 
@@ -456,7 +456,7 @@ class TestDescribeHidesInputFieldsWithNoInput:
     "language", one_where(lambda facts: bool(re.search(r"[*()]", facts.name)))
 )
 def test_describe_quotes_shell_metacharacters_in_its_spec_command(
-    capsys, monkeypatch, language: str
+    capsys, monkeypatch, tmp_path, language: str
 ) -> None:
     report = call_main(["describe", language], capsys)
     command = next(
@@ -614,6 +614,24 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
             program = call_main(args, capsys)
             assert bound.read_answer(bound.run(program).output) == "1"
 
+            if aliases:
+                _, empty = _failure(["read-answer", spelling], capsys, code=1)
+                tokens = shlex.split(empty.split("output in: ", 1)[1])
+                assert tokens == [
+                    "esolangs",
+                    "run",
+                    spelling,
+                    "prog.txt",
+                    "|",
+                    "esolangs",
+                    "read-answer",
+                    spelling,
+                ]
+                path = tmp_path / tokens[3]
+                path.write_text(program)
+                answer = call_main([*tokens[1:3], str(path)], capsys)
+                assert call_main(tokens[6:], capsys, stdin=answer) == "1\n"
+
             if id_.startswith("-"):
                 _, error = _failure(
                     ["generate", "--bits", "1", "--", "01", name], capsys
@@ -623,6 +641,35 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
                 assert call_main(repair[1:], capsys) == program
                 _, split = _failure(["generate", "--", *name.split(), "01"], capsys)
                 assert shlex.split(split.split("pass it as ", 1)[1]) == operand
+
+    name = "Raw\0Scoped name"
+    scope = esolangs.Catalog([replace(original, name=name, id="raw\0id", aliases=())])
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    text = call_main(["describe", name], capsys)
+    assert "\0" not in text
+    assert "esolangs describe --spec" not in text
+    assert "Fill them with instantiate() in Python" in text
+    assert json.loads(call_main(["describe", "--json", name], capsys))["name"] == name
+
+    _, empty = _failure(["read-answer", name], capsys, code=1)
+    assert (
+        empty
+        == "nothing on stdin to read an answer out of; pipe a program's output in\n"
+    )
+    for args in (
+        ["describe", *name.split()],
+        ["encode-inputs", name, "1"],
+        ["generate", "01", name],
+    ):
+        _, diagnostic = _failure(args, capsys)
+        assert "\0" not in diagnostic
+        assert "esolangs generate" not in diagnostic
+    _, advice = call_both(["generate", name, "01"], capsys)
+    assert "fill them with instantiate() in Python" in advice
+
+    bound = scope.bind(name)
+    output = bound.run(bound.generate("01").fill([1])).output
+    assert call_main(["read-answer", name], capsys, stdin=output) == "1\n"
 
 
 class TestVersion:

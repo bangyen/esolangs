@@ -326,8 +326,17 @@ def test_explicit_template_marker_round_trips_in_its_catalog(language: str) -> N
     restored = esolangs.from_json(alias, document, catalog=api.catalog)
     assert restored == explicit
     assert esolangs.to_json(alias, restored, catalog=api.catalog) == document
+    saved = json.loads(document)
+    saved["language"] = f" {api.name.swapcase()} "
+    restored = api.from_json(json.dumps(saved))
+    assert restored == explicit
+    assert api.to_json(restored) == document
     for bit in (0, 1):
         assert api.evaluate(restored, [bit]).answer == str(bit)
+    for wrong_owner in (alias, None, 1):
+        saved["language"] = wrong_owner
+        with pytest.raises(esolangs.ProgramError, match="program language must be"):
+            api.from_json(json.dumps(saved))
 
 
 @pytest.mark.parametrize("language", one(parameterized=True))
@@ -411,6 +420,18 @@ def test_portable_storage_preserves_compression_for_text_languages(
     assert api.from_file(path, normalize=True) == api.from_source("++.")
     path.write_bytes(raw)
     assert api.from_file(path) == api.from_source(raw.decode("utf-8"))
+
+    owner = replace(LANGUAGES[REFERENCE], name=REFERENCE.upper())
+    scoped = esolangs.Catalog([owner]).bind(owner.name)
+    for source in (raw.decode("utf-8"), compressed):
+        original = scoped.from_source(source, settings=scoped.settings())
+        saved = scoped.to_json(original)
+        assert json.loads(saved)["language"] == owner.name != api.name
+        assert scoped.from_json(saved) == original
+        canonical = api.from_json(saved)
+        assert canonical == api.from_source(source, settings=api.settings())
+        assert json.loads(api.to_json(canonical))["language"] == api.name
+        assert api.prepare(canonical).run().output == "\x02"
 
 
 def test_portable_generation_preserves_backend_laid_out_compression(

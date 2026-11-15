@@ -32,7 +32,7 @@ def _capability_examples(
         ):
             continue
         quoted = _as_argument(name, catalog=catalog, encoding=encoding)
-        if not _can_render_argument(quoted, encoding):
+        if quoted is None:
             continue
         backend = lang.backend
         if backend is None or (

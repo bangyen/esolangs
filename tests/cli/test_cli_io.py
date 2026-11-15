@@ -10,7 +10,7 @@ import subprocess
 import sys
 from collections.abc import Buffer, Iterator
 from contextlib import suppress
-from io import FileIO, StringIO, TextIOWrapper
+from io import BytesIO, FileIO, StringIO, TextIOWrapper
 from pathlib import Path
 from types import SimpleNamespace
 from typing import BinaryIO
@@ -185,9 +185,10 @@ class TestNonTextInputIsRefusedNotCrashed:
             REFERENCE, program, stdin=invalid, isolated=isolated
         ).error
         assert isinstance(bad_text, esolangs.ArgumentError)
+        assert str(bad_text) == "cannot read stdin: not text (invalid UTF-8 at byte 1)"
         assert (undecodable.returncode, undecodable.stdout) == (2, b"")
         assert undecodable.stderr.decode().splitlines() == [
-            "cannot read stdin: not text (invalid UTF-8 at byte 1)",
+            str(bad_text),
             *bad_text.__notes__,
         ]
 
@@ -874,7 +875,7 @@ class TestAClosedPipeIsNotAnError:
         assert first.stderr is not None
         assert "BrokenPipeError" not in first.stderr.read()
 
-    def test_a_closed_stdout_exits_120(self) -> None:
+    def test_a_closed_stdout_exits_120(self, monkeypatch, capsys) -> None:
         """``esolangs list >&-`` reported an internal error, exit 70."""
         import subprocess
 
@@ -893,6 +894,42 @@ class TestAClosedPipeIsNotAnError:
             check=False,
         )
         assert both.returncode == 120  # It wrote to a None stderr: exit 1.
+
+        for operation in ("write", "flush"):
+            stream = StringIO() if operation == "write" else TextIOWrapper(BytesIO())
+            if operation == "flush":
+                stream.reconfigure = lambda **_options: None
+            selected = getattr(stream, operation)
+
+            def close_then_use(
+                *args, stream=stream, selected=selected, operation=operation
+            ):
+                setattr(stream, operation, selected)
+                stream.close()
+                return selected(*args)
+
+            setattr(stream, operation, close_then_use)
+            with monkeypatch.context() as active:
+                active.setattr(sys, "stdout", stream)
+                with pytest.raises(SystemExit) as exited:
+                    call_main(["read-answer", REFERENCE], capsys, stdin="1")
+            assert exited.value.code == 120
+            assert "cannot write stdout:" in capsys.readouterr().err
+
+        stream = StringIO()
+
+        def broken(_data):
+            raise ValueError("invalid writer callback")
+
+        stream.write = broken
+        with monkeypatch.context() as active:
+            active.setattr(sys, "stdout", stream)
+            with pytest.raises(SystemExit) as exited:
+                call_main(["read-answer", REFERENCE], capsys, stdin="1")
+        assert exited.value.code == 70
+        assert "internal error: ValueError: invalid writer callback" in (
+            capsys.readouterr().err
+        )
 
     def test_unwritable_stdout_is_a_destination_error(self, tmp_path: Path) -> None:
         path = tmp_path / "readonly.txt"

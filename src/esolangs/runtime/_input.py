@@ -100,6 +100,8 @@ def check_input(source: InputSource) -> CheckedInput:
 
 def input_read_error(detail: Exception | str) -> ArgumentError:
     """Build a stdin error with the repair shared by Python and the CLI."""
+    if isinstance(detail, UnicodeDecodeError):
+        detail = f"not text (invalid {detail.encoding.upper()} at byte {detail.start})"
     return with_hint(
         ArgumentError(f"cannot read stdin: {detail}"),
         ("open the input stream for reading and encode binary input as UTF-8"),

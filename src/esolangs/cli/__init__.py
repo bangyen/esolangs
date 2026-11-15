@@ -151,9 +151,9 @@ def _input_shape(declaration: LanguageDeclaration) -> str | None:
     return declaration.contract.input_shape if declaration.runtime.reads_stdin else None
 
 
-def _display(text: str = "") -> None:
-    """Print one line of human-readable output using the stream's encoding."""
-    _write_output(text + "\n", utf8=False)
+def _display(text: str = "", *, end: str = "\n") -> None:
+    """Print human-readable output using the stream's encoding."""
+    _write_output(text.replace("\0", r"\x00") + end, utf8=False)
 
 
 def _metadata_json(record: object) -> str:
@@ -523,8 +523,8 @@ def _generate(rest: list[str]) -> None:
             operand = _as_argument(language, catalog=catalog, encoding=encoding)
             if isinstance(options_text, str):
                 advice = f"rerun generation with --bits. {options_text}"
-            elif not _can_render_argument(operand, encoding):
-                advice = f"rerun with --bits and the original language {language!a}"
+            elif operand is None:
+                advice = "fill them with instantiate() in Python"
             else:
                 flags_text = shlex.join(options_text)
                 tail = " ".join(part for part in (flags_text, operand, table) if part)
@@ -650,9 +650,13 @@ def _describe(rest: list[str]) -> None:
     )
     _display(name)
     if facts.parameterized:
+        fill = (
+            "instantiate() in Python"
+            if operand is None
+            else f"esolangs generate --bits <bits> {operand} <table>"
+        )
         _display(
-            "input: generated programs embed the bits in source. Fill them with "
-            f"esolangs generate --bits <bits> {operand} <table>"
+            f"input: generated programs embed the bits in source. Fill them with {fill}"
         )
     elif not facts.reads_input:
         _display("input: none -- this language reads no stdin")
@@ -661,7 +665,8 @@ def _describe(rest: list[str]) -> None:
     _display(f"answer: {_answer_sentence(facts)}")
     _display(f"generator: {_generator_sentence(facts)}")
     _display(f"settings: {_settings_sentence(facts)}")
-    _display(f"spec: esolangs describe --spec {operand}")
+    if operand is not None:
+        _display(f"spec: esolangs describe --spec {operand}")
     _display()
     _display("details:")
     shown_facts: dict[str, object] = {
@@ -693,12 +698,16 @@ def _read_answer(rest: list[str]) -> None:
     if contract.answer_mode == "termination":
         zero, one = values
         language_arg = _as_argument(language, catalog=catalog)
+        run = (
+            "an execution timeout"
+            if language_arg is None
+            else f"esolangs run --execution-timeout <seconds> {language_arg} "
+            "<program-file>"
+        )
         _fail(
             f"{language} answers 0 if it {zero} and 1 if it {one}. "
-            "Program output carries no answer. Use esolangs run "
-            f"--execution-timeout <seconds> {language_arg} "
-            "<program-file> and observe whether it halts. "
-            "A timeout leaves the answer undecided."
+            f"Program output carries no answer. Use {run} and observe whether it "
+            "halts. A timeout leaves the answer undecided."
         )
     eof = "Ctrl-Z then Enter" if os.name == "nt" else "Ctrl-D (twice on a partial line)"
     output = _read_stdin(
@@ -712,12 +721,15 @@ def _read_answer(rest: list[str]) -> None:
         # Output with no readable answer is the program's failure, as in run.
         if not output:
             language_arg = _as_argument(language, catalog=catalog)
-            _fail(
-                "nothing on stdin to read an answer out of; pipe a program's "
-                f"output in: esolangs run {language_arg} prog.txt | esolangs "
-                f"read-answer {language_arg}",
-                1,
+            advice = (
+                "nothing on stdin to read an answer out of; pipe a program's output in"
             )
+            if language_arg is not None:
+                advice += (
+                    f": esolangs run {language_arg} prog.txt | "
+                    f"esolangs read-answer {language_arg}"
+                )
+            _fail(advice, 1)
         _fail(exc, 1)
     except EsolangError as exc:
         _fail(exc)
@@ -823,7 +835,7 @@ def _dispatch() -> None:
         encoding = _display_encoding(sys.stdout)
         with _errors():
             page = help_text(rest[0], encoding=encoding) if rest else USAGE
-        _write_output(page, utf8=False)
+        _display(page, end="")
         sys.exit(0)
     if cmd not in COMMANDS:
         # Languages and options both suggest a near miss; the subcommands
@@ -834,7 +846,7 @@ def _dispatch() -> None:
         encoding = _display_encoding(sys.stdout)
         with _errors():
             page = help_text(cmd, encoding=encoding)
-        _write_output(page, utf8=False)
+        _display(page, end="")
         sys.exit(0)
 
     {

@@ -395,6 +395,25 @@ def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None
     with pytest.raises(esolangs.UnknownLanguageError):
         esolangs.run(scoped.name, program)
 
+    local = replace(original, name=owner.name.swapcase())
+    scoped = esolangs.Catalog([local]).bind(local.name)
+    program = scoped.generate("01", scale=2)
+    scoped.to_file(program, path)
+    document = scoped.to_json(program)
+    assert json.loads(document)["language"] == scoped.name != owner.name
+    assert scoped.from_json(document) == program
+    prepared = owner.prepare(program)
+    restored = owner.from_json(document)
+    assert restored == prepared.artifact == owner.from_file(path)
+    assert (restored.scale, restored.input_arity) == (2, 1)
+    assert json.loads(owner.to_json(restored))["language"] == owner.name
+    for bit in (0, 1):
+        assert (
+            prepared.evaluate([bit]).answer
+            == owner.evaluate(restored, [bit]).answer
+            == str(bit)
+        )
+
 
 def test_template_with_an_unregistered_owner_raises_template_error() -> None:
     owner = esolangs.Language(first(parameterized=True))

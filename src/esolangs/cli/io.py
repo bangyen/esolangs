@@ -37,7 +37,6 @@ from esolangs.artifacts import ProgramArtifact
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _cli_error_text,
-    _decode_note,
     _display_encoding,
     _exit_code,
     _timeout_text,
@@ -543,15 +542,13 @@ def _read_stdin(
         except StreamReadTimeoutError:
             raise
         except UnicodeDecodeError as exc:
-            _fail(input_read_error(f"not text ({_decode_note(exc)})"))
+            _fail(input_read_error(exc))
         except ExecutionBudgetError as exc:
             _fail(_timeout_text(exc), _TIMEOUT_EXIT)
         except ArgumentError as exc:
             cause = exc.__cause__
             if isinstance(cause, StreamReadTimeoutError):
                 raise cause from None
-            if isinstance(cause, UnicodeDecodeError):
-                _fail(input_read_error(f"not text ({_decode_note(cause)})"))
             _fail(exc)
         except EsolangError as exc:
             _fail(exc, _exit_code(exc))
@@ -588,14 +585,14 @@ def _read_stdin(
             read, timeout, notice=_waiting_notice(hint), on_timeout=_on_timeout
         )
     if (hidden := _smuggled_bytes(result)) is not None:
-        _fail(input_read_error(f"not text ({_decode_note(hidden)})"))
+        _fail(input_read_error(hidden))
     return result
 
 
 class _StdoutError(Exception):
     """A write or flush failed at the output destination."""
 
-    def __init__(self, error: OSError) -> None:
+    def __init__(self, error: OSError | ValueError) -> None:
         """Retain the cause for the closed-pipe policy."""
         self.error = error
         super().__init__(str(error))
@@ -665,8 +662,10 @@ class _DiagnosticUnavailableError(Exception):
     """An optional diagnostic would wait on a busy destination."""
 
 
-def _abandon_output(stream: TextIO) -> None:
+def _abandon_output(stream: TextIO | None) -> None:
     """Keep Python's shutdown flush from retrying the failed destination."""
+    if stream is None:
+        return
     with suppress(AttributeError, OSError, ValueError), open(os.devnull, "wb") as sink:
         os.dup2(sink.fileno(), stream.fileno())
 
@@ -718,7 +717,7 @@ def _diagnostic(message: str, *, ready_only: bool = False) -> None:
 
     token = _READY_ONLY.set(ready_only)
     try:
-        _write_all(write, message, before_write=check_ready)
+        _write_all(write, message.replace("\0", r"\x00"), before_write=check_ready)
         check_ready()
         stream.flush()
     except KeyboardInterrupt:
@@ -739,54 +738,63 @@ def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
     sys.exit(code)
 
 
-def _write_text(data: str) -> int:
+@contextmanager
+def _stdout_destination() -> Iterator[TextIO]:
+    """Classify write and flush failures at the output destination."""
+    stream = sys.stdout
+    try:
+        if stream is None or getattr(stream, "closed", False):
+            raise OSError("stdout is closed")
+        yield stream
+    except KeyboardInterrupt:
+        _abandon_output(stream)
+        raise
+    except OSError as exc:
+        raise _StdoutError(exc) from exc
+    except ValueError as exc:
+        if not getattr(stream, "closed", False):
+            raise
+        raise _StdoutError(exc) from exc
+
+
+def _write_text(stream: TextIO, data: str) -> int:
     """Write one text segment, escaping characters outside the stream's encoding."""
     try:
-        return sys.stdout.write(data)
+        return stream.write(data)
     except UnicodeEncodeError:
-        encoding = _display_encoding(sys.stdout)
+        encoding = _display_encoding(stream)
         _write_all(
-            sys.stdout.write, data.encode(encoding, "backslashreplace").decode(encoding)
+            stream.write, data.encode(encoding, "backslashreplace").decode(encoding)
         )
         return len(data)
 
 
 def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
     """Write data to stdout and distinguish destination errors from faults."""
-    stream = getattr(sys.stdout, "buffer", None)
-    if (
-        isinstance(data, str)
-        and utf8
-        and stream is not None
-        and not _is_terminal(sys.stdout)
-    ):
-        try:
-            data = data.encode("utf-8")
-        except UnicodeEncodeError as exc:
-            raise _StdoutEncodingError(exc) from exc
-    try:
+    with _stdout_destination() as stdout:
+        stream = getattr(stdout, "buffer", None)
+        if (
+            isinstance(data, str)
+            and utf8
+            and stream is not None
+            and not _is_terminal(stdout)
+        ):
+            try:
+                data = data.encode("utf-8")
+            except UnicodeEncodeError as exc:
+                raise _StdoutEncodingError(exc) from exc
         if isinstance(data, bytes):
             if stream is None:
                 raise OSError("binary output requires a binary stdout stream")
             _write_all(stream.write, data)
         else:
-            _write_all(_write_text, data)
-    except KeyboardInterrupt:
-        _abandon_output(sys.stdout)
-        raise
-    except OSError as exc:
-        raise _StdoutError(exc) from exc
+            _write_all(partial(_write_text, stdout), data)
 
 
 def _flush_stdout() -> None:
     """Flush buffered output while the CLI can report a destination error."""
-    try:
-        sys.stdout.flush()
-    except KeyboardInterrupt:
-        _abandon_output(sys.stdout)
-        raise
-    except OSError as exc:
-        raise _StdoutError(exc) from exc
+    with _stdout_destination() as stdout:
+        stdout.flush()
 
 
 def _emit_partial(exc: EsolangError) -> None:

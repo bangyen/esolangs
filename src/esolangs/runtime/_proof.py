@@ -7,12 +7,13 @@ from dataclasses import dataclass
 from reprlib import recursive_repr
 from typing import TYPE_CHECKING, NamedTuple
 
+from esolangs.exceptions import EsolangError
 from esolangs.results import ExecutionResult
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._validate import _has_backing_type
 
 if TYPE_CHECKING:
-    from esolangs.exceptions import EsolangError
+    from esolangs._cycles import _SteppableMachine
     from esolangs.runtime._vm_protocol import VM
 
 
@@ -229,3 +230,18 @@ def _proof_receiver_check(
                 raise TypeError("debugger VM changed during proof")
 
     return check_chain
+
+
+def _step_proof_receiver(
+    runner: _SteppableMachine, check_receiver: Callable[[], None], completed: int
+) -> None:
+    """Retain invocation-local command evidence on a debugger observer fault."""
+    check_receiver()
+    try:
+        runner.step()
+    except EsolangError as error:
+        from esolangs.vm import _retain_observer_steps
+
+        _retain_observer_steps(runner, error, completed)
+        raise
+    check_receiver()

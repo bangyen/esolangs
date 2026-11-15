@@ -17,6 +17,7 @@ from esolangs.runtime._proof import (
     BranchProof,
     CycleDecision,
     _proof_receiver_check,
+    _step_proof_receiver,
 )
 from esolangs.runtime._validate import _call_signature, _has_backing_type, check_whole
 from esolangs.runtime.source_hints import with_hint
@@ -732,6 +733,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
         return True
     ancestors: list[tuple[int, Hashable]] = []
     pushes = 0
+    completed = 0
     while True:
         if pushes >= limit:
             raise with_hint(
@@ -745,11 +747,11 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
                 ),
             )
         depth_before = len(state.frames)
-        if check_receiver is not None:
-            check_receiver()
-        runner.step()
-        if check_receiver is not None:
-            check_receiver()
+        if check_receiver is None:
+            runner.step()
+        else:
+            _step_proof_receiver(runner, check_receiver, completed)
+            completed += 1
         halted: bool = runner.halted
         if halted:
             if check_receiver is not None:
@@ -921,11 +923,10 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
                 visit.wave_length = 0
         if completed == limit:
             break
-        if check_receiver is not None:
-            check_receiver()
-        runner.step()
-        if check_receiver is not None:
-            check_receiver()
+        if check_receiver is None:
+            runner.step()
+        else:
+            _step_proof_receiver(runner, check_receiver, completed)
     if runner.halted:
         if check_receiver is not None:
             check_receiver()
@@ -1055,11 +1056,10 @@ def run_until_halt_or_value_growth(
             return False
         if index == limit:
             break
-        if check_receiver is not None:
-            check_receiver()
-        runner.step()
-        if check_receiver is not None:
-            check_receiver()
+        if check_receiver is None:
+            runner.step()
+        else:
+            _step_proof_receiver(runner, check_receiver, index)
     if runner.halted:
         if check_receiver is not None:
             check_receiver()

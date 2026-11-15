@@ -200,6 +200,8 @@ def _check_count(
                 pass
             else:
                 operand = _as_argument(resolved, catalog=catalog)
+                if operand is None:
+                    _fail("language name was split across arguments")
                 action = "pass it as" if operand.startswith("-- ") else "quote it as"
                 _fail(f"language name was split across arguments; {action} {operand}")
         hint = (
