@@ -46,7 +46,7 @@ from esolangs.runtime._source import (
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO, _scripted_io
-from esolangs.settings import DialectSettings, dialect_options, effective_settings
+from esolangs.settings import DialectSettings, effective_settings
 
 if TYPE_CHECKING:
     from esolangs.runtime._definition import RuntimeSpec
@@ -148,6 +148,22 @@ class PreparedProgram:
             preserve_compression=True,
         )
         check_scale_for(artifact.language, artifact.scale, catalog=catalog)
+        self._bind_artifact(artifact, catalog)
+
+    @classmethod
+    def _from_checked(
+        cls, artifact: ProgramArtifact[Program], catalog: Catalog
+    ) -> PreparedProgram:
+        """Bind a source whose runtime options were checked before acquisition."""
+        prepared = object.__new__(cls)
+        object.__setattr__(prepared, "_plan", None)
+        prepared._bind_artifact(artifact, catalog)
+        return prepared
+
+    def _bind_artifact(
+        self, artifact: ProgramArtifact[Program], catalog: Catalog
+    ) -> None:
+        """Shape validated source and bind its runtime."""
         source = artifact.source
         if _has_backing_type(source, CompressedText):
             source = source_for(artifact.language, source, catalog=catalog)
@@ -173,11 +189,11 @@ class PreparedProgram:
         code, options = prepare_call(
             self.language,
             runnable.source,
-            ExecutionContext(
-                scale=self.artifact.scale, settings=self.artifact.settings
-            ),
+            ExecutionContext(scale=self.artifact.scale),
             catalog=self.catalog,
         )
+        if artifact.settings is not None:
+            options.update(DialectSettings.options(artifact.settings))
         object.__setattr__(
             self, "_code", tuple(code) if isinstance(code, list) else code
         )
@@ -354,7 +370,6 @@ def _check_source_options(
     """Resolve explicit and retained choices before acquiring any streams."""
     settings = effective_settings(name, program, settings, catalog=catalog)
     scale = effective_scale(name, program, scale, catalog=catalog)
-    dialect_options(name, settings, catalog=catalog)
     check_scale_for(name, scale, catalog=catalog)
     return settings, scale
 
@@ -401,12 +416,17 @@ def _prepare_checked_program(
     from esolangs.operations.source import _check_program
 
     artifact = _check_program(
-        name, program, settings=settings, catalog=catalog, preserve_compression=True
+        name,
+        program,
+        settings=settings,
+        catalog=catalog,
+        preserve_compression=True,
+        _settings_validated=True,
     )
     settings = artifact.settings
     scale = effective_scale(name, artifact, scale, catalog=catalog)
     check_scale_for(name, scale, catalog=catalog)
-    prepared = PreparedProgram(
+    prepared = PreparedProgram._from_checked(  # noqa: SLF001
         ProgramArtifact(
             artifact.source,
             name,

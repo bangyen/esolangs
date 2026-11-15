@@ -446,7 +446,13 @@ def _invoke_worker(
             checked_input = check_input(stdin)
             if stopped():
                 return None
-            artifact = _check_program(name, program, settings=settings, catalog=catalog)
+            artifact = _check_program(
+                name,
+                program,
+                settings=settings,
+                catalog=catalog,
+                _settings_validated=True,
+            )
             if stopped():
                 return None
             retained_scale = effective_scale(name, artifact, scale, catalog=catalog)
@@ -472,6 +478,7 @@ def _invoke_worker(
                 ),
                 termination=termination,
                 catalog=catalog,
+                _settings_validated=True,
             )
         )
 
@@ -788,12 +795,17 @@ def _request_wire(
     termination: bool = False,
     report_prepared: bool = False,
     catalog: Catalog | None = None,
+    _settings_validated: bool = False,
 ) -> dict[str, Any]:
     """Encode one complete worker request, including unavailable options."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    choices = dialect_options(name, settings, catalog=catalog)
+    choices = (
+        DialectSettings.options(settings)
+        if _settings_validated and settings is not None
+        else dialect_options(name, settings, catalog=catalog)
+    )
     return {
         "language": name,
         **_source_transport(source),

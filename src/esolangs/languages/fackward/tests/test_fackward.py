@@ -1,5 +1,7 @@
 """Tests for the Fackward interpreter."""
 
+import sys
+
 import pytest
 
 from esolangs import ExecutionLimits
@@ -9,6 +11,7 @@ from esolangs.languages.fackward import interpreter as native
 from esolangs.languages.fackward.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.execution import assert_digit_cap_independent
 from tests.support.prepared_support import check_image_reuse
 
 _run = native_runner(run)
@@ -17,6 +20,7 @@ _run = native_runner(run)
 def test_wiki_hello_world() -> None:
     code = "72 101 108 108 111 44 32 119 111 114 108 100 33 10 H"
     assert _run(code) == "Hello, world!\n"
+    assert_digit_cap_independent("Fackward", "0" * 641 + "65 H", "", "A")
 
 
 def test_wiki_infinite_loop_duplicates_a_function() -> None:
@@ -84,6 +88,14 @@ def test_the_printable_range_is_the_scalar_values() -> None:
     for bad in ("1114112", "55296", "57343"):
         with pytest.raises(HaltError, match="no code point"):
             _run(bad)
+    original = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        wide = "9" * 641
+        with pytest.raises(HaltError, match=f"printing {wide}, which is no code point"):
+            execute("Fackward", wide, limits=ExecutionLimits(max_steps=2))
+    finally:
+        sys.set_int_max_str_digits(original)
 
 
 def test_a_count_past_sys_maxsize_is_a_limit() -> None:

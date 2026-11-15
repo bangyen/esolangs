@@ -1,7 +1,9 @@
 """Line through the shared API, CLI and machinery."""
 
 import json
+import subprocess
 import sys
+from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -13,6 +15,7 @@ from esolangs import Raster, run
 from esolangs.cli import main
 from esolangs.languages.line.interpreter.extract import detect_scale, normalize_scale
 from esolangs.languages.line.interpreter.mask import Mask
+from esolangs.registry import INTERPRETERS
 from tests.support.cli_support import call_main
 from tests.support.evaluation import _evaluate
 from tests.support.input_convention import assert_reads_tokens_on_one_line
@@ -164,7 +167,7 @@ def test_explicit_line_scale_checks_ink_blocks() -> None:
 
 
 @pytest.mark.medium
-def test_explicit_scale_validates_lazy_line_pixels() -> None:
+def test_explicit_scale_validates_lazy_line_pixels(tmp_path: Path) -> None:
     image = esolangs.generate("Line", "00", scale=2)
     assert run("Line", image, stdin="1\n", scale=2).output == "0"
     assert (
@@ -172,6 +175,22 @@ def test_explicit_scale_validates_lazy_line_pixels() -> None:
     )
     with pytest.raises(esolangs.ProgramError, match="uniform"):
         run("Line", image, stdin="1\n", scale=3)
+
+    path = tmp_path / "line.png"
+    command = [sys.executable, "-m", INTERPRETERS["Line"], str(path)]
+    esolangs.to_file("Line", image, path)
+    result = subprocess.run(
+        command, input=b"1\n", capture_output=True, check=True, timeout=5
+    )
+    assert (result.stdout, result.stderr) == (b"Input: 0", b"")
+
+    esolangs.to_file("Line", replace(image, scale=3), path)
+    rejected = subprocess.run(
+        command, input=b"1\n", capture_output=True, check=False, timeout=5
+    )
+    assert rejected.returncode == 1
+    assert rejected.stdout == b""
+    assert b"uniform" in rejected.stderr
 
 
 def test_it_reads_numeric_tokens_on_the_same_line() -> None:

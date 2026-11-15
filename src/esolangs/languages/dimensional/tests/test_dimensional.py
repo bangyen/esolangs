@@ -12,6 +12,7 @@ from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract, machine_factory
 from tests.interpreters.runner import run_lines
+from tests.support.execution import assert_digit_cap_independent
 from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import assert_rejected_with_hint, raises_message
 
@@ -143,6 +144,7 @@ class TestDimensional:
         """The digit run of a final operand stops at the end of the code."""
         assert run_and_capture(">12") == ""
         assert run_and_capture("+>10") == ""
+        assert_digit_cap_independent("Dimensional", ">" + "0" * 641 + "0<0:A.", "", "A")
 
     def test_the_selected_axis_is_the_one_asked_for(self) -> None:
         """``$AXIS`` sets the axis to exactly ``AXIS``, clamped below at 2."""

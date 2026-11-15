@@ -61,11 +61,13 @@ from esolangs.exceptions import HaltError, ProgramError
 from esolangs.languages.basicfuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
 
 _NAME = r"[A-Za-z_]\w*"
 _DIRECTIVE = re.compile(
@@ -182,7 +184,7 @@ class _Compiler:
             number = self.take()
             if not number.isdigit():
                 raise ProgramError("X->Y needs a literal Y")
-            shift = int(number)
+            shift = parse_integer(number)
         return self.offsets[name] + shift
 
     def block(self, closer: str | None) -> None:
@@ -221,7 +223,7 @@ class _Compiler:
             if sign is None:
                 raise ProgramError("expected '+=' or '-='")
             if (self.peek() or "").isdigit():
-                self.ops.append((_ADD, target, sign, 0, int(self.take())))
+                self.ops.append((_ADD, target, sign, 0, parse_integer(self.take())))
             else:
                 self.ops.append((_ADD, target, sign, 1, self.ref()))
                 self.by_cell = True
@@ -245,9 +247,9 @@ def _tokens(body: str) -> list[str]:
 def _range(directive: re.Match[str]) -> tuple[int | None, _Range]:
     """Return the tape size (None: unbounded) and the cell range."""
     size, low, high, mode = directive.groups()
-    bot = int(low) if low else None
-    top = int(high) if high else None
-    length = None if size == "unbounded" else int(size)
+    bot = parse_integer(low) if low else None
+    top = parse_integer(high) if high else None
+    length = None if size == "unbounded" else parse_integer(size)
     if bot is None and top is None:
         return length, (None, None, None)
     if mode is None:
@@ -285,7 +287,7 @@ def _compile(code: str) -> _Image:
         if name in _RESERVED or name in offsets:
             raise ProgramError(f"invalid or repeated name {name!r}")
         offsets[name] = total
-        total += int(count) if count else 1
+        total += parse_integer(count) if count else 1
     compiler = _Compiler(_tokens(" ".join(lines[2:])), offsets)
     compiler.block(None)
     length = total
@@ -309,6 +311,7 @@ class _Machine:
 
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
+        self._rejected = RejectedInput()
         self.ops, length, self.range = _compile(code) if isinstance(code, str) else code
         self.state: _State = (0, (0,) * length)
 
@@ -331,19 +334,26 @@ class _Machine:
         return _WORKSPACE_MODEL.capture(
             instruction=self.state[0],
             cells=self.state[1],
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        return self._rejected.snapshot((*self.state, self.io.progress()))
 
     def step(self) -> None:
         """Execute one statement; the shell owns ``read`` and ``write``."""
         if self.halted:
             return
-        byte = self.io.input_char() if self.ops[self.state[0]][0] == _READ else None
-        self.state, out = _advance(self.state, self.ops, self.range, byte)
+        byte = None
+        if self.ops[self.state[0]][0] == _READ:
+            byte = self._rejected.read(self.io, self.io.input_char)
+        try:
+            self.state, out = _advance(self.state, self.ops, self.range, byte)
+        except HaltError as error:
+            if byte is not None:
+                self._rejected.remember(error)
+            raise
         if out is not None:
             self.io.print_char(out)
 

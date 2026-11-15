@@ -60,6 +60,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 
 _FUNCTIONS = frozenset("+-*/%:~!$(<)H")
 _NUMERIC = {"+": 2, "-": 1, "*": 2, "/": 2, "%": 1}
@@ -100,7 +101,7 @@ def parse(code: str) -> _Stack:
             j = i
             while j < len(code) and code[j].isdigit() and code[j].isascii():
                 j += 1
-            levels[-1].append(int(code[i:j]))
+            levels[-1].append(parse_integer(code[i:j]))
             i = j
             continue
         if c == "[":
@@ -184,7 +185,7 @@ def _apply(name: str, args: list[_Value]) -> list[_Value]:
             return [a * more[0]]
         if name == "/":
             if more[0] == 0:
-                raise HaltError(f"Fackward: / of {a} by 0")
+                raise HaltError(f"Fackward: / of {format_integer(a)} by 0")
             return [a // more[0]]
         return [int(a == 0)]
     if name == ":":
@@ -198,7 +199,9 @@ def _apply(name: str, args: list[_Value]) -> list[_Value]:
     if name == "$":
         count = cast(int, args[0])
         if count < 0:
-            raise HaltError(f"Fackward: $ with the negative count {count}")
+            raise HaltError(
+                f"Fackward: $ with the negative count {format_integer(count)}"
+            )
         return [args[1]] * count
     block = cast(Block, args[0])
     if name == "<":
@@ -226,7 +229,9 @@ def _advance(state: _State, value: int | None = None) -> tuple[_State, str | Non
     top, rest = forward
     if type(top) is int:
         if not (0 <= top <= sys.maxunicode and not 0xD800 <= top <= 0xDFFF):
-            raise HaltError(f"Fackward: printing {top}, which is no code point")
+            raise HaltError(
+                f"Fackward: printing {format_integer(top)}, which is no code point"
+            )
         return (rest, backward, True, swapped, False), chr(top)
     if isinstance(top, str):
         args = _arguments(top, rest)

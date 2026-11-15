@@ -1,6 +1,10 @@
 """Unit tests for the Back interpreter."""
 
+import gzip
+import subprocess
+import sys
 from functools import partial
+from pathlib import Path
 from typing import ClassVar
 
 import pytest
@@ -19,14 +23,46 @@ run_and_capture = partial(run_printing, run)
 
 
 class TestBack:
-    def test_blank_only_program_is_empty(self) -> None:
-        """Programs of only blank lines are rejected, not crashed on."""
-
+    def test_grid_file_terminators_and_blank_rows(self, tmp_path: Path) -> None:
         message = "Back program cannot be empty"
         with raises_message(ValueError, message):
             run_and_capture(["\n"])
         with raises_message(ValueError, message):
             run_and_capture(["   ", "\t"])
+
+        path = tmp_path / "grid"
+        row = b"+*>>-<+"
+        column = b"\\*\n+\n*\n>\n>\n-\n<\n+"
+        for source, output in (
+            (row, b"0 0 1"),
+            (row + b"\n", b"0 0 1"),
+            (gzip.compress(row + b"\r\n", mtime=0), b"0 0 1"),
+            (column + b"\n\n", b"0 0 1 1"),
+            (column + b"\n  \n", b"0 0 1"),
+            (b"", None),
+            (b"  \n", None),
+        ):
+            path.write_bytes(source)
+            for args, error_status in (
+                (["esolangs", "run", "Back"], 2),
+                ([native.__name__], 1),
+            ):
+                result = subprocess.run(
+                    [sys.executable, "-m", *args, str(path)],
+                    input=b"",
+                    capture_output=True,
+                    check=False,
+                    timeout=5,
+                )
+                if output is None:
+                    assert (result.returncode, result.stdout) == (error_status, b"")
+                    assert message.encode() in result.stderr
+                else:
+                    assert (result.returncode, result.stdout, result.stderr) == (
+                        0,
+                        output,
+                        b"",
+                    )
 
 
 class TestStepMachine:

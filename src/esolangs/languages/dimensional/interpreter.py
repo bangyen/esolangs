@@ -69,6 +69,7 @@ from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -216,7 +217,7 @@ def _number(code: str, ind: int, default: int | None) -> tuple[int | None, int]:
         j = ind
         while j < len(code) and code[j].isdigit():
             j += 1
-        dim = int(code[ind:j])
+        dim = parse_integer(code[ind:j])
         return (-dim if neg else dim), j
     return default, ind
 

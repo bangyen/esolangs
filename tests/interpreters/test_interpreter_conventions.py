@@ -466,22 +466,35 @@ class TestEntryPointConventions:
         """``text`` goes to a ``str`` parameter, the line shapes to ``list[str]``."""
         call = self._main_call(path)
         assert isinstance(call.func, ast.Name)
-        assert call.func.id == "script_main"
-        assert [ast.unparse(arg) for arg in call.args] == ["run"]
-        assert {keyword.arg for keyword in call.keywords} <= {"shape", "loader"}
-        shape = "text"
-        for keyword in call.keywords:
-            if keyword.arg == "loader":
-                wanted = {
+        kwargs = {keyword.arg: keyword.value for keyword in call.keywords}
+        if call.func.id == "raster_script_main":
+            owner, runner = call.args
+            assert isinstance(owner, ast.Constant)
+            assert isinstance(owner.value, str)
+            assert LANGUAGES[owner.value].id == path.relative_to(_INTERPRETERS).parts[1]
+            assert ast.unparse(runner) == "run"
+            assert not kwargs
+            wanted = {"Raster"}
+        else:
+            assert call.func.id == "script_main"
+            assert [ast.unparse(arg) for arg in call.args] == ["run"]
+            assert kwargs.keys() <= {"shape", "loader"}
+            shape = ast.literal_eval(kwargs.get("shape", ast.Constant(value="text")))
+            assert shape in ("text", "keep", "strip")
+            loader = kwargs.get("loader")
+            wanted = (
+                {"str"}
+                if loader is None
+                else {
                     "raster_source": {"Raster"},
                     "text_source": {"str"},
+                    "native_text_source": {"str"},
                     "compressed_text_source": {"str", "CompressedText"},
-                }[ast.unparse(keyword.value)]
-                shape = "loaded"
-                continue
-            assert isinstance(keyword.value, ast.Constant)
-            shape = keyword.value.value
-        assert shape in ("text", "keep", "strip", "loaded")
+                }[ast.unparse(loader)]
+            )
+            if shape != "text":
+                assert wanted == {"str"}
+                wanted = {"list[str]"}
 
         tree = ast.parse(path.read_text(encoding="utf-8"))
         run = next(
@@ -495,8 +508,6 @@ class TestEntryPointConventions:
         # equality: the shape has to be among what `run` takes, not the only
         # thing it takes.
         accepted = {part.strip() for part in ast.unparse(annotation).split("|")}
-        if shape != "loaded":
-            wanted = {"str" if shape == "text" else "list[str]"}
         assert wanted <= accepted, (
-            f"{path.name}: shape={shape!r} but run takes {accepted}"
+            f"{path.name}: script supplies {wanted} but run takes {accepted}"
         )

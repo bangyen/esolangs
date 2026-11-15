@@ -10,6 +10,7 @@ from tests.interpreters.oracle_support import after_step, observed, overread, st
 from tests.support.workspace_oracle import (
     charged_bits,
     check_erasures,
+    rejected_input,
     workspace_model,
     workspace_view,
 )
@@ -240,17 +241,12 @@ def corpus():
     for mode, char, increment, count in itertools.product(
         ("wrap", "nearest", "halt"), ("\0", "A", "ÿ", "Ω"), (0, 1, 300), (0, 1, 4)
     ):
-        yield (
-            _source(
-                f"read -> arr; counter += {count}; while (counter) {{ arr->1 += arr; "
-                f"arr->1 += {increment}; counter -= 1; }} "
-                "if !(counter) { write <- arr->1; } if (counter) { read -> arr; }",
-                mode=mode,
-                names="arr->2,counter",
-            ),
-            char + "sentinel",
-            40,
+        body = (
+            f"read -> arr; counter += {count}; while (counter) {{ arr->1 += arr; "
+            f"arr->1 += {increment}; counter -= 1; }} "
+            "if !(counter) { write <- arr->1; } if (counter) { read -> arr; }"
         )
+        yield _source(body, mode=mode, names="arr->2,counter"), char + "sentinel", 40
     bodies = (
         "",
         "a += 1;",
@@ -326,9 +322,20 @@ def corpus():
 
 def _agrees(factory, source, stdin, cap):
     expected = model(source, stdin, cap)
-    checked = workspace_view(
-        expected[1], _WORKSPACE, lambda row: (*row[0], row[-1]), lambda m: m.state
-    )
+    error, rows = expected
+
+    def parts(row):
+        pc, cells = row[0]
+        cursor = row[-1]
+        if error == "halt" and row is rows[-1] and cursor > rows[-2][-1]:
+            dest = _parse(source)[0][pc][1]
+            message = (
+                "tape index out of bounds" if dest >= len(cells) else "cell overflow"
+            )
+            cursor = rejected_input(cursor, "HaltError", message, ())
+        return pc, cells, cursor
+
+    checked = workspace_view(rows, _WORKSPACE, parts, lambda m: m.state)
     assert observed(factory, source, stdin, checked, cap=cap) == expected, source
     return expected
 
@@ -338,12 +345,8 @@ def check_raw_workspace_basicfuck():
     results = [_agrees(_Machine, *case) for case in corpus()]
     assert {error for error, _ in results} == {None, "syntax", "input", "halt"}
     source = _source("read -> a; a += 1; write <- a;")
-    assert (
-        charged_bits(
-            _WORKSPACE, ((*row[0], row[-1]) for row in model(source, "AQQ")[1])
-        )
-        == 11
-    )
+    parts = ((*row[0], row[-1]) for row in model(source, "AQQ")[1])
+    assert charged_bits(_WORKSPACE, parts) == 11
     check_erasures(_WORKSPACE, _agrees, _Machine, source, "AQQ", 64)
     for factory in (stalled(_Machine), overread(_Machine)):
         with pytest.raises(AssertionError):

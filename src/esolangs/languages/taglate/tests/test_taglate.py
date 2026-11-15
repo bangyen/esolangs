@@ -1,6 +1,9 @@
 """Unit tests for the Taglate interpreter."""
 
 import importlib
+import subprocess
+import sys
+from pathlib import Path
 from typing import ClassVar
 
 import pytest
@@ -181,7 +184,7 @@ class TestTaglate:
         """
         assert run_and_capture([chr(3), "gyjgzi"]) == "\x00"
 
-    def test_empty_queue_pop_halts(self) -> None:
+    def test_empty_queue_pop_halts(self, tmp_path: Path) -> None:
         """Popping an empty queue in arithmetic is an invalid operation."""
         import pytest
 
@@ -189,6 +192,24 @@ class TestTaglate:
             run_and_capture(["", "a"])
         with pytest.raises(HaltError):
             run_and_capture(["", "i"])
+
+        path = tmp_path / "queue"
+        for source, status in ((b"a\ni\n", 0), (b"a\nii\n", 1)):
+            path.write_bytes(source)
+            for args in (["esolangs", "run", "Taglate"], [run.__module__]):
+                result = subprocess.run(
+                    [sys.executable, "-m", *args, str(path)],
+                    input=b"",
+                    capture_output=True,
+                    check=False,
+                    timeout=5,
+                )
+                assert result.returncode == status
+                assert result.stdout == b"a"
+                if status:
+                    assert b"the queue is empty" in result.stderr
+                else:
+                    assert result.stderr == b""
 
 
 class TestStepMachine:

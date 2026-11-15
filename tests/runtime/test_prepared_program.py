@@ -19,7 +19,7 @@ from esolangs.runtime._lifecycle import HALTED_REPORT
 from esolangs.runtime._prepared import prepare_program
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import complete_vm
-from tests.support.pick import first
+from tests.support.pick import first, one_where
 from tests.support.reference import REFERENCE
 
 
@@ -337,18 +337,92 @@ def _check_prepared_source_options_and_lines_are_reused():
 
     setattr(module, runtime.completion_entrypoint, execute)
     api = esolangs.Language(REFERENCE, catalog=catalog)
+    settings = api.settings(increment=2)
+    validated.clear()
     prepared = prepare_program(
         REFERENCE,
         "first\r\nlast\r\n",
-        settings=api.settings(increment=2),
+        settings=settings,
         catalog=catalog,
         module_loader=lambda *_args, **_kwargs: module,
     )
-    assert validated
+    assert validated == [2]
     validated.clear()
     assert prepared.run().output == "firstfirst"
     assert prepared.run().output == "firstfirst"
     assert validated == []
+
+
+def _check_prepared_dialect_validates_distinct_options_once() -> None:
+    name = one_where(lambda info: "rotation" in info.dialect_settings)[0]
+    declaration = LANGUAGES[name]
+    calls = []
+    once = False
+    repeated = esolangs.ProgramError("rotation already validated")
+
+    def validate(rotation="backward"):
+        calls.append(rotation)
+        if once and len(calls) > 1:
+            raise repeated
+
+    runtime = replace(declaration.runtime, dialect=validate)
+    api = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(name)
+    settings = api.settings(rotation="forward")
+    document = api.to_json(",,", settings=settings)
+    restored = api.from_json(document)
+    once = True
+    for perform in (
+        lambda: api.prepare(restored).run(stdin="A").output,
+        lambda: esolangs.PreparedProgram(restored, api.catalog).run(stdin="A").output,
+        lambda: api.run(restored, stdin="A").output,
+        lambda: (
+            api.run(
+                restored, stdin="A", limits=esolangs.ExecutionLimits(max_steps=2)
+            ).output
+        ),
+        lambda: complete_vm(api.make_vm(restored, stdin="A"), max_steps=2),
+    ):
+        calls.clear()
+        assert perform() == "A"
+        assert calls == ["forward"]
+
+    class Untouched:
+        def read(self):
+            pytest.fail("an unsupported isolated scope accessed stdin or source")
+
+    calls.clear()
+    with pytest.raises(esolangs.ArgumentError, match="installed catalog"):
+        api.run(Untouched(), stdin=Untouched(), settings=settings, isolated=True)
+    assert not calls
+
+    schema = runtime.dialect_schema
+    assert schema is not None
+    extended = esolangs.DialectSchema(
+        name,
+        schema.choices | {"approval": ("recorded",)},
+        schema.defaults | {"approval": "recorded"},
+    )
+    checked = []
+    refusal = esolangs.ArgumentError("effective options refused")
+
+    def distinguish(**choices):
+        checked.append(choices)
+        if "approval" in choices:
+            raise refusal
+
+    configured = replace(runtime, dialect=distinguish, dialect_schema=extended)
+    scoped = esolangs.Catalog([replace(declaration, runtime=configured)]).bind(name)
+    partial = scoped.settings(rotation="forward")
+    checked.clear()
+    source = StringIO(",,")
+    with pytest.raises(esolangs.ArgumentError) as raised:
+        scoped.prepare(source, settings=partial)
+    assert raised.value is refusal
+    assert checked == [
+        {"rotation": "forward"},
+        {"rotation": "forward", "approval": "recorded"},
+    ]
+    assert source.tell() == 2
 
 
 def _check_relative_source_precedes_dialect_callbacks(tmp_path, monkeypatch):
@@ -437,6 +511,7 @@ def test_prepared_invocations_own_source_state_and_randomness(monkeypatch, tmp_p
     _check_outcomes_are_the_internal_boundary(monkeypatch)
     _check_prepared_factory_owns_state_and_input()
     _check_prepared_source_options_and_lines_are_reused()
+    _check_prepared_dialect_validates_distinct_options_once()
     _check_preparation_consumes_source_once_and_keeps_fresh_invocations()
     _check_prepared_isolation_preserves_the_same_observation()
     _check_prepared_failures_retain_partial_observations()

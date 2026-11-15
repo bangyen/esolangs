@@ -1,6 +1,8 @@
 """Piet through the shared API, CLI and machinery."""
 
 import importlib
+import subprocess
+import sys
 from dataclasses import replace
 
 import pytest
@@ -9,7 +11,8 @@ import esolangs
 from esolangs import Raster, run
 from esolangs.exceptions import TemplateError
 from esolangs.operations.source import _check_program
-from esolangs.registry import CATALOG, LANGUAGES
+from esolangs.raster import png
+from esolangs.registry import CATALOG, INTERPRETERS, LANGUAGES
 from tests.support.evaluation import _evaluate
 from tests.support.execution import termination_observed
 from tests.support.input_convention import assert_reads_tokens_on_one_line
@@ -90,7 +93,7 @@ def test_a_raster_is_refused_as_a_template() -> None:
 
 
 @pytest.mark.medium
-def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
+def test_piet_explicit_scale_resolves_ambiguous_image(tmp_path) -> None:
     red, light, terminal, black = (255, 0, 0), (255, 192, 192), (192, 0, 192), (0, 0, 0)
     logical = Raster(
         ((light, black, terminal), (light, red, terminal), (black, black, terminal))
@@ -100,6 +103,30 @@ def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
     assert run("Piet", image, scale=1).output == "8"
     assert run("Piet", image, scale=2, isolated=True).output == "2"
     _check_worker_proof_scale(image)
+
+    path = tmp_path / "ambiguous.png"
+    command = [sys.executable, "-m", INTERPRETERS["Piet"], str(path)]
+    pixels = image.to_png()
+    for scale, output in ((None, b"2"), (1, b"8"), (2, b"2")):
+        if scale is None:
+            path.write_bytes(pixels)
+        else:
+            artifact = esolangs.ProgramArtifact(image, "Piet", scale=scale)
+            esolangs.to_file("Piet", artifact, path)
+        result = subprocess.run(
+            command, input=b"", capture_output=True, check=True, timeout=5
+        )
+        assert (result.stdout, result.stderr) == (output, b"")
+
+    path.write_bytes(
+        png.write_metadata(pixels, {"version": 1, "language": "Piet", "scale": False})
+    )
+    rejected = subprocess.run(
+        command, input=b"", capture_output=True, check=False, timeout=5
+    )
+    assert rejected.returncode == 1
+    assert rejected.stdout == b""
+    assert b"scale must be a positive integer, got False" in rejected.stderr
 
 
 def _check_worker_proof_scale(image: Raster) -> None:

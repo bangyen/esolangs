@@ -1,12 +1,17 @@
 """Tests for the Basicfuck interpreter."""
 
+import sys
+
 import pytest
 
-from esolangs.exceptions import HaltError, ProgramError
+from esolangs import ExecutionLimits, ExecutionResult, Language
+from esolangs.exceptions import HaltError, InputExhaustedError, ProgramError
 from esolangs.languages.basicfuck.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import native_runner
+from tests.support.execution import assert_digit_cap_independent
+from tests.support.vm_support import assert_rejected_input_retry
 
 #: Directive and allocation lines for a few variables, wrapping bytes.
 WRAP = "#basicfuck t=unbounded r=0~255 o=wrap\n"
@@ -148,6 +153,7 @@ def test_read_takes_characters_including_newlines(monkeypatch) -> None:
     )
     code = WRAP + "#allocate a\nread -> a; write <- a; read -> a; write <- a;"
     assert _run(code, "x\n") == "x\n"
+    _check_read_rejection()
 
 
 def test_comments_and_blank_lines_are_ignored() -> None:
@@ -164,6 +170,20 @@ def test_a_variable_operand_costs_a_spare_cell() -> None:
 
 def test_a_constant_operand_needs_no_spare_cell() -> None:
     assert _run("#basicfuck t=2 r=0~255 o=wrap\n#allocate a, b\na += 1; b += 2;") == ""
+    zeros = "0" * 641
+    source = (
+        f"#basicfuck t={zeros}2 r=-{zeros}128~{zeros}127 o=wrap\n"
+        f"#allocate arr->{zeros}2\n"
+        f"arr->{zeros}1 += {zeros}65; write <- arr->{zeros}1;"
+    )
+    assert_digit_cap_independent("Basicfuck", source, "", "A")
+    policy = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        result = Language("Basicfuck").run(source, limits=ExecutionLimits(max_steps=2))
+        assert (result.output, result.steps) == ("A", 2)
+    finally:
+        sys.set_int_max_str_digits(policy)
 
 
 def test_an_index_outside_the_tape_halts() -> None:
@@ -220,3 +240,35 @@ class TestCycles(CycleContract, EmptyProgramContract):
     empty_raises = "missing directive or #allocate"
     halting_program = WRAP + "#allocate a\na += 3; while (a) { a -= 1; }"
     looping_program = WRAP + "#allocate a\na += 1; while (a) { }"
+
+
+def _check_read_rejection() -> None:
+    source = "#basicfuck t=1 r=0~127 o=halt\n#allocate a\nread -> a; write <- a;"
+    assert_rejected_input_retry(
+        "Basicfuck", source, "éA", "A", "A", position=1, reads=1, error_type=HaltError
+    )
+    api = Language("Basicfuck")
+    limits = ExecutionLimits(max_steps=2)
+    for isolated in (False, True):
+        fault = api.execute(source, stdin="éA", limits=limits, isolated=isolated)
+        assert fault.status == "fault"
+        assert type(fault.error) is HaltError
+        assert str(fault.error) == "cell overflow"
+        assert fault.observation == ExecutionResult("", 1, 1, 0, steps=0)
+        assert (
+            api.run(source, stdin="A", limits=limits, isolated=isolated).output == "A"
+        )
+    for bound, isolated in ((None, False), (limits, False), (limits, True)):
+        eof = api.execute(source, limits=bound, isolated=isolated)
+        assert eof.status == "input_exhausted"
+        assert type(eof.error) is InputExhaustedError
+        assert eof.observation == ExecutionResult(
+            "", 0, 0, 1, steps=None if bound is None else 0
+        )
+    debugger = api.make_debugger(source)
+    boundary = debugger.snapshot()
+    for attempts in (1, 2):
+        with pytest.raises(InputExhaustedError) as eof:
+            debugger.step()
+        assert eof.value.observation == ExecutionResult("", 0, 0, attempts, steps=0)
+        assert debugger.snapshot() == boundary

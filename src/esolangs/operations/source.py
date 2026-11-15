@@ -139,6 +139,7 @@ def read_artifact(
     catalog: "Catalog | None" = None,
     normalize: bool = False,
     preserve_compression: bool = False,
+    _settings_validated: bool = False,
 ) -> Artifact:
     """Acquire source once, merging explicit choices with the retained settings."""
     from esolangs.registry._catalog import get_catalog
@@ -146,7 +147,8 @@ def read_artifact(
     program = anchor_program_source(program)
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    settings = effective_settings(name, program, settings, catalog=catalog)
+    if not _settings_validated:
+        settings = effective_settings(name, program, settings, catalog=catalog)
     if _has_backing_type(program, ProgramArtifact) or _has_backing_type(
         program, TemplateArtifact
     ):
@@ -249,6 +251,7 @@ def _check_program(
     catalog: "Catalog | None" = None,
     normalize: bool = False,
     preserve_compression: bool = False,
+    _settings_validated: bool = False,
 ) -> ProgramArtifact[Program]:
     """Acquire a runnable record without consuming stdin or parsing commands."""
     from esolangs.registry._catalog import get_catalog
@@ -264,10 +267,17 @@ def _check_program(
         catalog=catalog,
         normalize=normalize,
         preserve_compression=preserve_compression,
+        _settings_validated=_settings_validated,
     )
     assert isinstance(record, ProgramArtifact)
     # Check the combined choices only after native metadata could add an override.
-    dialect_options(name, record.settings, catalog=catalog, validate_defaults=True)
+    dialect_options(
+        name,
+        record.settings,
+        catalog=catalog,
+        validate_defaults=True,
+        _sparse_validated=True,
+    )
     check_input(stdin)
     return record
 

@@ -10,10 +10,13 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from esolangs.runtime._source import text_source
 from esolangs.runtime.io import IO
+
+if TYPE_CHECKING:
+    from esolangs.raster import Raster
 
 #: How ``run`` wants the source: the whole string, the lines with newlines
 #: (``readlines()``), or without (``splitlines()``).  A grid language handed
@@ -46,5 +49,25 @@ def script_main(
     elif shape == "strip":
         source = source.splitlines()
     code = run(source, IO())
+    if code is not None:
+        sys.exit(code)
+
+
+class _RasterRunner(Protocol):
+    def __call__(
+        self, program: Raster, io: IO, /, *, scale: int | None
+    ) -> int | None: ...
+
+
+def raster_script_main(language: str, run: _RasterRunner) -> None:
+    """Run a standalone PNG with its retained scale and interactive I/O."""
+    if len(sys.argv) < 2:
+        return
+    from esolangs.operations.source import from_file
+    from esolangs.raster import Raster
+
+    artifact = from_file(language, Path(sys.argv[1]))
+    assert isinstance(artifact.source, Raster)
+    code = run(artifact.source, IO(), scale=artifact.scale)
     if code is not None:
         sys.exit(code)

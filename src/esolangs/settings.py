@@ -35,6 +35,7 @@ def dialect_options(
     *,
     catalog: "Catalog | None" = None,
     validate_defaults: bool = False,
+    _sparse_validated: bool = False,
 ) -> dict[str, Scalar]:
     """Validate sparse choices and, when requested, their effective defaults."""
     from esolangs.registry._catalog import get_catalog
@@ -62,6 +63,8 @@ def dialect_options(
     values = {} if settings is None else DialectSettings.options(settings)
     if runtime.dialect is not None:
         checked = schema.defaults | values if validate_defaults else values
+        if _sparse_validated and settings is not None and checked == values:
+            return values
         try:
             runtime.dialect(**checked)
         except EsolangError as error:
@@ -138,7 +141,12 @@ def _merge_settings(
             "may well run, and answer nonsense -- pass its .source to drop "
             "the retained settings"
         )
-    return _settings_for(language, retained_values | explicit_values, catalog=catalog)
+    merged = retained_values | explicit_values
+    if merged == retained_values:
+        return retained
+    if merged == explicit_values:
+        return settings
+    return _settings_for(language, merged, catalog=catalog)
 
 
 class DialectOption(TypedDict):
