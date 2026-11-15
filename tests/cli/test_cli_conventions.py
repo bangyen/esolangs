@@ -197,6 +197,21 @@ def test_set_accepts_null_as_a_declared_string_choice(
     assert observed == ["null", "null"]
     _, error = _failure([*command, "--settings", '{"mode":null}'], capsys)
     assert "invalid value for dialect setting mode: None" in error
+
+    settings = [
+        '--settings={"mode":"plain"}',
+        "--set=mode=ignored value",
+        "--set=mode=null",
+    ]
+    _, error = _failure(["generate", *settings, "01", REFERENCE], capsys)
+    repaired = shlex.split(error.split("first: ", 1)[1])
+    assert repaired == ["esolangs", "generate", *settings, REFERENCE, "01"]
+    assert call_main(repaired[1:], capsys) == native
+    assert observed == ["null", "null", "null"]
+    _, error = _failure(["generate", "--settings={", "01", REFERENCE], capsys)
+    assert "--settings is not valid JSON" in error
+    assert "looks like a truth table" not in error
+
     result = esolangs.run(REFERENCE, set_source, stdin="1")
     assert esolangs.read_answer(REFERENCE, result.output) == "1"
 

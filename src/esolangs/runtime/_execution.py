@@ -27,6 +27,7 @@ from esolangs.results import ExecutionResult
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime._program import Program, RunnerProgram
+from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.memory import _hit_digit_cap
 from esolangs.runtime.randomness import Seeded
@@ -95,7 +96,7 @@ def execute_prepared(
         language=name,
     ):
         value = invoke(run_fn, program, io_obj)
-        if not isinstance(value, CompletionReport):
+        if not _has_backing_type(value, CompletionReport):
             raise InterpreterLimitError(
                 "completion runner returned no completion report",
                 hint="check the declared completion entry point",

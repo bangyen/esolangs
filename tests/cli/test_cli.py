@@ -342,9 +342,17 @@ class TestOutputAndAbridging:
         hint = f"hint: pipe input from esolangs encode-inputs {shlex.quote(_RASTER)}"
         assert hint in refused.stderr
 
-        _generate([_RASTER, "01"])
+        with pytest.raises(SystemExit) as swapped:
+            _generate(["--scale", "2", "01", _RASTER])
+        assert swapped.value.code == 2
+        captured = capsysbinary.readouterr()
+        assert not captured.out
+        repaired = shlex.split(captured.err.decode().split("first: ", 1)[1])
+        assert repaired == ["esolangs", "generate", "--scale=2", _RASTER, "01"]
+        _generate(repaired[2:])
         path = tmp_path / "program.png"
         path.write_bytes(capsysbinary.readouterr().out)
+        assert esolangs.from_file(_RASTER, path).scale == 2
         encoded = run_cli("encode-inputs", _RASTER, "1")
         assert encoded.returncode == 0, encoded.stderr
         execution = run_cli("run", _RASTER, str(path), stdin=encoded.stdout)
@@ -367,7 +375,17 @@ class TestOutputAndAbridging:
             _generate(command[2:])
             data = capsysbinary.readouterr().out
             assert data.startswith(b"\x1f\x8b")
-            path.write_bytes(data)
+            with pytest.raises(SystemExit) as swapped:
+                _generate(["--bits", bit, *original[:-2], "01", language])
+            assert swapped.value.code == 2
+            captured = capsysbinary.readouterr()
+            assert not captured.out
+            repaired = shlex.split(captured.err.decode().split("first: ", 1)[1])
+            assert repaired[:2] == ["esolangs", "generate"]
+            _generate(repaired[2:])
+            corrected = capsysbinary.readouterr().out
+            assert corrected == data
+            path.write_bytes(corrected)
             result = run_cli("run", language, str(path))
             assert result.returncode == 0, result.stderr
             assert esolangs.read_answer(language, result.stdout) == bit

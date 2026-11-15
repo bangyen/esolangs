@@ -61,7 +61,12 @@ def _notes(exc: BaseException) -> str:
 
 
 def _generate_hint(
-    exc: EsolangError, language: str, table: str, *, catalog: Catalog
+    exc: EsolangError,
+    language: str,
+    table: str,
+    options: list[str],
+    *,
+    catalog: Catalog,
 ) -> str:
     """Keep generator notes and point template input advice at the CLI."""
     message = str(exc)
@@ -73,7 +78,9 @@ def _generate_hint(
             f"pipe input from esolangs encode-inputs {operand} <bits> "
             f"when running {target}",
         )
-    return message + _swapped_hint(language, table, catalog=catalog) + notes
+    if isinstance(exc, UnknownLanguageError):
+        message += _swapped_hint(language, table, options, catalog=catalog)
+    return message + notes
 
 
 def _template_hint(
@@ -137,18 +144,21 @@ def _looks_like_a_table(value: str) -> bool:
     return len(value) == 2**n and n >= 1
 
 
-def _swapped_hint(language: str, table: str, *, catalog: Catalog) -> str:
+def _swapped_hint(
+    language: str, table: str, options: list[str], *, catalog: Catalog
+) -> str:
     """Return a hint when the language and truth-table arguments look swapped.
 
     A power-of-two run of 0s and 1s in the language slot is a swap.
     """
     if not _looks_like_a_table(language):
         return ""
+    flags = "".join(f"{shlex.quote(option)} " for option in options)
     separator = "-- " if table.startswith("-") else ""
     return (
         f"; {language!r} looks like a truth table -- the language comes "
         "first: esolangs generate "
-        f"{separator}{_as_argument(table, catalog=catalog)} {language}"
+        f"{flags}{separator}{_as_argument(table, catalog=catalog)} {language}"
     )
 
 

@@ -55,7 +55,7 @@ from esolangs.runtime._state import (
     WorkspaceVariant,
     repr_snapshot_record,
 )
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -595,6 +595,7 @@ class _Machine:
 
     def __init__(self, code: str | _Term, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         term = _parse(code) if isinstance(code, str) else code
         self.state: _State = (_Eval(term), None, None, False)
         # A 200-command counter rebuilt 17,743 views; cap reuse at 2,048 nodes.
@@ -624,17 +625,25 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical terms and continuations, excluding cached depths."""
         task, continuation, character, stopped = self.state
+        cursor = self.io.progress()
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             task=_workspace_value(task, self._workspace_cache),
             continuation=_workspace_value(continuation, self._workspace_cache),
             character=character,
             stopped=stopped,
-            input_cursor=self.io.progress(),
+            input_cursor=(
+                cursor
+                if accepted is None
+                else WorkspaceVariant("pending_output", (cursor, accepted))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def step(self) -> None:
         """Take one machine step, reading or printing where it asks."""
@@ -651,9 +660,14 @@ class _Machine:
                 # The spec's end-of-input branch: ``@`` hands its argument
                 # ``v`` rather than ``i`` (see the module docstring).
                 at_eof = True
-        self.state, out = _advance(self.state, read_char, at_eof=at_eof)
+        state, out = _advance(self.state, read_char, at_eof=at_eof)
+        io = self.io
+        if out is not None and isinstance(io, ScriptedIO):
+            self._writer.write(io, out)
+            out = None
+        self.state = state
         if out is not None:
-            self.io.print_str(out)
+            io.print_str(out)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

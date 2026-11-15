@@ -412,6 +412,30 @@ def test_multiline_reflow_follows_registry_metadata(structural) -> None:
     expected = "first second" if structural else source
     assert wrap_program(source, "synthetic", 40, catalog=catalog) == expected
 
+    class ClaimedText:
+        @property
+        def __class__(self) -> type:
+            return str
+
+    class StoredText(str):
+        def __str__(self) -> str:
+            raise AssertionError("use the wrapper's backing text")
+
+    assert language.backend is not None
+
+    def with_output(output: object) -> Catalog:
+        backend = replace(language.backend, wrap=lambda *_args: output)
+        return Catalog([replace(language, backend=backend)])
+
+    with pytest.raises(esolangs.ProgramError, match="wrapper did not return text"):
+        wrap_program("first", "synthetic", 40, catalog=with_output(ClaimedText()))
+    assert (
+        wrap_program(
+            "first", "synthetic", 40, catalog=with_output(StoredText("second"))
+        )
+        == "second"
+    )
+
 
 def test_wrap_tokens_refuses_a_pattern_that_does_not_tile() -> None:
     """A pattern that drops characters returns the program unwrapped."""

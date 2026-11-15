@@ -6,6 +6,8 @@ from itertools import product
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, Language
+from esolangs.exceptions import HaltError
 from esolangs.languages.unlambda import interpreter as native
 from esolangs.languages.unlambda.interpreter import (
     _Arg,
@@ -106,7 +108,7 @@ def test_d_delays_and_applying_the_promise_forces_it() -> None:
     assert run_program(native.run, "``d`.Aii") == "A"  # forced by the application
 
 
-def test_a_read_and_a_test_on_the_character() -> None:
+def test_a_read_and_a_test_on_the_character(monkeypatch: pytest.MonkeyPatch) -> None:
     program = "`@`d````?0i`d`.zivi"
     assert run_program(native.run, program, "0\n") == "z"
     assert run_program(native.run, program, "1\n") == ""
@@ -125,6 +127,38 @@ def test_a_read_and_a_test_on_the_character() -> None:
     )
     assert tracediff._halts(events)
     assert events[-1][2] == "cat\n"
+
+    api = Language("Unlambda")
+    source, stdin = "`@`d``|ii", "Q\n"
+    limits = ExecutionLimits(max_steps=32)
+    expected = api.run(source, stdin=stdin, limits=limits)
+    assert (expected.output, expected.steps, expected.input_reads) == ("Q", 27, 1)
+
+    write = ScriptedIO.print_str
+    for accepted in (0, 1):
+        attempts = []
+
+        def refuse(io, text, _attempts=attempts, _accepted=accepted):
+            _attempts.append(text)
+            if len(_attempts) == 1:
+                write(io, text[:_accepted])
+                raise HaltError("temporary writer refusal")
+            write(io, text)
+
+        with monkeypatch.context() as port:
+            port.setattr(ScriptedIO, "print_str", refuse)
+            debugger = api.make_debugger(source, stdin=stdin)
+            assert debugger.run(limits=ExecutionLimits(max_steps=21)) == "max_steps"
+            boundary = debugger.snapshot()
+            with pytest.raises(HaltError, match="temporary writer refusal") as failure:
+                debugger.step()
+            partial = ExecutionResult("Q"[:accepted], 1, 1, 0, steps=21)
+            assert failure.value.observation == debugger.observation == partial
+            assert debugger.snapshot() == (*boundary, accepted)
+            assert debugger.run(limits=limits) == "halted"
+            assert debugger.observation == expected
+            assert failure.value.observation == partial
+            assert attempts == ["Q"] * (1 if accepted else 2)
 
 
 #: ``\b. ((b (`d `.Xi)) v)``: ``k`` keeps the promise and ``v`` swallows it,

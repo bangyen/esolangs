@@ -25,6 +25,7 @@ from esolangs.runtime._prepared import (
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._validate import (
     _ISOLATED_TIMEOUT,
+    _has_backing_type,
     check_flag,
     check_seed,
     check_timeout,
@@ -244,7 +245,7 @@ def _execute_outcome(
 ) -> ExecutionOutcome:
     """Apply explicit phase budgets and retain one outcome across all routes."""
     selected = ExecutionLimits() if limits is None else limits
-    if not isinstance(selected, ExecutionLimits):
+    if not _has_backing_type(selected, ExecutionLimits):
         raise ArgumentError("limits must be ExecutionLimits or None")
     check_flag(isolated, "isolated")
     use_worker, preparation_timeout = _execution_route(

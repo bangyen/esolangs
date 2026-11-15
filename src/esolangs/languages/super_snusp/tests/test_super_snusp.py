@@ -1,10 +1,11 @@
 """Execution tests for Super SNUSP and its boolean generator."""
 
+import sys
 from itertools import product
 
 import pytest
 
-from esolangs import InputExhaustedError, Language
+from esolangs import ArgumentError, ExecutionLimits, InputExhaustedError, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.super_snusp import interpreter as native
 from esolangs.languages.super_snusp.generator import super_snusp
@@ -17,6 +18,7 @@ from tests.support.raises import assert_halts_with_hint
 from tests.support.vm_support import (
     assert_one_row_moves_along_it,
     assert_rejected_input_retry,
+    assert_rejected_output_retry,
 )
 
 
@@ -114,9 +116,14 @@ def test_byte_output_preserves_the_cell(value: int) -> None:
     assert run_super('"@.#', str(value)) == chr(value % 256) + str(value)
 
 
-def test_decimal_io_and_output() -> None:
+def test_decimal_io_and_output(monkeypatch: pytest.MonkeyPatch) -> None:
     _check_accumulator_arithmetic()
     assert run_super('"@#', "-42\n") == "-42"
+
+    for source, value in (('"14#', 14), ('"65.', "A")):
+        assert_rejected_output_retry(
+            "Super SNUSP", source, value, str(value), prefix=3, monkeypatch=monkeypatch
+        )
 
 
 def test_rejected_numeric_input_stays_at_the_port() -> None:
@@ -132,6 +139,34 @@ def test_rejected_numeric_input_stays_at_the_port() -> None:
             debugger.step()
         assert debugger.snapshot() == boundary
         assert debugger.observation.input_past_end == attempts
+
+    api = Language("Super SNUSP")
+    for make in (api.make_vm, api.make_debugger):
+        machine = make(source, stdin="oops 7")
+        machine.step()
+        for proof in (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle):
+            with pytest.raises(TimeoutError, match="needs input"):
+                proof(machine, limit=4)
+        with pytest.raises(ArgumentError, match="got 'oops'") as bad:
+            machine.step()
+        observed = bad.value.observation
+        assert (observed.input_position, observed.input_reads) == (4, 1)
+        rejected = machine.snapshot()
+
+        control = make(source, stdin="7")
+        control.step()
+        control.step()
+        for proof in (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle):
+            with pytest.raises(ArgumentError, match="got 'oops'") as replay:
+                proof(machine, limit=4)
+            assert replay.value is not bad.value
+            assert replay.value.__notes__ == bad.value.__notes__
+            assert machine.snapshot() == rejected
+            assert bad.value.observation == observed
+            assert proof(control, limit=4) is True
+            assert control.output == ""
+        control.step()
+        assert control.output == "7"
 
 
 @pytest.mark.parametrize(
@@ -226,6 +261,48 @@ def test_advance_refuses_an_input_the_shell_did_not_supply(
 @pytest.mark.medium
 def test_hints_for_bad_programs_and_input() -> None:
     assert_halts_with_hint("Super SNUSP", '"1_{1[', "negative", "nonnegative shift")
+
+    api = Language("Super SNUSP")
+    digits = "9" * 641
+    previous = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        limits = ExecutionLimits(max_steps=8)
+        for code, prefix, pattern in (
+            ('"0{@:', "", "divides .* by zero"),
+            ('"0{@;', "", "takes the 0-th root of"),
+            ('"@{1[', "-", "shifts left by .*negative"),
+        ):
+            for magnitude in ("5", digits):
+                with pytest.raises(HaltError, match=pattern) as fault:
+                    api.run(code, stdin=prefix + magnitude, limits=limits)
+                assert prefix + magnitude in str(fault.value)
+                assert fault.value.observation.steps == 4
+
+        code = '"@{0=#'
+        for number in ("9", "9999999999", digits):
+            debugger = api.make_debugger(code, stdin=number, seed=4)
+            assert debugger.run(limits=ExecutionLimits(max_steps=4)) == "max_steps"
+            for proof in (
+                run_until_halt_or_cycle,
+                run_until_halt_or_all_branches_cycle,
+            ):
+                if len(number) > 1:
+                    with pytest.raises(TimeoutError, match="256-outcome cap") as fault:
+                        proof(debugger, limit=32)
+                    assert "1" + "0" * len(number) in str(fault.value)
+                elif proof is run_until_halt_or_cycle:
+                    with pytest.raises(TypeError, match="some draws halt"):
+                        proof(debugger, limit=32)
+                else:
+                    assert proof(debugger, limit=32) is True
+            assert debugger.run(limits=ExecutionLimits(max_steps=2)) == "halted"
+            assert (len(debugger.output), debugger.observation.input_reads) == (
+                len(number),
+                1,
+            )
+    finally:
+        sys.set_int_max_str_digits(previous)
 
 
 def test_root_hint_does_not_require_an_exact_root() -> None:

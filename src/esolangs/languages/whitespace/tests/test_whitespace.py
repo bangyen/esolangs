@@ -19,6 +19,7 @@ from esolangs.results import Completion, CompletionReport
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import complete_vm
 from tests.interpreters.runner import run_program
+from tests.support.vm_support import assert_rejected_output_retry
 
 S, T, L = " ", "\t", "\n"
 
@@ -130,12 +131,24 @@ def test_missing_read_destination_fault_does_not_consume_input(command, stdin) -
         assert caught.value.observation == ExecutionResult("", 0, 0, 0, steps=0)
 
 
-def test_char_read_with_destination_still_echoes() -> None:
+def test_char_read_with_destination_still_echoes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     api = Language("Whitespace")
     source = push(0) + READ_CHAR + push(0) + RETRIEVE + OUT_CHAR + END
     result = api.run(source, stdin="A", isolated=True)
     assert result == api.run(source, stdin="A")
     assert (result.output, result.input_position, result.input_reads) == ("A", 1, 1)
+
+    for program, value in ((push(14) + OUT_NUM, 14), (push(65) + OUT_CHAR, "A")):
+        assert_rejected_output_retry(
+            "Whitespace",
+            program + END,
+            value,
+            str(value),
+            prefix=1,
+            monkeypatch=monkeypatch,
+        )
 
 
 @pytest.mark.parametrize("resume", ["complete_vm", "debugger"])

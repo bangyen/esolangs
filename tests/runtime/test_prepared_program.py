@@ -43,6 +43,22 @@ def test_prepared_constructor_accepts_owner_spelling_and_refuses_invalid_types()
     with pytest.raises(esolangs.ArgumentError, match="catalog must be a Catalog"):
         esolangs.PreparedProgram(artifact, object())
 
+    class ClaimedArtifact:
+        def __init__(self, claim: type) -> None:
+            self.claim = claim
+
+        @property
+        def __class__(self) -> type:
+            return self.claim
+
+    false_program = ClaimedArtifact(esolangs.ProgramArtifact)
+    with pytest.raises(esolangs.ProgramError, match="requires a program artifact"):
+        esolangs.PreparedProgram(false_program, api.catalog)
+    with pytest.raises(esolangs.ProgramError, match="requires a program or template"):
+        api.evaluate(false_program, [1])
+    with pytest.raises(esolangs.TemplateError):
+        api.instantiate(ClaimedArtifact(esolangs.TemplateArtifact), [1])
+
 
 @pytest.mark.parametrize("use_id", [False, True], ids=["alias", "id"])
 @pytest.mark.parametrize("retain_settings", [False, True], ids=["plain", "settings"])

@@ -478,3 +478,14 @@ def test_generate_swap_suggestion_quotes_metacharacters(
     lexer.whitespace_split = True
     separator = ["--"] if name.startswith("-") else []
     assert list(lexer) == ["esolangs", "generate", *separator, name, "01"]
+
+    _, error = _failure(["generate", "--plain", "--balance", "--", "01", name], capsys)
+    assert shlex.split(error.split("first: ", 1)[1]) == [
+        "esolangs",
+        "generate",
+        "--balance",
+        "--plain",
+        *separator,
+        name,
+        "01",
+    ]

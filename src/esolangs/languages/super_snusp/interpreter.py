@@ -24,6 +24,7 @@ Errors:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from functools import partial
 from operator import add, and_, mul, or_, sub, xor
 from typing import Any, NamedTuple, cast
 
@@ -35,8 +36,13 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+)
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
+from esolangs.runtime.memory import format_integer
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import syntax_error, with_hint
 
@@ -72,9 +78,9 @@ _EQUAL_FANOUT = 256
 def _floor_root(value: int, degree: int) -> int:
     if degree <= 0 or (value < 0 and degree % 2 == 0):
         raise HaltError(
-            f"';' takes the {degree}-th root of {value}, which has no integer "
-            f"value: the degree must be positive, and an even root needs a "
-            f"non-negative value",
+            f"';' takes the {format_integer(degree)}-th root of "
+            f"{format_integer(value)}, which has no integer value: the degree "
+            "must be positive, and an even root needs a non-negative value",
             hint="use positive root degrees; even degrees need nonnegative radicands",
         )
     if value < 0:
@@ -135,14 +141,15 @@ def _combine(command: str, value: int, operand: int) -> int:
     if command == ":":
         if not operand:
             raise HaltError(
-                f"':' divides {value} by zero",
+                f"':' divides {format_integer(value)} by zero",
                 hint="ensure the divisor is nonzero before dividing",
             )
         return value // operand
     if operand < 0:
         direction = "left" if command == "[" else "right"
         raise HaltError(
-            f"{command!r} shifts {direction} by {operand}, which is negative",
+            f"{command!r} shifts {direction} by "
+            f"{format_integer(operand)}, which is negative",
             hint="use a nonnegative shift count",
         )
     return value << operand if command == "[" else value >> operand
@@ -237,8 +244,9 @@ def _random_between(ctx: _Context) -> _Outcome:
     low, high = sorted((ctx.value, other))
     if not 0 <= ctx.random_offset <= high - low:
         raise HaltError(
-            f"'=' was given the draw {ctx.random_offset}, outside the "
-            f"0..{high - low} its range {low}..{high} allows",
+            f"'=' was given the draw {format_integer(ctx.random_offset)}, outside the "
+            f"0..{format_integer(high - low)} its range "
+            f"{format_integer(low)}..{format_integer(high)} allows",
             hint="supply a random draw within the stated range",
         )
     return _Outcome(write=low + ctx.random_offset, values=ctx.values[:-1])
@@ -439,6 +447,7 @@ class _Machine:
         row, col, heading = (*image.start, 0)
         self.state = _State((row, col, heading), (0, ()), (), digit=False, done=False)
         self._input_retry = RejectedInput()
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -464,6 +473,8 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        cursor = self._input_retry.cursor(self.io.progress())
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             row=self.state.cursor[0],
             column=self.state.cursor[1],
@@ -473,7 +484,11 @@ class _Machine:
             values=tuple(self.state.values),
             digit=self.state.digit,
             stopped=self.state.done,
-            input_cursor=self._input_retry.cursor(self.io.progress()),
+            input_cursor=(
+                cursor
+                if accepted is None
+                else WorkspaceVariant("pending_output", (cursor, accepted))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
@@ -488,7 +503,9 @@ class _Machine:
             state.done,
             self.io.progress(),
         )
-        return self._input_retry.snapshot(boundary)
+        snapshot = self._input_retry.snapshot(boundary)
+        accepted = self._writer.accepted
+        return snapshot if accepted is None else (*snapshot, accepted)
 
     # The all-random-outcomes search.  ``_State`` is already the whole
     # machine -- ``done`` included -- so the branching state is that value
@@ -496,7 +513,8 @@ class _Machine:
     # below rather than forked, and output cannot affect a later command.
 
     def branching_snapshot(self) -> _State:
-        """Return the current state as the search's starting point."""
+        """Acquire a branch root or replay the fault of an already rejected read."""
+        self._input_retry.raise_if_rejected()
         return self.state
 
     def branching_halted(self, state: object) -> bool:
@@ -535,20 +553,22 @@ class _Machine:
         offsets: tuple[int | None, ...] = (None,)
         if command == "=" and values:
             low, high = sorted((_read(cells, pointer), values[-1]))
-            if high - low + 1 > _EQUAL_FANOUT:
+            outcomes = high - low + 1
+            if outcomes > _EQUAL_FANOUT:
                 raise with_hint(
                     TimeoutError(
-                        f"undecided: one '=' spanning {high - low + 1} values exceeds "
-                        f"the {_EQUAL_FANOUT}-outcome cap on a single transition"
+                        f"undecided: one '=' spanning {format_integer(outcomes)} "
+                        f"values exceeds the {_EQUAL_FANOUT}-outcome cap "
+                        "on a single transition"
                     ),
                     (
                         f"keep the random range within {_EQUAL_FANOUT} values; "
                         "limit does not raise this transition cap"
                     ),
                 )
-            if high - low + 1 > limit:
+            if outcomes > limit:
                 return None
-            offsets = tuple(range(high - low + 1))
+            offsets = tuple(range(outcomes))
 
         return tuple(
             _advance(current, self.code, None, None, offset)[0] for offset in offsets
@@ -570,15 +590,27 @@ class _Machine:
         if command == "=" and values:
             low, high = sorted((_read(cells, pointer), values[-1]))
             random_offset = draw(self._rng, high - low + 1)
-        self.state, effect = _advance(
+        state, effect = _advance(
             self.state, self.code, char_input, number_input, random_offset
         )
-        if effect:
+        if effect is not None:
             kind, value = effect
-            if kind == "char":
-                self.io.print_char(chr(value))
+            io = self.io
+            if isinstance(io, ScriptedIO):
+                if kind == "char":
+                    char = chr(value)
+                    self._writer.write(io, char, first=partial(io.print_char, char))
+                else:
+                    self._writer.write(
+                        io, format_integer(value), first=partial(io.print_num, value)
+                    )
             else:
-                self.io.print_num(value)
+                self.state = state
+                if kind == "char":
+                    io.print_char(chr(value))
+                else:
+                    io.print_num(value)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

@@ -99,6 +99,7 @@ from esolangs.runtime._json import record_dumps
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import native_file_terminator
 from esolangs.runtime._validate import _argument_repr
+from esolangs.runtime.memory import format_integer
 
 
 def describe(language: str, *, catalog: Catalog | None = None) -> LanguageInfo:
@@ -405,9 +406,9 @@ def _generate(rest: list[str]) -> None:
     catalog = get_catalog()
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten, catalog=catalog)
     language, table = rest
-    settings = _settings_of(settings_arguments, language=language, catalog=catalog)
     try:
         declaration = catalog.languages[catalog.resolve(language)]
+        settings = _settings_of(settings_arguments, language=language, catalog=catalog)
         row = _generation_bits(declaration, table, bits, gzip=gzip)
         # Widthed at both ends, and that is not a mistake.  ``generate``
         # wraps the template (or hands the width to a *layout* language,
@@ -435,7 +436,14 @@ def _generate(rest: list[str]) -> None:
         if isinstance(program, CompressedText) and "--plain" in flags:
             program.plain_chunks()  # Check the export budget before writing anything.
     except EsolangError as exc:
-        _fail(_generate_hint(exc, language, table, catalog=catalog))
+        repair_options = [
+            *sorted(flags),
+            *(f"{name}={value}" for name, value in options.items()),
+            *(f"--set={pair}" for pair in set_pairs),
+        ]
+        if width is not None:
+            repair_options.append(f"--width={format_integer(width)}")
+        _fail(_generate_hint(exc, language, table, repair_options, catalog=catalog))
     if (width is not None or bare or balance) and _layout_ignored(
         declaration, balance=balance
     ):

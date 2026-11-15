@@ -42,6 +42,7 @@ from esolangs.runtime._source import (
     effective_scale,
     source_for,
 )
+from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO, _scripted_io
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
@@ -134,7 +135,7 @@ class PreparedProgram:
         """Retain validated dialect options and immutable shaped source."""
         from esolangs.operations.source import _check_program
 
-        if not isinstance(self.artifact, ProgramArtifact):
+        if not _has_backing_type(self.artifact, ProgramArtifact):
             raise ProgramError("a prepared program requires a program artifact")
         catalog = get_catalog(self.catalog)
         origin = self.artifact.language
@@ -147,7 +148,7 @@ class PreparedProgram:
         )
         check_scale_for(artifact.language, artifact.scale, catalog=catalog)
         source = artifact.source
-        if isinstance(source, CompressedText):
+        if _has_backing_type(source, CompressedText):
             source = source_for(artifact.language, source, catalog=catalog)
         runnable = artifact
         if source is not artifact.source:

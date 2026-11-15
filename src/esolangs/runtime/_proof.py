@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from esolangs.results import ExecutionResult
 from esolangs.runtime._lifecycle import BoundaryCycle
+from esolangs.runtime._validate import _has_backing_type
 
 if TYPE_CHECKING:
     from esolangs.exceptions import EsolangError
@@ -25,7 +26,7 @@ def branch_outcomes[T](
     outcomes: list[T | BranchFailure],
 ) -> tuple[T | BranchFailure, ...] | None:
     """Keep failed alternatives when they share a transition with other paths."""
-    if len(outcomes) == 1 and isinstance(outcome := outcomes[0], BranchFailure):
+    if len(outcomes) == 1 and _has_backing_type(outcome := outcomes[0], BranchFailure):
         if outcome.error is not None:
             raise outcome.error from None
         return None
@@ -53,13 +54,15 @@ class BranchProof:
 
     def __post_init__(self) -> None:
         """Require immutable, root-reachable evidence and a valid endpoint/closure."""
-        if not isinstance(self.transitions, tuple) or any(
-            not isinstance(row, tuple) or len(row) != 2 or not isinstance(row[1], tuple)
-            for row in self.transitions
+        transitions = self.transitions
+        if type(transitions) is not tuple or any(
+            type(row) is not tuple or len(row) != 2 or type(row[1]) is not tuple
+            for row in transitions
         ):
-            raise ValueError("invalid branching evidence containers")
-        graph = dict(self.transitions)
-        if len(graph) != len(self.transitions) or type(self.halts) is not bool:
+            transitions = _freeze_transitions(transitions)
+            object.__setattr__(self, "transitions", transitions)
+        graph = dict(transitions)
+        if len(graph) != len(transitions) or type(self.halts) is not bool:
             raise ValueError("invalid branching evidence")
         reachable: set[Hashable] = set()
         pending = [self.root]
@@ -96,6 +99,23 @@ class BranchProof:
         return any(len(successors) > 1 for _, successors in self.transitions)
 
 
+def _freeze_transitions(
+    transitions: tuple[tuple[Hashable, tuple[Hashable, ...]], ...],
+) -> tuple[tuple[Hashable, tuple[Hashable, ...]], ...]:
+    """Validate and freeze actual tuple storage at every graph level."""
+    if not _has_backing_type(transitions, tuple):
+        raise ValueError("invalid branching evidence containers")
+    rows = []
+    for row in tuple.__iter__(transitions):
+        if not _has_backing_type(row, tuple) or tuple.__len__(row) != 2:
+            raise ValueError("invalid branching evidence containers")
+        state, successors = tuple.__iter__(row)
+        if not _has_backing_type(successors, tuple):
+            raise ValueError("invalid branching evidence containers")
+        rows.append((state, tuple(tuple.__iter__(successors))))
+    return tuple(rows)
+
+
 class CycleDecision(NamedTuple):
     """A proved halt or exact repetition; branching counts states, not commands."""
 
@@ -116,11 +136,11 @@ class CycleDecision(NamedTuple):
 
 def checked_decision(value: object) -> CycleDecision:
     """Reject Boolean returns and decisions missing their claimed evidence."""
-    if not isinstance(value, CycleDecision) or type(value.halts) is not bool:
+    if not _has_backing_type(value, CycleDecision) or type(value.halts) is not bool:
         raise ValueError("termination requires decision evidence")
     if value.branches is not None:
         if (
-            not isinstance(value.branches, BranchProof)
+            not _has_backing_type(value.branches, BranchProof)
             or value.branches.halts is not value.halts
             or value.cycle is not None
             or value.commands is not None
@@ -134,7 +154,7 @@ def checked_decision(value: object) -> CycleDecision:
         if value.cycle is not None:
             raise ValueError("a halted decision cannot claim a cycle")
     elif (
-        not isinstance(value.cycle, BoundaryCycle)
+        not _has_backing_type(value.cycle, BoundaryCycle)
         or value.cycle.commands_per_pass != 1
         or value.cycle.repeat_pass != value.commands
     ):
@@ -152,9 +172,9 @@ class TerminationResult(NamedTuple):
 def checked_termination(value: object) -> TerminationResult:
     """Require observed IO and valid proof without claiming finalized output."""
     if (
-        not isinstance(value, TerminationResult)
-        or not isinstance(value.observation, ExecutionResult)
-        or not isinstance(value.observation.output, str)
+        not _has_backing_type(value, TerminationResult)
+        or not _has_backing_type(value.observation, ExecutionResult)
+        or not _has_backing_type(value.observation.output, str)
         or value.observation.completion is not None
     ):
         raise ValueError("termination requires an unfinalized IO observation")

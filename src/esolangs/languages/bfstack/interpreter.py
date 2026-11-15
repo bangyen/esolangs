@@ -19,6 +19,7 @@ Errors:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from types import MappingProxyType
 from typing import Any, NamedTuple
 
@@ -29,8 +30,12 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+)
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -130,6 +135,7 @@ class _Machine:
     def __init__(self, code: str | _Image, io: IO) -> None:
         """Start with an empty data stack and loop stack."""
         self.io = io
+        self._writer = _BufferedOutput()
         self.code, self._jumps = (
             _prepare_source(code) if isinstance(code, str) else code
         )
@@ -177,10 +183,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
+        instruction = self.state.ind
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             data_stack=self.state.stk,
             loop_stack=self.state.lst,
-            instruction=self.state.ind,
+            instruction=(
+                instruction
+                if accepted is None
+                else WorkspaceVariant("pending_output", (instruction, accepted))
+            ),
             input_cursor=self.io.progress(),
         )
 
@@ -188,7 +200,9 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # Both stacks are already tuples, so they go in as they stand.
         ind, stk, lst = self.state
-        return (stk, lst, ind, self.io.progress())
+        boundary = (stk, lst, ind, self.io.progress())
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.
@@ -219,7 +233,12 @@ class _Machine:
             raise syntax_error("unmatched '['", "close the loop with ]")
         byte = None
         if char == ".":
-            self.io.print_char(chr(stk[-1]))
+            io = self.io
+            out = chr(stk[-1])
+            if isinstance(io, ScriptedIO):
+                self._writer.write(io, out, first=partial(io.print_char, out))
+            else:
+                io.print_char(out)
         elif char == ",":
             byte = self.io.input_char()
         self.state = _advance(self.state, self.code, self._jumps, byte)

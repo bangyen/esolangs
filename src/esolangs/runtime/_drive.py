@@ -39,7 +39,7 @@ def finalize(
     policy: Completion,
 ) -> None:
     """Write final output after a halt or an evidenced boundary repetition."""
-    if not isinstance(policy, Completion):
+    if type(policy) is not Completion:
         raise TypeError("completion must be a Completion policy")
     if policy is Completion.PERIODIC:
         if cycle is None:
@@ -61,7 +61,7 @@ def finalize(
 
 def drive(machine: Machine, *, policy: Completion) -> CompletionReport:
     """Run to halt, including a language's declared final output step."""
-    if not isinstance(policy, Completion):
+    if type(policy) is not Completion:
         raise TypeError("completion must be a Completion policy")
     while not machine.halted:
         machine.step()

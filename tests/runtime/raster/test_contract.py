@@ -604,11 +604,15 @@ def test_png_owner_cannot_be_reassigned_by_a_catalog_alias(tmp_path: Path) -> No
 
 def test_scoped_png_writers_resolve_source_aliases_without_settings(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     alias = "my-drawing"
     declaration = LANGUAGES[RASTER_LANGUAGES[0]]
-    scoped = replace(declaration, name="Scoped Drawing", id="", aliases=(alias,))
+    scoped = replace(
+        declaration, name="Scoped Drawing", id="", aliases=(alias, REFERENCE)
+    )
     api = esolangs.Catalog([scoped]).bind(alias)
+    text_catalog = esolangs.Catalog([replace(LANGUAGES[REFERENCE], aliases=(alias,))])
     program = api.generate("01")
     assert isinstance(program, esolangs.ProgramArtifact)
     assert isinstance(program.source, Raster)
@@ -619,31 +623,57 @@ def test_scoped_png_writers_resolve_source_aliases_without_settings(
     raw = program.source.to_png()
     document = json.loads(api.to_json(program))
 
-    for tagged in (
-        png.attach_source_metadata(
+    writers = (
+        lambda name, catalog: png.attach_source_metadata(
             raw,
-            alias,
+            name,
             None,
             program.scale,
             input_arity=program.input_arity,
-            catalog=api.catalog,
+            catalog=catalog,
         ),
-        png.write_source(
+        lambda name, catalog: png.write_source(
             program.source.rows,
-            alias,
+            name,
             None,
             program.scale,
             input_arity=program.input_arity,
-            catalog=api.catalog,
+            catalog=catalog,
         ),
-    ):
-        assert tagged == canonical
+    )
+    for write in writers:
+        tagged = write(alias, api.catalog)
+        assert tagged == write(REFERENCE, api.catalog) == canonical
+        for spelling in (alias, REFERENCE):
+            with pytest.raises(esolangs.ArgumentError, match="requires text source"):
+                write(spelling, text_catalog)
         path.write_bytes(tagged)
         restored = api.from_file(path)
         assert restored == program
         assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
         document["source"] = base64.b64encode(tagged).decode("ascii")
         assert api.from_json(json.dumps(document)) == program
+
+        unscoped = write(REFERENCE, None)
+        assert png.read_metadata(unscoped)["language"] == REFERENCE
+        with pytest.raises(esolangs.ProgramError, match="requires text source"):
+            png.attach_source_metadata(unscoped, None, None, 1, catalog=text_catalog)
+        with pytest.raises(esolangs.ProgramError, match="stored PNG language"):
+            png.attach_source_metadata(unscoped, alias, None, 1, catalog=api.catalog)
+
+    text_settings = text_catalog.bind(REFERENCE).settings()
+    with pytest.raises(esolangs.ArgumentError, match="requires text source"):
+        png.attach_source_metadata(raw, None, text_settings, None, catalog=text_catalog)
+    fixture = png.write_metadata(raw, {"version": 1, "language": REFERENCE})
+    assert png.read_metadata(fixture)["language"] == REFERENCE
+    monkeypatch.setattr(png, "Image", None)
+    for write in writers:
+        with pytest.raises(esolangs.ArgumentError, match="requires text source"):
+            write(alias, text_catalog)
+    attach, encode = writers
+    assert attach(alias, api.catalog) == canonical
+    with pytest.raises(esolangs.MissingDependencyError, match="image support"):
+        encode(alias, api.catalog)
 
 
 def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
@@ -686,8 +716,10 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
     declaration = installed.catalog.languages[name]
     schema = esolangs.DialectSchema(name, {"mode": (0, 1)}, {"mode": 0})
     failures: list[Exception] = []
+    validations = []
 
     def validate(**choices):
+        validations.append(choices)
         if failures:
             raise failures[-1]
         return choices
@@ -696,8 +728,21 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
     scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(name)
     settings = scoped.settings()
     artifact = replace(installed.generate("01", scale=2), settings=settings)
+    raw = artifact.source.to_png()
+    writers = (
+        lambda: png.write_source(
+            artifact.source.rows, name, settings, 2, catalog=scoped.catalog
+        ),
+        lambda: png.attach_source_metadata(
+            raw, name, settings, 2, catalog=scoped.catalog
+        ),
+    )
+    for write in writers:
+        validations.clear()
+        write()
+        assert validations == [{}]
     legacy = png.write_metadata(
-        artifact.source.to_png(),
+        raw,
         {"version": 1, "language": name, "settings": {"mode": 1}},
     )
     assert (
@@ -738,6 +783,7 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
             lambda: scoped.prepare(path),
             lambda: scoped.from_json(portable),
             lambda: scoped.from_source(artifact.source, settings=settings),
+            *writers,
         ):
             with pytest.raises(type(error)) as caught:
                 load()

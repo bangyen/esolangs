@@ -65,6 +65,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Mapping, Sequence
+from functools import partial
 from operator import floordiv, mod
 from types import MappingProxyType
 from typing import Any
@@ -77,9 +78,13 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import text_source
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
-from esolangs.runtime.memory import parse_integer
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+)
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _SPACE, _TAB, _LINE = " ", "\t", "\n"
@@ -355,6 +360,7 @@ class _Machine:
             _prepare_source(code) if isinstance(code, str) else code
         )
         self.io = io
+        self._writer = _BufferedOutput()
         self.state: _State = (0, (), (), (), False)
 
     @property
@@ -375,13 +381,20 @@ class _Machine:
         return list(self.state[1])
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Count logical fields; ended records END, not falling off the code."""
         pc, stack, heap, calls, ended = self.state
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=pc,
+            instruction=(
+                pc
+                if accepted is None
+                else WorkspaceVariant("pending_output", (pc, accepted))
+            ),
             stack=tuple(stack),
             heap=tuple(heap),
             return_stack=tuple(calls),
@@ -402,15 +415,27 @@ class _Machine:
                 char_input = self.io.input_char()
             else:
                 number_input = _parse_number(self.io.input_str())
-        self.state, effect = _advance(
+        state, effect = _advance(
             self.state, self.instructions, self.labels, char_input, number_input
         )
-        if effect:
+        if effect is not None:
             out_kind, value = effect
-            if out_kind == "char":
-                self.io.print_char(chr(value))
+            io = self.io
+            if isinstance(io, ScriptedIO):
+                if out_kind == "char":
+                    char = chr(value)
+                    self._writer.write(io, char, first=partial(io.print_char, char))
+                else:
+                    self._writer.write(
+                        io, format_integer(value), first=partial(io.print_num, value)
+                    )
             else:
-                self.io.print_num(value)
+                self.state = state
+                if out_kind == "char":
+                    io.print_char(chr(value))
+                else:
+                    io.print_num(value)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

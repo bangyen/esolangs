@@ -21,6 +21,7 @@ from esolangs.exceptions import (
     UnknownLanguageError,
 )
 from esolangs.results import CompletionReport, ExecutionResult
+from esolangs.runtime._validate import _has_backing_type
 
 OutcomeStatus = Literal["completed", "rejected", "input_exhausted", "limit", "fault"]
 
@@ -74,12 +75,12 @@ def _remember_failure_evidence(
 
 
 def _failure_status(error: EsolangError) -> OutcomeStatus:
-    if isinstance(error, InputExhaustedError):
+    if _has_backing_type(error, InputExhaustedError):
         return "input_exhausted"
-    if isinstance(error, (ExecutionBudgetError, InterpreterLimitError)):
+    if issubclass(type(error), (ExecutionBudgetError, InterpreterLimitError)):
         return "limit"
-    if isinstance(
-        error,
+    if issubclass(
+        type(error),
         (
             ArgumentError,
             ProgramError,
@@ -106,7 +107,7 @@ class ExecutionOutcome:
 
     def __post_init__(self) -> None:
         """Require completion evidence or a matching unfinished failure."""
-        if not isinstance(self.observation, ExecutionResult):
+        if not _has_backing_type(self.observation, ExecutionResult):
             raise ArgumentError("an outcome requires an execution observation")
         status: str = self.status
         if type(status) is not str:
@@ -115,12 +116,12 @@ class ExecutionOutcome:
             status = str.__str__(status)
             object.__setattr__(self, "status", status)
         if self.error is None:
-            if status != "completed" or not isinstance(
+            if status != "completed" or not _has_backing_type(
                 self.observation.completion, CompletionReport
             ):
                 raise ArgumentError("a completed outcome requires completion evidence")
         elif (
-            not isinstance(self.error, EsolangError)
+            not _has_backing_type(self.error, EsolangError)
             or status != _failure_status(self.error)
             or self.observation.completion is not None
         ):
@@ -131,10 +132,10 @@ class ExecutionOutcome:
     @property
     def bound(self) -> str | None:
         """The exhausted caller-set budget, when the error declares one."""
-        if isinstance(self.error, ExecutionBudgetError):
+        if _has_backing_type(self.error, ExecutionBudgetError):
             bound = getattr(self.error, "bound", None)
-            if isinstance(bound, str):
-                return bound
+            if _has_backing_type(bound, str):
+                return str.__str__(bound)
         return None
 
     def unwrap(self) -> ExecutionResult:
@@ -153,7 +154,7 @@ def _failed_outcome(
         if observation is None:
             observation = ExecutionResult(error.partial_output, None, None, None)
         elif (
-            isinstance(observation, ExecutionResult)
+            _has_backing_type(observation, ExecutionResult)
             and observation.completion is not None
         ):
             observation = _UNOBSERVED

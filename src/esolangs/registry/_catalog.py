@@ -36,7 +36,7 @@ class Catalog:
             raise ArgumentError(
                 "catalog requires iterable LanguageDeclaration records"
             ) from error
-        if any(not isinstance(lang, LanguageDeclaration) for lang in records):
+        if any(not _has_backing_type(lang, LanguageDeclaration) for lang in records):
             raise ArgumentError("catalog entries must be LanguageDeclaration records")
         languages = {lang.name: lang for lang in records}
         if len(languages) != len(records):
@@ -175,7 +175,7 @@ def get_catalog(catalog: Catalog | None = None) -> Catalog:
         from esolangs.registry._table import CATALOG
 
         return CATALOG
-    if not isinstance(catalog, Catalog):
+    if not _has_backing_type(catalog, Catalog):
         raise ArgumentError("catalog must be a Catalog")
     return catalog
 

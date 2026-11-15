@@ -47,6 +47,7 @@ from esolangs.registry import (
 )
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._validate import (
+    _has_backing_type,
     check_bit_count,
     check_bits,
     check_flag,
@@ -568,17 +569,18 @@ def instantiate(
     width = check_width(width)
     body = (
         template.source
-        if isinstance(template, (ProgramArtifact, TemplateArtifact))
+        if _has_backing_type(template, ProgramArtifact)
+        or _has_backing_type(template, TemplateArtifact)
         else template
     )
-    if isinstance(body, Raster):
+    if _has_backing_type(body, Raster):
         raise _raster_template_error(
             f"{name} source is a Raster, and raster programs read their "
             "inputs rather than embedding them, so there is nothing to instantiate"
         )
     if not catalog.languages[name].parameterized:
         raise _stdin_template_error(name)
-    if not isinstance(template, TemplateArtifact):
+    if not _has_backing_type(template, TemplateArtifact):
         raise with_hint(
             TemplateError(
                 "template must be the TemplateArtifact generate() returned, "

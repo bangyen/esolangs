@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from esolangs.artifacts import (
     Artifact,
     BooleanEvaluation,
@@ -19,7 +21,7 @@ from esolangs.operations.execution import _execute_outcome, _execution_route
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._prepared import PreparedProgram
 from esolangs.runtime._program import Program
-from esolangs.runtime._validate import check_bit_count, check_bits
+from esolangs.runtime._validate import _has_backing_type, check_bit_count, check_bits
 
 
 def evaluate_artifact(
@@ -33,7 +35,7 @@ def evaluate_artifact(
     """Bind or encode one row, then decode the answer using its contract."""
     from esolangs.registry._catalog import get_catalog, resolve_origin
 
-    if limits is not None and not isinstance(limits, ExecutionLimits):
+    if limits is not None and not _has_backing_type(limits, ExecutionLimits):
         raise ArgumentError("limits must be ExecutionLimits or None")
     catalog = get_catalog(catalog)
     origin = artifact.language
@@ -49,11 +51,11 @@ def evaluate_artifact(
     row = check_bits(
         bits,
         "bits",
-        allow_empty=isinstance(artifact, TemplateArtifact)
+        allow_empty=_has_backing_type(artifact, TemplateArtifact)
         and artifact.bindings.inputs == 0,
     )
     program: ProgramArtifact[Program]
-    if isinstance(artifact, TemplateArtifact):
+    if _has_backing_type(artifact, TemplateArtifact):
         if not declaration.parameterized:
             raise TemplateError(f"{name} has no template generator")
         program = artifact.fill(row)
@@ -64,7 +66,7 @@ def evaluate_artifact(
                 f"{name} embeds its inputs in the program; pass the unfilled "
                 "template to evaluate or run the filled program"
             )
-        program = artifact
+        program = cast("ProgramArtifact[Program]", artifact)
         if program.input_arity is not None:
             check_bit_count(row, program.input_arity, f"{name} program")
         stdin = encode_inputs(name, row, catalog=catalog)
@@ -150,7 +152,10 @@ def evaluate(
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    if not isinstance(artifact, (ProgramArtifact, TemplateArtifact)):
+    if not (
+        _has_backing_type(artifact, ProgramArtifact)
+        or _has_backing_type(artifact, TemplateArtifact)
+    ):
         raise ProgramError("evaluation requires a program or template artifact")
     from esolangs.operations.source import check_origin
 

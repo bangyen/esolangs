@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from reprlib import recursive_repr
 
+from esolangs.runtime._validate import _has_backing_type
+
 
 class Completion(StrEnum):
     """When a machine's final output can be written."""
@@ -60,10 +62,10 @@ class CompletionReport:
 
     def __post_init__(self) -> None:
         """Require cycle evidence exactly for periodic completion."""
-        if not isinstance(self.kind, Completion):
+        if type(self.kind) is not Completion:
             raise ValueError("completion kind must be a Completion policy")
         if self.kind is Completion.PERIODIC:
-            if not isinstance(self.cycle, BoundaryCycle):
+            if not _has_backing_type(self.cycle, BoundaryCycle):
                 raise ValueError("periodic completion requires cycle evidence")
         elif self.cycle is not None:
             raise ValueError("only periodic completion accepts cycle evidence")

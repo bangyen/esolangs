@@ -34,6 +34,7 @@ from esolangs.generation.token_balance import (
     balanced_token_width,
     rendered_side,
 )
+from esolangs.runtime._validate import _has_backing_type
 
 if TYPE_CHECKING:
     from esolangs.registry._backend import BooleanBackend
@@ -326,7 +327,7 @@ def wrap_program(
 
 def _wrapped_text(result: object, language_id: str) -> str:
     """Require text from a declared source reflow."""
-    if not isinstance(result, str):
+    if not _has_backing_type(result, str):
         raise ProgramError(f"{language_id}'s wrapper did not return text")
     return str.__str__(result)
 

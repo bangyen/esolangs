@@ -93,6 +93,10 @@ def test_validation_uses_backing_types_without_reading_class_properties() -> Non
         def __repr__(self) -> str:
             raise ValueError("unavailable representation")
 
+    language = esolangs.Language(REFERENCE)
+    artifact = language.generate("01")
+    debugger = language.make_debugger("+.")
+    disguised_limits = Disguise(esolangs.ExecutionLimits)
     for name, invoke in (
         ("max_steps", lambda: esolangs.ExecutionLimits(max_steps=Disguise(int))),
         ("max_memory", lambda: esolangs.ExecutionLimits(max_memory=Disguise(int))),
@@ -105,10 +109,22 @@ def test_validation_uses_backing_types_without_reading_class_properties() -> Non
         ("isolated", lambda: esolangs.run(REFERENCE, "+.", isolated=Disguise(bool))),
         ("bits", lambda: esolangs.encode_inputs(REFERENCE, [Disguise(int)])),
         ("bits", lambda: esolangs.encode_inputs(REFERENCE, Disguise(list))),
+        (
+            "catalog",
+            lambda: esolangs.Language(REFERENCE, catalog=Disguise(esolangs.Catalog)),
+        ),
+        (
+            "catalog entries",
+            lambda: esolangs.Catalog([Disguise(esolangs.LanguageDeclaration)]),
+        ),
+        ("limits", lambda: language.run("+.", limits=disguised_limits)),
+        ("limits", lambda: artifact.evaluate([1], limits=disguised_limits)),
+        ("limits", lambda: debugger.run(limits=disguised_limits)),
     ):
         with pytest.raises(esolangs.ArgumentError, match=name):
             invoke()
     assert not probes
+    assert not debugger.halted
 
 
 def test_large_artifact_and_dialect_metadata_repr() -> None:

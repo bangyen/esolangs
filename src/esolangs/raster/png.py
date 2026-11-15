@@ -660,8 +660,18 @@ def _retained_owner(
         if canonical is None:
             raise ValueError(f"stored PNG language {owner!r} is not a catalog owner")
         if requested in (None, canonical):
+            _check_png_owner(canonical, catalog, error_type=ValueError)
             return canonical
     raise ValueError(f"conflicting PNG language {owner!r} and {requested!r}")
+
+
+def _check_png_owner(
+    owner: str, catalog: Catalog, *, error_type: type[ValueError]
+) -> None:
+    from esolangs.runtime._definition import SourceKind
+
+    if catalog.languages[owner].runtime.source_kind is not SourceKind.RASTER:
+        raise error_type(f"{owner} requires text source, but the program is a PNG")
 
 
 def _check_retained_settings(
@@ -744,10 +754,15 @@ def write_source(
     catalog: Catalog | None = None,
 ) -> bytes:
     """Encode pixels and explicit native source metadata without retagging."""
-    image = write_rgb(pixels)
     try:
-        return attach_source_metadata(
-            image, language, settings, scale, input_arity=input_arity, catalog=catalog
+        claims = _source_claims(
+            language, settings, scale, input_arity=input_arity, catalog=catalog
+        )
+        image = write_rgb(pixels)
+        return (
+            image
+            if claims is None
+            else _attach_metadata(image, claims, catalog=catalog)
         )
     except SourceMetadataSizeError as error:
         raise ProgramError(str(error)) from error
@@ -763,12 +778,29 @@ def attach_source_metadata(
     catalog: Catalog | None = None,
 ) -> bytes:
     """Add absent source claims to PNG bytes, refusing conflicting metadata."""
+    claims = _source_claims(
+        language, settings, scale, input_arity=input_arity, catalog=catalog
+    )
+    if claims is None:
+        return _backing_bytes(data)
+    return _attach_metadata(data, claims, catalog=catalog)
+
+
+def _source_claims(
+    language: str | None,
+    settings: DialectSettings | None,
+    scale: int | None,
+    *,
+    input_arity: int | None,
+    catalog: Catalog | None,
+) -> dict[str, Any] | None:
+    """Validate incoming claims before acquiring image support or scanning PNG."""
     if catalog is not None:
         from esolangs.registry._catalog import get_catalog
 
         catalog = get_catalog(catalog)
     if language is None and settings is None and scale is None and input_arity is None:
-        return _backing_bytes(data)
+        return None
     if language is not None:
         if not _has_backing_type(language, str):
             raise ArgumentError("PNG language must be a string")
@@ -810,8 +842,10 @@ def attach_source_metadata(
         if type(input_arity) is not int or input_arity < 1:
             raise ArgumentError("input_arity must be a positive integer")
         metadata["input_arity"] = input_arity
-    if catalog is not None and settings is not None:
-        from esolangs.settings import dialect_options
+    if catalog is not None and language is not None:
+        _check_png_owner(language, catalog, error_type=ArgumentError)
+        if settings is not None:
+            from esolangs.settings import dialect_options
 
-        dialect_options(settings.language, settings, catalog=catalog)
-    return _attach_metadata(data, metadata, catalog=catalog)
+            dialect_options(language, settings, catalog=catalog)
+    return metadata

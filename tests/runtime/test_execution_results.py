@@ -19,6 +19,17 @@ from esolangs.runtime.io import ScriptedIO
 from tests.support.reference import REFERENCE
 
 
+class _ClaimedType:
+    def __init__(self, claim: type) -> None:
+        self.claim = claim
+        self.probes = 0
+
+    @property
+    def __class__(self) -> type:
+        self.probes += 1
+        return self.claim
+
+
 def test_result_retains_character_cursor_reads_and_caught_eof():
     report = CompletionReport(Completion.HALTED)
 
@@ -47,8 +58,11 @@ def test_a_return_without_a_report_is_not_completion(value):
 
 
 def test_declared_runner_requires_a_report_and_keeps_partial_output():
+    pretend = _ClaimedType(CompletionReport)
+
     def execute(_source, io):
         io.print_str("prefix")
+        return pretend
 
     outcome = execute_prepared(REFERENCE, execute, "", ScriptedIO())
     assert outcome.status == "limit"
@@ -58,6 +72,7 @@ def test_declared_runner_requires_a_report_and_keeps_partial_output():
     assert caught.value is outcome.error
     assert caught.value.partial_output == "prefix"
     assert caught.value.observation == ExecutionResult("prefix", 0, 0, 0)
+    assert pretend.probes == 0
 
 
 @pytest.mark.parametrize("kind", [Completion.HALTED, Completion.POST_HALT])
@@ -100,6 +115,30 @@ def test_public_records_require_valid_evidence() -> None:
         BooleanEvaluation("1", unfinished, termination=True)
     with pytest.raises(ArgumentError, match="unfinalized"):
         BooleanEvaluation("1", completed, termination=proof)
+    with pytest.raises(ArgumentError, match="requires an execution observation"):
+        ExecutionOutcome("completed", _ClaimedType(ExecutionResult))
+    with pytest.raises(ArgumentError, match="completion evidence"):
+        ExecutionResult("", 0, 0, 0, completion=_ClaimedType(CompletionReport))
+    with pytest.raises(ValueError, match="requires cycle evidence"):
+        CompletionReport(Completion.PERIODIC, _ClaimedType(BoundaryCycle))
+    with pytest.raises(ArgumentError, match="decision evidence"):
+        BooleanEvaluation("1", unfinished, termination=_ClaimedType(CycleDecision))
+    with pytest.raises(ValueError, match="branching evidence containers"):
+        BranchProof(0, _ClaimedType(tuple), halts=True, terminal=1)
+    with pytest.raises(ValueError, match="branching evidence containers"):
+        BranchProof(0, ((0, _ClaimedType(tuple)),), halts=True, terminal=1)
+
+    class StoredTuple(tuple):
+        def __iter__(self):
+            raise AssertionError("use backing graph tuples")
+
+        def __getitem__(self, _key):
+            raise AssertionError("use backing graph rows")
+
+    stored_rows = StoredTuple((StoredTuple((0, StoredTuple((1,)))),))
+    assert BranchProof(0, stored_rows, halts=True, terminal=1).transitions == (
+        (0, (1,)),
+    )
 
 
 def test_execution_records_use_the_backing_text() -> None:

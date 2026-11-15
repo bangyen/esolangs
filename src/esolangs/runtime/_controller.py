@@ -11,7 +11,7 @@ from esolangs.exceptions import ArgumentError, EsolangError, steps_exhausted
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome, _failed_outcome
 from esolangs.results import Completion, CompletionReport, ExecutionResult
-from esolangs.runtime._validate import _argument_repr
+from esolangs.runtime._validate import _argument_repr, _has_backing_type
 from esolangs.runtime._vm_protocol import VM
 from esolangs.vm import (
     _capture_observation,
@@ -167,7 +167,7 @@ class ExecutionController:
                 need an isolated worker, and a debugger steps in-process.
         """
         selected = ExecutionLimits() if limits is None else limits
-        if not isinstance(selected, ExecutionLimits):
+        if not _has_backing_type(selected, ExecutionLimits):
             raise ArgumentError("limits must be ExecutionLimits or None")
         for name in (
             "preparation_timeout",

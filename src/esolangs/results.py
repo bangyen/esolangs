@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
+from esolangs.runtime._validate import _has_backing_type
 
 __all__ = ["BoundaryCycle", "Completion", "CompletionReport", "ExecutionResult"]
 
@@ -68,7 +69,7 @@ class ExecutionResult:
             return "invalid execution counter"
         completion: object = self.completion
         if completion is not None:
-            if not isinstance(completion, CompletionReport):
+            if not _has_backing_type(completion, CompletionReport):
                 return "invalid execution completion evidence"
             cycle = completion.cycle
             if (

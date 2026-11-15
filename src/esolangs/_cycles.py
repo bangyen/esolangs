@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_check
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchFailure, BranchProof, CycleDecision
-from esolangs.runtime._validate import check_whole
+from esolangs.runtime._validate import _has_backing_type, check_whole
 from esolangs.runtime.source_hints import with_hint
 
 if TYPE_CHECKING:
@@ -469,7 +469,7 @@ def _branch_search(
         if transitions is not None:
             transitions.append((state, tuple(successors)))
         for outcome in successors:
-            if type(outcome) is BranchFailure:
+            if _has_backing_type(outcome, BranchFailure):
                 if failure is None:
                     failure = (
                         _unforkable_branch() if outcome.error is None else outcome.error

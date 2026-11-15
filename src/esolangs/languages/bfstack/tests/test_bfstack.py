@@ -18,6 +18,7 @@ from tests.interpreters.contract import (
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_lines
 from tests.support.raises import assert_rejected_with_hint, raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = run_lines(run)
 
@@ -81,6 +82,10 @@ class TestBFStack:
 
         check_image_reuse(
             "BFStack", ">[+],.", interpreter, "_prepare_source", monkeypatch
+        )
+
+        assert_rejected_output_retry(
+            "BFStack", ">+.", "\x01", "\x01", prefix=2, monkeypatch=monkeypatch
         )
 
     def test_loop_skip_unmatched(self) -> None:
