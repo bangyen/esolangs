@@ -604,6 +604,9 @@ def instantiate(
                 ),
                 "regenerate the template from the intended language and truth table",
             )
+    else:
+        # With a table, generation validates the effective dialect.
+        dialect_options(name, settings, catalog=catalog, validate_defaults=True)
     filled = template.fill(bits)
     program = wrap_program(
         filled.source, catalog.languages[name].id, width, catalog=catalog

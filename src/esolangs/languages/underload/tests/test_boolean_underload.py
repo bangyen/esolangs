@@ -8,6 +8,7 @@ import esolangs
 from esolangs import run as execute
 from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.helpers import _validate_truth_table, constant_span_test
+from esolangs.languages.underload import interpreter
 from esolangs.languages.underload.generator import PAIR, underload, underload_setters
 from esolangs.languages.underload.interpreter import run
 from esolangs.runtime.io import ScriptedIO
@@ -102,7 +103,7 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
             assert verify_generated("Underload", table), table
 
 
-def test_short_selectors_keep_public_provenance_and_uniform_width() -> None:
+def test_short_selectors_keep_public_provenance_and_uniform_width(monkeypatch) -> None:
     for width in (1, 2, 3, 4, 5, 13, 40, 80):
         table = "0110"
         template = esolangs.generate("Underload", table, width=width)
@@ -138,6 +139,55 @@ def test_short_selectors_keep_public_provenance_and_uniform_width() -> None:
             plain,
             lambda width, table=table: underload(table, width),
         )
+
+    _check_scoped_portable_bindings(monkeypatch)
+
+
+def _check_scoped_portable_bindings(monkeypatch) -> None:
+    language = esolangs.Language("Underload")
+    declaration = language.catalog.languages[language.name]
+
+    def validate(**options):
+        if options.get("left") == 2 and options.get("right") == 1:
+            raise esolangs.ArgumentError("left=2 requires right=2")
+
+    def scoped_execute(code, io, *, left=1, right=1):
+        validate(left=left, right=right)
+        return interpreter._execute(code, io)
+
+    monkeypatch.setattr(interpreter, "scoped_execute", scoped_execute, raising=False)
+    schema = esolangs.DialectSchema(
+        language.name, {"left": (1, 2), "right": (1, 2)}, {"left": 1, "right": 1}
+    )
+    runtime = replace(
+        declaration.runtime,
+        dialect=validate,
+        dialect_schema=schema,
+        completion_entrypoint="scoped_execute",
+    )
+    catalog = esolangs.Catalog([replace(declaration, runtime=runtime)])
+    scope = catalog.bind(language.name)
+    template = scope.generate("01")
+    assert isinstance(template, esolangs.TemplateArtifact)
+    partial = replace(template, settings=scope.settings(left=2))
+    restored = scope.from_json(scope.to_json(partial))
+    assert restored.settings.options() == {"left": 2}
+    sparse = replace(template, settings=scope.settings(right=2))
+
+    for table in (None, "01"):
+        with pytest.raises(esolangs.ArgumentError, match="left=2 requires right=2"):
+            scope.instantiate(restored, [1], truth_table=table)
+        with pytest.raises(esolangs.ArgumentError, match="exactly 1"):
+            scope.instantiate(restored, [1, 0], truth_table=table)
+
+        filled = scope.instantiate(sparse, [1], truth_table=table)
+        assert filled.settings.options() == {"right": 2}
+        assert scope.run(filled).output == "1"
+        repaired = scope.instantiate(
+            restored, [1], truth_table=table, settings=scope.settings(right=2)
+        )
+        assert repaired.settings.options() == {"left": 2, "right": 2}
+        assert scope.run(repaired).output == "1"
 
 
 def test_short_selector_floor_and_actual_narrow_corpus() -> None:

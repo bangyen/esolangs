@@ -167,12 +167,30 @@ class _ExplicitPath:
     """A file argument whose OS spelling still includes its final component."""
 
     spelling: str
+    _destination: str | OSError | None = None
 
     def __fspath__(self) -> str:
         return self.spelling
 
     def __str__(self) -> str:
         return self.spelling
+
+    def anchor_destination(self) -> "_ExplicitPath":
+        """Freeze the destination spelling, leaving errors to staging."""
+        if self._destination is not None:
+            return self
+        try:
+            return _ExplicitPath(self.spelling, _anchored_spelling(self.spelling))
+        except OSError as error:
+            return _ExplicitPath(self.spelling, error)
+
+    def destination(self) -> str:
+        """Return the target spelling for staging and replacement."""
+        if isinstance(self._destination, OSError):
+            raise self._destination
+        if self._destination is not None:
+            return self._destination
+        return _anchored_spelling(self.spelling)
 
 
 def explicit_path(path: str | PathLike[str]) -> _ExplicitPath:
@@ -224,7 +242,7 @@ def reserve_staged(
     """Reserve an open staging file and yield its write-and-replace operation."""
     if "\0" in target.spelling:
         raise ValueError("embedded null character in path")
-    destination = _anchored_spelling(target.spelling)
+    destination = target.destination()
     parent = os.path.dirname(destination)
     if not os.path.isdir(parent):
         raise FileNotFoundError("its directory does not exist")

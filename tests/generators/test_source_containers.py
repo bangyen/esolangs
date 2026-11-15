@@ -6,6 +6,7 @@ import gzip
 import io
 import json
 import os
+from dataclasses import replace
 from pathlib import Path
 from threading import Event, Thread, current_thread
 from typing import Any
@@ -623,7 +624,7 @@ def test_overlong_export_destination_does_not_consume_source(
         ),
     ],
 )
-def test_stream_export_anchors_relative_destination(
+def test_export_anchors_relative_destination_before_callbacks(
     spelling: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     caller, other = tmp_path / "caller", tmp_path / "other"
@@ -645,6 +646,40 @@ def test_stream_export_anchors_relative_destination(
     assert destination.read_bytes() == b"+."
     assert unrelated.read_bytes() == b"+++."
     assert api.run(destination).output == "\x01"
+
+    declaration = LANGUAGES[REFERENCE]
+    schema = esolangs.DialectSchema(
+        REFERENCE, {"mode": ("hold", "move")}, {"mode": "hold"}
+    )
+    relocate = False
+
+    def validate(mode="hold"):
+        if mode == "move" and relocate:
+            os.chdir(other)
+
+    runtime = replace(declaration.runtime, dialect=validate, dialect_schema=schema)
+    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
+    settings = scoped.settings(mode="move")
+    relocate = True
+    for program, path in (
+        ("+.", target),
+        (api.from_source("+."), target),
+        (io.BytesIO(b"+."), target),
+        ("+.", destination),
+    ):
+        monkeypatch.chdir(caller)
+        destination.write_bytes(b"++.")
+        scoped.to_file(program, path, settings=settings)
+        assert Path.cwd().samefile(other)
+        assert destination.read_bytes() == b"+."
+        assert unrelated.read_bytes() == b"+++."
+        assert api.run(destination).output == "\x01"
+
+    monkeypatch.chdir(caller)
+    with pytest.raises(
+        esolangs.ProgramError, match=r"cannot save program to missing/program:"
+    ):
+        scoped.to_file("+.", "missing/program", settings=settings)
 
 
 @pytest.mark.skipif(os.name != "posix", reason="requires POSIX symlink traversal")

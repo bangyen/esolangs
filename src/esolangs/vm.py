@@ -45,7 +45,12 @@ from esolangs._cycles import (
 from esolangs._cycles import (
     run_until_halt_or_value_growth as run_until_halt_or_value_growth,
 )
-from esolangs.exceptions import ArgumentError, EsolangError, steps_exhausted
+from esolangs.exceptions import (
+    ArgumentError,
+    EsolangError,
+    InterpreterLimitError,
+    steps_exhausted,
+)
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as _IpShape
@@ -168,7 +173,13 @@ class _DelegatingVM:
             factory = program._factory(  # noqa: SLF001
                 seed=seed, reproducible=reproducible
             )
-            self._machine = factory(self._io)
+            machine = factory(self._io)
+            _check_driver(
+                machine,
+                f"{language}'s machine factory result",
+                error_type=InterpreterLimitError,
+            )
+            self._machine = machine
 
     @property
     def output(self) -> str:

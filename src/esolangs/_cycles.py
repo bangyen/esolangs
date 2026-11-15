@@ -75,21 +75,36 @@ class _BranchingStepMachine(Protocol):
 _MISSING = object()
 
 
-def _check_driver(machine: object, argument: str, *fields: str) -> None:
+def _check_driver(
+    machine: object,
+    argument: str,
+    *fields: str,
+    error_type: type[EsolangError] = ArgumentError,
+) -> None:
     """Accept the fields a direct driver needs, including on a forwarding VM."""
     if isinstance(machine, type) or not callable(getattr(machine, "step", None)):
-        raise ArgumentError(f"{argument} must provide a callable step()")
-    _check_driver_fields(machine, argument, "halted", *fields)
+        raise error_type(f"{argument} must provide a callable step()")
+    _check_driver_fields(machine, argument, "halted", *fields, error_type=error_type)
 
 
-def _check_driver_fields(machine: object, argument: str, *fields: str) -> None:
+def _check_driver_fields(
+    machine: object,
+    argument: str,
+    *fields: str,
+    error_type: type[EsolangError] = ArgumentError,
+) -> None:
     """Check fields when the current driver phase needs them."""
+    machine_type = type(machine)
+    # The common case is a property on an ordinary class. A direct class
+    # dictionary lookup avoids descriptor execution and an MRO search.
+    declared = vars(machine_type) if type(machine_type) is type else ()
     for name in fields:
-        # Leave ordinary state properties unevaluated during validation.
-        if getattr_static(machine, name, _MISSING) is _MISSING and not hasattr(
-            machine, name
+        if (
+            name not in declared
+            and getattr_static(machine, name, _MISSING) is _MISSING
+            and not hasattr(machine, name)
         ):
-            raise ArgumentError(f"{argument} must provide a {name} attribute")
+            raise error_type(f"{argument} must provide a {name} attribute")
 
 
 def _checked_adapter(machine: object) -> object:

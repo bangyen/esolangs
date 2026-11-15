@@ -156,7 +156,7 @@ def to_file(
     if type(normalize) is not bool:
         raise ArgumentError("normalize must be a boolean")
     try:
-        target = explicit_path(path)
+        target = explicit_path(path).anchor_destination()
     except EsolangError:
         raise
     except OSError as error:

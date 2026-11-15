@@ -9,7 +9,7 @@ import pytest
 import esolangs
 from esolangs import vm
 from esolangs.languages.brainfuck.interpreter import _Machine, prepare_machine
-from esolangs.results import Completion
+from esolangs.results import Completion, CompletionReport
 from tests.support.reference import REFERENCE
 
 
@@ -180,6 +180,78 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
     for operation in (api.prepare, api.make_vm):
         with pytest.raises(esolangs.InterpreterLimitError, match="no machine factory"):
             operation("+.")
+
+    def prepare(_source, _options):
+        def initialize(io):
+            io.print_char(chr(io.input_char()))
+            return machine
+
+        return initialize
+
+    monkeypatch.setattr(interpreter, "custom_initialize", prepare, raising=False)
+    declaration = api.catalog.languages[api.name]
+    runtime = replace(runtime, machine_preparation="custom_initialize")
+    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    source = "+."
+    prepared = scoped.prepare(source)
+    expected = esolangs.ExecutionResult("A", 1, 1, 0)
+    limits = esolangs.ExecutionLimits(max_steps=0)
+    machine = None
+    for create in (scoped.make_vm, scoped.make_debugger):
+        with pytest.raises(
+            esolangs.InterpreterLimitError, match="machine factory result"
+        ) as caught:
+            create(source, stdin="A")
+        assert caught.value.observation == expected
+        assert caught.value.partial_output == "A"
+    for outcome in (
+        scoped.execute(source, stdin="A", limits=limits),
+        prepared.execute(stdin="A", limits=limits),
+    ):
+        assert isinstance(outcome.error, esolangs.InterpreterLimitError)
+        assert outcome.observation == outcome.error.observation == expected
+        assert outcome.error.partial_output == "A"
+
+    class LazyHalt:
+        observations = 0
+
+        @property
+        def halted(self):
+            self.observations += 1
+            return True
+
+        def step(self):
+            pytest.fail("stepped an already halted machine")
+
+    machine = LazyHalt()
+    assert scoped.make_vm(source, stdin="A").output == "A"
+    assert prepared.make_debugger(stdin="A").output == "A"
+    assert machine.observations == 0
+
+    class Forwarder:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def __getattr__(self, name):
+            return getattr(self.inner, name)
+
+    machine = Forwarder(machine)
+    result = prepared.run(stdin="A", limits=limits)
+    assert result == replace(
+        expected, completion=CompletionReport(Completion.HALTED), steps=0
+    )
+
+    class RefusedStep:
+        @property
+        def step(self):
+            raise original
+
+    original = esolangs.ArgumentError("custom step binding refused")
+    machine = RefusedStep()
+    with pytest.raises(esolangs.ArgumentError, match="custom step binding") as caught:
+        scoped.make_vm(source, stdin="A")
+    assert caught.value is original
+    assert original.observation == expected
 
 
 @pytest.mark.parametrize("phase", ["native", "initialize", "step"])
