@@ -55,6 +55,7 @@ Decisions:
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from functools import partial
 from types import MappingProxyType
 from typing import Any, cast, overload
 
@@ -66,9 +67,9 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.brackets import unmatched
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -497,6 +498,7 @@ class _Machine:
     def __init__(self, code: str | _SourceImage, io: IO) -> None:
         self.code, self.m = _prepare_source(code) if isinstance(code, str) else code
         self.io = io
+        self._writer = _BufferedOutput()
         self.tape = _Tape()
         self.ind = 0
         self._rejected = RejectedInput()
@@ -529,8 +531,13 @@ class _Machine:
                 ),
             )
 
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.ind,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.ind, accepted))
+                if accepted
+                else self.ind
+            ),
             comment=self.comment,
             axis=self.tape.axis,
             height=self.tape.top.level,
@@ -540,7 +547,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self._rejected.snapshot(
+        boundary = self._rejected.snapshot(
             (
                 self.ind,
                 self.comment,
@@ -550,6 +557,8 @@ class _Machine:
                 self.io.progress(),
             )
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     @property
     def _state(self) -> _State:
@@ -596,13 +605,13 @@ class _Machine:
             return
         code = self.code
         c = code[self.ind]
+        if c == "." and not self.comment:
+            self._print_value()
         self.ind += 1
 
         port = None
         if not self.comment:
-            if c == ".":
-                self.io.print_char(chr(self.tape.value()))
-            elif c == ",":
+            if c == ",":
                 port = self.io.input_char()
             elif c in "dx":
                 port = self._read_number(c)
@@ -613,6 +622,14 @@ class _Machine:
         self._restore(state)
         if effect is not None:
             self._apply(effect)
+
+    def _print_value(self) -> None:
+        value = self.tape.peek_value()
+        output = chr(value)
+        self._writer.write(self.io, output, first=partial(self.io.print_char, output))
+        if not value:
+            # A successful observation visits the addressed zero cell.
+            self.tape.value()
 
     def _read_number(self, command: str) -> int:
         acquire = self.io.input_num if command == "d" else self._read_hex

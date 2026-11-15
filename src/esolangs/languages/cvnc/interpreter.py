@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Hashable, Mapping
+from functools import partial
 from types import MappingProxyType
 from typing import Any, NamedTuple
 
@@ -64,8 +65,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -494,6 +495,7 @@ class _Machine:
         self.deque: tuple[int, ...] = ()
         self.function: tuple[str, ...] = ()
         self.pointer = 0
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -519,8 +521,13 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.pointer,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.pointer, accepted))
+                if accepted
+                else self.pointer
+            ),
             accumulator=self.accumulator,
             deque=self.deque,
             function=self.function,
@@ -529,13 +536,15 @@ class _Machine:
 
     def snapshot(self) -> Hashable:
         """Return the complete state, hashable for cycle detection."""
-        return (
+        boundary = (
             self.pointer,
             self.accumulator,
             self.deque,
             self.function,
             self.io.progress(),
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one command, advancing the pointer.
@@ -565,9 +574,15 @@ class _Machine:
             byte,
         )
         if isinstance(output, int):
-            self.io.print_num(output)
+            self._writer.write(
+                self.io,
+                format_integer(output),
+                first=partial(self.io.print_num, output),
+            )
         elif output is not None:
-            self.io.print_char(output)
+            self._writer.write(
+                self.io, output, first=partial(self.io.print_char, output)
+            )
         self.accumulator, self.deque, self.function, self.pointer = state
 
 

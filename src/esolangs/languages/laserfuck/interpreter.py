@@ -29,6 +29,7 @@ Decisions:
 """
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Any, NamedTuple, cast
 
 from esolangs.languages.laserfuck.lifecycle import CAPABILITIES
@@ -39,7 +40,7 @@ from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.persistent import (
     Chunked,
     append,
@@ -277,6 +278,7 @@ class _Machine:
         self._second_start = False
         self._dumped = False
         self._dump_prefix = 0
+        self._writer = _BufferedOutput()
         #: No step yet: only then is the drawn heading still a branch point.
         self._fresh = True
         #: Where the ``o`` marker sits, kept so a branching search can place
@@ -326,8 +328,10 @@ class _Machine:
         return [v for v, _ in flatten(self.tape)]
 
     @property
-    def _dump_state(self) -> bool | tuple[int]:
-        """Capture an unfinished byte dump's written prefix separately."""
+    def _dump_state(self) -> bool | tuple[int] | tuple[int, int]:
+        """Capture completed writes and the accepted part of the next write."""
+        if accepted := self._writer.accepted:
+            return (self._dump_prefix, accepted)
         return (self._dump_prefix,) if self._dump_prefix else self._dumped
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
@@ -520,14 +524,23 @@ class _Machine:
         shown = [val for val, touched in flatten(self.tape) if touched and val >= 0]
         if byte_mode:
             for index in range(self._dump_prefix, len(shown)):
-                self.io.print_char(chr(shown[index]))
+                char = chr(shown[index])
+                self._writer.write(
+                    self.io, char, first=partial(self.io.print_char, char)
+                )
                 self._dump_prefix = index + 1
-            self._dump_prefix = 0
-            return
-        for index, val in enumerate(shown):
-            if index:
-                self.io.print_str("\n")  # between values, never trailing
-            self.io.print_num(val)
+        else:
+            # A separator can fail independently of either neighboring number.
+            for index in range(self._dump_prefix, 2 * len(shown) - 1):
+                if index % 2:
+                    self._writer.write(self.io, "\n")
+                else:
+                    val = shown[index // 2]
+                    self._writer.write(
+                        self.io, str(val), first=partial(self.io.print_num, val)
+                    )
+                self._dump_prefix = index + 1
+        self._dump_prefix = 0
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

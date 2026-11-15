@@ -21,6 +21,7 @@ from tests.interpreters.contract import (
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program as _run_program
 from tests.support.execution import termination_observed
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_program = partial(_run_program, run, suppress_eof=False)
 
@@ -33,8 +34,32 @@ class TestStepMachine:
             machine.step()
         assert list(machine.stack) == [-501334399]
 
-    def test_step_tracks_stack_and_active_frame_cursor(self) -> None:
+    def test_step_tracks_stack_and_active_frame_cursor(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         check_raw_for_thorn()
+        assert_rejected_output_retry(
+            "Forþ",
+            ",.,.",
+            "A",
+            "AB",
+            prefix=1,
+            monkeypatch=monkeypatch,
+            stdin="A\nB",
+            unchanged_if_unwritten=True,
+            following_writes=("B",),
+        )
+        assert_rejected_output_retry(
+            "Forþ",
+            ",1{(.)};",
+            "A",
+            "A",
+            prefix=5,
+            monkeypatch=monkeypatch,
+            stdin="A",
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
         machine = _Machine("65.", ScriptedIO())
         assert (list(machine.stack), machine.frames[0].pc) == ([], 0)
         machine.step()  # 6 pushes

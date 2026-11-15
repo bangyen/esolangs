@@ -28,7 +28,7 @@ Decisions:
 
 import re
 from collections.abc import Iterable, Mapping
-from functools import lru_cache
+from functools import lru_cache, partial
 from types import MappingProxyType
 from typing import Any, NamedTuple
 
@@ -38,9 +38,9 @@ from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.brackets import unmatched
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 
 _TOKEN = re.compile(r"g[yz]|[abcdefhijt]")
 
@@ -228,6 +228,7 @@ class _Machine:
         image = code if isinstance(code, _Image) else _prepare_source(code)
         self.queue, self.tokens, self.match = image
         self.ind = 0
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -244,13 +245,22 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            queue=self.queue, instruction=self.ind, input_cursor=self.io.progress()
+            queue=self.queue,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.ind, accepted))
+                if accepted
+                else self.ind
+            ),
+            input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.queue, self.ind, self.io.progress())
+        boundary = (self.queue, self.ind, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     @property
     def _state(self) -> _State:
@@ -274,7 +284,8 @@ class _Machine:
 
         byte = self.io.input_char() if tok == "h" else None
         if tok == "i" and self.queue:
-            self.io.print_char(chr(self.queue[0]))
+            char = chr(self.queue[0])
+            self._writer.write(self.io, char, first=partial(self.io.print_char, char))
 
         state = self._state
         try:

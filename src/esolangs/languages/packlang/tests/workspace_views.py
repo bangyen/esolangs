@@ -92,7 +92,15 @@ def readonly(raw, case, context, expected_plan=None):
     if expected_plan is None:
         expected_plan = compile_readonly(case)
     native = context.native
-    assert set(vars(raw)) == {"io", "program", "_input_reads", "_program_key", "frames"}
+    assert set(vars(raw)) == {
+        "io",
+        "program",
+        "_input_reads",
+        "_program_key",
+        "frames",
+        "_writer",
+    }
+    assert raw._writer.accepted is None
     assert type(raw.program) is native._Program
     program = raw.program
     assert type(program.functions) is MappingProxyType

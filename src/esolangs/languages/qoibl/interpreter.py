@@ -43,7 +43,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -512,6 +512,7 @@ class _Machine:
         self.ind = 0
         self._statement_input: list[int] = []
         self._statement_output = 0
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -548,8 +549,9 @@ class _Machine:
 
     def _pending_statement(self) -> tuple[tuple[int, ...], int] | None:
         """Expose effects already performed by an incomplete statement."""
-        if self._statement_input or self._statement_output:
-            return tuple(self._statement_input), self._statement_output
+        printed = self._statement_output + (self._writer.accepted or 0)
+        if self._statement_input or printed:
+            return tuple(self._statement_input), printed
         return None
 
     @property
@@ -561,12 +563,13 @@ class _Machine:
         """Write a statement transition's result back onto the shell."""
         self.var, self.ind = state
 
-    def _flush(self, effects: _Effects, flushed: int, *, pending: bool = False) -> None:
+    def _flush(self, effects: _Effects) -> None:
         """Write effects beyond the accepted prefix, tracking incomplete steps."""
-        for char in effects[flushed:]:
-            self.io.print_char(char)
-            if pending:
-                self._statement_output += 1
+        for char in effects[self._statement_output :]:
+            self._writer.write(
+                self.io, char, first=functools.partial(self.io.print_char, char)
+            )
+            self._statement_output += 1
 
     def step(self) -> None:
         """Execute one statement, advancing the cursor.
@@ -585,19 +588,18 @@ class _Machine:
             try:
                 state, effects = _advance(self._state, self.code, tuple(inputs))
             except _NeedInput as need:
-                self._flush(need.effects, self._statement_output, pending=True)
+                self._flush(need.effects)
                 inputs.append(self.io.input_char())
                 continue
             except _Fault as fault:
-                self._flush(fault.effects, self._statement_output, pending=True)
+                self._flush(fault.effects)
                 raise fault.error from None
             break
+        self._flush(effects)
         self._restore(state)
-        flushed = self._statement_output
-        if inputs or flushed:
+        if inputs or self._statement_output:
             inputs.clear()
             self._statement_output = 0
-        self._flush(effects, flushed)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

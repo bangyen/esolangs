@@ -58,8 +58,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 
 _FUNCTIONS = frozenset("+-*/%:~!$(<)H")
@@ -257,6 +257,7 @@ class _Machine:
 
     def __init__(self, code: str | _Stack, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         stack = parse(code) if isinstance(code, str) else code
         self.state: _State = (stack, None, False, False, False)
 
@@ -284,10 +285,16 @@ class _Machine:
                 out.append(value(item))
             return tuple(out)
 
+        active = self.state[2]
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             forward=stack(self.state[0]),
             backward=stack(self.state[1]),
-            active=self.state[2],
+            active=(
+                WorkspaceVariant("pending_output", (active, accepted))
+                if accepted
+                else active
+            ),
             swapped=self.state[3],
             stopped=self.state[4],
             input_cursor=self.io.progress(),
@@ -300,7 +307,9 @@ class _Machine:
         a cell, and a 930-deep stack overflowed it.
         """
         forward, backward, *flags = self.state
-        return (_flat(forward), _flat(backward), *flags, self.io.progress())
+        boundary = (_flat(forward), _flat(backward), *flags, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Run one step, reading first when it is a reading swap."""
@@ -313,9 +322,10 @@ class _Machine:
             except EOFError:
                 self.state = (*self.state[:4], True)
                 return
-        self.state, out = _advance(self.state, value)
+        state, out = _advance(self.state, value)
         if out is not None:
-            self.io.print_str(out)
+            self._writer.write(self.io, out)
+        self.state = state
 
 
 def _depth(stack: _Stack) -> int:

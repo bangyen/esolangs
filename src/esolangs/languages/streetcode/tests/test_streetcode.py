@@ -94,11 +94,23 @@ class TestStreetcodeIO:
     def test_newline_input_is_preserved(self) -> None:
         assert run_street("CIO;", inputs=[""]) == chr(10)
 
-    def test_two_cells_print_in_reverse_input_order(self) -> None:
+    def test_two_cells_print_in_reverse_input_order(self, monkeypatch) -> None:
+        from tests.support.vm_support import assert_rejected_output_retry
+
         for left in ["A", "z", "é", " "]:
             for right in ["B", "0", "λ", " ", "😀"]:
                 expected = right + left
                 assert run_street("CI=IO_O;", inputs=[left + right]) == expected
+        assert_rejected_output_retry(
+            "Streetcode",
+            "+-----+\n|     |\n|C^^O;|\n+-----+",
+            "\x02",
+            "\x02",
+            prefix=3,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     def test_exhausted_input_raises_eof(self) -> None:
         machine = _Machine(["CI;"], ScriptedIO(""))

@@ -15,6 +15,7 @@ from tests.interpreters.runner import run_lines
 from tests.support.execution import assert_digit_cap_independent
 from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import assert_rejected_with_hint, raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 dim = importlib.import_module("esolangs.languages.dimensional.interpreter")
 
@@ -84,9 +85,24 @@ class TestDimensional:
                     code += f"?{dimension}.!{dimension}?{dimension}.?2."
                     assert run_and_capture(code) == chr(delta % 256) + "\x00\x01"
 
-    def test_hex_literal(self) -> None:
+    def test_hex_literal(self, monkeypatch: pytest.MonkeyPatch) -> None:
         assert run_and_capture("=41.") == "A"
         assert run_and_capture("=4a.") == "J"
+        for source, first, output, prefix, rest in (
+            (":A.:B.", "A", "AB", 1, ("B",)),
+            (".", "\0", "\0", 0, ()),
+            ("$3>0.", "\0", "\0", 2, ()),
+        ):
+            assert_rejected_output_retry(
+                "Dimensional",
+                source,
+                first,
+                output,
+                prefix=prefix,
+                monkeypatch=monkeypatch,
+                unchanged_if_unwritten=True,
+                following_writes=rest,
+            )
 
     def test_read_input(self) -> None:
         assert run_and_capture(",.", ["A"]) == "A"

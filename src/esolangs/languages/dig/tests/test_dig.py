@@ -12,7 +12,10 @@ from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract, InputCursorContract
 from tests.interpreters.runner import run_lines
 from tests.support.raises import assert_numeric_token_replayed, raises_message
-from tests.support.vm_support import assert_starts_downward
+from tests.support.vm_support import (
+    assert_rejected_output_retry,
+    assert_starts_downward,
+)
 
 run_and_capture = run_lines(run)
 
@@ -84,10 +87,25 @@ class TestDigInput:
     def test_character_input(self) -> None:
         assert run_and_capture([">$=:", " 2 "], inputs=["A"]) == "A"
 
-    def test_a_huge_integer_reads_and_prints_whole(self) -> None:
+    def test_a_huge_integer_reads_and_prints_whole(self, monkeypatch) -> None:
         """``~`` and ``:`` handle 5000 digits, past Python's str/int limit."""
         number = "-" + "9" * 5000
         assert run_and_capture([">$~:", " 2 "], inputs=[number]) == number
+        for source, stdin, output in (
+            (">$~:\n 2 ", "-12", "-12"),
+            (">$H:\n 2 ", "", "H"),
+        ):
+            assert_rejected_output_retry(
+                "Dig",
+                source,
+                output,
+                output,
+                prefix=3,
+                monkeypatch=monkeypatch,
+                stdin=stdin,
+                unchanged_if_unwritten=True,
+                following_writes=(),
+            )
 
     def test_a_cursorless_read_loop_is_not_a_cycle(self) -> None:
         """Reads count in the snapshot: the loop runs to EOF, not a false cycle."""

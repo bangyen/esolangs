@@ -21,8 +21,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 
 #: ``(source, rule)``: the unread program, and the ``(pattern, replacement)``
 #: being applied to it, or ``None`` while reading.
@@ -89,6 +89,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.state: _State = (code, None)
         self.io = io
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -106,8 +107,13 @@ class _Machine:
         """Capture logical workspace independently of cycle keys and backing storage."""
         source, rule = self.state
         pattern, replacement = rule if rule is not None else (None, "")
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            source=source,
+            source=(
+                WorkspaceVariant("pending_output", (source, accepted))
+                if accepted
+                else source
+            ),
             pattern=pattern,
             replacement=replacement,
             input_cursor=self.io.progress(),
@@ -116,12 +122,15 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         # Flat, as the ledger's exact workspace bound measures it.
         source, rule = self.state
-        return (source, *(rule or (None, "")), self.io.progress())
+        boundary = (source, *(rule or (None, "")), self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
-        self.state, output = _advance(self.state)
+        state, output = _advance(self.state)
         if output:
-            self.io.print_str(output)
+            self._writer.write(self.io, output)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

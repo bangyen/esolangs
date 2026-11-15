@@ -8,17 +8,28 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.sstack.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_output_retry
 
 _out = native_runner(run)
 
 
-def test_push_and_print_peek() -> None:
+def test_push_and_print_peek(monkeypatch) -> None:
     from esolangs.languages.sstack.tests.oracle_checks import (
         check_raw_sstack,
     )
 
     check_raw_sstack()
     assert _out('"72/a":a:"105/g":g::g:') == "Hii"
+    assert_rejected_output_retry(
+        "SStack",
+        '"65/a":a:',
+        "A",
+        "A",
+        prefix=1,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
 
 def test_move_increment_decrement_are_pops() -> None:

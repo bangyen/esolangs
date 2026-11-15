@@ -23,7 +23,9 @@ from esolangs.languages.qoibl.interpreter import (
     run,
     tokenize,
 )
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.interpreters.contract import EmptyProgramContract, SnapshotContract
 from tests.interpreters.runner import run_printing
 from tests.support.event_io import EventIO
@@ -449,12 +451,76 @@ class TestOutputOrdering:
             run(["we tt y tt we et we"], io)
         assert io.events == [("out", chr(1)), ("in", "")]
 
-    def test_output_before_a_halt_is_written_and_ordered(self) -> None:
+    def test_output_before_a_halt_is_written_and_ordered(self, monkeypatch) -> None:
         """The same target prints before the value's division by zero halts."""
         io = EventIO("")
         with pytest.raises(HaltError, match="division by zero"):
             run(["we tt y tt we e ry yy ry qe e qe we"], io)
         assert io.events == [("out", chr(1))]
+        self._check_sink_retry(monkeypatch)
+
+    def _check_sink_retry(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        api = esolangs.Language("Qoibl")
+        limits = esolangs.ExecutionLimits(max_steps=2)
+        write = ScriptedIO._write
+
+        def check(source: str, stdin: str, output: str, accepted: int) -> None:
+            control = api.execute(source, stdin=stdin, limits=limits)
+            assert control.observation.output == output
+            attempts: list[object] = []
+            fault = HaltError("transient sink refusal")
+
+            def refuse(io: ScriptedIO, char: object) -> None:
+                attempts.append(char)
+                if len(attempts) == len(output):
+                    if accepted:
+                        write(io, char)
+                    raise fault
+                write(io, char)
+
+            with monkeypatch.context() as patch:
+                patch.setattr(ScriptedIO, "_write", refuse)
+                dbg = api.make_debugger(source, stdin=stdin)
+                prefix = len(output) - 1 + accepted
+                replay = (ord("Q"),) if output == "\x01Q" else ()
+                partial = esolangs.ExecutionResult(
+                    output[:prefix], len(replay), len(replay), 0, steps=0
+                )
+                with pytest.raises(HaltError, match="sink refusal") as caught:
+                    dbg.run(limits=limits)
+                assert caught.value is fault
+                assert fault.observation == dbg.observation == partial
+                assert not dbg.halted
+                boundary = (0, (), len(replay))
+                assert dbg.snapshot() == (
+                    (*boundary, (replay, prefix)) if prefix else boundary
+                )
+                assert _capture_workspace(dbg.vm).parts[0] == (
+                    WorkspaceVariant("pending_statement", (0, replay, prefix))
+                    if prefix
+                    else 0
+                )
+                error = control.error
+                if error is None:
+                    assert dbg.run(limits=limits) == "halted"
+                else:
+                    with pytest.raises(type(error)) as retried:
+                        dbg.run(limits=limits)
+                    assert str(retried.value) == str(error)
+                    assert retried.value.observation == control.observation
+                assert dbg.observation == control.observation
+                assert fault.observation == partial
+            assert attempts == list(output + ("" if accepted else output[-1]))
+
+        for source, stdin, output in (
+            ("tt y tt", "", "\x01"),
+            ("we tt y tt we e ry yy ry qe e qe we", "", "\x01"),
+            ("we tt y tt we et we", "", "\x01"),
+            ("we tt y tt we et we", "Q", "\x01"),
+            ("we tt y tt we tt et tt we", "Q", "\x01Q"),
+        ):
+            for accepted in (0, 1):
+                check(source, stdin, output, accepted)
 
     def test_a_later_statement_still_prints_before_its_own_fault(self) -> None:
         """Two statements: the first prints, the second prints then faults."""

@@ -35,6 +35,7 @@ Decisions:
 """
 
 from collections.abc import Callable, Mapping
+from functools import partial
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
@@ -46,8 +47,8 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -348,6 +349,7 @@ class _Machine:
         """Pad ``code`` to a rectangular grid, like :func:`run`."""
         self.io = io
         self._rejected = RejectedInput()
+        self._writer = _BufferedOutput()
         self.code, self.size = (
             code if isinstance(code, _GridImage) else _prepare_grid(code)
         )
@@ -384,11 +386,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             row=self.row,
             column=self.col,
             direction=self.move,
-            mole=self.mole,
+            mole=(
+                WorkspaceVariant("pending_output", (self.mole, accepted))
+                if accepted
+                else self.mole
+            ),
             number=self.num,
             grid=tuple(tuple(row) for row in self.code),
             input_cursor=self._rejected.cursor(self.io.progress()),
@@ -401,7 +408,7 @@ class _Machine:
 
         The grid is included because ``;`` writes the mole back into it.
         """
-        return self._rejected.snapshot(
+        boundary = self._rejected.snapshot(
             (
                 self.row,
                 self.col,
@@ -413,6 +420,8 @@ class _Machine:
                 self._input_reads,  # IO providers may expose no cursor.
             )
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     @property
     def _state(self) -> _State:
@@ -484,9 +493,12 @@ class _Machine:
                 value = self._rejected.read(self.io, self._read_integer)
             elif char == ":":
                 if self.mole < 10:
-                    self.io.print_str(format_integer(self.mole))
+                    self._writer.write(self.io, format_integer(self.mole))
                 else:
-                    self.io.print_char(chr(self.mole))
+                    output = chr(self.mole)
+                    self._writer.write(
+                        self.io, output, first=partial(self.io.print_char, output)
+                    )
 
         self._restore(_advance(self._state, self.size, value))
 

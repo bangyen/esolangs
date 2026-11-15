@@ -60,8 +60,8 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 
 _MAX_CHAR = 0x10FFFF
@@ -389,6 +389,7 @@ class _Machine:
         root: _State = ((0, (0, 0, 1), 0, 0), None)
         self.state = root if self.program.targets[0] else None
         self._rejected = RejectedInput()
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -419,14 +420,21 @@ class _Machine:
         while rest is not None:
             frame, rest = rest
             frames.append(frame)
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            frames=tuple(frames),
+            frames=(
+                WorkspaceVariant("pending_output", (tuple(frames), accepted))
+                if accepted
+                else tuple(frames)
+            ),
             input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self._rejected.snapshot((self.state, self.io.progress()))
+        boundary = self._rejected.snapshot((self.state, self.io.progress()))
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Deliver one send, reading first if the receiver is an input node."""
@@ -450,9 +458,10 @@ class _Machine:
                     raise error
         except EOFError:
             got = None
-        self.state, out = _advance(self.state, self.program, got)
+        state, out = _advance(self.state, self.program, got)
         if out is not None:
-            self.io.print_str(out)
+            self._writer.write(self.io, out)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

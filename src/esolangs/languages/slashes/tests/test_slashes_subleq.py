@@ -15,6 +15,7 @@ from esolangs.languages.slashes.generator import (
 )
 from esolangs.languages.slashes.tests.template_shape import _is_unfilled_template
 from esolangs.runtime.io import ScriptedIO
+from tests.support.vm_support import assert_rejected_output_retry
 from tests.support.witness_tables import witnesses
 
 
@@ -74,12 +75,23 @@ def test_slashes_divergence_controls() -> None:
     assert not growth.halted
 
 
-def test_slashes_trailing_escape() -> None:
+def test_slashes_trailing_escape(monkeypatch: pytest.MonkeyPatch) -> None:
     io = ScriptedIO()
     native.run("\\", io)
     assert io.getvalue() == ""
     native.run("/a/\\", io)
     assert io.getvalue() == ""
+    for source, first, remaining in (("a", "a", ()), (r"\!B", "!", ("B",))):
+        assert_rejected_output_retry(
+            "///",
+            source,
+            first,
+            first + "".join(remaining),
+            prefix=0,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=remaining,
+        )
 
 
 def test_slashes_literal_dollar_and_serialized_template() -> None:

@@ -38,7 +38,7 @@ from __future__ import annotations
 
 from collections.abc import Hashable, Mapping
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import lru_cache, partial
 from typing import Any
 
 from esolangs.languages.b_tapemark.dialect import validate_swap_marker
@@ -49,8 +49,8 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._snapshot import SnapshotCodec
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 type _Point = tuple[int, int]
@@ -284,6 +284,7 @@ class _Machine:
     ) -> None:
         self.state = _load(source, swap_marker) if isinstance(source, str) else source
         self.io = io
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -301,13 +302,21 @@ class _Machine:
         """Capture logical workspace independently of cycle keys and backing storage."""
         s = self.state
         grids = tuple(_workspace_grid(grid) for grid in s.grids)
+        configuration = (s.program, s.positions, s.direction, grids, s.halted)
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            configuration=(s.program, s.positions, s.direction, grids, s.halted),
+            configuration=(
+                WorkspaceVariant("pending_output", (*configuration, accepted))
+                if accepted
+                else configuration
+            ),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        return (self.state, self.io.progress())
+        boundary = (self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         if self.halted:
@@ -320,9 +329,12 @@ class _Machine:
             and self.state.grids[data].at(self.state.positions[data]) == " "
         )
         symbol = chr(self.io.input_char()) if needs_input else None
-        self.state, output = _advance(self.state, symbol)
+        state, output = _advance(self.state, symbol)
         if output is not None:
-            self.io.print_char(output)
+            self._writer.write(
+                self.io, output, first=partial(self.io.print_char, output)
+            )
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

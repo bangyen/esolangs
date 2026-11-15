@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Hashable, Iterator, Mapping
+from functools import partial
 from operator import add, mul, sub
 from types import MappingProxyType
 from typing import Any, NamedTuple, final
@@ -48,8 +49,8 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._snapshot import SnapshotCodec
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import trunc_div, trunc_mod, wrap_int32
 
 _BINARY: dict[str, Callable[[int, int], int]] = {
@@ -461,6 +462,7 @@ class _Machine:
     def __init__(self, code: str | _Frame, io: IO) -> None:
         """Start with the top-level ``code`` as the only frame."""
         self.io = io
+        self._writer = _BufferedOutput()
         self.stack: tuple[int, ...] = ()
         self.table = _Scopes()
         frame = _prepare_source(code) if isinstance(code, str) else code
@@ -497,23 +499,31 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        frames = tuple((frame.code, frame.pc, frame.loop) for frame in self.frames)
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             stack=self.stack,
             scopes=frozenset(self.table.items()),
-            frames=tuple((frame.code, frame.pc, frame.loop) for frame in self.frames),
+            frames=(
+                WorkspaceVariant("pending_output", (frames, accepted))
+                if accepted
+                else frames
+            ),
             input_cursor=self.io.progress(),
             input_reads=self._input_reads,
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        boundary = (
             self.stack,
             self.table,
             tuple((f.code, f.pc, f.loop) for f in self.frames),
             self.io.progress(),
             self._input_reads,
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
         """Return the state a called scope needs to replay an ancestor.
@@ -553,8 +563,8 @@ class _Machine:
         char = ""
         # The cursor moves past the command before the command runs, and
         # the original had already written that when anything it did
-        # raised -- an empty stack, or the input port at EOF.  Committing
-        # the advance up front reproduces that for every route out.
+        # raised -- an empty stack, or the input port at EOF. Preserve
+        # those boundaries while a refused output leaves . pending.
         #
         # A bracket walks further than one place: its scan runs before the
         # condition is tested, so a raise afterwards leaves the cursor past
@@ -568,19 +578,22 @@ class _Machine:
             else:
                 cursor = frame.pc + 1
             frames = (*frames[:-1], _at(frame, cursor))
+        if char == "." and state.stack:
+            value = state.stack[-1]
+            output = (
+                chr(value)
+                if 0 <= value <= 0x10FFFF and not 0xD800 <= value <= 0xDFFF
+                else chr(value & 0xFF)
+            )
+            self._writer.write(
+                self.io, output, first=partial(self.io.print_char, output)
+            )
         self._restore(state._replace(frames=frames))
 
         line = None
         if char == ",":
             line = self.io.input_str()
             self._input_reads += 1
-        elif char == "." and state.stack:
-            value = state.stack[-1]
-            self.io.print_char(
-                chr(value)
-                if 0 <= value <= 0x10FFFF and not 0xD800 <= value <= 0xDFFF
-                else chr(value & 0xFF)
-            )
 
         self._restore(_advance(state, line))
         # Raised here, not in ``run``, so a stepped VM fails as ``run`` does.

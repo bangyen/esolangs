@@ -12,6 +12,7 @@ from esolangs.registry._functions import FunctionRef
 from tests.support.cli_support import call_both, call_main
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
+from tests.support.vm_support import assert_rejected_output_retry
 from tests.support.witness_tables import XOR, witnesses
 
 
@@ -156,7 +157,7 @@ def test_metadata() -> None:
 
 
 class TestGrapheme:
-    def test_stack_exposed(self) -> None:
+    def test_stack_exposed(self, monkeypatch) -> None:
         vm = debugger_api.make_vm("Grapheme", "FAFY")
         assert (vm.ip, vm.memory, vm.stack) == ((0,), [], [])
         vm.step()  # F starts int mode
@@ -168,6 +169,17 @@ class TestGrapheme:
         assert vm.halted
         assert vm.ip == (len("FAFY"),)  # frames are gone once halted
         assert vm.memory == []
+        for source, value in (("EABCEY", "ABC"), ("FABFY", 12)):
+            assert_rejected_output_retry(
+                "Grapheme",
+                source,
+                value,
+                str(value),
+                prefix=len(source) - 1,
+                monkeypatch=monkeypatch,
+                unchanged_if_unwritten=True,
+                following_writes=(),
+            )
 
     def test_rejects_non_uppercase(self) -> None:
         with pytest.raises(ValueError, match="uppercase"):

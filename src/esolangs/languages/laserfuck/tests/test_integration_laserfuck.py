@@ -132,7 +132,9 @@ class TestLaserFuck:
 
 
 @pytest.mark.parametrize("debugger", [False, True])
-def test_a_failed_dump_does_not_repeat_its_output(*, debugger: bool) -> None:
+def test_a_failed_dump_does_not_repeat_its_output(
+    monkeypatch, *, debugger: bool
+) -> None:
     language = esolangs.Language("LaserFuck")
     source = "ÿ}o+>,+x"
     limits = esolangs.ExecutionLimits(max_steps=5)
@@ -156,6 +158,64 @@ def test_a_failed_dump_does_not_repeat_its_output(*, debugger: bool) -> None:
     assert saved[0] == saved[1]
     snapshot, workspace = saved[0]
     assert snapshot[-1] == workspace.parts[-1] == (1,)
+    _check_refused_write(monkeypatch, debugger=debugger)
+
+
+def _check_refused_write(monkeypatch: pytest.MonkeyPatch, *, debugger: bool) -> None:
+    language = esolangs.Language("LaserFuck")
+    write = ScriptedIO._write
+    for source, stdin, writes, failed, accepted in (
+        (" }o,>,+x", "AA", (65, "\n", 66), 0, 1),
+        (" }o,>,+x", "AA", (65, "\n", 66), 1, 1),
+        (" }o,>,+x", "AA", (65, "\n", 66), 2, 0),
+        ("ÿ}o+>,+x", "A", ("\x01", "B"), 0, 1),
+    ):
+        vm = language.make_vm(source, stdin=stdin, seed=0)
+        debug = debugger_api.Debugger(vm)
+        drive = (
+            partial(debug.run, limits=esolangs.ExecutionLimits(max_steps=5))
+            if debugger
+            else partial(complete_vm, vm, max_steps=5)
+        )
+        attempts = []
+        payload = str(writes[failed])
+
+        def refuse(
+            io, value, *, prefix=payload[:accepted], position=failed, log=attempts
+        ):
+            log.append(value)
+            if len(log) == position + 1:
+                write(io, prefix)
+                raise esolangs.HaltError("temporary writer refusal")
+            write(io, value)
+
+        expected = "".join(map(str, writes))
+        assert language.run(source, stdin=stdin, seed=0).output == expected
+        with monkeypatch.context() as port:
+            port.setattr(ScriptedIO, "_write", refuse)
+            with pytest.raises(
+                esolangs.HaltError, match="temporary writer refusal"
+            ) as fault:
+                drive()
+            partial_output = "".join(map(str, writes[:failed])) + payload[:accepted]
+            assert vm.halted
+            assert fault.value.partial_output == vm.output == partial_output
+            assert fault.value.observation == esolangs.ExecutionResult(
+                partial_output, len(stdin), len(stdin), 0, steps=5
+            )
+            pending = (failed, accepted) if accepted else (failed,)
+            assert vm.snapshot()[-1] == _capture_workspace(vm).parts[-1] == pending
+            drive()
+            drive()
+            assert vm.output == expected
+            assert fault.value.partial_output == partial_output
+
+        retry = (
+            ((payload[accepted:] if accepted else writes[failed]),)
+            if accepted < len(payload)
+            else ()
+        )
+        assert tuple(attempts) == writes[: failed + 1] + retry + writes[failed + 1 :]
 
 
 def test_byte_dump_succeeds_at_the_character_boundary_and_step_cap() -> None:

@@ -5,6 +5,7 @@ import pytest
 from esolangs.languages.nope.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from tests.support.vm_support import assert_rejected_output_retry
 from tests.support.workspace_oracle import WorkspaceOracle
 
 
@@ -17,7 +18,9 @@ def test_constant_output(code: str, stdin: str) -> None:
     assert io.position() == 0
 
 
-def test_empty_source_has_one_output_transition() -> None:
+def test_empty_source_has_one_output_transition(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from esolangs.languages.nope.tests.oracle_checks import check_raw_nope
 
     check_raw_nope()
@@ -42,6 +45,17 @@ def test_empty_source_has_one_output_transition() -> None:
     machine.step()
     assert machine.snapshot() == after
     assert io.getvalue() == "Nope."
+    assert_rejected_output_retry(
+        "Nope.",
+        "",
+        "Nope.",
+        "Nope.",
+        prefix=0,
+        stdin="λ",
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
     from esolangs import ProgramArtifact
     from esolangs.results import Completion, CompletionReport, ExecutionResult

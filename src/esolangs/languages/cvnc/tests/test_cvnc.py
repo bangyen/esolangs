@@ -19,6 +19,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm, run_until_halt_or_cycle
 from tests.interpreters.runner import native_runner
 from tests.support.execution import assert_digit_cap_independent
+from tests.support.vm_support import assert_rejected_output_retry
 
 TRUTH_MACHINE = "soθɰ̊oθʋi"
 CAT = "ʒuɰ̊fuʒʋu"
@@ -77,10 +78,22 @@ def test_failed_command_stays_pending_on_retry(
     assert snapshots[0] == snapshots[1]
 
 
-def test_successful_input_finishes_at_the_exact_budget() -> None:
+def test_successful_input_finishes_at_the_exact_budget(monkeypatch) -> None:
     vm = Language("CV(N)(C)").make_vm("ʒif", stdin="@")
     assert complete_vm(vm, max_steps=3) == "A"
     assert vm.halted
+    for source, stdin, value in (("suθi", "123", 123), ("sufi", "65", "A")):
+        assert_rejected_output_retry(
+            "CV(N)(C)",
+            source,
+            value,
+            str(value),
+            prefix=2,
+            monkeypatch=monkeypatch,
+            stdin=stdin,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
 
 class TestWikiExamples:

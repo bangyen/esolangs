@@ -61,8 +61,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _FUNC: Final = "func"
@@ -193,7 +194,7 @@ class _Step:
     reverse: bool = False
     body: str | None = None
     call_repeat: bool = False
-    output: _Value | None = None
+    output: int | str | None = None
 
     def pop(self, view: _StackView) -> _Value:
         """Read the next value down the stack, and count the pop.
@@ -473,7 +474,7 @@ def _advance(
     view: _StackView,
     line_in: str | None = None,
     dialect: GraphemeDialect = DEFAULT_GRAPHEME,
-) -> tuple[_State, _StackFx, _Value | None]:
+) -> tuple[_State, _StackFx, int | str | None]:
     """Execute one command: the new state, the stack effects, any output.
 
     Pure.  ``Y`` reports its value (the shell picks ``print_str`` or
@@ -585,6 +586,7 @@ class _Machine:
         self.vars: _Vars = MappingProxyType({})
         self.io = io
         self._input_reads = 0
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -612,13 +614,17 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        frames = tuple(
+            (code, pc, mode, buf, pending, repeat)
+            for code, pc, mode, buf, pending, repeat in self.frames
+        )
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             stack=tuple(self.stack),
             variables=frozenset(self.vars.items()),
-            frames=tuple(
-                (code, pc, mode, buf, pending, repeat)
-                for code, pc, mode, buf, pending, repeat in self.frames
-            ),
+            frames=WorkspaceVariant("pending_output", (frames, accepted))
+            if accepted
+            else frames,
             input_cursor=self.io.progress(),
             input_reads=self._input_reads,
         )
@@ -628,13 +634,15 @@ class _Machine:
         # A frame is already a tuple of its six fields, so the call stack
         # goes in as it stands rather than being unpacked field by field --
         # which is what a frame being a value rather than a record buys.
-        return (
+        boundary = (
             tuple(self.stack),
             frozenset(self.vars.items()),
             self.frames,
             self.io.progress(),
             self._input_reads,
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
         """Return the state a called function needs to replay an ancestor.
@@ -690,16 +698,19 @@ class _Machine:
             line_in = self.io.input_str()
             self._input_reads += 1
 
-        (self.vars, self.frames), fx, output = _advance(
+        state, fx, output = _advance(
             (self.vars, self.frames), self.stack, line_in, self.dialect
         )
+        if isinstance(output, str):
+            self._writer.write(self.io, output)
+        elif output is not None:
+            self._writer.write(
+                self.io,
+                format_integer(output),
+                first=lambda: self.io.print_value(output),
+            )
+        self.vars, self.frames = state
         self._apply(fx)
-
-        if output is not None:
-            if isinstance(output, str):
-                self.io.print_str(output)
-            else:
-                self.io.print_value(output)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

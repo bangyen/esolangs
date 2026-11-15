@@ -109,7 +109,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 
 # There is no recursion ceiling.  A call pushes a frame rather than
 # recursing natively, so a runaway program grows the frame list on the
@@ -559,6 +559,7 @@ class _Machine:
         self, code: str | _Image, io: IO, *, literal_policy: str = "decimal"
     ) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self.program, self._program_key = (
             _prepare_source(code, literal_policy) if isinstance(code, str) else code
         )
@@ -634,7 +635,11 @@ class _Machine:
                 for frame in self.frames
             ),
             input_cursor=self.io.progress(),
-            input_reads=self._input_reads,
+            input_reads=(
+                WorkspaceVariant("pending_output", (self._input_reads, accepted))
+                if (accepted := self._writer.accepted)
+                else self._input_reads
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
@@ -644,7 +649,7 @@ class _Machine:
         # input position -- a repeat that ignores consumed input is not a
         # real cycle.  ``pending`` is by value: it is rewritten as each call
         # returns, so it is built fresh rather than fixed at parse time.
-        return (
+        boundary = (
             tuple(
                 (frame.key(), repr(frame.pending), frame.returned)
                 for frame in self.frames
@@ -653,6 +658,8 @@ class _Machine:
             self._input_reads,
             self._program_key,
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Advance the innermost frame, owning the two ports.
@@ -674,9 +681,12 @@ class _Machine:
             except EOFError:
                 byte = 10
             frames, out, _ = _advance(self.frames, self.program, byte)
-        self.frames = frames
         if out is not None:
-            self.io.print_char(out)
+            self._write_char(out)
+        self.frames = frames
+
+    def _write_char(self, char: str) -> None:
+        self._writer.write(self.io, char, first=lambda: self.io.print_char(char))
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

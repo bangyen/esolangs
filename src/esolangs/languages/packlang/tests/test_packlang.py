@@ -52,8 +52,20 @@ def _machine(code: str) -> _Machine:
 class TestWikiExamples:
     """Every example on the wiki page, run rather than read."""
 
-    def test_truth_machine_zero_halts_printing_zero(self) -> None:
+    def test_truth_machine_zero_halts_printing_zero(self, monkeypatch) -> None:
+        from tests.support.vm_support import assert_rejected_output_retry
+
         assert _run(TRUTH_MACHINE, "0\n") == "0"
+        assert_rejected_output_retry(
+            "Packlang",
+            "Package : IO {\n  Integer main {\n    charPut(65);\n    0;\n  }\n} p;",
+            "A",
+            "A",
+            prefix=0,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     def test_truth_machine_one_loops_printing_ones(self) -> None:
         """``While 1 Do`` never exits, so this is checked by stepping."""

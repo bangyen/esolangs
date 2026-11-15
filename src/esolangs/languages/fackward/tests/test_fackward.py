@@ -13,6 +13,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
 from tests.support.execution import assert_digit_cap_independent
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_output_retry
 
 _run = native_runner(run)
 
@@ -57,10 +58,20 @@ def test_a_function_runs_only_on_the_values_behind_it() -> None:
     assert _run(")[H]-/0 1") == "\x00"  # ``-`` sees ``/`` and waits
 
 
-def test_arithmetic() -> None:
+def test_arithmetic(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _run(")[H]/100 3") == "!"  # 33
     assert _run(")[H]+30 3*3 11") == "!!"
     assert _run(")[H 33]%5") == "\x00!"
+    assert_rejected_output_retry(
+        "Fackward",
+        "65 66 H",
+        "A",
+        "AB",
+        prefix=0,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=("B",),
+    )
 
 
 def test_blocks_wrap_and_append() -> None:

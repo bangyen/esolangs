@@ -51,7 +51,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -242,6 +242,7 @@ class _Machine:
         self.state = _State(0, 0, first=True, stopped=not self.code)
         self.queue: deque[int] = deque()
         self.io = io
+        self._writer = _BufferedOutput()
         self._rejected_input = False
 
     @property
@@ -263,7 +264,11 @@ class _Machine:
         """Capture semantic components independently of storage and cycle grouping."""
         cursor = self.io.progress()
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state.cursor,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.state.cursor, accepted))
+                if (accepted := self._writer.accepted)
+                else self.state.cursor
+            ),
             flag=self.state.flag,
             first_lap=self.state.first,
             stopped=self.state.stopped,
@@ -277,8 +282,11 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Include the flag, first-lap status, queue and input progress."""
-        state = (*self.state, tuple(self.queue), self.io.progress())
-        return (*state, True) if self._rejected_input else state
+        state: tuple[object, ...] = (*self.state, tuple(self.queue), self.io.progress())
+        if self._rejected_input:
+            state = (*state, True)
+        accepted = self._writer.accepted
+        return (*state, accepted) if accepted else state
 
     def _read_trits(self, opcode: str) -> tuple[int, ...]:
         if self._rejected_input:
@@ -301,18 +309,19 @@ class _Machine:
             return
         command = self.code[self.state.cursor]
         inputs = self._read_trits(command.opcode) if command.opcode in "rR" else ()
-        self.state, effect = _advance(
+        state, effect = _advance(
             self.state,
             command,
             len(self.code),
             self.queue[0] if self.queue else None,
             inputs,
         )
+        if effect.output:
+            self._writer.write(self.io, effect.output)
         if effect.pop:
             self.queue.popleft()
         self.queue.extend(effect.append)
-        if effect.output:
-            self.io.print_str(effect.output)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

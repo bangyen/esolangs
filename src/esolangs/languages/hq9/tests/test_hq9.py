@@ -6,6 +6,7 @@ from esolangs.languages.hq9.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.interpreters.runner import run_program
+from tests.support.vm_support import assert_rejected_output_retry
 from tests.support.workspace_oracle import WorkspaceOracle
 
 
@@ -19,10 +20,33 @@ def test_quine_preserves_source(code: str) -> None:
     assert run_program(run, code) == code * sum(char in "Qq" for char in code)
 
 
-def test_execution_order_and_silent_accumulator() -> None:
+def test_execution_order_and_silent_accumulator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from esolangs.languages.hq9.tests.oracle_checks import check_raw_hq9
 
     check_raw_hq9()
+    greeting = "Hello, world!\n"
+    assert_rejected_output_retry(
+        "HQ9+",
+        "HQ",
+        greeting,
+        greeting + "HQ",
+        prefix=0,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=("HQ",),
+    )
+    assert_rejected_output_retry(
+        "HQ9+",
+        "☃Q",
+        "☃Q",
+        "☃Q",
+        prefix=1,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
     for code, peak, accumulator, output in (
         ("h++qH", 5, 2, "Hello, world!\nh++qHHello, world!\n"),
         ("h+q", 3, 1, "Hello, world!\nh+q"),

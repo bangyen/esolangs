@@ -15,8 +15,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 
 type _State = bool
 
@@ -33,6 +33,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:  # noqa: ARG002 - source is ignored
         self.io = io
         self.state: _State = False
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -43,18 +44,27 @@ class _Machine:
         return int(self.state)
 
     def snapshot(self) -> tuple[object, ...]:
-        return (self.state, self.io.progress())
+        boundary = (self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture named semantic fields independently of cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            emitted=self.state, input_cursor=self.io.progress()
+            emitted=(
+                WorkspaceVariant("pending_output", (self.state, accepted))
+                if accepted
+                else self.state
+            ),
+            input_cursor=self.io.progress(),
         )
 
     def step(self) -> None:
-        self.state, output = _advance(self.state)
+        state, output = _advance(self.state)
         if output is not None:
-            self.io.print_str(output)
+            self._writer.write(self.io, output)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

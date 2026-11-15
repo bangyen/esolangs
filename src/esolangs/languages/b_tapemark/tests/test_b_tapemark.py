@@ -7,6 +7,7 @@ from esolangs.languages.b_tapemark.interpreter import _workspace_grid
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from tests.support.vm_support import assert_rejected_output_retry
 
 
 def execute(source: str, stdin: str = "") -> str:
@@ -23,9 +24,24 @@ def test_documented_cat() -> None:
     assert io.getvalue() == "A\nB\n"
 
 
-def test_copy_and_character_input() -> None:
+def test_copy_and_character_input(monkeypatch: pytest.MonkeyPatch) -> None:
     assert execute(">*A+!") == "A"
     assert execute(">-+!", "Z\n") == "Z"
+    for source, first, output, prefix, stdin, rest in (
+        (">AB!", "A", "AB", 1, "", ("B",)),
+        (">-+!", "Z", "Z", 2, "Z", ()),
+    ):
+        assert_rejected_output_retry(
+            "B-tapemark",
+            source,
+            first,
+            output,
+            prefix=prefix,
+            monkeypatch=monkeypatch,
+            stdin=stdin,
+            unchanged_if_unwritten=True,
+            following_writes=rest,
+        )
 
 
 def test_the_swap_marker_dialect_names_the_marker_that_moves(monkeypatch) -> None:

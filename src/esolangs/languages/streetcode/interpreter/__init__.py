@@ -69,8 +69,8 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 #: The whole of a run the pure transition owns: the car, the cell pointer,
@@ -240,6 +240,7 @@ class _Machine:
     def __init__(self, code: Sequence[str] | _Image, io: IO) -> None:
         """Bind validated geometry or derive it from raw source."""
         self.io = io
+        self._writer = _BufferedOutput()
         self._graph: _Graph | None
         if isinstance(code, _Image):
             self.grid, self._state, self._graph = code
@@ -364,7 +365,11 @@ class _Machine:
             pointer=self.cp,
             cells=frozenset(self.cells.items()),
             input_cursor=self.io.progress(),
-            stopped=self._done,
+            stopped=(
+                WorkspaceVariant("pending_output", (self._done, accepted))
+                if (accepted := self._writer.accepted)
+                else self._done
+            ),
             input_reads=self._input_reads,
         )
 
@@ -374,7 +379,7 @@ class _Machine:
         ``_done`` matters: ``;`` halts without moving, so without it the
         halt looks like a repeat of the step before.
         """
-        return (
+        boundary = (
             self._state,
             self.cp,
             tuple(sorted(self.cells.items())),
@@ -383,6 +388,8 @@ class _Machine:
             self._input_reads,
             tuple(self.grid),
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _validate(self, start: tuple[int, int]) -> None:
         """Validate the street and keep its drive-state graph.
@@ -406,16 +413,19 @@ class _Machine:
         if op == "IN":
             value = self.io.input_char()
             self._input_reads += 1
-        (self._state, self.cp, frozen, self._done), output = _advance(
+        (state, pointer, frozen, done), output = _advance(
             (self._state, self.cp, MappingProxyType(self.cells), self._done),
             self.grid,
             self._graph,
             value,
         )
-        # The transition already owns and freezes a private tape copy.
-        self.cells = frozen
         if output is not None:
-            self.io.print_char(chr(output))
+            self._write_char(chr(output))
+        # The transition already owns and freezes a private tape copy.
+        self._state, self.cp, self.cells, self._done = state, pointer, frozen, done
+
+    def _write_char(self, char: str) -> None:
+        self._writer.write(self.io, char, first=lambda: self.io.print_char(char))
 
     @staticmethod
     @functools.lru_cache(maxsize=16)

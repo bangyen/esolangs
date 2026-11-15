@@ -72,8 +72,42 @@ def _machine(program: Any) -> _Machine:
     return _Machine(program, ScriptedIO("0\n"))
 
 
+def _check_interrupted_send(monkeypatch) -> None:
+    from esolangs import ExecutionLimits, Language
+
+    program = HELLO_WORLD.replace("Hello, world!", "Hello\nworld!")
+    api = Language("Inject")
+    limits = ExecutionLimits(max_steps=32)
+    expected = api.run(program, limits=limits)
+    assert expected.output == "Hello\nworld!\n"
+    write = ScriptedIO._write
+    attempts = []
+    error = HaltError("second line interrupted")
+
+    def interrupt(port, value):
+        attempts.append(value)
+        if len(attempts) == 2:
+            write(port, value[:1])
+            raise error
+        write(port, value)
+
+    monkeypatch.setattr(ScriptedIO, "_write", interrupt)
+    debugger = api.make_debugger(program)
+    boundary = debugger.snapshot()
+    with pytest.raises(HaltError, match="second line interrupted") as caught:
+        debugger.step()
+    assert caught.value is error
+    assert debugger.snapshot() == (*boundary, (1, 1))
+    assert error.partial_output == "Hello\nw"
+    assert error.observation == debugger.observation
+    assert debugger.observation.steps == 0
+    assert debugger.run(limits=limits) == "halted"
+    assert debugger.observation == expected
+    assert attempts == ["Hello\n", "world!\n", "orld!\n"]
+
+
 class TestWikiExamples:
-    def test_hello_world(self) -> None:
+    def test_hello_world(self, monkeypatch) -> None:
         """The block is sent, then skipped over rather than executed."""
         assert _run(HELLO_WORLD) == "Hello, world!\n"
         source = HELLO_WORLD.splitlines()
@@ -87,6 +121,7 @@ class TestWikiExamples:
         assert first_io.getvalue() == "Hello, world!\n"
         assert second.snapshot() == untouched
         assert second_io.getvalue() == ""
+        _check_interrupted_send(monkeypatch)
 
     def test_cat_preserves_line_content_and_order(self) -> None:
         from .oracle_checks import _check

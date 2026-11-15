@@ -16,6 +16,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_lines
 from tests.support.raises import raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = run_lines(run)
 
@@ -148,10 +149,22 @@ class TestTaglate:
         assert run_and_capture([]) == ""
         assert run_and_capture([""]) == ""
 
-    def test_a_literal_line_is_printed_by_one_i_per_character(self) -> None:
+    def test_a_literal_line_is_printed_by_one_i_per_character(
+        self, monkeypatch
+    ) -> None:
         """``i`` advances one character of the line above it."""
         program = "Hello, World!\niiiiiiiiiiiii"
         assert execute_program("Taglate", program).output == "Hello, World!"
+        assert_rejected_output_retry(
+            "Taglate",
+            "AB\nii",
+            "A",
+            "AB",
+            prefix=0,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=("B",),
+        )
 
     def test_google_translate_url(self) -> None:
         expected = "https://translate.google.com/?sl=en&tl=es&text=Hi&op=translate"

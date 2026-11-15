@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from functools import partial
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -51,9 +52,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.brackets import unmatched
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -166,6 +167,7 @@ class _Machine:
         self.io = io
         self.ops = _parse(code) if isinstance(code, str) else code
         self.state: _State = (0, (None,) * len(_NAMES))
+        self._writer = _BufferedOutput()
 
     @property
     def ind(self) -> int:
@@ -191,15 +193,22 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
         stacks = self.stacks
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state[0],
+            instruction=(
+                WorkspaceVariant("pending_output", (self.state[0], accepted))
+                if accepted
+                else self.state[0]
+            ),
             stacks=tuple(tuple(stacks[name]) for name in _NAMES),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one op; the reads, the writes and the byte check live here."""
@@ -217,7 +226,8 @@ class _Machine:
                     "which is not a byte",
                     hint="keep printed values in 0..255",
                 )
-            self.io.print_char(chr(value))
+            char = chr(value)
+            self._writer.write(self.io, char, first=partial(self.io.print_char, char))
         self.state = _advance(self.state, self.ops, byte)
 
 

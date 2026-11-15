@@ -12,7 +12,10 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 #: The wiki's Hello world: its closing parentheses are left off, so each
 #: ``Add`` is a child of the one before and the deltas accumulate.
@@ -147,8 +150,22 @@ def test_output_past_the_last_code_point_halts() -> None:
         _run(">(Constant 1114112 >(Output))")
 
 
-def test_output_accepts_the_last_code_point() -> None:
+def test_output_accepts_the_last_code_point(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _run(">(Constant 1114111 >(Output))") == chr(1114111)
+    for source, output in (
+        (">(Constant 123 >(OutputNumber))", "123"),
+        (">(Constant 1114111 >(Output))", chr(1114111)),
+    ):
+        assert_rejected_output_retry(
+            "SendStuff",
+            source,
+            output,
+            output,
+            prefix=1,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
 
 def test_a_fixed_node_closes_before_the_macro_uses_dollar() -> None:

@@ -5,7 +5,10 @@ import pytest
 from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.nq.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 
 @pytest.mark.medium
@@ -14,12 +17,23 @@ from tests.support.vm_support import assert_rejected_input_retry
     [("rWH", " \tx2", (3, 3), "#"), ("RH", "x2", (2, 1), "")],
 )
 def test_rejected_input_stays_with_the_failed_step(
-    source, stdin, positions, out
+    source, stdin, positions, out, monkeypatch
 ) -> None:
     position, reads = positions
     assert_rejected_input_retry(
         "NQ", source, stdin, "2", out, position=position, reads=reads, rejected=True
     )
+    if source == "rWH":
+        assert_rejected_output_retry(
+            "NQ",
+            "+2WH",
+            "#",
+            "#",
+            prefix=1,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
 
 def check_instructions() -> None:

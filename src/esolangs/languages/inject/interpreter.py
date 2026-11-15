@@ -53,8 +53,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 # A label line is exactly a name and a semicolon; the semicolon is not part
@@ -316,6 +316,8 @@ class _Machine:
         self.lines = list(image.lines)
         self.spans = dict(image.spans)
         self.io = io
+        self._writer = _BufferedOutput()
+        self._sent_lines = 0
         self._input_reads = 0
         self.ind = 0
         self.done = False
@@ -344,7 +346,11 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
         return _WORKSPACE_MODEL.capture(
-            instruction=self.ind,
+            instruction=(
+                self.ind
+                if (progress := self._send_progress()) is None
+                else WorkspaceVariant("pending_send", (self.ind, *progress))
+            ),
             stopped=self.done,
             lines=tuple(self.lines),
             input_cursor=self.io.progress(),
@@ -357,7 +363,7 @@ class _Machine:
         # The program text is the memory, so it has to go in whole: a loop
         # that keeps rewriting a block is not a repeat.  The input cursor
         # separates a re-read from a genuine cycle.
-        return (
+        boundary = (
             self.ind,
             self.done,
             tuple(self.lines),
@@ -365,6 +371,12 @@ class _Machine:
             self._input_reads,
             frozenset(self.spans.items()),
         )
+        progress = self._send_progress()
+        return boundary if progress is None else (*boundary, progress)
+
+    def _send_progress(self) -> tuple[int, int] | None:
+        accepted = self._writer.accepted or 0
+        return (self._sent_lines, accepted) if self._sent_lines or accepted else None
 
     @property
     def _state(self) -> _State:
@@ -406,9 +418,11 @@ class _Machine:
             self._input_reads += 1
 
         state, output = _advance(self._state, line_in)
+        for text in output[self._sent_lines :]:
+            self._writer.write(self.io, text)
+            self._sent_lines += 1
         self._restore(state)
-        for text in output:
-            self.io.print_str(text)
+        self._sent_lines = 0
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

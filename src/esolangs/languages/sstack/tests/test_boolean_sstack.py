@@ -291,10 +291,7 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger() -> N
         for suffix in range(8):
             for padding in (0, 31 << 11):
                 row = (first + suffix) | padding
-                machine = object.__new__(_Machine)
-                machine.ops = ops
-                machine.io = ScriptedIO(f"{row:016b}" + "B")
-                machine.state = (0, (None,) * 7)
+                machine = _Machine(ops, ScriptedIO(f"{row:016b}" + "B"))
                 commands, written = measure_run(machine, limit=limit)
                 assert machine.halted
                 assert machine.io.getvalue() == table[row]
