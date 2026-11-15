@@ -496,19 +496,20 @@ def _check_dialect_repair(language, capsysbinary, monkeypatch) -> None:
     monkeypatch.setattr(_table, "CATALOG", scope)
 
     class Diagnostic(StringIO):
-        def __init__(self, codec):
+        def __init__(self, codec, declared):
             super().__init__()
             self.codec = codec
+            self.declared = declared
 
         @property
         def encoding(self):
-            return self.codec
+            return self.declared
 
         def write(self, data):
             data.encode(self.codec)
             return super().write(data)
 
-    for codec in ("ascii", "utf-8"):
+    for codec, declared in (("ascii", "ascii"), ("ascii", None), ("utf-8", "utf-8")):
         for values, expected in (
             (["--settings", '{"mode":"é"}'], {"mode": "é", "radix": 1}),
             (
@@ -526,7 +527,7 @@ def _check_dialect_repair(language, capsysbinary, monkeypatch) -> None:
             ),
         ):
             for swapped in (False, True):
-                stderr = Diagnostic(codec)
+                stderr = Diagnostic(codec, declared)
                 with monkeypatch.context() as active:
                     active.setattr(sys, "stderr", stderr)
                     if swapped:
@@ -552,7 +553,7 @@ def _check_dialect_repair(language, capsysbinary, monkeypatch) -> None:
                 assert original.read_answer(original.run(source).output) == "1"
 
     with monkeypatch.context() as active:
-        stderr = Diagnostic("ascii")
+        stderr = Diagnostic("ascii", None)
         active.setattr(sys, "stderr", stderr)
         with pytest.raises(SystemExit) as exited:
             _generate(["--scale", "\u0661", "01", language])

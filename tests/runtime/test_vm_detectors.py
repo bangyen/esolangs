@@ -497,6 +497,7 @@ def _check_malformed_branch_states(monkeypatch) -> None:
     result = api.evaluate(artifact, [1], limits=limits)
     assert result.termination.branches.terminal == (1,)
     assert result.observation == ExecutionResult("1!", 1, 1, 0)
+    _check_branch_successor_containers(api, artifact, limits, Machine, monkeypatch)
 
     class EqualUnhashable(list):
         __hash__ = None
@@ -554,3 +555,49 @@ def _check_malformed_branch_states(monkeypatch) -> None:
             with pytest.raises(TypeError, match="branching callback refused") as caught:
                 api.evaluate(artifact, [1], limits=limits)
             assert caught.value is original
+
+
+def _check_branch_successor_containers(api, artifact, limits, machine, monkeypatch):
+    class Miscounted(list):
+        def __len__(self):
+            return 1
+
+    class NonIterable(list):
+        __iter__ = None
+
+    def prove():
+        live = api.make_debugger(artifact, stdin="1")
+        return run_until_halt_or_all_branches_cycle(live, limit=2)
+
+    for container, diagnostic in (
+        ((), "requires a successor"),
+        ([], "requires a successor"),
+        (7, "sequence or None"),
+        (NonIterable([(1,)]), "finite sequence"),
+        (Miscounted([(0,), (1,)]), "count disagrees"),
+    ):
+        with monkeypatch.context() as hooks:
+            hooks.setattr(
+                machine, "branching_successors", lambda *_args, result=container: result
+            )
+            with pytest.raises(TypeError, match=diagnostic):
+                prove()
+            with pytest.raises(InterpreterLimitError, match=diagnostic) as caught:
+                api.evaluate(artifact, [1], limits=limits)
+            assert caught.value.observation == ExecutionResult("1", 1, 1, 0)
+            assert caught.value.partial_output == "1"
+
+    with monkeypatch.context() as hooks:
+        hooks.setattr(machine, "branching_successors", lambda *_args: [(1,)])
+        assert prove()
+        result = api.evaluate(artifact, [1], limits=limits)
+        assert result.termination.branches.terminal == (1,)
+        assert result.observation == ExecutionResult("1!", 1, 1, 0)
+        hooks.setattr(machine, "branching_successors", lambda *_args: None)
+        with pytest.raises(TimeoutError, match="cannot be safely forked"):
+            prove()
+        with pytest.raises(
+            InterpreterLimitError, match="cannot be safely forked"
+        ) as caught:
+            api.evaluate(artifact, [1], limits=limits)
+        assert caught.value.observation == ExecutionResult("1", 1, 1, 0)

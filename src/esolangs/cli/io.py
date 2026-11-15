@@ -37,6 +37,7 @@ from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _cli_error_text,
     _decode_note,
+    _display_encoding,
     _exit_code,
     _timeout_text,
 )
@@ -682,18 +683,12 @@ def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
     sys.exit(code)
 
 
-def _stdout_encoding(default: str = "utf-8") -> str:
-    """Return the declared stdout codec if the stream supplies one."""
-    encoding: str | None = getattr(sys.stdout, "encoding", None)
-    return encoding or default
-
-
 def _write_text(data: str) -> int:
     """Write one text segment, escaping characters outside the stream's encoding."""
     try:
         return sys.stdout.write(data)
     except UnicodeEncodeError:
-        encoding = _stdout_encoding("ascii")
+        encoding = _display_encoding(sys.stdout)
         _write_all(
             sys.stdout.write, data.encode(encoding, "backslashreplace").decode(encoding)
         )

@@ -446,8 +446,26 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
     assert args == ["describe", "--spec", language]
     assert call_main(args, capsys).strip() == esolangs.describe(language).spec.strip()
 
-    class AsciiStdout(StringIO):
+    class Writer:
+        def __init__(self, codec) -> None:
+            self.codec = codec
+            self.sink = StringIO()
+
+        def write(self, data):
+            data.encode(self.codec)
+            return self.sink.write(data)
+
+        def flush(self):
+            self.sink.flush()
+
+    class Unspecified(Writer):
+        encoding = None
+
+    class AsciiStdout(Writer):
         encoding = "ascii"
+
+    class Utf8Stdout(Writer):
+        encoding = "utf-8"
 
     original = LANGUAGES[
         first(parameterized=True, source_kind="text", answer_mode="output")
@@ -460,6 +478,16 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
         ("Raw\0Scoped name", "raw\0id", ("raw_scoped_alias",)),
     ):
         local = replace(original, name=name, id=id_, aliases=aliases)
+        if not name.isascii():
+            schema = DialectSchema(name, {"mode": ("plain", "é")}, {"mode": "plain"})
+            local = replace(
+                local,
+                runtime=replace(
+                    local.runtime,
+                    dialect=lambda mode="plain": mode,
+                    dialect_schema=schema,
+                ),
+            )
         scope = esolangs.Catalog([local])
         bound = scope.bind(name)
         spelling = aliases[0] if aliases else id_
@@ -470,11 +498,6 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
             elif name.isascii():
                 text = call_main(["describe", "--", name], capsys)
             else:
-                with active.context() as ascii_output:
-                    stdout = AsciiStdout()
-                    ascii_output.setattr(sys, "stdout", stdout)
-                    call_main(["describe", name], capsys)
-                text = stdout.getvalue()
 
                 def copy_example(page):
                     return shlex.split(
@@ -486,24 +509,65 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
                     )
 
                 assert copy_example(help_text("generate", catalog=scope))[-2] == name
-                for invocation in (["generate", "--help"], ["help", "generate"]):
-                    with active.context() as ascii_output:
-                        stdout = AsciiStdout()
-                        ascii_output.setattr(sys, "stdout", stdout)
-                        with pytest.raises(SystemExit) as caught:
-                            call_main(invocation, capsys)
-                    assert caught.value.code == 0
-                    example = copy_example(stdout.getvalue())
-                    assert example == [
+                for adapter, codec, expected in (
+                    (AsciiStdout, "ascii", id_),
+                    (Writer, "ascii", id_),
+                    (Unspecified, "ascii", id_),
+                    (Utf8Stdout, "utf-8", name),
+                    (Writer, "utf-8", id_),
+                ):
+                    with active.context() as capture:
+                        stdout = adapter(codec)
+                        capture.setattr(sys, "stdout", stdout)
+                        call_main(["describe", name], capsys)
+                    text = stdout.sink.getvalue()
+                    title, *lines = text.splitlines()
+                    assert title == name.encode(codec, "backslashreplace").decode(codec)
+                    spec = next(
+                        line.removeprefix("spec: ")
+                        for line in lines
+                        if line.startswith("spec: ")
+                    )
+                    assert shlex.split(spec) == [
                         "esolangs",
-                        "generate",
-                        "--bits",
-                        "10",
-                        id_,
-                        "0110",
+                        "describe",
+                        "--spec",
+                        expected,
                     ]
-                    program = call_main(example[1:], capsys)
-                    assert bound.read_answer(bound.run(program).output) == "1"
+                    assert (
+                        call_main(shlex.split(spec)[1:], capsys).strip()
+                        == bound.describe().spec
+                    )
+                    for invocation in (["generate", "--help"], ["help", "generate"]):
+                        with active.context() as capture:
+                            stdout = adapter(codec)
+                            capture.setattr(sys, "stdout", stdout)
+                            with pytest.raises(SystemExit) as caught:
+                                call_main(invocation, capsys)
+                        assert caught.value.code == 0
+                        page = stdout.sink.getvalue()
+                        example = copy_example(page)
+                        assert example == [
+                            "esolangs",
+                            "generate",
+                            "--bits",
+                            "10",
+                            expected,
+                            "0110",
+                        ]
+                        program = call_main(example[1:], capsys)
+                        assert bound.read_answer(bound.run(program).output) == "1"
+                        json_line = next(
+                            line
+                            for line in page.splitlines()
+                            if line.startswith("  esolangs generate --settings ")
+                        )
+                        command = shlex.split(json_line)
+                        assert json.loads(command[3]) == {"mode": "é"}
+                        assert command[-2] == expected
+                        assert ("  esolangs generate --set " in page) == (
+                            expected == name
+                        )
             command = next(
                 line for line in text.splitlines() if line.startswith("spec: ")
             )

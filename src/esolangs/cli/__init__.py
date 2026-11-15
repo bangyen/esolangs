@@ -73,6 +73,7 @@ from esolangs.cli.hints import (
     _can_render_argument,
     _cli_error_text,
     _did_you_mean,
+    _display_encoding,
     _generate_hint,
     _input_sentence,
     _looks_like_a_table,
@@ -87,7 +88,6 @@ from esolangs.cli.io import (
     _flush_stdout,
     _is_terminal,
     _read_stdin,
-    _stdout_encoding,
     _StdoutEncodingError,
     _StdoutError,
     _write_output,
@@ -418,7 +418,7 @@ def _generate(rest: list[str]) -> None:
     catalog = get_catalog()
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten, catalog=catalog)
     language, table = rest
-    encoding = getattr(sys.stderr, "encoding", None) or "utf-8"
+    encoding = _display_encoding(sys.stderr)
 
     def repair_options(target: LanguageDeclaration) -> list[str] | str:
         tokens = [
@@ -623,7 +623,9 @@ def _describe(rest: list[str]) -> None:
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
     name = str(facts.name)
-    operand = _as_argument(name, encoding=_stdout_encoding(), catalog=catalog)
+    operand = _as_argument(
+        name, encoding=_display_encoding(sys.stdout), catalog=catalog
+    )
     _display(name)
     if facts.parameterized:
         _display(
@@ -796,7 +798,7 @@ def _dispatch() -> None:
         if rest and rest[0] not in COMMANDS:
             # `help nope` printed the usage and exited 0.
             _fail(f"unknown command: {rest[0]}{_did_you_mean(rest[0], set(COMMANDS))}")
-        encoding = _stdout_encoding()
+        encoding = _display_encoding(sys.stdout)
         with _errors():
             page = help_text(rest[0], encoding=encoding) if rest else USAGE
         _write_output(page, utf8=False)
@@ -807,7 +809,7 @@ def _dispatch() -> None:
         # usage block and no hint that `list` was one letter away.
         _fail(f"unknown command: {cmd}{_did_you_mean(cmd, set(COMMANDS))}\n\n{USAGE}")
     if {"--help", "-h"} & set(option_argv[1:]):
-        encoding = _stdout_encoding()
+        encoding = _display_encoding(sys.stdout)
         with _errors():
             page = help_text(cmd, encoding=encoding)
         _write_output(page, utf8=False)

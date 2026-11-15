@@ -40,13 +40,13 @@ from esolangs.runtime._source import (
     ProgramSource,
     anchor_program_source,
     native_file_terminator,
+    source_for,
 )
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.source_hints import program_error_context, with_hint
 from esolangs.settings import (
     DialectSettings,
     _settings_for,
-    dialect_options,
     effective_settings,
 )
 
@@ -238,13 +238,12 @@ def to_json(
         name, program, settings=settings, catalog=catalog, preserve_compression=True
     )
     settings = artifact.settings
-    values = dialect_options(name, settings, catalog=catalog)
     encoded = (
         None
         if settings is None
         else {
             key: {"integer": hex(value)} if type(value) is int else value
-            for key, value in values.items()
+            for key, value in DialectSettings.options(settings).items()
         }
     )
     document: dict[str, Any] = {
@@ -298,21 +297,12 @@ def to_json(
     return record_dumps(document, sort_keys=True)
 
 
-def _settings(
-    value: Any, language: str, *, catalog: Catalog | None = None
-) -> DialectSettings | None:
-    """Restore saved dialect settings, validated for ``language``."""
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    settings = decode_settings(value, language, catalog=catalog)
-    if settings is not None:
-        dialect_options(language, settings, catalog=catalog)
-    return settings
-
-
 def decode_settings(
-    value: Any, language: str | None, *, catalog: Catalog | None = None
+    value: Any,
+    language: str | None,
+    *,
+    catalog: Catalog | None = None,
+    checked_settings: DialectSettings | None = None,
 ) -> DialectSettings | None:
     """Restore saved dialect settings; shared with PNG metadata."""
     if value is None:
@@ -320,6 +310,13 @@ def decode_settings(
     choices = _decode_settings_choices(value)
     if language is None:
         raise ValueError("settings need a language to apply to")
+    if (
+        checked_settings is not None
+        and checked_settings.language == language
+        and all(type(item) in (int, str) for item in choices.values())
+        and choices == DialectSettings.options(checked_settings)
+    ):
+        return checked_settings
     return _settings_for(language, choices, catalog=catalog)
 
 
@@ -358,7 +355,7 @@ def _load_png(
     scale = positive_metadata_field(value, "scale")
     data = base64.b64decode(value["source"], validate=True)
     metadata, png_settings, png_scale, png_arity = read_png_metadata(
-        name, data, catalog=catalog
+        name, data, catalog=catalog, checked_settings=settings
     )
     if "settings" in metadata and png_settings != settings:
         raise ValueError("conflicting PNG and document settings")
@@ -502,7 +499,7 @@ def from_json(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    from esolangs.operations.source import positive_metadata_field, read_artifact
+    from esolangs.operations.source import positive_metadata_field
 
     name = catalog.resolve(language)
     if not _has_backing_type(document, str):
@@ -536,14 +533,15 @@ def from_json(
         # Strict UTF-8 everywhere, as a program file is read: a JSON
         # "\ud800" escape in the source or a setter loaded a lone surrogate.
         check_record_utf8(value)
-        settings = _settings(value["settings"], name, catalog=catalog)
+        settings = decode_settings(value["settings"], name, catalog=catalog)
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
         arity = None if kind == "png" else positive_metadata_field(value, "input_arity")
         artifact = _LOADERS[kind](value, name, settings, catalog=catalog)
         if isinstance(artifact, ProgramArtifact) and arity is not None:
             artifact = replace(artifact, input_arity=arity)
-        return read_artifact(name, artifact, catalog=catalog, preserve_compression=True)
+        source_for(name, artifact.source, catalog=catalog, preserve_compression=True)
+        return artifact
     except (ValueError, TypeError, RecursionError) as error:
         if _is_acquisition_failure(error):
             raise

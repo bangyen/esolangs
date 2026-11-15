@@ -131,9 +131,7 @@ def _merge_settings(
             "may well run, and answer nonsense -- pass its .source to drop "
             "the retained settings"
         )
-    merged = _settings_for(language, retained_values | explicit_values, catalog=catalog)
-    dialect_options(language, merged, catalog=catalog)
-    return merged
+    return _settings_for(language, retained_values | explicit_values, catalog=catalog)
 
 
 class DialectOption(TypedDict):

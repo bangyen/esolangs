@@ -6,6 +6,7 @@ from collections import deque
 from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
 from inspect import getattr_static
+from itertools import islice
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
@@ -519,6 +520,30 @@ def _branch_root_states(root: Hashable) -> set[Hashable]:
         raise
 
 
+def _bounded_branch_sequence(result: object, limit: int) -> tuple[Hashable, ...] | None:
+    """Capture foreign successor containers within the declared state budget."""
+    if not isinstance(result, Sequence):
+        raise _BranchingUnavailableError(
+            "branching_successors must return a sequence or None"
+        )
+    try:
+        count = len(result)
+        if count > limit:
+            return None
+        items = iter(result)
+        successors = tuple(islice(items, count))
+        end = object()
+        if len(successors) == count and next(items, end) is end:
+            return successors
+    except (TypeError, ValueError, OverflowError) as error:
+        raise _BranchingUnavailableError(
+            "branching_successors must return a finite sequence"
+        ) from error
+    raise _BranchingUnavailableError(
+        "branching successor count disagrees with its sequence"
+    )
+
+
 def _branch_search(
     machine: _BranchingStepMachine,
     limit: int,
@@ -561,12 +586,19 @@ def _branch_search(
                 raise
             failure = _branch_fault(error, language) if failure is None else failure
             continue
+        successors = (
+            successors
+            if type(successors) is tuple or successors is None
+            else _bounded_branch_sequence(successors, limit)
+        )
         count = 0 if successors is None else len(successors)
         if successors is None or count > limit:
             failure = _unforkable_branch() if failure is None else failure
             continue
         if not count:
-            raise TypeError("branching transition requires a successor")
+            raise _BranchingUnavailableError(
+                "branching transition requires a successor"
+            )
         forked = forked or count > 1
         if transitions is not None:
             transitions.append((state, tuple(successors)))

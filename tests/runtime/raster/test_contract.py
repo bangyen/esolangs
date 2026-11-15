@@ -945,7 +945,10 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
     path = tmp_path / "program.png"
     scoped.to_file(artifact, path)
     portable = scoped.to_json(artifact)
-    assert scoped.from_file(path) == scoped.from_json(portable) == artifact
+    for load in (lambda: scoped.from_file(path), lambda: scoped.from_json(portable)):
+        validations.clear()
+        assert load() == artifact
+        assert validations == [{}]
     prepared = scoped.prepare(path)
     assert prepared.run(stdin="1").output == "1"
 

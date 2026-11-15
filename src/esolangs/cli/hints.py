@@ -171,7 +171,7 @@ def _swapped_hint(
     if isinstance(options, str):
         return f"{guidance}. {options}"
     flags = "".join(f"{shlex.quote(option)} " for option in options)
-    encoding = getattr(sys.stderr, "encoding", None) or "utf-8"
+    encoding = _display_encoding(sys.stderr)
     operand = _as_argument(
         table, catalog=catalog, encoding=encoding, force_separator=table.startswith("-")
     )
@@ -219,6 +219,12 @@ def _is_option(value: str) -> bool:
     return len(value) > 1 and value[0] == "-" and not value[1].isdigit()
 
 
+def _display_encoding(stream: object) -> str:
+    """Use ASCII for copyable text when a stream declares no codec."""
+    encoding: str | None = getattr(stream, "encoding", None)
+    return encoding or "ascii"
+
+
 def _can_render_argument(value: str, encoding: str) -> bool:
     """Check that a displayed value can be passed verbatim as an argument."""
     if "\0" in value:
@@ -238,7 +244,7 @@ def _as_argument(
     force_separator: bool = False,
 ) -> str:
     """Quote a language ID or name and add an option separator when needed."""
-    codec = encoding or getattr(sys.stderr, "encoding", None) or "utf-8"
+    codec = encoding or _display_encoding(sys.stderr)
     if _is_option(language) or not _can_render_argument(language, codec):
         with suppress(UnknownLanguageError):
             declaration = catalog.languages[catalog.resolve(language)]

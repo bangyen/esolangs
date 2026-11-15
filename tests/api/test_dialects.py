@@ -4,6 +4,7 @@ import inspect
 import json
 import pickle
 from dataclasses import FrozenInstanceError
+from pathlib import Path
 
 import pytest
 
@@ -309,7 +310,7 @@ def test_dialect_settings_from_another_schema_name_the_catalog() -> None:
         esolangs.run(REFERENCE, Unreadable(), stdin=Unreadable(), settings=settings)
 
 
-def test_dialect_keys_survive_binding_and_round_trips() -> None:
+def test_dialect_keys_survive_binding_and_round_trips(tmp_path: Path) -> None:
     from dataclasses import replace
 
     names = (
@@ -326,9 +327,16 @@ def test_dialect_keys_survive_binding_and_round_trips() -> None:
         REFERENCE, dict.fromkeys(names, (1, 2)), dict.fromkeys(names, 1)
     )
     original = LANGUAGES[REFERENCE]
-    runtime = replace(
-        original.runtime, dialect=lambda **choices: choices, dialect_schema=schema
-    )
+    validations = []
+    once = False
+
+    def validate(**choices):
+        if once and validations:
+            raise esolangs.ProgramError("dialect already validated")
+        validations.append(choices)
+        return choices
+
+    runtime = replace(original.runtime, dialect=validate, dialect_schema=schema)
     bound = CATALOG.with_language(replace(original, runtime=runtime)).bind(REFERENCE)
     choices = dict.fromkeys(names, 2)
     settings = bound.settings(**choices)
@@ -337,7 +345,32 @@ def test_dialect_keys_survive_binding_and_round_trips() -> None:
     assert DialectSettings(schema=schema, self=2) == bound.settings(self=2)
     assert eval(repr(settings), {"Language": bound.catalog.bind}) == settings
     artifact = bound.from_source("+.", settings=settings)
-    assert bound.from_json(bound.to_json(artifact)) == artifact
+    document = bound.to_json(artifact)
+    path = tmp_path / "program"
+    path.write_text("+.", encoding="utf-8")
+
+    class CheckedPath:
+        calls = 0
+
+        def __fspath__(self) -> str:
+            assert validations == [choices]
+            self.calls += 1
+            return str(path)
+
+    provider = CheckedPath()
+    once = True
+    for operation, expected in (
+        (lambda: bound.from_source("+.", settings=settings), artifact),
+        (lambda: bound.from_file(provider, settings=settings), artifact),
+        (lambda: bound.from_json(document), artifact),
+        (lambda: bound.to_json("+.", settings=settings), document),
+        (lambda: bound.to_file("+.", path, settings=settings), None),
+    ):
+        validations.clear()
+        assert operation() == expected
+        assert validations == [choices]
+    assert provider.calls == 1
+    assert path.read_bytes() == b"+."
 
     def untouched(**_choices):
         pytest.fail("validating a declaration must not call its dialect hook")

@@ -85,7 +85,11 @@ def read_png_artifact(
 
 @_track_acquisition_failures()
 def read_png_metadata(
-    name: str, data: bytes, *, catalog: Catalog
+    name: str,
+    data: bytes,
+    *,
+    catalog: Catalog,
+    checked_settings: DialectSettings | None = None,
 ) -> tuple[dict[str, Any], DialectSettings | None, int | None, int | None]:
     """Validate native source claims without opening the image."""
     from esolangs.portable import decode_settings
@@ -102,7 +106,10 @@ def read_png_metadata(
             raise ValueError("PNG language must be a string")
         check_origin(name, origin, catalog=catalog)
         settings = decode_settings(
-            metadata.get("settings"), None if origin is None else name, catalog=catalog
+            metadata.get("settings"),
+            None if origin is None else name,
+            catalog=catalog,
+            checked_settings=checked_settings,
         )
         scale = metadata.get("scale")
         scale = None if scale is None else check_scale(scale)
@@ -165,6 +172,26 @@ def read_artifact(
             scale=program.scale,
             input_arity=program.input_arity,
         )
+    return _read_source_artifact(
+        name,
+        program,
+        settings=settings,
+        catalog=catalog,
+        normalize=normalize,
+        preserve_compression=preserve_compression,
+    )
+
+
+def _read_source_artifact(
+    name: str,
+    program: ProgramSource | _FileSource,
+    *,
+    settings: DialectSettings | None,
+    catalog: Catalog,
+    normalize: bool,
+    preserve_compression: bool,
+) -> ProgramArtifact[Program]:
+    """Load a container after its explicit settings have been checked."""
     value, path = _read_container(program)
     if isinstance(value, bytes) and (
         value.startswith(b"\x89PNG\r\n\x1a\n")
@@ -301,7 +328,7 @@ def from_file(
         raise
     except OSError as error:
         raise source_read_error("the program", error) from error
-    artifact = read_artifact(
+    return _read_source_artifact(
         name,
         source,
         settings=settings,
@@ -309,5 +336,3 @@ def from_file(
         normalize=normalize,
         preserve_compression=True,
     )
-    assert isinstance(artifact, ProgramArtifact)
-    return artifact
