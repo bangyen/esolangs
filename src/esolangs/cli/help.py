@@ -188,6 +188,9 @@ before running it through the Python API. The CLI prints literal source,
 which `esolangs run` interprets as written. `esolangs list --details` marks
 these generators `tmpl`. Pass --bits to print the filled program.
 
+For text and gzip output, repeat non-default --settings or --set options on
+`esolangs run`. PNG files carry their dialect settings.
+
 options:
   --bits BITS  fill a template's input slots with these bits, one character
                per input, and print the runnable program.  Substituting them
@@ -241,6 +244,9 @@ For generated Boolean programs, `esolangs encode-inputs` spells the input
 characters, numeric tokens, or lines.
 
     esolangs encode-inputs brainfuck 101 | esolangs run brainfuck prog.txt
+
+For generated text and gzip, repeat the non-default --settings or --set
+options used with `esolangs generate`. PNG files carry their dialect settings.
 
 Piped output is written verbatim as UTF-8. A trailing newline is added
 only when stdout is a terminal. Partial output is written before the error

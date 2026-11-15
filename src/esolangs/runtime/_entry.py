@@ -10,18 +10,27 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
-from esolangs.runtime._source import text_source
+from esolangs.runtime._files import explicit_path
+from esolangs.runtime._source import (
+    compressed_text_source,
+    native_text_source,
+    text_source,
+)
 from esolangs.runtime.io import IO
 
 if TYPE_CHECKING:
+    from os import PathLike
+
     from esolangs.raster import Raster
 
 #: How ``run`` wants the source: the whole string, the lines with newlines
 #: (``readlines()``), or without (``splitlines()``).  A grid language handed
 #: kept newlines reads a column too many, so these are not interchangeable.
 SourceShape = Literal["text", "keep", "strip"]
+# These loaders accept exact path spellings without needing a pathlib.Path.
+_TEXT_LOADERS = (text_source, native_text_source, compressed_text_source)
 
 
 def script_main(
@@ -39,11 +48,15 @@ def script_main(
     """
     if len(sys.argv) < 2:
         return
+    spelling = sys.argv[1]
     if loader is None:
-        source: Any = text_source(Path(sys.argv[1]).read_bytes())
+        source: Any = text_source(explicit_path(spelling))
         source = source.replace("\r\n", "\n").replace("\r", "\n")
+    elif any(loader is read for read in _TEXT_LOADERS):
+        reader = cast("Callable[[PathLike[str]], Any]", loader)
+        source = reader(explicit_path(spelling))
     else:
-        source = loader(Path(sys.argv[1]))
+        source = loader(Path(spelling))
     if shape == "keep":
         source = source.splitlines(keepends=True)
     elif shape == "strip":
@@ -66,7 +79,7 @@ def raster_script_main(language: str, run: _RasterRunner) -> None:
     from esolangs.operations.source import from_file
     from esolangs.raster import Raster
 
-    artifact = from_file(language, Path(sys.argv[1]))
+    artifact = from_file(language, sys.argv[1])
     assert isinstance(artifact.source, Raster)
     code = run(artifact.source, IO(), scale=artifact.scale)
     if code is not None:

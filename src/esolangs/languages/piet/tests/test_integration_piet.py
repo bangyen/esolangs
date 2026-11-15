@@ -1,6 +1,7 @@
 """Piet through the shared API, CLI and machinery."""
 
 import importlib
+import os
 import subprocess
 import sys
 from dataclasses import replace
@@ -127,6 +128,22 @@ def test_piet_explicit_scale_resolves_ambiguous_image(tmp_path) -> None:
     assert rejected.returncode == 1
     assert rejected.stdout == b""
     assert b"scale must be a positive integer, got False" in rejected.stderr
+
+    if os.name == "posix":
+        path.write_bytes(pixels)
+        for suffix in ("/", "/."):
+            spelling = f"{path}{suffix}"
+            rejected = subprocess.run(
+                [*command[:-1], spelling],
+                input=b"",
+                capture_output=True,
+                timeout=5,
+                check=False,
+            )
+            assert rejected.returncode == 1
+            assert rejected.stdout == b""
+            assert b"Not a directory" in rejected.stderr
+            assert os.fsencode(spelling) in rejected.stderr
 
 
 def _check_worker_proof_scale(image: Raster) -> None:

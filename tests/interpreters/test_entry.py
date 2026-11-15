@@ -1,13 +1,19 @@
 """Unit tests for the shared interpreter ``__main__`` body."""
 
 import gzip
+import os
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from esolangs import ProgramError
+from esolangs import ArgumentError, ProgramError
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._source import (
+    compressed_text_source,
+    native_text_source,
+    text_source,
+)
 from esolangs.runtime.io import IO
 
 PROGRAM = "one\ntwo\n"
@@ -44,11 +50,17 @@ def test_source_shape(tmp_path, monkeypatch, shape, expected):
             seen.clear()
             script_main(run, shape=shape)
             assert seen == [expected]
-    path.write_bytes(b"\x1f\x8b")
-    seen.clear()
-    with pytest.raises(ProgramError, match="gzip"):
-        script_main(run, shape=shape)
-    assert not seen
+    for invalid, reason in (
+        (b"\x1f\x8b", "truncated gzip"),
+        (gzip.compress(b"\xff"), "invalid UTF-8"),
+        (b"\x89PNG\r\n\x1a\n", "the program is a PNG"),
+    ):
+        path.write_bytes(invalid)
+        seen.clear()
+        with pytest.raises(ProgramError, match=reason) as failure:
+            script_main(run, shape=shape)
+        assert str(path) in str(failure.value)
+        assert not seen
 
 
 class TestArgumentHandling:
@@ -99,8 +111,27 @@ def test_loader_receives_the_path_and_owns_source_decoding(
 
     def loader(actual: Path) -> object:
         assert actual == path
+        assert isinstance(actual, Path)
         return source
 
     monkeypatch.setattr("sys.argv", ["prog", str(path)])
     script_main(run, loader=loader)
+    assert seen == [source]
+
+    path.write_bytes(gzip.compress(b"one\r\n", mtime=0))
+    for reader in (None, text_source, native_text_source, compressed_text_source):
+        monkeypatch.setattr("sys.argv", ["prog", str(path)])
+        script_main(run, loader=reader)
+        wanted = {None: "one\n", native_text_source: "one"}.get(reader, "one\r\n")
+        assert str(seen.pop()) == wanted
+        if os.name == "posix":
+            for suffix in ("/", "/."):
+                rejected = f"{path}{suffix}"
+                monkeypatch.setattr("sys.argv", ["prog", rejected])
+                with pytest.raises(ProgramError, match="Not a directory") as failed:
+                    script_main(run, loader=reader)
+                assert rejected in str(failed.value)
+        monkeypatch.setattr("sys.argv", ["prog", ""])
+        with pytest.raises(ArgumentError, match="path must not be empty"):
+            script_main(run, loader=reader)
     assert seen == [source]

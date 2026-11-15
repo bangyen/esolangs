@@ -1,14 +1,15 @@
 """Tests for the Bleh interpreter."""
 
+import pickle
 import sys
-from dataclasses import replace
+from dataclasses import fields, replace
 from itertools import product
 
 import pytest
 
 from esolangs import Catalog, ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import InterpreterLimitError, ProgramError
-from esolangs.languages.bleh.interpreter import _Machine, run
+from esolangs.languages.bleh.interpreter import _Lazy, _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
 from tests.interpreters.oracle_support import check_terminal
@@ -219,6 +220,7 @@ def test_nested_source_respects_the_parent_recursion_limit() -> None:
         sys.setrecursionlimit(1000)
         check_routes(source(499), 504)
         _check_recursive_snapshot_formatting(language)
+        _check_shared_lazy_comparison()
     finally:
         sys.setrecursionlimit(original)
 
@@ -279,3 +281,58 @@ def _check_recursive_snapshot_formatting(language: Language) -> None:
         assert len(rendered) < 8000
     assert debugger.snapshot() == snapshot
     assert hash(debugger.snapshot()) == hash(snapshot)
+
+    source = f"{forwards} f{depth}: x, _ = loop(x); loop: x = loop(x); main := f0(1);"
+    artifact = scoped.from_source(source)
+    local = scoped.evaluate(artifact, [1], limits=ExecutionLimits(max_steps=64))
+    worker = scoped.evaluate(
+        artifact, [1], limits=ExecutionLimits(max_steps=64, total_timeout=3)
+    )
+    assert local == worker
+    assert local.answer == "1"
+    assert local.termination is not None
+    assert local.termination.cycle is not None
+    assert "_Lazy(" in repr(local.termination.cycle.state)
+
+
+def _check_shared_lazy_comparison() -> None:
+    comparisons = hashes = 0
+
+    class Probe(str):
+        def __eq__(self, other: object) -> bool:
+            nonlocal comparisons
+            comparisons += 1
+            return str.__eq__(self, other)
+
+        def __hash__(self) -> int:
+            nonlocal hashes
+            hashes += 1
+            return str.__hash__(self)
+
+    left, right = _Lazy((Probe("1"),)), _Lazy((Probe("1"),))
+    for _ in range(12):
+        left, right = _Lazy((left, left)), _Lazy((right, right))
+    assert left == right
+    assert comparisons == 1
+    fingerprint = hash(left)
+    for _ in range(3):
+        assert hash(left) == fingerprint
+    assert hashes == 1
+    assert hash((left.parts,)) == fingerprint
+
+    leaf = _Lazy(("1",))
+    shared = _Lazy((leaf, leaf))
+    expanded = _Lazy((_Lazy(("1",)), _Lazy(("1",))))
+    assert shared == expanded
+    assert hash(shared) == hash(expanded) == hash((shared.parts,))
+    assert shared != _Lazy((leaf, _Lazy(("0",))))
+    assert shared != _Lazy((leaf,))
+    assert [field.name for field in fields(shared)] == ["parts"]
+
+    cold = _Lazy((_Lazy(("1",)), _Lazy(("1",))))
+    stored = pickle.dumps(cold)
+    assert hash(cold) == hash(expanded)
+    assert pickle.dumps(cold) == stored
+    restored = pickle.loads(stored)
+    assert restored == expanded
+    assert hash(restored) == hash(expanded)

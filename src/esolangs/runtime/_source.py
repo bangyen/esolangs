@@ -16,6 +16,7 @@ from esolangs.outcomes import (
     _track_acquisition_failures,
 )
 from esolangs.raster import Raster
+from esolangs.raster.png import _SIGNATURE as _PNG_SIGNATURE
 from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._files import (
     _path_directory,
@@ -199,6 +200,13 @@ def text_source(
         # limits raw export; loading an interpreter's source is not export.
         value = "".join(_freeze_compressed(value).chunks())
     if _has_backing_type(value, bytes):
+        if value.startswith(_PNG_SIGNATURE):
+            raise syntax_error(
+                f"cannot read {label or 'the program'}: text source is required, "
+                "but the program is a PNG",
+                "use text source or select the language that reads the PNG",
+                error_type=ProgramError,
+            )
         try:
             value = value.decode("utf-8")
         except UnicodeDecodeError as exc:
