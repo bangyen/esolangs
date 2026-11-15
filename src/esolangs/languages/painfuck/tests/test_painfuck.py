@@ -5,6 +5,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import ExecutionLimits, InputExhaustedError, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.painfuck.interpreter import _Machine as Painfuck
 from esolangs.languages.painfuck.interpreter import prepare_machine
@@ -406,15 +407,32 @@ def test_painfuck_one_halting_coin_refutes_an_all_branches_hang() -> None:
         run_until_halt_or_cycle(looping, limit=64)
 
 
-def test_painfuck_a_malformed_loop_is_a_terminal_branch() -> None:
-    """An unmatched ``b`` ends its branch instead of escaping the search."""
+def test_branch_search_keeps_clean_and_faulting_outcomes() -> None:
     machine = Painfuck(_encode("b"), ScriptedIO())
     start = machine.branching_snapshot()
     assert machine.branching_halted(start) is False
 
-    (ended,) = machine.branching_successors(start, 100) or ()
-    assert machine.branching_halted(ended) is True
-    assert ended[3] == machine.n  # cursor parked past the program
+    with pytest.raises(HaltError, match="unmatched 'b'"):
+        machine.branching_successors(start, 100)
+    for proof in (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle):
+        vm = Language("Painfuck").make_vm(_encode("b"))
+        with pytest.raises(HaltError, match="unmatched 'b'"):
+            proof(vm, limit=2)
+        assert proof(Language("Painfuck").make_vm(_encode("e")), limit=2) is True
+
+    api = Language("Painfuck")
+    for program, error in (("yj", InputExhaustedError), ("yb", HaltError)):
+        source = _encode(program)
+        limits = ExecutionLimits(max_steps=1)
+        assert api.run(source, seed=0, limits=limits).steps == 1
+        with pytest.raises(error):
+            api.run(source, seed=4, limits=limits)
+        machine = api.make_vm(source, seed=4)
+        saved = machine.snapshot()
+        with pytest.raises(TimeoutError, match="coin outcomes"):
+            run_until_halt_or_all_branches_cycle(machine, limit=1)
+        assert run_until_halt_or_all_branches_cycle(machine, limit=2) is True
+        assert machine.snapshot() == saved
 
 
 def test_painfuck_later_coin_can_escape_repeated_visible_state() -> None:
@@ -549,3 +567,12 @@ def test_loop_end_tests_the_cell_before_jumping(value: int) -> None:
     assert cursor == (3 if value == 0 else 0)
     assert loops == ()
     assert tape == (value,)
+
+
+def test_wide_decimal_reads_and_repeated_prints_ignore_the_host_digit_cap():
+    from tests.support.execution import assert_digit_cap_independent
+
+    digits = "9" * 641
+    assert_digit_cap_independent("Painfuck", _encode("ioe"), digits, digits)
+    value = "1" + "0" * 639 + "1"
+    assert_digit_cap_independent("Painfuck", _encode("ipcoe"), digits[:-1], value * 7)

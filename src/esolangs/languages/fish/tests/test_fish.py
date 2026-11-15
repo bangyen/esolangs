@@ -4,6 +4,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import HaltError
 from esolangs.languages.fish.interpreter import _advance, _Machine, prepare_machine, run
@@ -396,3 +397,26 @@ def test_the_last_codepoint_is_printable_and_the_next_is_not() -> None:
     assert _run(horner + "o;") == "\U0010ffff"
     with pytest.raises(HaltError, match="smells fishy"):
         _run(horner + "1+o;")
+
+
+def test_a_clean_branch_can_prove_halt_after_a_faulting_sibling() -> None:
+    api = Language("Fish")
+    source = "x;\n~ "
+    limits = ExecutionLimits(max_steps=2)
+    good = api.run(source, seed=2, limits=limits)
+    assert good.steps == 2
+    with pytest.raises(HaltError, match="smells fishy"):
+        api.run(source, seed=4, limits=limits)
+
+    vm = api.make_debugger(source, seed=4)
+    saved = vm.snapshot()
+    with pytest.raises(TimeoutError, match="outcome budget"):
+        run_until_halt_or_all_branches_cycle(vm, limit=3)
+    assert run_until_halt_or_all_branches_cycle(vm, limit=8) is True
+    with pytest.raises(TypeError, match="some draws halt"):
+        run_until_halt_or_cycle(vm, limit=8)
+    assert vm.snapshot() == saved
+    assert vm.observation.steps == 0
+
+    with pytest.raises(HaltError, match="smells fishy"):
+        run_until_halt_or_all_branches_cycle(api.make_vm("x~\n~~"), limit=8)

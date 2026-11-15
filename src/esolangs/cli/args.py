@@ -12,7 +12,7 @@ import re
 import select
 import stat
 import sys
-from collections.abc import Callable, Collection, Iterator
+from collections.abc import Collection, Iterator
 from contextlib import contextmanager, suppress
 from typing import NoReturn, TextIO
 
@@ -23,7 +23,7 @@ from esolangs.exceptions import EsolangError
 from esolangs.registry import resolve
 from esolangs.runtime._json import record_loads
 from esolangs.runtime._validate import check_scale, check_timeout
-from esolangs.runtime.memory import format_integer, parse_integer
+from esolangs.runtime.memory import _hit_digit_cap, format_integer, parse_integer
 from esolangs.settings import DialectSettings, dialect_choices
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -406,11 +406,10 @@ def _integer(
     name: str,
     *,
     kind: str = "an integer",
-    parse: Callable[[str], int] = _decimal_integer,
 ) -> int:
     """Parse an integer with a flag-specific usage error."""
     try:
-        return parse(value)
+        return _decimal_integer(value)
     except ValueError:
         _fail(f"{name} must be {kind}, got {value!r}")
 
@@ -451,10 +450,25 @@ def _set_value(key: str, raw: str, language: str) -> int | str:
     schema = dialect_choices(language)
     if key in schema and type(schema[key]["choices"][0]) is int:
         try:
-            return int(raw, 0)
+            return _base_zero_integer(raw)
         except ValueError:
             _fail(f"--set {key} needs an integer, got {raw!r}")
     return raw
+
+
+def _base_zero_integer(raw: str) -> int:
+    """Parse base-0 operands without capping their decimal digits."""
+    try:
+        return int(raw, 0)
+    except ValueError as exc:
+        if not _hit_digit_cap(exc):
+            raise
+        value = _decimal_integer(raw)
+        # CPython's digit cap can fire before it rejects a nonzero decimal
+        # starting with zero. Preserve that base-0 restriction on retry.
+        if value and int(raw.strip().lstrip("+-")[0]) == 0:
+            raise
+        return value
 
 
 type _SettingsArguments = tuple[dict[str, object], dict[str, str]]

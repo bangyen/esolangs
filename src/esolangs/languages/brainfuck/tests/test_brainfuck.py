@@ -5,7 +5,7 @@ from itertools import product
 
 import pytest
 
-from esolangs import ExecutionLimits, InputExhaustedError
+from esolangs import ExecutionLimits, InputExhaustedError, Language
 from esolangs.languages.brainfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle, run_until_halt_or_growth
@@ -19,16 +19,26 @@ from tests.support.vm_support import assert_proof_fault
 bf = importlib.import_module("esolangs.languages.brainfuck.interpreter")
 
 
-@pytest.mark.parametrize("debugged", [False, True])
-def test_live_detectors_keep_vm_fault_evidence(*, debugged: bool) -> None:
-    assert_proof_fault(
-        run_until_halt_or_growth,
-        REFERENCE,
-        "+.,",
-        InputExhaustedError,
-        "\x01",
-        debugged=debugged,
-    )
+def test_tape_growth_proof_keeps_faults_and_includes_the_last_boundary() -> None:
+    for debugged in (False, True):
+        assert_proof_fault(
+            run_until_halt_or_growth,
+            REFERENCE,
+            "+.,",
+            InputExhaustedError,
+            "\x01",
+            debugged=debugged,
+        )
+
+    api = Language("Brainfuck")
+    short = api.make_debugger("+[>+]")
+    with pytest.raises(TimeoutError, match="after 5 steps"):
+        run_until_halt_or_growth(short, limit=5)
+    assert short.observation.steps == 5
+
+    exact = api.make_debugger("+[>+]")
+    assert run_until_halt_or_growth(exact, limit=6) is False
+    assert exact.observation.steps == 6
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:

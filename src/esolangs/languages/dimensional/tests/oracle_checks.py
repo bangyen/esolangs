@@ -14,7 +14,11 @@ from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceSnapshot
 from tests.interpreters.oracle_support import after_step, observed, reject_faults
 from tests.support import workspace_oracle as workspace
-from tests.support.model_input import token_span
+from tests.support.model_input import (
+    rejected_integer,
+    rejected_integer_syntax,
+    token_span,
+)
 
 _WORKSPACE = workspace.workspace_model(
     "dimensional-v1", "instruction comment axis height hierarchy input_cursor"
@@ -186,6 +190,7 @@ def _model(code, stdin):
         if c in ",dx":
             value, cursor, error = _read(c, stdin, cursor)
             if error:
+                pc = start + (error == "input")
                 return error, [*trace, row()]
         elif c in "+-:=":
             value = _value(c, byte(), arg)
@@ -235,9 +240,17 @@ def _view(machine):
 
 def _check(factory, code, stdin="unused"):
     error, rows = _model(code, stdin)
-    checked = workspace.workspace_view(
-        rows, _WORKSPACE, lambda row: (*row[0][:3], *row[0][5:], row[-1]), _view
-    )
+
+    def parts(row):
+        return (*row[0][:3], *row[0][5:], row[-1])
+
+    if error == "argument":
+        parts = workspace._rejected_parts(
+            parts, rows[-1], rejected_integer(rows, stdin)
+        )
+    elif error == "syntax" and (fault := rejected_integer_syntax(rows, stdin, base=16)):
+        parts = workspace._rejected_parts(parts, rows[-1], fault)
+    checked = workspace.workspace_view(rows, _WORKSPACE, parts, _view)
     expected = (
         error,
         [(None if row[0] is None else row[0][:5], *row[1:]) for row in rows],

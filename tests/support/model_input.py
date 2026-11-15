@@ -43,14 +43,14 @@ def rejected_integer(rows, stdin):
     return integer_rejection(stdin[start:end])
 
 
-def rejected_decimal_syntax(rows, stdin):
-    """Predict the ordinary ValueError from a rejected decimal token."""
+def rejected_integer_syntax(rows, stdin, *, base=10):
+    """Predict the ordinary ValueError from a rejected integer token."""
     if len(rows) < 2 or rows[-2][-1] == rows[-1][-1]:
         return None
     start, end = token_span(stdin, rows[-2][-1])
     return (
         "ValueError",
-        "invalid literal for int() with base 10: " + repr(stdin[start:end])[:200],
+        f"invalid literal for int() with base {base}: " + repr(stdin[start:end])[:200],
         (),
     )
 

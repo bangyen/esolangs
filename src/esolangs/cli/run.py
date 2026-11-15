@@ -119,7 +119,6 @@ def _run(rest: list[str]) -> None:
             options["--max-memory"],
             "--max-memory",
             kind="a positive integer",
-            parse=int,
         )
         if max_memory < 1:
             _fail(

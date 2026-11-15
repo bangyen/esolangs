@@ -5,10 +5,31 @@ from __future__ import annotations
 from collections.abc import Hashable
 from dataclasses import dataclass
 from reprlib import recursive_repr
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from esolangs.results import ExecutionResult
 from esolangs.runtime._lifecycle import BoundaryCycle
+
+if TYPE_CHECKING:
+    from esolangs.exceptions import EsolangError
+
+
+@dataclass(frozen=True, slots=True)
+class BranchFailure:
+    """One outcome that faults or would need an external input value."""
+
+    error: EsolangError | None = None
+
+
+def branch_outcomes[T](
+    outcomes: list[T | BranchFailure],
+) -> tuple[T | BranchFailure, ...] | None:
+    """Keep failed alternatives when they share a transition with other paths."""
+    if len(outcomes) == 1 and isinstance(outcome := outcomes[0], BranchFailure):
+        if outcome.error is not None:
+            raise outcome.error from None
+        return None
+    return tuple(outcomes)
 
 
 @dataclass(frozen=True, slots=True)

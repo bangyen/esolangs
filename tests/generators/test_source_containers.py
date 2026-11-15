@@ -408,17 +408,76 @@ def test_two_byte_native_terminator_counts_toward_raw_budget(tmp_path: Path) -> 
     assert path.read_bytes() == b"original"
 
 
-@pytest.mark.parametrize("spelling", ["", b"bytes", 1])
-def test_explicit_paths_are_validated_on_import_and_export(spelling) -> None:
+def test_explicit_paths_are_validated_on_import_and_export() -> None:
     class BadPath:
-        def __fspath__(self):
-            return spelling
+        def __init__(self, spelling: object) -> None:
+            self.spelling = spelling
 
-    for path in ("", BadPath()):
+        def __fspath__(self) -> object:
+            if isinstance(self.spelling, Exception):
+                raise self.spelling
+            return self.spelling
+
+    compressed = esolangs.CompressedText.from_chunks(("+.",))
+    spellings = ("", b"bytes", 1, TypeError("bad path"))
+    for path in ("", *map(BadPath, spellings)):
         with pytest.raises(esolangs.ArgumentError, match="path"):
             esolangs.from_file(REFERENCE, path)
         with pytest.raises(esolangs.ArgumentError, match="path"):
             esolangs.to_file(REFERENCE, "+.", path)
+        with pytest.raises(esolangs.ProgramError, match="path") as caught:
+            compressed.to_file(path)
+        assert isinstance(caught.value.__cause__, esolangs.ArgumentError)
+
+
+@pytest.mark.parametrize("failure", [FileNotFoundError, PermissionError])
+def test_path_provider_io_errors_match_the_file_operation(
+    failure: type[OSError], tmp_path: Path
+) -> None:
+    pointer = tmp_path / "pointer"
+
+    class ReferencedPath:
+        calls = 0
+
+        def __fspath__(self) -> str:
+            self.calls += 1
+            if failure is PermissionError and not pointer.exists():
+                raise PermissionError(errno.EACCES, "path unreadable", pointer)
+            return pointer.read_text(encoding="utf-8")
+
+    api = esolangs.Language(REFERENCE)
+    compressed = esolangs.CompressedText.from_chunks((",.",))
+    source = io.BytesIO(b"skip,.")
+    source.seek(4)
+    error_type = (
+        esolangs.ProgramNotFoundError
+        if failure is FileNotFoundError
+        else esolangs.ProgramError
+    )
+    for operation, expected in (
+        (api.from_file, error_type),
+        (api.prepare, error_type),
+        (lambda path: api.to_file(source, path), esolangs.ProgramError),
+        (compressed.to_file, esolangs.ProgramError),
+    ):
+        provider = ReferencedPath()
+        with pytest.raises(expected) as caught:
+            operation(provider)
+        assert type(caught.value) is expected
+        assert type(caught.value.__cause__) is failure
+        assert provider.calls == 1
+    assert source.tell() == 4
+
+    destination = tmp_path / "destination"
+    pointer.write_text(str(destination), encoding="utf-8")
+    provider = ReferencedPath()
+    api.to_file(source, provider)
+    assert provider.calls == 1
+    assert api.run(api.from_file(provider), stdin="Q").output == "Q"
+    assert provider.calls == 2
+    compressed.to_file(provider)
+    assert provider.calls == 3
+    assert api.from_file(destination).source == compressed
 
 
 @pytest.mark.parametrize(

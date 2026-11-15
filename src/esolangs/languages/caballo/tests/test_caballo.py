@@ -160,9 +160,14 @@ def test_the_branching_halt_flag_is_the_done_flag(
     assert machine.branching_successors(final, 1) == (final,)
 
 
-def test_input_must_be_naturals() -> None:
+def test_input_must_be_naturals_of_any_width() -> None:
+    from tests.support.execution import assert_digit_cap_independent
+
     with pytest.raises(HaltError, match="not a natural number"):
         _run("1", "-1")
+
+    assert_digit_cap_independent("Caballo", "1", "9" * 641, "[" + "9" * 641 + "]")
+    assert_digit_cap_independent("Caballo", "i", "9" * 640, "[1" + "0" * 640 + "]")
 
 
 @pytest.mark.parametrize(

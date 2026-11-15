@@ -288,7 +288,7 @@ class CompressedText:
         """
         try:
             target = explicit_path(path)
-        except ArgumentError as exc:
+        except (ArgumentError, OSError) as exc:
             raise ProgramError(f"cannot save program: {exc}") from exc
         try:
             write_staged(target, (self.data,))

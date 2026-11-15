@@ -71,7 +71,7 @@ def test_rpg_menu_branches_and_loops() -> None:
     assert "escaped" in io.getvalue()
 
 
-def test_unnumbered_lines_count_from_one(monkeypatch) -> None:
+def test_numbered_and_unnumbered_jump_targets(monkeypatch) -> None:
     from esolangs.languages.basicer import interpreter
     from tests.support.prepared_support import check_image_reuse
 
@@ -84,6 +84,12 @@ def test_unnumbered_lines_count_from_one(monkeypatch) -> None:
         cases=(("", "yes\n"), ("", "yes\n"), ("", "yes\n")),
     )
     assert _out("GOTO 3\nPRINT no\nPRINT yes") == "yes\n"
+
+    from tests.support.execution import assert_digit_cap_independent
+
+    label = "9" * 641
+    source = f"10 GOTO {label}\n20 PRINT skipped\n{label} PRINT reached"
+    assert_digit_cap_independent("BASICER", source, "", "reached\n")
 
 
 def test_plot_validates_its_operands() -> None:
@@ -101,8 +107,31 @@ def test_malformed_programs(code: str, match: str) -> None:
         _out(code)
 
 
-def test_bad_choices() -> None:
+def test_bad_choices_keep_the_rejected_input() -> None:
+    from esolangs import ExecutionLimits, Language
+
     with pytest.raises(ArgumentError):
         _out("GOTO 1 2", "x\n")
     with pytest.raises(HaltError):
         _out("GOTO 1 2", "3\n")
+
+    api = Language("BASICER")
+    source = "10 GOTO 20 30\n20 PRINT one\n30 PRINT two"
+    limits = ExecutionLimits(max_steps=5)
+    for choice, kind, message in (
+        ("--1", ArgumentError, "menu choice '--1' is not an integer"),
+        ("²", ArgumentError, "menu choice '²' is not an integer"),
+        ("3", HaltError, "outside 1 to 2"),
+        ("9" * 5001, HaltError, "outside 1 to 2"),
+    ):
+        dbg = api.make_debugger(source, stdin=choice + "\n1\n")
+        with pytest.raises(kind, match=message) as first:
+            dbg.run(limits=limits)
+        boundary = dbg.snapshot()
+        with pytest.raises(kind, match=message) as repeated:
+            dbg.run(limits=limits)
+        assert first.value is not repeated.value
+        assert first.value.observation.input_reads == 1
+        assert repeated.value.observation == first.value.observation
+        assert dbg.snapshot() == boundary
+    assert api.run(source, stdin="\u0661\n", limits=limits).output == "one\ntwo\n"

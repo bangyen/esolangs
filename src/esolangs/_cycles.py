@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_checkable
 
-from esolangs.exceptions import EsolangError
+from esolangs.exceptions import EsolangError, ExecutionBudgetError
 from esolangs.runtime._lifecycle import BoundaryCycle
-from esolangs.runtime._proof import BranchProof, CycleDecision
+from esolangs.runtime._proof import BranchFailure, BranchProof, CycleDecision
 from esolangs.runtime._validate import check_whole
 from esolangs.runtime.source_hints import with_hint
 
@@ -64,7 +65,7 @@ class _BranchingStepMachine(Protocol):
     def branching_successors(
         self, state: Hashable, limit: int
     ) -> Sequence[Hashable] | None:
-        """Return every next state, or ``None`` when it cannot be forked.
+        """Return every state or BranchFailure, or ``None`` when unforkable.
 
         ``limit`` bounds the outcomes one transition may materialize.
         """
@@ -215,7 +216,10 @@ def _drive_halt_or_cycle(
     # this run's answer (a FirstDraw(0) coin loops where the other halts).
     if not machine.halted and isinstance(underlying, _BranchingStepMachine):
         result = _branch_search(
-            underlying, 10_000 if limit is None else limit, evidence=evidence
+            underlying,
+            10_000 if limit is None else limit,
+            evidence=evidence,
+            language=_branch_language(machine),
         )
         if not result.halts or not result.forked:
             return (
@@ -225,8 +229,8 @@ def _drive_halt_or_cycle(
             )
         raise with_hint(
             _DrawDependentHaltError(
-                "random machines: some draws halt this program, so whether "
-                "this run halts depends on its own draws"
+                "random machines: some draws halt this program. This proof leaves "
+                "open whether this run's result depends on its own draws"
             ),
             "use run_until_halt_or_all_branches_cycle for the any-draw question",
         )
@@ -286,9 +290,9 @@ def run_until_halt_or_all_branches_cycle(
 
     ``True`` when *some* sequence of draws halts, ``False`` only once the
     reachable graph is finite with no halted state.  ``limit`` bounds
-    distinct states and outcomes per step; growth without repeating, or
-    an unforkable transition (one reading interactive input), raises
-    :class:`TimeoutError`.  Every state is kept, since branches merge.
+    distinct states and outcomes per step. A fault or unforkable transition
+    leaves the result undecided unless another path halts. On an undecided
+    result, the first fault or :class:`TimeoutError` is raised.
     A language with no random instruction raises :class:`TypeError`.
     """
     limit = check_whole(limit, "limit")
@@ -304,7 +308,7 @@ def run_until_halt_or_all_branches_cycle(
     )
     if isinstance(machine, _SteppableMachine) and machine.halted:
         return True
-    return _branch_search(state, limit).halts
+    return _branch_search(state, limit, language=_branch_language(machine)).halts
 
 
 class _BranchResult(NamedTuple):
@@ -313,73 +317,120 @@ class _BranchResult(NamedTuple):
     proof: BranchProof | None
 
 
+def _unforkable_branch() -> TimeoutError:
+    return with_hint(
+        TimeoutError(
+            "undecided: a branching transition cannot be safely forked: "
+            "it needs input or exceeds the outcome budget"
+        ),
+        (
+            "increase the branch limit, or use fixed input and a seeded "
+            "single-path run; that does not decide all random paths"
+        ),
+    )
+
+
+def _branch_budget(limit: int, *, evidence: bool) -> TimeoutError:
+    error_type = _ProofBudgetExhaustedError if evidence else TimeoutError
+    return with_hint(
+        error_type(
+            f"undecided after {limit} branching states: the reachable "
+            "graph may be unbounded"
+        ),
+        "increase the branching state limit if feasible; the result remains undecided",
+    )
+
+
+def _branch_language(machine: object) -> str | None:
+    from esolangs.vm import _DelegatingVM
+
+    adapter = _checked_adapter(machine)
+    return adapter.language if isinstance(adapter, _DelegatingVM) else None
+
+
+def _branch_fault(error: Exception, language: str) -> EsolangError:
+    from esolangs.runtime._execution import interpreter_errors
+
+    try:
+        with interpreter_errors(
+            f"the {language} interpreter recursed deeper than CPython's stack "
+            "limit allows on this program",
+            language=language,
+        ):
+            raise error
+    except EsolangError as translated:
+        return translated
+
+
 def _branch_search(
-    machine: _BranchingStepMachine, limit: int, *, evidence: bool = False
+    machine: _BranchingStepMachine,
+    limit: int,
+    *,
+    evidence: bool = False,
+    language: str | None = None,
 ) -> _BranchResult:
-    """Retain transitions when requested, stopping at a halt or graph closure."""
+    """Find a clean halt, or prove that every reachable state stays in the graph."""
+    if not limit:
+        raise _branch_budget(limit, evidence=evidence)
     root = machine.branching_snapshot()
-    pending = [root]
+    pending = deque([root])
+    discovered = {root}
+    exceeded = False
     # Collecting for Boolean readers cost Caballo 11.5-11.6% at n=2/3.
     transitions: list[tuple[Hashable, tuple[Hashable, ...]]] | None = (
         [] if evidence else None
     )
-    seen: set[Hashable] = set()
+    failure: EsolangError | TimeoutError | None = None
     forked = False
     while pending:
-        state = pending.pop()
-        if state in seen:
-            continue
-        # `>=`: a negative limit never equals a count rising from zero, so
-        # the cap switched itself off and the caller hung.
-        if len(seen) >= limit:
-            error = _ProofBudgetExhaustedError if evidence else TimeoutError
-            raise with_hint(
-                error(
-                    f"undecided after {limit} branching states: the reachable "
-                    "graph may be unbounded"
-                ),
-                (
-                    "increase the branching state limit if feasible; the "
-                    "result remains undecided"
-                ),
-            )
-        seen.add(state)
+        state = pending.popleft()
         if machine.branching_halted(state):
             proof = (
                 BranchProof(root, tuple(transitions), halts=True, terminal=state)
-                if transitions is not None
+                if transitions is not None and not forked
                 else None
             )
             return _BranchResult(halts=True, forked=forked, proof=proof)
-        remaining = limit - len(seen)
-        successors = machine.branching_successors(state, remaining)
-        if successors is None:
-            error = (
-                _ProofBudgetExhaustedError
-                if evidence and remaining == 0
-                else TimeoutError
-            )
-            raise with_hint(
-                error(
-                    "undecided: a branching transition cannot be safely forked: "
-                    "it needs input or exceeds the outcome budget"
-                ),
-                (
-                    "increase the branch limit, or use fixed input and a seeded "
-                    "single-path run; that "
-                    "does not decide all random paths"
-                ),
-            )
-        # An error dead end cannot prove an infinite execution.
-        if not successors:
+        try:
+            successors = machine.branching_successors(state, limit)
+        except ExecutionBudgetError:
+            raise
+        except (EsolangError, TimeoutError) as error:
+            if failure is None:
+                failure = error
+            continue
+        except (ValueError, OverflowError, RecursionError, MemoryError) as error:
+            if language is None:
+                raise
+            failure = _branch_fault(error, language) if failure is None else failure
+            continue
+        count = 0 if successors is None else len(successors)
+        if successors is None or count > limit:
+            failure = _unforkable_branch() if failure is None else failure
+            continue
+        if not count:
             raise TypeError("branching transition requires a successor")
-        forked = forked or len(successors) > 1
+        forked = forked or count > 1
         if transitions is not None:
-            outcomes = tuple(successors)
-            transitions.append((state, outcomes))
-            pending.extend(outcomes)
-        else:
-            pending.extend(successors)
+            transitions.append((state, tuple(successors)))
+        for outcome in successors:
+            if type(outcome) is BranchFailure:
+                if failure is None:
+                    failure = (
+                        _unforkable_branch() if outcome.error is None else outcome.error
+                    )
+                # Only a closed graph or an unforked clean run supplies evidence.
+                transitions = None
+            elif outcome not in discovered:
+                if len(discovered) == limit:
+                    exceeded = True
+                else:
+                    discovered.add(outcome)
+                    pending.append(outcome)
+    if failure is not None:
+        raise failure
+    if exceeded:
+        raise _branch_budget(limit, evidence=evidence)
     proof = (
         BranchProof(root, tuple(transitions), halts=False)
         if transitions is not None
@@ -564,7 +615,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     # transient.  Every minimum is updated on each step because the proof
     # is invalid if the period ever reached the left edge.
     visits: dict[Hashable, _GrowthVisit] = {}
-    for _ in range(limit):
+    for completed in range(limit + 1 if limit else 0):
         if runner.halted:
             return True
         ip, ptr, tape = state.ip, state.ptr, state.tape
@@ -607,6 +658,8 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
                 visit.wave_low = ptr
                 visit.wave_power *= 2
                 visit.wave_length = 0
+        if completed == limit:
+            break
         runner.step()
     if runner.halted:
         return True
@@ -718,7 +771,7 @@ def run_until_halt_or_value_growth(
     # such as ``>`` alone widening the tape every step.
     slacks: list[int | None] = []
     visits: dict[Hashable, list[_Visit]] = {}
-    for index in range(limit):
+    for index in range(limit + 1 if limit else 0):
         if runner.halted:
             return True
         slacks.append(state.clamp_slack)
@@ -728,6 +781,8 @@ def run_until_halt_or_value_growth(
         del seen[:-3]
         if len(seen) == 3 and _climbs_forever(seen, slacks):
             return False
+        if index == limit:
+            break
         runner.step()
     if runner.halted:
         return True
@@ -811,9 +866,9 @@ def _drive_until_halt(
     steps = 0
     try:
         while not machine.halted:
-            if stop is not None and stop():
-                return None
             if limit is not None and steps >= limit:
+                return None
+            if stop is not None and stop():
                 return None
             machine.step()
             steps += 1

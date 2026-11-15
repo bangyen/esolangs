@@ -1,7 +1,7 @@
 """Immutable artifacts retain bindings, execution and persistence metadata."""
 
 import pickle
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
 import pytest
@@ -315,3 +315,37 @@ def test_public_records_canonicalize_and_validate_metadata():
     declared = ProgramArtifact(Text("+."), REFERENCE)
     assert declared.settings is None
     assert esolangs.run(REFERENCE, declared).output == "\x01"
+
+
+@pytest.mark.parametrize(
+    "language",
+    [
+        REFERENCE,
+        *one_where(
+            lambda info: info.name.lower() != info.name.upper(),
+            parameterized=True,
+            boolean_generator=True,
+        ),
+    ],
+)
+def test_retained_settings_accept_lexical_owner_spelling(language: str) -> None:
+    installed = esolangs.Language(language)
+    declaration = installed.catalog.languages[language]
+    alias = "Scoped Artifact Selector"
+    api = esolangs.Catalog([replace(declaration, aliases=(alias,))]).bind(alias)
+    generated = api.generate("01")
+    settings = api.settings()
+    spelling = f" \t{api.name.swapcase()} "
+    untagged = replace(generated, language=spelling, settings=None)
+    assert untagged.language == spelling
+
+    retained = replace(untagged, settings=settings)
+    assert retained.language == api.name
+    assert retained.settings is settings
+    restored = api.from_json(api.to_json(retained))
+    assert restored == api.from_json(api.to_json(untagged, settings=settings))
+    assert restored == retained
+    assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+
+    with pytest.raises(esolangs.ArgumentError, match="settings belong to"):
+        replace(retained, language=alias)

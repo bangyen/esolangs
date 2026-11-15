@@ -15,7 +15,12 @@ from esolangs.languages.befunge.interpreter import (
 )
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Seeded
-from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
+from esolangs.vm import (
+    make_vm,
+    run_until_halt,
+    run_until_halt_or_all_branches_cycle,
+    run_until_halt_or_cycle,
+)
 from tests.interpreters.runner import run_program
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
@@ -418,3 +423,20 @@ def test_a_loop_that_never_draws_is_proved_by_the_snapshot_detector() -> None:
     # Once a draw can halt it, this run's own draw decides: refused, not guessed.
     with pytest.raises(TypeError, match="depends on its own draws"):
         run_until_halt_or_cycle(make_vm("Befunge", "?@@@@\n@\n"))
+
+
+def test_a_clean_branch_can_prove_halt_after_an_unforkable_sibling() -> None:
+    api = esolangs.Language("Befunge")
+    source = "?@\n&"
+    assert (
+        api.run(source, seed=2, limits=esolangs.ExecutionLimits(max_steps=2)).steps == 2
+    )
+    with pytest.raises(esolangs.InputExhaustedError):
+        api.run(source, seed=4, limits=esolangs.ExecutionLimits(max_steps=2))
+
+    vm = api.make_vm(source, seed=4)
+    saved = vm.snapshot()
+    assert run_until_halt_or_all_branches_cycle(vm, limit=12) is True
+    assert vm.snapshot() == saved
+    with pytest.raises(TimeoutError, match="needs input"):
+        run_until_halt_or_all_branches_cycle(api.make_vm("&@"), limit=4)

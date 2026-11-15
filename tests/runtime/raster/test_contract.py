@@ -2,6 +2,7 @@
 
 import base64
 import json
+import sys
 from dataclasses import replace
 from importlib.resources import files
 from pathlib import Path
@@ -188,10 +189,10 @@ def test_raster_detaches_mutable_pixels() -> None:
     assert Raster.from_png(raster.to_png()) == raster
 
 
-@pytest.mark.parametrize("channel", [1.5, True, "1", None, -1, 256])
-def test_raster_refuses_invalid_channel_types(channel: object) -> None:
-    with pytest.raises(ValueError, match="8-bit RGB"):
-        Raster((((channel, 0, 0),),))
+def test_raster_refuses_invalid_channel_types() -> None:
+    for channel in (1.5, True, "1", None, -1, 256):
+        with pytest.raises(ValueError, match="8-bit RGB"):
+            Raster((((channel, 0, 0),),))
 
 
 def test_lazy_raster_freezes_once_on_access() -> None:
@@ -342,6 +343,70 @@ def test_plain_png_has_no_source_metadata() -> None:
     assert not hasattr(restored, "language")
     assert not hasattr(restored, "settings")
     assert not hasattr(restored, "scale")
+
+
+def test_png_metadata_integer_fallback_preserves_json_key_rules() -> None:
+    pixels = Raster((((1, 2, 3),),))
+    data = pixels.to_png()
+    cap = sys.int_info.str_digits_check_threshold
+    large = 10**cap
+    previous = sys.get_int_max_str_digits()
+    sys.set_int_max_str_digits(cap)
+    try:
+        for value in (7, large):
+            metadata = {
+                "version": 1,
+                "extra": {2: value, None: 0, True: 1, False: 2, 1.25: 3, "é": 4},
+            }
+            tagged = png.write_metadata(data, metadata)
+            assert Raster.from_png(tagged) == pixels
+            assert png.read_metadata(tagged) == {
+                "version": 1,
+                "extra": {
+                    "2": value,
+                    "null": 0,
+                    "true": 1,
+                    "false": 2,
+                    "1.25": 3,
+                    "é": 4,
+                },
+            }
+            duplicate = png.write_metadata(
+                data, {"version": 1, "extra": {2: value, "2": 3}}
+            )
+            with pytest.raises(ValueError, match="duplicate field: 2"):
+                png.read_metadata(duplicate)
+        tagged = png.write_metadata(data, {"version": 1, "extra": {large: "wide"}})
+        assert png.read_metadata(tagged)["extra"] == {"1" + "0" * cap: "wide"}
+        for key, error_type in (((1, 2), TypeError), (float("nan"), ValueError)):
+            with pytest.raises(error_type):
+                png.write_metadata(
+                    data, {"version": 1, "integer": large, "extra": {key: 0}}
+                )
+    finally:
+        sys.set_int_max_str_digits(previous)
+
+
+def test_png_metadata_refuses_cycles_and_allows_shared_values() -> None:
+    data = Raster((((1, 2, 3),),)).to_png()
+    cycle = {}
+    cycle["cycle"] = cycle
+    sequence = []
+    sequence.append((sequence,))
+    shared = {"item": 3}
+    cap = sys.int_info.str_digits_check_threshold
+    previous = sys.get_int_max_str_digits()
+    sys.set_int_max_str_digits(cap)
+    try:
+        for value in (7, 10**cap):
+            fields = {"version": 1, "integer": value}
+            for container in (cycle, sequence):
+                with pytest.raises(ValueError, match=r"^Circular reference detected"):
+                    png.write_metadata(data, {**fields, "value": container})
+            metadata = {**fields, "value": [shared, shared]}
+            assert png.read_metadata(png.write_metadata(data, metadata)) == metadata
+    finally:
+        sys.set_int_max_str_digits(previous)
 
 
 def test_raster_scale_metadata_stays_a_json_integer(tmp_path: Path) -> None:

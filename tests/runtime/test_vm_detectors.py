@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs.exceptions import ExecutionCapError
+from esolangs.exceptions import ExecutionCapError, ExecutionTimeoutError
 from esolangs.languages.brainfuck.interpreter import _Machine as Brainfuck
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
@@ -57,7 +57,7 @@ class TestTheDetectorsTakeAVM:
 
         class _BranchOnly:
             def branching_snapshot(self) -> int:
-                return 0
+                pytest.fail("a zero-state budget cannot acquire the branch root")
 
             def branching_halted(self, _state: int) -> bool:
                 return root_halted
@@ -114,6 +114,42 @@ def test_direct_vm_and_proof_caps_use_normalized_integer_values() -> None:
     assert vm.ip == 0
     assert vm.output == ""
     assert complete_vm(vm, max_steps=2) == "\x01"
+
+
+def test_stop_callback_only_fires_before_a_permitted_step() -> None:
+    seen = []
+
+    def stop() -> bool:
+        seen.append(vm.ip)
+        return False
+
+    for limit, calls in ((0, []), (1, [0]), (2, [0, 1])):
+        seen.clear()
+        vm = make_vm(REFERENCE, "++")
+        assert run_until_halt(vm, limit=limit, stop=stop) is (limit == 2)
+        assert seen == calls
+        assert vm.ip == limit
+
+
+def test_branch_search_does_not_hide_an_unexpected_or_global_failure() -> None:
+    class _BranchOnly:
+        def __init__(self, error_type):
+            self.error_type = error_type
+
+        def branching_snapshot(self) -> int:
+            return 0
+
+        def branching_halted(self, state: int) -> bool:
+            return state == 2
+
+        def branching_successors(self, state: int, _limit: int) -> tuple[int, ...]:
+            if state == 0:
+                return (1, 2)
+            raise self.error_type("branch callback failed")
+
+    for error_type in (TypeError, AssertionError, ValueError, ExecutionTimeoutError):
+        with pytest.raises(error_type, match="branch callback failed"):
+            run_until_halt_or_all_branches_cycle(_BranchOnly(error_type), limit=3)
 
 
 class _Climber:

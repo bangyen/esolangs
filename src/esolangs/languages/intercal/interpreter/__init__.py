@@ -74,7 +74,7 @@ from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any, NamedTuple
 
-from esolangs.exceptions import HaltError
+from esolangs.exceptions import EsolangError, HaltError
 from esolangs.languages.intercal.interpreter._parse import (
     _fail,
     _Key,
@@ -103,6 +103,7 @@ from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._proof import BranchFailure, branch_outcomes
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
@@ -295,8 +296,8 @@ class _Machine:
 
     def branching_successors(
         self, state: Any, limit: int
-    ) -> tuple[tuple[Any, ...], ...] | None:
-        """Return all outcomes, or ``None`` at input or above the outcome budget.
+    ) -> tuple[tuple[Any, ...] | BranchFailure, ...] | None:
+        """Enumerate statements, including paths that fault or request input.
 
         Replays the pure transition over explicit draw prefixes: a missing
         draw is filled with ``0`` (the scripted default) and every position
@@ -308,16 +309,9 @@ class _Machine:
             return None
         if self.branching_halted(current):
             return (current,)
-        ind: int = current[0]
         cursor = current[9]
         progress: _StatementProgress | None = current[10] if len(current) > 10 else None
-        if (
-            progress is None
-            and self._program.statements[ind].command.tag == "write"
-            and not current[5][ind]
-        ):
-            return None
-        successors: list[tuple[Any, ...]] = []
+        successors: list[tuple[Any, ...] | BranchFailure] = []
         pending = [progress.draws if progress is not None else ()]
         inputs = progress.inputs if progress is not None else ()
         branch = self._restore(current)
@@ -337,14 +331,17 @@ class _Machine:
                     draws.append(0)
                     continue
                 except _NeedInput:
-                    return None
+                    successors.append(BranchFailure())
                 except _Fault as fault:
-                    raise fault.error from None
+                    if not isinstance(fault.error, EsolangError):
+                        raise fault.error from None
+                    successors.append(BranchFailure(fault.error))
+                else:
+                    successors.append((*_snapshot(new_state), cursor))
                 break
             filled = tuple(draws)
             pending.extend((*filled[:at], 99) for at in range(base, len(filled)))
-            successors.append((*_snapshot(new_state), cursor))
-        return tuple(successors)
+        return branch_outcomes(successors)
 
     def step(self) -> None:
         """Execute one statement, drawing and reading only as asked.

@@ -16,7 +16,7 @@ from esolangs.languages.dig.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import reject_faults
 from tests.support import workspace_oracle as workspace
-from tests.support.model_input import decimal_value, rejected_decimal_syntax, token_span
+from tests.support.model_input import decimal_value, rejected_integer_syntax, token_span
 
 _WORKSPACE = workspace.workspace_model(
     "dig-v2", "row column direction mole number grid input_cursor input_reads stopped"
@@ -168,7 +168,7 @@ def _check(factory, lines, stdin="unused"):
         (factory, lines, stdin),
         (_WORKSPACE, _parts),
         _view,
-        rejected_syntax=rejected_decimal_syntax,
+        rejected_syntax=rejected_integer_syntax,
         rejected_component=6,
         cap=48,
     )

@@ -657,8 +657,10 @@ def _check_host_limit():
     limit = sys.get_int_max_str_digits()
     digits = limit or 5000
     error, rows = _check_full(_Machine, "i", "9" * digits)
-    assert error == ("syntax" if limit else None)
+    assert error is None
     assert rows[-1][1] is True
-    error, _ = _check_full(_Machine, "i", "0" * (digits + 1) + "65")
-    assert error == ("syntax" if limit else None)
+    assert rows[-1][2] == "[1" + "0" * digits + "]"
+    error, rows = _check_full(_Machine, "i", "0" * (digits + 1) + "65")
+    assert error is None
+    assert rows[-1][2] == "[66]"
     assert sys.get_int_max_str_digits() == limit

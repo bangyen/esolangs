@@ -16,6 +16,7 @@ from esolangs.languages.thue.interpreter import (
 from esolangs.languages.thue.tests.oracle_checks import check_raw_thue
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, Seeded
+from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_rejected_with_hint
@@ -232,3 +233,22 @@ def test_thue_keeps_the_selected_input_rule_after_eof():
         assert not dbg.halted
     assert api.run(source, seed=4, stdin="z\n").input_reads == 1
     assert api.run(source, seed=0).output == "A"
+
+
+def test_branch_search_closes_cycles_at_the_exact_state_limit() -> None:
+    api = esolangs.Language("Thue")
+    for proof in (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle):
+        for source, length in (("a::=a\n::=\na", 1), ("a::=b\nb::=a\n::=\na", 2)):
+            vm = api.make_debugger(source, seed=4)
+            saved = vm.snapshot()
+            with pytest.raises(TimeoutError, match="branching states"):
+                proof(vm, limit=length - 1)
+            assert proof(vm, limit=length) is False
+            assert vm.snapshot() == saved
+            assert vm.observation.steps == 0
+
+        vm = api.make_vm("a::=b\n::=\na", seed=4)
+        with pytest.raises(TimeoutError, match="branching states"):
+            proof(vm, limit=1)
+        assert proof(vm, limit=2) is True
+        assert proof(api.make_vm("::=\n", seed=4), limit=0) is True

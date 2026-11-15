@@ -430,10 +430,20 @@ def test_laserfuck_a_second_start_marker_halts_every_branch() -> None:
 
 
 def test_laserfuck_declines_a_reachable_input_command() -> None:
-    """``,`` cannot be forked, so the search reports undecided."""
-    machine = Laserfuck(["o,"], ScriptedIO("A\n"))
+    inputs_in_every_direction = [" , ", ",o,", " , "]
+    machine = Laserfuck(inputs_in_every_direction, ScriptedIO("A\n"))
     with pytest.raises(TimeoutError, match="needs input"):
         run_until_halt_or_all_branches_cycle(machine)
+
+    source = ["o,"]
+    assert run_until_halt(Laserfuck(source, ScriptedIO(), FirstDraw(0)), limit=1)
+    with pytest.raises(EOFError):
+        Laserfuck(source, ScriptedIO(), FirstDraw(3)).step()
+    mixed = Laserfuck(source, ScriptedIO("A\n"))
+    boundary = mixed.snapshot()
+    assert run_until_halt_or_all_branches_cycle(mixed, limit=6)
+    assert mixed.snapshot() == boundary
+    assert mixed.io.reads == 0
 
 
 def test_branching_search_leaves_an_unbounded_graph_undecided() -> None:

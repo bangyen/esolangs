@@ -59,3 +59,10 @@ def test_input_is_reduced_modulo_256(monkeypatch) -> None:
 )
 def test_commands(code: str, stdin: str, expected: str) -> None:
     assert _run(code, stdin) == (expected, False)
+
+
+def test_wide_decimal_labels_ignore_the_host_digit_cap():
+    from tests.support.execution import assert_digit_cap_independent
+
+    source = "9" * 641 + "\\^" + "\u0669" * 641 + "^\\"
+    assert_digit_cap_independent("Nandypants", source, "", "\x01")

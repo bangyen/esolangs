@@ -13,7 +13,7 @@ import pytest
 from esolangs.languages.modulous.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, reject_faults
 from tests.support import workspace_oracle as workspace
-from tests.support.model_input import line_span, rejected_decimal_syntax, token_span
+from tests.support.model_input import line_span, rejected_integer_syntax, token_span
 
 _WORKSPACE = workspace.workspace_model(
     "modulous-v1", "instruction stack variables input_cursor stopped input_reads draws"
@@ -159,7 +159,7 @@ def _check(factory, modules, stdin="unused", *, curly=False):
         _view,
         cap=48,
         context=(modules, stdin),
-        rejected_syntax=rejected_decimal_syntax,
+        rejected_syntax=rejected_integer_syntax,
         rejected_component=3,
     )
 

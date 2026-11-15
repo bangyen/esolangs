@@ -5,6 +5,7 @@ from types import MappingProxyType
 
 import pytest
 
+from esolangs import ExecutionLimits, Language, ProgramError
 from esolangs.exceptions import HaltError
 from esolangs.languages.modulous.interpreter import (
     _advance,
@@ -590,3 +591,22 @@ def test_wide_decimal_operands_ignore_the_host_digit_cap():
         f"[JMP F 1 NIF {wide}][PRT INT][PRT VAR1 INT][END]"
     )
     assert_digit_cap_independent("Modulous", source, wide, wide * 2)
+
+
+def test_branch_search_normalizes_a_registered_syntax_fault() -> None:
+    api = Language("Modulous")
+    source = "[RND 2][JMP F 2 IF 0][PSH INT bad][END]"
+    limits = ExecutionLimits(max_steps=4)
+    assert api.run(source, seed=1, limits=limits).steps == 3
+    with pytest.raises(ProgramError, match="bad") as live:
+        api.run(source, seed=0, limits=limits)
+    vm = api.make_vm(source, seed=0)
+    saved = vm.snapshot()
+    assert run_until_halt_or_all_branches_cycle(vm, limit=8) is True
+    assert vm.snapshot() == saved
+
+    fault_only = api.make_vm("[PSH INT bad][END]")
+    with pytest.raises(ProgramError, match="bad") as proof:
+        run_until_halt_or_all_branches_cycle(fault_only, limit=8)
+    assert str(proof.value) == str(live.value)
+    assert proof.value.__notes__ == live.value.__notes__

@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any, NoReturn
 
-from esolangs.runtime.memory import format_integer, parse_integer
+from esolangs.runtime.memory import _hit_digit_cap, format_integer, parse_integer
 
 _SURROGATES = re.compile(r"[\ud800-\udfff]")
 
@@ -58,6 +58,21 @@ def canonical_integer(value: Any) -> int:
     return decoded
 
 
+def _record_key(key: object, *, ensure_ascii: bool) -> str:
+    """Spell a JSON object key with the normal encoder's scalar coercions."""
+    if isinstance(key, str):
+        text = key
+    elif isinstance(key, int) and not isinstance(key, bool):
+        text = format_integer(key)
+    elif key is None or isinstance(key, (bool, float)):
+        text = json.dumps(key, allow_nan=False)
+    else:
+        raise TypeError(
+            f"keys must be str, int, float, bool or None, not {type(key).__name__}"
+        )
+    return json.dumps(text, ensure_ascii=ensure_ascii)
+
+
 def record_dumps(
     value: Any, *, ensure_ascii: bool = True, sort_keys: bool = False
 ) -> str:
@@ -70,32 +85,39 @@ def record_dumps(
             allow_nan=False,
             separators=(",", ":"),
         )
-    except ValueError:
-        # Persisted records have finite, shallow containers. Only their integer
-        # tokens need to bypass the decimal conversion cap.
-        def encode(item: Any) -> str:
-            if type(item) is int:
-                try:
-                    return str(item)
-                except ValueError:
-                    return format_integer(item)
+    except ValueError as error:
+        if not _hit_digit_cap(error):
+            raise
+
+    active: set[int] = set()
+
+    def encode(item: Any) -> str:
+        if type(item) is int:
+            return format_integer(item)
+        if not isinstance(item, (dict, list, tuple)):
+            return json.dumps(item, ensure_ascii=ensure_ascii, allow_nan=False)
+        identity = id(item)
+        if identity in active:
+            raise ValueError("Circular reference detected")
+        active.add(identity)
+        try:
             if isinstance(item, dict):
                 keys = sorted(item) if sort_keys else item
                 return (
                     "{"
                     + ",".join(
-                        json.dumps(key, ensure_ascii=ensure_ascii, allow_nan=False)
+                        _record_key(key, ensure_ascii=ensure_ascii)
                         + ":"
                         + encode(item[key])
                         for key in keys
                     )
                     + "}"
                 )
-            if isinstance(item, (list, tuple)):
-                return "[" + ",".join(map(encode, item)) + "]"
-            return json.dumps(item, ensure_ascii=ensure_ascii, allow_nan=False)
+            return "[" + ",".join(map(encode, item)) + "]"
+        finally:
+            active.remove(identity)
 
-        return encode(value)
+    return encode(value)
 
 
 _WORKER_TAGS = ("$python_text", "$python_object", "$python_integer")

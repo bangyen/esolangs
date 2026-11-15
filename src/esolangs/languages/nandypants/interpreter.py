@@ -46,6 +46,7 @@ from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
 
 _TOKEN = re.compile(r"\d+|[{}<>^v\\/]")
 
@@ -72,7 +73,7 @@ def _parse(code: str) -> _Program:
     last: dict[int, int] = {}
     for index, token in enumerate(tokens):
         if token.isdigit():
-            number = int(token)
+            number = parse_integer(token)
             first.setdefault(number, index)
             last[number] = index
     return _Program(tokens, first, last)
@@ -122,7 +123,7 @@ def _advance(state: _State, token: str, nand: int, program: _Program) -> _State:
             state.used,
         )
     if token.isdigit():
-        number = int(token)
+        number = parse_integer(token)
         if number % 2 == 0:
             if state.pc != program.first[number] and nand == 0:
                 pc = program.first[number]

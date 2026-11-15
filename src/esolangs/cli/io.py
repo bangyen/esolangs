@@ -15,7 +15,7 @@ from collections.abc import Buffer, Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from contextvars import copy_context
 from errno import EAGAIN
-from io import BufferedReader, FileIO
+from io import BufferedReader, FileIO, RawIOBase
 from math import ceil
 from time import monotonic, sleep
 from typing import BinaryIO, cast
@@ -396,11 +396,29 @@ class _StdoutEncodingError(Exception):
     """Output text cannot be written as UTF-8."""
 
 
+def _write_all[DataT: (str, bytes, memoryview)](
+    write: Callable[[DataT], int | None], data: DataT
+) -> int:
+    """Finish positive short writes and refuse a destination that stops accepting."""
+    total = len(data)
+    offset = 0
+    while offset < total:
+        written = write(data[offset:])
+        if not written:
+            raise BlockingIOError(
+                EAGAIN, "write could not complete without blocking", offset
+            )
+        if written < 0 or written > total - offset:
+            raise OSError("write returned an invalid count")
+        offset += written
+    return total
+
+
 @contextmanager
 def _complete_stdout_writes() -> Iterator[None]:
     """Check unbuffered stdout writes without changing the text encoder."""
     raw = getattr(sys.stdout, "buffer", None)
-    if not isinstance(raw, FileIO):
+    if not isinstance(raw, RawIOBase):
         yield
         return
     write = raw.write
@@ -409,20 +427,9 @@ def _complete_stdout_writes() -> Iterator[None]:
     previous = attributes.get("write")
 
     def complete(data: Buffer) -> int:
-        remaining = memoryview(data).cast("B")
-        total = len(remaining)
-        while remaining:
-            written = write(remaining)
-            if not written:
-                raise BlockingIOError(
-                    EAGAIN,
-                    "write could not complete without blocking",
-                    total - len(remaining),
-                )
-            remaining = remaining[written:]
-        return total
+        return _write_all(write, memoryview(data).cast("B"))
 
-    # TextIOWrapper discards the raw write count. Guard the existing FileIO
+    # TextIOWrapper discards the raw write count. Guard the existing stream
     # rather than replacing the wrapper and losing its encoder state.
     attributes["write"] = complete
     try:
@@ -432,6 +439,18 @@ def _complete_stdout_writes() -> Iterator[None]:
             attributes["write"] = previous
         else:
             del attributes["write"]
+
+
+def _write_text(data: str) -> int:
+    """Write one text segment, escaping characters outside the stream's encoding."""
+    try:
+        return sys.stdout.write(data)
+    except UnicodeEncodeError:
+        encoding = sys.stdout.encoding or "utf-8"
+        _write_all(
+            sys.stdout.write, data.encode(encoding, "backslashreplace").decode(encoding)
+        )
+        return len(data)
 
 
 def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
@@ -452,15 +471,11 @@ def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
             ) from exc
     try:
         if isinstance(data, bytes):
-            sys.stdout.buffer.write(data)
+            if stream is None:
+                raise OSError("binary output requires a binary stdout stream")
+            _write_all(stream.write, data)
         else:
-            try:
-                sys.stdout.write(data)
-            except UnicodeEncodeError:
-                encoding = sys.stdout.encoding or "utf-8"
-                sys.stdout.write(
-                    data.encode(encoding, "backslashreplace").decode(encoding)
-                )
+            _write_all(_write_text, data)
     except KeyboardInterrupt:
         _abandon_output(sys.stdout)
         raise

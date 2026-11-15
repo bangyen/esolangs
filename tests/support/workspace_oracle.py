@@ -150,14 +150,17 @@ def pending_input(cursor, *prefix):
     return WorkspaceVariant("pending_input", (cursor, *prefix)) if prefix else cursor
 
 
+def rejected_input(cursor, *details):
+    """Predict the charge for the input cursor and its retained rejection."""
+    return WorkspaceVariant("rejected_input", (cursor, *details))
+
+
 def input_fault(error, trace, stopped, prefix):
     """Keep accepted operands and the diagnostic when supplied input failed."""
     cursor = stopped[-1]
     status = "input" if isinstance(error, EOFError) else "halt"
     if status == "halt" and cursor != trace[-1][-1]:
-        cursor = WorkspaceVariant(
-            "rejected_input", (cursor, "HaltError", str(error), ())
-        )
+        cursor = rejected_input(cursor, "HaltError", str(error), ())
     return (status, [*trace, stopped]), pending_input(cursor, *prefix)
 
 
@@ -165,7 +168,7 @@ def _rejected_parts(parts, fault, details, *, component=-1):
     return _fault_parts(
         parts,
         fault,
-        lambda cursor: WorkspaceVariant("rejected_input", (cursor, *details)),
+        lambda cursor: rejected_input(cursor, *details),
         component=component,
     )
 

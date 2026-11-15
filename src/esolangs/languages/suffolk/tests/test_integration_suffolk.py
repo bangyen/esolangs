@@ -88,6 +88,15 @@ def test_the_value_growth_detector_proves_a_climb_and_declines_a_repeat() -> Non
     lapping = make_vm("Suffolk", "1{z:[}] !. ;")
     assert run_until_halt_or_value_growth(lapping) is False
 
+    short = debugger_api.make_debugger("Suffolk", "!")
+    with pytest.raises(TimeoutError, match="after 1 steps"):
+        run_until_halt_or_value_growth(short, limit=1)
+    assert short.observation.steps == 1
+
+    exact = debugger_api.make_debugger("Suffolk", "!")
+    assert run_until_halt_or_value_growth(exact, limit=2) is False
+    assert exact.observation.steps == 2
+
     # A program that cycles is the cycle detector's, and is not certified.
     sample = "!" * 66 + "<."
     assert run_until_halt_or_cycle(make_vm("Suffolk", sample)) is False

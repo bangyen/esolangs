@@ -279,3 +279,24 @@ def test_workspace_freezes_the_hierarchy_without_its_cycle_freezer(monkeypatch):
     machine.tape.set_value(67)
     assert machine.workspace_snapshot() != saved
     assert saved in retained
+
+
+def test_rejected_number_cannot_skip_to_the_following_output() -> None:
+    from esolangs import ArgumentError, ExecutionLimits, Language, ProgramError
+
+    language = Language("Dimensional")
+    for port in ("d", "x"):
+        source = ":B" + port + "."
+        dbg = language.make_debugger(source, stdin="oops 65")
+        error = ArgumentError if port == "d" else ProgramError
+        limits = ExecutionLimits(max_steps=16)
+        with pytest.raises(error) as first:
+            dbg.run(limits=limits)
+        boundary = dbg.snapshot()
+        assert dbg.ip == 2
+        assert dbg.output == ""
+        with pytest.raises(error) as repeated:
+            dbg.run(limits=limits)
+        assert repeated.value.observation == first.value.observation
+        assert dbg.snapshot() == boundary
+        assert language.run(source, stdin="65" if port == "d" else "41").output == "A"

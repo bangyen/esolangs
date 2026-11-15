@@ -9,6 +9,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.basicer.interpreter import _Machine
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import decimal_value, line_span
 
 _WORKSPACE = workspace.workspace_model("basicer-v1", "instruction input_cursor")
 
@@ -25,7 +26,7 @@ def _instruction(body):
     elif command == "GOTO":
         if not operand or any(not word.isdigit() for word in operand.split()):
             raise ValueError
-        operand = tuple(map(int, operand.split()))
+        operand = tuple(map(decimal_value, operand.split()))
     elif command == "PLOT":
         fields = operand.split(" ")
         if len(fields) != 3:
@@ -50,7 +51,7 @@ def _parse(source):
     for ordinal, row in enumerate(rows, 1):
         if flags and flags[0]:
             number, _, body = row.partition(" ")
-            number = int(number)
+            number = decimal_value(number)
         else:
             number, body = ordinal, row
         if number in instructions:
@@ -59,25 +60,16 @@ def _parse(source):
     return instructions
 
 
-def _line(stdin, at):
-    if at == len(stdin):
-        return None, at, 0
-    end = stdin.find("\n", at)
-    stop = len(stdin) if end < 0 else end + 1
-    line = stdin[at:stop].removesuffix("\r\n").removesuffix("\n")
-    return line, stop, max(1, len(line), stop - at)
-
-
 def _model(source, stdin):
     try:
         instructions = _parse(source)
     except ValueError:
-        return "syntax", [(None, False, "", 0, 0)]
+        return "syntax", [(None, False, "", 0, 0)], None
     labels = sorted(instructions)
-    pc, at, progress, output, error = 0, 0, 0, "", None
+    pc, at, output = 0, 0, ""
 
     def view():
-        return (pc, pc == len(labels), output, at, progress)
+        return (pc, pc == len(labels), output, at, at)
 
     trace = [view()]
     for _ in range(64):
@@ -90,38 +82,36 @@ def _model(source, stdin):
         elif command == "GOTO":
             choice = 1
             if len(operand) > 1:
-                raw, at, consumed = _line(stdin, at)
-                progress += consumed
-                if raw is None:
-                    error = "input"
-                else:
-                    token = raw.strip()
-                    if not token.lstrip("-").isdigit():
-                        error = "argument"
-                    else:
-                        try:
-                            choice = int(token)
-                        except ValueError:
-                            error = "syntax"
-                        else:
-                            if not 1 <= choice <= len(operand):
-                                error = "halt"
-            if not error:
-                label = operand[choice - 1]
-                next_pc = labels.index(label) if label in instructions else len(labels)
-        if not error:
-            pc = next_pc
+                if at == len(stdin):
+                    return "input", [*trace, view()], None
+                line, at = line_span(stdin, at)
+                token = line.strip()
+                if re.fullmatch(r"-?\d+", token) is None:
+                    message = f"menu choice {token!r} is not an integer"
+                    return "argument", [*trace, view()], ("ArgumentError", message, ())
+                choice = decimal_value(token)
+                if not 1 <= choice <= len(operand):
+                    message = f"choice {choice} outside 1 to {len(operand)}"
+                    notes = ("hint: answer a menu with one of its numbered choices",)
+                    return "halt", [*trace, view()], ("HaltError", message, notes)
+            label = operand[choice - 1]
+            next_pc = labels.index(label) if label in instructions else len(labels)
+        pc = next_pc
         trace.append(view())
-        if error:
-            break
-    if pc == len(labels) and not error:
+    if pc == len(labels):
         trace.extend([view()] * 3)
-    return error, trace
+    return None, trace, None
 
 
-_agrees = workspace.checker(
-    _model, (_WORKSPACE, lambda row: (row[0], row[-1])), lambda m: m.ind
-)
+def _agrees(factory, source, stdin):
+    status, trace, fault = _model(source, stdin)
+    return workspace.agrees(
+        (status, trace),
+        (factory, source, stdin),
+        (_WORKSPACE, lambda row: (row[0], row[-1])),
+        lambda m: m.ind,
+        fault_cursor=workspace.rejected_input(trace[-1][-1], *fault) if fault else None,
+    )
 
 
 def check_raw_basicer():

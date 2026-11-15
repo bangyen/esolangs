@@ -19,7 +19,7 @@ from esolangs.registry import LANGUAGES, _table, wiki_url
 from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec
-from esolangs.runtime.memory import parse_integer
+from esolangs.runtime.memory import format_integer, parse_integer
 from tests.support.cli_support import _failure, call_main
 from tests.support.pick import first, one_where
 from tests.support.reference import REFERENCE
@@ -137,15 +137,28 @@ def test_catalog_displays_and_help_keep_large_integer_settings(
         json_option = shlex.split(help_commands[0])[3]
         pair = shlex.split(help_commands[1])[3]
         assert pair.startswith("mode=0x")
+        decimal = format_integer(large)
         for settings in (
             _settings_of(
                 _settings_arguments({"--settings": json_option}, []),
                 language=REFERENCE,
             ),
             _settings_of(_settings_arguments({}, [pair]), language=REFERENCE),
+            _settings_of(
+                _settings_arguments({}, [f"mode= +{decimal} "]), language=REFERENCE
+            ),
         ):
             assert settings is not None
             assert settings.options()["mode"] == large
+        for invalid in ("012", f"0{decimal}", f"-\u0660{decimal}"):
+            _, error = _failure(
+                ["generate", "--set", f"mode={invalid}", REFERENCE, "01"], capsys
+            )
+            assert error.startswith("--set mode needs an integer")
+        _, error = _failure(
+            ["generate", "--set", "mode=" + "0" * len(decimal), REFERENCE, "01"], capsys
+        )
+        assert error.startswith("invalid value for dialect setting mode: 0")
     finally:
         sys.set_int_max_str_digits(previous_limit)
 
@@ -296,16 +309,19 @@ class TestTheTopLevelUsageKeepsUp:
         assert catalog < USAGE.index("describe ")
         assert "Boolean measurement" not in USAGE
 
-    @pytest.mark.parametrize("command", sorted(COMMANDS))
-    def test_every_documented_flag_is_summarised(self, command: str) -> None:
+    def test_every_documented_flag_is_summarised(
+        self, subtests: pytest.Subtests
+    ) -> None:
         """Read off each subcommand's own usage line, so it cannot drift."""
-        head = help_text(command).split("\n\n")[0]
-        if "[options]" in head:
-            return
-        flags = sorted(set(re.findall(r"--[a-z-]+", head)))
-        entry = self._entry(command)
-        missing = [flag for flag in flags if flag not in entry]
-        assert not missing, f"{command} usage omits {missing}"
+        for command in sorted(COMMANDS):
+            with subtests.test(command=command):
+                head = help_text(command).split("\n\n")[0]
+                if "[options]" in head:
+                    continue
+                flags = sorted(set(re.findall(r"--[a-z-]+", head)))
+                entry = self._entry(command)
+                missing = [flag for flag in flags if flag not in entry]
+                assert not missing, f"{command} usage omits {missing}"
 
 
 class TestDescribeHidesInputFieldsWithNoInput:

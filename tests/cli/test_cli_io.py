@@ -10,7 +10,7 @@ import subprocess
 import sys
 from collections.abc import Buffer, Iterator
 from contextlib import suppress
-from io import FileIO, TextIOWrapper
+from io import FileIO, RawIOBase, StringIO, TextIOWrapper
 from pathlib import Path
 from types import SimpleNamespace
 from typing import BinaryIO
@@ -36,9 +36,24 @@ _SPELLED = one_where(lambda d: d.input_encoding != ("0", "1"), reads_input=True)
 class TestTheStdinReaderInProcess:
     """The subprocess tests prove the behaviour; these reach the lines."""
 
-    @pytest.mark.parametrize(
-        ("args", "error"),
-        [
+    def test_an_unanswerable_run_is_refused_before_source_or_stdin_is_read(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        subtests: pytest.Subtests,
+    ) -> None:
+        """It read stdin first, so these answers waited on input forever."""
+        path = tmp_path / "p.txt"
+        path.write_text("+.")
+
+        class _NeverEnding:
+            def isatty(self) -> bool:
+                return False
+
+            def read(self) -> str:  # pragma: no cover - must not be called
+                raise AssertionError("stdin was read before the refusal")
+
+        cases = (
             (["NotALang"], "unknown language"),
             (["--seed", "1", REFERENCE], "hint: omit --seed"),
             (["--seed", "2.5", REFERENCE], "--seed must be a whole number"),
@@ -63,39 +78,24 @@ class TestTheStdinReaderInProcess:
                 ["--max-memory", "0", REFERENCE],
                 "--max-memory must be a positive integer",
             ),
-        ],
-    )
-    def test_an_unanswerable_run_is_refused_before_source_or_stdin_is_read(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        args: list[str],
-        error: str,
-    ) -> None:
-        """It read stdin first, so these answers waited on input forever."""
-        path = tmp_path / "p.txt"
-        path.write_text("+.")
-
-        class _NeverEnding:
-            def isatty(self) -> bool:
-                return False
-
-            def read(self) -> str:  # pragma: no cover - must not be called
-                raise AssertionError("stdin was read before the refusal")
-
-        argv = ["esolangs", "run", *args, str(path)]
+        )
         with (
             patch(
                 "esolangs.cli.run._read_program",
                 side_effect=AssertionError("read file"),
             ),
             patch.object(sys, "stdin", _NeverEnding()),
-            patch.object(sys, "argv", argv),
-            pytest.raises(SystemExit) as exc,
         ):
-            main()
-        assert exc.value.code == 2
-        assert error in capsys.readouterr().err
+            for args, error in cases:
+                with subtests.test(args=args):
+                    argv = ["esolangs", "run", *args, str(path)]
+                    with (
+                        patch.object(sys, "argv", argv),
+                        pytest.raises(SystemExit) as exc,
+                    ):
+                        main()
+                    assert exc.value.code == 2
+                    assert error in capsys.readouterr().err
 
 
 # 6.0s over 12 tests: drives the CLI as a subprocess.
@@ -582,6 +582,136 @@ def test_unbuffered_stdout_retries_short_writes_and_restores_writer(
     assert path.read_bytes() == "before\réλ\r".encode("utf-16")
 
 
+@pytest.mark.parametrize("gzip_export", [False, True], ids=["display", "gzip"])
+def test_cli_completes_short_raw_adapter_writes(tmp_path, monkeypatch, gzip_export):
+    class ShortRaw(RawIOBase):
+        def __init__(self) -> None:
+            super().__init__()
+            self.data = bytearray()
+
+        def writable(self) -> bool:
+            return True
+
+        def write(self, data: Buffer) -> int:
+            segment = memoryview(data)[:2]
+            self.data.extend(segment)
+            return len(segment)
+
+    raw = ShortRaw()
+    with (
+        TextIOWrapper(raw, encoding="utf-16-le", newline="\r") as stdout,
+        monkeypatch.context() as patch,
+    ):
+        patch.setattr(sys, "stdout", stdout)
+        if gzip_export:
+            patch.setattr(
+                sys, "argv", ["esolangs", "generate", "--gzip", REFERENCE, "01"]
+            )
+            main()
+        else:
+            patch.setattr(sys, "argv", ["esolangs", "--version"])
+            with pytest.raises(SystemExit) as exited:
+                main()
+            assert exited.value.code == 0
+    data = bytes(raw.data)
+    if gzip_export:
+        expected = tmp_path / "expected.gz"
+        esolangs.to_file(
+            REFERENCE,
+            esolangs.generate(REFERENCE, "01"),
+            expected,
+            gzip=True,
+            normalize=True,
+        )
+        assert data == expected.read_bytes()
+        assert (
+            esolangs.read_answer(
+                REFERENCE, esolangs.run(REFERENCE, data, stdin="1").output
+            )
+            == "1"
+        )
+    else:
+        assert data == f"esolangs {esolangs.__version__}\r".encode("utf-16-le")
+
+
+@pytest.mark.parametrize("blocked", [False, True])
+def test_cli_completes_text_adapter_writes_or_reports_the_partial_failure(
+    tmp_path, monkeypatch, capsys, blocked
+):
+    class ShortText(StringIO):
+        encoding = "ascii"
+
+        def write(self, text: str) -> int:
+            if blocked and self.tell():
+                return 0
+            segment = text[:2]
+            segment.encode("ascii")
+            return super().write(segment)
+
+    path = tmp_path / "echo.bf"
+    path.write_text(",.,.,.,.")
+    stdout = ShortText()
+    with monkeypatch.context() as patch:
+        patch.setattr(sys, "stdout", stdout)
+        patch.setattr(sys, "stdin", StringIO("ABéC"))
+        patch.setattr(sys, "argv", ["esolangs", "run", REFERENCE, str(path)])
+        if blocked:
+            with pytest.raises(SystemExit) as exited:
+                main()
+            assert exited.value.code == 120
+        else:
+            main()
+    assert stdout.getvalue() == ("AB" if blocked else r"AB\xe9C")
+    assert ("cannot write stdout" in capsys.readouterr().err) is blocked
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("blocked", [False, True])
+def test_direct_binary_adapter_keeps_exact_utf8(tmp_path, monkeypatch, blocked):
+    data = bytearray()
+
+    def write(chunk: bytes) -> int | None:
+        if blocked and data:
+            return None
+        data.extend(chunk[:2])
+        return len(chunk[:2])
+
+    class Capture(StringIO):
+        buffer = SimpleNamespace(write=write)
+
+    path = tmp_path / "echo.bf"
+    path.write_text(",.,.,.,.")
+    with monkeypatch.context() as patch:
+        patch.setattr(sys, "stdout", Capture())
+        patch.setattr(sys, "stdin", StringIO("ABCé"))
+        patch.setattr(
+            sys, "argv", ["esolangs", "run", "--isolated", REFERENCE, str(path)]
+        )
+        if blocked:
+            with pytest.raises(SystemExit) as exited:
+                main()
+            assert exited.value.code == 120
+        else:
+            main()
+    assert data == (b"AB" if blocked else "ABCé".encode())
+
+
+def test_gzip_reports_an_unavailable_binary_stdout(monkeypatch, capsys):
+    output = StringIO()
+    command = ["esolangs", "generate", REFERENCE, "01"]
+    with monkeypatch.context() as patch:
+        patch.setattr(sys, "stdout", output)
+        patch.setattr(sys, "argv", [*command, "--gzip"])
+        with pytest.raises(SystemExit) as exited:
+            main()
+        assert exited.value.code == 120
+        assert output.getvalue() == ""
+        patch.setattr(sys, "argv", command)
+        main()
+    assert "cannot write stdout: binary output requires" in capsys.readouterr().err
+    assert esolangs.run(REFERENCE, output.getvalue(), stdin="1").output == "1"
+
+
 @pytest.fixture
 def full_pipe() -> Iterator[tuple[BinaryIO, BinaryIO]]:
     if os.name != "posix":
@@ -648,7 +778,11 @@ def signal_ready(data):
     global announce
     if announce:
         announce = False
-        os.write(2, (sys._getframe(1).f_code.co_name + "\n").encode("ascii"))
+        frame = sys._getframe(1)
+        while frame and frame.f_code.co_name not in ("_flush_stdout", "_write_output"):
+            frame = frame.f_back
+        phase = frame.f_code.co_name if frame else "unexpected"
+        os.write(2, (phase + "\n").encode("ascii"))
     return write(data)
 
 raw.write = signal_ready

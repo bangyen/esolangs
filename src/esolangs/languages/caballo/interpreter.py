@@ -50,6 +50,7 @@ from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.randomness import Randomness, draw
 
 type _Stack = tuple[int, ...]
@@ -226,13 +227,13 @@ def _read_stack(text: str) -> _Stack:
                 f"Caballo input {token!r} is not a natural number",
                 hint="give whitespace-separated naturals, the top first",
             )
-        values.append(int(token))
+        values.append(parse_integer(token))
     return _strip(tuple(values))
 
 
 def _render(stack: _Stack) -> str:
     """Write a stack in the wiki's notation, top first."""
-    return "[" + ",".join(map(str, stack)) + "]"
+    return "[" + ",".join(map(format_integer, stack)) + "]"
 
 
 _WORKSPACE_MODEL = WorkspaceModel(

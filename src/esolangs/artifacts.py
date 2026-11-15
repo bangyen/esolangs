@@ -78,15 +78,15 @@ def _origin(language: str, settings: DialectSettings | None) -> str:
     language = str.__str__(language)
     if not language.strip():
         raise ArgumentError("an artifact requires a language")
-    if settings is not None:
-        if not isinstance(settings, DialectSettings):
-            raise ArgumentError("settings must be a DialectSettings or None")
-        if settings.language != language:
-            raise ArgumentError(
-                f"dialect settings belong to {settings.language}, not {language}"
-            )
-        settings.options()
-    return language
+    if settings is None:
+        return language
+    if not isinstance(settings, DialectSettings):
+        raise ArgumentError("settings must be a DialectSettings or None")
+    owner = settings.language
+    if owner != language and owner.strip().casefold() != language.strip().casefold():
+        raise ArgumentError(f"dialect settings belong to {owner}, not {language}")
+    settings.options()
+    return owner
 
 
 @dataclass(frozen=True, slots=True)

@@ -5,7 +5,7 @@ from itertools import product
 
 import pytest
 
-from esolangs import ExecutionResult, Language
+from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.intercal.interpreter import _Machine, prepare_machine, run
 from esolangs.languages.intercal.interpreter._expr import _expression
@@ -17,7 +17,7 @@ from esolangs.languages.intercal.interpreter._semantics import (
 from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
-from esolangs.vm import run_until_halt_or_all_branches_cycle
+from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.paths import ROOT
@@ -969,3 +969,28 @@ def test_a_failed_read_retries_only_the_missing_input() -> None:
     assert machine.halted
     assert io.getvalue() == "I\nII\n"
     assert (io.reads, io.past_end, io.position()) == (2, 0, 8)
+
+
+def test_branch_search_keeps_clean_qualified_statement_outcomes() -> None:
+    api = Language("INTERCAL")
+    source = "PLEASE DO %0 WRITE IN .1\nDO .2 <- #7\nDO GIVE UP"
+    assert api.run(source, limits=ExecutionLimits(max_steps=3)).steps == 3
+    for proof in (run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle):
+        vm = api.make_vm(source)
+        assert proof(vm, limit=4) is True
+        with pytest.raises(TimeoutError, match="needs input"):
+            proof(api.make_vm(source.replace("%0 ", "")), limit=4)
+
+    for command, error in (
+        ("WRITE IN .1", InputExhaustedError),
+        ("RESUME #1", HaltError),
+    ):
+        source = f"PLEASE DO %50 {command}\nDO .2 <- #7\nDO GIVE UP"
+        limits = ExecutionLimits(max_steps=3)
+        assert api.run(source, seed=5, limits=limits).steps == 3
+        with pytest.raises(error):
+            api.run(source, seed=0, limits=limits)
+        vm = api.make_vm(source, seed=0)
+        saved = vm.snapshot()
+        assert run_until_halt_or_all_branches_cycle(vm, limit=4) is True
+        assert vm.snapshot() == saved

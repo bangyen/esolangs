@@ -8,7 +8,10 @@ semantic code references; the evaluator follows AST paths, not compiled IDs.
 import random
 from collections import Counter
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import NamedTuple
+
+from tests.support.model_input import decimal_value
 
 
 def _tree(source):
@@ -145,15 +148,12 @@ class _Rendered(NamedTuple):
 
 
 def _initial_values(stdin):
-    """Validate naturals under the native documented host integer policy."""
+    """Validate and fold the input's ASCII naturals."""
     values = []
     for token in stdin.split():
         if not token or any(char not in "0123456789" for char in token):
             return ("halt", None)
-        try:
-            values.append(int(token))
-        except ValueError:
-            return ("syntax", None)
+        values.append(decimal_value(token))
     return (None, values)
 
 
@@ -175,16 +175,10 @@ def _finish_output(current, random_source, ticket, writer_prefix):
                     chosen = stack
                     break
                 remaining -= weight
-        try:
-            rendered = "[" + ",".join(str(value) for value in chosen) + "]"
-        except ValueError:
-            error = "syntax"
-        else:
-            if writer_prefix is None:
-                output += rendered
-            else:
-                output += rendered[:writer_prefix]
-                error = "writer"
+        rendered = "[" + ",".join(format(Decimal(value), "f") for value in chosen) + "]"
+        output += rendered[:writer_prefix]
+        if writer_prefix is not None:
+            error = "writer"
     return _Rendered(output, error, tuple(bounds), tuple(draws))
 
 

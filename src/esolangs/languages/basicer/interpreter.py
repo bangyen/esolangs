@@ -48,11 +48,13 @@ from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.basicer.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _PLOT = re.compile(r"(\d{1,2}) (\d{1,2}) #[0-9A-Fa-f]{6}")
@@ -76,7 +78,7 @@ def _instruction(body: str) -> _Line:
     if op == "PLOT" and _PLOT.fullmatch(rest):
         return _Line(op, rest, ())
     if op == "GOTO" and rest and all(t.isdigit() for t in rest.split()):
-        return _Line(op, "", tuple(int(t) for t in rest.split()))
+        return _Line(op, "", tuple(map(parse_integer, rest.split())))
     raise syntax_error(
         f"cannot parse {body!r}",
         "use CLEAR, PLOT X Y #RRGGBB, PRINT text, PAUSE or GOTO numbers",
@@ -100,7 +102,7 @@ def _parse(code: str) -> _Image:
             {num: num - 1 for num in range(1, len(lines) + 1)}
         )
     pairs = sorted(
-        (int(num), body) for num, _, body in (r.partition(" ") for r in rows)
+        (parse_integer(num), body) for num, _, body in (r.partition(" ") for r in rows)
     )
     nums = [num for num, _ in pairs]
     if len(set(nums)) < len(nums):
@@ -141,6 +143,7 @@ class _Machine:
         self.lines, self.index = _parse(code) if isinstance(code, str) else code
         self.io = io
         self.ind = 0
+        self._rejected = RejectedInput()
 
     @property
     def halted(self) -> bool:
@@ -149,12 +152,12 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
         return _WORKSPACE_MODEL.capture(
-            instruction=self.ind, input_cursor=self.io.progress()
+            instruction=self.ind, input_cursor=self._rejected.cursor(self.io.progress())
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.ind, self.io.progress())
+        return self._rejected.snapshot((self.ind, self.io.progress()))
 
     def step(self) -> None:
         """Run one line; a menu's choice is read here."""
@@ -163,18 +166,26 @@ class _Machine:
         line = self.lines[self.ind]
         choice = None
         if line.op == "GOTO" and len(line.targets) > 1:
-            raw = self.io.input_str().strip()
-            if not raw.lstrip("-").isdigit():
-                raise ArgumentError(f"menu choice {raw!r} is not an integer")
-            choice = int(raw)
-            if not 1 <= choice <= len(line.targets):
-                raise HaltError(
-                    f"choice {choice} outside 1 to {len(line.targets)}",
-                    hint="answer a menu with one of its numbered choices",
-                )
+            choice = self._read_choice(len(line.targets))
         self.ind, out = _advance(self.ind, self.lines, self.index, choice)
         if out is not None:
             self.io.print_str(out)
+
+    def _read_choice(self, count: int) -> int:
+        raw = self._rejected.read(self.io, self.io.input_str).strip()
+        error: ArgumentError | HaltError
+        if raw.removeprefix("-").isdecimal():
+            choice = parse_integer(raw)
+            if 1 <= choice <= count:
+                return choice
+            error = HaltError(
+                f"choice {format_integer(choice)} outside 1 to {count}",
+                hint="answer a menu with one of its numbered choices",
+            )
+        else:
+            error = ArgumentError(f"menu choice {raw!r} is not an integer")
+        self._rejected.remember(error)
+        raise error
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

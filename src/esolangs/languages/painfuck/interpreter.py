@@ -82,8 +82,10 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._proof import BranchFailure, branch_outcomes
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import with_hint
 
@@ -364,7 +366,7 @@ def _do_i(step: _Step) -> None:
     except _NeedRead as want:
         raise _NeedRead(line=True, state=step.snapshot()) from want
     try:
-        step.tape = _set(step.tape, step.ptr, int(line))
+        step.tape = _set(step.tape, step.ptr, parse_integer(cast(str, line)))
     except ValueError:
         raise _Halted(
             step.snapshot(),
@@ -705,17 +707,17 @@ class _Machine:
 
     def branching_successors(
         self, state: object, limit: int
-    ) -> tuple[_State, ...] | None:
+    ) -> tuple[_State | BranchFailure, ...] | None:
         """Enumerate all coin outcomes for one command without mutating us.
 
         Forks again on every coin the core asks for, since one ``step()`` can
-        run several ``y``.  Input is declined (each branch would need its own
-        cursor), so the caller reports undecided.
+        run several ``y``. A read needs an external cursor and stays
+        undecided while the search explores the other coin outcomes.
         """
         if limit < 1:
             return None
         pending: list[tuple[int, ...]] = [()]
-        successors: list[_State] = []
+        successors: list[_State | BranchFailure] = []
         while pending:
             coins = pending.pop()
             try:
@@ -736,17 +738,12 @@ class _Machine:
                     ) from need_coin
                 pending.extend(((*coins, 0), (*coins, 1)))
             except _NeedRead:
-                return None
+                successors.append(BranchFailure())
             except _Halted as halt:
-                # A malformed loop is a terminal (error) outcome, just as it
-                # is to ``run``.  The branch graph has no error flag, so move
-                # its cursor past the program; ``branching_halted`` then
-                # recognizes it without pretending the failed command ran.
-                tape, loop, ptr, _ind, rep, origin = halt.state
-                successors.append((tape, loop, ptr, self.n, rep, origin))
+                successors.append(BranchFailure(halt.error))
             else:
                 successors.append(next_state)
-        return tuple(successors)
+        return branch_outcomes(successors)
 
     @property
     def _state(self) -> _State:
@@ -803,7 +800,7 @@ class _Machine:
             else:
                 self.io.print_num(effect.value)
             return
-        piece = chr(effect.value) if effect.as_char else str(effect.value)
+        piece = chr(effect.value) if effect.as_char else format_integer(effect.value)
         self.io.print_str(piece * effect.count)
 
 

@@ -23,7 +23,7 @@ from esolangs.runtime._source import (
     source_for,
 )
 from esolangs.runtime._validate import check_flag, check_scale
-from esolangs.runtime.source_hints import program_error_context
+from esolangs.runtime.source_hints import program_error_context, source_read_error
 from esolangs.settings import (
     DialectSettings,
     _merge_settings,
@@ -276,9 +276,13 @@ def from_file(
     name = catalog.resolve(language)
     check_flag(normalize, "normalize")
     dialect_options(name, settings, catalog=catalog)
+    try:
+        source = explicit_path(path)
+    except OSError as error:
+        raise source_read_error("the program", error) from error
     artifact = read_artifact(
         name,
-        explicit_path(path),
+        source,
         settings=settings,
         catalog=catalog,
         normalize=normalize,

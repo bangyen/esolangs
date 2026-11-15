@@ -58,9 +58,11 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, cast, overload
 
+from esolangs.exceptions import HaltError
 from esolangs.languages.dimensional.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -496,6 +498,7 @@ class _Machine:
         self.io = io
         self.tape = _Tape()
         self.ind = 0
+        self._rejected = RejectedInput()
         self.comment = False
 
     @property
@@ -531,18 +534,20 @@ class _Machine:
             axis=self.tape.axis,
             height=self.tape.top.level,
             hierarchy=level(self.tape.top),
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
-            self.ind,
-            self.comment,
-            self.tape.axis,
-            self.tape.top.level,
-            self.tape.top.freeze(),
-            self.io.progress(),
+        return self._rejected.snapshot(
+            (
+                self.ind,
+                self.comment,
+                self.tape.axis,
+                self.tape.top.level,
+                self.tape.top.freeze(),
+                self.io.progress(),
+            )
         )
 
     @property
@@ -584,6 +589,7 @@ class _Machine:
         The cursor advances before the command runs, since the original had
         moved it before rejecting a ``:`` at the end of the code, a ``=``
         without two hex digits, or any of the three reads at EOF.
+        An invalid numeric token remains attached to its read instruction.
         """
         if self.halted:
             return
@@ -597,10 +603,8 @@ class _Machine:
                 self.io.print_char(chr(self.tape.value()))
             elif c == ",":
                 port = self.io.input_char()
-            elif c == "d":
-                port = self.io.input_num()
-            elif c == "x":
-                port = int(self.io.input_token(), 16)
+            elif c in "dx":
+                port = self._read_number(c)
 
         state, effect = _advance(
             self._state, code, self.m, self.tape.value, self.tape.coord, port
@@ -608,6 +612,17 @@ class _Machine:
         self._restore(state)
         if effect is not None:
             self._apply(effect)
+
+    def _read_number(self, command: str) -> int:
+        acquire = self.io.input_num if command == "d" else self._read_hex
+        try:
+            return self._rejected.read(self.io, acquire)
+        except (ValueError, HaltError):
+            self.ind -= 1
+            raise
+
+    def _read_hex(self) -> int:
+        return int(self.io.input_token(), 16)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

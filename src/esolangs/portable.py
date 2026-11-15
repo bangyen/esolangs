@@ -152,7 +152,10 @@ def to_file(
         raise ArgumentError("gzip must be a boolean")
     if type(normalize) is not bool:
         raise ArgumentError("normalize must be a boolean")
-    target = explicit_path(path)
+    try:
+        target = explicit_path(path)
+    except OSError as error:
+        raise ProgramError(f"cannot save program: {error}") from error
     from esolangs.operations.source import read_artifact
 
     # The language decides the file terminator and PNG metadata; without it,
