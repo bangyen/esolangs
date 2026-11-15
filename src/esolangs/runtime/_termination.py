@@ -67,6 +67,10 @@ def _observe_branch_path(machine: VM, proof: BranchProof) -> None:
         except TypeError:
             _check_snapshot_hash(state, InterpreterLimitError)
             raise
+        if machine.halted:
+            raise InterpreterLimitError(
+                "live machine halted before branch evidence ends"
+            )
         machine.step()
         successor = branch.branching_snapshot()
         if successor not in graph[state]:

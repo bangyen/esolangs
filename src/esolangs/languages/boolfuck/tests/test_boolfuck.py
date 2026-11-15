@@ -2,15 +2,18 @@
 
 import itertools
 import random
+from dataclasses import replace
 
 import pytest
 
+from esolangs import Catalog, ExecutionLimits, Language
 from esolangs.languages.boolfuck.generator import boolfuck
 from esolangs.languages.boolfuck.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import boolfuck as oracle
 from tests.support.bit_lifecycle import check_byte_lifecycle, check_final_byte_retry
+from tests.support.certification_barrier import guarded_worker
 from tests.support.raises import assert_rejected_with_hint
 from tests.support.witness_tables import witnesses
 
@@ -77,6 +80,7 @@ def test_oracle_controls(code, output) -> None:
 
 
 def test_declared_byte_lifecycle(monkeypatch) -> None:
+    _check_exact_cycle_preserves_bit_tape_state()
     check_byte_lifecycle("Boolfuck", "+")
     check_final_byte_retry("Boolfuck", "+", monkeypatch)
     from esolangs.runtime.brackets import BracketProgram
@@ -91,3 +95,35 @@ def test_declared_byte_lifecycle(monkeypatch) -> None:
         monkeypatch,
         cases=(("", "\x01"), ("", "\x01"), ("", "\x01")),
     )
+
+
+def _check_exact_cycle_preserves_bit_tape_state() -> None:
+    stock = Language("Boolfuck")
+    declaration = stock.catalog.languages[stock.name]
+    contract = replace(
+        declaration.contract,
+        answer_mode="termination",
+        answer_values=("diverges", "halts"),
+    )
+    api = Catalog([replace(declaration, contract=contract)]).bind(stock.name)
+    source = api.from_source("+;;;;;;;;[]")
+    local = api.evaluate(source, [1], limits=ExecutionLimits(max_steps=20))
+    with guarded_worker():
+        worker = api.evaluate(
+            source, [1], limits=ExecutionLimits(max_steps=20, total_timeout=3)
+        )
+    assert local == worker
+    assert worker.answer == "0"
+    assert worker.observation.output == "\xff"
+    assert worker.observation.steps == 17
+    assert local.termination is not None
+    assert local.termination.cycle is not None
+    assert worker.termination is not None
+    assert worker.termination.cycle is not None
+    local_state = local.termination.cycle.state
+    worker_state = worker.termination.cycle.state
+    assert isinstance(local_state, tuple)
+    assert isinstance(worker_state, tuple)
+    assert type(worker_state[0]) is type(local_state[0])
+    assert worker_state[0].pc == 9
+    assert worker_state[0].used == 0

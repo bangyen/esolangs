@@ -65,6 +65,7 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._snapshot import named_tuple_codec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import trunc_div, trunc_mod
@@ -108,6 +109,9 @@ class _State(NamedTuple):
     stack: _Stack
     string: bool
     done: bool
+
+
+SNAPSHOT_CODECS = (named_tuple_codec(_State, _State._make),)
 
 
 type _Effect = str | None

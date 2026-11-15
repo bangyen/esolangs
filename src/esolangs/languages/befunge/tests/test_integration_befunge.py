@@ -17,6 +17,7 @@ from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES, _table
 from tests.proofs._ledger import load
 from tests.support.cli_support import _failure, call_both, run_cli
+from tests.support.execution import assert_branch_proof_replays
 from tests.support.input_convention import assert_reads_tokens_on_one_line
 
 _RANDOM_BRANCH = "?.@\n. @\n@ @"
@@ -157,6 +158,7 @@ def test_befunge_refusal_is_an_explicit_totality_exception() -> None:
 def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
     from esolangs.vm import complete_vm, make_vm
 
+    assert_branch_proof_replays("Befunge", "01+.@", "1 ")
     source = _RANDOM_BRANCH
     observed = {}
     for seed in range(8):

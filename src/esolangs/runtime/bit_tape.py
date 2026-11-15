@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from typing import NamedTuple
 
+from esolangs.runtime._snapshot import named_tuple_codec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.bits import put_bit, take_bit
 from esolangs.runtime.brackets import BracketProgram, match_brackets
@@ -16,6 +17,9 @@ class _State(NamedTuple):
     remaining: int  # input bits left in it
     outgoing: int  # output byte under construction
     used: int  # its filled bits
+
+
+SNAPSHOT_CODECS = (named_tuple_codec(_State, _State._make),)
 
 
 type _PendingFlush = tuple[_State, bool]

@@ -36,6 +36,7 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._snapshot import named_tuple_codec
 from esolangs.runtime._state import (
     WorkspaceModel,
     WorkspaceSnapshot,
@@ -61,6 +62,9 @@ class _State(NamedTuple):
     values: tuple[int, ...]
     digit: bool  # the last command was a digit
     done: bool  # the cursor has left the grid
+
+
+SNAPSHOT_CODECS = (named_tuple_codec(_State, _State._make),)
 
 
 type _Effect = tuple[str, int] | None

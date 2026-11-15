@@ -143,6 +143,46 @@ def termination_observed(
     )
 
 
+def assert_branch_proof_replays(
+    name: str, source: str, output: str, *, halts: bool = True
+) -> None:
+    """Replay the exact named states retained by a real worker."""
+    from esolangs._cycles import _BranchingStepMachine
+    from esolangs.runtime._isolated import termination_result_isolated
+    from esolangs.vm import _DelegatingVM, make_vm
+    from tests.support.certification_barrier import guarded_worker
+
+    local = termination_observed(name, source, "", 5)
+    assert local.decision.halts is halts
+    assert local.observation.output == output
+    with guarded_worker():
+        worker = termination_result_isolated(name, source, "", 5)
+    assert worker == local
+    local_proof = local.decision.branches
+    proof = worker.decision.branches
+    assert local_proof is not None
+    assert proof is not None
+    state_type = type(local_proof.root)
+    assert hasattr(state_type, "_fields")
+    assert type(proof.root) is state_type
+    vm = make_vm(name, source)
+    assert isinstance(vm, _DelegatingVM)
+    model = vm._machine
+    assert isinstance(model, _BranchingStepMachine)
+    assert proof.root == model.branching_snapshot()
+    assert proof.transitions
+    for state, successors in proof.transitions:
+        assert type(state) is state_type
+        assert all(type(target) is state_type for target in successors)
+        assert not model.branching_halted(state)
+        assert model.branching_successors(state, 10_000) == successors
+    if halts:
+        assert type(proof.terminal) is state_type
+        assert model.branching_halted(proof.terminal)
+    else:
+        assert proof.terminal is None
+
+
 def assert_digit_cap_independent(
     name: str, source: ProgramSource, stdin: str, output: str
 ) -> None:

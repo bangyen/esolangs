@@ -84,7 +84,12 @@ def _assert_catalog_snapshot_round_trips(result, interpreter_only_samples):
                 debugger.step()
 
 
-def test_snapshot_references_preserve_aliases_and_legacy_tree_bytes() -> None:
+def test_snapshot_references_preserve_aliases_and_legacy_tree_bytes(
+    monkeypatch,
+) -> None:
+    from typing import NamedTuple
+
+    from esolangs.runtime import _result_wire
     from esolangs.runtime._json import worker_dumps, worker_loads
 
     first = (8,)
@@ -104,6 +109,20 @@ def test_snapshot_references_preserve_aliases_and_legacy_tree_bytes() -> None:
     assert restored == state
     assert hash(restored) == hash(state)
     assert restored[0] is restored[1][0] is restored[2]
+
+    class Unowned(NamedTuple):
+        value: int
+
+    def refuse_import(_name):
+        pytest.fail("unregistered snapshot named a module to import")
+
+    monkeypatch.setattr(_result_wire, "import_module", refuse_import)
+    plain = {"tuple": [8]}
+    assert _state_wire(Unowned(8)) == plain
+    assert type(_state_from_wire(plain)) is tuple
+    forged = {"owned": {"module": __name__, "name": "Unowned", "value": plain}}
+    with pytest.raises(ValueError, match="unregistered snapshot codec module"):
+        _state_from_wire(forged)
 
 
 @pytest.mark.parametrize(

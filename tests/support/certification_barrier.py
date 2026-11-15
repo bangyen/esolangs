@@ -1,10 +1,13 @@
 """Fresh workers reject certification imports before operational loading."""
 
+from __future__ import annotations
+
+import subprocess
+from collections.abc import Iterator
 from contextlib import contextmanager
 from sys import getrecursionlimit
+from typing import Any
 from unittest.mock import patch
-
-from esolangs.runtime import _isolated
 
 WORKER_GUARD = """
 import importlib.abc
@@ -40,12 +43,12 @@ barrier.fatal = True
 
 
 @contextmanager
-def guarded_worker(*, expected=1):
+def guarded_worker(*, expected: int = 1) -> Iterator[None]:
     """Require every expected worker with live import controls."""
-    original = _isolated.subprocess.Popen
+    original = subprocess.Popen
     launched = []
 
-    def guarded(command, **kwargs):
+    def guarded(command: list[str], **kwargs: Any) -> subprocess.Popen[str]:
         assert command[1:3] == ["-P", "-c"], command
         assert command[-1].endswith(
             "from esolangs.runtime._isolated import _worker; "
@@ -54,6 +57,6 @@ def guarded_worker(*, expected=1):
         launched.append(command)
         return original([*command[:-1], WORKER_GUARD + command[-1]], **kwargs)
 
-    with patch.object(_isolated.subprocess, "Popen", guarded):
+    with patch.object(subprocess, "Popen", guarded):
         yield
     assert len(launched) == expected, launched

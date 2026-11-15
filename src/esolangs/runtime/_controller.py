@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from inspect import getattr_static
 from time import monotonic
 from typing import Literal
@@ -37,6 +38,14 @@ _DRIVER_FIELDS = (
 _MISSING = object()
 
 
+@dataclass(slots=True)
+class _StepDispatch:
+    """Track which boundary accounted for a run's overridden step."""
+
+    delegated: bool = False
+    completed: tuple[VM, bool] | None = None
+
+
 class ExecutionController:
     """Drive a VM with shared bounds, completion and execution observations."""
 
@@ -53,6 +62,7 @@ class ExecutionController:
         self.vm = vm
         self._dumped: VM | None = None
         self._steps = 0
+        self._step_dispatch: _StepDispatch | None = None
         self._faulted_owner: VM | None = None
         self._active_fault: tuple[VM, EsolangError] | None = None
         self._observer_fault: tuple[EsolangError, bool] | None = None
@@ -139,7 +149,24 @@ class ExecutionController:
         there, and returning early cost a debugger-driven verifier 58/65.
         A fault raises with ``partial_output`` set, as :func:`esolangs.run`'s does.
         """
+        dispatch = self._step_dispatch
+        if dispatch is not None:
+            dispatch.delegated = True
+            dispatch.completed = None
         self._take_step()
+
+    def _run_stepper(self) -> Callable[[], None]:
+        """Select the step driver for this run."""
+        return self._take_step
+
+    def _run_overridden_step(self) -> None:
+        """Account for overrides that may drive the VM directly."""
+        previous = self._step_dispatch
+        self._step_dispatch = _StepDispatch()
+        try:
+            self._take_step(self.step)
+        finally:
+            self._step_dispatch = previous
 
     def _observe_fault(self, vm: VM, error: EsolangError) -> None:
         observation = replace(_capture_observation(vm), steps=self._steps)
@@ -156,8 +183,9 @@ class ExecutionController:
                 # Reading caller-owned output cannot replace the original fault.
                 return
 
-    def _take_step(self) -> None:
+    def _take_step(self, override: Callable[[], None] | None = None) -> None:
         """Drive a command or finalization step, accounting for its effects."""
+        dispatch = self._step_dispatch
         self._observer_fault = None
         wrapped = self.vm
         try:
@@ -171,8 +199,26 @@ class ExecutionController:
             controller._observer_fault = None  # noqa: SLF001
         observer_fault = None
         try:
-            wrapped.step()
+            if override is None:
+                wrapped.step()
+            else:
+                override()
         except EsolangError as exc:
+            if override is not None:
+                assert dispatch is not None
+                if dispatch.delegated:
+                    if dispatch.completed is not None:
+                        owner, active = dispatch.completed
+                        self._observer_fault = (exc, active)
+                        self._observe_inspection_fault(owner, exc)
+                    raise
+                current = self.vm
+                if (
+                    isinstance(current, _DelegatingVM)
+                    and exc.observation is not None
+                    and exc.observation is current._fault_observation  # noqa: SLF001
+                ):
+                    owner = current
             nested_fault = (
                 controller._observer_fault  # noqa: SLF001 - same controller protocol
                 if controller is not None
@@ -189,6 +235,8 @@ class ExecutionController:
                     self._active_fault = (owner, exc)
                 self._observe_fault(owner, exc)
                 raise
+        if override is not None and dispatch is not None and dispatch.delegated:
+            return
         if active:
             self._faulted_owner = None
             self._active_fault = None
@@ -207,6 +255,8 @@ class ExecutionController:
             self._observer_fault = (error, active)
             self._observe_inspection_fault(owner, error)
             raise
+        if dispatch is not None:
+            dispatch.completed = (owner, active)
 
     def _has_dumped(self) -> bool:
         """Read registered finalization or a dump observed for the current raw VM."""
@@ -259,6 +309,7 @@ class ExecutionController:
         _raise_halt_fault(self)
         deadline = None if timeout is None else monotonic() + timeout
         start = self._steps
+        step = self._run_stepper()
         while True:
             while not self.halted:
                 if deadline is not None and monotonic() >= deadline:
@@ -275,7 +326,7 @@ class ExecutionController:
                     return "execution_timeout"
                 if max_steps is not None and self._steps - start >= max_steps:
                     return "max_steps"
-                self._take_step()
+                step()
 
             _raise_halt_fault(self)
             # The final command and the dump can each trigger a breakpoint.
@@ -295,7 +346,7 @@ class ExecutionController:
                     return "execution_timeout"
                 receiver = self.vm
                 tail = _receiver_tail(receiver)
-                self._take_step()
+                step()
                 requested = self._stop_requested()
                 if requested == "breakpoint":
                     return requested

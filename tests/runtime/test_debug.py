@@ -26,6 +26,8 @@ class TestRun:
         assert dbg.halted
         assert dbg.output == esolangs.run(REFERENCE, "+++[>+++<-]>.").output
 
+        _check_overridden_step_dispatch()
+
     def test_max_steps_bounds_runaway(self) -> None:
         dbg = debugger_api.make_debugger(REFERENCE, "+[]")
         dbg.run(limits=esolangs.ExecutionLimits(max_steps=10))
@@ -36,6 +38,79 @@ class TestRun:
         dbg.run()
         dbg.step()  # must not raise
         assert dbg.halted
+
+
+def _check_overridden_step_dispatch() -> None:
+    class Rewrite(debugger_api.Debugger):
+        def __init__(self, *, direct: bool) -> None:
+            super().__init__(debugger_api.make_vm(REFERENCE, "+."))
+            self.replacement = debugger_api.make_vm(REFERENCE, "++.")
+            self.direct = direct
+            self.calls = 0
+
+        def step(self) -> None:
+            if not self.calls:
+                self.vm = self.replacement
+            self.calls += 1
+            if self.direct:
+                self.vm.step()
+            else:
+                super().step()
+
+    one, two = (esolangs.ExecutionLimits(max_steps=n) for n in (1, 2))
+    for direct in (False, True):
+        root = Rewrite(direct=direct)
+        for live in (root, debugger_api.Debugger(Rewrite(direct=direct))):
+            history = live.watch_cell(0)
+            assert live.run(limits=one) == "max_steps"
+            assert live.observation.steps == live.ip == 1
+            assert live.run(limits=two) == "halted"
+            assert live.observation.steps == 3
+            assert live.output == "\x02"
+            assert history == [1, 2, 2]
+
+    class Fail(debugger_api.Debugger):
+        def __init__(self, *, late: bool) -> None:
+            super().__init__(debugger_api.make_vm(REFERENCE, "+."))
+            self.late = late
+            self.error = esolangs.HaltError("step override failed")
+
+        def step(self) -> None:
+            if self.late:
+                super().step()
+            raise self.error
+
+    for late in (False, True):
+        live = Fail(late=late)
+        with pytest.raises(esolangs.HaltError, match="step override failed") as caught:
+            live.run(limits=one)
+        assert caught.value is live.error
+        assert live.ip == live.observation.steps == int(late)
+        assert caught.value.observation == live.observation
+
+    class Direct(debugger_api.Debugger):
+        def step(self) -> None:
+            self.vm.step()
+
+    live = Direct(debugger_api.make_vm(REFERENCE, ".,"))
+    with pytest.raises(esolangs.InputExhaustedError) as caught:
+        live.run(limits=two)
+    assert caught.value.observation == live.observation
+    assert live.observation.steps == 1
+    assert live.output == "\x00"
+
+    class SwitchToFault(debugger_api.Debugger):
+        def step(self) -> None:
+            self.vm = replacement
+            self.vm.step()
+
+    replacement = debugger_api.make_vm(REFERENCE, ".,")
+    replacement.step()
+    live = SwitchToFault(debugger_api.make_vm(REFERENCE, "+."))
+    with pytest.raises(esolangs.InputExhaustedError) as caught:
+        live.run(limits=one)
+    assert caught.value.observation == live.observation
+    assert live.observation == esolangs.ExecutionResult("\x00", 0, 0, 1, steps=0)
 
 
 def test_breakpoint_predicate_is_checked_once_at_a_stop() -> None:
@@ -75,6 +150,23 @@ def test_breakpoint_predicate_is_checked_once_at_a_stop() -> None:
         dbg.break_when(predicate)
         assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "breakpoint"
         assert dbg.observation.steps == 0
+
+    class DelegatingDebugger(debugger_api.Debugger):
+        def step(self) -> None:
+            super().step()
+
+    dbg = DelegatingDebugger(debugger_api.make_vm(REFERENCE, "++."))
+    positions = []
+
+    def always(vm):
+        positions.append(vm.ip)
+        return True
+
+    dbg.break_when(always)
+    limits = esolangs.ExecutionLimits(max_steps=3)
+    assert dbg.run(limits=limits) == "breakpoint"
+    assert dbg.run(limits=limits) == "halted"
+    assert positions == [0, 0, 1, 2, 3]
 
 
 def test_breakpoint_callback_cannot_start_a_command_after_deadline(monkeypatch) -> None:

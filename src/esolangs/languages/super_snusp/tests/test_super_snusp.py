@@ -13,6 +13,7 @@ from esolangs.languages.super_snusp.interpreter import _Machine as SuperSnusp
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
+from tests.support.execution import assert_branch_proof_replays
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_halts_with_hint
 from tests.support.vm_support import (
@@ -325,6 +326,8 @@ def test_super_snusp_mirror_ring_loops_under_every_draw() -> None:
     assert run_until_halt_or_all_branches_cycle(machine, limit=3000) is False
     # No draw escapes, so the snapshot detector proves the hang for any run.
     assert run_until_halt_or_cycle(SuperSnusp(code, ScriptedIO()), limit=3000) is False
+    assert_branch_proof_replays("Super SNUSP", "\n".join(code), "", halts=False)
+    assert_branch_proof_replays("Super SNUSP", '"1{#', "1")
 
 
 def test_super_snusp_forks_every_value_equals_could_store() -> None:

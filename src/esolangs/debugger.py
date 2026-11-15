@@ -76,9 +76,17 @@ class Debugger(_ExecutionController):
         self._suppressed: set[int] = set()
         self._suppressed_receiver: tuple[VM, tuple[VM, ...] | None] | None = None
 
+    def _run_stepper(self) -> Callable[[], None]:
+        step = self.step
+        if type(step) is MethodType and step.__func__ is Debugger.step:
+            return super()._run_stepper()
+        return self._run_overridden_step
+
     def step(self) -> None:
         """Execute a command and rearm breakpoints whose conditions clear."""
         super().step()
+        if self._step_dispatch is not None:
+            return
         receiver = self._suppressed_receiver
         if (
             not self._suppressed

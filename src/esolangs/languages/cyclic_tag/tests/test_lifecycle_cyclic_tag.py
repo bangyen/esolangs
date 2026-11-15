@@ -21,6 +21,37 @@ def test_debuggers_share_the_finalized_output(finalize) -> None:
     assert_vm_finalization_is_shared("Cyclic tag", ",10", 2, "0", finalize)
     if finalize == "complete_vm":
         _check_complete_vm_receiver_replacements()
+        _check_run_step_override_dump()
+
+
+def _check_run_step_override_dump() -> None:
+    class Override(Debugger):
+        def __init__(self, target, *, direct: bool) -> None:
+            super().__init__(target)
+            self.direct = direct
+            self.calls = 0
+
+        def step(self) -> None:
+            self.calls += 1
+            if self.direct:
+                self.vm.step()
+            else:
+                super().step()
+
+    api = esolangs.Language("Cyclic tag")
+    limits = esolangs.ExecutionLimits(max_steps=0)
+    for direct in (False, True):
+        target = api.make_vm(",1")
+        target.step()
+        live = Override(target, direct=direct)
+        assert live.halted
+        assert live.output == ""
+        for _ in range(2):
+            assert live.run(limits=limits) == "halted"
+            assert live.output == "1"
+            assert live.observation.completion.kind is Completion.POST_HALT
+            assert live.observation.steps == 0
+            assert live.calls == 1
 
 
 def _check_complete_vm_receiver_replacements():

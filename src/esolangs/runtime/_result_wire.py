@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Hashable
 from dataclasses import fields, is_dataclass
 from fractions import Fraction
-from functools import cache
+from functools import cache, lru_cache
 from importlib import import_module
 from math import isfinite
 from typing import Any, NamedTuple, cast
@@ -47,10 +47,13 @@ def _record_type(module_name: str, name: str) -> type[Any]:
 
 @cache
 def _owned_codec(module_name: str, name: str) -> SnapshotCodec[Any]:
-    """Resolve an explicitly declared codec from a registered interpreter."""
+    """Resolve codecs declared by installed interpreters or the shared bit tape."""
     from esolangs.registry import INTERPRETERS
 
-    if module_name not in INTERPRETERS.values():
+    if (
+        module_name != "esolangs.runtime.bit_tape"
+        and module_name not in INTERPRETERS.values()
+    ):
         raise ValueError("unregistered snapshot codec module")
     for codec in getattr(import_module(module_name), "SNAPSHOT_CODECS", ()):
         if (
@@ -60,6 +63,19 @@ def _owned_codec(module_name: str, name: str) -> SnapshotCodec[Any]:
         ):
             return codec
     raise ValueError("undeclared snapshot codec")
+
+
+@lru_cache(maxsize=64)
+def _tuple_owned_codec(cls: type[Any]) -> SnapshotCodec[Any] | None:
+    """Keep an owned tuple type only when the declaration names that exact class."""
+    module_name, name = cls.__module__, cls.__qualname__
+    if type(module_name) is not str or type(name) is not str:
+        return None
+    try:
+        codec = _owned_codec(module_name, name)
+    except ValueError:
+        return None
+    return codec if codec.cls is cls else None
 
 
 class _EncodeTask(NamedTuple):
@@ -130,7 +146,13 @@ def _state_wire(state: Hashable) -> Any:
                 continue
             active.add(identity)
             pending.append(_EncodeTask("finish", node, parent, key, None))
-            if isinstance(node, (tuple, frozenset)):
+            cls = type(node)
+            codec = (
+                _tuple_owned_codec(cls)
+                if cls is not tuple and type(cls) is type and issubclass(cls, tuple)
+                else None
+            )
+            if codec is None and isinstance(node, (tuple, frozenset)):
                 values = [value for value in node]  # noqa: C416 - preserve iteration without length hints
                 items: list[Any] = [None] * len(values)
                 parent[key] = {
@@ -140,8 +162,8 @@ def _state_wire(state: Hashable) -> Any:
                     _EncodeTask("visit", values[index], items, index, None)
                     for index in reversed(range(len(values)))
                 )
-            elif not isinstance(node, type) and is_dataclass(type(node)):
-                cls = _record_type(type(node).__module__, type(node).__qualname__)
+            elif codec is None and not isinstance(node, type) and is_dataclass(cls):
+                cls = _record_type(cls.__module__, cls.__qualname__)
                 declared = fields(cls)
                 values_by_name: dict[str, Any] = {
                     field.name: None for field in declared
@@ -158,7 +180,8 @@ def _state_wire(state: Hashable) -> Any:
                     for field in reversed(declared)
                 )
             else:
-                codec = _owned_codec(type(node).__module__, type(node).__qualname__)
+                if codec is None:
+                    codec = _owned_codec(cls.__module__, cls.__qualname__)
                 owned: dict[str, Any] = {
                     "module": codec.cls.__module__,
                     "name": codec.cls.__qualname__,

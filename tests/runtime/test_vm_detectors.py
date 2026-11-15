@@ -16,6 +16,7 @@ from esolangs.exceptions import (
     InterpreterLimitError,
 )
 from esolangs.languages.brainfuck.interpreter import _Machine as Brainfuck
+from esolangs.results import Completion
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
@@ -658,6 +659,7 @@ def _check_malformed_branch_states(monkeypatch) -> None:
             assert caught.value.observation == ExecutionResult("1", 1, 1, 0)
     _check_branch_successor_containers(api, artifact, limits, Machine, monkeypatch)
     _check_branch_root_faults(api, artifact, Machine, monkeypatch)
+    _check_branch_replay_halt_boundary(api, module, monkeypatch)
 
     class EqualUnhashable(list):
         __hash__ = None
@@ -715,6 +717,74 @@ def _check_malformed_branch_states(monkeypatch) -> None:
             with pytest.raises(TypeError, match="branching callback refused") as caught:
                 api.evaluate(artifact, [1], limits=limits)
             assert caught.value is original
+
+
+def _check_branch_replay_halt_boundary(api, module, monkeypatch):
+    declaration = api.catalog.languages[api.name]
+    runtime = replace(
+        declaration.runtime,
+        capabilities=replace(
+            declaration.runtime.capabilities, completion=Completion.POST_HALT
+        ),
+    )
+    scoped = Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    terminal = 1
+
+    class Machine:
+        def __init__(self, io):
+            self.io = io
+            self.stage = 0
+            io.print_char(chr(io.input_char()))
+
+        @property
+        def halted(self):
+            return self.stage >= 1
+
+        def step(self):
+            if self.stage < 2:
+                self.io.print_str("A!"[self.stage])
+                self.stage += 1
+
+        def snapshot(self):
+            return self.stage
+
+        branching_snapshot = snapshot
+
+        def branching_halted(self, state):
+            return state == terminal
+
+        def branching_successors(self, state, _limit):
+            return (1 if terminal is None else state + 1,)
+
+    with monkeypatch.context() as hooks:
+        hooks.setattr(module, runtime.machine_preparation, lambda *_args: Machine)
+        artifact = scoped.from_source("+.")
+        prepared = scoped.prepare(artifact)
+        limits = ExecutionLimits(max_steps=3)
+        expected = ExecutionResult("1A", 1, 1, 0)
+        for evaluate in (
+            lambda: scoped.evaluate(artifact, [1], limits=limits),
+            lambda: prepared.evaluate([1], limits=limits),
+        ):
+            terminal = 1
+            valid = evaluate()
+            assert valid.observation == expected
+            assert valid.termination.branches.transitions == ((0, (1,)),)
+
+            for invalid_terminal in (2, None):
+                terminal = invalid_terminal
+                with pytest.raises(
+                    InterpreterLimitError, match="halted before branch evidence ends"
+                ) as caught:
+                    evaluate()
+                assert caught.value.observation == expected
+                assert caught.value.partial_output == expected.output
+
+        live = prepared.make_vm(stdin="1")
+        live.step()
+        assert live.halted
+        assert live.output == "1A"
+        assert complete_vm(live, max_steps=0) == "1A!"
 
 
 def _check_branch_root_faults(api, artifact, machine, monkeypatch):
