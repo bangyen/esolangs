@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import contextlib
 import sys
+from dataclasses import replace
+from typing import Literal
+
+import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs.results import Completion
 from esolangs.runtime._vm_protocol import VM
+from esolangs.vm import _capture_result, complete_vm
 from tests.support.reference import REFERENCE
 
 
@@ -17,6 +23,44 @@ def _step_to_halt(dbg: debugger_api.Debugger, budget: int = 200_000) -> None:
         if dbg.halted:
             return
         dbg.step()
+
+
+def assert_vm_finalization_is_shared(
+    language: str,
+    source: str,
+    steps: int,
+    output: str,
+    finalize: Literal["step", "complete_vm"],
+    *,
+    seed: int | None = None,
+) -> None:
+    """Share a VM's finalization with debuggers while keeping their step counts."""
+    vm = debugger_api.make_vm(language, source, seed=seed)
+    before = debugger_api.Debugger(vm)
+    for _ in range(steps):
+        before.step()
+    assert vm.halted
+    assert before.observation.completion is None
+    with pytest.raises(esolangs.ArgumentError, match="completed post-halt dump"):
+        _capture_result(vm)
+    if finalize == "step":
+        vm.step()
+    else:
+        assert complete_vm(vm, max_steps=0) == output
+
+    after = debugger_api.Debugger(vm)
+    expected = esolangs.run(
+        language, source, seed=seed, limits=esolangs.ExecutionLimits(max_steps=steps)
+    )
+    assert expected.output == output
+    assert expected.completion.kind is Completion.POST_HALT
+    assert _capture_result(vm) == replace(expected, steps=None)
+    for debugger, observed in ((before, expected), (after, replace(expected, steps=0))):
+        watch = debugger.watch_cell(0)
+        assert debugger.observation == observed
+        assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
+        assert debugger.observation == observed
+        assert watch == []
 
 
 def assert_one_row_moves_along_it(name: str) -> None:

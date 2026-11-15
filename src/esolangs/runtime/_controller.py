@@ -17,6 +17,7 @@ from esolangs.vm import (
     _capture_observation,
     _capture_result,
     _DelegatingVM,
+    _post_halt_dumped,
 )
 
 StopReason = Literal["halted", "breakpoint", "max_steps", "execution_timeout"]
@@ -73,17 +74,12 @@ class ExecutionController:
         completion dump calls are excluded. Caller-owned IO counters stay None.
         """
         report = None
-        if (
-            self.halted
-            and not self._faulted
-            and self.steppable_to_answer
-            and (not self.dumps_on_the_post_halt_step or self._dumped)
-        ):
-            report = CompletionReport(
-                Completion.POST_HALT
-                if self.dumps_on_the_post_halt_step
-                else Completion.HALTED
-            )
+        if self.halted and self.steppable_to_answer:
+            if self.dumps_on_the_post_halt_step:
+                if _post_halt_dumped(self.vm) or (self._dumped and not self._faulted):
+                    report = CompletionReport(Completion.POST_HALT)
+            elif not self._faulted:
+                report = CompletionReport(Completion.HALTED)
         return replace(_capture_observation(self.vm, report), steps=self._steps)
 
     @property
@@ -200,7 +196,11 @@ class ExecutionController:
         # The final command and the dump can each trigger a breakpoint.
         if self._stop_requested():
             return "breakpoint"
-        if self.dumps_on_the_post_halt_step and not self._dumped:
+        if (
+            self.dumps_on_the_post_halt_step
+            and not self._dumped
+            and not _post_halt_dumped(self.vm)
+        ):
             if deadline is not None and monotonic() >= deadline:
                 return "execution_timeout"
             self._take_step()

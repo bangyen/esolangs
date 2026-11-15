@@ -724,6 +724,25 @@ def test_bad_source_metadata_is_a_program_error(fields) -> None:
         read_png_artifact(one(source_kind="raster")[0], data)
 
 
+@pytest.mark.parametrize("arity", [None, False, True, 0, -1, 1.0, "1"])
+def test_bad_native_arity_is_refused_before_decoding(arity, monkeypatch) -> None:
+    language = one(source_kind="raster")[0]
+    api = esolangs.Language(language)
+    raster = esolangs.Raster((((1, 2, 3),),))
+    document = json.loads(api.to_json(raster))
+    tagged = png.write_metadata(raster.to_png(), {"version": 1, "input_arity": arity})
+    document["source"] = base64.b64encode(tagged).decode("ascii")
+    monkeypatch.setattr(png, "Image", None)
+    for load in (
+        lambda: read_png_artifact(language, tagged),
+        lambda: api.from_json(json.dumps(document)),
+    ):
+        with pytest.raises(
+            esolangs.ProgramError, match="input_arity must be a positive integer"
+        ):
+            load()
+
+
 def test_unsupported_metadata_versions_are_rejected() -> None:
     from esolangs import ProgramError
 
@@ -755,6 +774,7 @@ def test_duplicate_source_metadata_is_refused() -> None:
     for body in (
         b'{"version":1,"version":1}',
         b'{"version":1,"settings":{"cell_modulus":2,"cell_modulus":2}}',
+        b'{"version":1,"input_arity":1,"input_arity":2}',
     ):
         plain = png.write_rgb((((1, 2, 3),),))
         duplicate = plain[:-12] + _chunk(b"esOL", body) + plain[-12:]

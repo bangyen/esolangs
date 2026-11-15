@@ -20,14 +20,21 @@ def check_phases():
     try:
         # Explicit positive limit, independent of the caller's default policy.
         sys.set_int_max_str_digits(640)
-        case = next(case for case in cases() if case.name == "pure-diagnostic-limit")
+        case = next(case for case in cases() if case.name == "large-array-index")
         rows = model(case.source, case.stdin, case.cap)
         at = next(i for i, row in enumerate(rows) if row.error)
-        assert rows[at].error == "limit"
+        assert rows[at].error == "halt"
+        message = rows[at].message
+        assert message is not None
+        assert message.startswith("array index ")
+        assert message.endswith(" out of range")
+        index = message.removeprefix("array index ").removesuffix(" out of range")
+        assert int(Decimal(index)) == (1 << 20000) - 1
         assert at > 0
         assert rows[at].state == rows[at - 1].state
         assert rows[at].output == rows[at - 1].output == ""
         checker.check_case(case)
+        checker.public(case, rows, isolated=True)
         counts["format_phases"] += 1
 
         case = next(case for case in cases() if case.name == "large-decimal-output")

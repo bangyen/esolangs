@@ -126,7 +126,7 @@ def cases():
             name="large-decimal-output",
         )
     )
-    result.append(Case("[?] [] 1 " + "1" * 20000, "0", name="pure-diagnostic-limit"))
+    result.append(Case("[?] [] 1 " + "1" * 20000, "0", name="large-array-index"))
     result.append(Case("1" * 20000, "0", name="cycle-render-limit"))
     canonical = "a @ 0\nb @ 1\n% 0 & b a\n$\n\n"
     for number in range(4):

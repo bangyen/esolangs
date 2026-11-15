@@ -84,9 +84,9 @@ def to_file(
     removes the added terminator.
     An existing file is replaced after encoding and
     writing succeed. ``settings`` merge over an artifact's own as
-    :func:`esolangs.run` merges them; PNG metadata records the result and
-    text carries none. Use :func:`to_json` for a portable document that
-    preserves dialect settings and template setters.
+    :func:`esolangs.run` merges them. PNG metadata records the result and
+    any input arity. Use :func:`to_json` to retain text artifacts' settings
+    and input arity or to preserve templates with their setters.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
@@ -145,7 +145,15 @@ def to_file(
         if isinstance(body, Raster):
             if gzip:
                 raise ProgramError("gzip export requires text; rasters use PNG")
-            encoded = (png.write_source(body.rows, origin, settings, record.scale),)
+            encoded = (
+                png.write_source(
+                    body.rows,
+                    origin,
+                    settings,
+                    record.scale,
+                    input_arity=record.input_arity,
+                ),
+            )
         elif isinstance(body, CompressedText) and gzip and not terminate:
             encoded = (body.to_gzip(),)
         else:
@@ -295,16 +303,6 @@ def decode_settings(
     return _settings_for(language, choices, catalog=catalog)
 
 
-def _positive_field(value: dict[str, Any], key: str) -> int | None:
-    """Validate optional positive integer metadata before opening its payload."""
-    if key not in value:
-        return None
-    field = value[key]
-    if type(field) is not int or field < 1:
-        raise ValueError(f"{key} must be a positive integer")
-    return field
-
-
 def _load_png(
     value: dict[str, Any],
     name: str,
@@ -316,18 +314,27 @@ def _load_png(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    from esolangs.operations.source import read_png_metadata
+    from esolangs.operations.source import positive_metadata_field, read_png_metadata
 
-    scale = _positive_field(value, "scale")
+    arity = positive_metadata_field(value, "input_arity")
+    scale = positive_metadata_field(value, "scale")
     data = base64.b64decode(value["source"], validate=True)
-    metadata, png_settings, png_scale = read_png_metadata(name, data, catalog=catalog)
+    metadata, png_settings, png_scale, png_arity = read_png_metadata(
+        name, data, catalog=catalog
+    )
     if "settings" in metadata and png_settings != settings:
         raise ValueError("conflicting PNG and document settings")
     if scale is None:
         scale = png_scale
     elif "scale" in metadata and png_scale != scale:
         raise ValueError("conflicting PNG and document scale")
-    return ProgramArtifact(Raster.from_png(data), name, settings=settings, scale=scale)
+    if arity is None:
+        arity = png_arity
+    elif png_arity is not None and png_arity != arity:
+        raise ValueError("conflicting PNG and document input_arity")
+    return ProgramArtifact(
+        Raster.from_png(data), name, settings=settings, scale=scale, input_arity=arity
+    )
 
 
 def _load_gzip(
@@ -456,7 +463,7 @@ def from_json(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    from esolangs.operations.source import read_artifact
+    from esolangs.operations.source import positive_metadata_field, read_artifact
 
     name = catalog.resolve(language)
     if not isinstance(document, str):
@@ -493,7 +500,7 @@ def from_json(
         settings = _settings(value["settings"], name, catalog=catalog)
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
-        arity = _positive_field(value, "input_arity")
+        arity = None if kind == "png" else positive_metadata_field(value, "input_arity")
         artifact = _LOADERS[kind](value, name, settings, catalog=catalog)
         if isinstance(artifact, ProgramArtifact) and arity is not None:
             artifact = replace(artifact, input_arity=arity)

@@ -283,9 +283,13 @@ def test_png_metadata_round_trip_executes(language, scale, native_png) -> None:
     assert restored.language == language
     assert restored.settings == settings
     assert restored.scale == scale
+    assert restored.input_arity == source.input_arity == 2
     assert restored.source._payload is None
     assert _evaluate(language, restored, inputs=2) == "0110"
     assert _evaluate(language, restored, inputs=2, isolated=True) == "0110"
+    assert esolangs.evaluate(language, restored, [0, 1]).answer == "1"
+    with pytest.raises(esolangs.ArgumentError, match="has 2 inputs"):
+        esolangs.evaluate(language, restored, [0, 1, 0])
 
 
 def test_plain_png_has_no_source_metadata() -> None:
@@ -395,6 +399,30 @@ def test_portable_scale_validates_its_type_and_embedded_agreement() -> None:
         esolangs.from_json(REFERENCE, json.dumps({**text, "scale": 2}))
 
 
+def test_portable_png_accepts_embedded_arity_when_claims_agree(
+    native_png, monkeypatch
+) -> None:
+    api = esolangs.Language(RASTER_LANGUAGES[0])
+    original = api.generate("01")
+    document = json.loads(api.to_json(original))
+    legacy = base64.b64decode(document["source"])
+    assert "input_arity" not in png.read_metadata(legacy)
+    assert _check_program(api.name, legacy).input_arity is None
+
+    native = native_png(original)
+    assert png.read_metadata(native)["input_arity"] == 1
+    document["source"] = base64.b64encode(native).decode("ascii")
+    assert api.from_json(json.dumps(document)) == original
+    del document["input_arity"]
+    assert api.from_json(json.dumps(document)) == original
+
+    monkeypatch.setattr(png, "Image", None)
+    with pytest.raises(
+        esolangs.ProgramError, match="conflicting PNG and document input_arity"
+    ):
+        api.from_json(json.dumps({**document, "input_arity": 2}))
+
+
 def test_portable_png_checks_record_metadata_before_pillow(monkeypatch) -> None:
     api = esolangs.Language(RASTER_LANGUAGES[0])
     pixels = Raster((((1, 2, 3),),)).upscaled(2)
@@ -436,9 +464,7 @@ def test_native_png_checks_explicit_settings_before_pillow(
     api.to_file(source, path)
     additions = api.settings(mode="y")
     retained = api.from_file(path, settings=additions)
-    assert retained == replace(
-        source, settings=api.settings(level=0, mode="y"), input_arity=None
-    )
+    assert retained == replace(source, settings=api.settings(level=0, mode="y"))
     assert api.from_json(api.to_json(path, settings=additions)) == retained
     api.to_file(path, destination, settings=additions)
     assert api.from_file(destination) == retained

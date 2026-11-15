@@ -321,7 +321,11 @@ def _emit(artifact: Artifact, *, plain: bool, gzip: bool = False) -> None:
         assert isinstance(artifact, ProgramArtifact)
         _write_output(
             png.write_source(
-                program.rows, artifact.language, artifact.settings, artifact.scale
+                program.rows,
+                artifact.language,
+                artifact.settings,
+                artifact.scale,
+                input_arity=artifact.input_arity,
             )
         )
 

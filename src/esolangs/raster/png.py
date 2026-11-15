@@ -557,11 +557,15 @@ def write_source(
     language: str | None,
     settings: DialectSettings | None,
     scale: int | None,
+    *,
+    input_arity: int | None = None,
 ) -> bytes:
     """Encode pixels and explicit native source metadata without retagging."""
     image = write_rgb(pixels)
     try:
-        return attach_source_metadata(image, language, settings, scale)
+        return attach_source_metadata(
+            image, language, settings, scale, input_arity=input_arity
+        )
     except SourceMetadataSizeError as error:
         raise ProgramError(str(error)) from error
 
@@ -571,21 +575,23 @@ def attach_source_metadata(
     language: str | None,
     settings: DialectSettings | None,
     scale: int | None,
+    *,
+    input_arity: int | None = None,
 ) -> bytes:
     """Add program metadata to already encoded, untagged pixels."""
-    if language is None and settings is None and scale is None:
+    if language is None and settings is None and scale is None and input_arity is None:
         return data
-    return write_metadata(
-        data,
-        {
-            "version": 1,
-            "language": language,
-            "settings": None
-            if settings is None
-            else {
-                key: {"integer": hex(value)} if type(value) is int else value
-                for key, value in settings._items  # noqa: SLF001
-            },
-            "scale": scale,
+    metadata: dict[str, Any] = {
+        "version": 1,
+        "language": language,
+        "settings": None
+        if settings is None
+        else {
+            key: {"integer": hex(value)} if type(value) is int else value
+            for key, value in settings._items  # noqa: SLF001
         },
-    )
+        "scale": scale,
+    }
+    if input_arity is not None:
+        metadata["input_arity"] = input_arity
+    return write_metadata(data, metadata)

@@ -2,6 +2,7 @@
 
 import itertools
 import random
+from decimal import Decimal
 from fractions import Fraction
 
 import pytest
@@ -26,10 +27,10 @@ def _input(stdin, consumed):
     digits = numerator[1:] if numerator[:1] in "+-" else numerator
     if not digits.isdecimal() or (slash and not denominator.isdecimal()):
         return None, consumed, "syntax"
-    divisor = int(denominator) if slash else 1
+    divisor = int(Decimal(denominator)) if slash else 1
     if not divisor:
         return None, consumed, "syntax"
-    return Fraction(sign * int(digits), divisor), consumed, None
+    return Fraction(sign * int(Decimal(digits)), divisor), consumed, None
 
 
 def _data(command, stack, bindings):
@@ -112,11 +113,9 @@ def _model(source, stdin):
                 error = "halt"
             else:
                 value = stack.pop()
-                output += (
-                    str(value.numerator)
-                    if value.denominator == 1
-                    else f"{value.numerator}/{value.denominator}"
-                )
+                output += format(Decimal(value.numerator), "f")
+                if value.denominator != 1:
+                    output += f"/{Decimal(value.denominator):f}"
         elif command in "()":
             next_pc, error = _loop(command, pc, source, stack, loops)
             if error:
@@ -175,6 +174,7 @@ def check_raw_three_x():
     ]
     inputs = ("", "1 2 0", "-3/2 1/3", "x 1/0")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
+    prefix = "1" + "0" * 4999
     for code, stdin in [
         ("?)", "0"),
         ("?33x", "0"),
@@ -185,6 +185,7 @@ def check_raw_three_x():
         ("?", "1/0"),
         ("?", "\u0661/\u0662"),
         ("?(!?)!", "1 " * 80),
+        ("?!", f"-{prefix}3/{prefix}1"),
     ]:
         results.append(_agrees(_Machine, code, stdin))
     assert {error for error, _ in results} == {None, "syntax", "input", "halt"}

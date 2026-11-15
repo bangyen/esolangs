@@ -39,6 +39,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 #: The value ``^`` yields for a key never assigned.
@@ -124,6 +125,22 @@ def _loaded(
 
 # Input tokens are integers or fractions with an unsigned denominator.
 _RATIONAL = re.compile(r"^[+-]?\d+(?:/\d+)?$")
+
+
+def _rational(text: str) -> Fraction:
+    """Read a decimal integer or a fraction with an unsigned denominator."""
+    if _RATIONAL.fullmatch(text):
+        numerator, slash, denominator = text.partition("/")
+        if not slash:
+            return Fraction(parse_integer(numerator))
+        divisor = parse_integer(denominator)
+        if divisor:
+            return Fraction(parse_integer(numerator), divisor)
+    raise syntax_error(
+        "input must be an integer or a fraction",
+        "supply a decimal integer or a fraction with nonzero denominator, "
+        "for example 3/2",
+    )
 
 
 _WORKSPACE_MODEL = WorkspaceModel(
@@ -239,24 +256,15 @@ class _Machine:
             if stack[-1] == 0:
                 target = match
         elif char == "?":
-            line = self.io.input_token().strip()
-            if not _RATIONAL.fullmatch(line) or (
-                "/" in line and int(line.rsplit("/", 1)[1]) == 0
-            ):
-                raise syntax_error(
-                    "input must be an integer or a fraction",
-                    (
-                        "supply a decimal integer or a fraction with nonzero "
-                        "denominator, for example 3/2"
-                    ),
-                )
-            value = Fraction(line)
+            value = _rational(self.io.input_token().strip())
         elif char == "!":
             top = stack[-1]
             if top.denominator == 1:
                 self.io.print_num(top.numerator)
             else:
-                self.io.print_str(str(top))
+                numerator = format_integer(top.numerator)
+                denominator = format_integer(top.denominator)
+                self.io.print_str(f"{numerator}/{denominator}")
         elif char == "[":
             if self.ends is None:
                 close = self.code.find("]", ind + 1)

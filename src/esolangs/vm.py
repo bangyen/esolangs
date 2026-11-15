@@ -91,12 +91,10 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
         error.observation = replace(_capture_observation(vm), steps=max_steps)
         error.partial_output = error.observation.output
         raise error
-    # Public VMs declare the boolean trait; other attributes are caller-owned.
+    dump_pending = vm.dumps_on_the_post_halt_step and not _post_halt_dumped(vm)
     finalize(
         vm,
-        policy=Completion.POST_HALT
-        if vm.dumps_on_the_post_halt_step
-        else Completion.HALTED,
+        policy=Completion.POST_HALT if dump_pending else Completion.HALTED,
     )
     return vm.output
 
@@ -132,6 +130,10 @@ class _DelegatingVM:
         self.language = language
         self._io = _scripted_io(stdin, io_factory)
         self._capabilities = catalog.languages[language].runtime.capabilities
+        # None denotes other completion policies.
+        self._dump_pending: bool | None = (
+            True if self._capabilities.completion is Completion.POST_HALT else None
+        )
         with interpreter_errors(
             f"the {language} interpreter recursed deeper than CPython's stack "
             "limit allows while loading this program",
@@ -170,6 +172,7 @@ class _DelegatingVM:
         ``RecursionError`` :class:`~esolangs.exceptions.InterpreterLimitError`.
         """
         try:
+            dumping = self._dump_pending and self._machine.halted
             self._machine.step()
         except Exception:
             # Translation is needed only on failure; a context per instruction
@@ -181,6 +184,8 @@ class _DelegatingVM:
                 language=self.language,
             ):
                 raise
+        if dumping:
+            self._dump_pending = False
 
     def _complete_repeating(self, step: Callable[[], None]) -> CompletionReport | None:
         """Retain the declared run boundary for periodic execution."""
@@ -266,7 +271,7 @@ class _DelegatingVM:
 
     @property
     def dumps_on_the_post_halt_step(self) -> bool:
-        return trait(self._capabilities, "dumps_on_the_post_halt_step")
+        return self._dump_pending is not None
 
     @property
     def steppable_to_answer(self) -> bool:
@@ -281,10 +286,17 @@ def _capture_result(vm: VM) -> ExecutionResult:
     """Capture a finalized, halted VM without taking another step."""
     if not vm.halted:
         raise ArgumentError("execution result requires a halted VM")
+    if isinstance(vm, _DelegatingVM) and vm._dump_pending:  # noqa: SLF001
+        raise ArgumentError("execution result requires a completed post-halt dump")
     report = CompletionReport(
         Completion.POST_HALT if vm.dumps_on_the_post_halt_step else Completion.HALTED
     )
     return _capture_observation(vm, report)
+
+
+def _post_halt_dumped(vm: VM) -> bool:
+    """Whether the registered VM has recorded a successful finalization step."""
+    return isinstance(vm, _DelegatingVM) and vm._dump_pending is False  # noqa: SLF001
 
 
 def _capture_observation(

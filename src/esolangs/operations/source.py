@@ -50,6 +50,16 @@ def check_origin(
         )
 
 
+def positive_metadata_field(value: dict[str, Any], key: str) -> int | None:
+    """Read optional positive integer metadata, refusing an explicit null."""
+    if key not in value:
+        return None
+    field = value[key]
+    if type(field) is not int or field < 1:
+        raise ValueError(f"{key} must be a positive integer")
+    return field
+
+
 def read_png_artifact(
     language: str,
     data: bytes,
@@ -62,14 +72,16 @@ def read_png_artifact(
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    _, retained, scale = read_png_metadata(name, data, catalog=catalog)
+    _, retained, scale, arity = read_png_metadata(name, data, catalog=catalog)
     merged = _merge_settings(name, retained, settings, catalog=catalog)
-    return ProgramArtifact(Raster.from_png(data), name, settings=merged, scale=scale)
+    return ProgramArtifact(
+        Raster.from_png(data), name, settings=merged, scale=scale, input_arity=arity
+    )
 
 
 def read_png_metadata(
     name: str, data: bytes, *, catalog: Catalog
-) -> tuple[dict[str, Any], DialectSettings | None, int | None]:
+) -> tuple[dict[str, Any], DialectSettings | None, int | None, int | None]:
     """Validate native source claims without opening the image."""
     from esolangs.portable import decode_settings
 
@@ -78,14 +90,16 @@ def read_png_metadata(
     try:
         metadata = png.read_metadata(data)
         if metadata is None:
-            return {}, None, None
+            return {}, None, None, None
         origin = metadata.get("language")
         if origin is not None and not isinstance(origin, str):
             raise ValueError("PNG language must be a string")
         check_origin(name, origin, catalog=catalog)
         settings = decode_settings(metadata.get("settings"), origin, catalog=catalog)
         scale = metadata.get("scale")
-        return metadata, settings, None if scale is None else check_scale(scale)
+        scale = None if scale is None else check_scale(scale)
+        arity = positive_metadata_field(metadata, "input_arity")
+        return metadata, settings, scale, arity
     except (ProgramError, MissingDependencyError):
         raise
     except Exception as error:
@@ -240,8 +254,8 @@ def from_file(
 ) -> ProgramArtifact[Program]:
     """Read lossless source with retained metadata.
 
-    Gzip and PNG are detected by content. ``normalize=True`` applies the
-    language's native file newline policy.
+    Gzip and PNG are detected by content. PNG can retain the program's input
+    arity. ``normalize=True`` applies the language's native file newline policy.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.

@@ -31,7 +31,7 @@ TABLE3 = "01101001"
 
 class TestInProcess:
     def test_generating_a_raster_writes_png_bytes(
-        self, capsysbinary: pytest.CaptureFixture[bytes]
+        self, capsysbinary: pytest.CaptureFixture[bytes], tmp_path: Path
     ) -> None:
         """Raster ``generate`` writes the image; ``--plain`` says it did nothing."""
         argv = ["esolangs", "generate", "--plain", _RASTER, "0110"]
@@ -43,6 +43,12 @@ class TestInProcess:
         out, err = capsysbinary.readouterr()
         assert err == b"note: --plain has no effect on a raster; it is PNG\n"
         assert out.startswith(b"\x89PNG\r\n\x1a\n")
+        path = tmp_path / "generated.png"
+        path.write_bytes(out)
+        api = esolangs.Language(_RASTER)
+        restored = api.from_file(path)
+        assert restored.input_arity == 2
+        assert api.evaluate(restored, [1, 0]).answer == "1"
         image = esolangs.Raster.from_png(out)
         stdin = esolangs.encode_inputs(_RASTER, [1, 0])
         assert (

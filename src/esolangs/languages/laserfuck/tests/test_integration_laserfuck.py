@@ -28,6 +28,7 @@ from tests.support.vm_support import (
     _run_all,
     assert_random_steps_reproduce,
     assert_starts_downward,
+    assert_vm_finalization_is_shared,
 )
 
 
@@ -172,6 +173,11 @@ def test_byte_dump_succeeds_at_the_character_boundary_and_step_cap() -> None:
     )
     assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
     assert debugger.observation == result
+
+
+@pytest.mark.parametrize("finalize", ["step", "complete_vm"])
+def test_debuggers_share_a_finalized_empty_dump(finalize) -> None:
+    assert_vm_finalization_is_shared("LaserFuck", "ox", 1, "", finalize, seed=0)
 
 
 class TestASeedMakesARunRepeat:

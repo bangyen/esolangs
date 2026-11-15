@@ -143,6 +143,34 @@ def test_post_halt_completion_stays_pending_until_dump():
     assert esolangs.read_answer(name, debugger.observation.output) == "1"
 
 
+def test_caller_owned_vm_finalization_remains_local():
+    from esolangs.debugger import Debugger
+
+    class Custom:
+        halted = self_halts = steppable_to_answer = dumps_on_the_post_halt_step = True
+        _dump_pending = False
+        output = ""
+        calls = 0
+
+        def step(self):
+            self.output = "A"
+            self.calls += 1
+
+    vm = Custom()
+    assert complete_vm(vm, max_steps=0) == "A"
+    first, second = Debugger(vm), Debugger(vm)
+    assert first.observation == esolangs.ExecutionResult("A", None, None, None, steps=0)
+    limits = esolangs.ExecutionLimits(max_steps=0)
+    assert first.run(limits=limits) == "halted"
+    assert first.run(limits=limits) == "halted"
+    assert first.observation.completion.kind is Completion.POST_HALT
+    assert second.observation.completion is None
+    assert vm.calls == 2
+    assert second.run(limits=limits) == "halted"
+    assert second.observation == first.observation
+    assert vm.calls == 3
+
+
 def test_debugger_does_not_invent_periodic_completion():
     from esolangs.debugger import Debugger
 
@@ -176,7 +204,7 @@ def test_debugger_refuses_a_step_only_object():
 
 @pytest.mark.parametrize("drive", ["step", "run"])
 def test_failed_dump_remains_unfinished_and_can_be_retried(monkeypatch, drive):
-    from esolangs.debugger import make_debugger
+    from esolangs.debugger import Debugger, make_debugger
     from tests.support.pick import one_where
 
     name = one_where(
@@ -193,19 +221,27 @@ def test_failed_dump_remains_unfinished_and_can_be_retried(monkeypatch, drive):
         assert debugger.observation.steps < 10000
         debugger.step()
     steps = debugger.observation.steps
-    original = debugger.vm.step
+    other = Debugger(debugger.vm)
+    machine = type(debugger.vm._machine)
+    original = machine.step
 
-    def fail():
+    def fail(_self):
         raise esolangs.HaltError("dump failed")
 
-    monkeypatch.setattr(debugger.vm, "step", fail)
+    monkeypatch.setattr(machine, "step", fail)
     with pytest.raises(esolangs.HaltError, match="dump failed") as caught:
         getattr(debugger, drive)()
     assert caught.value.observation == debugger.observation
     assert debugger.observation.completion is None
+    assert other.observation.completion is None
     assert debugger.observation.steps == steps
-    monkeypatch.setattr(debugger.vm, "step", original)
+    monkeypatch.setattr(machine, "step", original)
+    complete_vm(debugger.vm, max_steps=0)
+    assert other.observation.completion.kind is Completion.POST_HALT
+    assert debugger.observation.completion.kind is Completion.POST_HALT
+    watch = debugger.watch_cell(0)
     assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
+    assert watch == []
     assert debugger.observation.completion.kind is Completion.POST_HALT
     assert debugger.observation.steps == steps
     assert esolangs.read_answer(name, debugger.observation.output) == "1"

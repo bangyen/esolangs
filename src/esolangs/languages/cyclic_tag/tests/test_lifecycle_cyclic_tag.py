@@ -12,6 +12,12 @@ from esolangs import run, vm
 from esolangs.debugger import make_debugger
 from esolangs.languages.cyclic_tag import interpreter
 from esolangs.results import Completion, CompletionReport
+from tests.support.vm_support import assert_vm_finalization_is_shared
+
+
+@pytest.mark.parametrize("finalize", ["step", "complete_vm"])
+def test_debuggers_share_the_finalized_output(finalize) -> None:
+    assert_vm_finalization_is_shared("Cyclic tag", ",10", 2, "0", finalize)
 
 
 @pytest.mark.medium

@@ -773,7 +773,7 @@ def _index(array: _Value, which: _Value) -> _Value:
     pos = _number(which)
     if not 0 <= pos < len(items):
         raise HaltError(
-            f"array index {pos} out of range",
+            f"array index {format_integer(pos)} out of range",
             hint="keep the index within the array bounds",
         )
     return items[pos]

@@ -1,7 +1,12 @@
 """Unit tests for the 3x interpreter."""
 
+import os
+import subprocess
+import sys
+from decimal import Decimal
 from fractions import Fraction
 from functools import partial
+from pathlib import Path
 
 import pytest
 
@@ -91,9 +96,16 @@ class Test3x:
         with pytest.raises(HaltError, match="division by zero"):
             run_program("?33x", "0\n")
 
-    def test_a_fraction_input_with_a_zero_denominator_is_rejected(self) -> None:
+    @pytest.mark.parametrize("token", ["1/0", "1/-2", "1/+2", "1_0", "1.5", "1/2/3"])
+    def test_bad_rational_input_keeps_prior_state(self, token: str) -> None:
+        io = ScriptedIO(token)
+        machine = _Machine("[before]3?", io)
+        machine.step()
+        machine.step()
+        before = machine.state
         with pytest.raises(ValueError, match="integer or a fraction"):
-            run_program("?", "1/0\n")
+            machine.step()
+        assert (machine.state, io.getvalue(), io.reads) == (before, "before", 1)
 
     def test_skipped_loop_counts_nested_brackets(self, monkeypatch) -> None:
         # 333x leaves 0 on top, so the outer ( skips its body; the nested
@@ -232,6 +244,42 @@ class TestStateViewValues:
 
 
 @pytest.mark.medium
+@pytest.mark.medium
+@pytest.mark.parametrize("options", [(), ("--isolated",)])
+def test_cli_transports_exact_large_rationals(
+    tmp_path: Path, options: tuple[str, ...]
+) -> None:
+    large = 10**4800
+    numerator = f"{Decimal(large + 3):f}"
+    denominator = f"{Decimal(large + 1):f}"
+    base = 10**2400
+    lower, upper = base + 1, base + 3
+    cases = [
+        (
+            "?![|]?!",
+            f"+{numerator} -{numerator}/{denominator}",
+            f"{numerator}|-{numerator}/{denominator}",
+        ),
+        ("3??x!", f"1/{lower} 1/{upper}", f"-2/{Decimal(3 * lower * upper):f}"),
+    ]
+    path = tmp_path / "program"
+    for source, stdin, expected in cases:
+        path.write_text(source, encoding="utf-8")
+        result = subprocess.run(
+            [sys.executable, "-m", "esolangs", "run", *options, "3x", str(path)],
+            env={**os.environ, "PYTHONINTMAXSTRDIGITS": "4300"},
+            input=stdin.encode(),
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+        assert (result.returncode, result.stdout, result.stderr) == (
+            0,
+            expected.encode(),
+            b"",
+        )
+
+
 def test_hints_for_bad_programs_and_input() -> None:
     assert_rejected_with_hint(
         "3x", "?", "fraction with nonzero denominator", stdin="oops"

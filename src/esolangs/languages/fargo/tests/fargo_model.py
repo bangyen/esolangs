@@ -325,9 +325,9 @@ def builtin_call(fn, args, number, output):
     elif name == "[?]":
         items, at = array(args[0]), numeric(args[1])
         if not 0 <= at < len(items):
-            # Diagnostic formatting belongs to the uncommitted transition.
-            str(at)
-            raise RefusalError("halt", f"array index {at} out of range")
+            raise RefusalError(
+                "halt", f"array index {_decimal_output(at)} out of range"
+            )
         value = items[at]
     elif name == "@":
         value = (number >> numeric(args[0])) & 1
