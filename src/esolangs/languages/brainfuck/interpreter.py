@@ -19,17 +19,17 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from functools import cached_property, lru_cache
+from functools import cached_property, lru_cache, partial
 from typing import Any
 
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.brackets import BracketProgram
 from esolangs.runtime.brackets import match_brackets as matches
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 
 #: ``(ind, ptr, tape)``: an immutable value, rebound per step.  ``tape[ptr]``
 #: is always the true cell: ``+``/``-`` write through, so one logical state
@@ -125,6 +125,7 @@ class _Machine:
         else:
             self.code, self.brackets = code, matches(code)
         self.io = io
+        self._writer = _BufferedOutput()
         # ``halted`` is read twice per command; take the length once.
         self.size = len(self.code)
         self.state: _State = (0, 0, (0,))
@@ -168,7 +169,9 @@ class _Machine:
         # Tape plus input cursor (a repeat that ignores consumed input is
         # not a cycle).
         ind, ptr = self.state[0], self.state[1]
-        return (ind, ptr, self.state[2], self.io.progress())
+        boundary = (ind, ptr, self.state[2], self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one command, advancing the code position.
@@ -182,7 +185,8 @@ class _Machine:
         ind, ptr, tape = state
         char = self.code[ind]
         if char == ".":
-            self.io.print_char(chr(tape[ptr]))
+            byte = chr(tape[ptr])
+            self._writer.write(self.io, byte, first=partial(self.io.print_char, byte))
         elif char == ",":
             # ``input_char`` is a whole code point.  Unreduced, ``,.`` echoed
             # an emoji while ``,+.`` printed ``\x01``.  CVNC does the same.
@@ -191,8 +195,13 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Project control, the whole allocated tape and consumed input for proofs."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.ind,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.ind, accepted))
+                if accepted
+                else self.ind
+            ),
             pointer=self.ptr,
             tape=self.tape,
             input_cursor=self.io.progress(),

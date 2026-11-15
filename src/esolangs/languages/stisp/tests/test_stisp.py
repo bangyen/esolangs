@@ -5,6 +5,7 @@ from itertools import product
 from esolangs.languages.stisp.interpreter import _Machine, run
 from esolangs.languages.stisp.tests.oracle_checks import check_raw_stisp
 from esolangs.runtime.io import ScriptedIO
+from tests.support.vm_support import assert_rejected_output_retry
 
 
 def _result(code: str) -> str:
@@ -36,8 +37,19 @@ def test_a_frame_rewrites_to_several_frames_in_order() -> None:
     assert machine.stack == ["A", "b", "c", "d"]
 
 
-def test_list_sugar_prints_as_a_list() -> None:
-    assert _result("x -> id[] = x; (A . (B . ())) -> id[]") == "(A B)"
+def test_list_sugar_prints_as_a_list(monkeypatch) -> None:
+    source = "x -> id[] = x; (A . (B . ())) -> id[]"
+    assert _result(source) == "(A B)"
+    assert_rejected_output_retry(
+        "Stisp",
+        source,
+        "(A B)",
+        "(A B)",
+        prefix=1,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
     rules = (
         "() -> reverse[acc] = acc; "

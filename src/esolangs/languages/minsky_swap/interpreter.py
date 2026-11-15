@@ -30,8 +30,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -154,6 +154,7 @@ class _Machine:
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.prog)
         self.state: _State = (0, 0, (0, 0), False)
+        self._writer = _BufferedOutput()
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -196,17 +197,24 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=self.state[0],
             selected=self.state[1],
             registers=self.state[2],
-            dumped=self.state[3],
+            dumped=(
+                self.state[3]
+                if not accepted
+                else WorkspaceVariant("pending_output", (accepted,))
+            ),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self.state
+        boundary = self.state
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one command, dumping the registers once the cursor ends.
@@ -217,7 +225,11 @@ class _Machine:
         ind, ptr, reg, dumped = self.state
         if ind >= self.size:
             if not dumped:
-                self.io.print_str(" ".join(map(str, reg)))
+                text = " ".join(map(str, reg))
+                if isinstance(self.io, ScriptedIO):
+                    self._writer.write(self.io, text)
+                else:
+                    self.io.print_str(text)
                 self.state = (ind, ptr, reg, True)
             return
         self.state = _advance(self.state, self.prog, self.targets)

@@ -12,6 +12,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_output_retry
 from tests.support.workspace_oracle import charged_bits, check_erasures
 
 _run = native_runner(run)
@@ -54,6 +55,16 @@ def test_halted_step_dumps_once(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     machine.step()
     assert io.getvalue() == "1"
+    assert_rejected_output_retry(
+        "Smallfuck",
+        ">>*",
+        "1",
+        "1",
+        prefix=3,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
 
 def test_machine_exposes_pointer_and_tape() -> None:

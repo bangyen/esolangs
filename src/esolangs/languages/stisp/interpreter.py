@@ -55,8 +55,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -405,6 +405,7 @@ class _Machine:
         image = _prepare_source(code) if isinstance(code, str) else code
         self.index, self.head, self.frames = image
         self.rendered = False
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -429,25 +430,38 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        accepted = self._writer.accepted
         frames = []
         rest = self.frames
         while rest is not None:
             frame, rest = rest
             frames.append(frame)
         return _WORKSPACE_MODEL.capture(
-            expression=self.head, frames=tuple(frames), rendered=self.rendered
+            expression=self.head,
+            frames=tuple(frames),
+            rendered=(
+                self.rendered
+                if not accepted
+                else WorkspaceVariant("pending_output", (accepted,))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.head, self.frames, self.rendered)
+        boundary = (self.head, self.frames, self.rendered)
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Rewrite once; past the last frame, print the result once."""
         if self.frames is not None:
             self.head, self.frames = _advance(self.index, self.head, self.frames)
         elif not self.rendered:
-            self.io.print_str(_render(self.head))
+            text = _render(self.head)
+            if isinstance(self.io, ScriptedIO):
+                self._writer.write(self.io, text)
+            else:
+                self.io.print_str(text)
             self.rendered = True
 
 

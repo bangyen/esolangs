@@ -20,6 +20,7 @@ from tests.interpreters.contract import (
 from tests.interpreters.runner import run_printing
 from tests.support.fixtures import text
 from tests.support.raises import assert_rejected_with_hint
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = partial(run_printing, run)
 
@@ -119,7 +120,9 @@ class TestStepMachine:
         machine.step()  # the post-halt step renders, and moves nothing
         assert machine.ind == 2
 
-    def test_the_deque_renders_once_however_far_it_is_stepped(self) -> None:
+    def test_the_deque_renders_once_however_far_it_is_stepped(
+        self, monkeypatch
+    ) -> None:
         """The post-halt step prints the deque, and only the first one does."""
         io_obj = ScriptedIO()
         machine = _Machine("PUSH INVERT", io_obj)
@@ -131,6 +134,18 @@ class TestStepMachine:
         for _ in range(3):
             machine.step()
         assert io_obj.getvalue() == "0"
+        cases = (("INVERT PUSH PUSH", "1 1", 3), ("INVERT", "", 1))
+        for source, output, steps in cases:
+            assert_rejected_output_retry(
+                "Bitdeque",
+                source,
+                output,
+                output,
+                prefix=steps,
+                monkeypatch=monkeypatch,
+                unchanged_if_unwritten=True,
+                following_writes=(),
+            )
 
 
 class TestContract(SnapshotContract, CycleContract, StateViewContract):

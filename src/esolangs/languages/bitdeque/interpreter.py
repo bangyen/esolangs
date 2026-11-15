@@ -31,8 +31,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
@@ -131,6 +131,7 @@ class _Machine:
     def __init__(self, code: str | _Image, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
         self.io = io
+        self._writer = _BufferedOutput()
         self.tokens = _prepare_source(code) if isinstance(code, str) else code
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
@@ -177,11 +178,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=self.state.ind,
             register=self.state.reg,
             deque=self.state.deq,
-            rendered=self.state.rendered,
+            rendered=(
+                WorkspaceVariant("pending_output", (self.state.rendered, accepted))
+                if accepted
+                else self.state.rendered
+            ),
             input_cursor=self.io.progress(),
         )
 
@@ -191,7 +197,9 @@ class _Machine:
         # the same order.  ``rendered`` stays out: the detector compares
         # states of a running machine.
         ind, reg, deq, _rendered = self.state
-        return (self.tokens, ind, reg, deq, self.io.progress())
+        boundary = (self.tokens, ind, reg, deq, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one token, printing the deque once the cursor ends.
@@ -208,7 +216,7 @@ class _Machine:
 
     def render(self) -> None:
         """Print the deque contents, one value per space, no trailing newline."""
-        self.io.print_str(" ".join(map(str, self.state.deq)))
+        self._writer.write(self.io, " ".join(map(str, self.state.deq)))
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

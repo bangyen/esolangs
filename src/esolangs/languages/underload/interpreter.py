@@ -26,8 +26,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 
 type _State = tuple[str, int, tuple[str, ...]]
 type _Effect = str | None
@@ -103,6 +103,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
         self.io = io
+        self._writer = _BufferedOutput()
         self.state: _State = (code, 0, ())
 
     @property
@@ -119,22 +120,29 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             program=self.state[0],
-            instruction=self.state[1],
+            instruction=(
+                WorkspaceVariant("pending_output", (self.state[1], accepted))
+                if accepted
+                else self.state[1]
+            ),
             stack=self.state[2],
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        return (*boundary, self._writer.accepted) if self._writer.accepted else boundary
 
     def step(self) -> None:
         if self.halted:
             return
-        self.state, effect = _advance(self.state)
+        state, effect = _advance(self.state)
         if effect is not None:
-            self.io.print_str(effect)
+            self._writer.write(self.io, effect)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

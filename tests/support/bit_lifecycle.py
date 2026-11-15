@@ -2,9 +2,13 @@
 
 from dataclasses import replace
 
+import pytest
+
 import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
 
 
 def check_byte_lifecycle(name: str, set_command: str) -> None:
@@ -51,3 +55,86 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
         assert debug.run(limits=esolangs.ExecutionLimits(max_steps=100)) == "halted"
         assert debug.observation == replace(native, steps=debug.observation.steps)
         assert esolangs.run(name, source, stdin=stdin, isolated=True) == native
+
+
+def check_byte_retry(
+    name: str,
+    source: str,
+    output: str,
+    before_write: int,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    stdin: str = "",
+    flush: bool = False,
+) -> None:
+    """Accept none or all of a byte, then resume with the same IO and state."""
+    language = esolangs.Language(name)
+    limits = esolangs.ExecutionLimits(max_steps=32)
+    clean = language.make_debugger(source, stdin=stdin)
+    assert clean.run(limits=limits) == "halted"
+    assert clean.observation.output == output
+    native = language.run(source, stdin=stdin)
+    assert clean.observation == replace(native, steps=clean.observation.steps)
+    write = ScriptedIO._write
+    attempts: list[object] = []
+    prefix = ""
+
+    def reject_first(port: ScriptedIO, value: object) -> None:
+        attempts.append(value)
+        if len(attempts) == 1:
+            write(port, prefix)
+            raise esolangs.HaltError("temporary byte refusal")
+        write(port, value)
+
+    for accepted in (0, 1):
+        attempts.clear()
+        prefix = output[:accepted]
+        live = language.make_debugger(source, stdin=stdin)
+        for _ in range(before_write):
+            live.step()
+        before, boundary = live.observation, live.snapshot()
+        ip, memory = live.ip, live.memory
+        with monkeypatch.context() as scoped:
+            scoped.setattr(ScriptedIO, "_write", reject_first)
+            with pytest.raises(esolangs.HaltError, match="byte refusal") as error:
+                live.step()
+            partial = replace(
+                clean.observation if flush else before,
+                output=prefix,
+                completion=None,
+                steps=before_write,
+            )
+            assert error.value.observation == live.observation == partial
+            assert not live.halted
+            assert (live.ip, live.memory) == (ip, memory)
+            stopped = live.snapshot()
+            if flush:
+                assert stopped[:-2] == boundary[:-1]
+                assert stopped[-2] == partial.input_position
+                pending = stopped[-1]
+                assert isinstance(pending, tuple)
+                assert pending[-1] == accepted
+            else:
+                assert stopped == ((*boundary, accepted) if accepted else boundary)
+            assert live.run(limits=limits) == "halted"
+        assert attempts == [output[0], *output[accepted:]]
+        assert live.observation == clean.observation
+        assert live.snapshot() == clean.snapshot()
+        assert _capture_workspace(live.vm) == _capture_workspace(clean.vm)
+        assert error.value.observation == partial
+
+
+def check_final_byte_retry(
+    name: str, set_command: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Keep the final command active after its flush fails, including input."""
+    for source, stdin, prefix in (
+        (";,", "\x01\x02", 1),
+        (";,", "", 1),
+        (";" + set_command, "", 1),
+        (";[" + set_command + "]", "", 1),
+    ):
+        check_byte_retry(
+            name, source, "\0", prefix, monkeypatch, stdin=stdin, flush=True
+        )
+    check_byte_retry(name, ";" * 8, "\0", 7, monkeypatch)

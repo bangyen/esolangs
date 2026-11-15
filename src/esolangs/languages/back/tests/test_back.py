@@ -18,6 +18,7 @@ from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_printing
 from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = partial(run_printing, run)
 
@@ -66,7 +67,7 @@ class TestBack:
 
 
 class TestStepMachine:
-    def test_step_tracks_beam_tape_and_direction(self) -> None:
+    def test_step_tracks_beam_tape_and_direction(self, monkeypatch) -> None:
         machine = Back(["-*"], ScriptedIO())
         assert (machine.row, machine.col, machine.a, machine.b) == (0, 0, 0, 1)
         assert machine.tape == (0,)
@@ -87,6 +88,17 @@ class TestStepMachine:
         machine.step()  # stepping again is a no-op; the dump fires once
         assert machine.io.getvalue() == "1"
         assert machine.row == 0
+
+        assert_rejected_output_retry(
+            "Back",
+            "->*",
+            "1 0",
+            "1 0",
+            prefix=3,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     def test_moving_left_from_cell_zero_grows_the_tape_left(self) -> None:
         """``<`` at the leftmost cell adds a zero cell there, not an underflow."""

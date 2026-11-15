@@ -87,13 +87,29 @@ def test_advance_is_pure_and_repeatable() -> None:
     assert moved[4][(0, 0)] == ord("A")
 
 
-def test_advance_returns_output_instead_of_writing() -> None:
+def test_advance_returns_output_instead_of_writing(monkeypatch) -> None:
     """``n``/``o`` report an effect; the transition owns no port."""
+    from tests.support.vm_support import assert_rejected_output_retry
+
     moved, effect = _advance(_state({(0, 0): ord("n")}, (65,)))
     assert effect == ("num", "65")
     assert moved[5] == ((),)
     moved, effect = _advance(_state({(0, 0): ord("o")}, (65,)))
     assert effect == ("char", "A")
+    for source, value, output, prefix in (
+        ('"A"o"B"o;', "A", "AB", 3),
+        ("an;", "10", "10", 1),
+    ):
+        assert_rejected_output_retry(
+            "Fish",
+            source,
+            value,
+            output,
+            prefix=prefix,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=("B",) if prefix == 3 else (),
+        )
 
 
 def test_advance_takes_its_random_draw_as_an_argument() -> None:

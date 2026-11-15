@@ -9,6 +9,7 @@ from esolangs.languages.cyclic_tag.interpreter import _execute, _Machine, run
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime.io import ScriptedIO
 from tests.support.raises import assert_rejected_with_hint
+from tests.support.vm_support import assert_rejected_output_retry
 from tests.support.witness_tables import witnesses
 
 
@@ -96,6 +97,16 @@ def test_native_completion_reports_the_dump_and_run_keeps_its_return_contract(
     assert report.cycle is None
     assert io.getvalue() == "1"
     assert run(",1", ScriptedIO()) is None
+    assert_rejected_output_retry(
+        "Cyclic tag",
+        ",1",
+        "1",
+        "1",
+        prefix=1,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
     from esolangs.languages.cyclic_tag import interpreter
     from tests.support.prepared_support import check_image_reuse
 

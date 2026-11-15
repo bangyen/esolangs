@@ -12,6 +12,7 @@ from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import run_printing
 from tests.support.evaluation import _row_answerer
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = partial(run_printing, run)
 
@@ -63,6 +64,7 @@ class TestArrowQueue:
 
     def test_the_dump_fires_once_however_often_a_halted_machine_is_stepped(
         self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """``dumped`` is load-bearing: the queue prints on one step only."""
         io = ScriptedIO("")
@@ -75,6 +77,17 @@ class TestArrowQueue:
         machine.step()
         machine.step()
         assert io.getvalue() == "0 0"  # and not once more
+
+        assert_rejected_output_retry(
+            "ArrowQueue",
+            "~~",
+            "0 0",
+            "0 0",
+            prefix=2,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
 
 class TestMachineState:

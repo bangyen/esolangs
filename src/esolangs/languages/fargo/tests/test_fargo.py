@@ -71,10 +71,23 @@ class TestBuiltins:
         assert run_program("% 0 [?] +[] [] 1 [] 0 0\n$") == "1"
         assert run_program("% 0 [?] +[] [] 1 [] 0 1\n$") == "0"
 
-    def test_writes_and_prints_evaluate_to_zero(self) -> None:
+    def test_writes_and_prints_evaluate_to_zero(self, monkeypatch) -> None:
         """``%`` and ``$`` return 0, which is what keeps output write-only."""
+        from tests.support.vm_support import assert_rejected_output_retry
+
         assert run_program("% 0 | 0 % 1 1\n$") == "2"
         assert run_program("% 0 | 0 $\n$") == "00"
+        assert_rejected_output_retry(
+            "Fargo",
+            "% 0 | 0 $\n$",
+            0,
+            "00",
+            prefix=5,
+            stdin="1",
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(0,),
+        )
 
     def test_input_bits_are_lsb_first(self, monkeypatch) -> None:
         # 6 is 0b110: bit 0 is 0, bits 1 and 2 are 1.

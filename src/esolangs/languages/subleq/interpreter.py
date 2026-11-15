@@ -21,6 +21,7 @@ Errors:
 """
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -30,9 +31,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._validate import _argument_repr, check_address
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import parse_int_memory
 from esolangs.runtime.source_hints import syntax_error
 
@@ -57,6 +58,7 @@ class _Machine:
         self.cells = parse_int_memory(code) if isinstance(code, str) else list(code)
         self.pc = 0
         self.io = io
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -72,14 +74,21 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             memory=tuple(self.cells),
-            instruction=self.pc,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.pc, accepted))
+                if accepted
+                else self.pc
+            ),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        return (tuple(self.cells), self.pc, self.io.progress())
+        boundary = (tuple(self.cells), self.pc, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _read(self, address: int) -> int:
         if address < 0:
@@ -118,7 +127,8 @@ class _Machine:
             self._write(b, byte)
             self.pc += 3
         elif b == -1:  # output the byte at a
-            self.io.print_char(chr(self._read(a) % 256))
+            char = chr(self._read(a) % 256)
+            self._writer.write(self.io, char, first=partial(self.io.print_char, char))
             self.pc += 3
         else:  # mem[b] -= mem[a]; jump to c if the result is not positive
             subtrahend = self._read(a)

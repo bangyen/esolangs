@@ -38,8 +38,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -125,6 +125,7 @@ class _Machine:
         )
         self.state = tuple.__new__(_State, (0, 0, 1, 0, 0))
         self.io = io
+        self._writer = _BufferedOutput()
         self.printed = False
 
     @property
@@ -155,26 +156,33 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=self.state.cursor,
             pointer=self.state.pointer,
             direction=self.state.direction,
             left=self.state.left,
             right=self.state.right,
-            printed=self.printed,
+            printed=(
+                WorkspaceVariant("pending_output", (self.printed, accepted))
+                if accepted
+                else self.printed
+            ),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return all mutable state, including the input cursor."""
-        return (*self.state, self.printed, self.io.progress())
+        boundary = (*self.state, self.printed, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute a command, or dump the final bit after source exit."""
         if self.halted:
             return
         if not 0 <= self.state.cursor < len(self.code):
-            self.io.print_str(str(_bit(self.state)))
+            self._writer.write(self.io, str(_bit(self.state)))
             self.printed = True
         else:
             self.state = _advance(self.state, self.code, self.pairs)

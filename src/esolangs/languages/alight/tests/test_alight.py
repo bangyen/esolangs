@@ -863,8 +863,20 @@ class TestPureTransition:
         assert first == second
         assert first != _freeze(tuple(w.key() for w in core.walkers))
 
-    def test_advance_returns_output_as_an_effect_not_a_write(self) -> None:
+    def test_advance_returns_output_as_an_effect_not_a_write(self, monkeypatch) -> None:
         from esolangs.languages.alight.interpreter._machine import _advance
+        from tests.support.vm_support import assert_rejected_output_retry
+
+        assert_rejected_output_retry(
+            "Alight",
+            "begin;var a;set a 65;out a;set a 66;out a;end;",
+            "A",
+            "AB",
+            prefix=3,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=("B",),
+        )
 
         machine = _Machine(
             ["begin;var l;set l 65;out l;end;"],

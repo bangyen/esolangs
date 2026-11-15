@@ -14,6 +14,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.runner import run_printing
 from tests.support.raises import raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 
 def _capture(code: str) -> str:
@@ -113,7 +114,7 @@ class TestMinskySwapProgramFlowAndEdges:
 
 
 class TestStepMachine:
-    def test_the_register_dump_happens_once(self) -> None:
+    def test_the_register_dump_happens_once(self, monkeypatch) -> None:
         """Stepping a halted machine again does not re-print the registers."""
         machine = _Machine("+", IO())
         buffer = io.StringIO()
@@ -123,6 +124,17 @@ class TestStepMachine:
             machine.step()  # the dump
             machine.step()  # once halted and dumped, a no-op
         assert buffer.getvalue().strip() == "1 0"
+
+        assert_rejected_output_retry(
+            "Minsky Swap",
+            "+",
+            "1 0",
+            "1 0",
+            prefix=1,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     def test_a_decrement_targeting_line_zero_falls_through(self) -> None:
         """A jump target of ``0`` is falsy, so ``~`` advances instead."""

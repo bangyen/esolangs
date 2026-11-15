@@ -20,6 +20,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import complete_vm
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import subleq as oracle
+from tests.support.bit_lifecycle import check_byte_retry
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 
@@ -75,10 +76,12 @@ def test_oracle_controls(code, outcome) -> None:
     assert not agrees(_Machine, oracle, "0 0 0", "").halted
 
 
-def test_subleq_direct_jump_and_output() -> None:
+def test_subleq_direct_jump_and_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    code = "9 -1 3 10 -1 6 0 0 -1 72 105"
     io = ScriptedIO()
-    run_subleq("9 -1 3 10 -1 6 0 0 -1 72 105", io)
+    run_subleq(code, io)
     assert io.getvalue() == "Hi"
+    check_byte_retry("Subleq", code, "Hi", 0, monkeypatch)
 
 
 def test_subleq_input_and_eof(monkeypatch) -> None:

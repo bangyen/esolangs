@@ -12,6 +12,7 @@ from esolangs.languages.refractran.tests.test_integration_refractran import (
 )
 from esolangs.runtime.io import ScriptedIO
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_output_retry
 
 
 def test_fraction_search(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -36,6 +37,17 @@ def test_fraction_search(monkeypatch: pytest.MonkeyPatch) -> None:
         with pytest.raises(ValueError, match=r"initial|fraction"):
             run(source, ScriptedIO())
     _check_large_operands()
+
+    assert_rejected_output_retry(
+        "REFRACTRAN",
+        "6",
+        "110",
+        "110",
+        prefix=0,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
     machine = _Machine("2 3/5 3/2", ScriptedIO())
     machine.step()

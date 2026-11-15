@@ -10,7 +10,7 @@ from esolangs.languages.boolfuck.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import boolfuck as oracle
-from tests.support.bit_lifecycle import check_byte_lifecycle
+from tests.support.bit_lifecycle import check_byte_lifecycle, check_final_byte_retry
 from tests.support.raises import assert_rejected_with_hint
 from tests.support.witness_tables import witnesses
 
@@ -78,6 +78,7 @@ def test_oracle_controls(code, output) -> None:
 
 def test_declared_byte_lifecycle(monkeypatch) -> None:
     check_byte_lifecycle("Boolfuck", "+")
+    check_final_byte_retry("Boolfuck", "+", monkeypatch)
     from esolangs.runtime.brackets import BracketProgram
     from tests.support.prepared_support import check_image_reuse
 

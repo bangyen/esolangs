@@ -58,7 +58,7 @@ from esolangs.languages.alight.interpreter._walk import (
 )
 from esolangs.languages.alight.interpreter._workspace import _Graph
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
 
@@ -714,6 +714,7 @@ class _Machine:
         list_update: str = "in_place",
     ) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self._input_reads = 0
         self._pending_input: Fraction | Literal["eof"] | None = None
         image = (
@@ -755,10 +756,15 @@ class _Machine:
         cursor: int | WorkspaceVariant = self.io.progress()
         if self._pending_input is not None:
             cursor = WorkspaceVariant("pending_input", (cursor, self._pending_input))
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             walkers=walkers,
             heap=graph.heap(),
-            stopped=self.halted,
+            stopped=(
+                WorkspaceVariant("pending_output", (self.halted, accepted))
+                if accepted
+                else self.halted
+            ),
             input_cursor=cursor,
             input_reads=self._input_reads,
         )
@@ -768,14 +774,14 @@ class _Machine:
         # Every walker, not only the innermost: a callee that returns to a
         # caller standing somewhere else is a different state, and a lap
         # that consumed a line is not a repeat.
-        state = (
+        state: tuple[object, ...] = (
             _freeze(tuple(walker.key() for walker in self.walkers)),
             self.halted,
             self._input_reads,
         )
         if self._pending_input is not None:
-            return (*state, self._pending_input)
-        return state
+            state = (*state, self._pending_input)
+        return (*state, self._writer.accepted) if self._writer.accepted else state
 
     #: ``ip`` is a cell of the program's own rectangle: the first two
     #: parts are a row and a column, and the rest is a heading.  Without
@@ -818,13 +824,15 @@ class _Machine:
         while True:
             value = self._pending_input if self._pending_input is not None else _MISSING
             try:
-                self.core, output = _advance(self.core, value)
+                core, output = _advance(self.core, value)
                 break
             except _NeedInputError:
                 self._pending_input = self._read_char()
-        self._pending_input = None
         if output is not None:
-            self.io.print_char(chr(output))
+            char = chr(output)
+            self._writer.write(self.io, char, first=lambda: self.io.print_char(char))
+        self.core = core
+        self._pending_input = None
 
 
 def _is_call(text: str, word: str) -> bool:

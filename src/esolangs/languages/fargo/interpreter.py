@@ -59,7 +59,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -329,6 +329,7 @@ class _Machine:
 
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self.defs, self.calls = _prepare_source(code) if isinstance(code, str) else code
         self.state = _State(self._read_input(), 0, 0, ())
 
@@ -380,8 +381,13 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical values and continuations independently of cycle rendering."""
         frozen: dict[int, Hashable] = {}
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.ind,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.ind, accepted))
+                if accepted
+                else self.ind
+            ),
             input_number=self.number,
             output_number=self.output,
             frames=tuple(
@@ -416,7 +422,7 @@ class _Machine:
         Values retain their ordinary spelling. A non-returning recursion
         grows the frame tuple, so it is never mistaken for a repeat.
         """
-        return (
+        boundary = (
             self.ind,
             self.number,
             self.output,
@@ -436,6 +442,7 @@ class _Machine:
             ),
             self.io.progress(),
         )
+        return (*boundary, self._writer.accepted) if self._writer.accepted else boundary
 
     def frame_entry_key(self, frame: _Frame) -> Hashable:
         """Return what ``frame`` is about to run, for the ancestor check.
@@ -458,9 +465,12 @@ class _Machine:
         """
         if self.halted:
             return
-        self.state, effect = _advance(self.state, self.defs, self.calls)
+        state, effect = _advance(self.state, self.defs, self.calls)
         if effect is not None:
-            self.io.print_num(effect)
+            self._writer.write(
+                self.io, format_integer(effect), first=lambda: self.io.print_num(effect)
+            )
+        self.state = state
 
 
 def _retop(frames: tuple[_Frame, ...], frame: _Frame) -> tuple[_Frame, ...]:

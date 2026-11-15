@@ -23,9 +23,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.brackets import match_brackets
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 
 type _State = tuple[int, int, tuple[int, ...], bool]
 
@@ -78,6 +78,7 @@ class _Machine:
             _prepare_source(code) if isinstance(code, str) else code
         )
         self.io = io
+        self._writer = _BufferedOutput()
         self.size = len(self.code)
         self.state: _State = (0, 0, (0,) * self.size, False)
 
@@ -103,21 +104,29 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture the logical tape, cursor, and native output phase."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=self.state[0],
             pointer=self.state[1],
             tape=self.state[2],
-            dumped=self.state[3],
+            dumped=(
+                WorkspaceVariant("pending_output", (self.state[3], accepted))
+                if accepted
+                else self.state[3]
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         ind, ptr, tape, _dumped = self.state
-        return (ind, ptr, tape)
+        boundary = (ind, ptr, tape)
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
-        self.state, output = _advance(self.state, self.code, self.brackets)
+        state, output = _advance(self.state, self.code, self.brackets)
         if output is not None:
-            self.io.print_str(output)
+            self._writer.write(self.io, output)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

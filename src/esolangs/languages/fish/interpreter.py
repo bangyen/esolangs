@@ -69,8 +69,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import syntax_error
@@ -456,6 +456,7 @@ class _Machine:
         image = code if isinstance(code, _GridImage) else _prepare_grid(code)
         self.code = image.rows if isinstance(code, _GridImage) else code
         self.io = io
+        self._writer = _BufferedOutput()
         self._rng = rng
         self.state: _Core = (
             0,
@@ -528,6 +529,7 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
         s = self.state
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             x=s[0],
             y=s[1],
@@ -537,19 +539,22 @@ class _Machine:
             stacks=tuple(tuple(stack) for stack in s[5]),
             registers=tuple(s[6]),
             quote=s[7],
-            stopped=s[8],
+            stopped=WorkspaceVariant("pending_output", (s[8], accepted))
+            if accepted
+            else s[8],
             width=s[9],
             height=s[10],
             input_cursor=self.io.progress(),
         )
 
-    def snapshot(self) -> _State:
+    def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return _freeze(self.state, self.io.progress())
+        boundary = self.branching_snapshot()
+        return (*boundary, self._writer.accepted) if self._writer.accepted else boundary
 
     def branching_snapshot(self) -> _State:
         """Return immutable state for exhaustive ``x`` branch search."""
-        return self.snapshot()
+        return _freeze(self.state, self.io.progress())
 
     def branching_halted(self, state: object) -> bool:
         """Report whether an immutable state has executed ``;``."""
@@ -597,13 +602,16 @@ class _Machine:
                 char_input = None
         random_dir = draw(self._rng, 4) if interpreting and command == "x" else None
         core, effect = _advance(core, char_input, random_dir)
-        self.state = core
         if effect is not None:
             kind, value = effect
+            text = cast(str, value)
             if kind == "char":
-                self.io.print_char(cast(str, value))
+                self._writer.write(
+                    self.io, text, first=lambda: self.io.print_char(text)
+                )
             else:
-                self.io.print_str(cast(str, value))
+                self._writer.write(self.io, text)
+        self.state = core
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

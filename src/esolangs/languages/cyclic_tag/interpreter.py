@@ -25,8 +25,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 type _Image = tuple[tuple[str, ...], str, tuple[int, ...]]
@@ -77,6 +77,7 @@ class _Machine:
 
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self.program, queue, self._starts = (
             _parse(code) if isinstance(code, str) else code
         )
@@ -113,10 +114,15 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             head=self.head,
             live_bits=self.live,
-            answer_latch=(self.answer, self.printed),
+            answer_latch=(
+                WorkspaceVariant("pending_output", (self.answer, accepted))
+                if accepted
+                else (self.answer, self.printed)
+            ),
             input_cursor=self.io.progress(),
         )
 
@@ -124,15 +130,17 @@ class _Machine:
         # Deleted bits cannot affect a later step, except the answer.  It and
         # its printed flag are one output latch: the workspace ledger's +1 bit.
         latch = (self.answer, self.printed)
-        return (self.head, self.live, latch, self.io.progress())
+        boundary = (self.head, self.live, latch, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         if not self.halted:
             # The append is an effect so the growing queue is never copied.
             self.read, append = _advance(self.read, self.program, self.data[self.read])
             self.data.extend(append)
-        elif self.answer is not None and not self.printed:
-            self.io.print_str(self.answer)
+        elif not self.printed and (answer := self.answer) is not None:
+            self._writer.write(self.io, answer)
             self.printed = True
 
 

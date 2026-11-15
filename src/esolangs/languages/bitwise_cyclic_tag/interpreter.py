@@ -35,8 +35,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 #: ``(head, read)``: program position and leftmost live data-bit.  The program
@@ -111,6 +111,7 @@ class _Machine:
     def __init__(self, code: str | _Image, io: IO) -> None:
         """Allocate fresh queue state for literal or prepared source."""
         self.io = io
+        self._writer = _BufferedOutput()
         self.program, data, self.offsets = (
             _parse(code) if isinstance(code, str) else code
         )
@@ -161,11 +162,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=self.state[0],
             live_bits=self.live,
             answer=self.answer,
-            completion_emitted=self.printed,
+            completion_emitted=(
+                WorkspaceVariant("pending_output", (self.printed, accepted))
+                if accepted
+                else self.printed
+            ),
             input_cursor=self.io.progress(),
         )
 
@@ -176,13 +182,22 @@ class _Machine:
         instants differing only there are one.  ``printed`` stays out.
         """
         head, read = self.state
-        return (self.program, head, self.live, self.answer, read, self.io.progress())
+        boundary = (
+            self.program,
+            head,
+            self.live,
+            self.answer,
+            read,
+            self.io.progress(),
+        )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one command, printing the answer once the data runs out."""
         if self.halted:
-            if not self.printed and self.answer is not None:
-                self.io.print_str(self.answer)
+            if not self.printed and (answer := self.answer) is not None:
+                self._writer.write(self.io, answer)
             self.printed = True
             return
         read = self.state[1]

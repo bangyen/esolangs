@@ -53,8 +53,8 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 #: ``(row, col, a, b, tape, cell, done)``: an immutable value, rebound per
@@ -155,6 +155,7 @@ class _Machine:
         self.state: _State = (0, 0, 0, 1, (0,), 0, False)
         # Not in ``_State``: the dump is the shell's.
         self._dumped = False
+        self._writer = _BufferedOutput()
 
     # Views on the state.
 
@@ -226,6 +227,7 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             row=self.state[0],
             column=self.state[1],
@@ -234,7 +236,11 @@ class _Machine:
             tape=self.state[4],
             cell=self.state[5],
             stopped=self.halted,
-            dumped=self.dumped,
+            dumped=(
+                self.dumped
+                if not accepted
+                else WorkspaceVariant("pending_output", (accepted,))
+            ),
             input_cursor=self.io.progress(),
         )
 
@@ -242,7 +248,9 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # Six live fields plus input cursor; ``done`` stays out.
         row, col, a, b, tape, cell, _done = self.state
-        return (row, col, a, b, tape, cell, self.io.progress())
+        boundary = (row, col, a, b, tape, cell, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one cell, or dump the tape on the post-halt step.
@@ -258,7 +266,11 @@ class _Machine:
         """
         if self.halted:
             if not self.dumped:
-                self.io.print_str(" ".join(map(str, self.tape)))
+                text = " ".join(map(str, self.tape))
+                if isinstance(self.io, ScriptedIO):
+                    self._writer.write(self.io, text)
+                else:
+                    self.io.print_str(text)
                 self._dumped = True
             return
         self.state = _advance(self.state, self.code, self.size)

@@ -24,8 +24,8 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 
 # (d_row, d_col) per heading, in the clockwise order right, down, left, up.
 DELTA = [(0, 1), (1, 0), (0, -1), (-1, 0)]
@@ -111,6 +111,7 @@ class _Machine:
         # Out of ``_State``: the dump is the shell's, and ``snapshot`` must
         # keep hashing the four live fields it always has.
         self._dumped = False
+        self._writer = _BufferedOutput()
 
     # Views on the state.
 
@@ -166,13 +167,18 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             row=self.state[0],
             column=self.state[1],
             direction=self.state[2],
             queue=self.state[3],
             stopped=self.halted,
-            dumped=self.dumped,
+            dumped=(
+                self.dumped
+                if not accepted
+                else WorkspaceVariant("pending_output", (accepted,))
+            ),
             input_cursor=self.io.progress(),
         )
 
@@ -180,7 +186,9 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # Four live fields; ``done`` stays out.
         row, col, d, queue, _done = self.state
-        return (row, col, d, queue)
+        boundary = (row, col, d, queue)
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one grid cell, or dump the queue on the post-halt step.
@@ -189,7 +197,11 @@ class _Machine:
         """
         if self.state[4]:
             if not self.dumped:
-                self.io.print_str(" ".join(map(str, self.queue)))
+                text = " ".join(map(str, self.queue))
+                if isinstance(self.io, ScriptedIO):
+                    self._writer.write(self.io, text)
+                else:
+                    self.io.print_str(text)
                 self._dumped = True
             return
         self.state = _advance(self.state, self.grid, self.width)

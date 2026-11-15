@@ -12,6 +12,7 @@ from esolangs.vm import run_until_halt_or_cycle, run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
+from tests.support.bit_lifecycle import check_byte_retry
 from tests.support.raises import assert_rejected_with_hint
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import assert_proof_fault
@@ -83,6 +84,7 @@ class TestBrainfuck:
         assert run_and_capture("+" + "<" * 100 + ">" * 100 + ".") == "\x01"
 
     def test_input_echo(self, monkeypatch) -> None:
+        check_byte_retry("brainfuck", ",.,.", "AB", 1, monkeypatch, stdin="AB")
         assert run_and_capture(",>,<.>.", inputs=["A", "B"]) == "AB"
         from tests.support.prepared_support import check_image_reuse
 

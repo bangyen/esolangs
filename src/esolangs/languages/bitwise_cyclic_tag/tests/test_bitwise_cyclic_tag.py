@@ -12,6 +12,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.runner import run_program
 from tests.support.generator_support import measure_run
+from tests.support.vm_support import assert_rejected_output_retry
 
 #: The wiki's example: program ``00111`` on data ``101``, read off the
 #: published table as the data-string before each command.  The system never
@@ -111,7 +112,9 @@ class TestBitwiseCyclicTag:
         with pytest.raises(ValueError, match="not a Bitwise Cyclic Tag bit"):
             run_program(run, "0012,1")
 
-    def test_the_answer_prints_once_however_far_it_is_stepped(self) -> None:
+    def test_the_answer_prints_once_however_far_it_is_stepped(
+        self, monkeypatch
+    ) -> None:
         """The post-halt step prints it, and only the first one does."""
         io_obj = ScriptedIO()
         machine = _Machine("0,1", io_obj)
@@ -123,6 +126,16 @@ class TestBitwiseCyclicTag:
         for _ in range(3):
             machine.step()
         assert io_obj.getvalue() == "1"
+        assert_rejected_output_retry(
+            "Bitwise Cyclic Tag",
+            "0,1",
+            "1",
+            "1",
+            prefix=1,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     def test_a_deleted_prefix_is_not_part_of_the_state(self) -> None:
         """Two runs that differ only in what they have already deleted agree."""

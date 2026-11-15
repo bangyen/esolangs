@@ -126,6 +126,8 @@ def assert_rejected_output_retry(
     prefix: int,
     monkeypatch: pytest.MonkeyPatch,
     stdin: str = "",
+    unchanged_if_unwritten: bool = False,
+    following_writes: tuple[int | str, ...] | None = None,
 ) -> None:
     """Resume a debugger after a sink accepts zero, some or all of a write."""
     language = esolangs.Language(name)
@@ -152,21 +154,32 @@ def assert_rejected_output_retry(
                 debugger.step()
             boundary = debugger.snapshot()
             before = debugger.observation
+            was_halted = debugger.halted
             with pytest.raises(
                 esolangs.HaltError, match="temporary writer refusal"
             ) as fault:
                 debugger.run(limits=limits)
             partial = replace(before, output=before.output + text[:accepted])
             assert fault.value.observation == debugger.observation == partial
-            assert not debugger.halted
-            assert debugger.snapshot() == (*boundary, accepted)
+            assert debugger.halted is was_halted
+            if unchanged_if_unwritten and not accepted:
+                assert debugger.snapshot() == boundary
+            else:
+                assert debugger.snapshot() == (*boundary, accepted)
             assert debugger.run(limits=limits) == "halted"
             assert debugger.observation == expected
             assert fault.value.observation == partial
             assert type(attempts[0]) is type(value)
             assert attempts[0] == value
-            if accepted < len(text):
-                assert attempts[1] == (text[accepted:] if accepted else value)
+            pending = (
+                (text[accepted:] if accepted else value,)
+                if accepted < len(text) or not text
+                else ()
+            )
+            if following_writes is not None:
+                assert tuple(attempts[1:]) == pending + following_writes
+            elif pending:
+                assert tuple(attempts[1:2]) == pending
 
     for accepted in range(len(text) + 1):
         check(accepted)

@@ -12,8 +12,20 @@ from tests.interpreters.runner import run_program
 _run = partial(run_program, run, suppress_eof=False)
 
 
-def test_push_output_and_nested_elements() -> None:
+def test_push_output_and_nested_elements(monkeypatch) -> None:
+    from tests.support.vm_support import assert_rejected_output_retry
+
     assert _run("((x))S") == "(x)"
+    assert_rejected_output_retry(
+        "Underload",
+        "(ab)S(cd)S",
+        "ab",
+        "abcd",
+        prefix=1,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=("cd",),
+    )
 
 
 def test_stack_commands() -> None:

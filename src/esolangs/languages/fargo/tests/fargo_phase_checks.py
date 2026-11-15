@@ -58,19 +58,23 @@ def check_phases():
     finally:
         sys.set_int_max_str_digits(saved)
     assert sys.get_int_max_str_digits() == saved
-    # A refused physical write is after the committed $ token, unlike a pure
-    # prefix/type/arity refusal. The finish step must not retry that output.
+    # A refused physical write leaves the $ token ready to retry.
     case = Case("$", "7 trailing")
     rows = model(case.source, case.stdin, case.cap)
     at = next(i for i in range(1, len(rows)) if rows[i].output != rows[i - 1].output)
+    halt_at = next(i for i, row in enumerate(rows) if row.halted)
     prior, landed = rows[at - 1], rows[at]
     marker = "Fargo injected writer refusal"
     writes = []
+    write = ScriptedIO._write
+    accepting = False
 
-    def refuse(_self, value):
+    def refuse(port, value):
         assert type(value) is int
         assert value == 0
         writes.append(value)
+        if accepting:
+            return write(port, value)
         raise ValueError(marker)
 
     with patch.object(ScriptedIO, "_write", refuse):
@@ -119,25 +123,26 @@ def check_phases():
                 inner.ind,
                 tuple(checker.actual_frame(f) for f in inner.frames),
             )
-            checker.assert_exact(actual, landed.state)
-            before = len(writes)
-            machine.step()
+            checker.assert_exact(actual, prior.state)
+            accepting = True
+            for _ in range(halt_at - at + 1):
+                machine.step()
+            accepting = False
             assert machine.halted
-            assert len(writes) == before
             counts["writer_routes"] += 1
         checker.assert_exact(
             debugger.observation,
             checker.esolangs.ExecutionResult(
-                prior.output,
+                rows[-1].output,
                 landed.cursor,
                 landed.reads,
                 landed.past_end,
                 completion=checker.REPORT,
-                steps=at,
+                steps=halt_at,
             ),
         )
         assert (io.getvalue(), io.position(), io.progress(), io.reads, io.past_end) == (
-            prior.output,
+            rows[-1].output,
             landed.cursor,
             landed.cursor,
             landed.reads,
@@ -169,6 +174,6 @@ def check_phases():
         else:
             raise AssertionError("public writer refusal swallowed")
         counts["writer_routes"] += 1
-    assert len(writes) == 4
+    assert len(writes) == 7
     assert all(type(value) is int and value == 0 for value in writes)
     return counts
