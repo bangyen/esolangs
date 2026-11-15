@@ -47,11 +47,15 @@ def _record_type(module_name: str, name: str) -> type[Any]:
 
 @cache
 def _owned_codec(module_name: str, name: str) -> SnapshotCodec[Any]:
-    """Resolve codecs declared by installed interpreters or the shared bit tape."""
+    """Resolve codecs from registered interpreters and named implementation modules."""
     from esolangs.registry import INTERPRETERS
 
     if (
-        module_name != "esolangs.runtime.bit_tape"
+        module_name
+        not in (
+            "esolangs.runtime.bit_tape",
+            "esolangs.languages.streetcode.interpreter.geometry",
+        )
         and module_name not in INTERPRETERS.values()
     ):
         raise ValueError("unregistered snapshot codec module")

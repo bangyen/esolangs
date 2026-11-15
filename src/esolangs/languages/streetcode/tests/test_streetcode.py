@@ -31,6 +31,68 @@ from tests.interpreters.cursorless_io import CursorlessIO
 from tests.support.raises import assert_rejected_with_hint
 
 
+def _check_cycle_transport(code: list[str]) -> None:
+    from dataclasses import replace
+
+    from esolangs import Catalog, ExecutionLimits, Language
+    from esolangs.runtime._result_wire import _state_from_wire, _state_wire
+    from tests.support.certification_barrier import guarded_worker
+
+    from .junction_checks import typed_state
+
+    stock = Language("Streetcode")
+    declaration = stock.catalog.languages[stock.name]
+    contract = replace(
+        declaration.contract,
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+    )
+    api = Catalog([replace(declaration, contract=contract, backend=None)]).bind(
+        stock.name
+    )
+    source = api.from_source("\n".join(code))
+    halt = api.from_source("C;")
+    local = ExecutionLimits(max_steps=100)
+    isolated = replace(local, total_timeout=5)
+    cycle = api.evaluate(source, [1], limits=local)
+    endpoint = api.evaluate(halt, [1], limits=local)
+    with guarded_worker(expected=2):
+        worker = api.evaluate(source, [1], limits=isolated)
+        assert api.evaluate(halt, [1], limits=isolated) == endpoint
+    assert endpoint.answer == "0"
+    assert endpoint.observation.output == ""
+    assert worker == cycle
+    assert cycle.answer == "1"
+    assert cycle.observation.output == ""
+    assert worker.termination is not None
+    assert worker.termination.cycle is not None
+    repeated = worker.termination.cycle.state[0]
+    typed_state(repeated)
+
+    vm = api.make_vm(source)
+    for _ in range(14):
+        vm.step()
+    snapshot = vm.snapshot()
+    restored = _state_from_wire(_state_wire(snapshot))
+    assert restored == snapshot
+    stored = restored[0]
+    typed_state(stored)
+    assert stored.latches.merge is not None
+    assert stored.latches.merge.target == (1, 3)
+    assert stored.latches.merge.new_heading == "W"
+    assert stored.latches.merge.crossing is True
+
+    record = _state_wire(stored)["owned"]
+    forbidden = {
+        **record,
+        "module": record["module"].replace(".geometry", ".validation"),
+    }
+    with pytest.raises(ValueError, match="unregistered snapshot codec module"):
+        _state_from_wire({"owned": forbidden})
+    with pytest.raises(ValueError, match="undeclared snapshot codec"):
+        _state_from_wire({"owned": {**record, "name": "_Car"}})
+
+
 class TestStreetcodeSingleCommands:
     """Each instruction in isolation."""
 
@@ -220,6 +282,7 @@ class TestStreetcodeWikiExamples:
         ]
         machine = _Machine(code, IO())
         assert run_until_halt_or_cycle(machine) is False
+        _check_cycle_transport(code)
 
     def test_infinite_loop_example_produces_no_output(self) -> None:
         code = [

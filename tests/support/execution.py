@@ -4,9 +4,10 @@ import signal
 import sys
 import time
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any, cast
 
-from esolangs import Language
+from esolangs import Catalog, ExecutionLimits, Language
 from esolangs.exceptions import ArgumentError, ExecutionTimeoutError
 from esolangs.operations.execution import _execute_invocation
 from esolangs.results import ExecutionResult
@@ -181,6 +182,52 @@ def assert_branch_proof_replays(
         assert model.branching_halted(proof.terminal)
     else:
         assert proof.terminal is None
+
+
+def assert_cycle_proof_replays(
+    name: str, halting: str, cycling: str, output: str
+) -> None:
+    """Compare public cycle results and replay the worker's named state."""
+    from tests.support.certification_barrier import guarded_worker
+
+    api = Language(name)
+    record = api.catalog.languages[api.name]
+    contract = replace(
+        record.contract, answer_mode="termination", answer_values=("halts", "diverges")
+    )
+    scoped = Catalog([replace(record, contract=contract)]).bind(api.name)
+    local = ExecutionLimits(max_steps=50)
+    isolated = replace(local, total_timeout=5)
+    bits = [1]
+    with guarded_worker(expected=2):
+        for source, answer in ((halting, "0"), (cycling, "1")):
+            artifact = scoped.from_source(source)
+            observed = scoped.evaluate(artifact, bits, limits=local)
+            worker = scoped.evaluate(artifact, bits, limits=isolated)
+            assert worker == observed
+            assert worker.answer == answer
+            assert worker.observation.output == output
+            assert worker.termination is not None
+            cycle = worker.termination.cycle
+            if answer == "0":
+                assert cycle is None
+                continue
+            assert cycle is not None
+            assert worker.termination.commands == cycle.repeat_pass
+            machine = scoped.make_debugger(artifact, stdin=scoped.encode_inputs(bits))
+            for _ in range(cycle.first_pass):
+                machine.step()
+            entry = machine.snapshot()
+            assert isinstance(entry, tuple)
+            assert isinstance(cycle.state, tuple)
+            assert cycle.state == entry
+            state_type = type(entry[0])
+            assert hasattr(state_type, "_fields")
+            assert type(cycle.state[0]) is state_type
+            for _ in range(cycle.repeat_pass - cycle.first_pass):
+                machine.step()
+            assert machine.snapshot() == entry
+            assert machine.output == output
 
 
 def assert_digit_cap_independent(

@@ -7,6 +7,7 @@ from esolangs.languages.nandypants.interpreter import run
 from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
+from tests.support.execution import assert_cycle_proof_replays
 
 CAT = r"0}/>v>^<<^>^\}^0"
 
@@ -23,6 +24,8 @@ def _run(code: str, stdin: str = "") -> tuple[str, bool]:
 
 def test_the_pages_cat_copies_input_until_eof() -> None:
     assert _run(CAT, "Hi!") == ("Hi!", True)
+    prefix = "^" + "\\" * 8 + "v 0"
+    assert_cycle_proof_replays("Nandypants", prefix, prefix + " 0", "ÿ")
 
 
 def test_input_is_reduced_modulo_256(monkeypatch) -> None:

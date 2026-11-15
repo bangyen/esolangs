@@ -81,6 +81,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._snapshot import named_tuple_codec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
@@ -177,6 +178,12 @@ class _Frame(NamedTuple):
         if value.kind == "snuval":
             return dict(self.null_types).get(slot, "snuval")
         return value.kind
+
+
+SNAPSHOT_CODECS = (
+    named_tuple_codec(_Frame, _Frame._make),
+    named_tuple_codec(_Value, _Value._make),
+)
 
 
 #: The call stack as a linked pair, so a call and a return are O(1).

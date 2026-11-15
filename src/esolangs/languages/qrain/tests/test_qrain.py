@@ -12,6 +12,7 @@ from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
+from tests.support.execution import assert_cycle_proof_replays
 from tests.support.prepared_support import check_image_reuse
 
 _run = native_runner(run)
@@ -62,6 +63,7 @@ def test_dequeue_of_empty_queue_raises(monkeypatch: pytest.MonkeyPatch) -> None:
         _run("<-")
 
     _check_output_retry(monkeypatch)
+    assert_cycle_proof_replays("Qrain", ",.", ",.+[]", "1")
 
 
 def _check_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:

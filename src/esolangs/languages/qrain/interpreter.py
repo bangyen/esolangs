@@ -48,6 +48,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._snapshot import named_tuple_codec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
@@ -56,6 +57,9 @@ from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 class _State(NamedTuple):
     pc: int
     ptr: int
+
+
+SNAPSHOT_CODECS = (named_tuple_codec(_State, _State._make),)
 
 
 def _advance(

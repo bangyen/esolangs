@@ -1,11 +1,13 @@
 """Tests for the DINAC interpreter, pinned to the wiki's examples."""
 
+from dataclasses import replace
 from itertools import product
 
 import pytest
 
+from esolangs import Catalog, ExecutionLimits, Language
 from esolangs.exceptions import HaltError
-from esolangs.languages.dinac.interpreter import _Machine, run
+from esolangs.languages.dinac.interpreter import _Frame, _Machine, _Value, run
 from esolangs.languages.dinac.tests.oracle_checks import check_raw_dinac
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -295,6 +297,68 @@ def test_malformed_programs(code: str, match: str) -> None:
 def test_a_loop_inside_a_function_is_provably_endless() -> None:
     code = "DEF/00 spin n:00\n    WHILE 01\n        OUT n\n    GIVE n\nOUT spin(01)"
     assert run_until_halt_or_cycle(_Machine(code, ScriptedIO())) is False
+
+    _check_cycle_record_transport()
+
+
+def _check_cycle_record_transport() -> None:
+    code = (
+        "DEF/00 echo n:00\n"
+        "    GIVE n\n"
+        "DEF/00 spin n:00\n"
+        "    WHILE n\n"
+        "        OUT echo(n)\n"
+        "    GIVE n\n"
+        "SET marker:'Z\n"
+        "OUT echo(02) = spin(01)"
+    )
+    stock = Language("DINAC")
+    declaration = stock.catalog.languages[stock.name]
+    contract = replace(
+        declaration.contract,
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+    )
+    api = Catalog([replace(declaration, contract=contract)]).bind(stock.name)
+    program = api.from_source(code)
+    local = api.evaluate(program, [0], limits=ExecutionLimits(max_steps=25))
+    worker = api.evaluate(
+        program, [0], limits=ExecutionLimits(max_steps=25, total_timeout=3)
+    )
+    assert local == worker
+    assert local.observation.output == "01"
+    assert local.observation.steps == 12
+    for result in (local, worker):
+        cycle = result.termination.cycle
+        assert cycle is not None
+        state, cursor = cycle.state
+        callee, (caller, outer) = state
+        assert type(callee) is type(caller) is _Frame
+        assert outer is None
+        assert cursor == 0
+        values = (
+            callee.scope[0],
+            callee.returned,
+            caller.scope[0],
+            caller.pending[2][1],
+            caller.pending[3][2][0][1],
+        )
+        assert all(type(value) is _Value for value in values)
+        assert [value.render() for value in values] == ["01", "01", "Z", "02", "01"]
+
+        io = ScriptedIO()
+        replay = _Machine(code, io)
+        replay.state = state
+        for _ in range(cycle.repeat_pass - cycle.first_pass):
+            replay.step()
+        assert replay.snapshot() == cycle.state
+        assert io.getvalue() == "01"
+
+    halting = code.replace("spin(01)", "spin(00)")
+    assert stock.run(halting).output == "00"
+    assert api.evaluate(
+        api.from_source(halting), [0], limits=ExecutionLimits(max_steps=25)
+    ).termination.halts
 
 
 def test_runaway_recursion_grows_frames_without_a_python_recursion_error() -> None:

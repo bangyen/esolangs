@@ -4,6 +4,8 @@ import functools
 from collections.abc import Callable, Iterator, Sequence
 from typing import Literal, NamedTuple, NewType, cast
 
+from esolangs.runtime._snapshot import named_tuple_codec
+
 # Wall-form alphabet: ``?`` any, ``W`` wall, ``.`` non-wall.  Naming it makes
 # :func:`_matches` exhaustiveness visible.
 _Pattern = Literal["?", "W", "."]
@@ -83,6 +85,13 @@ class _State(NamedTuple):
     def car(self) -> "_Car":
         """Return the car half of the state, for the rules that only steer."""
         return _Car(self.row, self.col, self.heading)
+
+
+SNAPSHOT_CODECS = (
+    named_tuple_codec(_State, _State._make),
+    named_tuple_codec(_Latches, _Latches._make),
+    named_tuple_codec(_Merge, _Merge._make),
+)
 
 
 # A flood-reached open cell.  Enclosure makes its unchecked 3x3 read safe;

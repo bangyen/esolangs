@@ -13,6 +13,7 @@ from esolangs.languages.abcdirection.interpreter import (
     _State,
     run,
 )
+from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
 from tests.support.vm_support import assert_rejected_output_retry
@@ -143,7 +144,12 @@ def test_snapshots_tell_tapes_apart_down_to_the_last_one() -> None:
     blank = _Machine("DDDDDD", ScriptedIO())
     marked = _Machine("DDDDDD", ScriptedIO())
     marked.ones.add(0)
-    assert blank.snapshot() != marked.snapshot()
+    snapshot = blank.snapshot()
+    assert snapshot != marked.snapshot()
+    restored = _state_from_wire(_state_wire(snapshot))
+    assert restored == snapshot
+    assert type(restored[0]) is _State
+    assert restored[6][0] is restored[0]
 
 
 def test_input_characters_wrap_to_a_byte() -> None:
