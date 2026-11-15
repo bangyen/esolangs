@@ -47,7 +47,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -114,6 +114,7 @@ class _Machine:
         self.grid = _prepare_grid(code) if isinstance(code, str) else code
         self.io = io
         self.state: _State = (0, 0, 0, 0)
+        self._rejected_input: str | None = None
         # Mutable and shell-owned: the tape grows one cell per ``>``.
         self.tape = [0]
 
@@ -134,18 +135,39 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        cursor = self.io.progress()
         return _WORKSPACE_MODEL.capture(
             row=self.state[0],
             column=self.state[1],
             heading=self.state[2],
             pointer=self.state[3],
             tape=tuple(self.tape),
-            input_cursor=self.io.progress(),
+            input_cursor=(
+                cursor
+                if self._rejected_input is None
+                else WorkspaceVariant("rejected_input", (cursor, self._rejected_input))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, tuple(self.tape), self.io.progress())
+        state = (*self.state, tuple(self.tape), self.io.progress())
+        return state if self._rejected_input is None else (*state, self._rejected_input)
+
+    def _read_ternary(self) -> int:
+        digit = self._rejected_input
+        if digit is None:
+            digit = chr(self.io.input_char())
+            while digit.isspace():
+                digit = chr(self.io.input_char())
+        if digit not in "012":
+            self._rejected_input = digit
+            raise syntax_error(
+                f"input must be a ternary digit, got {digit!r}",
+                "supply the characters 0, 1 or 2",
+                error_type=ArgumentError,
+            )
+        return int(digit)
 
     def step(self) -> None:
         """Run the command under the pointer, then move one cell."""
@@ -158,18 +180,7 @@ class _Machine:
                 f"'<' at row {row}, column {col} on the leftmost cell",
                 hint="the tape is right-infinite; move right before moving left",
             )
-        read = None
-        if c == ",":
-            digit = chr(self.io.input_char())
-            while digit.isspace():
-                digit = chr(self.io.input_char())
-            if digit not in "012":
-                raise syntax_error(
-                    f"input must be a ternary digit, got {digit!r}",
-                    "supply the characters 0, 1 or 2",
-                    error_type=ArgumentError,
-                )
-            read = int(digit)
+        read = self._read_ternary() if c == "," else None
         self.state, value, out = _advance(self.state, c, self.tape[pointer], read)
         self.tape[pointer] = value
         if self.state[3] == len(self.tape):

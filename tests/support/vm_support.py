@@ -13,8 +13,14 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.results import Completion
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime._vm_protocol import VM
-from esolangs.vm import _capture_result, complete_vm, run_until_halt_or_cycle
+from esolangs.vm import (
+    _capture_result,
+    _capture_workspace,
+    complete_vm,
+    run_until_halt_or_cycle,
+)
 from tests.support.reference import REFERENCE
 
 
@@ -48,6 +54,54 @@ def assert_proof_fault(
         assert caught.value.observation.completion is None
         observations.append(caught.value.observation)
     assert observations[0] == observations[1]
+
+
+def assert_rejected_input_retry(
+    language: str,
+    source: str,
+    stdin: str,
+    valid: str,
+    output: str,
+    *,
+    position: int,
+    reads: int,
+    rejected: str | Literal[True],
+) -> None:
+    """Check rejected input in fresh runs, successive retries and the workspace."""
+    api = esolangs.Language(language)
+    prepared = api.prepare(source)
+    limits = esolangs.ExecutionLimits(max_steps=64)
+    assert prepared.run(stdin=valid, limits=limits).output == output
+    reports = (
+        api.execute(source, stdin=stdin),
+        prepared.execute(stdin=stdin),
+        api.execute(source, stdin=stdin, isolated=True),
+    )
+    fault = reports[0].error
+    assert type(fault) is esolangs.ArgumentError
+    expected = esolangs.ExecutionResult("", position, reads, 0)
+    for report in reports:
+        assert type(report.error) is esolangs.ArgumentError
+        assert report.observation == expected
+        assert report.error.args == fault.args
+        assert report.error.__notes__ == fault.__notes__
+
+    dbg = prepared.make_debugger(stdin=stdin)
+    ip, before = dbg.ip, dbg.snapshot()
+    for resume in (dbg.step, lambda: dbg.run(limits=limits), dbg.step):
+        with pytest.raises(esolangs.ArgumentError) as caught:
+            resume()
+        assert caught.value.args == fault.args
+        assert caught.value.__notes__ == fault.__notes__
+        assert dbg.observation == replace(expected, steps=0)
+        assert dbg.ip == ip
+        after = dbg.snapshot()
+        assert before[:-1] == after[:-2]
+        assert after[-2:] == (position, rejected)
+        data = (position,) if rejected is True else (position, rejected)
+        assert _capture_workspace(dbg.vm).parts[-1] == WorkspaceVariant(
+            "rejected_input", data
+        )
 
 
 def assert_vm_finalization_is_shared(

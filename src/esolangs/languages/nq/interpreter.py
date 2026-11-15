@@ -50,7 +50,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -208,12 +208,16 @@ def _advance(
     return tuple.__new__(_State, (cursor, flag, first, stopped)), effect
 
 
+def _invalid_trits() -> ValueError:
+    return syntax_error(
+        "input must contain trits", "use 0, 1 or 2", error_type=ArgumentError
+    )
+
+
 def _trits(text: str) -> tuple[int, ...]:
     """Validate input, permitting whitespace as framing rather than data."""
     if any(c not in "012" and not c.isspace() for c in text):
-        raise syntax_error(
-            "input must contain trits", "use 0, 1 or 2", error_type=ArgumentError
-        )
+        raise _invalid_trits()
     return tuple(int(c) for c in text if not c.isspace())
 
 
@@ -238,6 +242,7 @@ class _Machine:
         self.state = _State(0, 0, first=True, stopped=not self.code)
         self.queue: deque[int] = deque()
         self.io = io
+        self._rejected_input = False
 
     @property
     def halted(self) -> bool:
@@ -256,32 +261,46 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        cursor = self.io.progress()
         return _WORKSPACE_MODEL.capture(
             instruction=self.state.cursor,
             flag=self.state.flag,
             first_lap=self.state.first,
             stopped=self.state.stopped,
             queue=tuple(self.queue),
-            input_cursor=self.io.progress(),
+            input_cursor=(
+                WorkspaceVariant("rejected_input", (cursor,))
+                if self._rejected_input
+                else cursor
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Include the flag, first-lap status, queue and input progress."""
-        return (*self.state, tuple(self.queue), self.io.progress())
+        state = (*self.state, tuple(self.queue), self.io.progress())
+        return (*state, True) if self._rejected_input else state
+
+    def _read_trits(self, opcode: str) -> tuple[int, ...]:
+        if self._rejected_input:
+            raise _invalid_trits()
+        if opcode == "r":
+            text = chr(self.io.input_char())
+            while text.isspace():
+                text = chr(self.io.input_char())
+        else:
+            text = self.io.input_all()
+        try:
+            return _trits(text)
+        except ArgumentError:
+            self._rejected_input = True
+            raise
 
     def step(self) -> None:
         """Read input, apply one pure transition, then perform its effects."""
         if self.halted:
             return
         command = self.code[self.state.cursor]
-        inputs: tuple[int, ...] = ()
-        if command.opcode == "r":
-            text = chr(self.io.input_char())
-            while text.isspace():
-                text = chr(self.io.input_char())
-            inputs = _trits(text)
-        elif command.opcode == "R":
-            inputs = _trits(self.io.input_all())
+        inputs = self._read_trits(command.opcode) if command.opcode in "rR" else ()
         self.state, effect = _advance(
             self.state,
             command,

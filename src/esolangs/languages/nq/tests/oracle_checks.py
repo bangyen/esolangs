@@ -153,6 +153,7 @@ def _agrees(factory, source, stdin, binding):
         (_WORKSPACE, lambda row: (*row[0][:5], row[-1])),
         lambda m: (*m.state, tuple(m.memory), m.ip),
         context=(source, stdin, binding),
+        rejected_input=lambda *_: (),
     )
 
 

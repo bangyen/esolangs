@@ -47,7 +47,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import count, parse, stack, unwind
 from esolangs.runtime.io import IO, _input_exhausted
@@ -106,6 +106,7 @@ class _Machine:
         self.state: _State = _prepare_source(code) if isinstance(code, str) else code
         self.ended = False
         self.bits = 0
+        self._rejected_input: str | None = None
         self.exit_code: int | None = None
 
     @property
@@ -129,26 +130,34 @@ class _Machine:
         while rest is not None:
             term, rest = rest
             args.append(term)
+        cursor = self.io.progress()
         return _WORKSPACE_MODEL.capture(
             expression=(self.state[0], tuple(args)),
             input_ended=self.ended,
             input_bits=self.bits,
             exit_code=self.exit_code,
-            input_cursor=self.io.progress(),
+            input_cursor=(
+                cursor
+                if self._rejected_input is None
+                else WorkspaceVariant("rejected_input", (cursor, self._rejected_input))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.state, self.ended, self.bits, self.exit_code, self.io.progress())
+        state = (self.state, self.ended, self.bits, self.exit_code, self.io.progress())
+        return state if self._rejected_input is None else (*state, self._rejected_input)
 
     def _read(self) -> int:
         """Return the next input bit."""
         if self.ended:
             _input_exhausted(self.io, self.bits, self.bits, unit="bit")
-        try:
-            char = chr(self.io.input_char())
-        except EOFError:
-            char = None
+        char = self._rejected_input
+        if char is None:
+            try:
+                char = chr(self.io.input_char())
+            except EOFError:
+                char = None
         if char is None:
             # The physical read already recorded the EOF.
             self.ended = True
@@ -157,6 +166,7 @@ class _Machine:
             self.ended = True
             _input_exhausted(self.io, self.bits, self.bits, unit="bit")
         if char not in "01":
+            self._rejected_input = char
             raise syntax_error(
                 f"Kiss input must be a binary string, got {char!r}",
                 "supply 0 and 1 characters, for example 1011",

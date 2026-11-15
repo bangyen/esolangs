@@ -5,7 +5,6 @@ from itertools import product
 import pytest
 
 from esolangs.languages.hot.interpreter import _Machine
-from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
 
 _WORKSPACE = workspace.workspace_model(
@@ -126,18 +125,22 @@ def _model(source, stdin):
 def _check(factory, code, stdin):
     expected = _model(code, stdin)
 
-    checked = workspace.workspace_view(
-        expected[1],
-        _WORKSPACE,
-        lambda row: (
-            (row[0][0][0], tuple(row[0][0][1:])),
-            *row[0][1:],
-            row[1],
-            row[-1],
+    workspace.agrees(
+        expected,
+        (factory, code, stdin),
+        (
+            _WORKSPACE,
+            lambda row: (
+                (row[0][0][0], tuple(row[0][0][1:])),
+                *row[0][1:],
+                row[1],
+                row[-1],
+            ),
         ),
         lambda m: (m.stack, m.pending, m.ended, m.odd),
+        cap=16,
+        rejected_input=lambda rows, text: (text[rows[-1][3] - 1],),
     )
-    assert observed(factory, code, stdin, checked, cap=16) == expected
 
 
 def check_raw_hot():

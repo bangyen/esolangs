@@ -5,6 +5,15 @@ import pytest
 from esolangs.languages.nor_machine.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_input_retry
+
+
+@pytest.mark.medium
+def test_rejected_input_stays_with_the_failed_step() -> None:
+    assert_rejected_input_retry(
+        "NOR machine", "V", "x", "7", "7", position=1, reads=1, rejected="x"
+    )
+
 
 _out = native_runner(run)
 

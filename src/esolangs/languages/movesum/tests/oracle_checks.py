@@ -6,6 +6,7 @@ import random
 import pytest
 
 from esolangs.languages.movesum.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceVariant
 from tests.support import workspace_oracle as workspace
 from tests.support.model_input import token_span
 
@@ -15,12 +16,11 @@ _WORKSPACE = workspace.workspace_model(
 
 
 def _parts(row):
-    state = row[0][0]
-    return (
-        (-1, frozenset(), 0, False, row[-1])
-        if state is None
-        else (state[0], frozenset(state[1]), *state[2:], row[-1])
-    )
+    state, _, _, pending = row[0]
+    pc, cells, quiet, printed = (-1, (), 0, False) if state is None else state
+    if pending is not None:
+        pc = WorkspaceVariant("pending_input", (pc, *pending))
+    return pc, frozenset(cells), quiet, printed, row[-1]
 
 
 def _parse(source):
@@ -56,26 +56,26 @@ def _number(stdin, at):
         return 0, at, None
     digits = token[1:] if token[:1] in "+-" else token
     if not digits or any(c not in "0123456789" for c in digits):
-        return None, at, "argument"
+        return None, at, ("ArgumentError", f"input must be an integer, got {token!r}")
     number = int(token)
-    return number, at, "halt" if number < 0 else None
+    fault = ("HaltError", f"negative input {number} in an unsigned array")
+    return number, at, fault if number < 0 else None
 
 
 def _seed(seeds, stdin, consumed):
-    staging = {}
-    for raw_key, raw_value in seeds:
-        if raw_key == "42":
-            key, consumed, error = _number(stdin, consumed)
-            if error:
-                return None, consumed, error
-        else:
-            key = int(raw_key)
-        if raw_value == "42":
-            value, consumed, error = _number(stdin, consumed)
-            if error:
-                return None, consumed, error
-        else:
-            value = int(raw_value)
+    staging, accepted = {}, []
+    for pair in seeds:
+        values = []
+        for raw in pair:
+            if raw == "42":
+                value, consumed, error = _number(stdin, consumed)
+                if error:
+                    return None, consumed, (tuple(accepted), error)
+                accepted.append(value)
+            else:
+                value = int(raw)
+            values.append(value)
+        key, value = values
         staging[key] = value
     return staging, consumed, None
 
@@ -85,13 +85,14 @@ def _model(source, stdin):
         seeds, commands = _parse(source)
     except ValueError:
         return "syntax", [(None, False, "", 0, 0)]
-    pc, cells, quiet, printed, consumed, output, error = 0, None, 0, False, 0, "", None
+    pc, cells, quiet, printed, consumed, output = 0, None, 0, False, 0, ""
+    pending = None
 
     def view():
         memory = tuple(sorted(cells.items())) if cells is not None else ()
         state = (pc, memory, quiet, printed) if cells is not None else None
         return (
-            (state, pc, memory),
+            (state, pc, memory, pending),
             cells is not None and quiet >= 2,
             output,
             consumed,
@@ -103,7 +104,7 @@ def _model(source, stdin):
         if cells is not None and quiet >= 2:
             break
         if cells is None:
-            cells, consumed, error = _seed(seeds, stdin, consumed)
+            cells, consumed, pending = _seed(seeds, stdin, consumed)
         else:
             command, write, outgoing = commands[pc], None, None
             if command == "sum":
@@ -112,12 +113,14 @@ def _model(source, stdin):
                 a, b = command
                 if a < 0 <= b:
                     value, consumed, error = _number(stdin, consumed)
+                    if error is not None:
+                        pending = (), error
                     write = (b, value)
                 elif a >= 0 > b:
                     outgoing = cells.get(a, 0)
                 elif a >= 0 and b >= 0:
                     write = (b, cells.get(a, 0))
-            if not error:
+            if pending is None:
                 if write is not None and cells.get(write[0], 0) != write[1]:
                     cells[write[0]], quiet = write[1], 0
                 else:
@@ -127,18 +130,20 @@ def _model(source, stdin):
                     printed = True
                 pc = (pc + 1) % len(commands)
         trace.append(view())
-        if error:
-            break
-    if not error and cells is not None and quiet >= 2:
+        if pending is not None:
+            error = {"ArgumentError": "argument", "HaltError": "halt"}[pending[1][0]]
+            return error, trace
+    if cells is not None and quiet >= 2:
         trace.extend([view()] * 3)
-    return error, trace
+    return None, trace
 
 
 def _view(machine):
     state = machine.state
+    memory = tuple(sorted(machine.memory.items()))
     if state is not None:
-        state = (state[0], tuple(sorted(state[1].items())), *state[2:])
-    return state, machine.ip, tuple(sorted(machine.memory.items()))
+        state = (state[0], memory, *state[2:])
+    return state, machine.ip, memory, machine._pending_input()
 
 
 _agrees = workspace.checker(_model, (_WORKSPACE, _parts), _view)

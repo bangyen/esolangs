@@ -4,7 +4,7 @@ import os
 import select
 import stat
 from collections.abc import Callable, Iterable, Iterator
-from contextlib import contextmanager, suppress
+from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from io import BufferedReader, BufferedRWPair, FileIO, IOBase
@@ -181,37 +181,70 @@ def explicit_path(path: str | PathLike[str]) -> _ExplicitPath:
     return _ExplicitPath(spelling)
 
 
-def staging_parent(target: _ExplicitPath) -> str:
-    """Check the destination and return the parent directory for staging."""
-    # The staged write's errors should name the destination, not a temporary file.
-    if "\0" in target.spelling:
-        raise ValueError("embedded null character in path")
-    parent = os.path.dirname(target.spelling) or "."
-    if not os.path.isdir(parent):
-        raise FileNotFoundError("its directory does not exist")
+def _anchored_spelling(path: str) -> str:
+    """Freeze the current directory without normalizing the target spelling."""
+    drive, tail = os.path.splitdrive(path)
+    if os.path.isabs(path) and (os.name != "nt" or drive):
+        return path
+    # Windows has both rooted paths on the current drive and drive-local CWDs.
+    base = os.path.abspath(f"{drive}.") if drive else os.getcwd()
+    return os.path.join(base, tail)
+
+
+def _destination_mode(target: str) -> int | None:
+    """Read the destination entry's mode, refusing directories."""
     # A missing entry can be created. Other lookup errors must surface before
     # reading a source stream, even when isdir() would simply return False.
-    with suppress(FileNotFoundError):
+    try:
         mode = os.lstat(target).st_mode
-        if stat.S_ISDIR(mode) or (stat.S_ISLNK(mode) and os.path.isdir(target)):
-            raise IsADirectoryError("it is a directory")
-    return parent
+    except FileNotFoundError:
+        return None
+    if stat.S_ISDIR(mode) or (stat.S_ISLNK(mode) and os.path.isdir(target)):
+        raise IsADirectoryError("it is a directory")
+    return mode
+
+
+@contextmanager
+def reserve_staged(
+    target: _ExplicitPath,
+) -> Iterator[Callable[[Iterable[bytes]], None]]:
+    """Reserve an open staging file and yield its write-and-replace operation."""
+    if "\0" in target.spelling:
+        raise ValueError("embedded null character in path")
+    destination = _anchored_spelling(target.spelling)
+    parent = os.path.dirname(destination)
+    if not os.path.isdir(parent):
+        raise FileNotFoundError("its directory does not exist")
+    _destination_mode(destination)
+    if os.name == "posix" and ".." in parent.split(os.sep):
+        # tempfile normalizes its result. Resolve symlinks before their '..'.
+        parent = os.path.realpath(parent, strict=True)
+    with ExitStack() as cleanup:
+        try:
+            temporary = cleanup.enter_context(TemporaryDirectory(dir=parent))
+            staged = Path(temporary) / "source"
+            stream = cleanup.enter_context(staged.open("wb"))
+
+            def publish(chunks: Iterable[bytes]) -> None:
+                stream.writelines(chunks)
+                stream.close()
+                # Use current access bits after a potentially slow acquisition/write.
+                mode = _destination_mode(destination)
+                if os.name == "posix" and mode is not None and stat.S_ISREG(mode):
+                    staged.chmod(mode & 0o777)
+                staged.replace(destination)
+                cleanup.close()
+
+            yield publish
+        except BaseException as error:
+            try:
+                cleanup.close()
+            except OSError as cleanup_error:
+                error.add_note(f"could not clean staging for {target}: {cleanup_error}")
+            raise
 
 
 def write_staged(target: _ExplicitPath, chunks: Iterable[bytes]) -> None:
     """Replace the directory entry only after all source bytes are written."""
-    parent = staging_parent(target)
-    with TemporaryDirectory(dir=parent) as temporary:
-        staged = Path(temporary) / "source"
-        with staged.open("wb") as stream:
-            stream.writelines(chunks)
-        permissions = None
-        if os.name == "posix":
-            with suppress(FileNotFoundError):
-                mode = os.lstat(target).st_mode
-                if stat.S_ISREG(mode):
-                    # Use current access bits after a potentially slow write.
-                    permissions = mode & 0o777
-        if permissions is not None:
-            staged.chmod(permissions)
-        staged.replace(target)
+    with reserve_staged(target) as publish:
+        publish(chunks)

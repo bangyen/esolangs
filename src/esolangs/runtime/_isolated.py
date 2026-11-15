@@ -521,9 +521,15 @@ def _launch(
     execution_timeout: float | None = None,
 ) -> _WorkerResponse:
     """Run one JSON request, killing and reaping on deadline."""
-    env = dict(os.environ)
+    env = {
+        name: value
+        for name, value in os.environ.items()
+        if not (sys.flags.ignore_environment and name.startswith("PYTHON"))
+    }
     env.pop("PYTHONPATH", None)
     env["PYTHONIOENCODING"] = "utf-8"
+    # Match the importer's string-only search without embedding custom reprs.
+    search_path = [str.__str__(path) for path in sys.path if isinstance(path, str)]
     report_prepared = preparation_deadline is not None or execution_timeout is not None
     streaming = max_output is not None or report_prepared
     with subprocess.Popen(  # fixed executable and code, no shell.
@@ -531,7 +537,7 @@ def _launch(
             sys.executable,
             "-P",
             "-c",
-            f"import sys; sys.path[:] = {sys.path!r}; "
+            f"import sys; sys.path[:] = {search_path!r}; "
             "from esolangs.runtime._isolated import _worker; _worker()",
         ],
         stdin=subprocess.PIPE,

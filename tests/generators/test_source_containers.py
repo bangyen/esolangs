@@ -473,6 +473,156 @@ def test_overlong_export_destination_does_not_consume_source(
     assert api.run(Path(destination)).output == "\x01"
 
 
+@pytest.mark.parametrize(
+    "spelling",
+    [
+        "relative",
+        pytest.param(
+            "drive-relative",
+            marks=pytest.mark.skipif(os.name != "nt", reason="requires Windows drives"),
+        ),
+    ],
+)
+def test_stream_export_anchors_relative_destination(
+    spelling: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    caller, other = tmp_path / "caller", tmp_path / "other"
+    caller.mkdir()
+    other.mkdir()
+    destination, unrelated = caller / "program", other / "program"
+    destination.write_bytes(b"++.")
+    unrelated.write_bytes(b"+++.")
+    monkeypatch.chdir(caller)
+
+    class Source(io.BytesIO):
+        def read(self, size: int = -1) -> bytes:
+            os.chdir(other)
+            return super().read(size)
+
+    target = f"{caller.drive}program" if spelling == "drive-relative" else "program"
+    api = esolangs.Language(REFERENCE)
+    api.to_file(Source(b"+."), target)
+    assert destination.read_bytes() == b"+."
+    assert unrelated.read_bytes() == b"+++."
+    assert api.run(destination).output == "\x01"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX symlink traversal")
+def test_stream_export_retains_relative_symlink_traversal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    actual = tmp_path / "actual"
+    child = actual / "child"
+    child.mkdir(parents=True)
+    (tmp_path / "link").symlink_to(child, target_is_directory=True)
+    monkeypatch.chdir(tmp_path)
+
+    api = esolangs.Language(REFERENCE)
+    api.to_file(io.BytesIO(b"+."), "link/../program")
+    assert not (tmp_path / "program").exists()
+    assert (actual / "program").read_bytes() == b"+."
+    assert set(actual.iterdir()) == {child, actual / "program"}
+    assert api.run(actual / "program").output == "\x01"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX directory modes")
+def test_unwritable_export_directory_does_not_consume_source(tmp_path: Path) -> None:
+    api = esolangs.Language(REFERENCE)
+    parent = tmp_path / "export"
+    parent.mkdir()
+    destination = parent / "program"
+    source = io.BytesIO(b"skip+.")
+    source.seek(4)
+    parent.chmod(0o555)
+    try:
+        if os.access(parent, os.W_OK):
+            pytest.skip("filesystem or current user can write read-only directories")
+        with pytest.raises(esolangs.ProgramError, match="cannot save") as caught:
+            api.to_file(source, destination)
+        assert isinstance(caught.value.__cause__, PermissionError)
+        assert source.tell() == 4
+    finally:
+        parent.chmod(0o755)
+    assert list(parent.iterdir()) == []
+    api.to_file(source, destination)
+    assert list(parent.iterdir()) == [destination]
+    assert destination.read_bytes() == b"+."
+    assert api.run(destination).output == "\x01"
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [(b"\xff", "invalid UTF-8"), ("\ud800", "cannot save")],
+)
+def test_stream_export_failure_cleans_reserved_file(
+    payload: str | bytes, message: str, tmp_path: Path
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    destination = tmp_path / "program"
+    destination.write_bytes(b"+.")
+
+    class Source:
+        def read(self) -> str | bytes:
+            assert len(list(tmp_path.glob("*/source"))) == 1
+            return payload
+
+    with pytest.raises(esolangs.ProgramError, match=message):
+        api.to_file(Source(), destination)
+    assert list(tmp_path.iterdir()) == [destination]
+    assert destination.read_bytes() == b"+."
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX directory modes")
+@pytest.mark.parametrize("source_refused", [True, False], ids=["read-error", "saved"])
+def test_stream_export_retains_error_when_staging_cleanup_is_denied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, source_refused: bool
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    parent = tmp_path / "export"
+    parent.mkdir()
+    parent.chmod(0o555)
+    try:
+        if os.access(parent, os.W_OK):
+            pytest.skip("filesystem or current user can write read-only directories")
+    finally:
+        parent.chmod(0o755)
+    destination = parent / "program"
+    read_error = esolangs.ProgramError("reader refused")
+
+    class Source:
+        def read(self) -> bytes:
+            if source_refused:
+                parent.chmod(0o555)
+                raise read_error
+            return b"+."
+
+    if not source_refused:
+        replace_path = Path.replace
+
+        def replace_and_restrict(path: Path, target: str) -> Path:
+            result = replace_path(path, target)
+            parent.chmod(0o555)
+            return result
+
+        monkeypatch.setattr(Path, "replace", replace_and_restrict)
+
+    try:
+        with pytest.raises(esolangs.ProgramError) as caught:
+            api.to_file(Source(), destination)
+    finally:
+        parent.chmod(0o755)
+        (staging,) = (entry for entry in parent.iterdir() if entry != destination)
+        staging.rmdir()
+    if source_refused:
+        assert caught.value is read_error
+        assert any("could not clean staging" in note for note in read_error.__notes__)
+        assert not destination.exists()
+    else:
+        assert "cannot save program" in str(caught.value)
+        assert isinstance(caught.value.__cause__, PermissionError)
+        assert api.run(destination).output == "\x01"
+
+
 def test_invalid_export_destination_does_not_open_source_path(tmp_path: Path) -> None:
     original = tmp_path / "original"
     original.write_bytes(b"+.")

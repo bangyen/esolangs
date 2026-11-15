@@ -7,6 +7,15 @@ from esolangs.languages.balik.interpreter import run
 from esolangs.languages.balik.tests.source_fixtures import _page_loop
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_input_retry
+
+
+@pytest.mark.medium
+def test_rejected_input_stays_with_the_failed_step() -> None:
+    assert_rejected_input_retry(
+        "Balik", ",.", "x1", "1", "1", position=1, reads=1, rejected="x"
+    )
+
 
 _out = native_runner(run)
 

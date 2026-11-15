@@ -6,6 +6,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.collatz_multiverse.interpreter import _Machine
+from esolangs.runtime._state import WorkspaceVariant
 from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
 from tests.support.model_input import decimal_value
@@ -29,7 +30,7 @@ def _model(program, stdin):
     cursor = 0
     output = ""
     failure = None
-    trace = []
+    trace, inputs, pending = [], [], None
 
     def operand(spec):
         name, _, subscript = spec.rstrip("]").partition("[")
@@ -55,12 +56,14 @@ def _model(program, stdin):
         word = remainder.split(maxsplit=1)[0]
         cursor += len(word)
         if not re.fullmatch(r"[+-]?[0-9]+", word):
-            raise ValueError
-        return decimal_value(word)
+            raise ValueError(word)
+        value = decimal_value(word)
+        inputs.append(value)
+        return value
 
     for step in range(17):
         halted = not 1 <= pc <= len(program)
-        state = pc, dict(registers), {k: dict(v) for k, v in arrays.items()}
+        state = pc, dict(registers), {k: dict(v) for k, v in arrays.items()}, pending
         row = state, halted, output, cursor, cursor
         trace.append(row)
         if failure:
@@ -71,15 +74,19 @@ def _model(program, stdin):
         if step == 16:
             break
         dest, factor, addend, emit = program[pc - 1]
+        inputs.clear()
         try:
             name, index, current = operand(dest)
             multiplier = operand(factor)[2]
             offset = operand(addend)[2]
         except EOFError:
             failure = "input"
+            if inputs:
+                pending = tuple(inputs), None
             continue
-        except ValueError:
+        except ValueError as exc:
             failure = "argument"
+            pending = tuple(inputs), f"input must be an integer, got {exc.args[0]!r}"
             continue
         value = (
             current // 2
@@ -109,10 +116,12 @@ def _check(factory, program, stdin):
             frozenset(
                 ((name, frozenset(cells.items())) for name, cells in row[0][2].items())
             ),
-            row[0][0],
+            row[0][0]
+            if row[0][-1] is None
+            else WorkspaceVariant("pending_input", (row[0][0], *row[0][-1])),
             row[-1],
         ),
-        lambda m: (m.ip, m.registers, m.arrays),
+        lambda m: (m.ip, m.registers, m.arrays, m._pending_input()),
     )
     assert observed(factory, _source(program), stdin, checked, cap=16) == expected, (
         program,

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import base64
 import json
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
+from contextlib import ExitStack
 from dataclasses import asdict, replace
+from functools import partial
 from os import PathLike
 from typing import Any, Protocol
 
@@ -30,7 +32,7 @@ from esolangs.exceptions import (
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
-from esolangs.runtime._files import explicit_path, staging_parent, write_staged
+from esolangs.runtime._files import explicit_path, reserve_staged, write_staged
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._source import (
     ProgramSource,
@@ -62,6 +64,48 @@ def _terminated_text(
     if plain_limits is not None:
         _check_plain(plain_limits, size + len(ending))
     yield ending
+
+
+def _native_file_bytes(
+    record: Artifact, *, gzip: bool, terminate: bool
+) -> Iterable[bytes]:
+    """Encode a native file, retaining gzip bytes when no conversion is needed."""
+    if isinstance(record, TemplateArtifact):
+        raise with_hint(
+            TemplateError(
+                "a template's native file would run with its placeholders unfilled"
+            ),
+            "fill it with instantiate() first, or keep the bindings with to_json()",
+        )
+    body = record.source
+    if isinstance(body, Raster):
+        if gzip:
+            raise ProgramError("gzip export requires text; rasters use PNG")
+        return (
+            png.write_source(
+                body.rows,
+                record.language,
+                record.settings,
+                record.scale,
+                input_arity=record.input_arity,
+            ),
+        )
+    if isinstance(body, CompressedText) and gzip and not terminate:
+        return (body.to_gzip(),)
+    limits = None
+    chunks: Iterable[str]
+    if isinstance(body, CompressedText):
+        limits = body.limits
+        chunks = body.chunks() if gzip else body.plain_chunks()
+        if terminate and not gzip and limits is not None:
+            _check_plain(limits, len(body) + 1)
+    else:
+        chunks = (body,)
+    if terminate:
+        chunks = _terminated_text(chunks, plain_limits=None if gzip else limits)
+    if gzip:
+        return (CompressedText.from_chunks(chunks, limits=limits).to_gzip(),)
+    return (chunk.encode("utf-8") for chunk in chunks)
 
 
 def to_file(
@@ -115,68 +159,40 @@ def to_file(
     # normalize appended "\n" even where a trailing newline is code.
     origin = catalog.resolve(language)
     runtime = catalog.languages[origin].runtime
-    # Paths can open a FIFO, and a reader can consume bytes irreversibly.
-    if isinstance(program, PathLike) or not isinstance(
-        program, (str, bytes, Raster, CompressedText, ProgramArtifact, TemplateArtifact)
-    ):
-        if gzip and runtime.source_kind is SourceKind.RASTER:
-            effective_settings(origin, program, settings, catalog=catalog)
-            raise ProgramError("gzip export requires text; rasters use PNG")
-        try:
-            staging_parent(target)
-        except (OSError, ValueError) as error:
-            effective_settings(origin, program, settings, catalog=catalog)
-            raise ProgramError(f"cannot save program to {target}: {error}") from error
-    record = read_artifact(
-        origin, program, settings=settings, catalog=catalog, preserve_compression=True
-    )
-    settings = record.settings
-    try:
-        if isinstance(record, TemplateArtifact):
-            raise with_hint(
-                TemplateError(
-                    "a template's native file would run with its placeholders unfilled"
-                ),
-                "fill it with instantiate() first, or keep the bindings with to_json()",
-            )
-        body = record.source
-        terminate = normalize and runtime.file_newline
-        encoded: Iterable[bytes]
-        if isinstance(body, Raster):
-            if gzip:
+    publish: Callable[[Iterable[bytes]], None] = partial(write_staged, target)
+    with ExitStack() as reservation:
+        # Paths can open a FIFO, and a reader can consume bytes irreversibly.
+        if isinstance(program, PathLike) or not isinstance(
+            program,
+            (str, bytes, Raster, CompressedText, ProgramArtifact, TemplateArtifact),
+        ):
+            if gzip and runtime.source_kind is SourceKind.RASTER:
+                effective_settings(origin, program, settings, catalog=catalog)
                 raise ProgramError("gzip export requires text; rasters use PNG")
-            encoded = (
-                png.write_source(
-                    body.rows,
-                    origin,
-                    settings,
-                    record.scale,
-                    input_arity=record.input_arity,
-                ),
+            try:
+                publish = reservation.enter_context(reserve_staged(target))
+            except (OSError, ValueError) as error:
+                effective_settings(origin, program, settings, catalog=catalog)
+                raise ProgramError(
+                    f"cannot save program to {target}: {error}"
+                ) from error
+        record = read_artifact(
+            origin,
+            program,
+            settings=settings,
+            catalog=catalog,
+            preserve_compression=True,
+        )
+        try:
+            publish(
+                _native_file_bytes(
+                    record, gzip=gzip, terminate=normalize and runtime.file_newline
+                )
             )
-        elif isinstance(body, CompressedText) and gzip and not terminate:
-            encoded = (body.to_gzip(),)
-        else:
-            limits = None
-            chunks: Iterable[str]
-            if isinstance(body, CompressedText):
-                limits = body.limits
-                chunks = body.chunks() if gzip else body.plain_chunks()
-                if terminate and not gzip and limits is not None:
-                    _check_plain(limits, len(body) + 1)
-            else:
-                chunks = (body,)
-            if terminate:
-                chunks = _terminated_text(chunks, plain_limits=None if gzip else limits)
-            if gzip:
-                encoded = (CompressedText.from_chunks(chunks, limits=limits).to_gzip(),)
-            else:
-                encoded = (chunk.encode("utf-8") for chunk in chunks)
-        write_staged(target, encoded)
-    except (GeneratorCapError, ProgramError, TemplateError):
-        raise
-    except (OSError, TypeError, ValueError) as exc:
-        raise ProgramError(f"cannot save program to {target}: {exc}") from exc
+        except (GeneratorCapError, ProgramError, TemplateError):
+            raise
+        except (OSError, TypeError, ValueError) as error:
+            raise ProgramError(f"cannot save program to {target}: {error}") from error
 
 
 def to_json(

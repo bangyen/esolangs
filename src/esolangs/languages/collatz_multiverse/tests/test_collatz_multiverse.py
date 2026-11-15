@@ -5,8 +5,11 @@ from functools import partial
 
 import pytest
 
+from esolangs import ArgumentError, ExecutionLimits, InputExhaustedError, Language
+from esolangs.debugger import Debugger
 from esolangs.languages.collatz_multiverse.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
@@ -283,3 +286,75 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     looping_program = (
         "z = z x + z, NOT PRINT.\nlineNumber = lineNumber x + z, NOT PRINT."
     )
+
+
+_TWO_INPUTS = "x = x x + input, NOT PRINT.\nx = input x + input, DO PRINT."
+
+
+def test_a_rejected_operand_does_not_advance_on_retry() -> None:
+    lang = Language("Collatz Multiverse")
+    dbg = lang.make_debugger(_TWO_INPUTS, stdin="3 20 bad 21 3")
+    dbg.step()
+    with pytest.raises(ArgumentError, match="got 'bad'") as caught:
+        dbg.step()
+    first = caught.value
+    assert first.observation == dbg.observation
+    result = dbg.observation
+    assert (result.output, result.input_position, result.input_reads, result.steps) == (
+        "",
+        8,
+        3,
+        1,
+    )
+    pending = ((20,), "input must be an integer, got 'bad'")
+    assert dbg.snapshot()[-1] == pending
+    workspace = _capture_workspace(dbg.vm).parts[2]
+    assert workspace.kind == "pending_input"
+    assert workspace.values == (2, *pending)
+
+    original_notes = tuple(first.__notes__)
+    first.add_note("first observer only")
+    second = Debugger(dbg.vm)
+    with pytest.raises(ArgumentError, match="got 'bad'") as retried:
+        second.step()
+    assert retried.value is not first
+    assert tuple(retried.value.__notes__) == original_notes
+    assert retried.value.observation == second.observation
+    assert second.observation.steps == 0
+    assert first.observation == result
+    assert (second.ip, second.observation.input_reads) == (2, 3)
+    assert second.snapshot()[-1] == pending
+    control = lang.run(_TWO_INPUTS, stdin="3 20 5", limits=ExecutionLimits(max_steps=2))
+    assert (control.output, control.input_reads, control.steps) == ("A", 3, 2)
+
+
+def test_an_existing_operand_survives_an_eof_retry() -> None:
+    dbg = Language("Collatz Multiverse").make_debugger(_TWO_INPUTS, stdin="3 20")
+    dbg.step()
+    for attempts in (1, 2):
+        with pytest.raises(InputExhaustedError):
+            dbg.step()
+        assert (dbg.observation.input_reads, dbg.observation.input_past_end) == (
+            2,
+            attempts,
+        )
+        assert dbg.snapshot()[-1] == ((20,), None)
+
+    class ReadBecomesAvailable(ScriptedIO):
+        attempts = 0
+
+        def input_num(self, prompt: str = "Input: ") -> int:
+            self.attempts += 1
+            if self.attempts == 3:
+                raise EOFError
+            return super().input_num(prompt)
+
+    port = ReadBecomesAvailable("3 20 5")
+    machine = _Machine(_TWO_INPUTS, port)
+    machine.step()
+    with pytest.raises(EOFError):
+        machine.step()
+    machine.step()
+    assert machine.halted
+    assert port.getvalue() == "A"
+    assert port.attempts == 4

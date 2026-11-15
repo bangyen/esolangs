@@ -2,11 +2,12 @@
 
 import pytest
 
-from esolangs import ExecutionCapError, ExecutionLimits, Language
+from esolangs import ArgumentError, ExecutionCapError, ExecutionLimits, Language
+from esolangs.debugger import Debugger
 from esolangs.exceptions import HaltError
 from esolangs.languages.movesum.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import complete_vm
+from esolangs.vm import _capture_workspace, complete_vm
 from tests.interpreters.runner import native_runner
 
 out = native_runner(run)
@@ -64,8 +65,25 @@ def test_the_array_is_unbounded_to_the_right() -> None:
 
 
 def test_a_negative_input_is_refused() -> None:
+    source = "0=0\nmove -1 1\nmove 1 -1"
     with pytest.raises(HaltError, match="negative"):
-        out("0=0\nmove -1 1\nmove 1 -1", "-1\n")
+        out(source, "-1\n")
+    dbg = Language("Movesum").make_debugger(source, stdin="-1 7")
+    dbg.step()
+    with pytest.raises(HaltError, match="negative") as first:
+        dbg.step()
+    observed = first.value.observation
+    assert observed is not None
+    assert observed.steps == 1
+    first.value.add_note("first observer only")
+    second = Debugger(dbg.vm)
+    with pytest.raises(HaltError, match="negative") as retried:
+        second.step()
+    assert retried.value is not first.value
+    assert "first observer only" not in getattr(retried.value, "__notes__", ())
+    assert retried.value.observation == second.observation
+    assert first.value.observation == observed
+    assert (second.observation.steps, second.observation.input_reads) == (0, 1)
 
 
 @pytest.mark.medium
@@ -122,3 +140,61 @@ def test_failed_output_does_not_commit_a_quiet_step(monkeypatch) -> None:
     machine.step()
     assert machine.halted
     assert io.getvalue() == "1 1"
+
+
+_ADD_TWO = "1=42 2=42\nsum\nmove 0 -1\nmove 0 0"
+
+
+@pytest.mark.parametrize(
+    ("token", "error_type", "message"),
+    [
+        ("bad", ArgumentError, "input must be an integer, got 'bad'"),
+        ("-1", HaltError, "negative input -1 in an unsigned array"),
+    ],
+)
+def test_a_rejected_seed_operand_stays_at_the_seed(token, error_type, message) -> None:
+    lang = Language("Movesum")
+    dbg = lang.make_debugger(_ADD_TWO, stdin=f"5 {token} 7 9")
+    for _ in range(2):
+        with pytest.raises(error_type, match=message) as caught:
+            dbg.step()
+        assert caught.value.observation == dbg.observation
+        result = dbg.observation
+        assert (
+            result.output,
+            result.input_position,
+            result.input_reads,
+            result.steps,
+        ) == ("", 2 + len(token), 2, 0)
+        pending = ((5,), (error_type.__name__, message))
+        assert dbg.snapshot()[-1] == pending
+        workspace = _capture_workspace(dbg.vm).parts[0]
+        assert workspace.kind == "pending_input"
+        assert workspace.values == (-1, *pending)
+        assert not dbg.halted
+    control = lang.run(_ADD_TWO, stdin="5 3", limits=ExecutionLimits(max_steps=4))
+    assert (control.output, control.input_reads, control.steps) == ("8", 2, 4)
+    eof = lang.run(_ADD_TWO, stdin="5", limits=ExecutionLimits(max_steps=4))
+    assert (eof.output, eof.input_reads, eof.input_past_end) == ("5", 1, 1)
+
+
+def test_a_seed_retries_an_unconsumed_port_error() -> None:
+    class DeferredInput(ScriptedIO):
+        attempts = 0
+
+        def input_num(self, prompt: str = "Input: ") -> int:
+            self.attempts += 1
+            if self.attempts == 2:
+                raise ArgumentError("port temporarily unavailable")
+            return super().input_num(prompt)
+
+    port = DeferredInput("5 3")
+    machine = _Machine(_ADD_TWO, port)
+    with pytest.raises(ArgumentError, match="port temporarily unavailable"):
+        machine.step()
+    assert machine.snapshot()[-1] == ((5,), None)
+    for _ in range(4):
+        machine.step()
+    assert machine.halted
+    assert port.getvalue() == "8"
+    assert (port.attempts, port.reads) == (3, 2)

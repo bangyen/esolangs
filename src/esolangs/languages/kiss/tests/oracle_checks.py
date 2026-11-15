@@ -136,6 +136,7 @@ _agrees = workspace.checker(
     (_WORKSPACE, _parts),
     lambda m: (_dag(m.stack), m.ended, m.bits, m.exit_code, m.ip),
     cap=16,
+    rejected_input=lambda rows, text: (text[rows[-1][3] - 1],),
 )
 
 

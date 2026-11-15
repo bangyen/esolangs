@@ -145,10 +145,33 @@ def workspace_model(name, components):
     return WorkspaceModel(name, tuple(components.split()))
 
 
-def agrees(expected, execution, workspace, state, *, context=None, **options):
+def _rejected_parts(parts, fault, details):
+    def capture(row):
+        fields = parts(row)
+        if row is fault:
+            cursor = WorkspaceVariant("rejected_input", (fields[-1], *details))
+            return (*fields[:-1], cursor)
+        return fields
+
+    return capture
+
+
+def agrees(
+    expected,
+    execution,
+    workspace,
+    state,
+    *,
+    context=None,
+    rejected_input=None,
+    **options,
+):
     factory, code, stdin = execution
     model, parts = workspace
-    checked = workspace_view(expected[1], model, parts, state)
+    status, trace = expected
+    if status == "argument" and rejected_input is not None:
+        parts = _rejected_parts(parts, trace[-1], rejected_input(trace, stdin))
+    checked = workspace_view(trace, model, parts, state)
     assert observed(factory, code, stdin, checked, **options) == expected, (
         (code, stdin) if context is None else context
     )

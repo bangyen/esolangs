@@ -5,6 +5,14 @@ import pytest
 from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Language
 from esolangs.languages.kiss.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.support.vm_support import assert_rejected_input_retry
+
+
+@pytest.mark.medium
+def test_rejected_input_stays_with_the_failed_step() -> None:
+    assert_rejected_input_retry(
+        "Kiss", "S (K K) (S K)", "20", "0", "0", position=1, reads=1, rejected="2"
+    )
 
 
 def test_k_exits_zero_and_s_exits_nonzero() -> None:

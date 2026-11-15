@@ -39,13 +39,14 @@ from bisect import bisect_left
 from collections.abc import Mapping
 from typing import Any, cast
 
+from esolangs.exceptions import ArgumentError
 from esolangs.languages.collatz_multiverse.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -153,6 +154,22 @@ def _prepare_source(code: str) -> tuple[_Line, ...]:
     return tuple(parsed)
 
 
+type _InputFault = tuple[
+    type[ArgumentError], tuple[object, ...], str, tuple[str, ...], BaseException | None
+]
+
+
+def _capture_input_fault(error: ArgumentError) -> _InputFault:
+    """Keep the diagnostic before a caller attaches its own evidence."""
+    return (
+        type(error),
+        error.args,
+        str(error),
+        tuple(getattr(error, "__notes__", ())),
+        error.__cause__,
+    )
+
+
 class _Machine:
     """Per-run Collatz Multiverse state: registers, arrays, and the pointer."""
 
@@ -163,6 +180,8 @@ class _Machine:
         self.n = len(self.parsed)
         # ``negativeOne`` starts at -1; every other name starts at 0.
         self.state: _State = (1, (("negativeOne", -1),), ())
+        self._line_inputs: list[int] = []
+        self._input_fault: _InputFault | None = None
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -198,10 +217,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        ip = self.state[0]
+        pending = self._pending_input()
         return _WORKSPACE_MODEL.capture(
             registers=frozenset(self.state[1]),
             arrays=frozenset((name, frozenset(cells)) for name, cells in self.state[2]),
-            instruction=self.state[0],
+            instruction=(
+                ip
+                if pending is None
+                else WorkspaceVariant("pending_input", (ip, *pending))
+            ),
             input_cursor=self.io.progress(),
         )
 
@@ -210,12 +235,20 @@ class _Machine:
         # Frozensets, as this always returned, built from stores that are
         # already canonically ordered.
         ip, regs, arrays = self.state
-        return (
+        state = (
             frozenset(regs),
             frozenset((name, frozenset(cells)) for name, cells in arrays),
             ip,
             self.io.progress(),
         )
+        pending = self._pending_input()
+        return state if pending is None else (*state, pending)
+
+    def _pending_input(self) -> tuple[tuple[int, ...], str | None] | None:
+        if self._line_inputs or self._input_fault is not None:
+            fault = self._input_fault
+            return tuple(self._line_inputs), None if fault is None else fault[2]
+        return None
 
     def step(self) -> None:
         """Execute one line, moving the pointer."""
@@ -223,25 +256,28 @@ class _Machine:
             return
         line = self.parsed[self.state[0] - 1]
         value, self.state = _advance(self.state, line, self._collect_reads(line))
+        self._line_inputs.clear()
         if line[-1] == "DO":
             self.io.print_char(chr(value & 0xFF))
 
     def _collect_reads(self, line: _Line) -> tuple[int, ...]:
-        """Pre-read every ``input`` the line names, in operand consumption order.
-
-        ``_advance`` is pure, so the shell reads here instead.  The slots map
-        to operands left to right, and within one operand the index's
-        ``input`` (if any) comes before the operand's own -- the order
-        ``_operand`` pops them.
-        """
-        var1, idx1, var2, idx2, var3, idx3, _do_print = line
-        reads = []
-        for name, index in ((var1, idx1), (var2, idx2), (var3, idx3)):
-            if index == "input":
-                reads.append(self.io.input_num())
-            if name == "input":
-                reads.append(self.io.input_num())
-        return tuple(reads)
+        """Read the remaining operands, retaining accepted input until commit."""
+        if self._input_fault is not None:
+            kind, args, _, notes, cause = self._input_fault
+            retry = BaseException.__new__(kind, *args)
+            for note in notes:
+                retry.add_note(note)
+            raise retry from cause
+        while len(self._line_inputs) < line.count("input"):
+            before = self.io.progress()
+            try:
+                self._line_inputs.append(self.io.input_num())
+            except ArgumentError as error:
+                # Only a consumed token fixes this operand's failure.
+                if self.io.progress() != before:
+                    self._input_fault = _capture_input_fault(error)
+                raise
+        return tuple(self._line_inputs)
 
 
 #: One operand as parsed: a name, and the index name when it is an array

@@ -83,6 +83,7 @@ _agrees = workspace.checker(
     _model,
     (_WORKSPACE, lambda row: (*row[0][:5], row[-1])),
     lambda m: (*m.state, tuple(m.memory), m.ip),
+    rejected_input=lambda rows, text: (text[rows[-1][3] - 1],),
 )
 
 

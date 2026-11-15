@@ -4,6 +4,21 @@ import pytest
 
 from esolangs.languages.hot.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.support.vm_support import assert_rejected_input_retry
+
+
+@pytest.mark.medium
+def test_rejected_input_stays_with_the_failed_step() -> None:
+    assert_rejected_input_retry(
+        "Hot",
+        "A(S(S(SKK)(K(D(DC))))(K(D(CC))))",
+        "20",
+        "0",
+        "1",
+        position=1,
+        reads=1,
+        rejected="2",
+    )
 
 
 def test_a_starved_head_gets_f_appended() -> None:

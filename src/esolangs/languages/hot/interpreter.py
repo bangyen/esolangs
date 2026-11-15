@@ -44,7 +44,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.combinators import Args as _Args
 from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import Term as _Term
@@ -147,6 +147,7 @@ class _Machine:
         self.state: _State = _prepare_source(code) if isinstance(code, str) else code
         #: The bit owed after a marker 1, or ``None``.
         self.pending: int | None = None
+        self._rejected_input: str | None = None
         self.ended = False
         self.odd = False
         self.halted = False
@@ -171,18 +172,23 @@ class _Machine:
         while rest is not None:
             term, rest = rest
             args.append(term)
+        cursor = self.io.progress()
         return _WORKSPACE_MODEL.capture(
             expression=(self.state[0], tuple(args)),
             pending_bit=self.pending,
             input_ended=self.ended,
             output_odd=self.odd,
             stopped=self.halted,
-            input_cursor=self.io.progress(),
+            input_cursor=(
+                cursor
+                if self._rejected_input is None
+                else WorkspaceVariant("rejected_input", (cursor, self._rejected_input))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        state = (
             self.state,
             self.pending,
             self.ended,
@@ -190,6 +196,7 @@ class _Machine:
             self.halted,
             self.io.progress(),
         )
+        return state if self._rejected_input is None else (*state, self._rejected_input)
 
     def _read(self) -> int:
         """Return the next stream bit: a marker 1 before each input bit."""
@@ -198,14 +205,17 @@ class _Machine:
             return bit
         if self.ended:
             return 0
-        try:
-            char = chr(self.io.input_char())
-        except EOFError:
-            char = "\n"
+        char = self._rejected_input
+        if char is None:
+            try:
+                char = chr(self.io.input_char())
+            except EOFError:
+                char = "\n"
         if char == "\n":
             self.ended = True
             return 0
         if char not in "01":
+            self._rejected_input = char
             raise syntax_error(
                 f"Hot input must be a binary string, got {char!r}",
                 "supply 0 and 1 characters, for example 1011",

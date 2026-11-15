@@ -19,7 +19,7 @@ def _integers(text):
     for token in text.split():
         digits = token[1:] if token[:1] in "+-" else token
         if not digits or any(c not in "0123456789" for c in digits):
-            raise ValueError
+            return token
         numbers.append(int(token))
     return numbers
 
@@ -45,10 +45,9 @@ def _model(source, stdin):
             break
         if queue is None:
             consumed = len(stdin)
-            try:
-                queue = _integers(stdin)
-            except ValueError:
-                error = "argument"
+            queue = _integers(stdin)
+            if isinstance(queue, str):
+                queue, error = None, "argument"
                 trace.append(view())
                 break
         command = program[pc]
@@ -79,10 +78,17 @@ def _model(source, stdin):
     return error, trace
 
 
+def _rejected_token(_rows, stdin):
+    token = _integers(stdin)
+    assert isinstance(token, str)
+    return (token,)
+
+
 _agrees = workspace.checker(
     _model,
     (_WORKSPACE, lambda row: (*row[0], row[1], row[-1])),
     lambda m: (m.ind, None if m.queue is None else tuple(m.queue)),
+    rejected_input=_rejected_token,
 )
 
 

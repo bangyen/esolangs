@@ -52,7 +52,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -79,17 +79,13 @@ def _advance(c: str, values: tuple[int, ...]) -> tuple[int, ...]:
     return (values[0] >> 1,)
 
 
-def _parse_inputs(text: str) -> deque[int]:
-    """Return every whitespace-separated input integer, in order."""
+def _parse_inputs(text: str) -> deque[int] | str:
+    """Return the input queue or its first invalid token."""
     queue: deque[int] = deque()
     for token in text.split():
         # ASCII decimal only, as ``IO.input_num`` accepts.
         if not re.fullmatch(r"[+-]?[0-9]+", token):
-            raise syntax_error(
-                f"input must be integers, got {token!r}",
-                "supply whitespace-separated decimal integers, for example 1 0",
-                error_type=ArgumentError,
-            )
+            return token
         queue.append(parse_integer(token))
     return queue
 
@@ -135,6 +131,7 @@ class _Machine:
         self.io = io
         self.ind = 0
         self.queue: deque[int] | None = None
+        self._rejected_input: str | None = None
         self.done = False
 
     @property
@@ -143,24 +140,42 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        cursor = self.io.progress()
         return _WORKSPACE_MODEL.capture(
             instruction=self.ind,
             queue=None if self.queue is None else tuple(self.queue),
             stopped=self.done,
-            input_cursor=self.io.progress(),
+            input_cursor=(
+                cursor
+                if self._rejected_input is None
+                else WorkspaceVariant("rejected_input", (cursor, self._rejected_input))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         queue = None if self.queue is None else tuple(self.queue)
-        return (self.ind, queue, self.done, self.io.progress())
+        state = (self.ind, queue, self.done, self.io.progress())
+        return state if self._rejected_input is None else (*state, self._rejected_input)
+
+    def _read_queue(self) -> deque[int]:
+        parsed = self._rejected_input
+        result = _parse_inputs(self.io.input_all()) if parsed is None else parsed
+        if isinstance(result, str):
+            self._rejected_input = result
+            raise syntax_error(
+                f"input must be integers, got {result!r}",
+                "supply whitespace-separated decimal integers, for example 1 0",
+                error_type=ArgumentError,
+            )
+        return result
 
     def step(self) -> None:
         """Run one command; the input is enqueued before the first."""
         if self.done:
             return
         if self.queue is None:
-            self.queue = _parse_inputs(self.io.input_all())
+            self.queue = self._read_queue()
         queue = self.queue
         c = self.commands[self.ind]
         if c == "V" and len(queue) == 1:

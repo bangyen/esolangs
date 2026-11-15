@@ -48,14 +48,14 @@ from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Any
 
-from esolangs.exceptions import HaltError
+from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.movesum.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -144,6 +144,26 @@ def _prepare_source(code: str) -> _Image:
     return tuple(pairs), tuple(commands)
 
 
+type _InputFault = tuple[
+    type[ArgumentError | HaltError],
+    tuple[object, ...],
+    str,
+    tuple[str, ...],
+    BaseException | None,
+]
+
+
+def _capture_input_fault(error: ArgumentError | HaltError) -> _InputFault:
+    """Keep the diagnostic before a caller attaches its own evidence."""
+    return (
+        type(error),
+        error.args,
+        str(error),
+        tuple(getattr(error, "__notes__", ())),
+        error.__cause__,
+    )
+
+
 class _Machine:
     """The seeded array, the cursor, and the unchanged-command count."""
 
@@ -155,6 +175,8 @@ class _Machine:
             _prepare_source(code) if isinstance(code, str) else code
         )
         self.state: _State | None = None
+        self._seed_inputs: list[int] = []
+        self._input_fault: _InputFault | None = None
 
     @property
     def halted(self) -> bool:
@@ -176,8 +198,13 @@ class _Machine:
         else:
             instruction, array, quiet, printed = self.state
             cells = frozenset(array.items())
+        pending = self._pending_input()
         return _WORKSPACE_MODEL.capture(
-            instruction=instruction,
+            instruction=(
+                instruction
+                if pending is None
+                else WorkspaceVariant("pending_input", (instruction, *pending))
+            ),
             cells=cells,
             quiet=quiet,
             printed=printed,
@@ -185,33 +212,79 @@ class _Machine:
         )
 
     def snapshot(self) -> tuple[object, ...]:
+        boundary: tuple[object, ...]
         if self.state is None:
-            return (-1, frozenset(), 0, False, self.io.progress())
-        ind, array, quiet, printed = self.state
-        return (ind, frozenset(array.items()), quiet, printed, self.io.progress())
+            boundary = (-1, frozenset(), 0, False, self.io.progress())
+        else:
+            ind, array, quiet, printed = self.state
+            boundary = (
+                ind,
+                frozenset(array.items()),
+                quiet,
+                printed,
+                self.io.progress(),
+            )
+        pending = self._pending_input()
+        return boundary if pending is None else (*boundary, pending)
+
+    def _pending_input(
+        self,
+    ) -> tuple[tuple[int, ...], tuple[str, str] | None] | None:
+        fault = self._input_fault
+        if self._seed_inputs or fault is not None:
+            return tuple(self._seed_inputs), None if fault is None else (
+                fault[0].__name__,
+                fault[2],
+            )
+        return None
 
     def _number(self) -> int:
+        if self._input_fault is not None:
+            kind, args, _, notes, cause = self._input_fault
+            retry = BaseException.__new__(kind, *args)
+            for note in notes:
+                retry.add_note(note)
+            raise retry from cause
+        before = self.io.progress()
         try:
             number = self.io.input_num()
         except EOFError:
             return 0
+        except ArgumentError as error:
+            if self.io.progress() != before:
+                self._input_fault = _capture_input_fault(error)
+            raise
         if number < 0:
-            raise HaltError(
+            rejection = HaltError(
                 f"negative input {format_integer(number)} in an unsigned array"
             )
+            self._input_fault = _capture_input_fault(rejection)
+            raise rejection
         return number
 
     def _seed(self) -> _State:
         """Read the first line, replacing each ``42`` by an input number."""
+        accepted = iter(tuple(self._seed_inputs))
+
+        def seed_value(token: str) -> int:
+            if token != "42":
+                return parse_integer(token)
+            value = next(accepted, None)
+            if value is None:
+                value = self._number()
+                self._seed_inputs.append(value)
+            return value
+
         array: dict[int, int] = {}
         for key, value in self.pairs:
-            k = self._number() if key == "42" else parse_integer(key)
-            array[k] = self._number() if value == "42" else parse_integer(value)
+            k = seed_value(key)
+            array[k] = seed_value(value)
         return (0, MappingProxyType(array), 0, False)
 
     def step(self) -> None:
         if self.state is None:
             self.state = self._seed()
+            self._seed_inputs.clear()
             return
         if self.halted:
             return

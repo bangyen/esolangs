@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from queue import Queue
 from threading import Event, Thread
 from time import monotonic
@@ -149,6 +150,56 @@ def test_worker_preserves_parent_import_and_stdio_options(flag, tmp_path) -> Non
         check=True,
         timeout=10,
     )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("flag", ["-E", "-I"])
+def test_worker_ignores_python_environment_when_the_parent_does(flag, tmp_path) -> None:
+    subprocess.run(
+        [
+            sys.executable,
+            flag,
+            "-c",
+            "import esolangs; "
+            "assert esolangs.run('brainfuck', ',.', stdin='é').output == 'é'; "
+            "assert esolangs.run('brainfuck', ',.', stdin='é', "
+            "isolated=True).output == 'é'; "
+            "assert esolangs.run('brainfuck', ',.', stdin='é', "
+            "limits=esolangs.ExecutionLimits(max_output=1)).output == 'é'",
+        ],
+        env={
+            **os.environ,
+            "PYTHONHOME": str(tmp_path / "missing-home"),
+            "PYTHONIOENCODING": "utf-16",
+        },
+        check=True,
+        timeout=10,
+    )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "options",
+    [{"isolated": True}, {"limits": esolangs.ExecutionLimits(max_output=1)}],
+    ids=["isolated", "output-cap"],
+)
+def test_worker_uses_parent_string_paths_in_order(
+    monkeypatch, tmp_path, options
+) -> None:
+    class ImportPath(str):
+        def __repr__(self) -> str:
+            return "unbound_path()"
+
+        def __str__(self) -> str:
+            return str(tmp_path)
+
+    (tmp_path / "esolangs.py").write_text("raise RuntimeError('wrong import path')\n")
+    package_root = str(Path(esolangs.__file__).resolve().parent.parent)
+    monkeypatch.setattr(
+        sys, "path", [tmp_path, ImportPath(package_root), str(tmp_path), *sys.path]
+    )
+    result = esolangs.run(REFERENCE, ",.", stdin="Q", **options)
+    assert result.output == "Q"
 
 
 @pytest.mark.parametrize("timeout", [0, float("inf")])
