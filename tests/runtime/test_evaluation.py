@@ -1,5 +1,6 @@
 """The private evaluation harness: supplied programs and budgets."""
 
+import re
 import threading
 from dataclasses import replace
 from functools import partial
@@ -10,6 +11,7 @@ import pytest
 
 import esolangs
 import tests.support.evaluation as evaluator
+from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate, _iter_evaluate, _row_answerer
 from tests.support.generator_support import probe_table
 from tests.support.pick import first, languages
@@ -111,12 +113,19 @@ def test_answer_rejection_keeps_successful_execution_evidence() -> None:
         ({"answer_mode": "unknown"}, "invalid answer mode"),
         ({"answer_values": ("1", "1")}, "invalid answer encoding"),
         ({"answer_values": ("1",)}, "invalid answer encoding"),
+        (
+            {"answer_values": ("false", "true")},
+            "invalid answer encoding.*answer_pattern",
+        ),
+        ({"answer_values": ("0", "")}, "invalid answer encoding.*answer_pattern"),
+        ({"answer_values": ("0", "\u00a0")}, "invalid answer encoding.*answer_pattern"),
         ({"answer_pattern": "("}, "invalid answer pattern"),
     ],
 )
 def test_invalid_answer_contracts_stop_before_execution(
     monkeypatch, changes, message
 ) -> None:
+    from esolangs.operations import evaluation
     from esolangs.runtime import _execution, _isolated
 
     api = esolangs.Language(REFERENCE)
@@ -131,6 +140,7 @@ def test_invalid_answer_contracts_stop_before_execution(
     def unexpected_execution(*_args, **_kwargs):
         pytest.fail("invalid answer contract started execution")
 
+    monkeypatch.setattr(evaluation, "_execute_outcome", unexpected_execution)
     monkeypatch.setattr(_execution, "invoke", unexpected_execution)
     monkeypatch.setattr(_isolated, "_invoke_worker", unexpected_execution)
     for evaluate in (
@@ -141,6 +151,51 @@ def test_invalid_answer_contracts_stop_before_execution(
             with pytest.raises(esolangs.ProgramError, match=message) as caught:
                 evaluate(limits=limits)
             assert caught.value.observation is None
+    if changes.get("answer_mode") != "termination":
+        with pytest.raises(esolangs.ProgramError, match=message):
+            scoped.read_answer("0")
+
+
+@pytest.mark.parametrize(
+    ("values", "pattern", "alphabet", "source", "output", "reads"),
+    [
+        (("Ö", "é"), "", ("Ö", "é"), ",.", "é", 1),
+        (
+            ("false", "true"),
+            r"(?:false|true)",
+            ("false", "true"),
+            ",.,.,.,.",
+            "true",
+            4,
+        ),
+        (("0", ""), re.compile(""), ("0", "1"), ",", "", 1),
+    ],
+)
+def test_answer_contract_decodes_single_characters_or_explicit_matches(
+    values, pattern, alphabet, source, output, reads
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    declaration = api.catalog.languages[api.name]
+    contract = replace(
+        declaration.contract,
+        alphabet=alphabet,
+        answer_values=values,
+        answer_pattern=pattern,
+    )
+    scoped = esolangs.Catalog([replace(declaration, contract=contract)]).bind(api.name)
+    artifact = scoped.from_source(source)
+    result = scoped.evaluate(artifact, [1])
+    assert result.answer == scoped.read_answer(output) == "1"
+    assert result.observation.output == output
+    assert result.observation.input_reads == reads
+    assert scoped.prepare(artifact).evaluate([1]) == result
+
+
+def _scoped_contract(**changes) -> esolangs.Language:
+    api = esolangs.Language(REFERENCE)
+    declaration = api.catalog.languages[api.name]
+    contract = replace(declaration.contract, **changes)
+    return esolangs.Catalog([replace(declaration, contract=contract)]).bind(api.name)
 
 
 @pytest.mark.parametrize(
@@ -149,20 +204,70 @@ def test_invalid_answer_contracts_stop_before_execution(
         ({"input_shape": "unknown"}, "invalid input shape"),
         ({"alphabet": ("0",)}, "invalid input encoding"),
         ({"alphabet": (1, "1")}, "invalid input encoding"),
+        ({"alphabet": ("", "x")}, "ambiguous when concatenated"),
+        ({"alphabet": ("x", "xx")}, "ambiguous when concatenated"),
+        (
+            {"input_shape": "char_stream_cyclic", "alphabet": ("ab", "abab")},
+            "ambiguous when concatenated",
+        ),
+        ({"input_shape": "line_per_bit", "alphabet": ("x", "x\nx")}, "one line"),
+        ({"input_shape": "line_per_bit", "alphabet": ("x", "x\r")}, "CRLF decoding"),
     ],
 )
 def test_input_contract_validation_does_not_affect_answer_decoding(
-    changes, message
+    monkeypatch, changes, message
 ) -> None:
-    api = esolangs.Language(REFERENCE)
-    declaration = api.catalog.languages[api.name]
-    contract = replace(declaration.contract, **changes)
-    scoped = esolangs.Catalog([replace(declaration, contract=contract)]).bind(api.name)
+    from esolangs.operations import evaluation
+
+    def unexpected_execution(*_args, **_kwargs):
+        pytest.fail("invalid input contract started execution")
+
+    scoped = _scoped_contract(**changes)
     assert scoped.read_answer("1") == "1"
     with pytest.raises(esolangs.ProgramError, match=message):
-        scoped.encode_inputs([1])
-    with pytest.raises(esolangs.ProgramError, match=message):
-        scoped.evaluate(scoped.from_source(",."), [1])
+        scoped.encode_inputs([0, 1])
+    monkeypatch.setattr(evaluation, "_execute_outcome", unexpected_execution)
+    artifact = scoped.from_source(",.")
+    with pytest.raises(esolangs.ProgramError, match=message) as caught:
+        scoped.evaluate(artifact, [0, 1])
+    assert caught.value.observation is None
+
+
+@pytest.mark.parametrize("shape", ["char_stream", "char_stream_cyclic"])
+def test_stream_alphabet_can_have_distinct_variable_width_values(shape: str) -> None:
+    scoped = _scoped_contract(
+        input_shape=shape,
+        alphabet=("x", "xy"),
+        answer_pattern=r"(?:xyx|xxy)",
+        answer_values=("xyx", "xxy"),
+    )
+    artifact = scoped.from_source(",.,.,.")
+    for bits, output, answer in (([0, 1], "xxy", "1"), ([1, 0], "xyx", "0")):
+        assert scoped.encode_inputs(bits) == output
+        result = scoped.evaluate(artifact, bits)
+        assert result.answer == answer
+        assert result.observation.output == output
+        assert result.observation.input_reads == 3
+
+
+@pytest.mark.parametrize(
+    ("alphabet", "lines"), [(("", "x"), ("", "x")), (("x\r", "y\r"), ("x", "y"))]
+)
+def test_line_alphabet_accepts_empty_lines_and_distinct_crlf(alphabet, lines) -> None:
+    scoped = _scoped_contract(input_shape="line_per_bit", alphabet=alphabet)
+    for first_bit, second_bit in ((0, 1), (1, 0)):
+        encoded = scoped.encode_inputs([first_bit, second_bit])
+        assert encoded == f"{alphabet[first_bit]}\n{alphabet[second_bit]}\n"
+        io = ScriptedIO(encoded)
+        assert (io.input_str(), io.input_str()) == (lines[first_bit], lines[second_bit])
+        assert io.position() == len(encoded)
+
+
+@pytest.mark.parametrize(("shape", "first"), [("row_index", 1), ("row_number", 2)])
+def test_indexed_rows_ignore_the_alphabet(shape: str, first: int) -> None:
+    scoped = _scoped_contract(input_shape=shape, alphabet=("x", "xx"))
+    assert scoped.encode_inputs([0, 1]) == f"{first}\n"
+    assert scoped.encode_inputs([1, 0]) == f"{first + 1}\n"
 
 
 def test_reversed_termination_contract_uses_its_declared_bit_order() -> None:

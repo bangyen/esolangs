@@ -260,7 +260,12 @@ def _check_lossless_containers(tmp_path):
     )
     assert api.execute(path).unwrap().output == "A"
     api.to_file(artifact, path, gzip=True)
-    assert api.from_file(path).source == source
+    compressed = api.from_file(path)
+    assert isinstance(compressed.source, esolangs.CompressedText)
+    assert compressed.source.to_gzip() == path.read_bytes()
+    assert str(compressed.source) == source
+    assert api.from_file(path, normalize=True).source == source
+    assert api.run(compressed).output == "A"
     assert api.run(path).output == "A"
     # Raw text names no language; normalize appended "\n", which is code here.
     esolangs.to_file("Whitespace", source, path, normalize=True)

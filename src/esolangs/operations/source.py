@@ -254,8 +254,9 @@ def from_file(
 ) -> ProgramArtifact[Program]:
     """Read lossless source with retained metadata.
 
-    Gzip and PNG are detected by content. PNG can retain the program's input
-    arity. ``normalize=True`` applies the language's native file newline policy.
+    Gzip and PNG are detected by content. The default import retains the
+    original gzip bytes. PNG can retain the program's input arity.
+    ``normalize=True`` applies the language's native file newline policy.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.
@@ -276,6 +277,7 @@ def from_file(
         settings=settings,
         catalog=catalog,
         normalize=normalize,
+        preserve_compression=not normalize,
     )
     assert isinstance(artifact, ProgramArtifact)
     return artifact

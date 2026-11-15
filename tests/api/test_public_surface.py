@@ -449,9 +449,11 @@ class TestProgramObjectsRefuseMisuse:
         with pytest.raises(esolangs.ArgumentError, match="<Raises>"):
             esolangs.run(REFERENCE, "+", isolated=Raises())  # type: ignore[arg-type]
 
-    def test_quoted_text_in_a_container_is_kept(self) -> None:
-        with pytest.raises(esolangs.ArgumentError, match=r"\['x at 0xdead'\]"):
-            esolangs.encode_inputs(REFERENCE, ["x at 0xdead"])  # type: ignore[list-item]
+    @pytest.mark.parametrize("value", ["x's at 0xdead>", b"escaped\\x at 0xdead>"])
+    def test_quoted_text_in_a_container_is_kept(self, value: str | bytes) -> None:
+        with pytest.raises(esolangs.ArgumentError) as caught:
+            esolangs.encode_inputs(REFERENCE, [value, object()])  # type: ignore[list-item]
+        assert str(caught.value).endswith(f"[{value!r}, <object object>]")
 
     # One case per language: as a single loop it crossed the 3 s CI fast band
     # under coverage (3.24 s, runs 38923305854 and 38987549506).

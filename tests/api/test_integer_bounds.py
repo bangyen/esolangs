@@ -62,6 +62,22 @@ def test_oversized_integer_arguments_keep_public_errors(operation) -> None:
     assert len(str(caught.value)) < 400
 
 
+def test_recursive_invalid_limit_keeps_the_typed_error() -> None:
+    cap = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(sys.int_info.str_digits_check_threshold)
+        huge = 10**5000
+        recursive: list[object] = [huge]
+        recursive.append(recursive)
+        with pytest.raises(esolangs.ArgumentError, match="max_steps") as caught:
+            esolangs.ExecutionLimits(max_steps=recursive)  # type: ignore[arg-type]
+        assert str(caught.value).endswith(
+            f"[<integer with {huge.bit_length()} bits>, [...]]"
+        )
+    finally:
+        sys.set_int_max_str_digits(cap)
+
+
 def test_large_artifact_and_dialect_metadata_repr() -> None:
     cap = sys.get_int_max_str_digits()
     try:

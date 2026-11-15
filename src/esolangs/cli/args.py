@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import os
 import re
+import select
+import stat
 import sys
 from collections.abc import Collection, Iterator
 from contextlib import contextmanager, suppress
-from typing import NoReturn
+from typing import NoReturn, TextIO
 
 from esolangs._language import Language
 from esolangs.cli.help import help_text
@@ -40,15 +42,42 @@ _ARGUMENTS = {
 }
 
 
-def _diagnostic(message: str) -> None:
-    """Write to stderr without changing the command's outcome if it fails."""
+def _abandon_output(stream: TextIO) -> None:
+    """Keep Python's shutdown flush from retrying the failed destination."""
+    with suppress(OSError, ValueError), open(os.devnull, "wb") as sink:
+        os.dup2(sink.fileno(), stream.fileno())
+
+
+def _output_ready(stream: TextIO) -> bool:
+    """Check whether an optional notice can write without waiting on a pipe."""
     try:
-        sys.stderr.write(message)
-        sys.stderr.flush()
+        fd = stream.fileno()
+    except (OSError, ValueError):
+        return True  # Caller-provided streams such as StringIO have no descriptor.
+    try:
+        if hasattr(select, "poll"):
+            poller = select.poll()
+            poller.register(fd, select.POLLOUT)
+            return bool(poller.poll(0))
+        # On platforms without poll, pipe readiness cannot be checked here.
+        return not stat.S_ISFIFO(os.fstat(fd).st_mode)
+    except (OSError, ValueError):
+        return False
+
+
+def _diagnostic(message: str, *, ready_only: bool = False) -> None:
+    """Write to stderr without changing the command's outcome if it fails."""
+    stream = sys.stderr
+    if stream is None or (ready_only and not _output_ready(stream)):
+        return
+    try:
+        stream.write(message)
+        stream.flush()
+    except KeyboardInterrupt:
+        _abandon_output(stream)
+        raise
     except OSError:
-        # Python retries a failed flush at shutdown and overrides the exit code.
-        with suppress(OSError, ValueError), open(os.devnull, "wb") as sink:
-            os.dup2(sink.fileno(), sys.stderr.fileno())
+        _abandon_output(stream)
 
 
 def _fail(message: str | BaseException, code: int = 2) -> NoReturn:

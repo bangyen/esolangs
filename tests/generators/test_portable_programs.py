@@ -1,6 +1,7 @@
 """Portable source survives disk with its dialect and template conventions."""
 
 import gzip
+import io
 import json
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -246,15 +247,32 @@ def test_portable_storage_preserves_compression_for_text_languages(
     tmp_path: Path,
 ) -> None:
     api = esolangs.Language(REFERENCE)
-    compressed = esolangs.CompressedText.from_chunks(("++.",))
-    data = compressed.to_gzip()
+    raw = b"++.\r\n"
+    output = io.BytesIO()
+    with gzip.GzipFile("original.bf", "wb", fileobj=output, mtime=123) as archive:
+        archive.write(raw)
+    data = output.getvalue()
+    compressed = esolangs.CompressedText(data)
     path = tmp_path / "source"
     path.write_bytes(data)
     expected = api.from_source(compressed)
-    for supplied in (compressed, expected, data, path):
-        restored = api.from_json(api.to_json(supplied))
-        assert restored == expected
-        assert api.run(restored).output == "\x02"
+    loaded = api.from_file(path)
+    assert loaded == api.prepare(path).artifact == expected
+    document = api.to_json(path)
+    assert json.loads(document)["kind"] == "gzip"
+    for supplied in (compressed, expected, data, loaded):
+        assert api.to_json(supplied) == document
+    restored = api.from_json(document)
+    for record in (loaded, restored):
+        assert record == expected
+        assert api.run(record).output == "\x02"
+        saved = tmp_path / "saved"
+        api.to_file(record, saved, gzip=True)
+        assert saved.read_bytes() == data
+
+    assert api.from_file(path, normalize=True) == api.from_source("++.")
+    path.write_bytes(raw)
+    assert api.from_file(path) == api.from_source(raw.decode("utf-8"))
 
 
 def test_portable_generation_preserves_backend_laid_out_compression(

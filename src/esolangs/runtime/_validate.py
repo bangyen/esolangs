@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import re
+from reprlib import recursive_repr
 
-#: The address a default ``repr`` embeds, matched only where it closes the
-#: repr's ``>``: quoted text ("['x at 0xdead']", b" at 0xab") is the caller's.
-_ADDRESS = re.compile(r" at 0x[0-9a-fA-F]+(?=>)")
+# Preserve quoted literals as a group when removing default repr addresses.
+_REPR_ADDRESS = re.compile(
+    r"""('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")| at 0x[0-9a-fA-F]+(?=>)"""
+)
 
 _INFINITE = (float("inf"), float("-inf"))
 
@@ -16,24 +18,30 @@ _TIMEOUT_CEILING = 2_592_000.0
 _ISOLATED_TIMEOUT = 30.0
 
 
+@recursive_repr(fillvalue="[...]")
 def _argument_repr(value: object) -> str:
     """Describe rejected values even beyond CPython's decimal rendering cap."""
     try:
         shown = repr(value)
     except ValueError:
         if isinstance(value, int):
+            value = int.__int__(value)
             sign = "negative " if value < 0 else ""
             return f"<{sign}integer with {value.bit_length()} bits>"
         if isinstance(value, list):
-            return "[" + ", ".join(_argument_repr(item) for item in value) + "]"
+            try:
+                items = map(_argument_repr, list.__iter__(value))
+                return "[" + ", ".join(items) + "]"
+            except RecursionError:
+                pass
         return f"<{type(value).__name__}>"
     except Exception:  # A caller's ``__repr__`` that raises (RuntimeError).
         return f"<{type(value).__name__}>"
-    if isinstance(value, str):
-        return shown  # The caller's own text, even one reading " at 0x".
+    if isinstance(value, str) or " at 0x" not in shown:
+        return shown
     # A default repr carries an address ("<object object at 0x10...>") that
     # differs per run; strip it, keeping the rest ("[<object object>]").
-    return _ADDRESS.sub("", shown)
+    return _REPR_ADDRESS.sub(r"\1", shown)
 
 
 def check_whole(value: object, name: str) -> int:

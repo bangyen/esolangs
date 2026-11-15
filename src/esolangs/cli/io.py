@@ -12,7 +12,7 @@ import stat
 import sys
 import threading
 from collections.abc import Buffer, Callable, Iterator
-from contextlib import AbstractContextManager, contextmanager, suppress
+from contextlib import AbstractContextManager, contextmanager
 from contextvars import copy_context
 from errno import EAGAIN
 from io import BufferedReader, FileIO
@@ -21,7 +21,7 @@ from time import monotonic, sleep
 from typing import BinaryIO, cast
 
 from esolangs.artifacts import ProgramArtifact
-from esolangs.cli.args import _diagnostic, _fail
+from esolangs.cli.args import _abandon_output, _diagnostic, _fail
 from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
 from esolangs.exceptions import EsolangError
 from esolangs.operations.source import _check_program
@@ -68,7 +68,9 @@ class _DelayedNotice:
 
     def __init__(self, after: float, message: str) -> None:
         """Arm the notice to write ``message`` after ``after`` seconds."""
-        self._timer = threading.Timer(after, _diagnostic, args=(message,))
+        self._timer = threading.Timer(
+            after, _diagnostic, args=(message,), kwargs={"ready_only": True}
+        )
         self._timer.daemon = True
 
     def __enter__(self) -> None:
@@ -387,12 +389,6 @@ class _StdoutEncodingError(Exception):
     """Output text cannot be written as UTF-8."""
 
 
-def _abandon_stdout() -> None:
-    """Keep Python's shutdown flush from retrying the failed destination."""
-    with suppress(OSError, ValueError), open(os.devnull, "wb") as sink:
-        os.dup2(sink.fileno(), sys.stdout.fileno())
-
-
 @contextmanager
 def _complete_stdout_writes() -> Iterator[None]:
     """Check unbuffered stdout writes without changing the text encoder."""
@@ -459,7 +455,7 @@ def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
                     data.encode(encoding, "backslashreplace").decode(encoding)
                 )
     except KeyboardInterrupt:
-        _abandon_stdout()
+        _abandon_output(sys.stdout)
         raise
     except OSError as exc:
         raise _StdoutError(exc) from exc
@@ -470,7 +466,7 @@ def _flush_stdout() -> None:
     try:
         sys.stdout.flush()
     except KeyboardInterrupt:
-        _abandon_stdout()
+        _abandon_output(sys.stdout)
         raise
     except OSError as exc:
         raise _StdoutError(exc) from exc

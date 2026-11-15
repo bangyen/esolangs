@@ -501,7 +501,7 @@ def test_unbuffered_stdout_retries_short_writes_and_restores_writer(
 
 
 @pytest.fixture
-def full_stdout_pipe() -> Iterator[tuple[BinaryIO, BinaryIO]]:
+def full_pipe() -> Iterator[tuple[BinaryIO, BinaryIO]]:
     if os.name != "posix":
         pytest.skip("requires a POSIX nonblocking pipe")
     read_fd, write_fd = os.pipe()
@@ -520,9 +520,9 @@ def full_stdout_pipe() -> Iterator[tuple[BinaryIO, BinaryIO]]:
     "args", [("encode-inputs", REFERENCE, "01"), ("list",)], ids=["raw", "display"]
 )
 def test_unbuffered_stdout_refuses_a_full_pipe(
-    args: tuple[str, ...], full_stdout_pipe: tuple[BinaryIO, BinaryIO]
+    args: tuple[str, ...], full_pipe: tuple[BinaryIO, BinaryIO]
 ) -> None:
-    reader, writer = full_stdout_pipe
+    reader, writer = full_pipe
     result = subprocess.run(
         [sys.executable, "-u", "-m", "esolangs", *args],
         stdout=writer,
@@ -547,9 +547,9 @@ def test_unbuffered_stdout_refuses_a_full_pipe(
     ids=["flush", "write"],
 )
 def test_interrupting_stdout_exits_without_draining_the_pipe(
-    phase: str, args: tuple[str, ...], full_stdout_pipe: tuple[BinaryIO, BinaryIO]
+    phase: str, args: tuple[str, ...], full_pipe: tuple[BinaryIO, BinaryIO]
 ) -> None:
-    reader, writer = full_stdout_pipe
+    reader, writer = full_pipe
     os.set_blocking(writer.fileno(), True)
     # The raw hook signals readiness from inside the buffered I/O call.
     code = r"""
@@ -588,6 +588,98 @@ main()
             if child.poll() is None:
                 child.kill()
     assert (child.returncode, diagnostic) == (130, b"interrupted\n")
+    assert os.get_blocking(writer.fileno())
+    writer.close()
+    assert set(reader.read()) == {ord("x")}
+
+
+@pytest.mark.medium
+def test_stderr_failure_does_not_change_usage_status(
+    full_pipe: tuple[BinaryIO, BinaryIO],
+) -> None:
+    reader, writer = full_pipe
+    command = [sys.executable, "-m", "esolangs", "list", "--bad"]
+    control = subprocess.run(command, capture_output=True, timeout=5, check=False)
+    assert (control.returncode, control.stdout, control.stderr) == (
+        2,
+        b"",
+        b"unknown option: --bad\n",
+    )
+    blocked = subprocess.run(
+        command, stdout=subprocess.PIPE, stderr=writer, timeout=5, check=False
+    )
+    assert (blocked.returncode, blocked.stdout) == (2, b"")
+    assert not os.get_blocking(writer.fileno())
+    writer.close()
+    assert set(reader.read()) == {ord("x")}
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("phase", "args"),
+    [
+        ("diagnostic", ("list", "--bad")),
+        ("interrupt", ("read-answer", REFERENCE)),
+        ("notice", ("read-answer", REFERENCE)),
+    ],
+)
+def test_sigint_does_not_wait_on_full_stderr(
+    phase: str, args: tuple[str, ...], full_pipe: tuple[BinaryIO, BinaryIO]
+) -> None:
+    reader, writer = full_pipe
+    os.set_blocking(writer.fileno(), True)
+    code = r"""
+import os
+import sys
+from esolangs import cli
+from esolangs.cli import io
+
+phase = sys.argv.pop(1)
+
+def ready():
+    os.write(1, b"ready\n")
+
+if phase == "diagnostic":
+    sys.stderr = open(sys.stderr.fileno(), "w", 8192, encoding="utf-8", closefd=False)
+    raw = sys.stderr.buffer.raw
+    write = raw.write
+    def blocked(data):
+        raw.write = write
+        ready()
+        return write(data)
+    raw.write = blocked
+elif phase == "interrupt":
+    read_stdin = cli._read_stdin
+    def started(**options):
+        ready()
+        return read_stdin(**options)
+    cli._read_stdin = started
+else:
+    io._WAITING_NOTICE_AFTER = 0.1
+    diagnostic = io._diagnostic
+    def announce(*args, **options):
+        diagnostic(*args, **options)
+        ready()
+    io._diagnostic = announce
+
+cli.main()
+"""
+    with subprocess.Popen(
+        [sys.executable, "-c", code, phase, *args],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=writer,
+    ) as child:
+        try:
+            assert child.stdout is not None
+            assert select.select([child.stdout], [], [], 10)[0]
+            assert child.stdout.readline() == b"ready\n"
+            child.send_signal(signal.SIGINT)
+            assert child.wait(timeout=5) == 130
+            assert child.stdout.read() == b""
+        finally:
+            if child.poll() is None:
+                child.kill()
     assert os.get_blocking(writer.fileno())
     writer.close()
     assert set(reader.read()) == {ord("x")}

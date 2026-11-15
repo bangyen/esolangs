@@ -54,6 +54,7 @@ from esolangs import (
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli.args import (
     _VALUE_OPTIONS,
+    _abandon_output,
     _check_count,
     _diagnostic,
     _errors,
@@ -79,7 +80,6 @@ from esolangs.cli.hints import (
     _shell_hint,
 )
 from esolangs.cli.io import (
-    _abandon_stdout,
     _complete_stdout_writes,
     _flush_stdout,
     _read_stdin,
@@ -653,6 +653,16 @@ def main() -> None:
     Anything else is a bug in this package, not the program being run, and
     exits 70 with a one-line report instead of a traceback.
     """
+    try:
+        _run_cli()
+    except KeyboardInterrupt:
+        with suppress(KeyboardInterrupt):
+            _diagnostic("interrupted\n", ready_only=True)
+        sys.exit(130)
+
+
+def _run_cli() -> None:
+    """Dispatch after configuring the process streams."""
     for stream in (sys.stdout, sys.stderr):
         # An ASCII locale (or PYTHONIOENCODING=ascii) cannot encode Forþ:
         # `list` died mid-line with exit 70.  Escape instead.
@@ -684,13 +694,10 @@ def main() -> None:
             # Flushed here, where the failure is catchable. Python flushes
             # stdout again during interpreter shutdown.
             _flush_stdout()
-    except KeyboardInterrupt:
-        _diagnostic("interrupted\n")
-        sys.exit(130)
     except _StdoutEncodingError as exc:
         _fail(exc, 1)
     except _StdoutError as exc:
-        _abandon_stdout()
+        _abandon_output(sys.stdout)
         if not isinstance(exc.error, BrokenPipeError):
             _diagnostic(f"cannot write stdout: {exc}\n")
         sys.exit(120)

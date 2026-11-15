@@ -51,8 +51,15 @@ def _answer_codec(
     if not isinstance(source, str):
         raise ProgramError(f"{name} has an invalid answer pattern; expected text")
     source = str.__str__(source)
+    if not source:
+        if any(len(value) != 1 or value.isspace() for value in values):
+            raise ProgramError(
+                f"{name} has an invalid answer encoding. "
+                "Use one non-whitespace character per answer or set answer_pattern."
+            )
+        return values, None
     try:
-        return values, re.compile(source) if source else None
+        return values, re.compile(source)
     except (re.error, OverflowError, RecursionError) as error:
         raise ProgramError(f"{name} has an invalid answer pattern: {error}") from error
 
@@ -119,8 +126,25 @@ def encode_inputs(
     if shape not in ("line_per_bit", "char_stream", "char_stream_cyclic"):
         raise ProgramError(f"{name} has an invalid input shape")
     zero, one = _symbol_pair(name, contract.alphabet, "input encoding")
+    stream = shape in CHAR_STREAMS
+    if stream:
+        # Two words form a uniquely decodable code exactly when they do not commute.
+        if zero + one == one + zero:
+            raise ProgramError(
+                f"{name} has an invalid input encoding. "
+                "The two bit values are ambiguous when concatenated."
+            )
+    elif "\n" in zero or "\n" in one:
+        raise ProgramError(
+            f"{name} has an invalid input encoding. Each bit must fit on one line."
+        )
+    elif zero.removesuffix("\r") == one.removesuffix("\r"):
+        raise ProgramError(
+            f"{name} has an invalid input encoding. "
+            "The two bit lines match after CRLF decoding."
+        )
     digits = [one if bit else zero for bit in bits]
-    if shape in CHAR_STREAMS:
+    if stream:
         return "".join(digits)
     return "".join(f"{digit}\n" for digit in digits)
 
