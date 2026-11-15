@@ -662,6 +662,35 @@ def _bounded_output(
         reader.join()
 
 
+def _prepared_record(message: object) -> bool:
+    return (
+        isinstance(message, dict)
+        and message.keys() == {"prepared"}
+        and message["prepared"] is True
+    )
+
+
+def _queued_output(
+    records: Queue[str | BaseException | None], *, awaiting_prepared: bool
+) -> Iterator[str]:
+    """Retain complete output already queued when a deadline elapsed."""
+    # This is the sole consumer. Limit the drain to the current queue length.
+    for _ in range(records.qsize()):
+        record = records.get_nowait()
+        if not isinstance(record, str):
+            break
+        try:
+            message = worker_loads(record)
+        except ValueError:
+            break
+        if awaiting_prepared and _prepared_record(message):
+            awaiting_prepared = False
+            continue
+        if not isinstance(message, dict) or message.keys() != {"output"}:
+            break
+        yield record
+
+
 def _read_worker_output(
     child: subprocess.Popen[str],
     records: Queue[str | BaseException | None],
@@ -690,9 +719,8 @@ def _read_worker_output(
                 raise Empty
             record = records.get(timeout=active_deadline - now)
         except Empty:
-            if preparation_deadline is not None and preparation_deadline < deadline:
-                raise _preparation_expired() from None
             expired = True
+            output.extend(_queued_output(records, awaiting_prepared=awaiting_prepared))
             break
         if record is None:
             break
@@ -703,12 +731,7 @@ def _read_worker_output(
         except ValueError:
             output.append(record)
             break
-        if (
-            awaiting_prepared
-            and isinstance(message, dict)
-            and message.keys() == {"prepared"}
-            and message["prepared"] is True
-        ):
+        if awaiting_prepared and _prepared_record(message):
             awaiting_prepared = False
             preparation_deadline = None
             if execution_timeout is not None:
@@ -723,10 +746,12 @@ def _read_worker_output(
         try:
             child.wait(timeout=max(0.0, active_deadline - monotonic()))
         except subprocess.TimeoutExpired:
-            if preparation_deadline is not None and preparation_deadline < deadline:
-                raise _preparation_expired() from None
             expired = True
     result = _decode_outcome("".join(output), expired=expired)
+    if expired and preparation_deadline is not None and preparation_deadline < deadline:
+        error = _preparation_expired()
+        error.partial_output = result.observation.output
+        raise error
     if (
         expired
         and execution_deadline is not None

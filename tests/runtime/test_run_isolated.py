@@ -5,6 +5,8 @@ import os
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from queue import Queue
+from threading import Event
 
 import pytest
 
@@ -45,6 +47,48 @@ def test_timeout_retains_streamed_output() -> None:
     assert caught.value.partial_output == "\x01"
     assert esolangs.run(REFERENCE, "++.", isolated=True).output == "\x02"
     assert caught.value.observation is None
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("bound", ["total_timeout", "preparation_timeout"])
+def test_timeout_retains_output_already_queued(monkeypatch, spawned, bound) -> None:
+    from esolangs.runtime import _isolated
+
+    queued = Event()
+    monotonic = _isolated.monotonic
+    displacement = 0.0
+    read_output = _isolated._read_worker_output
+
+    class ObservedQueue(Queue):
+        def put(self, item, *args, **kwargs):
+            super().put(item, *args, **kwargs)
+            if isinstance(item, str) and json.loads(item).get("output_limit"):
+                queued.set()
+
+    def expire_after_output_was_queued(*args):
+        nonlocal displacement
+        assert queued.wait(3), "worker did not write output and hit its cap"
+        displacement = 10.0
+        return read_output(*args)
+
+    monkeypatch.setattr(_isolated, "Queue", ObservedQueue)
+    monkeypatch.setattr(_isolated, "monotonic", lambda: monotonic() + displacement)
+    monkeypatch.setattr(
+        _isolated, "_read_worker_output", expire_after_output_was_queued
+    )
+    outcome = esolangs.execute(
+        REFERENCE,
+        ",.[.]",
+        stdin="A",
+        limits=esolangs.ExecutionLimits(max_output=1, **{bound: 5}),
+    )
+    assert isinstance(outcome.error, esolangs.ExecutionTimeoutError)
+    assert outcome.bound == bound
+    assert outcome.error.partial_output == "A"
+    assert outcome.error.observation is None
+    assert outcome.observation == ExecutionResult("A", None, None, None)
+    assert len(spawned) == 1
+    assert spawned[0].poll() is not None
 
 
 @pytest.mark.medium

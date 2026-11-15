@@ -149,17 +149,6 @@ class TestRoundSixQol:
 class TestTheLastResortPaths:
     """Refusals a reader only meets when something has already gone wrong."""
 
-    def test_an_oversized_program_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A megabyte is far past anything this package generates."""
-        path = tmp_path / "huge.bf"
-        path.write_text("+" * (1024 * 1024 + 1))
-        with pytest.raises(SystemExit) as exc:
-            call_main(["run", REFERENCE, str(path)], capsys)
-        assert exc.value.code == 2
-        assert "larger than" in capsys.readouterr().err
-
     def test_redirected_stdout_accepts_only_utf8_text(self) -> None:
         buffer = io.BytesIO()
         with (

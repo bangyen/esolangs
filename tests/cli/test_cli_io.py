@@ -10,6 +10,7 @@ import sys
 from collections.abc import Iterator
 from io import FileIO
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -421,44 +422,49 @@ class TestReadingTheProgramFileIsBounded:
 class TestTheBoundedReaderInProcess:
     """The subprocess tests prove the behaviour; these reach the lines."""
 
-    @pytest.mark.parametrize("prefix", [b"", b"aa"])
-    def test_oversized_utf8_is_refused_before_decoding(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], prefix: bytes
+    @pytest.mark.parametrize("offset", [0, 2, 10])
+    def test_regular_file_stops_at_the_opening_end(
+        self,
+        tmp_path: Path,
+        offset: int,
     ) -> None:
-        """Both a split character and a valid truncated prefix exceed the cap."""
-        path = tmp_path / "large.txt"
-        path.write_bytes(prefix + ("€" * 600_000).encode())
-        with pytest.raises(SystemExit) as exc:
-            _bounded_read(str(path), 1.0)
-        assert exc.value.code == 2
-        assert "larger than" in capsys.readouterr().err
+        """An fd alias can start inside or past the existing contents."""
+        path = tmp_path / "source"
+        original = b"abcd"
+        path.write_bytes(original)
+        fstat = os.fstat
 
-    def test_oversized_png_is_refused_before_decoding(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        def append_after_stat(fd: int) -> os.stat_result:
+            opened = fstat(fd)
+            with path.open("ab") as writer:
+                writer.write(b"efghijkl")
+            return opened
+
+        with path.open("rb") as handle:
+            handle.seek(offset)
+            with (
+                patch("esolangs.cli.io.open", return_value=handle, create=True),
+                patch("esolangs.cli.io.os.fstat", side_effect=append_after_stat),
+            ):
+                assert _bounded_read(str(path), 1.0, max_bytes=1) == original[offset:]
+
+    @pytest.mark.parametrize("text", ["", "é", "€"])
+    def test_zero_reported_size_still_uses_the_stream_cap(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], text: str
     ) -> None:
-        """The image branch must obey the same byte cap as text."""
-        from esolangs.cli.io import _MAX_PROGRAM_BYTES
-        from esolangs.raster import Raster
-
-        path = tmp_path / "large.png"
-        path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * _MAX_PROGRAM_BYTES)
-        with (
-            patch.object(Raster, "from_png") as decode,
-            pytest.raises(SystemExit) as exc,
-        ):
-            _bounded_read(str(path), 1.0)
-        assert exc.value.code == 2
-        assert "larger than" in capsys.readouterr().err
-        decode.assert_not_called()
-
-    def test_exact_byte_cap_is_accepted(self, tmp_path: Path) -> None:
-        """The sentinel byte distinguishes an oversized file from a full one."""
-        from esolangs.cli.io import _MAX_PROGRAM_BYTES
-
-        text = "é" * (_MAX_PROGRAM_BYTES // 2)
-        path = tmp_path / "full.txt"
-        path.write_bytes(text.encode())
-        assert _bounded_read(str(path), 1.0) == text.encode()
+        """A pseudo-file can contain bytes despite reporting size zero."""
+        path = tmp_path / "source"
+        data = text.encode()
+        path.write_bytes(data)
+        opened = SimpleNamespace(st_mode=path.stat().st_mode, st_size=0)
+        with patch("esolangs.cli.io.os.fstat", return_value=opened):
+            if len(data) <= 2:
+                assert _bounded_read(str(path), 1.0, max_bytes=2) == data
+            else:
+                with pytest.raises(SystemExit) as exc:
+                    _bounded_read(str(path), 1.0, max_bytes=2)
+                assert exc.value.code == 2
+        assert ("larger than" in capsys.readouterr().err) == (len(data) > 2)
 
 
 # 2.2s over 6 tests: drives the CLI as a subprocess.

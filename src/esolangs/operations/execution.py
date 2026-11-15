@@ -15,8 +15,13 @@ from esolangs.runtime._execution import (
 from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._isolated import execute_isolated as _execute_isolated
-from esolangs.runtime._prepared import PreparedProgram, prepare_program
-from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
+from esolangs.runtime._prepared import (
+    PreparedProgram,
+    _check_source_options,
+    _prepare_checked_program,
+    prepare_program,
+)
+from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._validate import (
     _ISOLATED_TIMEOUT,
     check_flag,
@@ -25,8 +30,8 @@ from esolangs.runtime._validate import (
     check_whole,
 )
 from esolangs.runtime.io import ScriptedIO
-from esolangs.settings import DialectSettings, dialect_options, effective_settings
-from esolangs.vm import _make_vm
+from esolangs.settings import DialectSettings
+from esolangs.vm import _make_checked_vm
 
 
 def default_total(total: float | None, execution: float | None) -> float:
@@ -38,43 +43,6 @@ def default_total(total: float | None, execution: float | None) -> float:
     if total is not None:
         return total
     return _ISOLATED_TIMEOUT + (0.0 if execution is None else execution)
-
-
-@_capture_outcome
-def _execute_bounded(
-    language: str,
-    program: ProgramSource,
-    stdin: InputSource = "",
-    *,
-    max_steps: int,
-    settings: DialectSettings | None = None,
-    scale: int | None = None,
-    seed: int | None = None,
-    catalog: "Catalog | None" = None,
-    io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
-    prepared: PreparedProgram | None = None,
-) -> ExecutionOutcome:
-    """Execute cooperatively; loading and individual steps cannot be interrupted."""
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    max_steps = check_whole(max_steps, "max_steps")
-    controller = ExecutionController(
-        _make_vm(
-            language,
-            program,
-            stdin=stdin,
-            scale=scale,
-            settings=settings,
-            seed=seed,
-            catalog=catalog,
-            io_factory=io_factory,
-            prepared=prepared,
-            reproducible=False,
-            observe_initialization=True,
-        )
-    )
-    return controller._execute(max_steps=max_steps)  # noqa: SLF001
 
 
 def run(
@@ -172,13 +140,13 @@ def _execute_invocation(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
     if prepared is None or isolated:
-        settings = effective_settings(language, program, settings, catalog=catalog)
-        scale = effective_scale(language, program, scale, catalog=catalog)
-        dialect_options(language, settings, catalog=catalog)
-        check_scale_for(language, scale, catalog=catalog)
+        settings, scale = _check_source_options(
+            name, program, settings, scale, catalog=catalog
+        )
     seed = check_seed(seed)
-    check_seed_for(catalog.resolve(language), seed, catalog=catalog)
+    check_seed_for(name, seed, catalog=catalog)
     timeout = check_timeout(timeout)
     check_flag(isolated, "isolated")
     max_output, max_memory = check_limits(max_output, max_memory, isolated=isolated)
@@ -205,23 +173,25 @@ def _execute_invocation(
             preparation_timeout=preparation_timeout,
             catalog=catalog,
         )
+    checked = check_input(stdin)
     if max_steps is not None:
-        return _execute_bounded(
-            language,
+        machine = _make_checked_vm(
+            name,
             program,
-            stdin,
-            max_steps=max_steps,
+            stdin=checked,
             scale=scale,
             settings=settings,
             seed=seed,
             catalog=catalog,
             io_factory=io_factory,
             prepared=prepared,
+            reproducible=False,
+            observe_initialization=True,
         )
-    checked = check_input(stdin)
+        return ExecutionController(machine)._execute(max_steps=max_steps)  # noqa: SLF001
     if prepared is None:
-        prepared = prepare_program(
-            language,
+        prepared = _prepare_checked_program(
+            name,
             program,
             settings=settings,
             scale=scale,

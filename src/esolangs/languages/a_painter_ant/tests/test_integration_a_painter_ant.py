@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import pytest
 
 import esolangs
-import esolangs.operations.execution as _execution_operations
 from esolangs.runtime._lifecycle import HALTED_REPORT, Completion
 from esolangs.runtime.io import ScriptedIO
 from tests.support.cli_support import _program, call_both, call_main
@@ -149,9 +148,7 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
 
 def test_a_step_bound_requires_a_periodic_witness():
     with pytest.raises(esolangs.ExecutionCapError) as caught:
-        _execution_operations._execute_bounded(
-            "A Painter Ant", "P", max_steps=1
-        ).unwrap()
+        esolangs.run("A Painter Ant", "P", limits=esolangs.ExecutionLimits(max_steps=1))
     assert caught.value.bound == "max_steps"
     assert caught.value.partial_output == ""
     assert caught.value.observation.steps == 1

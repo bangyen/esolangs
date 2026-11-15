@@ -1,6 +1,7 @@
 """Compressed transport preserves source, provenance and expanded size."""
 
 import gzip
+from os import fspath
 from pathlib import Path
 
 import pytest
@@ -39,7 +40,7 @@ def test_compressed_writers_publish_only_after_success(
     destination.write_bytes(b"existing file")
 
     def refuse_replace(staged, requested):
-        assert requested == destination
+        assert fspath(requested) == fspath(destination)
         assert staged.read_bytes() == program.to_gzip()
         raise PermissionError("replacement refused")
 

@@ -59,6 +59,36 @@ def test_invocation_uses_the_first_managed_input_reader(prepared, route) -> None
     assert events == [*ordered, "read"]
 
 
+@pytest.mark.parametrize("route", ["native", "bounded", "isolated", "vm", "debugger"])
+@pytest.mark.parametrize(
+    ("options", "message"),
+    [
+        ({"scale": 1}, "scale is only supported"),
+        ({"settings": object()}, "settings must be a DialectSettings"),
+        ({"seed": 1}, "seed"),
+    ],
+)
+def test_invocation_rejects_options_before_accessing_streams(route, options, message):
+    class Untouched:
+        @property
+        def read(self):
+            pytest.fail("invalid options accessed a stream")
+
+    api = esolangs.Language(REFERENCE)
+    if route == "vm":
+        invoke = api.make_vm
+    elif route == "debugger":
+        invoke = api.make_debugger
+    else:
+        invoke = api.run
+        options = options | {"isolated": route == "isolated"}
+        if route == "bounded":
+            options["limits"] = esolangs.ExecutionLimits(max_steps=2)
+
+    with pytest.raises(esolangs.ArgumentError, match=message):
+        invoke(Untouched(), stdin=Untouched(), **options)
+
+
 def test_standalone_scripted_io_binds_its_reader_once() -> None:
     class Input:
         calls = 0

@@ -354,21 +354,53 @@ def _make_vm(
     catalog: Catalog | None = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     prepared: PreparedProgram | None = None,
-    reproducible: bool = True,
     observe_initialization: bool = False,
 ) -> VM:
     """Prepare a scoped VM with an invocation-owned input/output factory."""
     from esolangs.registry._catalog import get_catalog
+    from esolangs.runtime._prepared import _check_source_options
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
+    if prepared is None:
+        settings, scale = _check_source_options(
+            name, program, settings, scale, catalog=catalog
+        )
     seed = check_seed(seed)
     check_seed_for(name, seed, catalog=catalog)
-    checked = check_input(stdin)
-    if prepared is None:
-        from esolangs.runtime._prepared import prepare_program
+    return _make_checked_vm(
+        name,
+        program,
+        stdin=check_input(stdin),
+        settings=settings,
+        scale=scale,
+        seed=seed,
+        catalog=catalog,
+        io_factory=io_factory,
+        prepared=prepared,
+        observe_initialization=observe_initialization,
+    )
 
-        prepared = prepare_program(
+
+def _make_checked_vm(
+    name: str,
+    program: ProgramSource,
+    *,
+    stdin: CheckedInput,
+    seed: int | None,
+    settings: DialectSettings | None,
+    scale: int | None,
+    catalog: Catalog,
+    io_factory: Callable[[InputSource], ScriptedIO],
+    prepared: PreparedProgram | None,
+    reproducible: bool = True,
+    observe_initialization: bool = False,
+) -> VM:
+    """Load a step machine after validating invocation choices and input shape."""
+    if prepared is None:
+        from esolangs.runtime._prepared import _prepare_checked_program
+
+        prepared = _prepare_checked_program(
             name,
             program,
             settings=settings,
@@ -384,7 +416,7 @@ def _make_vm(
         return _DelegatingVM(
             name,
             prepared,
-            checked,
+            stdin,
             seed=seed,
             reproducible=reproducible,
             observe_initialization=observe_initialization,

@@ -275,6 +275,44 @@ def test_binary_stdin_uses_the_same_unicode_character_stream(stdin: Any) -> None
     assert esolangs.run(REFERENCE, ",.", stdin=stdin).output == "é"
 
 
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX path semantics")
+@pytest.mark.parametrize("suffix", ["/", "/."])
+def test_native_file_operations_keep_directory_qualified_spellings(
+    tmp_path: Path, suffix: str
+) -> None:
+    class FileName:
+        def __init__(self, spelling: str) -> None:
+            self.spelling = spelling
+            self.calls = 0
+
+        def __fspath__(self) -> str:
+            self.calls += 1
+            return self.spelling
+
+    source = tmp_path / "source"
+    source.write_bytes(b"+.")
+    api = esolangs.Language(REFERENCE)
+    assert api.from_file(source).source == "+."
+    spelling = str(source) + suffix
+    exact = FileName(spelling)
+    for load in (lambda: api.from_file(spelling), lambda: api.prepare(exact)):
+        with pytest.raises(esolangs.ProgramError, match="Not a directory") as caught:
+            load()
+        assert spelling in str(caught.value)
+    assert exact.calls == 1
+
+    compressed = esolangs.CompressedText.from_chunks(("++.",))
+    for save in (lambda target: api.to_file("++.", target), compressed.to_file):
+        for target in (spelling, FileName(spelling)):
+            with pytest.raises(esolangs.ProgramError, match="cannot save") as caught:
+                save(target)
+            assert spelling in str(caught.value)
+            if isinstance(target, FileName):
+                assert target.calls == 1
+        assert source.read_bytes() == b"+."
+    assert list(tmp_path.iterdir()) == [source]
+
+
 def test_path_loading_is_lossless_with_explicit_native_normalization(
     tmp_path: Path,
 ) -> None:

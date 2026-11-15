@@ -6,6 +6,7 @@ import stat
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass
 from io import BufferedReader, BufferedRWPair, FileIO, IOBase
 from math import ceil
 from os import PathLike, fspath
@@ -151,8 +152,23 @@ def read_snapshot(
     return value
 
 
-def explicit_path(path: str | PathLike[str]) -> Path:
+@dataclass(frozen=True, slots=True)
+class _ExplicitPath:
+    """A file argument whose OS spelling still includes its final component."""
+
+    spelling: str
+
+    def __fspath__(self) -> str:
+        return self.spelling
+
+    def __str__(self) -> str:
+        return self.spelling
+
+
+def explicit_path(path: str | PathLike[str]) -> _ExplicitPath:
     """Validate a path argument before opening or reading a file."""
+    if isinstance(path, _ExplicitPath):
+        return path
     try:
         spelling = fspath(path)
     except (TypeError, ValueError) as error:
@@ -162,17 +178,18 @@ def explicit_path(path: str | PathLike[str]) -> Path:
     spelling = str.__str__(spelling)
     if not spelling:
         raise ArgumentError("path must not be empty")
-    return Path(spelling)
+    return _ExplicitPath(spelling)
 
 
-def write_staged(target: Path, chunks: Iterable[bytes]) -> None:
+def write_staged(target: _ExplicitPath, chunks: Iterable[bytes]) -> None:
     """Replace the directory entry only after all source bytes are written."""
     # The staged write's errors should name the destination, not a temporary file.
-    if target.is_dir():
+    if os.path.isdir(target):
         raise IsADirectoryError("it is a directory")
-    if not target.parent.is_dir():
+    parent = os.path.dirname(target.spelling) or "."
+    if not os.path.isdir(parent):
         raise FileNotFoundError("its directory does not exist")
-    with TemporaryDirectory(dir=target.parent) as temporary:
+    with TemporaryDirectory(dir=parent) as temporary:
         staged = Path(temporary) / "source"
         with staged.open("wb") as stream:
             stream.writelines(chunks)

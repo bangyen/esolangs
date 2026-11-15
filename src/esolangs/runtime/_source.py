@@ -57,7 +57,7 @@ def _read_container(
         if isinstance(source, os.PathLike):
             path = explicit_path(source)
             label = str(path)
-            with path.open("rb") as file:
+            with open(path, "rb") as file:
                 return read_snapshot(file), label
         if isinstance(source, (Raster, CompressedText)):
             return source, None

@@ -268,6 +268,22 @@ class PreparedProgram:
         )
 
 
+def _check_source_options(
+    name: str,
+    program: ProgramSource,
+    settings: DialectSettings | None,
+    scale: int | None,
+    *,
+    catalog: Catalog,
+) -> tuple[DialectSettings | None, int | None]:
+    """Resolve explicit and retained choices before acquiring any streams."""
+    settings = effective_settings(name, program, settings, catalog=catalog)
+    scale = effective_scale(name, program, scale, catalog=catalog)
+    dialect_options(name, settings, catalog=catalog)
+    check_scale_for(name, scale, catalog=catalog)
+    return settings, scale
+
+
 def prepare_program(
     language: str,
     program: ProgramSource,
@@ -279,14 +295,35 @@ def prepare_program(
     bind_machine: bool = False,
 ) -> PreparedProgram:
     """Load source once, resolving provenance and explicit execution choices."""
-    from esolangs.operations.source import _check_program
-
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    settings = effective_settings(name, program, settings, catalog=catalog)
-    dialect_options(name, settings, catalog=catalog)
-    scale = effective_scale(name, program, scale, catalog=catalog)
-    check_scale_for(name, scale, catalog=catalog)
+    settings, scale = _check_source_options(
+        name, program, settings, scale, catalog=catalog
+    )
+    return _prepare_checked_program(
+        name,
+        program,
+        settings=settings,
+        scale=scale,
+        catalog=catalog,
+        module_loader=module_loader,
+        bind_machine=bind_machine,
+    )
+
+
+def _prepare_checked_program(
+    name: str,
+    program: ProgramSource,
+    *,
+    settings: DialectSettings | None,
+    scale: int | None,
+    catalog: Catalog,
+    module_loader: Callable[..., ModuleType] = interpreter_module,
+    bind_machine: bool = False,
+) -> PreparedProgram:
+    """Load source after preflight, applying any further file metadata."""
+    from esolangs.operations.source import _check_program
+
     artifact = _check_program(name, program, settings=settings, catalog=catalog)
     settings = artifact.settings
     scale = effective_scale(name, artifact, scale, catalog=catalog)

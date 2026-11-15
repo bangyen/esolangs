@@ -1,8 +1,13 @@
 """Tests for the Monotonic Boolfuck Boolean generator."""
 
+from pathlib import Path
+
+import pytest
+
 import esolangs
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
+from tests.support.cli_support import call_main
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import assert_native_rows, three_input_corpus_size
 from tests.support.witness_tables import SMALL_TABLES as TABLES
@@ -17,6 +22,23 @@ def test_every_row_prints_its_answer() -> None:
 
         program = esolangs.generate("Monotonic Boolfuck", table).source
         assert_native_rows("Monotonic Boolfuck", table, program, run, sentinel="Q")
+
+
+def test_plain_cli_source_can_exceed_the_stream_cap(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    language = "Monotonic Boolfuck"
+    table = "".join(str(row.bit_count() % 2) for row in range(16))
+    source = call_main(["generate", "--plain", language, table], capsys)
+    path = tmp_path / "program"
+    assert path.write_text(source, encoding="utf-8") > 256
+    monkeypatch.setattr("esolangs.cli.io._MAX_PROGRAM_BYTES", 256)
+    for row in (0, 1):
+        stdin = esolangs.encode_inputs(language, [0, 0, 0, row])
+        output = call_main(["run", language, str(path)], capsys, stdin=stdin)
+        assert esolangs.read_answer(language, output) == table[row]
 
 
 def _check_constants() -> None:

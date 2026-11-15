@@ -1,7 +1,7 @@
 """Reading a program and stdin under a bound, and writing the answer out.
 
-Both can block forever (a fifo, a pipe nobody writes to), so every read
-carries a size and a deadline, and two notices say why nothing happened.
+Input can block forever on a FIFO or pipe. Deadlines and notices say why
+nothing happened, and program files are read within a byte bound.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._files import (
     _BLOCK,
     StreamReadTimeoutError,
+    _binary_snapshot,
     _time_remaining,
     read_snapshot,
     stream_read_deadline,
@@ -42,9 +43,9 @@ from esolangs.settings import DialectSettings
 _WAITING_NOTICE_AFTER = 3.0
 
 
-#: Keep source reads bounded, including devices that never reach EOF.
+#: Cap source streams without a known file size, including endless devices.
 _MAX_PROGRAM_BYTES = 1024 * 1024
-#: A gzip-native runtime may also read the full raw export of its generator.
+#: A gzip-native runtime allows a larger source stream for its raw export.
 _MAX_GZIP_NATIVE_PROGRAM_BYTES = 32 * _MAX_PROGRAM_BYTES
 
 
@@ -106,7 +107,7 @@ def _read_program(
     settings: DialectSettings | None = None,
     catalog: Catalog | None = None,
 ) -> ProgramArtifact[Program]:
-    """Read bounded source, refusing a non-text or oversized file."""
+    """Read a native source snapshot under the acquisition deadline."""
     started = monotonic()
     catalog = get_catalog(catalog)
     gzip_native = catalog.languages[language].runtime.compressed_source
@@ -194,14 +195,29 @@ def _bounded_read(
     timeout_flag: str = "",
     max_bytes: int = _MAX_PROGRAM_BYTES,
 ) -> bytes:
-    """Open and read ``path`` with a size cap and a deadline."""
+    """Read up to the opening file size or the stream cap, under a deadline."""
     waited = timeout if timeout is not None else _READ_DEADLINE
     deadline = monotonic() + waited
 
     def _read_file() -> bytes:
         try:
             with open(path, "rb") as handle, stream_read_deadline(deadline):
-                return read_snapshot(handle, size=max_bytes + 1)
+                if isinstance(handle, BufferedReader):
+                    opened = os.fstat(handle.fileno())
+                    # Pseudo-files can report a zero size and still yield data.
+                    if stat.S_ISREG(opened.st_mode) and opened.st_size > 0:
+                        _time_remaining(deadline)
+                        size = max(0, opened.st_size - handle.tell())
+                        return _binary_snapshot(
+                            handle, None, size, deadline, handle.read1
+                        )
+                result = read_snapshot(handle, size=max_bytes + 1)
+                if len(result) > max_bytes:
+                    _fail(
+                        f"{path} is larger than the {max_bytes // 1024} KiB "
+                        "program file limit"
+                    )
+                return result
         except StreamReadTimeoutError:
             raise
         except OSError as exc:
@@ -215,10 +231,7 @@ def _bounded_read(
             _TIMEOUT_EXIT,
         )
 
-    result = _slurp_thread(_read_file, waited, on_timeout=_on_timeout)
-    if len(result) > max_bytes:
-        _fail(f"{path} is larger than the {max_bytes // 1024} KiB program file limit")
-    return result
+    return _slurp_thread(_read_file, waited, on_timeout=_on_timeout)
 
 
 def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:
