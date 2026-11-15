@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any
 
 from esolangs.exceptions import HaltError, ProgramError
@@ -41,6 +41,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import repr_record
 from esolangs.runtime.source_hints import syntax_error
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -57,6 +58,9 @@ class _Instruction:
     address: int
     data: int
 
+    def __repr__(self) -> str:
+        return repr_record(self, fields(self))
+
 
 @dataclass(frozen=True)
 class _State:
@@ -64,6 +68,9 @@ class _State:
 
     ip: int
     program: tuple[_Instruction, ...]
+
+    def __repr__(self) -> str:
+        return repr_record(self, fields(self))
 
 
 # Exact types a worker may reconstruct from this interpreter's snapshots.

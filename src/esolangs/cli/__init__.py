@@ -245,7 +245,7 @@ def _list(rest: list[str]) -> None:
             + "\n"
         )
         return
-    width = max(len(name) for name in LANGUAGES)
+    width = max((len(name) for name in LANGUAGES), default=0)
     # The legend lived in `list --help` only, so the marker columns arrived
     # unexplained for anyone who ran the thing before reading about it.
     _display(

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
+from dataclasses import Field
 from decimal import Decimal
 from fractions import Fraction
 from typing import cast
@@ -127,6 +128,16 @@ def _repr_value(
 def repr_value(value: object, *, format_large_int: Callable[[int], str] = hex) -> str:
     """Keep ordinary repr and fall back for capped integers in plain values."""
     return _repr_value(value, format_large_int, None)
+
+
+def repr_record(record: object, fields: Iterable[Field[object]]) -> str:
+    """Keep dataclass field order and render large integers in each value."""
+    values = ", ".join(
+        f"{field.name}={repr_value(getattr(record, field.name))}"
+        for field in fields
+        if field.repr
+    )
+    return f"{type(record).__qualname__}({values})"
 
 
 def wrap_int32(value: int) -> int:

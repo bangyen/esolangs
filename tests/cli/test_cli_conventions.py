@@ -20,7 +20,7 @@ from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.memory import parse_integer
-from tests.support.cli_support import call_main
+from tests.support.cli_support import _failure, call_main
 from tests.support.pick import first, one_where
 from tests.support.reference import REFERENCE
 
@@ -145,6 +145,38 @@ def test_catalog_displays_and_help_keep_large_integer_settings(
             assert settings.options()["mode"] == large
     finally:
         sys.set_int_max_str_digits(previous_limit)
+
+
+def test_set_accepts_null_as_a_declared_string_choice(monkeypatch, capsys) -> None:
+    native = esolangs.generate(REFERENCE, "01").source
+    original = LANGUAGES[REFERENCE]
+    observed = []
+
+    def build(request):
+        observed.append(request.options.text("mode"))
+        return native
+
+    runtime = replace(
+        original.runtime,
+        dialect=lambda mode="plain": mode,
+        dialect_schema=DialectSchema(
+            REFERENCE, {"mode": ("plain", "null")}, {"mode": "plain"}
+        ),
+    )
+    scope = esolangs.Catalog(
+        [replace(original, runtime=runtime, backend=BooleanBackend(entrypoint=build))]
+    )
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    monkeypatch.setattr(cli, "LANGUAGES", scope.languages)
+    command = ["generate", REFERENCE, "01"]
+    set_source = call_main([*command, "--set", "mode=null"], capsys)
+    json_source = call_main([*command, "--settings", '{"mode":"null"}'], capsys)
+    assert set_source == json_source
+    assert observed == ["null", "null"]
+    _, error = _failure([*command, "--settings", '{"mode":null}'], capsys)
+    assert "invalid value for dialect setting mode: None" in error
+    result = esolangs.run(REFERENCE, set_source, stdin="1")
+    assert esolangs.read_answer(REFERENCE, result.output) == "1"
 
 
 class TestExamplesShipWithThePackage:

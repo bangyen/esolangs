@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, TypedDict
 from esolangs._dialect import DialectSchema, Scalar
 from esolangs._dialect import DialectSettings as DialectSettings
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
+from esolangs.runtime._validate import _argument_repr
 
 if TYPE_CHECKING:
     from esolangs.registry._catalog import Catalog
@@ -45,6 +46,10 @@ def dialect_options(
     runtime = catalog.languages[name].runtime
     schema = runtime.dialect_schema or DialectSchema(name, {}, {})
     if settings._schema != schema:  # noqa: SLF001 - verify the declared domain schema
+        if settings.language == name:
+            raise ArgumentError(
+                f"dialect settings for {name} use a different schema from this catalog"
+            )
         raise ArgumentError(
             f"dialect settings belong to {settings.language}, not {name}"
         )
@@ -101,7 +106,8 @@ def effective_settings(
     )
     if conflicts:
         detail = ", ".join(
-            f"{key}={retained_values[key]!r}, not {explicit_values[key]!r}"
+            f"{key}={_argument_repr(retained_values[key])}, "
+            f"not {_argument_repr(explicit_values[key])}"
             for key in conflicts
         )
         raise ProgramError(

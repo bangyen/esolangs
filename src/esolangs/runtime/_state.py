@@ -2,8 +2,52 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable
-from dataclasses import dataclass, field
+from collections.abc import Hashable, Iterable
+from dataclasses import Field, dataclass, field, fields
+from reprlib import recursive_repr
+from threading import local
+
+from esolangs.runtime.memory import repr_record
+
+
+@dataclass(slots=True)
+class _SnapshotRender:
+    """Bound both nesting and repeated expansion of shared snapshot records."""
+
+    depth: int = 0
+    remaining: int = 256
+
+    def render(self, record: object, members: Iterable[Field[object]]) -> str:
+        if self.depth >= 32 or not self.remaining:
+            return f"{type(record).__qualname__}(...)"
+        self.depth += 1
+        self.remaining -= 1
+        try:
+            return repr_record(record, members)
+        except RecursionError:
+            return f"{type(record).__qualname__}(...)"
+        finally:
+            self.depth -= 1
+
+
+class _RenderState(local):
+    budget: _SnapshotRender | None = None
+
+
+_SNAPSHOT_RENDER = _RenderState()
+
+
+def repr_snapshot_record(record: object, members: Iterable[Field[object]]) -> str:
+    """Keep shallow repr and share a bounded display budget with child records."""
+    budget = _SNAPSHOT_RENDER.budget
+    if budget is not None:
+        return budget.render(record, members)
+    budget = _SnapshotRender()
+    _SNAPSHOT_RENDER.budget = budget
+    try:
+        return budget.render(record, members)
+    finally:
+        _SNAPSHOT_RENDER.budget = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +86,10 @@ class WorkspaceSnapshot:
     model: WorkspaceModel
     parts: tuple[Hashable, ...]
 
+    @recursive_repr()
+    def __repr__(self) -> str:
+        return repr_snapshot_record(self, fields(self))
+
     def __post_init__(self) -> None:
         """Require the declared shape and hashable component values."""
         if not isinstance(self.parts, tuple) or len(self.parts) != len(
@@ -58,6 +106,10 @@ class WorkspaceVariant:
     kind: str
     values: tuple[Hashable, ...]
     _hash: int = field(init=False, repr=False)
+
+    @recursive_repr()
+    def __repr__(self) -> str:
+        return repr_snapshot_record(self, fields(self))
 
     def __post_init__(self) -> None:
         """Validate the variant and hash children once, including shared subterms."""

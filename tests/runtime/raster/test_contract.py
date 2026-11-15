@@ -11,7 +11,7 @@ import pytest
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
 from esolangs.operations.source import _check_program
-from esolangs.raster import Raster, lazy_raster
+from esolangs.raster import Raster, lazy_raster, png
 from esolangs.registry import CATALOG, LANGUAGES, SourceKind
 from tests.support.dialect_support import integer_setting
 from tests.support.evaluation import _evaluate
@@ -349,6 +349,30 @@ def test_portable_raster_saves_settings_beyond_native_metadata_budget(
         assert api.evaluate(restored, bits).answer == answer
     no_scale = replace(artifact, scale=None)
     assert api.from_json(api.to_json(no_scale)) == no_scale
+
+
+def test_portable_raster_applies_settings_absent_from_png(tmp_path: Path) -> None:
+    api = esolangs.Language(RASTER_LANGUAGES[0])
+    pixels = Raster((((1, 2, 3),),)).upscaled(2)
+    record = esolangs.ProgramArtifact(
+        pixels, api.name, settings=api.settings(), scale=2
+    )
+    document = json.loads(api.to_json(record))
+    metadata = {"version": 1, "language": api.name, "scale": 2}
+    bare = pixels.to_png()
+    native = png.write_metadata(bare, metadata)
+    path = tmp_path / "source.png"
+    path.write_bytes(native)
+    assert api.from_file(path) == replace(record, settings=None)
+
+    document["source"] = base64.b64encode(native).decode("ascii")
+    assert api.from_json(json.dumps(document)) == record
+    explicit_none = png.write_metadata(bare, {**metadata, "settings": None})
+    document["source"] = base64.b64encode(explicit_none).decode("ascii")
+    with pytest.raises(
+        esolangs.ProgramError, match="conflicting PNG and document settings"
+    ):
+        api.from_json(json.dumps(document))
 
 
 def test_portable_scale_validates_its_type_and_embedded_agreement() -> None:

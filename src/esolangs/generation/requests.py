@@ -7,6 +7,7 @@ from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.generation.template import TemplateLayout
 from esolangs.raster import Raster
 from esolangs.runtime._program import Program
+from esolangs.runtime.memory import repr_value
 
 type GeneratedProgram = Program | TemplateLayout
 
@@ -16,6 +17,10 @@ class Options:
     """Complete, immutable dialect choices validated by the operation layer."""
 
     values: tuple[tuple[str, Scalar], ...] = ()
+
+    def __repr__(self) -> str:
+        """Represent integer dialect options beyond the decimal digit cap."""
+        return f"{type(self).__qualname__}(values={repr_value(self.values)})"
 
     def integer(self, name: str) -> int:
         """Return a declared integer option; bool is not an integer choice."""
@@ -39,6 +44,13 @@ class GenerationRequest:
     table: str
     width: int | None = None
     options: Options = Options()
+
+    def __repr__(self) -> str:
+        """Represent the request even when its integer width exceeds the digit cap."""
+        return (
+            f"{type(self).__qualname__}(table={self.table!r}, "
+            f"width={repr_value(self.width)}, options={self.options!r})"
+        )
 
 
 @dataclass(frozen=True, slots=True)

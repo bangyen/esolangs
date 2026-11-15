@@ -39,6 +39,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from collections.abc import Hashable, Mapping
 from dataclasses import dataclass, fields
+from reprlib import recursive_repr
 from typing import Any, cast
 
 from esolangs.languages.unlambda.lifecycle import CAPABILITIES
@@ -48,7 +49,12 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._snapshot import SnapshotCodec
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+    repr_snapshot_record,
+)
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -59,6 +65,10 @@ class _ValueBase:
     __slots__ = ("_hash",)
 
     _hash: int
+
+    @recursive_repr()
+    def __repr__(self) -> str:
+        return repr_snapshot_record(self, fields(cast("Any", self)))
 
     def _store_hash(self) -> None:
         object.__setattr__(
@@ -164,7 +174,7 @@ class _Query:
     char: str
 
 
-@dataclass(frozen=True, slots=True, eq=False)
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Partial(_ValueBase):
     """A combinator that has some of its arguments: ``k1``, ``s1``, ``s2``."""
 
@@ -172,7 +182,7 @@ class _Partial(_ValueBase):
     args: tuple[_Value, ...]
 
 
-@dataclass(frozen=True, slots=True, eq=False)
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Promise(_ValueBase):
     """What ``d`` made: a term held unevaluated until something applies it."""
 
@@ -200,6 +210,7 @@ class _Kont(_ValueBase):
         return super().__eq__(other)
 
     __hash__ = _ValueBase.__hash__
+    __repr__ = object.__repr__
 
     def __getstate__(self) -> tuple[_Frame, _Kont | None]:
         """Omit the derived depth and process-specific hash."""
@@ -225,14 +236,14 @@ class _Kont(_ValueBase):
         return tuple(reversed(out))
 
 
-@dataclass(frozen=True, slots=True, eq=False)
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Cont(_ValueBase):
     """A continuation ``c`` captured; applying it abandons the current one."""
 
     kont: _Kont | None
 
 
-@dataclass(frozen=True, slots=True, eq=False)
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _App(_ValueBase):
     """An application, the language's one syntactic form."""
 
@@ -240,35 +251,35 @@ class _App(_ValueBase):
     a: _Term
 
 
-@dataclass(frozen=True, slots=True, eq=False)
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Val(_ValueBase):
     """A value standing in for a term, so ``s`` can re-apply what it holds."""
 
     value: _Value
 
 
-@dataclass(frozen=True, slots=True, eq=False)
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Arg(_ValueBase):
     """Waiting for the function's value, holding the argument's term."""
 
     term: _Term
 
 
-@dataclass(frozen=True, slots=True, eq=False)
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Fun(_ValueBase):
     """Holding the function's value while the argument is evaluated."""
 
     value: _Value
 
 
-@dataclass(frozen=True, slots=True, eq=False)
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Eval(_ValueBase):
     """Evaluate a term."""
 
     term: _Term
 
 
-@dataclass(frozen=True, slots=True, eq=False)
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Apply(_ValueBase):
     """Apply one value to another."""
 
@@ -276,7 +287,7 @@ class _Apply(_ValueBase):
     a: _Value
 
 
-@dataclass(frozen=True, slots=True, eq=False)
+@dataclass(frozen=True, slots=True, eq=False, repr=False)
 class _Ret(_ValueBase):
     """Hand a finished value back to the continuation."""
 

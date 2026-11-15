@@ -9,6 +9,8 @@ import sys
 import pytest
 
 import esolangs
+from esolangs import cli
+from esolangs.registry import _table
 from tests.support.cli_support import call_both
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -30,6 +32,20 @@ def _python_cli(
         check=False,
         timeout=15,
     )
+
+
+def test_empty_catalog_lists_in_every_format(monkeypatch, capsys) -> None:
+    scope = esolangs.Catalog([])
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    monkeypatch.setattr(cli, "LANGUAGES", scope.languages)
+    assert esolangs.list_languages(catalog=scope) == []
+    assert call_both(["list"], capsys) == ("", "")
+    for flags in (["--json"], ["--json", "--details"]):
+        assert call_both(["list", *flags], capsys) == ("[]\n", "")
+    text, error = call_both(["list", "--details"], capsys)
+    assert not error
+    assert text.startswith("language  gen=generator")
+    assert len(text.splitlines()) == 1
 
 
 @pytest.mark.medium

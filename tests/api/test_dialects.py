@@ -1,6 +1,7 @@
 """Dialect settings: public surface, provenance, evaluation and per-language rules."""
 
 import inspect
+import json
 import pickle
 from dataclasses import FrozenInstanceError
 
@@ -14,7 +15,7 @@ from esolangs.registry import CATALOG, LANGUAGES
 from esolangs.registry._functions import FunctionRef
 from esolangs.runtime import _execution
 from esolangs.vm import make_vm
-from tests.support.cli_support import call_both
+from tests.support.cli_support import _failure, call_both
 from tests.support.dialect_support import (
     Unreadable,
     foreign_settings,
@@ -194,6 +195,24 @@ def test_cli_help_shows_literal_settings_json(capsys) -> None:
     assert dialects in help_text
 
 
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_cli_rejects_nonstandard_json_before_applying_set(capsys, constant) -> None:
+    language = one_where(lambda info: bool(info.dialect_settings))[0]
+    key, option = next(iter(esolangs.describe(language).dialect_settings.items()))
+    command = [
+        "generate",
+        "--settings",
+        "{" + json.dumps(key) + ":" + constant + "}",
+        "--set",
+        f"{key}={option['default']}",
+        language,
+        "01",
+    ]
+    out, error = _failure(command, capsys)
+    assert not out
+    assert f"invalid JSON constant {constant}" in error
+
+
 @pytest.mark.parametrize("key", ["index_base", "eof", "input_framing"])
 def test_omission_policies_are_not_public_choices(key) -> None:
     # Brainfuck has no settings; the message ended "known settings: ".
@@ -260,10 +279,34 @@ def test_custom_dialect_with_large_integer_choices() -> None:
         original.runtime, dialect=lambda **choices: choices, dialect_schema=schema
     )
     catalog = esolangs.Catalog([replace(original, runtime=runtime)])
-    settings = catalog.bind(REFERENCE).settings(mode=value)
+    bound = catalog.bind(REFERENCE)
+    settings = bound.settings(mode=value)
     assert eval(repr(settings), {"Language": catalog.bind}) == settings
     with pytest.raises(esolangs.ArgumentError, match=r"integer with .* bits"):
         schema.validate({"mode": 2})
+    artifact = bound.from_source("+.", settings=settings)
+    replacement = bound.settings(mode=1)
+    for operation in (bound.run, bound.prepare):
+        with pytest.raises(
+            esolangs.ProgramError, match=r"mode=<integer with \d+ bits>, not 1"
+        ):
+            operation(artifact, settings=replacement)
+
+
+def test_dialect_settings_from_another_schema_name_the_catalog() -> None:
+    from dataclasses import replace
+
+    original = LANGUAGES[REFERENCE]
+    schema = esolangs.DialectSchema(REFERENCE, {"mode": (1, 2)}, {"mode": 1})
+    runtime = replace(
+        original.runtime, dialect=lambda **choices: choices, dialect_schema=schema
+    )
+    alternate = esolangs.Catalog([replace(original, runtime=runtime)]).bind(REFERENCE)
+    settings = alternate.settings(mode=2)
+    with pytest.raises(
+        esolangs.ArgumentError, match="different schema from this catalog"
+    ):
+        esolangs.run(REFERENCE, Unreadable(), stdin=Unreadable(), settings=settings)
 
 
 def test_dialect_keys_survive_binding_and_round_trips() -> None:

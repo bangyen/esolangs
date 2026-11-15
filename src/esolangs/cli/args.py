@@ -401,10 +401,8 @@ def _scale_of(options: dict[str, str]) -> int | None:
         _fail(f"--scale must be a positive integer, got {options['--scale']!r}")
 
 
-def _set_value(key: str, raw: str, language: str) -> int | str | None:
+def _set_value(key: str, raw: str, language: str) -> int | str:
     """Read one ``--set`` value using its declared scalar type."""
-    if raw == "null":
-        return None
     schema = dialect_choices(language)
     if key in schema and type(schema[key]["choices"][0]) is int:
         try:
@@ -412,6 +410,11 @@ def _set_value(key: str, raw: str, language: str) -> int | str | None:
         except ValueError:
             _fail(f"--set {key} needs an integer, got {raw!r}")
     return raw
+
+
+def _reject_json_constant(token: str) -> NoReturn:
+    """Refuse Python's nonstandard JSON numeric constants."""
+    raise ValueError(f"invalid JSON constant {token}")
 
 
 def _settings_of(
@@ -428,6 +431,7 @@ def _settings_of(
                 options["--settings"],
                 object_pairs_hook=unique_object,
                 parse_int=parse_integer,
+                parse_constant=_reject_json_constant,
             )
         except (ValueError, RecursionError) as exc:
             _fail(f"--settings is not valid JSON ({exc}); pass a JSON object")

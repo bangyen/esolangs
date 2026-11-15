@@ -178,7 +178,35 @@ def test_the_parser_is_iterative_over_a_long_chain() -> None:
     shared = _Cmd("i")
     for _ in range(16):
         shared = native._App(shared, shared)
-    assert state_bits(_workspace_value(shared), {}) == 8 * 2**16
+    projected = _workspace_value(shared)
+    assert state_bits(projected, {}) == 8 * 2**16
+    for state in (shared, projected):
+        rendered = repr(state)
+        assert "(...)" in rendered
+        assert len(rendered) < 20_000
+
+
+def test_debugger_and_workspace_repr_keep_deep_shared_terms_readable() -> None:
+    from esolangs import Language
+    from esolangs.vm import _capture_workspace
+
+    api = Language("Unlambda")
+    code = "`" * 1100 + "i" * 1101
+    # S K K duplicates the same delayed argument in its two applications.
+    source = "```skk`d" + code
+    debugger = api.make_debugger(source)
+    for _ in range(18):
+        debugger.step()
+    snapshot = debugger.snapshot()
+    task = snapshot[0]
+    assert task.term.f.a.value is task.term.a.a.value
+    for rendered in (repr(snapshot), repr(_capture_workspace(debugger.vm))):
+        assert "(...)" in rendered
+        assert len(rendered) < 8000
+    assert debugger.snapshot() == snapshot
+    assert repr(api.make_debugger("`ii").snapshot()) == (
+        "(_Eval(term=_App(f=_Cmd(name='i'), a=_Cmd(name='i'))), None, None, False, 0)"
+    )
 
 
 def test_the_continuation_is_the_stack_the_vm_shows() -> None:

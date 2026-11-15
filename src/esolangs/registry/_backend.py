@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from enum import StrEnum
+from reprlib import recursive_repr
 
 from esolangs._bindings import TEMPLATE_CHAR, Setters, check_setters
 from esolangs.exceptions import GeneratorCapError
@@ -15,6 +16,8 @@ from esolangs.generation.requests import (
 )
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._operations import OperationRef
+from esolangs.runtime._validate import _argument_repr
+from esolangs.runtime.memory import repr_record
 
 Generator = Callable[[GenerationRequest], GeneratedProgram]
 Balancer = Callable[[BalanceRequest], GeneratedProgram]
@@ -83,6 +86,10 @@ class BooleanBackend:
     #: Native arity check, shared with direct generator calls for its diagnostic.
     arity_guard: Callable[[int], None] | None = None
 
+    @recursive_repr()
+    def __repr__(self) -> str:
+        return repr_record(self, fields(BooleanBackend))
+
     def check_arity(self, language: str, inputs: int) -> None:
         """Enforce the catalog cap before loading or calling its generator."""
         cap = self.max_inputs
@@ -91,7 +98,8 @@ class BooleanBackend:
         if self.arity_guard is not None:
             self.arity_guard(inputs)
         raise GeneratorCapError(
-            f"{language} declares max-inputs={cap}, got {inputs} inputs"
+            f"{language} declares max-inputs={_argument_repr(cap)}, "
+            f"got {_argument_repr(inputs)} inputs"
         )
 
     @property

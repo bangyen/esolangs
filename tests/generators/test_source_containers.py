@@ -194,14 +194,27 @@ def test_closed_and_would_block_streams_report_read_errors() -> None:
             esolangs.prepare(REFERENCE, source)
 
 
-def test_managed_program_stream_preserves_a_deliberate_api_error() -> None:
-    timeout = esolangs.ExecutionTimeoutError("managed reader deadline")
+@pytest.mark.parametrize(
+    "error_type", [esolangs.ExecutionTimeoutError, esolangs.ArgumentError]
+)
+def test_managed_program_stream_preserves_a_deliberate_api_error(
+    error_type: type[esolangs.EsolangError], tmp_path: Path
+) -> None:
+    error = error_type("managed read failed")
 
     class Stream:
         def read(self):
-            raise timeout
+            raise error
 
-    assert esolangs.execute(REFERENCE, Stream()).error is timeout
+    api = esolangs.Language(REFERENCE)
+    assert api.execute(Stream()).error is error
+    path = tmp_path / "source"
+    path.write_bytes(b"existing source")
+    for export in (lambda: api.to_json(Stream()), lambda: api.to_file(Stream(), path)):
+        with pytest.raises(error_type) as raised:
+            export()
+        assert raised.value is error
+    assert path.read_bytes() == b"existing source"
 
 
 @pytest.mark.parametrize(

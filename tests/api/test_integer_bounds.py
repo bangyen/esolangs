@@ -1,10 +1,12 @@
 """Shared public contracts, independent of language ownership."""
 
 import sys
+from dataclasses import replace
 
 import pytest
 
 import esolangs
+from esolangs.registry import LANGUAGES
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
@@ -84,6 +86,45 @@ def test_large_artifact_and_dialect_metadata_repr() -> None:
             f"ProgramArtifact(source=Raster(1x1), language={language!r}, "
             f"settings=None, scale={literal}, input_arity={literal})"
         )
+    finally:
+        sys.set_int_max_str_digits(cap)
+
+
+def test_large_catalog_metadata_and_backend_request_repr() -> None:
+    original = LANGUAGES[REFERENCE]
+    generate = original.backend.generate
+    huge = 10**5000
+    literal = hex(huge)
+    cap = sys.get_int_max_str_digits()
+    touched = []
+
+    def emit(request):
+        assert request.width == request.options.integer("mode") == huge
+        touched.append(repr(request))
+        return generate(replace(request, width=None))
+
+    schema = esolangs.DialectSchema(REFERENCE, {"mode": (1, huge)}, {"mode": huge})
+    runtime = replace(
+        original.runtime, dialect=lambda mode=huge: mode, dialect_schema=schema
+    )
+    backend = replace(
+        original.backend, entrypoint=emit, layout_width=True, max_inputs=huge
+    )
+    declaration = replace(original, runtime=runtime, backend=backend)
+    bound = esolangs.Catalog([declaration]).bind(REFERENCE)
+    try:
+        sys.set_int_max_str_digits(sys.int_info.str_digits_check_threshold)
+        info = bound.describe()
+        assert f"generator_max_inputs={literal}" in repr(info)
+        assert repr(info).count(literal) == 3
+        assert f"max_inputs={literal}" in repr(declaration)
+        artifact = bound.generate("01", width=huge)
+        assert touched == [
+            f"GenerationRequest(table='01', width={literal}, "
+            f"options=Options(values=(('mode', {literal}),)))"
+        ]
+        generated = replace(artifact, settings=None)
+        assert "".join(generated.evaluate([bit]).answer for bit in (0, 1)) == "01"
     finally:
         sys.set_int_max_str_digits(cap)
 

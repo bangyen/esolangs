@@ -110,11 +110,9 @@ def to_file(
     # normalize appended "\n" even where a trailing newline is code.
     origin = catalog.resolve(language)
     settings = effective_settings(origin, program, settings, catalog=catalog)
+    record = read_artifact(origin, program, catalog=catalog, preserve_compression=True)
+    settings = effective_settings(origin, record, settings, catalog=catalog)
     try:
-        record = read_artifact(
-            origin, program, catalog=catalog, preserve_compression=True
-        )
-        settings = effective_settings(origin, record, settings, catalog=catalog)
         if isinstance(record, TemplateArtifact):
             raise with_hint(
                 TemplateError(
@@ -292,7 +290,7 @@ def _load_png(
     data = base64.b64decode(value["source"], validate=True)
     record = read_png_artifact(name, data, catalog=catalog)
     metadata = png.read_metadata(data)
-    if metadata is not None and record.settings != settings:
+    if metadata is not None and "settings" in metadata and record.settings != settings:
         raise ValueError("conflicting PNG and document settings")
     scale = record.scale
     if "scale" in value:

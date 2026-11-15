@@ -1,6 +1,7 @@
 """Public catalog result schema without runtime or compiler imports."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
+from reprlib import recursive_repr
 
 from esolangs.registry._contracts import (
     AnswerMode,
@@ -49,3 +50,10 @@ class LanguageInfo:
     random: bool
     examples: tuple[str, ...]
     wiki_url: str
+
+    @recursive_repr()
+    def __repr__(self) -> str:
+        """Represent catalog limits and dialect choices of any integer size."""
+        from esolangs.runtime.memory import repr_record
+
+        return repr_record(self, fields(LanguageInfo))
