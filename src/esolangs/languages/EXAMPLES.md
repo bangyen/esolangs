@@ -36,12 +36,14 @@ don't edit by hand.
 | `befunge/befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |
 | `between/between.txt` | Between | `0001` | `01` | 0 1 | '0' |
 | `bfstack/bfstack.txt` | BFStack | `0001` | `01` | 01 | '0' |
+| `bifunge/bifunge.txt` | Bifunge | `0001` | `01` | 01 | '0' |
 | `bitdeque/bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
 | `bitwise_cyclic_tag/bitwise-cyclic-tag.txt` | Bitwise Cyclic Tag | `0001` | `01` | embedded 01 | '0' |
 | `bit_tilde/bit~.txt` | bit~ | `0001` | `01` | 01 | '0' |
 | `bleh/bleh.txt` | Bleh | `0001` | `01` | 01 | '0' |
 | `blindfolded_arithmetic/blindfolded-arithmetic.txt` | Blindfolded Arithmetic | `0001` | `01` | 2 | '0' |
 | `boolfuck/boolfuck.txt` | Boolfuck | `0001` | `01` | 01 | '0' |
+| `bracketonly/bracketonly.txt` | BracketOnly | `0001` | `01` | 01 | '0' |
 | `brainfuck/brainfuck.txt` | brainfuck | `0001` | `01` | 01 | '0' |
 | `brainif/brainif.txt` | BrainIf | `0001` | `01` | 01 | '0' |
 | `caballo/caballo.txt` | Caballo | `0001` | `01` | 0 1 | '[]' |

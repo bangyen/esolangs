@@ -1,0 +1,18 @@
+language = "Bifunge"
+oldid = 198926
+
+[[spec_triggers]]
+program = "1"
+expect = "ProgramError"
+claim = "incomplete command"
+
+[[spec_triggers]]
+program = "01\n11"
+expect = "InputExhaustedError"
+claim = "byte read at EOF"
+
+[[spec_triggers]]
+program = "01\n11"
+stdin = "λ"
+expect = "ArgumentError"
+claim = "input code point outside Latin-1"

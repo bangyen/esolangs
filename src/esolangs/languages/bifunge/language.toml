@@ -1,0 +1,86 @@
+[curation]
+backlinks = 5
+admitted = 2026-11-15T13:34:00-05:00
+
+[catalogue]
+folding_constant_local = "input_weights"
+sharing_exempt = "the alternating-axis layout gives each descendant one incoming wire and reserves disjoint rectangles for the branches"
+
+[proof_status]
+labels = ["tree"]
+qualification = "folds each ASCII digit to one bit, then walks an alternating-axis tree in reverse input order; every leaf emits one byte and halts"
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 6663
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bifunge.generator:bifunge_request"
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.alternating_tree]
+kind = "measurement"
+witness = { arity = 4, rule = "parity" }
+source = { value = 6272, unit = "cells" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-15
+construction = "esolangs.languages.bifunge.generator:bifunge_request"
+notes = "Reverse-order routing leaves room for the output tail on only the vertical axis."
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.bifunge.generator:bifunge_request"
+
+[resource_evidence.execution]
+# Initial east/down walk, then radius minus leaf spacing on each axis, then 17 leaf commands.
+expression = "15n+2*2^⌊n/2⌋+34*2^⌈n/2⌉-1"
+exact = true
+arities = [1, 2, 3, 4, 5]
+first = 1
+unit = "steps"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}; the same distance to each leaf" }
+
+[resource_evidence.workspace]
+# Coordinates and cursor, n+7 stack bits, two partial bytes, heading and halt flag.
+expression = "n+bl(2*2^⌊n/2⌋-1)+bl(15n+34*2^⌈n/2⌉-1)+bl(n)+40"
+exact = false
+arities = [1, 2, 3, 4]
+first = 1
+unit = "bits"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula}" }
+
+[resource_evidence.scaling]
+# Each command occupies four text cells. Newlines do not count toward grid area.
+expression = "8*2^⌊n/2⌋*(15n+34*2^⌈n/2⌉)"
+exact = true
+arities = [1, 2, 3, 4, 6]
+first = 1
+unit = "cells"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} text cells; one rectangular tree and an input strip" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/bifunge/tests/test_bifunge.py::test_raw_playfields",
+]
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 184, "1" = 184, "2" = 184, "3" = 184, "4" = 184, "5" = 184, "6" = 184, "7" = 184 }, source_units = 3257 }
+"00001100" = { commands_by_row = { "0" = 117, "1" = 117, "2" = 117, "3" = 117, "4" = 117, "5" = 117, "6" = 117, "7" = 117 }, source_units = 2051 }
+"00110110" = { commands_by_row = { "0" = 184, "1" = 184, "2" = 184, "3" = 184, "4" = 184, "5" = 184, "6" = 184, "7" = 184 }, source_units = 3257 }
+"0110" = { commands_by_row = { "0" = 101, "1" = 101, "2" = 101, "3" = 101 }, source_units = 1763 }
+"01101001" = { commands_by_row = { "0" = 184, "1" = 184, "2" = 184, "3" = 184, "4" = 184, "5" = 184, "6" = 184, "7" = 184 }, source_units = 3257 }
+"0110100110010110" = { commands_by_row = { "0" = 203, "1" = 203, "2" = 203, "3" = 203, "4" = 203, "5" = 203, "6" = 203, "7" = 203, "8" = 203, "9" = 203, "10" = 203, "11" = 203, "12" = 203, "13" = 203, "14" = 203, "15" = 203 }, source_units = 6663 }
+"1101001101101101" = { commands_by_row = { "0" = 203, "1" = 203, "2" = 203, "3" = 203, "4" = 203, "5" = 203, "6" = 203, "7" = 203, "8" = 203, "9" = 203, "10" = 203, "11" = 203, "12" = 203, "13" = 203, "14" = 203, "15" = 203 }, source_units = 6663 }
+"11111110" = { commands_by_row = { "0" = 184, "1" = 184, "2" = 184, "3" = 184, "4" = 184, "5" = 184, "6" = 184, "7" = 184 }, source_units = 3257 }

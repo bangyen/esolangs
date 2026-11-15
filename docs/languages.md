@@ -13,6 +13,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](../src/esolangs/languages/b_tapemark/interpreter.py))
 - [Balik](https://esolangs.org/wiki/Balik) ([code](../src/esolangs/languages/balik/interpreter.py))
 - [Befunge](https://esolangs.org/wiki/Befunge) ([code](../src/esolangs/languages/befunge/interpreter.py))
+- [Bifunge](https://esolangs.org/wiki/Bifunge) ([code](../src/esolangs/languages/bifunge/interpreter.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](../src/esolangs/languages/circuit_diagram/interpreter/__init__.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](../src/esolangs/languages/clockwise/interpreter.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](../src/esolangs/languages/dig/interpreter.py))
@@ -145,6 +146,7 @@ Languages that store data in named variables the program declares.
 Languages that don't fit into the above categories.
 
 - [Bleh](https://esolangs.org/wiki/Bleh) ([code](../src/esolangs/languages/bleh/interpreter.py))
+- [BracketOnly](https://esolangs.org/wiki/BracketOnly) ([code](../src/esolangs/languages/bracketonly/interpreter.py))
 - [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C)) ([code](../src/esolangs/languages/cvnc/interpreter.py))
 - [Codesick](https://esolangs.org/wiki/Codesick) ([code](../src/esolangs/languages/codesick/interpreter.py))
 - [DINAC](https://esolangs.org/wiki/DINAC) ([code](../src/esolangs/languages/dinac/interpreter.py))

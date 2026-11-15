@@ -19,12 +19,14 @@ Basicfuck,yes,owned-adapter,basicfuck-v1
 Befunge,yes,owned-adapter,befunge-v1
 Between,yes,owned-adapter,between-v1
 BFStack,yes,owned-adapter,bfstack-v1
+Bifunge,yes,owned-adapter,bifunge-v1
 Bitdeque,yes,owned-adapter,bitdeque-v2
 Bitwise Cyclic Tag,yes,owned-adapter,bitwise-cyclic-tag-v2
 bit~,yes,owned-adapter,bit-tilde-v1
 Bleh,yes,owned-adapter,bleh-v1
 Blindfolded Arithmetic,yes,owned-adapter,blindfolded-arithmetic-v1
 Boolfuck,yes,inherited-adapter,boolfuck-v1
+BracketOnly,yes,owned-adapter,bracketonly-v1
 brainfuck,yes,owned-adapter,brainfuck-v1
 BrainIf,yes,owned-adapter,brainif-v1
 Caballo,yes,owned-adapter,caballo-v1

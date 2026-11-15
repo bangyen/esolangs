@@ -69,9 +69,9 @@ history at `f35aa4023`.
   non-uniform relation, or a term computing the step.
 - **Wiki candidate screening:** the 2026-11-12 refresh has 2,555 language
   pages outside `Implemented` and `Unimplemented`; a screen of 803 left nine
-  candidates, none run through an interpreter yet.
-  - *Shortlist:* Bifunge and BracketOnly (each passed in a scratch
-    simulator); Help., Onecode (Fergusq), ALEFL, NB, Nybbleist and
+  candidates. Bifunge and BracketOnly were admitted after checking public
+  implementations and running their generated programs.
+  - *Shortlist:* Help., Onecode (Fergusq), ALEFL, NB, Nybbleist and
     GolferDream (XOR hand-traced); Flump (input encoding unstated).
   - *Unscreened:* 277 parked pages, 629 flagged for review and 835 removed
     by a keyword prefilter (under 800 characters, a joke or stub template,
