@@ -454,13 +454,9 @@ def encode_decision(decision: CycleDecision) -> dict[str, Any]:
         "branches": None
         if branch is None
         else {
-            "root": _state_wire(branch.root),
-            "transitions": [
-                [_state_wire(state), [_state_wire(target) for target in outcomes]]
-                for state, outcomes in branch.transitions
-            ],
             "halts": branch.halts,
-            "terminal": _state_wire(branch.terminal),
+            # Successors reuse states and their immutable workspace storage.
+            "graph": _state_wire((branch.root, branch.transitions, branch.terminal)),
         },
     }
 
@@ -478,30 +474,20 @@ def decode_decision(metadata: Any) -> CycleDecision:
         value = metadata["branches"]
         if (
             not isinstance(value, dict)
-            or set(value) != {"root", "transitions", "halts", "terminal"}
-            or not isinstance(value["transitions"], list)
+            or set(value) != {"graph", "halts"}
+            or type(value["halts"]) is not bool
         ):
             raise ValueError("invalid branching evidence")
-        transitions = []
-        for row in value["transitions"]:
-            if (
-                not isinstance(row, list)
-                or len(row) != 2
-                or not isinstance(row[1], list)
-            ):
-                raise ValueError("invalid branching transition")
-            transitions.append(
-                (
-                    _state_from_wire(row[0]),
-                    tuple(_state_from_wire(target) for target in row[1]),
-                )
-            )
-        branch = BranchProof(
-            _state_from_wire(value["root"]),
-            tuple(transitions),
-            halts=value["halts"],
-            terminal=_state_from_wire(value["terminal"]),
-        )
+        graph = _state_from_wire(value["graph"])
+        if type(graph) is not tuple or len(graph) != 3 or type(graph[1]) is not tuple:
+            raise ValueError("invalid branching evidence graph")
+        root, transitions, terminal = graph
+        if any(
+            type(row) is not tuple or len(row) != 2 or type(row[1]) is not tuple
+            for row in transitions
+        ):
+            raise ValueError("invalid branching transition")
+        branch = BranchProof(root, transitions, halts=value["halts"], terminal=terminal)
     return checked_decision(
         CycleDecision(
             halts=metadata["halts"],

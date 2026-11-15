@@ -1,11 +1,12 @@
 """Tests for the Bleh interpreter."""
 
 import sys
+from dataclasses import replace
 from itertools import product
 
 import pytest
 
-from esolangs import ExecutionLimits, ExecutionResult, Language
+from esolangs import Catalog, ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.languages.bleh.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -217,5 +218,64 @@ def test_nested_source_respects_the_parent_recursion_limit() -> None:
         assert language.run(source(85), isolated=True).output == "A"
         sys.setrecursionlimit(1000)
         check_routes(source(499), 504)
+        _check_recursive_snapshot_formatting(language)
     finally:
         sys.setrecursionlimit(original)
+
+
+def _check_recursive_snapshot_formatting(language: Language) -> None:
+    shallow = language.make_debugger('^:std::io; main := io::print(["A", {"B"}]);')
+    shallow.step()
+    assert repr(shallow.snapshot()) == (
+        "(_Eval(expr=_Call(func='io.print', args=(_Join(parts=("
+        "_Bits(value='01000001'), _Seq(parts=(_Bits(value='01000010'),)))),)), "
+        "env=()), None, 0, frozenset(), None, 0)"
+    )
+
+    depth = 12
+    forwards = "".join(f"f{i}: x.. = f{i + 1}(x,x);" for i in range(depth))
+    shared = language.make_debugger(
+        f'^:std::io; {forwards} f{depth}: .. = io::print("A"); main := f0(1);'
+    )
+    for _ in range(2 * depth + 2):
+        shared.step()
+    snapshot = shared.snapshot()
+    first, second = snapshot[0].args
+    assert first is second
+    for value in (snapshot, _capture_workspace(shared.vm)):
+        rendered = repr(value)
+        assert "_Lazy(...)" in rendered
+        assert len(rendered) < 8000
+    assert shared.snapshot() == snapshot
+    assert shared.run(limits=ExecutionLimits(max_steps=10)) == "halted"
+    assert shared.output == "A"
+
+    declaration = language.catalog.languages[language.name]
+    contract = replace(
+        declaration.contract,
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+    )
+    scoped = Catalog([replace(declaration, contract=contract)]).bind(language.name)
+    operand = "{" * 499 + '"A"' + "}" * 499
+    source = f"loop: x = loop(x); main := loop({operand});"
+    artifact = scoped.from_source(source)
+    local = scoped.evaluate(artifact, [1], limits=ExecutionLimits(max_steps=12))
+    worker = scoped.evaluate(
+        artifact, [1], limits=ExecutionLimits(max_steps=12, total_timeout=3)
+    )
+    assert local == worker
+    assert local.answer == "1"
+    assert local.termination is not None
+    assert local.termination.commands == 5
+
+    debugger = language.make_debugger(source)
+    for _ in range(3):
+        debugger.step()
+    snapshot = debugger.snapshot()
+    for value in (snapshot, _capture_workspace(debugger.vm), local, worker):
+        rendered = repr(value)
+        assert "_Seq(...)" in rendered
+        assert len(rendered) < 8000
+    assert debugger.snapshot() == snapshot
+    assert hash(debugger.snapshot()) == hash(snapshot)

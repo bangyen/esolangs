@@ -15,6 +15,7 @@ from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchProof, CycleDecision
 from esolangs.runtime._result_wire import (
+    _state_wire,
     decode_decision,
     encode_decision,
     encode_result,
@@ -265,26 +266,36 @@ def test_wire_decisions_require_proof_and_matching_counts():
     with pytest.raises(ValueError, match="evidence"):
         decode_decision(broken)
     for transitions, halts, terminal in (
-        ([[0, []]], False, None),
-        ([[0, [1]], [1, []]], False, None),
-        ([[9, [10]]], True, 10),
-        ([[0, [0]], [9, [10]]], True, 10),
-        ([[0, [0]], [9, [9]]], False, None),
-        ([[0, [1]], [1, [1]]], True, 1),
-        ([[0, [1, 2]]], True, 2),
+        (((0, ()),), False, None),
+        (((0, (1,)), (1, ())), False, None),
+        (((9, (10,)),), True, 10),
+        (((0, (0,)), (9, (10,))), True, 10),
+        (((0, (0,)), (9, (9,))), False, None),
+        (((0, (1,)), (1, (1,))), True, 1),
+        (((0, (1, 2)),), True, 2),
     ):
         broken = {
             "halts": halts,
             "commands": None,
             "cycle": None,
             "branches": {
-                "root": 0,
-                "transitions": transitions,
                 "halts": halts,
-                "terminal": terminal,
+                "graph": _state_wire((0, transitions, terminal)),
             },
         }
         refuses(broken, r"unreachable|outgoing|draws|closed")
+    for graph, reason in (
+        (_state_wire((0, ())), "invalid branching evidence graph"),
+        (_state_wire((0, frozenset(), None)), "invalid branching evidence graph"),
+        (_state_wire((0, (0,), None)), "invalid branching transition"),
+        (_state_wire((0, ((0, 1),), None)), "invalid branching transition"),
+        (
+            {"tuple": [{"ref": 0}, {"define": [0, {"tuple": []}]}, None]},
+            "snapshot reference needs a completed definition",
+        ),
+    ):
+        broken["branches"]["graph"] = graph
+        refuses(broken, reason)
 
 
 def test_a_plain_worker_result_cannot_become_a_verdict():

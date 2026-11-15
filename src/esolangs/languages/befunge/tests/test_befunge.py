@@ -90,6 +90,37 @@ def test_scoped_termination_keeps_public_failure_evidence() -> None:
             scoped.from_source("@"), [0], limits=esolangs.ExecutionLimits(max_steps=0)
         )
     assert capped.value.bound == "max_steps"
+    _check_shared_branch_evidence(scoped, local, worker)
+
+
+def _check_shared_branch_evidence(scoped, local, worker) -> None:
+    from esolangs.runtime._json import worker_dumps
+    from esolangs.runtime._result_wire import _state_wire, encode_decision
+
+    for source, answer in ((">   <", "1"), ("@", "0")):
+        program = scoped.from_json(scoped.to_json(scoped.from_source(source)))
+        native = scoped.evaluate(program, [0], limits=local)
+        isolated = scoped.evaluate(program, [0], limits=worker)
+        assert native == isolated
+        assert isolated.answer == answer
+        for result in (native, isolated):
+            branch = result.termination.branches
+            first, outcomes = branch.transitions[0]
+            assert branch.root is first
+            assert branch.root.grid is outcomes[0].grid
+            if branch.halts:
+                assert outcomes[0] is branch.terminal
+        nodes = (
+            branch.root,
+            branch.terminal,
+            *(
+                node
+                for state, targets in branch.transitions
+                for node in (state, *targets)
+            ),
+        )
+        split = sum(len(worker_dumps(_state_wire(node))) for node in nodes)
+        assert 2 * len(worker_dumps(encode_decision(isolated.termination))) < split
 
 
 def test_string_mode_pushes_and_commas_emit() -> None:

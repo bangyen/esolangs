@@ -50,10 +50,11 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Callable, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from itertools import chain
+from reprlib import recursive_repr
 from types import MappingProxyType
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 
 from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.bleh.lifecycle import CAPABILITIES
@@ -62,9 +63,24 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+    repr_snapshot_record,
+)
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
+
+
+class _RecursiveRecord:
+    """Share the workspace display budget with nested syntax and values."""
+
+    __slots__ = ()
+
+    @recursive_repr()
+    def __repr__(self) -> str:
+        return repr_snapshot_record(self, fields(cast("Any", self)))
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,18 +93,18 @@ class _Ref:
     name: str
 
 
-@dataclass(frozen=True, slots=True)
-class _Join:
+@dataclass(frozen=True, slots=True, repr=False)
+class _Join(_RecursiveRecord):
     parts: tuple[_Expr, ...]
 
 
-@dataclass(frozen=True, slots=True)
-class _Seq:
+@dataclass(frozen=True, slots=True, repr=False)
+class _Seq(_RecursiveRecord):
     parts: tuple[_Expr, ...]
 
 
-@dataclass(frozen=True, slots=True)
-class _Call:
+@dataclass(frozen=True, slots=True, repr=False)
+class _Call(_RecursiveRecord):
     #: A function's name, or ``io.<builtin>``.
     func: str
     args: tuple[_Expr, ...]
@@ -101,8 +117,8 @@ class _Slot:
     val: _Val
 
 
-@dataclass(frozen=True, slots=True)
-class _Lazy:
+@dataclass(frozen=True, slots=True, repr=False)
+class _Lazy(_RecursiveRecord):
     """An unforced ``x..`` binding: the arguments it spans, joined."""
 
     parts: tuple[_Val, ...]
@@ -133,8 +149,8 @@ class _PRest:
     name: str | None
 
 
-@dataclass(frozen=True, slots=True)
-class _PSplit:
+@dataclass(frozen=True, slots=True, repr=False)
+class _PSplit(_RecursiveRecord):
     name: str | None
     subs: tuple[_Pattern, ...]
 
@@ -666,8 +682,8 @@ class _Ret:
     value: str
 
 
-@dataclass(frozen=True, slots=True)
-class _Try:
+@dataclass(frozen=True, slots=True, repr=False)
+class _Try(_RecursiveRecord):
     """Match ``func``'s branch ``branch``; as a frame, retry it."""
 
     func: str

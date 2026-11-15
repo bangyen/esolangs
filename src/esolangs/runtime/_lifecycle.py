@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from enum import StrEnum
 from reprlib import recursive_repr
 
@@ -29,14 +29,9 @@ class BoundaryCycle:
 
     @recursive_repr()
     def __repr__(self) -> str:
-        from esolangs.runtime.memory import repr_value
+        from esolangs.runtime._state import repr_snapshot_record
 
-        return (
-            f"{type(self).__qualname__}(state={repr_value(self.state)}, "
-            f"first_pass={repr_value(self.first_pass)}, "
-            f"repeat_pass={repr_value(self.repeat_pass)}, "
-            f"commands_per_pass={repr_value(self.commands_per_pass)})"
-        )
+        return repr_snapshot_record(self, fields(BoundaryCycle))
 
     def __post_init__(self) -> None:
         """Require integer boundaries, a nonnegative stride and hashable state."""

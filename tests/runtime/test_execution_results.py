@@ -194,6 +194,26 @@ def test_execution_record_repr_keeps_ordinary_diagnostics() -> None:
     assert repr(CycleDecision(halts=True, commands=3)) == (
         "CycleDecision(halts=True, commands=3, cycle=None, branches=None)"
     )
+    assert repr(BranchProof(0, ((0, (0,)),), halts=False)) == (
+        "BranchProof(root=0, transitions=((0, (0,)),), halts=False, terminal=None)"
+    )
+
+    class Nested:
+        def __init__(self, child: object) -> None:
+            self.child = child
+
+        def __repr__(self) -> str:
+            return f"Nested({self.child!r})"
+
+    state = Nested(0)
+    for _ in range(sys.getrecursionlimit()):
+        state = Nested(state)
+    with pytest.raises(RecursionError):
+        repr(state)
+    assert repr(BoundaryCycle(state, 0, 1, 1)) == "BoundaryCycle(...)"
+    assert repr(BranchProof(state, ((state, (state,)),), halts=False)) == (
+        "BranchProof(...)"
+    )
 
 
 def test_execution_records_repr_large_counts_and_nested_evidence() -> None:
