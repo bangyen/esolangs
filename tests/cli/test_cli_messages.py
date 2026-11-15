@@ -355,7 +355,10 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     shadow = tmp_path / "shadow"
     shadow.mkdir()
 
-    def validate(**_choices):
+    checks = []
+
+    def validate(**choices):
+        checks.append(choices)
         monkeypatch.chdir(shadow)
 
     schema = esolangs.DialectSchema(name, {"mode": (1,)}, {"mode": 1})
@@ -369,7 +372,9 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     command = ["run", "-s", "{}", name]
     for spelling in (str(path), path.name):
         monkeypatch.chdir(tmp_path)
+        checks.clear()
         assert call_both([*command, spelling], capsys, stdin="Q") == ("Q", "")
+        assert checks == [{}, {"mode": 1}]
         assert Path.cwd() == shadow
 
     monkeypatch.chdir(tmp_path)

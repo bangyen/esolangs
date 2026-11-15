@@ -628,7 +628,7 @@ preserve template bindings. Plain source cannot be instantiated.
 Use `run(...).output` for output text; `run_result` is replaced by `run`.
 
 The CLI is a deliberate subset of the Python API, not a mirror of it:
-every command calls public functions, a capability lands in the API first,
+commands share the API implementation, a capability lands in the API first,
 and the CLI gains a flag only for a shell workflow. Stepping and programmatic
 saving stay in Python; `list` supports the documented catalog filters.
 

@@ -341,6 +341,7 @@ def execute_isolated(
     execution_timeout: float | None = None,
     preparation_timeout: float | None = None,
     catalog: Catalog | None = None,
+    _loaded: ProgramArtifact[Program] | None = None,
 ) -> ExecutionOutcome:
     """Return a result from a subprocess; the deadline includes loading and startup.
 
@@ -362,6 +363,7 @@ def execute_isolated(
         execution_timeout=execution_timeout,
         preparation_timeout=preparation_timeout,
         catalog=catalog,
+        _loaded=_loaded,
     )
     if isinstance(result, ExecutionOutcome):
         return result
@@ -392,6 +394,7 @@ def _invoke_worker(
     preparation_timeout: float | None = None,
     catalog: Catalog | None = None,
     termination: bool = False,
+    _loaded: ProgramArtifact[Program] | None = None,
 ) -> _WorkerResponse:
     """Acquire source and enforce phase budgets for execution or proof."""
     from esolangs.operations.source import _check_program
@@ -420,7 +423,7 @@ def _invoke_worker(
     name = catalog.resolve(language)
     check_worker_runtime(name, catalog)
     settings, scale = _check_source_options(
-        name, program, settings, scale, catalog=catalog
+        name, program, settings, scale, catalog=catalog, _loaded=_loaded
     )
     seed = check_seed(seed)
     check_seed_for(name, seed, catalog=catalog)
@@ -446,13 +449,15 @@ def _invoke_worker(
             checked_input = check_input(stdin)
             if stopped():
                 return None
-            artifact = _check_program(
-                name,
-                program,
-                settings=settings,
-                catalog=catalog,
-                _settings_validated=True,
-            )
+            artifact = _loaded
+            if artifact is None:
+                artifact = _check_program(
+                    name,
+                    program,
+                    settings=settings,
+                    catalog=catalog,
+                    _settings_validated=True,
+                )
             if stopped():
                 return None
             retained_scale = effective_scale(name, artifact, scale, catalog=catalog)

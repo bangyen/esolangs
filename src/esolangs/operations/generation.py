@@ -114,11 +114,47 @@ def generate(
     catalog = get_catalog(catalog)
     options = dialect_options(language, settings, catalog=catalog)
     resolved = catalog.resolve(language)
+    settings = _generation_settings(resolved, options, settings, catalog=catalog)
+    return _generate(
+        resolved,
+        truth_table,
+        options,
+        settings,
+        width=width,
+        balance=balance,
+        scale=scale,
+        catalog=catalog,
+    )
+
+
+def _generation_settings(
+    name: str,
+    options: dict[str, Scalar],
+    settings: DialectSettings | None,
+    *,
+    catalog: Catalog,
+) -> DialectSettings | None:
+    """Retain all choices used to generate the source, validating added defaults."""
+    schema = catalog.languages[name].runtime.dialect_schema
+    if schema is not None and (choices := schema.defaults | options) != options:
+        return _settings_for(name, choices, catalog=catalog)
+    return settings
+
+
+def _generate(
+    resolved: str,
+    truth_table: str,
+    options: dict[str, Scalar],
+    settings: DialectSettings | None,
+    *,
+    width: int | None = None,
+    balance: bool = False,
+    scale: int | None = None,
+    catalog: Catalog,
+) -> Artifact:
+    """Render with validated dialect choices, including during layout probes."""
     lang = catalog.languages[resolved]
     schema = lang.runtime.dialect_schema
-    if schema is not None and (choices := schema.defaults | options) != options:
-        # Partial overrides still generate against the remaining defaults.
-        settings = _settings_for(language, choices, catalog=catalog)
     check_flag(balance, "balance")
     if scale is not None:
         scale = check_scale(scale)
@@ -135,12 +171,13 @@ def generate(
             )
         artifact = cast(
             ProgramArtifact[Raster],
-            generate(
-                language,
+            _generate(
+                resolved,
                 truth_table,
+                options,
+                settings,
                 width=width,
                 balance=balance,
-                settings=settings,
                 catalog=catalog,
             ),
         )
@@ -273,21 +310,17 @@ def _structured_template(
 
 
 def _generate_balanced(
-    language: str,
+    name: str,
     truth_table: str,
     options: dict[str, Scalar],
     settings: DialectSettings | None,
     *,
-    catalog: "Catalog | None" = None,
+    catalog: Catalog,
 ) -> Artifact:
     """Return ``generate(..., balance=True)``: the default, rebuilt squarest."""
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    default = generate(language, truth_table, settings=settings, catalog=catalog)
+    default = _generate(name, truth_table, options, settings, catalog=catalog)
     source = default.source
     inputs = len(truth_table).bit_length() - 1
-    name = catalog.resolve(language)
     lang = catalog.languages[name]
     backend = lang.backend
     assert backend is not None  # the default was generated above
@@ -418,20 +451,29 @@ def _is_template_for(
     template: TemplateArtifact,
     name: str,
     truth_table: str,
-    settings: DialectSettings | None = None,
+    settings: DialectSettings | None,
     *,
-    width: int | None = None,
-    catalog: "Catalog | None" = None,
+    width: int | None,
+    catalog: Catalog,
 ) -> bool:
     """Return whether ``template`` is what ``name`` generates for the table.
 
     Compare wrapping using the language's whitespace rules, with slots
     spelled in the generator's marker.
     """
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    canonical = generate(name, truth_table, settings=settings, catalog=catalog)
+    options = {} if settings is None else DialectSettings.options(settings)
+    settings = _generation_settings(name, options, settings, catalog=catalog)
+    backend = catalog.languages[name].backend
+    try:
+        canonical = _generate(name, truth_table, options, settings, catalog=catalog)
+        default_available = True
+    except GeneratorCapError:
+        if width is None or backend is None or not backend.layout_width:
+            raise
+        canonical = _generate(
+            name, truth_table, options, settings, width=width, catalog=catalog
+        )
+        default_available = False
     if not isinstance(canonical, TemplateArtifact):
         return False
     bindings = canonical.bindings
@@ -463,10 +505,10 @@ def _is_template_for(
     if template.bindings.setters != expected:
         return False
     plain = canonical.source
-    if text == plain:
-        return True
-    backend = catalog.languages[name].backend
-    assert backend is not None  # generate above refuses absent backends
+    matches_canonical = text == plain
+    if matches_canonical or not default_available:
+        return matches_canonical
+    assert backend is not None  # _generate above refuses absent backends
     assert canonical.spans is not None
     canonical_layout = TemplateLayout(plain, canonical.spans)
     width_aware = backend.layout_width or _can_wrap_template(
@@ -475,8 +517,8 @@ def _is_template_for(
 
     @cache
     def layout(width: int) -> str:
-        source = generate(
-            name, truth_table, width=width, settings=settings, catalog=catalog
+        source = _generate(
+            name, truth_table, options, settings, width=width, catalog=catalog
         ).source
         if not isinstance(source, str):
             raise TemplateError("template layouts must return text")
@@ -496,8 +538,8 @@ def _is_template_for(
     ):
         return False
     try:
-        balanced = generate(
-            name, truth_table, balance=True, settings=settings, catalog=catalog
+        balanced = _generate(
+            name, truth_table, options, settings, balance=True, catalog=catalog
         )
     except GeneratorCapError:
         return False
@@ -580,7 +622,6 @@ def instantiate(
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
     settings = effective_settings(name, template, settings, catalog=catalog)
-    dialect_options(name, settings, catalog=catalog)
     width = check_width(width)
     body = (
         template.source
@@ -621,7 +662,13 @@ def instantiate(
             )
     else:
         # With a table, generation validates the effective dialect.
-        dialect_options(name, settings, catalog=catalog, validate_defaults=True)
+        dialect_options(
+            name,
+            settings,
+            catalog=catalog,
+            validate_defaults=True,
+            _sparse_validated=True,
+        )
     filled = template.fill(bits)
     program = wrap_program(
         filled.source, catalog.languages[name].id, width, catalog=catalog

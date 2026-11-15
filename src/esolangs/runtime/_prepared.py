@@ -366,9 +366,14 @@ def _check_source_options(
     scale: int | None,
     *,
     catalog: Catalog,
+    _loaded: ProgramArtifact[Program] | None = None,
 ) -> tuple[DialectSettings | None, int | None]:
     """Resolve explicit and retained choices before acquiring any streams."""
-    settings = effective_settings(name, program, settings, catalog=catalog)
+    settings = (
+        effective_settings(name, program, settings, catalog=catalog)
+        if _loaded is None
+        else _loaded.settings
+    )
     scale = effective_scale(name, program, scale, catalog=catalog)
     check_scale_for(name, scale, catalog=catalog)
     return settings, scale
@@ -411,18 +416,21 @@ def _prepare_checked_program(
     catalog: Catalog,
     module_loader: Callable[..., ModuleType] = interpreter_module,
     bind_machine: bool = False,
+    _loaded: ProgramArtifact[Program] | None = None,
 ) -> PreparedProgram:
     """Load source after preflight, applying any further file metadata."""
     from esolangs.operations.source import _check_program
 
-    artifact = _check_program(
-        name,
-        program,
-        settings=settings,
-        catalog=catalog,
-        preserve_compression=True,
-        _settings_validated=True,
-    )
+    artifact = _loaded
+    if artifact is None:
+        artifact = _check_program(
+            name,
+            program,
+            settings=settings,
+            catalog=catalog,
+            preserve_compression=True,
+            _settings_validated=True,
+        )
     settings = artifact.settings
     scale = effective_scale(name, artifact, scale, catalog=catalog)
     check_scale_for(name, scale, catalog=catalog)

@@ -1,12 +1,17 @@
 """Unit tests for the ROTfuck interpreter."""
 
+from dataclasses import replace
 from functools import partial
 
 import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
+from esolangs.generation.template import InputSlot, layout_tokens
+from esolangs.languages.rotfuck.dialect import validate_rotation
 from esolangs.languages.rotfuck.interpreter import _advance, _Machine, run
+from esolangs.registry import LANGUAGES
+from esolangs.registry._backend import TemplateSpec
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters import runner
 from tests.interpreters.contract import (
@@ -31,6 +36,57 @@ def build(commands: str) -> str:
 
 
 run_program = partial(runner.run_program, run)
+
+
+def _check_portable_template_settings() -> None:
+    original = LANGUAGES["ROTfuck"]
+    requested = []
+    fault = esolangs.ProgramError("duplicate rotation validation")
+
+    def validate(**choices: str) -> str:
+        if choices in requested:
+            raise fault
+        requested.append(choices)
+        return validate_rotation(choices.get("rotation", "backward"))
+
+    def generate(request):
+        return layout_tokens(
+            [InputSlot(1), *build("+" * 48 + ".")], request.width, separator=""
+        )
+
+    runtime = replace(original.runtime, dialect=validate)
+    backend = replace(
+        original.backend,
+        entrypoint=generate,
+        layout_width=True,
+        template=TemplateSpec(pair=("x", "y")),
+        wrap=None,
+    )
+    api = esolangs.Catalog([replace(original, backend=backend, runtime=runtime)]).bind(
+        original.name
+    )
+    selected = api.settings(rotation="backward")
+    requested.clear()
+    generated = api.generate("00", width=8, settings=selected)
+    requested.clear()
+    sparse = api.settings()
+    for settings, validations in (
+        (selected, [{"rotation": "backward"}]),
+        (sparse, [{}, {"rotation": "backward"}]),
+    ):
+        artifact = replace(generated, settings=settings)
+        requested.clear()
+        saved = api.to_json(artifact)
+        requested.clear()
+        restored = api.from_json(saved)
+        assert restored == artifact
+        for table in (None, "00"):
+            requested.clear()
+            filled = api.instantiate(restored, [1], width=8, truth_table=table)
+            assert requested == validations
+            assert filled.settings == settings
+            requested.clear()
+            assert api.run(filled).output == "0"
 
 
 class TestRotation:
@@ -61,6 +117,7 @@ class TestRotation:
         generated = api.generate("01", settings=alternate)
         assert generated == api.generate("01", settings=backward)
         assert "".join(api.evaluate(generated, [b]).answer for b in (0, 1)) == "01"
+        _check_portable_template_settings()
 
     def test_an_unknown_rotation_is_refused(self) -> None:
         with pytest.raises(ValueError, match="rotation"):

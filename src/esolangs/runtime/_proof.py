@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable
+from collections.abc import Callable, Hashable
 from dataclasses import dataclass
 from reprlib import recursive_repr
 from typing import TYPE_CHECKING, NamedTuple
@@ -13,6 +13,7 @@ from esolangs.runtime._validate import _has_backing_type
 
 if TYPE_CHECKING:
     from esolangs.exceptions import EsolangError
+    from esolangs.runtime._vm_protocol import VM
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,3 +186,46 @@ def checked_termination(value: object) -> TerminationResult:
     ):
         raise ValueError("execution steps disagree with termination evidence")
     return value
+
+
+_UNCHECKED_OWNER = object()
+
+
+def _proof_receiver_check(
+    machine: object, *, owner: object = _UNCHECKED_OWNER
+) -> Callable[[], None] | None:
+    """Keep each live controller link fixed while reusing its proof state."""
+    from esolangs.runtime._controller import ExecutionController
+
+    if not isinstance(machine, ExecutionController):
+        return None
+    controller = machine
+    wrapped = controller.vm
+    if not isinstance(wrapped, ExecutionController):
+        if owner is not _UNCHECKED_OWNER and wrapped is not owner:
+            raise TypeError("debugger VM changed during proof")
+
+        def check_one() -> None:
+            if controller.vm is not wrapped:
+                raise TypeError("debugger VM changed during proof")
+
+        return check_one
+
+    links: list[tuple[ExecutionController, VM]] = [(controller, wrapped)]
+    seen = {id(controller)}
+    while isinstance(wrapped, ExecutionController):
+        if id(wrapped) in seen:
+            raise TypeError("debugger VM chain contains a cycle")
+        seen.add(id(wrapped))
+        controller = wrapped
+        wrapped = controller.vm
+        links.append((controller, wrapped))
+    if owner is not _UNCHECKED_OWNER and wrapped is not owner:
+        raise TypeError("debugger VM changed during proof")
+
+    def check_chain() -> None:
+        for controller, receiver in links:
+            if controller.vm is not receiver:
+                raise TypeError("debugger VM changed during proof")
+
+    return check_chain

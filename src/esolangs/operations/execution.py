@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 
+from esolangs.artifacts import ProgramArtifact
 from esolangs.exceptions import ArgumentError
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome, _capture_outcome
@@ -22,6 +23,7 @@ from esolangs.runtime._prepared import (
     _prepare_checked_program,
     prepare_program,
 )
+from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, anchor_program_source
 from esolangs.runtime._validate import (
     _ISOLATED_TIMEOUT,
@@ -118,6 +120,30 @@ def run(
     ).unwrap()
 
 
+def _run_loaded(
+    program: ProgramArtifact[Program],
+    *,
+    stdin: InputSource,
+    limits: ExecutionLimits,
+    seed: int | None,
+    isolated: bool,
+    scale: int | None,
+    catalog: Catalog,
+) -> ExecutionResult:
+    """Run the native snapshot already validated before CLI stdin acquisition."""
+    return _execute_outcome(
+        program.language,
+        program,
+        stdin=stdin,
+        limits=limits,
+        seed=seed,
+        isolated=isolated,
+        scale=scale,
+        catalog=catalog,
+        _loaded=program,
+    ).unwrap()
+
+
 @_capture_outcome
 def _execute_invocation(
     language: str,
@@ -137,6 +163,7 @@ def _execute_invocation(
     prepared: PreparedProgram | None = None,
     execution_timeout: float | None = None,
     preparation_timeout: float | None = None,
+    _loaded: ProgramArtifact[Program] | None = None,
 ) -> ExecutionOutcome:
     """Execute through one route, retaining its result metadata."""
     from esolangs.registry._catalog import get_catalog
@@ -147,7 +174,7 @@ def _execute_invocation(
     if not isolated:
         if prepared is None:
             settings, scale = _check_source_options(
-                name, program, settings, scale, catalog=catalog
+                name, program, settings, scale, catalog=catalog, _loaded=_loaded
             )
         seed = check_seed(seed)
         check_seed_for(name, seed, catalog=catalog)
@@ -176,12 +203,23 @@ def _execute_invocation(
             execution_timeout=execution_timeout,
             preparation_timeout=preparation_timeout,
             catalog=catalog,
+            _loaded=_loaded,
         )
     checked = (
         check_input(stdin)
         if preparation_timeout is None or prepared is None
         else bind_prepared_input(stdin, preparation_timeout)
     )
+    if prepared is None and (max_steps is None or _loaded is not None):
+        prepared = _prepare_checked_program(
+            name,
+            program,
+            settings=settings,
+            scale=scale,
+            catalog=catalog,
+            module_loader=interpreter_module,
+            _loaded=_loaded,
+        )
     if max_steps is not None:
         machine = _make_checked_vm(
             name,
@@ -197,15 +235,7 @@ def _execute_invocation(
             observe_initialization=True,
         )
         return ExecutionController(machine)._execute(max_steps=max_steps)  # noqa: SLF001
-    if prepared is None:
-        prepared = _prepare_checked_program(
-            name,
-            program,
-            settings=settings,
-            scale=scale,
-            catalog=catalog,
-            module_loader=interpreter_module,
-        )
+    assert prepared is not None
     return prepared._execute_native(  # noqa: SLF001
         checked, seed=seed, io_factory=io_factory
     )
@@ -244,6 +274,7 @@ def _execute_outcome(
     scale: int | None = None,
     catalog: Catalog | None = None,
     prepared: PreparedProgram | None = None,
+    _loaded: ProgramArtifact[Program] | None = None,
 ) -> ExecutionOutcome:
     """Apply explicit phase budgets and retain one outcome across all routes."""
     selected = ExecutionLimits() if limits is None else limits
@@ -269,6 +300,7 @@ def _execute_outcome(
         scale=scale,
         catalog=catalog,
         prepared=prepared,
+        _loaded=_loaded,
     )
 
 

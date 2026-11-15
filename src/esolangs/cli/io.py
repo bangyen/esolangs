@@ -135,6 +135,7 @@ def _read_program(
     directory: _SourceDirectory | None = None,
     settings: DialectSettings | None = None,
     catalog: Catalog | None = None,
+    _settings_validated: bool = False,
 ) -> ProgramArtifact[Program]:
     """Read a native source snapshot under the acquisition deadline."""
     started = monotonic()
@@ -155,6 +156,7 @@ def _read_program(
             normalize=True,
             settings=settings,
             catalog=catalog,
+            _settings_validated=_settings_validated,
         )
 
     try:

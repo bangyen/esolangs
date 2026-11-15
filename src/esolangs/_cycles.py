@@ -12,7 +12,12 @@ from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_check
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
 from esolangs.runtime._drive import _check_snapshot_hash, _SnapshotUnavailableError
 from esolangs.runtime._lifecycle import BoundaryCycle
-from esolangs.runtime._proof import BranchFailure, BranchProof, CycleDecision
+from esolangs.runtime._proof import (
+    BranchFailure,
+    BranchProof,
+    CycleDecision,
+    _proof_receiver_check,
+)
 from esolangs.runtime._validate import _call_signature, _has_backing_type, check_whole
 from esolangs.runtime.source_hints import with_hint
 
@@ -222,7 +227,8 @@ def run_until_halt_or_cycle(
     ``limit`` bounds the steps as the sibling detectors do, raising
     :class:`TimeoutError` rather than answer.  ``None`` (default) is the
     unbounded search; bound it when the machine may *grow* instead, which
-    never repeats a state and so would not return.
+    never repeats a state and so would not return. A live debugger proof
+    requires the wrapped VM to stay fixed.
     """
     return cast("bool", _drive_halt_or_cycle(machine, limit, evidence=False))
 
@@ -331,6 +337,7 @@ def _drive_halt_or_cycle(
     """Share transitions; Boolean readers need no retained branching graph."""
     if limit is not None:
         limit = check_whole(limit, "limit")
+    supplied = machine
     machine = cast(
         _StepMachine,
         _unwrap(
@@ -357,33 +364,16 @@ def _drive_halt_or_cycle(
     # machine's own draw source, so "some path halts" after a fork is not
     # this run's answer (a FirstDraw(0) coin loops where the other halts).
     if branch is not None:
-        result = _branch_search(
-            branch,
-            10_000 if limit is None else limit,
-            evidence=evidence,
-            language=language,
-        )
-        if not result.halts or not result.forked:
-            return (
-                CycleDecision(result.halts, None, branches=result.proof)
-                if evidence
-                else result.halts
-            )
-        raise with_hint(
-            _DrawDependentHaltError(
-                "random machines: some draws halt this program. This proof leaves "
-                "open whether this run's result depends on its own draws"
-            ),
-            "use run_until_halt_or_all_branches_cycle for the any-draw question",
-        )
+        return _branch_cycle(branch, limit, evidence=evidence, language=language)
     if (require_branches or declared_random) and not halted_before:
         raise _BranchingUnavailableError(
             "termination proof for an active random machine requires branch enumeration"
         )
+    check_receiver = _proof_receiver_check(supplied, owner=adapter)
     if record_commands is not None:
         record_commands(0)
     if halted_before:
-        return CycleDecision(halts=True, commands=0) if evidence else True
+        return _exact_halt(0, check_receiver, evidence=evidence)
     reader, check_each_snapshot = _proof_snapshot_reader(machine)
     tortoise = _check_snapshot_hash(
         _proof_snapshot(reader, adapter, None if evidence else 0),
@@ -394,6 +384,8 @@ def _drive_halt_or_cycle(
     length = 0
     steps = 0
     while not machine.halted:
+        if check_receiver is not None:
+            check_receiver()
         if limit is not None and steps >= limit:
             error = _ProofBudgetExhaustedError if evidence else TimeoutError
             raise with_hint(
@@ -415,17 +407,21 @@ def _drive_halt_or_cycle(
         if record_commands is not None:
             record_commands(steps)
         length += 1
+        if check_receiver is not None:
+            check_receiver()
         # mypy narrows `machine.halted` to Literal[False] from the loop guard
         # and won't re-widen it across `step()`; the explicit local defeats that.
         halted: bool = machine.halted
         if halted:
-            return CycleDecision(halts=True, commands=steps) if evidence else True
+            return _exact_halt(steps, check_receiver, evidence=evidence)
         state = _proof_snapshot(reader, adapter, None if evidence else steps)
         if check_each_snapshot:
             _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
         if state == tortoise:
             if not check_each_snapshot and state is not tortoise:
                 _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
+            if check_receiver is not None:
+                check_receiver()
             return (
                 CycleDecision(
                     halts=False,
@@ -442,6 +438,42 @@ def _drive_halt_or_cycle(
             first_step = steps
             power *= 2
             length = 0
+    return _exact_halt(steps, check_receiver, evidence=evidence)
+
+
+def _branch_cycle(
+    branch: _BranchingStepMachine,
+    limit: int | None,
+    *,
+    evidence: bool,
+    language: str | None,
+) -> bool | CycleDecision:
+    result = _branch_search(
+        branch,
+        10_000 if limit is None else limit,
+        evidence=evidence,
+        language=language,
+    )
+    if not result.halts or not result.forked:
+        return (
+            CycleDecision(result.halts, None, branches=result.proof)
+            if evidence
+            else result.halts
+        )
+    raise with_hint(
+        _DrawDependentHaltError(
+            "random machines: some draws halt this program. This proof leaves "
+            "open whether this run's result depends on its own draws"
+        ),
+        "use run_until_halt_or_all_branches_cycle for the any-draw question",
+    )
+
+
+def _exact_halt(
+    steps: int, check_receiver: Callable[[], None] | None, *, evidence: bool
+) -> bool | CycleDecision:
+    if check_receiver is not None:
+        check_receiver()
     return CycleDecision(halts=True, commands=steps) if evidence else True
 
 
@@ -681,6 +713,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     stack, or a random machine, raises :class:`TypeError`.
     """
     limit = check_whole(limit, "limit")
+    check_receiver = _proof_receiver_check(machine)
     _refuse_random(machine, "replayed-ancestor")
     state = cast(
         _FramedMachine,
@@ -694,6 +727,8 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     )
     runner = _proof_runner(machine, state)
     if runner.halted:
+        if check_receiver is not None:
+            check_receiver()
         return True
     ancestors: list[tuple[int, Hashable]] = []
     pushes = 0
@@ -710,9 +745,15 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
                 ),
             )
         depth_before = len(state.frames)
+        if check_receiver is not None:
+            check_receiver()
         runner.step()
+        if check_receiver is not None:
+            check_receiver()
         halted: bool = runner.halted
         if halted:
+            if check_receiver is not None:
+                check_receiver()
             return True
         if len(state.frames) <= depth_before:
             continue
@@ -724,6 +765,8 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
             ancestors.pop()
         key = state.frame_entry_key(state.frames[-1])
         if any(key == ancestor for _, ancestor in ancestors):
+            if check_receiver is not None:
+                check_receiver()
             return False
         ancestors.append((depth, key))
 
@@ -811,6 +854,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     no tape, or a random machine, raises :class:`TypeError`.
     """
     limit = check_whole(limit, "limit")
+    check_receiver = _proof_receiver_check(machine)
     _refuse_random(machine, "tape-growth")
     state = cast(
         _TapeMachine,
@@ -832,6 +876,8 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     visits: dict[Hashable, _GrowthVisit] = {}
     for completed in range(limit + 1 if limit else 0):
         if runner.halted:
+            if check_receiver is not None:
+                check_receiver()
             return True
         ip, ptr, tape = state.ip, state.ptr, state.tape
         for seen in visits.values():
@@ -853,17 +899,17 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
                 wave_length=0,
             )
         else:
-            if _grows_forever(visit.snapshot, current, visit.lowest):
-                return False
-            if _grows_forever(visit.origin, current, visit.origin_low):
-                return False
-            # Unreached: by ablation each of the three arms proves every
-            # growth program in the suite alone.  Kept -- the corpus is a
-            # handful of programs, and an idle arm may decide a shape not
-            # yet written.
-            if _grows_forever(  # pragma: no cover - see above
-                visit.wave_before, current, visit.wave_low
+            # Each certificate alone proves the current corpus. The wave
+            # comparison still handles a phase beginning after a transient.
+            if (
+                _grows_forever(visit.snapshot, current, visit.lowest)
+                or _grows_forever(visit.origin, current, visit.origin_low)
+                or _grows_forever(  # pragma: no cover
+                    visit.wave_before, current, visit.wave_low
+                )
             ):
+                if check_receiver is not None:
+                    check_receiver()
                 return False
             visit.snapshot = current
             visit.lowest = ptr
@@ -875,8 +921,14 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
                 visit.wave_length = 0
         if completed == limit:
             break
+        if check_receiver is not None:
+            check_receiver()
         runner.step()
+        if check_receiver is not None:
+            check_receiver()
     if runner.halted:
+        if check_receiver is not None:
+            check_receiver()
         return True
     raise with_hint(
         TimeoutError(
@@ -967,6 +1019,7 @@ def run_until_halt_or_value_growth(
     random machine.
     """
     limit = check_whole(limit, "limit")
+    check_receiver = _proof_receiver_check(machine)
     _refuse_random(machine, "value-growth")
     state = cast(
         _AffineMachine,
@@ -988,6 +1041,8 @@ def run_until_halt_or_value_growth(
     visits: dict[Hashable, list[_Visit]] = {}
     for index in range(limit + 1 if limit else 0):
         if runner.halted:
+            if check_receiver is not None:
+                check_receiver()
             return True
         slacks.append(state.clamp_slack)
         key = state.key
@@ -995,11 +1050,19 @@ def run_until_halt_or_value_growth(
         seen.append((index, state.values, state.input_position()))
         del seen[:-3]
         if len(seen) == 3 and _climbs_forever(seen, slacks):
+            if check_receiver is not None:
+                check_receiver()
             return False
         if index == limit:
             break
+        if check_receiver is not None:
+            check_receiver()
         runner.step()
+        if check_receiver is not None:
+            check_receiver()
     if runner.halted:
+        if check_receiver is not None:
+            check_receiver()
         return True
     raise with_hint(
         TimeoutError(

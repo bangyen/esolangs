@@ -6,7 +6,7 @@ import sys
 from contextlib import nullcontext
 from time import monotonic
 
-from esolangs import ExecutionLimits, run
+from esolangs import ExecutionLimits
 from esolangs.cli.args import (
     _VALUE_OPTIONS,
     _check_count,
@@ -46,14 +46,13 @@ from esolangs.exceptions import (
     ExecutionBudgetError,
     TemplateError,
 )
-from esolangs.operations.execution import _execution_route, default_total
+from esolangs.operations.execution import _execution_route, _run_loaded, default_total
 from esolangs.registry import get_catalog
 from esolangs.runtime._execution import check_seed_for, check_worker_runtime
 from esolangs.runtime._files import _source_directory
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
 from esolangs.runtime._source import check_scale_for
 from esolangs.runtime.memory import format_integer
-from esolangs.settings import dialect_options
 
 
 def _remaining(timeout: float | None, elapsed: float, flag: str) -> float | None:
@@ -149,7 +148,6 @@ def _run(rest: list[str]) -> None:
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
     with _errors():
-        dialect_options(language, settings, catalog=catalog)
         declaration = catalog.languages[catalog.resolve(language)]
         # Before stdin too: held open, `run --seed 1 brainfuck` hung here.
         check_seed_for(declaration.name, seed, catalog=catalog)
@@ -167,6 +165,7 @@ def _run(rest: list[str]) -> None:
         directory=directory,
         settings=settings,
         catalog=catalog,
+        _settings_validated=True,
     )
     try:
         if scale is None and program.scale is not None:
@@ -185,15 +184,13 @@ def _run(rest: list[str]) -> None:
             else nullcontext(),
             _acquisition_started_at(started),
         ):
-            output = run(
-                language,
+            output = _run_loaded(
                 program,
                 stdin=stdin,
                 limits=limits,
                 seed=seed,
                 scale=scale,
                 isolated=isolated,
-                settings=settings,
                 catalog=catalog,
             ).output
     except TemplateError as exc:

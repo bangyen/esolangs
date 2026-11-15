@@ -42,6 +42,17 @@ class TestRunUntilHaltOrCycle:
         assert vm.halted
         assert run_until_halt_or_cycle(vm) is True
 
+        initial = make_vm(REFERENCE, "+++++.")
+        replacement = make_vm(REFERENCE, "+++.")
+        swapped = _SwitchingDebugger(initial, replacement)
+        with pytest.raises(TypeError, match="debugger VM changed during proof"):
+            run_until_halt_or_cycle(swapped, limit=8)
+        assert swapped.observation.steps == 1
+        assert initial.ip == 1
+        assert replacement.ip == 0
+        assert run_until_halt_or_cycle(swapped, limit=4) is True
+        assert swapped.output == "\x03"
+
 
 class TestTheDetectorsTakeAVM:
     """Every detector accepts what ``make_vm`` returns, not just a ``_Machine``."""
@@ -204,6 +215,16 @@ def test_branch_search_does_not_hide_an_unexpected_or_global_failure() -> None:
             run_until_halt_or_all_branches_cycle(_BranchOnly(error_type), limit=3)
 
 
+class _SwitchingDebugger(Debugger):
+    def __init__(self, vm, replacement):
+        super().__init__(vm)
+        self.replacement = replacement
+
+    def step(self) -> None:
+        super().step()
+        self.vm = self.replacement
+
+
 class _Climber:
     """Never halts: each step walks onto a fresh cell, pushes a frame with
     the same entry, and adds one to a value -- a hang all three proofs see."""
@@ -265,6 +286,41 @@ def test_ancestor_proof_prefers_halt_on_a_pushed_frame() -> None:
         run_until_halt_or_ancestor(machine, limit=1)
     assert machine.n == 1
     assert not machine.halted
+    _check_live_proof_receiver_replacement()
+
+
+def _check_live_proof_receiver_replacement() -> None:
+    class Machine(_Climber):
+        output = ""
+        steppable_to_answer = True
+        dumps_on_the_post_halt_step = False
+
+        def __init__(self, *, halted: bool = False) -> None:
+            super().__init__()
+            self.halted = halted
+
+        def snapshot(self) -> int:
+            return self.n
+
+    for proof in (run_until_halt_or_cycle, *_PROOFS):
+        for nested in (False, True):
+            initial = Machine()
+            replacement = Machine(halted=True)
+            inner = _SwitchingDebugger(initial, replacement)
+            live = Debugger(inner) if nested else inner
+            with pytest.raises(TypeError, match="debugger VM changed during proof"):
+                proof(live, limit=1)
+            assert initial.n == 1
+            assert replacement.n == 0
+            assert live.observation.steps == 1
+            assert proof(live, limit=0) is True
+
+        initial = Machine()
+        switched = _SwitchingDebugger(Debugger(initial), Debugger(initial))
+        with pytest.raises(TypeError, match="debugger VM changed during proof"):
+            proof(switched, limit=1)
+        assert initial.n == 1
+        assert switched.observation.steps == 1
 
 
 class _RandomClimber(_Climber):
@@ -442,6 +498,14 @@ def test_caller_branch_protocol_precedes_private_machine_storage(monkeypatch) ->
     assert run_until_halt_or_all_branches_cycle(live, limit=1) is False
     assert run_until_halt_or_cycle(live, limit=1) is False
     assert machine.commands == 0
+
+    next_vm = BranchMachine()
+    wrapped = live.vm
+    switched = _SwitchingDebugger(wrapped, next_vm)
+    assert run_until_halt_or_all_branches_cycle(switched, limit=1) is False
+    assert run_until_halt_or_cycle(switched, limit=1) is False
+    assert switched.vm is wrapped
+    assert machine.commands == next_vm.commands == 0
 
     _check_malformed_branch_states(monkeypatch)
 

@@ -1,5 +1,6 @@
 """Alight through the shared API, CLI and machinery."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
+from esolangs.registry import _table
 from tests.support.cli_support import call_both
 from tests.support.dialect_support import Unreadable, foreign_settings
 from tests.support.evaluation import _evaluate
@@ -59,7 +61,9 @@ def test_balanced_postfix_chunks_execute(inputs) -> None:
 
 
 @pytest.mark.medium
-def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys) -> None:
+def test_cli_generate_and_run_share_settings(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
     choices = '{"expression_syntax":"postfix"}'
     generated, _ = call_both(
         ["generate", "--settings", choices, "Alight", "0110"], capsys
@@ -73,6 +77,40 @@ def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys) -> None:
             stdin="10",
         )
         assert output.strip() == "1"
+
+    original = _table.LANGUAGES["Alight"]
+    original_dialect = original.runtime.dialect
+    assert original_dialect is not None
+    checks = []
+    expected_checks = [
+        {"expression_syntax": "postfix"},
+        {"expression_syntax": "postfix", "list_update": "in_place"},
+    ]
+
+    def validate(**options):
+        checks.append(options)
+        if len(checks) > len(expected_checks):
+            raise esolangs.ArgumentError("already validated these settings")
+        original_dialect(**options)
+
+    runtime = replace(original.runtime, dialect=validate)
+    scope = esolangs.Catalog([replace(original, runtime=runtime)])
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    for options in ([], ["--max-steps", "100"]):
+        checks.clear()
+        assert call_both(
+            [
+                "run",
+                *options,
+                "--set",
+                "expression_syntax=postfix",
+                "Alight",
+                str(path),
+            ],
+            capsys,
+            stdin="10",
+        ) == ("1", "")
+        assert checks == expected_checks
 
 
 def test_single_choice_languages_refuse_other_keys() -> None:

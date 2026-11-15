@@ -819,6 +819,31 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
         )
     assert caught.value is cap
 
+    default_cap = esolangs.GeneratorCapError("renderer needs an explicit width")
+
+    def explicit_only(request: GenerationRequest) -> TemplateLayout:
+        if request.width is None:
+            raise default_cap
+        return restricted_emit(request)
+
+    explicit = esolangs.Catalog(
+        [replace(original, backend=replace(backend, entrypoint=explicit_only))]
+    ).bind(REFERENCE)
+    saved = explicit.generate("01", width=8)
+    restored = explicit.from_json(explicit.to_json(saved))
+    assert isinstance(restored, esolangs.TemplateArtifact)
+    assert restored == saved
+    for bit in (0, 1):
+        filled = explicit.instantiate(restored, [bit], truth_table="01", width=8)
+        assert filled == restored.fill([bit])
+        assert explicit.run(filled).output == str(bit)
+    for width, error in ((None, default_cap), (1, cap)):
+        with pytest.raises(esolangs.GeneratorCapError) as caught:
+            explicit.instantiate(restored, [1], truth_table="01", width=width)
+        assert caught.value is error
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        explicit.instantiate(changed, [1], truth_table="01", width=8)
+
 
 @pytest.mark.parametrize("layout", [{"width": 8}, {"balance": True}])
 def test_token_layout_keeps_the_custom_marker_in_portable_templates(layout) -> None:
