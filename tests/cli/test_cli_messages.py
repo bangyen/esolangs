@@ -220,13 +220,21 @@ def test_encode_template_refusal_points_to_cli_generation(capsys, language) -> N
     ]
 
 
-@pytest.mark.parametrize("bits", ["", "two"])
-def test_bad_bits_are_refused_before_synthesis(capsys, monkeypatch, bits) -> None:
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["", REFERENCE, "01"],
+        ["two", REFERENCE, "01"],
+        [REFERENCE, "01"],
+        ["--width", "2", REFERENCE, "01"],
+    ],
+)
+def test_bad_bits_are_refused_before_synthesis(capsys, monkeypatch, args) -> None:
     def unused(*_args, **_kwargs):
         pytest.fail("invalid --bits launched generation")
 
     monkeypatch.setattr(esolangs, "generate", unused)
-    out, err = _failure(["generate", "--bits", bits, REFERENCE, "01"], capsys)
+    out, err = _failure(["generate", "--bits", *args], capsys)
     assert out == ""
     assert "--bits must be a string of 0s and 1s" in err
 

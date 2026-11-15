@@ -192,6 +192,8 @@ class ExecutionController:
                 return "execution_timeout"
             if self._stop_requested():
                 return "breakpoint"
+            if deadline is not None and monotonic() >= deadline:
+                return "execution_timeout"
             if max_steps is not None and self._steps - start >= max_steps:
                 return "max_steps"
             self._take_step()

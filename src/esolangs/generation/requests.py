@@ -1,15 +1,28 @@
 """Typed requests crossing the generator/backend boundary."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from esolangs._dialect import Scalar
-from esolangs.exceptions import ArgumentError, ProgramError
+from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
 from esolangs.generation.template import TemplateLayout
 from esolangs.raster import Raster
 from esolangs.runtime._program import Program
 from esolangs.runtime.memory import repr_value
 
 type GeneratedProgram = Program | TemplateLayout
+
+
+def call_backend[**P, T](
+    hook: Callable[P, T], /, *args: P.args, **kwargs: P.kwargs
+) -> T:
+    """Expose a backend's value rejection through the public error family."""
+    try:
+        return hook(*args, **kwargs)
+    except EsolangError:
+        raise
+    except ValueError as error:
+        raise ArgumentError(str(error)) from error
 
 
 @dataclass(frozen=True, slots=True)

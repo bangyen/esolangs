@@ -8,9 +8,14 @@ import pytest
 
 import esolangs
 from esolangs import ProgramArtifact
+from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.template import InputSlot, TemplateLayout, layout_tokens
+from esolangs.generation.wrap import TokenWrapper
+from esolangs.registry import LANGUAGES
+from esolangs.registry._backend import TemplateSpec
 from tests.support.dialect_support import CASES
 from tests.support.evaluation import _evaluate
-from tests.support.pick import one
+from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
 
 
@@ -197,6 +202,185 @@ def test_portable_storage_preserves_compression_for_text_languages(
         restored = api.from_json(api.to_json(supplied))
         assert restored == expected
         assert api.run(restored).output == "\x02"
+
+
+def test_portable_generation_preserves_backend_laid_out_compression(
+    tmp_path: Path,
+) -> None:
+    original = LANGUAGES[REFERENCE]
+    limits = esolangs.TextLimits(plain_chars=3, generation_chars=3, gzip_bytes=100)
+    compressed = esolangs.CompressedText.from_chunks((",.",), limits=limits)
+
+    def emit(request: GenerationRequest) -> esolangs.CompressedText:
+        return compressed.wrapped(request.width)
+
+    backend = replace(original.backend, entrypoint=emit, layout_width=True, wrap=None)
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    record = api.generate("01", width=2)
+    restored = api.from_json(api.to_json(record))
+    expected = compressed.wrapped(2)
+    assert str(expected) == ",.\n"
+    assert restored == record
+    assert restored.source == expected
+    assert restored.input_arity == 1
+    path = tmp_path / "source.gz"
+    api.to_file(restored, path, gzip=True)
+    assert path.read_bytes() == expected.to_gzip()
+    for bit in (0, 1):
+        assert api.evaluate(restored, [bit]).answer == str(bit)
+
+
+def test_portable_generation_honors_a_compressed_balancer() -> None:
+    original = LANGUAGES[REFERENCE]
+    compressed = esolangs.CompressedText.from_chunks((",.",))
+    expected = esolangs.CompressedText.from_chunks((",.\n\n",))
+
+    def balance(request: BalanceRequest) -> esolangs.CompressedText:
+        assert request.source == compressed
+        return expected
+
+    backend = replace(
+        original.backend, entrypoint=lambda _: compressed, balance=balance
+    )
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    record = api.generate("01", balance=True)
+    restored = api.from_json(api.to_json(record))
+    assert restored == record
+    assert restored.source == expected
+    for bit in (0, 1):
+        assert api.evaluate(restored, [bit]).answer == str(bit)
+
+
+@pytest.mark.parametrize(
+    "language",
+    one_where(
+        lambda info: not LANGUAGES[info.name].runtime.file_newline,
+        boolean_generator=True,
+        width_effect="none",
+    ),
+)
+def test_portable_compression_leaves_newline_tokens_unchanged(language: str) -> None:
+    original = LANGUAGES[language]
+    backend = original.backend
+    assert backend is not None
+
+    def emit(request: GenerationRequest) -> esolangs.CompressedText:
+        source = backend.generate(request)
+        assert isinstance(source, str)
+        return esolangs.CompressedText.from_chunks((source,))
+
+    declared = replace(original, backend=replace(backend, entrypoint=emit))
+    api = esolangs.Catalog([declared]).bind(language)
+    expected = api.generate("01")
+    assert isinstance(expected.source, esolangs.CompressedText)
+    for options in ({"width": 1}, {"balance": True}):
+        restored = api.from_json(api.to_json(api.generate("01", **options)))
+        assert restored == expected
+        for bit in (0, 1):
+            assert api.evaluate(restored, [bit]).answer == str(bit)
+
+
+def _identity_layout(width: int | None = None, *, char: str = "$") -> TemplateLayout:
+    return layout_tokens(
+        ["+"] * 48 + [InputSlot(1), "."], width, char=char, separator=""
+    )
+
+
+def test_template_balancer_preserves_the_last_zero_width_slot() -> None:
+    original = LANGUAGES[REFERENCE]
+    layout = layout_tokens(["+" * 48 + ".", InputSlot(0)], separator="")
+
+    def balance(request: BalanceRequest) -> TemplateLayout:
+        assert isinstance(request.source, TemplateLayout)
+        (line,) = request.source.lines()
+        return line
+
+    backend = replace(
+        original.backend,
+        entrypoint=lambda _: layout,
+        template=TemplateSpec(pair=("", "")),
+        balance=balance,
+    )
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    record = api.generate("00", balance=True)
+    assert record == api.generate("00")
+    restored = api.from_json(api.to_json(record))
+    assert restored == record
+    assert restored.spans == ((49, 49),)
+    for bit in (0, 1):
+        assert api.evaluate(restored, [bit]).answer == "0"
+
+
+@pytest.mark.parametrize("source", ["", "+\n"])
+def test_template_layout_keeps_eof_slots_on_an_empty_line(source: str) -> None:
+    layout = layout_tokens([source, InputSlot(0)], separator="")
+    assert tuple(layout.lines()) == (
+        *TemplateLayout(source, ()).lines(),
+        TemplateLayout("", ((0, 0),)),
+    )
+
+
+def test_checked_portable_instantiation_uses_the_requested_native_width() -> None:
+    original = LANGUAGES[REFERENCE]
+
+    def emit(request: GenerationRequest) -> TemplateLayout:
+        width = None if request.width is None else max(1, request.width - 1)
+        return _identity_layout(width)
+
+    backend = replace(
+        original.backend,
+        entrypoint=emit,
+        template=TemplateSpec(pair=("x", "+")),
+        layout_width=True,
+        wrap=None,
+    )
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    record = api.generate("01", width=8)
+    restored = api.from_json(api.to_json(record))
+    assert isinstance(restored, esolangs.TemplateArtifact)
+    assert restored == record
+    assert max(map(len, restored.source.splitlines())) == 7
+    for bit in (0, 1):
+        filled = api.instantiate(restored, [bit], width=8, truth_table="01")
+        assert filled == restored.fill([bit])
+        assert api.run(filled).output == str(bit)
+
+
+@pytest.mark.parametrize("layout", [{"width": 8}, {"balance": True}])
+def test_token_layout_keeps_the_custom_marker_in_portable_templates(layout) -> None:
+    original = LANGUAGES[REFERENCE]
+    marker = "💡"
+    backend = replace(
+        original.backend,
+        entrypoint=lambda _: _identity_layout(char=marker),
+        template=TemplateSpec(pair=("x", "+"), char=marker),
+        wrap=TokenWrapper(r"[+.]"),
+    )
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    record = api.generate("01", **layout)
+    restored = api.from_json(api.to_json(record))
+    assert isinstance(restored, esolangs.TemplateArtifact)
+    assert restored == record
+    assert "\n" in restored.source
+    assert restored.bindings.char == marker
+    for bit in (0, 1):
+        filled = api.instantiate(restored, [bit], truth_table="01")
+        assert api.run(filled).output == str(bit)
+
+    relabeled = replace(
+        restored,
+        source=restored.source.replace(marker, "@"),
+        bindings=replace(restored.bindings, char="@"),
+    )
+    assert api.instantiate(relabeled, [0], truth_table="01") == restored.fill([0])
+    exchanged = replace(
+        relabeled,
+        source="@" + restored.source[1:],
+        spans=((0, 1),),
+    )
+    assert api.run(exchanged.fill([0])).output == "/"
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        api.instantiate(exchanged, [0], truth_table="01")
 
 
 def test_portable_compression_respects_raw_export_budget() -> None:

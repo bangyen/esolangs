@@ -42,6 +42,29 @@ def test_breakpoint_predicate_is_checked_once_at_a_stop() -> None:
     assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=4)) == "halted"
 
 
+def test_breakpoint_callback_cannot_start_a_command_after_deadline(monkeypatch) -> None:
+    now = [0.0]
+    monkeypatch.setattr("esolangs.runtime._controller.monotonic", lambda: now[0])
+    dbg = debugger_api.make_debugger(REFERENCE, "+.")
+    checks = []
+
+    def slow_false(vm):
+        checks.append(vm.ip)
+        now[0] += 2.0
+        return False
+
+    dbg.break_when(slow_false)
+    assert (
+        dbg.run(limits=esolangs.ExecutionLimits(execution_timeout=1))
+        == "execution_timeout"
+    )
+    assert checks == [0]
+    assert dbg.observation == esolangs.ExecutionResult("", 0, 0, 0, steps=0)
+    dbg.clear_breakpoints()
+    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "halted"
+    assert dbg.output == "\x01"
+
+
 def test_manual_steps_rearm_a_breakpoint_after_leaving_it() -> None:
     dbg = debugger_api.make_debugger(REFERENCE, "+[+]")
     dbg.break_at(2)

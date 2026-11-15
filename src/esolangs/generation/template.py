@@ -40,17 +40,25 @@ class TemplateLayout:
     def lines(self) -> Iterator["TemplateLayout"]:
         """Yield layouts for individual lines with offsets local to each line."""
         first = offset = 0
+        size = len(self.source)
         for line in self.source.splitlines(keepends=True):
             end = offset + len(line)
+            text = line.removesuffix("\n")
+            # A zero-width slot at EOF belongs to the last unterminated line.
+            boundary = end + 1 if end == size and text == line else end
             last = first
-            while last < len(self.spans) and self.spans[last][0] < end:
+            while last < len(self.spans) and self.spans[last][0] < boundary:
                 last += 1
             spans = tuple(
                 (start - offset, stop - offset)
                 for start, stop in self.spans[first:last]
             )
-            yield TemplateLayout(line.removesuffix("\n"), spans)
+            yield TemplateLayout(text, spans)
             first, offset = last, end
+        # A terminal newline or empty source can leave a slot on an empty line.
+        trailing = tuple((0, 0) for span in self.spans[first:] if span == (size, size))
+        if trailing:
+            yield TemplateLayout("", trailing)
 
     def tokens(self) -> Iterator[TemplateToken]:
         """Split only the literal fragments on whitespace."""

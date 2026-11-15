@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from functools import partial
+from functools import cache, partial
 from types import ModuleType
 from typing import Any, cast
 
@@ -37,6 +37,25 @@ from esolangs.runtime._source import ProgramSource, check_scale_for, effective_s
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
+
+
+@cache
+def _installed_plan_hooks() -> frozenset[tuple[str, str, str]]:
+    """Recognize the installed hook pairs whose native paths share a plan."""
+    from esolangs.registry._table import LANGUAGES
+
+    hooks = set()
+    for declaration in LANGUAGES.values():
+        runtime = declaration.runtime
+        if runtime.interpreter is not None:
+            hooks.add(
+                (
+                    runtime.interpreter,
+                    runtime.machine_preparation,
+                    runtime.completion_entrypoint,
+                )
+            )
+    return frozenset(hooks)
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,21 +167,31 @@ class PreparedProgram:
         io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     ) -> ExecutionOutcome:
         runtime = self.catalog.languages[self.language].runtime
-        if self._plan is None:
-            code, options = self._call(seed=seed)
-        else:
-            code, options = self.artifact.source, self._options(seed=seed)
-        runner: Callable[..., Any]
-        if isinstance(self._plan, RandomRuntimePlan):
-            runner = partial(_run_plan, self._plan.bind(options.get("rng")))
-        elif isinstance(self._plan, RuntimePlan):
-            runner = partial(_run_plan, self._plan)
-        else:
-            runner = runtime_hook(
-                self._module, self.language, runtime.completion_entrypoint
+        runner = runtime_hook(
+            self._module, self.language, runtime.completion_entrypoint
+        )
+        plan = self._plan
+        # A scoped hook can override either half of the installed runtime.
+        # The machine's parse plan must not replace that declared native runner.
+        if (
+            plan is not None
+            and (
+                runtime.interpreter,
+                runtime.machine_preparation,
+                runtime.completion_entrypoint,
             )
+            not in _installed_plan_hooks()
+        ):
+            plan = None
+        if plan is None:
+            code, options = self._call(seed=seed)
             if options:
                 runner = partial(runner, **options)
+        else:
+            code = self.artifact.source
+            if isinstance(plan, RandomRuntimePlan):
+                plan = plan.bind(self._options(seed=seed).get("rng"))
+            runner = partial(_run_plan, plan)
         return execute_prepared(
             self.language,
             runner,

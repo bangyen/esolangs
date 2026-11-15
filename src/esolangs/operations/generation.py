@@ -7,7 +7,7 @@ from math import isqrt
 from typing import cast
 
 from esolangs._bindings import check_setters, validate_spans
-from esolangs._dialect import Scalar
+from esolangs._dialect import DialectSchema, Scalar
 from esolangs.artifacts import (
     Artifact,
     ProgramArtifact,
@@ -28,6 +28,7 @@ from esolangs.generation.requests import (
     GeneratedProgram,
     GenerationRequest,
     Options,
+    call_backend,
 )
 from esolangs.generation.template import TemplateLayout, layout_fragments
 from esolangs.generation.token_balance import CELL_ASPECT
@@ -171,20 +172,14 @@ def generate(
     backend.check_arity(resolved, inputs)
     fn = backend.generate
     laid_out = width is not None and backend.layout_width
-    try:
-        schema = lang.runtime.dialect_schema
-        choices = (schema.defaults if schema is not None else {}) | options
-        generated = fn(
-            GenerationRequest(
-                truth_table,
-                width if laid_out else None,
-                Options(tuple(choices.items())),
-            )
-        )
-    except EsolangError:
-        raise
-    except ValueError as error:
-        raise ArgumentError(str(error)) from error
+    generated = call_backend(
+        fn,
+        GenerationRequest(
+            truth_table,
+            width if laid_out else None,
+            _backend_options(schema, options),
+        ),
+    )
     if isinstance(generated, TemplateLayout):
         if backend.template is None or lang.runtime.source_kind is SourceKind.RASTER:
             raise ProgramError(
@@ -194,7 +189,12 @@ def generate(
             if backend.wrap is wrap_chars and _character_slots(generated):
                 generated = wrap_character_slots(generated, width)
             elif isinstance(backend.wrap, TokenWrapper):
-                generated = backend.wrap.wrap_template(generated, width)
+                generated = call_backend(
+                    backend.wrap.wrap_template,
+                    generated,
+                    width,
+                    char=backend.template.char,
+                )
             else:
                 raise ProgramError(f"{resolved} requires a slot-aware wrapper")
         return _structured_template(
@@ -215,7 +215,10 @@ def generate(
         raise ProgramError(f"{resolved}'s template generator did not return slots")
     if isinstance(generated, CompressedText):
         return ProgramArtifact(
-            generated.wrapped(width), resolved, settings=settings, input_arity=inputs
+            generated if laid_out or backend.wrap is None else generated.wrapped(width),
+            resolved,
+            settings=settings,
+            input_arity=inputs,
         )
     if not isinstance(generated, str):
         raise ProgramError(f"{resolved}'s generator did not return text")
@@ -228,13 +231,9 @@ def generate(
 
 
 def _backend_options(
-    language: str, options: dict[str, Scalar], *, catalog: "Catalog | None" = None
+    schema: DialectSchema | None, options: dict[str, Scalar]
 ) -> Options:
     """Return complete choices for the selected backend request."""
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    schema = catalog.languages[catalog.resolve(language)].runtime.dialect_schema
     return Options(
         tuple(((schema.defaults if schema is not None else {}) | options).items())
     )
@@ -249,13 +248,16 @@ def _structured_template(
     catalog: Catalog,
 ) -> TemplateArtifact:
     """Preserve the backend's slot positions alongside its rendered source."""
-    text, char, pairs = render_template(
-        language_id, layout.source, inputs, catalog=catalog
+    text, char, pairs = call_backend(
+        render_template, language_id, layout.source, inputs, catalog=catalog
     )
+    bindings = TemplateBindings(char=char, setters=pairs)
+    if bindings.inputs != inputs:
+        raise ProgramError(f"{name}'s template must bind all {inputs} inputs")
     return TemplateArtifact(
         text,
         name,
-        TemplateBindings(char=char, setters=pairs),
+        bindings,
         settings=settings,
         spans=layout.spans,
     )
@@ -281,36 +283,41 @@ def _generate_balanced(
     backend = lang.backend
     assert backend is not None  # the default was generated above
     balancer = backend.balance
+    choices = _backend_options(lang.runtime.dialect_schema, options)
     if isinstance(source, CompressedText):
-        return ProgramArtifact(
-            source.wrapped(max(1, isqrt(CELL_ASPECT * len(source)))),
-            name,
-            settings=settings,
-            input_arity=inputs,
-        )
+        assert isinstance(default, ProgramArtifact)
+        if balancer is None:
+            if backend.wrap is None:
+                return default
+            balanced = source.wrapped(max(1, isqrt(CELL_ASPECT * len(source))))
+        else:
+            result = call_backend(
+                balancer,
+                BalanceRequest(truth_table, source, choices),
+            )
+            if not isinstance(result, CompressedText):
+                raise ProgramError(f"{name}'s balancer did not return CompressedText")
+            balanced = result
+        return replace(default, source=balanced)
     if isinstance(source, Raster):
         if balancer is None:
             return default
-        balanced = balancer(
-            BalanceRequest(
-                truth_table, source, _backend_options(lang.id, options, catalog=catalog)
-            )
+        result = call_backend(
+            balancer,
+            BalanceRequest(truth_table, source, choices),
         )
-        if not isinstance(balanced, Raster):
+        if not isinstance(result, Raster):
             raise ProgramError(f"{name}'s balancer did not return a Raster")
         return ProgramArtifact(
-            balanced, name, settings=settings, scale=1, input_arity=inputs
+            result, name, settings=settings, scale=1, input_arity=inputs
         )
     if balancer is not None:
         balance_source: GeneratedProgram = source
         if isinstance(default, TemplateArtifact) and default.spans is not None:
             balance_source = TemplateLayout(default.source, default.spans)
-        text = balancer(
-            BalanceRequest(
-                truth_table,
-                balance_source,
-                _backend_options(lang.id, options, catalog=catalog),
-            )
+        text = call_backend(
+            balancer,
+            BalanceRequest(truth_table, balance_source, choices),
         )
         if isinstance(text, TemplateLayout) and isinstance(default, TemplateArtifact):
             return _structured_template(
@@ -355,7 +362,9 @@ def _balance_template(
             balanced = balance_character_slots(layout)
             return replace(template, source=balanced.source, spans=balanced.spans)
         if isinstance(wrapper, TokenWrapper):
-            balanced = wrapper.balance_template(layout)
+            balanced = call_backend(
+                wrapper.balance_template, layout, char=template.bindings.char
+            )
             return replace(template, source=balanced.source, spans=balanced.spans)
     raise ProgramError(f"{name} requires a slot-aware balancer")
 
@@ -366,6 +375,7 @@ def _is_template_for(
     truth_table: str,
     settings: DialectSettings | None = None,
     *,
+    width: int | None = None,
     catalog: "Catalog | None" = None,
 ) -> bool:
     """Return whether ``template`` is what ``name`` generates for the table.
@@ -425,6 +435,8 @@ def _is_template_for(
 
     # Layouts may switch representations; their floor is a named candidate,
     # unlike whitespace wrapping, so compare that template exactly too.
+    if width_aware and width is not None and text == layout(width):
+        return True
     if width_aware and text == layout(1):
         return True
     # Reproduce a layout at its widest line. Arbitrary newlines can change
@@ -432,8 +444,12 @@ def _is_template_for(
     widest = max(map(len, text.splitlines()), default=0)
     if width_aware and widest and text == layout(widest):
         return True
-    if backend.same_layout is not None and backend.same_layout(text, plain, layout):
-        return True
+    if backend.same_layout is not None:
+        matches: object = call_backend(backend.same_layout, text, plain, layout)
+        if type(matches) is not bool:
+            raise ProgramError(f"{name}'s layout matcher did not return a boolean")
+        if matches:
+            return True
     try:
         balanced = generate(
             name, truth_table, balance=True, settings=settings, catalog=catalog
@@ -446,6 +462,32 @@ def _is_template_for(
         and template.spans == balanced.spans
         and template.bindings.setters == balanced.bindings.setters
     )
+
+
+def _stdin_template_error(name: str) -> TemplateError:
+    """Explain how to supply bits to a language that reads them at runtime."""
+    return with_hint(
+        TemplateError(
+            f"{name} reads its inputs rather than embedding them, "
+            "so there is nothing to instantiate"
+        ),
+        "run the generated program with stdin=encode_inputs(language, bits)",
+    )
+
+
+def _check_template_bits(
+    name: str, bits: list[int] | tuple[int, ...], inputs: int
+) -> list[int]:
+    """Validate a row before generating or filling its template."""
+    values = check_bits(bits, "bits")
+    try:
+        check_bit_count(values, inputs, f"{name} template")
+    except ArgumentError as error:
+        raise with_hint(
+            error,
+            f"pass exactly {inputs} integer bits to instantiate(), one per input",
+        ) from None
+    return values
 
 
 def instantiate(
@@ -501,13 +543,7 @@ def instantiate(
             "run the raster with stdin=encode_inputs(language, bits)",
         )
     if not catalog.languages[name].parameterized:
-        raise with_hint(
-            TemplateError(
-                f"{name} reads its inputs rather than embedding them, "
-                "so there is nothing to instantiate"
-            ),
-            "run the generated program with stdin=encode_inputs(language, bits)",
-        )
+        raise _stdin_template_error(name)
     if not isinstance(template, TemplateArtifact):
         raise with_hint(
             TemplateError(
@@ -518,9 +554,12 @@ def instantiate(
         )
     if resolve_origin(template.language, catalog=catalog) != name:
         raise TemplateError(f"template belongs to {template.language}, not {name}")
+    bits = _check_template_bits(name, bits, template.bindings.inputs)
     if truth_table is not None:
         truth_table = check_table_text(truth_table)
-        if not _is_template_for(template, name, truth_table, settings, catalog=catalog):
+        if not _is_template_for(
+            template, name, truth_table, settings, width=width, catalog=catalog
+        ):
             raise with_hint(
                 TemplateError(
                     f"this is not the template generate({name!r}, {truth_table!r}) "
@@ -529,17 +568,7 @@ def instantiate(
                 ),
                 "regenerate the template from the intended language and truth table",
             )
-    bits = check_bits(bits, "bits")
-    artifact = template
-    inputs = artifact.bindings.inputs
-    try:
-        check_bit_count(bits, inputs, f"{name} template")
-    except ArgumentError as error:
-        raise with_hint(
-            error,
-            f"pass exactly {inputs} integer bits to instantiate(), one per input",
-        ) from None
-    filled = artifact.fill(bits)
+    filled = template.fill(bits)
     program = wrap_program(
         filled.source, catalog.languages[name].id, width, catalog=catalog
     )

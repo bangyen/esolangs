@@ -456,6 +456,46 @@ def test_bare_width_does_not_consume_a_table_past_another_option(
     )
 
 
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (["--bits", "0", TEMPLATED, "0110"], "pass exactly 2 0/1 digits to --bits"),
+        (
+            ["--bits", "1", REFERENCE, "01"],
+            "hint: pipe input from esolangs encode-inputs",
+        ),
+        (["--gzip", _RASTER, "01"], "gzip export requires text; rasters use PNG"),
+        (["--bits", "1", _RASTER, "01"], "raster programs read bits from stdin"),
+        (["--bits", "1", TEMPLATED, "10x"], "truth table must contain"),
+    ],
+)
+def test_incompatible_generation_options_fail_before_building(
+    capsys, monkeypatch, args, message
+) -> None:
+    def unused(*_args, **_kwargs):
+        pytest.fail("incompatible generation options started synthesis")
+
+    monkeypatch.setattr(esolangs, "generate", unused)
+    output, error = _failure(["generate", *args], capsys)
+    assert not output
+    assert message in error
+
+
+def test_template_flags_preserve_width_and_operand_separator(capsys, tmp_path) -> None:
+    language = first(parameterized=True, answer_mode="output")
+    default = call_main(["generate", language, "01", "--width=7", "--bits=1"], capsys)
+    framed = call_main(
+        ["generate", "--bits", "1", "--width", "7", "--", language, "01"], capsys
+    )
+    assert framed == default
+    path = tmp_path / "program.txt"
+    path.write_text(framed, encoding="utf-8")
+    output = call_main(["run", language, str(path)], capsys)
+    assert esolangs.read_answer(language, output) == "1"
+    _, error = _failure(["generate", "--", "--bits", "01"], capsys)
+    assert "unknown language: --bits" in error
+
+
 def test_read_answer_treats_empty_output_as_a_program_failure(capsys) -> None:
     stdout, error = _failure(["read-answer", REFERENCE], capsys, code=1)
     assert stdout == ""

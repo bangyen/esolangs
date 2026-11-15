@@ -10,7 +10,9 @@ import pytest
 
 import esolangs
 from esolangs.generation.requests import GenerationRequest
+from esolangs.generation.template import TemplateLayout
 from esolangs.registry import LANGUAGES, _functions
+from esolangs.registry._backend import TemplateSpec
 from esolangs.registry._certification import load as load_certification
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._operations import OperationRef
@@ -110,6 +112,92 @@ def test_scoped_generator_hooks_raise_program_errors(
     )
     with pytest.raises(esolangs.ProgramError, match=message):
         bound.generate("01", **options)
+
+
+@pytest.mark.parametrize(
+    ("hook", "table", "options"),
+    [
+        ("entrypoint", "01", {}),
+        ("wrap", "01", {"width": 1}),
+        ("wrap", "01", {"balance": True}),
+        ("wrap_balance", "01", {"balance": True}),
+        ("balance", "01", {"balance": True}),
+        ("arity_guard", "0110", {}),
+    ],
+)
+@pytest.mark.parametrize("declared", [False, True])
+def test_generation_hooks_share_typed_value_errors(hook, table, options, declared):
+    original = LANGUAGES[REFERENCE]
+    fault = (
+        esolangs.TemplateError("backend refused request")
+        if declared
+        else ValueError("backend refused request")
+    )
+
+    def refuse(*_args):
+        raise fault
+
+    backend = dataclasses.replace(original.backend, max_inputs=1, **{hook: refuse})
+    bound = esolangs.Catalog([dataclasses.replace(original, backend=backend)]).bind(
+        REFERENCE
+    )
+    error = esolangs.TemplateError if declared else esolangs.ArgumentError
+    with pytest.raises(error, match="backend refused request") as caught:
+        bound.generate(table, **options)
+    assert (caught.value if declared else caught.value.__cause__) is fault
+
+
+def test_plain_reflow_keeps_the_declared_source_kind() -> None:
+    original = LANGUAGES[REFERENCE]
+    backend = dataclasses.replace(
+        original.backend, wrap=lambda *_args: esolangs.Raster((((0, 0, 0),),))
+    )
+    bound = esolangs.Catalog([dataclasses.replace(original, backend=backend)]).bind(
+        REFERENCE
+    )
+    for options in ({"width": 1}, {"balance": True}):
+        with pytest.raises(esolangs.ProgramError, match="wrapper did not return text"):
+            bound.generate("01", **options)
+
+
+def test_template_hooks_validate_bindings_and_rows() -> None:
+    original = LANGUAGES[REFERENCE]
+    calls = []
+
+    def emit(request):
+        calls.append(request.table)
+        return TemplateLayout("$.", ((0, 1),))
+
+    def refuse(*_args):
+        raise ValueError("template hook refused request")
+
+    backend = dataclasses.replace(
+        original.backend,
+        entrypoint=emit,
+        wrap=None,
+        same_layout=refuse,
+        template=TemplateSpec(setters=lambda *_args: (("+", "-"),)),
+    )
+    declaration = dataclasses.replace(original, backend=backend)
+    bound = esolangs.Catalog([declaration]).bind(REFERENCE)
+    with pytest.raises(esolangs.ProgramError, match="bind all 2 inputs"):
+        bound.generate("0110")
+    template = bound.generate("01")
+    calls.clear()
+    for bits in ([0, 1], [2]):
+        with pytest.raises(esolangs.ArgumentError, match=r"bits|inputs"):
+            bound.instantiate(template, bits, truth_table="01")
+    assert not calls
+    different = dataclasses.replace(template, source="$+.")
+    with pytest.raises(esolangs.ArgumentError, match="template hook refused request"):
+        bound.instantiate(different, [0], truth_table="01")
+
+    broken = dataclasses.replace(backend, template=TemplateSpec(setters=refuse))
+    bound = esolangs.Catalog([dataclasses.replace(declaration, backend=broken)]).bind(
+        REFERENCE
+    )
+    with pytest.raises(esolangs.ArgumentError, match="template hook refused request"):
+        bound.generate("01")
 
 
 def test_scoped_dialect_keeps_declared_hook_errors() -> None:

@@ -321,9 +321,9 @@ def _limit_memory(max_memory: int) -> None:
 
 def _check_worker_runtime(name: str, catalog: Catalog) -> None:
     """Refuse scoped declarations that the fresh worker cannot reproduce."""
-    from esolangs.registry._catalog import get_catalog
+    from esolangs.registry._table import LANGUAGES
 
-    default = get_catalog().languages.get(name)
+    default = LANGUAGES.get(name)
     selected = catalog.languages[name]
     if (
         default is None

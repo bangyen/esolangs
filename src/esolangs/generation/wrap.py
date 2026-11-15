@@ -19,6 +19,9 @@ from dataclasses import dataclass
 from math import isqrt
 from typing import TYPE_CHECKING
 
+from esolangs._bindings import TEMPLATE_CHAR
+from esolangs.exceptions import ProgramError
+from esolangs.generation.requests import call_backend
 from esolangs.generation.template import (
     InputSlot,
     TemplateLayout,
@@ -228,13 +231,24 @@ class TokenWrapper:
             tokens.extend(literal)
         return tokens
 
-    def wrap_template(self, layout: TemplateLayout, width: int) -> TemplateLayout:
+    def wrap_template(
+        self, layout: TemplateLayout, width: int, *, char: str = TEMPLATE_CHAR
+    ) -> TemplateLayout:
         """Fold between complete tokens, including the template's slots."""
         tokens = self._template_tokens(layout)
-        return layout if tokens is None else layout_tokens(tokens, width, separator="")
+        return (
+            layout
+            if tokens is None
+            else layout_tokens(tokens, width, char=char, separator="")
+        )
 
     def fit_template(
-        self, layout: TemplateLayout, *, minimum: int = 1, maximum: int | None = None
+        self,
+        layout: TemplateLayout,
+        *,
+        minimum: int = 1,
+        maximum: int | None = None,
+        char: str = TEMPLATE_CHAR,
     ) -> TemplateLayout:
         """Choose a token fit while preserving each input slot."""
         tokens = self._template_tokens(layout)
@@ -248,11 +262,13 @@ class TokenWrapper:
             minimum=minimum,
             maximum=maximum,
         )
-        return layout_tokens(tokens, width, separator="")
+        return layout_tokens(tokens, width, char=char, separator="")
 
-    def balance_template(self, layout: TemplateLayout) -> TemplateLayout:
+    def balance_template(
+        self, layout: TemplateLayout, *, char: str = TEMPLATE_CHAR
+    ) -> TemplateLayout:
         """Compare the original and the fitted layout."""
-        fitted = self.fit_template(layout)
+        fitted = self.fit_template(layout, char=char)
         return min(
             layout, fitted, key=lambda candidate: balance_score(candidate.source)
         )
@@ -303,7 +319,15 @@ def wrap_program(
         return program
     if "\n" in program and not backend.wrap_multiline:
         return program
-    return backend.wrap(program, width)
+    wrapped = call_backend(backend.wrap, program, width)
+    return _wrapped_text(wrapped, language_id)
+
+
+def _wrapped_text(result: object, language_id: str) -> str:
+    """Require text from a declared source reflow."""
+    if not isinstance(result, str):
+        raise ProgramError(f"{language_id}'s wrapper did not return text")
+    return str.__str__(result)
 
 
 def balance_width(program: str) -> int:
@@ -359,7 +383,8 @@ def _balance_line(
     if backend is None:
         return None
     if backend.wrap_balance is not None:
-        return backend.wrap_balance(program)
+        balanced = call_backend(backend.wrap_balance, program)
+        return _wrapped_text(balanced, language_id)
     wrapper = backend.wrap
     if wrapper is wrap_space_delimited:
         return _token_fit(program, program.split(), " ")

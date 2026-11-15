@@ -89,7 +89,7 @@ from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError, ProgramError
 from esolangs.operations.boolean_io import _answer_codec
 from esolangs.raster import png
-from esolangs.registry import LANGUAGES, LanguageDeclaration, get_catalog, resolve
+from esolangs.registry import LANGUAGES, LanguageDeclaration, SourceKind, get_catalog
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
 from esolangs.registry._describe import _catalog_facts, _spec, _width_effect
 from esolangs.runtime._json import record_dumps
@@ -324,6 +324,30 @@ def _emit(artifact: Artifact, *, plain: bool, gzip: bool = False) -> None:
         )
 
 
+def _generation_bits(
+    declaration: LanguageDeclaration, table: str, bits: str | None, *, gzip: bool
+) -> list[int] | None:
+    """Validate requests that can be refused without constructing source."""
+    raster = declaration.runtime.source_kind is SourceKind.RASTER
+    if not declaration.has_backend or (bits is None and not (gzip and raster)):
+        return None
+    from esolangs.generation.helpers import _validate_truth_table
+
+    inputs = _validate_truth_table(table)
+    if bits is None:
+        _fail("gzip export requires text; rasters use PNG")
+    if raster:
+        _fail("raster programs read bits from stdin and cannot be instantiated")
+    from esolangs.operations.generation import (
+        _check_template_bits,
+        _stdin_template_error,
+    )
+
+    if not declaration.parameterized:
+        raise _stdin_template_error(declaration.name)
+    return _check_template_bits(declaration.name, [int(bit) for bit in bits], inputs)
+
+
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     from esolangs import generate, instantiate
@@ -342,6 +366,9 @@ def _generate(rest: list[str]) -> None:
     scale = _scale_of(options)
     if balance and width is not None:
         _fail("--balance and --width are mutually exclusive")
+    bits = options.get("--bits")
+    if bits is not None and (not bits or set(bits) - {"0", "1"}):
+        _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
     rest = _split_positional(
         rest,
         set(),
@@ -349,42 +376,41 @@ def _generate(rest: list[str]) -> None:
     )
     eaten = _eaten_width_note(before) if width is not None and not bare else ""
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
-    settings = _settings_of(options, set_pairs, language=rest[0])
-    bits = options.get("--bits")
-    if bits is not None and (not bits or set(bits) - {"0", "1"}):
-        _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
+    language, table = rest
+    settings = _settings_of(options, set_pairs, language=language)
+    catalog = get_catalog()
     try:
+        declaration = catalog.languages[catalog.resolve(language)]
+        row = _generation_bits(declaration, table, bits, gzip=gzip)
         # Widthed at both ends, and that is not a mistake.  ``generate``
         # wraps the template (or hands the width to a *layout* language,
         # which lays it out), and ``instantiate`` wraps a program
         # filled from an unwrapped template; a wrapped one fills in place.
         artifact = generate(
-            rest[0],
-            rest[1],
+            language,
+            table,
             width=width,
             balance=balance,
             scale=scale or 1,
             settings=settings,
+            catalog=catalog,
         )
-        if bits is not None:
-            if isinstance(artifact.source, Raster):
-                _fail("raster programs read bits from stdin and cannot be instantiated")
+        if row is not None:
             artifact = instantiate(
-                rest[0],
+                language,
                 artifact,
-                [int(b) for b in bits],
+                row,
                 width=width,
                 settings=settings,
+                catalog=catalog,
             )
         program = artifact.source
-        if gzip and isinstance(program, Raster):
-            _fail("gzip export requires text; rasters use PNG")
         if isinstance(program, CompressedText) and "--plain" in flags:
             program.plain_chunks()  # Check the export budget before writing anything.
     except EsolangError as exc:
-        _fail(_generate_hint(exc, rest[0], rest[1]))
+        _fail(_generate_hint(exc, language, table))
     if (width is not None or bare or balance) and _layout_ignored(
-        LANGUAGES[artifact.language], balance=balance
+        declaration, balance=balance
     ):
         _diagnostic(
             f"note: {'--balance' if balance else '--width'} has no effect on "

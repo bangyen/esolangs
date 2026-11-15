@@ -13,6 +13,7 @@ from esolangs.generation.requests import (
     BalanceRequest,
     GeneratedProgram,
     GenerationRequest,
+    call_backend,
 )
 from esolangs.registry._functions import FunctionRef
 from esolangs.registry._operations import OperationRef
@@ -96,7 +97,7 @@ class BooleanBackend:
         if cap is None or inputs <= cap:
             return
         if self.arity_guard is not None:
-            self.arity_guard(inputs)
+            call_backend(self.arity_guard, inputs)
         raise GeneratorCapError(
             f"{language} declares max-inputs={_argument_repr(cap)}, "
             f"got {_argument_repr(inputs)} inputs"
