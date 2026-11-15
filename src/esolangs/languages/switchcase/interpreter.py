@@ -52,6 +52,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.switchcase.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -222,6 +223,7 @@ class _Machine:
         self.io = io
         self.cases = _parse(code) if isinstance(code, str) else code
         self.state: _State = (0, None, 0, (("_", 0),))
+        self._input_retry = RejectedInput()
 
     @property
     def halted(self) -> bool:
@@ -241,12 +243,12 @@ class _Machine:
         case, branch, command, environment = self.state
         return _WORKSPACE_MODEL.capture(
             activation=(case, branch, command, frozenset(environment)),
-            input_cursor=self.io.progress(),
+            input_cursor=self._input_retry.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.state, self.io.progress())
+        return self._input_retry.snapshot((self.state, self.io.progress()))
 
     def step(self) -> None:
         if self.halted:
@@ -260,7 +262,7 @@ class _Machine:
                 if op == ",":
                     value = self.io.input_char()
                 elif op == "#":
-                    value = self.io.input_num()
+                    value = self._input_retry.read(self.io, self.io.input_num)
         self.state, out = _advance(self.state, self.cases, value)
         if out is not None:
             self.io.print_str(out)

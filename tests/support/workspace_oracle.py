@@ -164,13 +164,19 @@ def agrees(
     *,
     context=None,
     rejected_input=None,
+    rejected_halt=None,
     **options,
 ):
     factory, code, stdin = execution
     model, parts = workspace
     status, trace = expected
-    if status == "argument" and rejected_input is not None:
-        parts = _rejected_parts(parts, trace[-1], rejected_input(trace, stdin))
+    rejected = (
+        rejected_input
+        if status == "argument"
+        else (rejected_halt if status == "halt" else None)
+    )
+    if rejected is not None and (details := rejected(trace, stdin)) is not None:
+        parts = _rejected_parts(parts, trace[-1], details)
     checked = workspace_view(trace, model, parts, state)
     assert observed(factory, code, stdin, checked, **options) == expected, (
         (code, stdin) if context is None else context

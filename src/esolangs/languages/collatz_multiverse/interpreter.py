@@ -39,10 +39,10 @@ from bisect import bisect_left
 from collections.abc import Mapping
 from typing import Any, cast
 
-from esolangs.exceptions import ArgumentError
 from esolangs.languages.collatz_multiverse.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -154,22 +154,6 @@ def _prepare_source(code: str) -> tuple[_Line, ...]:
     return tuple(parsed)
 
 
-type _InputFault = tuple[
-    type[ArgumentError], tuple[object, ...], str, tuple[str, ...], BaseException | None
-]
-
-
-def _capture_input_fault(error: ArgumentError) -> _InputFault:
-    """Keep the diagnostic before a caller attaches its own evidence."""
-    return (
-        type(error),
-        error.args,
-        str(error),
-        tuple(getattr(error, "__notes__", ())),
-        error.__cause__,
-    )
-
-
 class _Machine:
     """Per-run Collatz Multiverse state: registers, arrays, and the pointer."""
 
@@ -181,7 +165,7 @@ class _Machine:
         # ``negativeOne`` starts at -1; every other name starts at 0.
         self.state: _State = (1, (("negativeOne", -1),), ())
         self._line_inputs: list[int] = []
-        self._input_fault: _InputFault | None = None
+        self._rejected_input = RejectedInput()
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -245,9 +229,9 @@ class _Machine:
         return state if pending is None else (*state, pending)
 
     def _pending_input(self) -> tuple[tuple[int, ...], str | None] | None:
-        if self._line_inputs or self._input_fault is not None:
-            fault = self._input_fault
-            return tuple(self._line_inputs), None if fault is None else fault[2]
+        fault = self._rejected_input.details
+        if self._line_inputs or fault is not None:
+            return tuple(self._line_inputs), None if fault is None else fault[1]
         return None
 
     def step(self) -> None:
@@ -262,21 +246,10 @@ class _Machine:
 
     def _collect_reads(self, line: _Line) -> tuple[int, ...]:
         """Read the remaining operands, retaining accepted input until commit."""
-        if self._input_fault is not None:
-            kind, args, _, notes, cause = self._input_fault
-            retry = BaseException.__new__(kind, *args)
-            for note in notes:
-                retry.add_note(note)
-            raise retry from cause
         while len(self._line_inputs) < line.count("input"):
-            before = self.io.progress()
-            try:
-                self._line_inputs.append(self.io.input_num())
-            except ArgumentError as error:
-                # Only a consumed token fixes this operand's failure.
-                if self.io.progress() != before:
-                    self._input_fault = _capture_input_fault(error)
-                raise
+            self._line_inputs.append(
+                self._rejected_input.read(self.io, self.io.input_num)
+            )
         return tuple(self._line_inputs)
 
 

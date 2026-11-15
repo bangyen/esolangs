@@ -49,6 +49,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.creativescript_v2.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -178,6 +179,7 @@ class _Machine:
         )
         self.state: _State = (None,) * count
         self.cursor = 0
+        self._input_retry = RejectedInput()
 
     @property
     def halted(self) -> bool:
@@ -198,18 +200,22 @@ class _Machine:
         return _WORKSPACE_MODEL.capture(
             variables=tuple(self.state),
             instruction=self.cursor,
-            input_cursor=self.io.progress(),
+            input_cursor=self._input_retry.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         # The names are fixed by the program, so slots carry the run state.
-        return (self.state, self.cursor, self.io.progress())
+        return self._input_retry.snapshot((self.state, self.cursor, self.io.progress()))
 
     def step(self) -> None:
         if self.halted:
             return
         command = self.program[self.cursor]
-        byte = self.io.input_num() if command[0] == "in!" else None
+        byte = (
+            self._input_retry.read(self.io, self.io.input_num)
+            if command[0] == "in!"
+            else None
+        )
         self.state, out = _advance(self.state, command, byte)
         if out is not None:
             self.io.print_str(out)

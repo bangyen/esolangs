@@ -48,10 +48,11 @@ from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Any
 
-from esolangs.exceptions import ArgumentError, HaltError
+from esolangs.exceptions import HaltError
 from esolangs.languages.movesum.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -144,26 +145,6 @@ def _prepare_source(code: str) -> _Image:
     return tuple(pairs), tuple(commands)
 
 
-type _InputFault = tuple[
-    type[ArgumentError | HaltError],
-    tuple[object, ...],
-    str,
-    tuple[str, ...],
-    BaseException | None,
-]
-
-
-def _capture_input_fault(error: ArgumentError | HaltError) -> _InputFault:
-    """Keep the diagnostic before a caller attaches its own evidence."""
-    return (
-        type(error),
-        error.args,
-        str(error),
-        tuple(getattr(error, "__notes__", ())),
-        error.__cause__,
-    )
-
-
 class _Machine:
     """The seeded array, the cursor, and the unchanged-command count."""
 
@@ -176,7 +157,7 @@ class _Machine:
         )
         self.state: _State | None = None
         self._seed_inputs: list[int] = []
-        self._input_fault: _InputFault | None = None
+        self._rejected_input = RejectedInput()
 
     @property
     def halted(self) -> bool:
@@ -230,35 +211,24 @@ class _Machine:
     def _pending_input(
         self,
     ) -> tuple[tuple[int, ...], tuple[str, str] | None] | None:
-        fault = self._input_fault
+        fault = self._rejected_input.details
         if self._seed_inputs or fault is not None:
             return tuple(self._seed_inputs), None if fault is None else (
-                fault[0].__name__,
-                fault[2],
+                fault[0],
+                fault[1],
             )
         return None
 
     def _number(self) -> int:
-        if self._input_fault is not None:
-            kind, args, _, notes, cause = self._input_fault
-            retry = BaseException.__new__(kind, *args)
-            for note in notes:
-                retry.add_note(note)
-            raise retry from cause
-        before = self.io.progress()
         try:
-            number = self.io.input_num()
+            number = self._rejected_input.read(self.io, self.io.input_num)
         except EOFError:
             return 0
-        except ArgumentError as error:
-            if self.io.progress() != before:
-                self._input_fault = _capture_input_fault(error)
-            raise
         if number < 0:
             rejection = HaltError(
                 f"negative input {format_integer(number)} in an unsigned array"
             )
-            self._input_fault = _capture_input_fault(rejection)
+            self._rejected_input.remember(rejection)
             raise rejection
         return number
 

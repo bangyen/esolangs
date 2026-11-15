@@ -3,14 +3,13 @@
 import itertools
 import random
 import re
-import sys
 
 import pytest
 
 from esolangs.languages.carp.interpreter import _Machine
 from tests.support import workspace_oracle as workspace
 from tests.support.model_input import decimal_value as _decimal
-from tests.support.model_input import token_span
+from tests.support.model_input import rejected_integer, token_span
 
 _WORKSPACE = workspace.workspace_model("carp-v1", "instruction registers input_cursor")
 
@@ -42,11 +41,7 @@ def _number(stdin, cursor):
     if not digits or any(c not in "0123456789" for c in digits):
         return 0, cursor, "argument"
     value = _decimal(token)
-    if 0 <= value <= 15:
-        return value, cursor, None
-    limit = sys.get_int_max_str_digits()
-    error = "syntax" if limit and abs(value) >= 10**limit else "halt"
-    return value, cursor, error
+    return value, cursor, None if 0 <= value <= 15 else "halt"
 
 
 def _model(source, stdin):
@@ -98,10 +93,19 @@ def _model(source, stdin):
     return error, trace
 
 
+def _rejected_range(rows, stdin):
+    token = stdin[: rows[-1][-1]].split()[-1]
+    digits = ("-" if token.startswith("-") else "") + token.lstrip("+-0")
+    message = f"input {digits} does not fit a 4-bit register"
+    return "HaltError", message, ("hint: supply an integer from 0 to 15",)
+
+
 _agrees = workspace.checker(
     _model,
     (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
     lambda m: (*m.state, tuple(m.registers)),
+    rejected_input=rejected_integer,
+    rejected_halt=_rejected_range,
 )
 
 
@@ -141,13 +145,8 @@ def check_raw_carp():
     results = [
         _agrees(_Machine, source, stdin) for source in corpus for stdin in inputs
     ]
-    assert {error for error, _ in results} == {
-        None,
-        "syntax",
-        "input",
-        "argument",
-        "halt",
-    }
+    statuses = {None, "syntax", "input", "argument", "halt"}
+    assert {error for error, _ in results} == statuses
     assert any(not trace[-1][1] for error, trace in results if not error)
     _agrees(_Machine, "OUT r1 " + "0" * 4301, "")
     _agrees(_Machine, "INP r1 0", "0" * 4301 + "1")

@@ -8,7 +8,7 @@ from struct import pack
 
 import pytest
 
-from esolangs.exceptions import HaltError
+from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.one_i.interpreter import _Machine, _text, run
 from esolangs.languages.one_i.tests.oracle_checks import _text as reference_text
 from esolangs.runtime import _isolated
@@ -18,6 +18,7 @@ from scripts.benchmark import WrittenState
 from tests.interpreters.runner import native_runner
 from tests.support.certification_barrier import guarded_worker
 from tests.support.execution import termination_observed
+from tests.support.vm_support import assert_rejected_input_retry
 
 TRUTH = "[$$[(:p)i?]i?][$$p]C:)ii*+?"
 
@@ -205,3 +206,27 @@ def test_bytes_take_the_imaginary_part_from_256() -> None:
 def test_zero_to_a_non_integer_power_halts() -> None:
     with pytest.raises(HaltError):
         _run("DD^", "0\n-0.5\n")
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("command", "stdin", "valid", "position", "error_type"),
+    [
+        ("B", "oops 7", "7", 4, ArgumentError),
+        ("C", "oops 7", "7", 4, HaltError),
+        ("D", "oops\n7 + 2i", "7 + 2i", 5, HaltError),
+    ],
+)
+def test_rejected_numeric_input_survives_retry(
+    command, stdin, valid, position, error_type
+):
+    assert_rejected_input_retry(
+        "1 + i",
+        command + "p",
+        stdin,
+        valid,
+        valid,
+        position=position,
+        reads=1,
+        error_type=error_type,
+    )

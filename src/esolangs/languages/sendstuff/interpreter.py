@@ -56,11 +56,13 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.sendstuff.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 
 _MAX_CHAR = 0x10FFFF
 _COMMANDS = frozenset(
@@ -216,7 +218,7 @@ def _command(code: str, pos: int) -> tuple[str, int, int]:
     param = _PARAM.match(code, word.end())
     if param is None:
         return word.group(), 0, word.end()
-    return word.group(), int(param.group(1)), param.end()
+    return word.group(), parse_integer(param.group(1)), param.end()
 
 
 def _parse(code: str) -> _Program:
@@ -360,12 +362,13 @@ def _advance(
     if command == "Output":
         if value > _MAX_CHAR:
             raise HaltError(
-                f"SendStuff Output received {value}, outside 0..{_MAX_CHAR}",
+                f"SendStuff Output received {format_integer(value)}, "
+                f"outside 0..{_MAX_CHAR}",
                 hint="send Output a character code between 0 and 1114111",
             )
         out = chr(value)
     elif command == "OutputNumber":
-        out = str(value)
+        out = format_integer(value)
     sent = _receive(command, program.params[target], value, got)
     if sent[2] and program.targets[target]:
         rest = ((target, sent, 0, 0), rest)
@@ -385,6 +388,7 @@ class _Machine:
         self.program = _parse(code) if isinstance(code, str) else code
         root: _State = ((0, (0, 0, 1), 0, 0), None)
         self.state = root if self.program.targets[0] else None
+        self._rejected = RejectedInput()
 
     @property
     def halted(self) -> bool:
@@ -417,12 +421,12 @@ class _Machine:
             frames.append(frame)
         return _WORKSPACE_MODEL.capture(
             frames=tuple(frames),
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.state, self.io.progress())
+        return self._rejected.snapshot((self.state, self.io.progress()))
 
     def step(self) -> None:
         """Deliver one send, reading first if the receiver is an input node."""
@@ -435,12 +439,15 @@ class _Machine:
             if command == "Input":
                 got = self.io.input_char()
             elif command == "InputNumber":
-                got = self.io.input_num()
+                got = self._rejected.read(self.io, self.io.input_num)
                 if got < 0:
-                    raise HaltError(
-                        f"SendStuff InputNumber read {got}; numbers are non-negative",
+                    error = HaltError(
+                        f"SendStuff InputNumber read {format_integer(got)}; "
+                        "numbers are non-negative",
                         hint="supply a non-negative decimal integer",
                     )
+                    self._rejected.remember(error)
+                    raise error
         except EOFError:
             got = None
         self.state, out = _advance(self.state, self.program, got)

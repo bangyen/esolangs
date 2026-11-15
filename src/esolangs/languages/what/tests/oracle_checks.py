@@ -12,6 +12,7 @@ from esolangs.languages.what.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed, overread, stalled
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import rejected_integer
 
 from .full_oracle import _assemble, _Case, _cases, _Guard, _metadata, _model, _parts
 
@@ -110,32 +111,53 @@ def _view(machine, case):
 
 
 def _cycle(machine):
-    pc, pointer, integers, strings, cursor = machine.snapshot()
+    pc, pointer, integers, strings, cursor, *rejected = machine.snapshot()
     return (
         pc,
         pointer,
         tuple(v for chunk in integers for v in chunk),
         tuple(v for chunk in strings for v in chunk),
         cursor,
+        *rejected,
     )
 
 
+def _rejection(case, status, rows):
+    if status == "argument":
+        return rejected_integer(rows, case.stdin)
+    op = case.operations[rows[-1][0][0]]
+    if op.kind != "in":
+        return None
+    start, stop = rows[-2][-1], rows[-1][-1]
+    text = case.stdin[start:stop]
+    if op.argument == 3:
+        return "HaltError", "What!?: a string exceeds 256 characters", ()
+    number = ord(text) if op.argument == 1 else int(text)
+    return "HaltError", f"What!?: input {number} does not fit 16 bits", ()
+
+
 def _check_case(factory, case):
-    expected = _model(case)
-    pending = iter(expected[1])
-    held = []
+    status, rows = expected = _model(case)
+    pending, held = iter(rows), []
+    rejection = (
+        _rejection(case, status, rows) if status in ("argument", "halt") else None
+    )
+    parts = (
+        workspace._rejected_parts(_parts, rows[-1], rejection) if rejection else _parts
+    )
 
     def view(machine):
         row = next(pending)
         state = _view(machine, case)
         assert state == row[0]
-        assert _cycle(machine) == (*row[0][:4], row[-1])
+        suffix = (rejection,) if row is rows[-1] and rejection else ()
+        assert _cycle(machine) == (*row[0][:4], row[-1], *suffix)
         snap = machine.snapshot()
         held.append((snap, hash(snap)))
         assert all(hash(saved) == digest for saved, digest in held)
         return state
 
-    checked = workspace.workspace_view(expected[1], _WORKSPACE, _parts, view)
+    checked = workspace.workspace_view(rows, _WORKSPACE, parts, view)
     assert observed(factory, case.source, case.stdin, checked, cap=128) == expected, (
         case.source
     )
@@ -160,19 +182,10 @@ def _extra_cases():
         _assemble((("in", 2), ("out", 2)), text)
         for text in ("  +65\nQ", "0" * 5000 + "65\nQ", "-1", "70000", "٦٥", "6_5")
     )
+    echo = (("in", 1), ("out", 2))
     cases.extend(
         (
-            _assemble(
-                (
-                    ("num", 5),
-                    ("in", 1),
-                    ("out", 2),
-                    ("in", 1),
-                    ("out", 2),
-                    ("in", 1),
-                    ("out", 2),
-                )
-            ),
+            _assemble((("num", 5), *echo, *echo, *echo)),
             _assemble((("str", "a"), ("in", 3), ("out", 3)), "\r\nQ"),
             _assemble((("in", 3),), "x" * 257),
             _assemble((("in", 1),), "𐀀"),
@@ -194,21 +207,8 @@ def _extra_cases():
         )
         for operators in ("<", "<;")
     )
-    cases.extend(
-        _Case(source, "unread", None)
-        for source in (
-            '"a',
-            "'a",
-            "(",
-            ")",
-            "[1:",
-            "[:]",
-            "[1]",
-            "[1::]",
-            "65536",
-            '"\\t"',
-        )
-    )
+    malformed = ('"a', "'a", "(", ")", "[1:", "[:]", "[1]", "[1::]", "65536", '"\\t"')
+    cases.extend(_Case(source, "unread", None) for source in malformed)
     return cases
 
 

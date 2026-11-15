@@ -4,6 +4,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import InputExhaustedError, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.super_snusp import interpreter as native
 from esolangs.languages.super_snusp.generator import super_snusp
@@ -13,7 +14,10 @@ from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_
 from tests.interpreters.runner import run_program
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_halts_with_hint
-from tests.support.vm_support import assert_one_row_moves_along_it
+from tests.support.vm_support import (
+    assert_one_row_moves_along_it,
+    assert_rejected_input_retry,
+)
 
 
 def run_super(program: str, stdin: str = "") -> str:
@@ -113,6 +117,21 @@ def test_byte_output_preserves_the_cell(value: int) -> None:
 def test_decimal_io_and_output() -> None:
     _check_accumulator_arithmetic()
     assert run_super('"@#', "-42\n") == "-42"
+
+
+def test_rejected_numeric_input_stays_at_the_port() -> None:
+    source = '"@#'
+    assert_rejected_input_retry(
+        "Super SNUSP", source, "oops 7", "7", "7", position=4, reads=1, prefix=1
+    )
+    debugger = Language("Super SNUSP").make_debugger(source)
+    debugger.step()
+    boundary = debugger.snapshot()
+    for attempts in (1, 2):
+        with pytest.raises(InputExhaustedError):
+            debugger.step()
+        assert debugger.snapshot() == boundary
+        assert debugger.observation.input_past_end == attempts
 
 
 @pytest.mark.parametrize(

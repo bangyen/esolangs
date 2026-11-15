@@ -4,6 +4,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import ArgumentError, ExecutionLimits, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.sendstuff import interpreter as native
 from esolangs.languages.sendstuff.interpreter import _Machine, run
@@ -11,6 +12,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_input_retry
 
 #: The wiki's Hello world: its closing parentheses are left off, so each
 #: ``Add`` is a child of the one before and the deltas accumulate.
@@ -205,3 +207,39 @@ class TestContract(EmptyProgramContract, CycleContract):
     machine = _machine
     halting_program = ">(Constant 3 >(CountDown >(Add 1)))"
     looping_program = ">a(Add 0 >a)"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("token", "error_type"),
+    [
+        ("oops", ArgumentError),
+        ("-3", HaltError),
+        pytest.param("-1" + "0" * 5000, HaltError, id="large-range-rejection"),
+    ],
+)
+def test_numeric_input_rejection_survives_retry(token, error_type) -> None:
+    assert_rejected_input_retry(
+        "SendStuff",
+        ">r(InputNumber >(Multiply 2 >(OutputNumber)) >r)",
+        f"{token} 7",
+        "7",
+        "14",
+        position=len(token),
+        reads=1,
+        error_type=error_type,
+    )
+
+
+def test_wide_decimal_values_are_accepted_by_numeric_output() -> None:
+    api = Language("SendStuff")
+    wide = "1" + "0" * 5000
+    limits = ExecutionLimits(max_steps=2)
+    assert api.run(f">(Constant {wide} >(OutputNumber))", limits=limits).output == wide
+    assert (
+        api.run(">(InputNumber >(OutputNumber))", stdin=wide, limits=limits).output
+        == wide
+    )
+    with pytest.raises(HaltError, match=f"Output received {wide}, outside 0"):
+        api.run(">(InputNumber >(Output))", stdin=wide, limits=limits)
+    assert api.run(">(InputNumber >(Output))", stdin="65", limits=limits).output == "A"

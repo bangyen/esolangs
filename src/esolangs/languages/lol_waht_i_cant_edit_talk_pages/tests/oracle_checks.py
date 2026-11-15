@@ -7,15 +7,10 @@ from decimal import Decimal
 import pytest
 
 from esolangs.languages.lol_waht_i_cant_edit_talk_pages.interpreter import _Machine
-from tests.support.model_input import token_span
-from tests.support.workspace_oracle import (
-    charged_bits,
-    check_erasures,
-    workspace_model,
-)
-from tests.support.workspace_oracle import checker as workspace_checker
+from tests.support import workspace_oracle as workspace
+from tests.support.model_input import rejected_integer, token_span
 
-_WORKSPACE = workspace_model(
+_WORKSPACE = workspace.workspace_model(
     "lol-waht-i-cant-edit-talk-pages-v1", "instruction variables input_cursor"
 )
 
@@ -48,8 +43,7 @@ def _statement(text):
         len(words) == 9
         and lower[:4] == ["just", "let", "me", "change"]
         and lower[5] in ("message", "messages")
-        and lower[6] == "on"
-        and lower[8] == "{"
+        and lower[6:9:2] == ["on", "{"]
         and _name(words[4])
         and _name(words[7])
     ):
@@ -135,9 +129,8 @@ def _model(source, stdin):
                 env[args[0]] = _value(env, args[0]) + (
                     amount if args[1] == "change" else -amount
                 )
-            elif kind == "loop":
-                if _value(env, args[1]) != _value(env, args[0]):
-                    next_pc = _partner(ops, pc, 1) + 1
+            elif kind == "loop" and _value(env, args[1]) != _value(env, args[0]):
+                next_pc = _partner(ops, pc, 1) + 1
             elif kind == "end":
                 next_pc = _partner(ops, pc, -1)
             elif kind == "read":
@@ -148,30 +141,44 @@ def _model(source, stdin):
             elif kind in ("chr", "num"):
                 value = _value(env, args[0])
                 if kind == "chr" and not 0 <= value <= 0x10FFFF:
-                    error = "halt"
-                else:
-                    output += chr(value) if kind == "chr" else str(Decimal(value))
+                    return "halt", [*trace, view()]
+                output += chr(value) if kind == "chr" else str(Decimal(value))
             elif kind == "say":
                 output += args[0]
             elif kind == "halt":
                 next_pc = len(ops)
         except KeyError:
             error = "halt"
-        if not error:
-            pc = next_pc
-        trace.append(view())
         if error:
-            break
-    if not error and pc == len(ops):
+            return error, [*trace, view()]
+        pc = next_pc
+        trace.append(view())
+    if pc == len(ops):
         trace.extend([view()] * 3)
-    return error, trace
+    return None, trace
 
 
-_agrees = workspace_checker(
-    _model,
-    (_WORKSPACE, lambda row: (row[0][0], frozenset(row[0][1]), row[-1])),
-    lambda machine: (*machine.state, machine.ip),
-)
+def _parts(row):
+    return row[0][0], frozenset(row[0][1]), row[-1]
+
+
+def _rejected_read(source, rows):
+    if rows[-1][-1] == rows[-2][-1]:
+        return None
+    _, (name,) = _parse(source)[rows[-1][0][0]]
+    hint = f"hint: define it first with user:{name}"
+    return "HaltError", f"variable {name!r} is not defined", (hint,)
+
+
+def _agrees(factory, source, stdin):
+    return workspace.agrees(
+        _model(source, stdin),
+        (factory, source, stdin),
+        (_WORKSPACE, _parts),
+        lambda machine: (*machine.state, machine.ip),
+        rejected_input=rejected_integer,
+        rejected_halt=lambda rows, _: _rejected_read(source, rows),
+    )
 
 
 def check_raw_lol_waht_i_cant_edit_talk_pages():
@@ -209,32 +216,31 @@ def check_raw_lol_waht_i_cant_edit_talk_pages():
     ]
     inputs = ("", "1 -2\n", "x", "٣", "-1")
     results = [_agrees(_Machine, code, stdin) for code in corpus for stdin in inputs]
-    results.extend(
-        _agrees(_Machine, code, "unread")
-        for code in (
-            "}",
-            "user:a\nJUST LET ME CHANGE no MESSAGES ON a {",
-            "user:",
-            "user:a b",
-            "i  hate u a",
-            "bad",
-        )
+    malformed = (
+        "}",
+        "user:a\nJUST LET ME CHANGE no MESSAGES ON a {",
+        "user:",
+        "user:a b",
+        "i  hate u a",
+        "bad",
     )
+    results.extend(_agrees(_Machine, code, "unread") for code in malformed)
     read = "user:a\nim awesome tottaly but no a"
+    padded = "0" * 5000 + "1"
     cases = (
         (read + "\ni hate u a", "9" * 5000),
-        (
-            "user:a\nedit user talk:a to change "
-            + "0" * 5000
-            + "1 messages\ni hate u a",
-            "",
-        ),
+        (f"user:a\nedit user talk:a to change {padded} messages\ni hate u a", ""),
         (read + "\ngrr why u do this a", "9" * 5000),
         (read, "no"),
     )
     results.extend(_agrees(_Machine, code, stdin) for code, stdin in cases)
-    errors = {error for error, _ in results}
-    assert errors == {None, "syntax", "halt", "argument", "input"}
+    assert {error for error, _ in results} == {
+        None,
+        "syntax",
+        "halt",
+        "argument",
+        "input",
+    }
     controls = {
         "arithmetic": ("user:a\nedit user talk:a to change 1 messages", ""),
         "loop": ("user:a\nJUST LET ME CHANGE 1 MESSAGE ON a {\ni hate u a\n}", ""),
@@ -275,14 +281,9 @@ def check_raw_lol_waht_i_cant_edit_talk_pages():
 
         with pytest.raises(AssertionError):
             _agrees(Fault, source, stdin)
-    for source, stdin, bits in (
-        ("", "", 0),
-        ("user:a", "", 10),
-        (read, "5", 14),
-        (read, "-8", 17),
-    ):
+    bit_cases = (("", "", 0), ("user:a", "", 10), (read, "5", 14), (read, "-8", 17))
+    for source, stdin, bits in bit_cases:
         rows = _agrees(_Machine, source, stdin)[1]
-        parts = ((row[0][0], frozenset(row[0][1]), row[-1]) for row in rows)
-        assert charged_bits(_WORKSPACE, parts) == bits
-    check_erasures(_WORKSPACE, _agrees, _Machine, read, "5")
+        assert workspace.charged_bits(_WORKSPACE, map(_parts, rows)) == bits
+    workspace.check_erasures(_WORKSPACE, _agrees, _Machine, read, "5")
     return len(results) + 4, len(controls) + len(_WORKSPACE.components)

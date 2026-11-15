@@ -22,6 +22,20 @@ def decimal_value(text):
     return -value if text.startswith("-") else value
 
 
+def integer_rejection(token):
+    """Predict the numeric port's bad-token diagnostic."""
+    return (
+        "ArgumentError",
+        f"input must be an integer, got {token!r}",
+        ("hint: supply a whitespace-separated decimal integer, for example 42",),
+    )
+
+
+def rejected_integer(rows, stdin):
+    start, end = token_span(stdin, rows[-2][-1])
+    return integer_rejection(stdin[start:end])
+
+
 def matching_delimiter(tokens, opening, closing):
     """Return tokens consumed through the matching closer, or None."""
     depth = 1

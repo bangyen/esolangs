@@ -55,6 +55,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.ascenic.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -172,6 +173,7 @@ class _Machine:
         image = parse(code) if isinstance(code, str) else code
         self.ops = image
         self.state: _State = (0, None)
+        self._input_retry = RejectedInput()
 
     @property
     def halted(self) -> bool:
@@ -199,12 +201,12 @@ class _Machine:
         return _WORKSPACE_MODEL.capture(
             instruction=self.state[0],
             stack=tuple(self.stack),
-            input_cursor=self.io.progress(),
+            input_cursor=self._input_retry.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        return self._input_retry.snapshot((*self.state, self.io.progress()))
 
     def branching_snapshot(self) -> tuple[object, ...]:
         """Return the current state as a branching search's starting point."""
@@ -242,7 +244,11 @@ class _Machine:
         opcode, arg, _ = self.ops[self.state[0]]
         value = None
         if opcode == _INPUT:
-            value = self.io.input_num() if arg % 2 else self.io.input_char()
+            value = (
+                self._input_retry.read(self.io, self.io.input_num)
+                if arg % 2
+                else self.io.input_char()
+            )
         elif opcode == _RND:
             value = draw(self._rng, 2)
         self.state, out = _advance(self.state, self.ops, value)

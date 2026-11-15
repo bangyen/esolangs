@@ -178,6 +178,59 @@ def test_worker_ignores_python_environment_when_the_parent_does(flag, tmp_path) 
 
 
 @pytest.mark.medium
+def test_worker_preserves_parent_site_flags(tmp_path) -> None:
+    executable = sys._base_executable
+    userbase = tmp_path / "user-base"
+    env = {
+        key: value for key, value in os.environ.items() if not key.startswith("PYTHON")
+    }
+    env["PYTHONUSERBASE"] = str(userbase)
+    site_path = subprocess.check_output(
+        [executable, "-S", "-c", "import site; print(site.getusersitepackages())"],
+        env=env,
+        text=True,
+        timeout=10,
+    ).strip()
+    usersite = Path(site_path)
+    assert usersite.is_relative_to(userbase)
+    usersite.mkdir(parents=True)
+    package_root = Path(esolangs.__file__).resolve().parent.parent
+    probe = """
+import subprocess
+import sys
+sys.path.insert(0, sys.argv[1])
+import esolangs
+assert sys.prefix == sys.base_prefix
+if sys.flags.isolated:
+    # Give the worker a temporary default user site without changing HOME.
+    spawn = subprocess.Popen
+    def with_user_site(argv, **options):
+        options['env']['PYTHONUSERBASE'] = sys.argv[2]
+        return spawn(argv, **options)
+    subprocess.Popen = with_user_site
+cap = esolangs.ExecutionLimits(max_output=1)
+for options in ({}, {'isolated': True}, {'limits': cap}):
+    assert esolangs.run('brainfuck', ',.', stdin='é', **options).output == 'é'
+"""
+    for with_hook in (False, True):
+        if with_hook:
+            (usersite / "usercustomize.py").write_text("print('user-site startup')\n")
+            output = subprocess.check_output(
+                [executable, "-c", "pass"], env=env, timeout=10
+            )
+            assert b"user-site startup" in output
+        for flag in ("-s", "-I", "-S"):
+            result = subprocess.run(
+                [executable, flag, "-c", probe, str(package_root), str(userbase)],
+                env=env,
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+            assert (result.returncode, result.stdout) == (0, b""), result.stderr
+
+
+@pytest.mark.medium
 @pytest.mark.parametrize(
     "options",
     [{"isolated": True}, {"limits": esolangs.ExecutionLimits(max_output=1)}],

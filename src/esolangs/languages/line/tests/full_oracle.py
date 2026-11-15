@@ -8,6 +8,9 @@ import re
 from collections import deque
 from typing import NamedTuple
 
+from esolangs.runtime._state import WorkspaceVariant
+from tests.support.model_input import decimal_value, integer_rejection, token_span
+
 
 class Stroke(NamedTuple):
     """A source-derived stroke and its drawn successor links."""
@@ -96,25 +99,16 @@ class NumericInput:
     def read(self):
         """Consume a numeric token before any control/tape commit."""
         self.character = True
-        while self.cursor < len(self.text) and self.text[self.cursor].isspace():
-            self.cursor += 1
-        if self.cursor == len(self.text):
+        start, self.cursor = token_span(self.text, self.cursor)
+        if start == self.cursor:
             self.past += 1
             raise InputEndError
-        start = self.cursor
-        while self.cursor < len(self.text) and not self.text[self.cursor].isspace():
-            self.cursor += 1
         token = self.text[start : self.cursor]
         self.reads += 1
         self.newline = False
         if re.fullmatch(r"[+-]?[0-9]+", token) is None:
-            raise BadTokenError
-        negative = token.startswith("-")
-        digits = token[1:] if token[0] in "+-" else token
-        value = 0
-        for char in digits:
-            value = 10 * value + ord(char) - ord("0")
-        value = -value if negative else value
+            raise BadTokenError(token)
+        value = decimal_value(token)
         assert 0 <= value <= 5, "original fixture operand domain remains 0..5"
         return value
 
@@ -168,15 +162,10 @@ def capture(state, frames, port, output):
     nonzero = tuple((key, value) for key, value in tape if value)
     workspace = node, at, pointer, frozenset(nonzero), port.cursor
     cycle = node, at, pointer, nonzero, port.cursor
-    ip = (
-        None
-        if node is None
-        else (
-            frames[node].positions[at]
-            if at < len(frames[node].operations)
-            else frames[node].end
-        )
-    )
+    ip = None
+    if node is not None:
+        frame = frames[node]
+        ip = frame.positions[at] if at < len(frame.operations) else frame.end
     cells = dict(tape)
     memory = tuple(
         cells.get(i, 0) for i in range(min(cells, default=0), max(cells, default=0) + 1)
@@ -209,8 +198,16 @@ def model(frames, stdin, cap=1000):
         try:
             number = port.read() if needs_number(state, frames) else None
         except (InputEndError, BadTokenError) as error:
-            rows.append(capture(state, frames, port, output))
-            return ("input" if isinstance(error, InputEndError) else "argument"), rows
+            row = capture(state, frames, port, output)
+            if isinstance(error, InputEndError):
+                return "input", [*rows, row]
+            fault = integer_rejection(error.args[0])
+            cursor = WorkspaceVariant("rejected_input", (port.cursor, *fault))
+            row["workspace"], row["cycle"] = (
+                (*row["workspace"][:-1], cursor),
+                (*row["cycle"], fault),
+            )
+            return "argument", [*rows, row]
         state, emitted = transition(state, frames, number)
         # A real physical output refusal belongs AFTER this state assignment.
         # The later fault-history driver must capture it here, never roll back.

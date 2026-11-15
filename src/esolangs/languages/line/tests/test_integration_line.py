@@ -17,6 +17,13 @@ from tests.support.cli_support import call_main
 from tests.support.evaluation import _evaluate
 from tests.support.input_convention import assert_reads_tokens_on_one_line
 from tests.support.reference import REFERENCE
+from tests.support.vm_support import assert_rejected_input_retry
+
+
+@pytest.mark.medium
+def test_raster_numeric_retry_preserves_the_original_token_fault() -> None:
+    source = esolangs.generate("Line", "01")
+    assert_rejected_input_retry("Line", source, "oops 1", "1", "1", position=4, reads=1)
 
 
 @pytest.mark.medium

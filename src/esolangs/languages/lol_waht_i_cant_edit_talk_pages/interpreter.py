@@ -53,6 +53,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.lol_waht_i_cant_edit_talk_pages.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -197,6 +198,7 @@ class _Machine:
         self.ops = _parse(code) if isinstance(code, str) else code
         self.io = io
         self.state = _State(0, ())
+        self._rejected = RejectedInput()
 
     @property
     def ip(self) -> int:
@@ -211,20 +213,27 @@ class _Machine:
         return _WORKSPACE_MODEL.capture(
             instruction=self.state.pc,
             variables=frozenset(self.state.env),
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        return self._rejected.snapshot((*self.state, self.io.progress()))
 
     def step(self) -> None:
         """Run one statement; the read and the print happen here."""
         if self.halted:
             return
         kind = self.ops[self.state.pc][0]
-        number = self.io.input_num() if kind == "read" else None
-        self.state, out = _advance(self.state, self.ops, number)
+        number = (
+            self._rejected.read(self.io, self.io.input_num) if kind == "read" else None
+        )
+        try:
+            self.state, out = _advance(self.state, self.ops, number)
+        except HaltError as error:
+            if number is not None:
+                self._rejected.remember(error)
+            raise
         if out is not None:
             self.io.print_str(out)
 

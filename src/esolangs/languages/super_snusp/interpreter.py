@@ -31,6 +31,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.super_snusp.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -437,6 +438,7 @@ class _Machine:
         self.io, self._rng = io, rng
         row, col, heading = (*image.start, 0)
         self.state = _State((row, col, heading), (0, ()), (), digit=False, done=False)
+        self._input_retry = RejectedInput()
 
     @property
     def halted(self) -> bool:
@@ -471,13 +473,13 @@ class _Machine:
             values=tuple(self.state.values),
             digit=self.state.digit,
             stopped=self.state.done,
-            input_cursor=self.io.progress(),
+            input_cursor=self._input_retry.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         state = self.state
         pointer, cells = state.tape
-        return (
+        boundary = (
             *state.cursor,
             pointer,
             cells,
@@ -486,6 +488,7 @@ class _Machine:
             state.done,
             self.io.progress(),
         )
+        return self._input_retry.snapshot(boundary)
 
     # The all-random-outcomes search.  ``_State`` is already the whole
     # machine -- ``done`` included -- so the branching state is that value
@@ -558,7 +561,11 @@ class _Machine:
         values = self.state.values
         command = self.code[row][col]
         char_input = self.io.input_char() if command == "," else None
-        number_input = self.io.input_num() if command == "@" else None
+        number_input = (
+            self._input_retry.read(self.io, self.io.input_num)
+            if command == "@"
+            else None
+        )
         random_offset = None
         if command == "=" and values:
             low, high = sorted((_read(cells, pointer), values[-1]))

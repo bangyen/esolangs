@@ -12,7 +12,7 @@ import pytest
 
 from esolangs.languages.one_i.interpreter import _Machine
 from tests.interpreters.oracle_support import decorate_io, observed, overread, stalled
-from tests.support.model_input import token_span
+from tests.support.model_input import rejected_integer, token_span
 from tests.support.workspace_oracle import agrees as workspace_agrees
 from tests.support.workspace_oracle import missing_workspace, workspace_model
 
@@ -201,19 +201,17 @@ def _view(machine):
 
 def _check(factory, code, stdin="unused"):
     assert all(c.isspace() or c in "ic+*/^><%:()$ABpo?[]" for c in code)
+
+    def parts(row):
+        frames, values, _ = row[0]
+        return tuple((start, nth) for start, _, nth in frames), values, row[-1]
+
     workspace_agrees(
         _model(code, stdin),
         (factory, code, stdin),
-        (
-            _WORKSPACE,
-            lambda row: (
-                tuple(((start, nth) for start, _, nth in row[0][0])),
-                row[0][1],
-                row[-1],
-            ),
-        ),
+        (_WORKSPACE, parts),
         _view,
-        cap=64,
+        rejected_input=rejected_integer,
     )
 
 

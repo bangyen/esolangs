@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.creativescript_v2.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_input_retry
 
 #: The page's equality program, as a function of two inputs.
 EQUALS = """in! a
@@ -57,6 +58,12 @@ def test_say_prints_the_rest_of_the_line_and_a_plus_b_adds(monkeypatch) -> None:
 def test_division_and_modulo_floor() -> None:
     code = "set! n -7\nset! d 2\ndiv! n d q\nmod! n d r\nout! q\nsay! ,\nout! r"
     assert output(code) == "-4,1"
+
+
+def test_rejected_number_stays_with_the_input_instruction() -> None:
+    assert_rejected_input_retry(
+        "CreativeScript v2", "in! a\nout! a", "oops 7", "7", "7", position=4, reads=1
+    )
 
 
 def test_division_by_zero_and_unset_variables_halt() -> None:

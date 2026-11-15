@@ -1,7 +1,11 @@
 """Tests for the SwitchCase interpreter."""
 
+import pytest
+
+from esolangs import InputExhaustedError, Language
 from esolangs.languages.switchcase.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_input_retry
 
 _output = native_runner(run)
 
@@ -36,3 +40,18 @@ def test_a_case_with_no_match_and_no_default_does_nothing(monkeypatch) -> None:
 
 def test_redefining_a_variable_zeroes_it() -> None:
     assert _output("$_\n0?=A\n$A\n0?+4\n$_\n0?=A\n$A\n0?@") == "0"
+
+
+def test_rejected_numeric_input_stays_at_the_port() -> None:
+    source = "$_\n0?#@"
+    assert_rejected_input_retry(
+        "SwitchCase", source, "oops 7", "7", "7", position=4, reads=1, prefix=1
+    )
+    debugger = Language("SwitchCase").make_debugger(source)
+    debugger.step()
+    boundary = debugger.snapshot()
+    for attempts in (1, 2):
+        with pytest.raises(InputExhaustedError):
+            debugger.step()
+        assert debugger.snapshot() == boundary
+        assert debugger.observation.input_past_end == attempts

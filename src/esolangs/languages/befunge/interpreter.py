@@ -61,6 +61,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.befunge.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -308,6 +309,7 @@ class _Machine:
         program = code if isinstance(code, _Program) else _parse_grid(code)
         self.grid = program.grid
         self.io, self._rng = io, rng
+        self._rejected_input = RejectedInput()
         self.state = _State((0, 0, 1, 0), self.grid, None, string=False, done=False)
 
     @property
@@ -343,12 +345,14 @@ class _Machine:
             stack=tuple(reversed(stack)),
             string=self.state.string,
             stopped=self.state.done,
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected_input.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         cursor, grid, stack, string, done = self.state
-        return (*cursor, grid, _values(stack), string, done, self.io.progress())
+        return self._rejected_input.snapshot(
+            (*cursor, grid, _values(stack), string, done, self.io.progress())
+        )
 
     def branching_snapshot(self) -> _State:
         """Return the current state as the hang search's starting point."""
@@ -390,14 +394,21 @@ class _Machine:
         number_input = None
         if reads in ("number", "divisor"):
             try:
-                number_input = self.io.input_num()
+                number_input = self._rejected_input.read(self.io, self.io.input_num)
             except EOFError:
                 # `&` is a plain read: its EOF propagates.  A zero divisor
                 # gets no result instead, and halts as documented.
                 if reads == "number":
                     raise
         random_dir = draw(self._rng, 4) if reads == "draw" else None
-        self.state, effect = _advance(self.state, char_input, number_input, random_dir)
+        try:
+            self.state, effect = _advance(
+                self.state, char_input, number_input, random_dir
+            )
+        except HaltError as error:
+            if number_input is not None:
+                self._rejected_input.remember(error)
+            raise
         if effect is not None:
             self.io.print_str(effect)
 

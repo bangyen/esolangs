@@ -530,12 +530,18 @@ def _launch(
     env["PYTHONIOENCODING"] = "utf-8"
     # Match the importer's string-only search without embedding custom reprs.
     search_path = [str.__str__(path) for path in sys.path if isinstance(path, str)]
+    # Site hooks run before the worker can restore the parent's search path.
+    startup_flags = ["-P"]
+    if sys.flags.no_site:
+        startup_flags.append("-S")
+    if sys.flags.no_user_site:
+        startup_flags.append("-s")
     report_prepared = preparation_deadline is not None or execution_timeout is not None
     streaming = max_output is not None or report_prepared
     with subprocess.Popen(  # fixed executable and code, no shell.
         [
             sys.executable,
-            "-P",
+            *startup_flags,
             "-c",
             f"import sys; sys.path[:] = {search_path!r}; "
             "from esolangs.runtime._isolated import _worker; _worker()",

@@ -46,12 +46,13 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.carp.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
-from esolangs.runtime.memory import parse_integer
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _OPS = ("INC", "DEC", "CLR", "OUT", "INP")
@@ -79,7 +80,9 @@ def _parse(code: str) -> tuple[_Instr, ...]:
             raise syntax_error(f"malformed register {reg!r}", hint)
         r = parse_integer(reg[1:])
         if not 1 <= r <= 15:
-            raise syntax_error(f"register r{r} is outside r1..r15", hint)
+            raise syntax_error(
+                f"register r{format_integer(r)} is outside r1..r15", hint
+            )
         if not line.isascii() or not line.isdigit():
             raise syntax_error(f"malformed line number {line!r}", hint)
         program.append((op, r, parse_integer(line)))
@@ -134,6 +137,7 @@ class _Machine:
         self.program = _parse(code) if isinstance(code, str) else code
         self.io = io
         self.state: _State = (0, (0,) * 15)
+        self._rejected = RejectedInput()
 
     @property
     def halted(self) -> bool:
@@ -149,12 +153,12 @@ class _Machine:
         return _WORKSPACE_MODEL.capture(
             instruction=self.state[0],
             registers=self.state[1],
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        return self._rejected.snapshot((*self.state, self.io.progress()))
 
     def step(self) -> None:
         """Execute one instruction; the shell owns the two ports."""
@@ -162,12 +166,14 @@ class _Machine:
             return
         byte = None
         if self.program[self.state[0]][0] == "INP":
-            byte = self.io.input_num()
+            byte = self._rejected.read(self.io, self.io.input_num)
             if not 0 <= byte <= 15:
-                raise HaltError(
-                    f"input {byte} does not fit a 4-bit register",
+                error = HaltError(
+                    f"input {format_integer(byte)} does not fit a 4-bit register",
                     hint="supply an integer from 0 to 15",
                 )
+                self._rejected.remember(error)
+                raise error
         self.state, out = _advance(self.state, self.program, byte)
         if out is not None:
             self.io.print_str(out)

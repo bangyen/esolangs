@@ -2,11 +2,13 @@
 
 import pytest
 
+from esolangs import Language
 from esolangs.exceptions import HaltError, InputExhaustedError
 from esolangs.languages.lol_waht_i_cant_edit_talk_pages import interpreter as native
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_input_retry
 
 TRUTH = """user:i
 im awesome tottaly but no i
@@ -105,3 +107,37 @@ def test_errors() -> None:
         _out("i hate u q")
     with pytest.raises(InputExhaustedError):
         _out("user:a\nim awesome tottaly but no a")
+
+
+_READ_Q = "im awesome tottaly but no q"
+_READ_AND_PRINT = f"user:q\n{_READ_Q}\ni hate u q"
+
+
+@pytest.mark.medium
+def test_rejected_numeric_input_survives_retry() -> None:
+    assert_rejected_input_retry(
+        "lol waht i cant edit talk pages",
+        _READ_AND_PRINT,
+        "oops 7",
+        "7",
+        "7",
+        position=4,
+        reads=1,
+        prefix=1,
+    )
+
+
+def test_an_undefined_read_target_retains_the_first_fault() -> None:
+    api = Language("lol waht i cant edit talk pages")
+    dbg = api.make_debugger(_READ_Q, stdin="5 7")
+    for _ in range(3):
+        with pytest.raises(HaltError, match="variable 'q' is not defined"):
+            dbg.step()
+        result = dbg.observation
+        assert (dbg.ip, result.steps, result.input_position, result.input_reads) == (
+            0,
+            0,
+            1,
+            1,
+        )
+    assert api.run(_READ_AND_PRINT, stdin="5 7").output == "5"

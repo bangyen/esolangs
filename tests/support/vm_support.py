@@ -13,6 +13,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.results import Completion
+from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime._vm_protocol import VM
 from esolangs.vm import (
@@ -58,14 +59,17 @@ def assert_proof_fault(
 
 def assert_rejected_input_retry(
     language: str,
-    source: str,
+    source: ProgramSource,
     stdin: str,
     valid: str,
     output: str,
     *,
     position: int,
     reads: int,
-    rejected: str | Literal[True],
+    rejected: str | Literal[True] | None = None,
+    error_type: type[esolangs.EsolangError] = esolangs.ArgumentError,
+    prefix: int = 0,
+    partial: str = "",
 ) -> None:
     """Check rejected input in fresh runs, successive retries and the workspace."""
     api = esolangs.Language(language)
@@ -78,27 +82,35 @@ def assert_rejected_input_retry(
         api.execute(source, stdin=stdin, isolated=True),
     )
     fault = reports[0].error
-    assert type(fault) is esolangs.ArgumentError
-    expected = esolangs.ExecutionResult("", position, reads, 0)
+    assert type(fault) is error_type
+    notes = tuple(getattr(fault, "__notes__", ()))
+    diagnostic = tuple(
+        note for note in notes if not note.startswith("the program printed ")
+    )
+    details = error_type.__name__, str(fault), diagnostic
+    expected = esolangs.ExecutionResult(partial, position, reads, 0)
     for report in reports:
-        assert type(report.error) is esolangs.ArgumentError
+        assert type(report.error) is error_type
         assert report.observation == expected
         assert report.error.args == fault.args
-        assert report.error.__notes__ == fault.__notes__
+        assert tuple(getattr(report.error, "__notes__", ())) == notes
 
     dbg = prepared.make_debugger(stdin=stdin)
+    for _ in range(prefix):
+        dbg.step()
     ip, before = dbg.ip, dbg.snapshot()
     for resume in (dbg.step, lambda: dbg.run(limits=limits), dbg.step):
-        with pytest.raises(esolangs.ArgumentError) as caught:
+        with pytest.raises(error_type) as caught:
             resume()
         assert caught.value.args == fault.args
-        assert caught.value.__notes__ == fault.__notes__
-        assert dbg.observation == replace(expected, steps=0)
+        assert tuple(getattr(caught.value, "__notes__", ())) == notes
+        assert dbg.observation == replace(expected, steps=prefix)
         assert dbg.ip == ip
         after = dbg.snapshot()
         assert before[:-1] == after[:-2]
-        assert after[-2:] == (position, rejected)
-        data = (position,) if rejected is True else (position, rejected)
+        assert after[-2:] == (position, details if rejected is None else rejected)
+        values = () if rejected is True else (rejected,)
+        data = (position, *(details if rejected is None else values))
         assert _capture_workspace(dbg.vm).parts[-1] == WorkspaceVariant(
             "rejected_input", data
         )

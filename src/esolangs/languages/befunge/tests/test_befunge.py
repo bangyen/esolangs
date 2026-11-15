@@ -19,6 +19,28 @@ from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
+from tests.support.vm_support import assert_rejected_input_retry
+
+
+@pytest.mark.medium
+def test_invalid_numeric_reads_keep_the_fault_and_prefix() -> None:
+    too_large = str(1 << (sizeof(c_long) * 8 - 1))
+    for token, error_type in (("oops", esolangs.ArgumentError), (too_large, HaltError)):
+        assert_rejected_input_retry(
+            "Befunge",
+            '"A",&.@',
+            token + " 17",
+            "17",
+            "A17 ",
+            position=len(token),
+            reads=1,
+            error_type=error_type,
+            prefix=4,
+            partial="A",
+        )
+    assert_rejected_input_retry(
+        "Befunge", "10/.@", "oops 7", "7", "7 ", position=4, reads=1, prefix=2
+    )
 
 
 def run_befunge(program: str, stdin: str = "", rng: object = None) -> str:

@@ -9,7 +9,7 @@ import pytest
 
 from esolangs.languages.befunge.interpreter import _Machine, run
 from tests.interpreters.memory_oracles import agrees_memory as _agrees_memory
-from tests.interpreters.memory_oracles import befunge
+from tests.interpreters.memory_oracles import befunge, befunge_rejection
 from tests.support.workspace_oracle import (
     charged_bits,
     missing_workspace,
@@ -38,7 +38,12 @@ def _parts(row):
 
 
 def agrees_memory(*args, **kwargs):
-    return _agrees_memory(*args, **kwargs, workspace=(_WORKSPACE, _parts))
+    return _agrees_memory(
+        *args,
+        **kwargs,
+        workspace=(_WORKSPACE, _parts),
+        rejected_input=befunge_rejection,
+    )
 
 
 def corpus():

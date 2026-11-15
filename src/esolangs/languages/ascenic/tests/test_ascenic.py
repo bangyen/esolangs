@@ -11,6 +11,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from tests.interpreters.runner import native_runner
 from tests.support.factories import reject_rng_options, rng_factory
+from tests.support.vm_support import assert_rejected_input_retry
 
 
 def test_step_bound_does_not_seed_an_unseeded_run(monkeypatch) -> None:
@@ -109,6 +110,15 @@ def test_io_follows_the_argument_parity() -> None:
     assert _run(_program((3, 65), (1, 66))) == "A"
     with pytest.raises(HaltError):
         _run(_program((5, 1), (1, 2)))
+
+
+def test_rejected_number_stays_with_the_input_instruction() -> None:
+    source = "AAs\nAsss"
+    assert_rejected_input_retry(
+        "Ascenic", source, "oops 7", "7", "7", position=4, reads=1
+    )
+    machine = _Machine(source, ScriptedIO("7"))
+    assert machine.branching_successors(machine.branching_snapshot(), 2) is None
 
 
 def test_rnd_draws_zero_and_one(monkeypatch) -> None:

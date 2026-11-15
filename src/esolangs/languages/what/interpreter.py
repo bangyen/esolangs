@@ -59,6 +59,7 @@ from esolangs.languages.what.lifecycle import CAPABILITIES
 from esolangs.runtime import persistent
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -294,6 +295,7 @@ class _Machine:
     def __init__(self, code: str | tuple[_Token, ...], io: IO) -> None:
         self.tokens = parse(code) if isinstance(code, str) else code
         self.io = io
+        self._rejected_input = RejectedInput()
         self.state: _State = (
             0,
             0,
@@ -323,12 +325,12 @@ class _Machine:
             pointer=self.state[1],
             integers=persistent.flatten(self.state[2]),
             strings=persistent.flatten(self.state[3]),
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected_input.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        return self._rejected_input.snapshot((*self.state, self.io.progress()))
 
     def _read(self, size: int) -> int | str:
         """Take a ``?``-run's input; EOF gives 0 or the empty string."""
@@ -349,8 +351,15 @@ class _Machine:
         if self.halted:
             return
         token = self.tokens[self.state[0]]
-        value = self._read(token.arg) if token.kind == "in" else None
-        self.state, out = _advance(self.state, self.tokens, value)
+        value = None
+        if token.kind == "in":
+            value = self._rejected_input.read(self.io, lambda: self._read(token.arg))
+        try:
+            self.state, out = _advance(self.state, self.tokens, value)
+        except HaltError as error:
+            if value is not None:
+                self._rejected_input.remember(error)
+            raise
         if isinstance(out, int):
             self.io.print_num(out)
         elif out is not None:

@@ -2,8 +2,10 @@
 
 import pytest
 
+from esolangs import ArgumentError, HaltError, Language, ProgramError
 from esolangs.languages.carp.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_input_retry
 
 ADD = """INC r3 2 # r3 is used for control flow
 INP r1 3
@@ -69,3 +71,33 @@ def test_malformed_program(code: str) -> None:
 def test_input_at_eof() -> None:
     with pytest.raises(EOFError):
         _run("INP r1 0")
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("token", "error_type"),
+    [
+        ("oops", ArgumentError),
+        ("16", HaltError),
+        pytest.param("1" + "0" * 5000, HaltError, id="large-range-rejection"),
+    ],
+)
+def test_numeric_input_rejection_survives_retry(token, error_type) -> None:
+    assert_rejected_input_retry(
+        "CARP",
+        "INP r1 0\nOUT r1 0",
+        f"{token} 7",
+        "7",
+        "7",
+        position=len(token),
+        reads=1,
+        error_type=error_type,
+    )
+
+
+def test_a_wide_register_index_is_still_a_source_error() -> None:
+    api = Language("CARP")
+    wide = "1" + "0" * 5000
+    with pytest.raises(ProgramError, match=f"register r{wide} is outside r1..r15"):
+        api.run(f"OUT r{wide} 0")
+    assert api.run("OUT r" + "0" * 5000 + "1 0").output == "0"

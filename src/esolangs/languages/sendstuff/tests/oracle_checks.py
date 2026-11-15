@@ -11,7 +11,7 @@ from itertools import product
 from esolangs.languages.sendstuff.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, reject_faults
 from tests.support import workspace_oracle as workspace
-from tests.support.model_input import token_span
+from tests.support.model_input import rejected_integer, token_span
 
 _WORKSPACE = workspace.workspace_model("sendstuff-v1", "frames input_cursor")
 
@@ -62,6 +62,18 @@ def _read(command, stdin, cursor):
     return ([value], cursor, None) if value >= 0 else ([], cursor, "halt")
 
 
+_ARITHMETIC = {
+    "Constant": lambda param, _value: param,
+    "Add": lambda param, value: value + param,
+    "Subtract": lambda param, value: value - param,
+    "Multiply": lambda param, value: value * param,
+    "Divide": lambda param, value: param // value,
+    "DivideBy": lambda param, value: value // param,
+    "Modulo": lambda param, value: param % value,
+    "ModuloBy": lambda param, value: value % param,
+}
+
+
 def _arithmetic(command, param, value):
     if command == "Interleave":
         width = max(1, param.bit_length(), value.bit_length())
@@ -74,16 +86,7 @@ def _arithmetic(command, param, value):
         shift = 1 if command == "LeftHalf" else 0
         bits = bin(value)[2:][::-1][shift::2][::-1]
         return int(bits or "0", 2)
-    return {
-        "Constant": lambda: param,
-        "Add": lambda: value + param,
-        "Subtract": lambda: value - param,
-        "Multiply": lambda: value * param,
-        "Divide": lambda: param // value,
-        "DivideBy": lambda: value // param,
-        "Modulo": lambda: param % value,
-        "ModuloBy": lambda: value % param,
-    }[command]()
+    return _ARITHMETIC[command](param, value)
 
 
 def _results(command, param, value):
@@ -169,18 +172,14 @@ def _parts(expected):
             length = len(after) - len(before) + 1
             assert length >= 0
             assert after[length:] == before[1:]
-            child = after[:length]
-            if child:
+            if child := after[:length]:
                 receiver = before[0][1]
                 outputs = targets[receiver]
                 assert outputs
                 assert length % len(outputs) == 0
                 count = length // len(outputs)
                 first = child[0][2]
-                command = program[0][receiver]
-                step = (
-                    1 if command == "CountUp" else -1 if command == "CountDown" else 0
-                )
+                step = {"CountUp": 1, "CountDown": -1}.get(program[0][receiver], 0)
                 assert child == tuple(
                     (receiver, target, first + step * value)
                     for value in range(count)
@@ -188,6 +187,17 @@ def _parts(expected):
                 )
                 frames.insert(0, (receiver, (first, step, count), 0, 0))
         yield tuple(frames), row[-1]
+
+
+def _rejected_range(rows, stdin):
+    cursor = rows[-1][-1]
+    if cursor == rows[-2][-1]:
+        return None
+    token = stdin[:cursor].split()[-1]
+    message = (
+        f"SendStuff InputNumber read -{token.lstrip('-0')}; numbers are non-negative"
+    )
+    return "HaltError", message, ("hint: supply a non-negative decimal integer",)
 
 
 def _check(factory, forest, stdin="unused"):
@@ -200,38 +210,22 @@ def _check(factory, forest, stdin="unused"):
         (_WORKSPACE, lambda _row: next(parts)),
         _view,
         cap=48,
-        context=(source, stdin),
+        rejected_input=rejected_integer,
+        rejected_halt=_rejected_range,
     )
 
 
 def check_raw_sendstuff():
     sink = (">", _node("OutputNumber"))
-    for value, param, command in product(
-        (0, 1, 2, 5, 13),
-        (0, 1, 3, 6),
-        (
-            "Constant",
-            "Add",
-            "Subtract",
-            "Multiply",
-            "Divide",
-            "DivideBy",
-            "Modulo",
-            "ModuloBy",
-            "Interleave",
-            "LeftHalf",
-            "RightHalf",
-        ),
-    ):
+    commands = (*_ARITHMETIC, "Interleave", "LeftHalf", "RightHalf")
+    for value, param, command in product((0, 1, 2, 5, 13), (0, 1, 3, 6), commands):
         node = _node("Constant", value, ((">", _node(command, param, (sink,))),))
         _check(_Machine, ((">", node),))
     for limit, command, delta in product(range(5), ("CountUp", "CountDown"), (0, 3)):
         branch = _node(command, 0, (sink, (">", _node("Add", delta, (sink,)))))
         _check(_Machine, ((">", _node("Constant", limit, ((">", branch),))),))
-    for command, stdin in product(
-        ("Input", "InputNumber"),
-        ("", " \n", "Aλ\n", "0 3 7", "-2", "1_0", "٣", "+65 X"),
-    ):
+    inputs = ("", " \n", "Aλ\n", "0 3 7", "-2", "1_0", "٣", "+65 X")
+    for command, stdin in product(("Input", "InputNumber"), inputs):
         loop = _node(command, 0, (sink, (">", "loop")), name="loop")
         _check(_Machine, ((">", loop),), stdin)
     for value in (0, 65, 0x10FFFF, 0x110000):

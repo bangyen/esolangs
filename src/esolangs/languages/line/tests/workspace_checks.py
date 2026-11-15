@@ -8,7 +8,7 @@ import pytest
 from esolangs.exceptions import ArgumentError, InputExhaustedError
 from esolangs.languages.line.interpreter import _Machine
 from esolangs.languages.line.interpreter.simulate import _Frame
-from esolangs.runtime._state import WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from tests.support.workspace_oracle import (
     WorkspaceWitness,
@@ -36,6 +36,8 @@ def _typed(value):
         return tuple, tuple(map(_typed, value))
     if type(value) is frozenset:
         return frozenset, frozenset(map(_typed, value))
+    if type(value) is WorkspaceVariant:
+        return WorkspaceVariant, value.kind, _typed(value.values)
     raise TypeError(type(value))
 
 

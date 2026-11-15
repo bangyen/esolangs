@@ -8,9 +8,8 @@ import pytest
 
 from esolangs.languages.creativescript_v2.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
-from tests.support.model_input import token_span
-from tests.support.workspace_oracle import check_erasures
-from tests.support.workspace_oracle import checker as workspace_checker
+from tests.support.model_input import rejected_integer, token_span
+from tests.support.workspace_oracle import check_erasures, checker
 
 _WORKSPACE = WorkspaceModel(
     "creativescript-v2-v1", ("variables", "instruction", "input_cursor")
@@ -126,10 +125,11 @@ def _model(source, stdin):
     return error, trace
 
 
-_agrees = workspace_checker(
+_agrees = checker(
     _model,
     (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
     lambda m: (m.state, m.cursor, tuple(m.memory), m.ip),
+    rejected_input=rejected_integer,
 )
 
 

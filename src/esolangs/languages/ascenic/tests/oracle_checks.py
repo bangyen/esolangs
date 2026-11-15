@@ -8,9 +8,8 @@ import pytest
 
 from esolangs.languages.ascenic.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
-from tests.support.model_input import token_span
-from tests.support.workspace_oracle import agrees as workspace_agrees
-from tests.support.workspace_oracle import check_erasures
+from tests.support.model_input import rejected_integer, token_span
+from tests.support.workspace_oracle import agrees, check_erasures
 
 _WORKSPACE = WorkspaceModel("ascenic-v1", ("instruction", "stack", "input_cursor"))
 
@@ -150,11 +149,12 @@ def _model(source, stdin):
 
 def _agrees(factory, source, stdin):
     expected, rng = _model(source, stdin), _Draws()
-    return workspace_agrees(
+    return agrees(
         expected,
         (lambda code, io: factory(code, io, rng), source, stdin),
         (_WORKSPACE, lambda row: (row[0][0], row[0][1], row[-1])),
         lambda m: (m.state[0], tuple(m.stack), m.ip, rng.used),
+        rejected_input=rejected_integer,
     )
 
 

@@ -13,6 +13,33 @@ from esolangs.results import ExecutionResult
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_input_retry
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("source", "stdin", "valid", "output", "position", "error_type"),
+    [
+        ("??!!", "oops 7", "7", "7", 4, ArgumentError),
+        ("??!!", "70000 7", "7", "7", 5, HaltError),
+        ("?!!", "\U00010000A", "A", "65", 1, HaltError),
+        ("???!!!", "z" * 257 + "\nok", "ok", "ok", 258, HaltError),
+    ],
+)
+def test_rejected_reads_of_each_width_keep_the_original_fault(
+    source, stdin, valid, output, position, error_type
+) -> None:
+    assert_rejected_input_retry(
+        "What!?",
+        source,
+        stdin,
+        valid,
+        output,
+        position=position,
+        reads=1,
+        error_type=error_type,
+    )
+
 
 _TRUTH = ".??([1:!!][1;,1.(-)]),0!!"
 _BOTTLES = r"""99 " bottles of beer on the wall, ".

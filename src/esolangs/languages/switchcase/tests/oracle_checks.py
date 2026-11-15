@@ -8,7 +8,7 @@ import pytest
 from esolangs.languages.switchcase.interpreter import _Machine
 from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
-from tests.support.model_input import decimal_value, token_span
+from tests.support.model_input import decimal_value, rejected_integer, token_span
 
 _WORKSPACE = workspace.workspace_model("switchcase-v1", "activation input_cursor")
 
@@ -104,17 +104,19 @@ def _model(cases, stdin):
 
 def _check(factory, cases, stdin):
     def state(machine):
-        case, arm, index, _ = machine.state
-        return case, arm, index, machine.memory
+        return (*machine.state[:3], machine.memory)
 
-    code = _source(cases)
-    state = workspace.workspace_view(
-        _model(cases, stdin)[1],
-        _WORKSPACE,
-        lambda row: ((*row[0][:3], frozenset(row[0][3].items())), row[-1]),
+    workspace.agrees(
+        _model(cases, stdin),
+        (factory, _source(cases), stdin),
+        (
+            _WORKSPACE,
+            lambda row: ((*row[0][:3], frozenset(row[0][3].items())), row[-1]),
+        ),
         state,
+        cap=24,
+        rejected_input=rejected_integer,
     )
-    assert observed(factory, code, stdin, state, cap=24) == _model(cases, stdin), code
 
 
 def check_raw_switchcase():

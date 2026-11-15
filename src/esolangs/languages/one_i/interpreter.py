@@ -63,6 +63,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.one_i.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -400,6 +401,7 @@ class _Machine:
         self.frames: _Frames = ((program, 0, 0), None) if program.end else None
         #: The stack, top at the right.
         self.values: deque[_Value] = deque()
+        self._rejected = RejectedInput()
 
     @property
     def halted(self) -> bool:
@@ -435,7 +437,7 @@ class _Machine:
                 else value
                 for value in self.values
             ),
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
@@ -456,7 +458,7 @@ class _Machine:
             else v
             for v in self.values
         )
-        return (tuple(frames), values, self.io.progress())
+        return self._rejected.snapshot((tuple(frames), values, self.io.progress()))
 
     def _read(self, command: str) -> _Value:
         if command == "A":
@@ -465,10 +467,12 @@ class _Machine:
             except EOFError:
                 return _I
         if command == "B":
-            return (Fraction(self.io.input_num()), _ZERO)
+            return Fraction(self._rejected.read(self.io, self.io.input_num)), _ZERO
         if command == "C":
-            return _read_real(self.io.input_token())
-        return _read_complex(self.io.input_str())
+            return self._rejected.read(
+                self.io, lambda: _read_real(self.io.input_token())
+            )
+        return self._rejected.read(self.io, lambda: _read_complex(self.io.input_str()))
 
     def step(self) -> None:
         """Run one command, reading its input first."""

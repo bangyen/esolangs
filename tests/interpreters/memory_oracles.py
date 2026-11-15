@@ -6,8 +6,8 @@ from struct import calcsize
 
 from esolangs.exceptions import ArgumentError, HaltError, InterpreterLimitError
 from esolangs.runtime.io import ScriptedIO
-from tests.support.model_input import decimal_value, token_span
-from tests.support.workspace_oracle import WorkspaceWitness
+from tests.support.model_input import decimal_value, integer_rejection, token_span
+from tests.support.workspace_oracle import WorkspaceWitness, _rejected_parts
 
 
 @dataclass(frozen=True)
@@ -289,6 +289,19 @@ def befunge(code: list[str], stdin: str, cap: int = 32, *, first: int = 0):
     return trace
 
 
+def befunge_rejection(rows, stdin):
+    """Predict a terminal diagnostic only when its instruction read a token."""
+    if len(rows) < 2 or rows[-1].error not in ("argument", "halt"):
+        return None
+    start, end = rows[-2].consumed, rows[-1].consumed
+    token = stdin[start:end].strip()
+    if not token:
+        return None
+    if rows[-1].error == "argument":
+        return integer_rejection(token)
+    return "HaltError", "Befunge integer exceeds signed-long range", ()
+
+
 class _Directions:
     def __init__(self, first):
         self.first, self.draws = first, 0
@@ -406,11 +419,14 @@ def agrees_memory(
     first=0,
     runner=None,
     workspace=None,
+    rejected_input=None,
 ):
     expected = oracle(code, stdin, first=first) if grid else oracle(code, stdin)
     capture = None
     if workspace is not None:
         model, project = workspace
+        if rejected_input is not None and (details := rejected_input(expected, stdin)):
+            project = _rejected_parts(project, expected[-1], details)
         witness, predictions = WorkspaceWitness(model), iter(expected)
 
         def capture(machine):

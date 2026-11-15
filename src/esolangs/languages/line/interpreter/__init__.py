@@ -30,6 +30,7 @@ from functools import cache, lru_cache
 from typing import TYPE_CHECKING, Any, cast
 
 from esolangs.raster import Pixel, Raster, Rows
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -142,6 +143,7 @@ class _Machine:
         )
         self.state: _State = (0, 0, 0, ())
         self.io = io
+        self._rejected_input = RejectedInput()
 
     @property
     def halted(self) -> bool:
@@ -171,18 +173,24 @@ class _Machine:
             instruction=instruction,
             pointer=pointer,
             cells=frozenset((cell, value) for cell, value in tape if value),
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected_input.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         node, at, pointer, tape = self.state
         cells = tuple((cell, value) for cell, value in tape if value)
-        return node, at, pointer, cells, self.io.progress()
+        return self._rejected_input.snapshot(
+            (node, at, pointer, cells, self.io.progress())
+        )
 
     def step(self) -> None:
         if self.halted:
             return
-        value = self.io.input_num() if _needs_input(self.program, self.state) else None
+        value = (
+            self._rejected_input.read(self.io, self.io.input_num)
+            if _needs_input(self.program, self.state)
+            else None
+        )
         self.state, output = _advance(self.state, self.program, value)
         if output is not None:
             self.io.print_num(output)
