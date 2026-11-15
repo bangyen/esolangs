@@ -10,7 +10,11 @@ from itertools import islice
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
-from esolangs.runtime._drive import _check_snapshot_hash, _SnapshotUnavailableError
+from esolangs.runtime._drive import (
+    _check_snapshot_hash,
+    _checked_halted,
+    _SnapshotUnavailableError,
+)
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import (
     BranchFailure,
@@ -352,7 +356,7 @@ def _drive_halt_or_cycle(
     )
     adapter = _checked_adapter(machine)
     _, declared_random = _proof_runtime(adapter)
-    halted_before = machine.halted
+    halted_before = _checked_halted(machine.halted)
     branch = (
         None
         if halted_before
@@ -382,11 +386,9 @@ def _drive_halt_or_cycle(
         _proof_snapshot(reader, adapter, None if evidence else 0),
         _ProofSnapshotUnavailableError,
     )
-    first_step = 0
+    first_step = length = steps = 0
     power = 1
-    length = 0
-    steps = 0
-    while not machine.halted:
+    while not _checked_halted(machine.halted):
         if check_receiver is not None:
             check_receiver()
         if limit is not None and steps >= limit:
@@ -412,10 +414,7 @@ def _drive_halt_or_cycle(
         length += 1
         if check_receiver is not None:
             check_receiver()
-        # mypy narrows `machine.halted` to Literal[False] from the loop guard
-        # and won't re-widen it across `step()`; the explicit local defeats that.
-        halted: bool = machine.halted
-        if halted:
+        if _checked_halted(machine.halted):
             return _exact_halt(steps, check_receiver, evidence=evidence)
         state = _proof_snapshot(reader, adapter, None if evidence else steps)
         if check_each_snapshot:
@@ -494,8 +493,12 @@ def run_until_halt_or_all_branches_cycle(
     """
     limit = check_whole(limit, "limit")
     adapter = _checked_adapter(machine)
-    _, declared_random = _proof_runtime(adapter)
-    if declared_random and isinstance(machine, _SteppableMachine) and machine.halted:
+    _, random = _proof_runtime(adapter)
+    if (
+        random
+        and isinstance(machine, _SteppableMachine)
+        and _checked_halted(machine.halted)
+    ):
         return True
     state = cast(
         _BranchingStepMachine,
@@ -507,7 +510,7 @@ def run_until_halt_or_all_branches_cycle(
             "branching_halted and branching_successors",
         ),
     )
-    if isinstance(machine, _SteppableMachine) and machine.halted:
+    if isinstance(machine, _SteppableMachine) and _checked_halted(machine.halted):
         return True
     return _branch_search(state, limit, adapter=adapter).halts
 
@@ -732,7 +735,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
         ),
     )
     runner = _proof_runner(machine, state)
-    if runner.halted:
+    if _checked_halted(runner.halted):
         if check_receiver is not None:
             check_receiver()
         return True
@@ -757,8 +760,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
         else:
             _step_proof_receiver(runner, check_receiver, completed)
             completed += 1
-        halted: bool = runner.halted
-        if halted:
+        if _checked_halted(runner.halted):
             if check_receiver is not None:
                 check_receiver()
             return True
@@ -882,7 +884,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     # is invalid if the period ever reached the left edge.
     visits: dict[Hashable, _GrowthVisit] = {}
     for completed in range(limit + 1 if limit else 0):
-        if runner.halted:
+        if _checked_halted(runner.halted):
             if check_receiver is not None:
                 check_receiver()
             return True
@@ -932,7 +934,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             runner.step()
         else:
             _step_proof_receiver(runner, check_receiver, completed)
-    if runner.halted:
+    if _checked_halted(runner.halted):
         if check_receiver is not None:
             check_receiver()
         return True
@@ -1046,7 +1048,7 @@ def run_until_halt_or_value_growth(
     slacks: list[int | None] = []
     visits: dict[Hashable, list[_Visit]] = {}
     for index in range(limit + 1 if limit else 0):
-        if runner.halted:
+        if _checked_halted(runner.halted):
             if check_receiver is not None:
                 check_receiver()
             return True
@@ -1065,7 +1067,7 @@ def run_until_halt_or_value_growth(
             runner.step()
         else:
             _step_proof_receiver(runner, check_receiver, index)
-    if runner.halted:
+    if _checked_halted(runner.halted):
         if check_receiver is not None:
             check_receiver()
         return True
@@ -1178,13 +1180,12 @@ def _drive_until_halt(
     _checked_adapter(machine)
     steps = 0
     try:
-        while not machine.halted:
+        while not _checked_halted(machine.halted):
             if limit is not None and steps >= limit:
                 return None
             if stop is not None:
                 requested = bool(stop())
-                halted: bool = machine.halted
-                if halted:
+                if _checked_halted(machine.halted):
                     break
                 if requested:
                     return None

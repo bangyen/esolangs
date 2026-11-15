@@ -194,6 +194,37 @@ def test_halt_driver_requires_a_stepper_before_inspecting_state() -> None:
     with pytest.raises(ArgumentError, match=r"machine.*halted"):
         run_until_halt(MissingHalted(), limit=0)
 
+    class CallerVM:
+        dumps_on_the_post_halt_step = False
+        steppable_to_answer = self_halts = True
+        eof_is_a_value = False
+        output = ""
+
+        def __init__(self, halted):
+            self.halted = halted
+
+        def step(self):
+            self.output = "A"
+            self.halted = True
+
+        def snapshot(self):
+            return self.output
+
+    for execute, wanted in (
+        (lambda raw: run_until_halt(raw, limit=1), True),
+        (lambda raw: run_until_halt_or_cycle(raw, limit=1), True),
+        (lambda raw: complete_vm(raw, max_steps=1), "A"),
+        (lambda raw: Debugger(raw).run(limits=ExecutionLimits(max_steps=1)), "halted"),
+    ):
+        healthy = CallerVM(halted=False)
+        assert execute(healthy) == wanted
+        assert healthy.output == "A"
+        for invalid in ("still active", 0):
+            malformed = CallerVM(invalid)
+            with pytest.raises(ArgumentError, match="halted must be a bool"):
+                execute(malformed)
+            assert malformed.output == ""
+
 
 def test_branch_search_does_not_hide_an_unexpected_or_global_failure() -> None:
     class _BranchOnly:

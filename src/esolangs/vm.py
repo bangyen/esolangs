@@ -24,7 +24,6 @@ import sys
 from collections.abc import Callable, Hashable
 from contextlib import AbstractContextManager
 from dataclasses import replace
-from functools import partial
 from inspect import getattr_static
 from types import FunctionType, ModuleType
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
@@ -61,6 +60,7 @@ from esolangs.runtime._capabilities import IpShape as _IpShape
 from esolangs.runtime._drive import (
     PeriodicMachine,
     _check_snapshot_hash,
+    _checked_halted,
     _invalid_halted,
     _SnapshotUnavailableError,
     drive_periodic,
@@ -85,6 +85,7 @@ from esolangs.settings import DialectSettings
 
 if TYPE_CHECKING:
     # A runtime import would close the cycle PreparedProgram.make_debugger opens.
+    from esolangs.runtime._controller import ExecutionController
     from esolangs.runtime._prepared import PreparedProgram
 
 
@@ -99,27 +100,53 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     if max_steps is not None:
         max_steps = check_whole(max_steps, "max_steps")
     _check_driver(vm, "vm", "self_halts")
-    if not vm.self_halts and not vm.halted:
-        raise ArgumentError("completion requires a machine that self-halts")
-    steps = _drive_until_halt(vm, max_steps, on_fault=partial(_retain_fault_steps, vm))
-    if steps is None:
-        _check_driver_fields(vm, "vm", "output")
-        error = steps_exhausted("VM completion exhausted max_steps")
-        # Without a stop predicate, an active return has used the full budget.
-        error.observation = replace(_capture_observation(vm), steps=max_steps)
-        error.partial_output = error.observation.output
-        raise error
+    steps = 0
+
+    def retain(error: EsolangError, completed: int) -> None:
+        _retain_fault_steps(vm, error, steps + completed)
+
+    while True:
+        if not vm.self_halts and not _checked_halted(vm.halted):
+            raise ArgumentError("completion requires a machine that self-halts")
+        remaining = None if max_steps is None else max_steps - steps
+        completed = _drive_until_halt(vm, remaining, on_fault=retain)
+        if completed is None:
+            _check_driver_fields(vm, "vm", "output")
+            error = steps_exhausted("VM completion exhausted max_steps")
+            # Without a stop predicate, an active return has used the full budget.
+            error.observation = replace(_capture_observation(vm), steps=max_steps)
+            error.partial_output = error.observation.output
+            raise error
+        steps += completed
+        if _finalize_halted_vm(vm, steps):
+            _check_driver_fields(vm, "vm", "output")
+            return vm.output
+
+
+def _finalize_halted_vm(vm: VM, steps: int) -> bool:
+    """Finalize the halted VM and report whether its receiver stayed fixed."""
     _check_driver_fields(vm, "vm", "dumps_on_the_post_halt_step")
     dump_pending = vm.dumps_on_the_post_halt_step and not _post_halt_dumped(vm)
+    receivers = _completion_receivers(vm) if dump_pending else ()
     try:
         finalize(vm, policy=Completion.POST_HALT if dump_pending else Completion.HALTED)
     except EsolangError as error:
         _retain_fault_steps(vm, error, steps)
         raise
-    if dump_pending:
-        _raise_halt_fault(vm)
-    _check_driver_fields(vm, "vm", "output")
-    return vm.output
+    if not dump_pending:
+        return True
+    _raise_halt_fault(vm)
+    return all(controller.vm is wrapped for controller, wrapped in receivers)
+
+
+def _completion_receivers(vm: VM) -> tuple[tuple[ExecutionController, VM], ...]:
+    """Retain the controller links that determine the pending dump's receiver."""
+    from esolangs.runtime._controller import ExecutionController
+
+    if isinstance(vm, ExecutionController):
+        wrapped = vm.vm
+        return ((vm, wrapped), *_completion_receivers(wrapped))
+    return ()
 
 
 def _retain_observer_steps(vm: object, error: EsolangError, steps: int) -> bool:
@@ -427,7 +454,7 @@ class _DelegatingVM:
 def _capture_result(vm: VM) -> ExecutionResult:
     """Capture a finalized, halted VM without taking another step."""
     _raise_halt_fault(vm)
-    if not vm.halted:
+    if not _checked_halted(vm.halted):
         raise ArgumentError("execution result requires a halted VM")
     owner = _controller_vm(vm)
     if isinstance(owner, _DelegatingVM) and owner._dump_pending:  # noqa: SLF001

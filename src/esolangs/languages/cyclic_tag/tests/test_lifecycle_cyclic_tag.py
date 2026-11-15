@@ -12,12 +12,83 @@ from esolangs import run, vm
 from esolangs.debugger import Debugger, make_debugger
 from esolangs.languages.cyclic_tag import interpreter
 from esolangs.results import Completion, CompletionReport
+from tests.support.reference import REFERENCE
 from tests.support.vm_support import assert_vm_finalization_is_shared
 
 
 @pytest.mark.parametrize("finalize", ["step", "complete_vm"])
 def test_debuggers_share_the_finalized_output(finalize) -> None:
     assert_vm_finalization_is_shared("Cyclic tag", ",10", 2, "0", finalize)
+    if finalize == "complete_vm":
+        _check_complete_vm_receiver_replacements()
+
+
+def _check_complete_vm_receiver_replacements():
+    class SwapAfterDump(Debugger):
+        def __init__(self, original, replacement):
+            super().__init__(original)
+            self.original = original
+            self.replacement = replacement
+
+        def step(self):
+            dumping = self.vm is self.original and self.halted
+            super().step()
+            if dumping:
+                self.vm = self.replacement
+
+    def wrap(original, replacement, *, nested):
+        switched = SwapAfterDump(original, replacement)
+        return Debugger(switched) if nested else switched
+
+    api = esolangs.Language("Cyclic tag")
+    for nested in (False, True):
+        for prehalted, limit, next_steps in (
+            (True, 0, 0),
+            (False, 2, 1),
+            (False, 3, 2),
+            (True, None, 2),
+        ):
+            original = api.make_vm(",1")
+            if prehalted:
+                original.step()
+            next_vm = vm.make_vm(REFERENCE, "+.")
+            live = wrap(original, next_vm, nested=nested)
+            if next_steps == 2:
+                assert vm.complete_vm(live, max_steps=limit) == "\x01"
+                assert live.observation.completion.kind is Completion.HALTED
+            else:
+                with pytest.raises(
+                    esolangs.ExecutionCapError, match="max_steps"
+                ) as caught:
+                    vm.complete_vm(live, max_steps=limit)
+                assert caught.value.bound == "max_steps"
+                assert caught.value.partial_output == ""
+                assert caught.value.observation == live.observation
+                assert live.observation.steps == limit
+                assert not live.halted
+            assert original.output == "1"
+            assert next_vm.ip == next_steps
+            assert live.observation.steps == int(not prehalted) + next_steps
+
+        original = api.make_vm(",1")
+        next_vm = api.make_vm(",0")
+        next_vm.step()
+        live = wrap(original, next_vm, nested=nested)
+        assert vm.complete_vm(live, max_steps=1) == "0"
+        assert original.output == "1"
+        assert live.observation.completion.kind is Completion.POST_HALT
+        assert live.observation.steps == 1
+
+        original = api.make_vm(",1")
+        next_vm = vm.make_vm(REFERENCE, ",.,", stdin="A")
+        live = wrap(original, next_vm, nested=nested)
+        with pytest.raises(esolangs.InputExhaustedError) as caught:
+            vm.complete_vm(live, max_steps=4)
+        assert original.output == "1"
+        assert caught.value.partial_output == "A"
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "A", 1, 1, 1, steps=3
+        )
 
 
 @pytest.mark.medium

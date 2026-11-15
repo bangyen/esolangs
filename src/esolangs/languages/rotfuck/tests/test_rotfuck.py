@@ -102,6 +102,21 @@ def _check_legacy_pickle_settings(api) -> None:
     )
     program, template, unbound = pickle.loads(wire)
     forward = api.settings(rotation="forward")
+
+    # v1.6.0 generated "01" in the forward dialect as a tagged str.
+    tagged = pickle.loads(
+        b64decode(
+            "gASV+AAAAAAAAACMD2Vzb2xhbmdzLnRhZ2dlZJSMB19UYWdnZWSUk5SMdystK10rLDw+LStdWy4s"
+            "PD4tK11bLiw8Pi0rXVsuLDw+LStdWy4sPD4tK11bLiw8Pi0rXVsuLSs8PC4sXV0sLCw8XV0rLDw8"
+            "PCsrK11dPDw8PFtbW11bPDw8XV0uLj4+LStdWy4+WywsK11bLixbLC0rXStbPFtdlIwHUk9UZnVj"
+            "a5SMEWVzb2xhbmdzLnNldHRpbmdzlIwPRGlhbGVjdFNldHRpbmdzlJOUKYGUfZSMBl9pdGVtc5SM"
+            "CHJvdGF0aW9ulIwHZm9yd2FyZJSGlIWUc2KHlFKULg=="
+        )
+    )
+    assert tagged == api.from_source(tagged.source, settings=forward)
+    assert "".join(api.run(tagged, stdin=bit).output for bit in "01") == "01"
+    assert pickle.loads(pickle.dumps(tagged)) == tagged
+
     assert program == api.from_source(",,", settings=forward)
     assert program.input_arity is None
     assert template.settings == forward

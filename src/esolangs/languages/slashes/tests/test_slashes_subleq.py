@@ -1,7 +1,9 @@
 """/// execution, dialects, and linear source regressions."""
 
 import json
+import pickle
 import random
+from base64 import b64decode
 
 import pytest
 
@@ -95,6 +97,32 @@ def test_slashes_trailing_escape(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
 
+def _check_legacy_tagged_pickles(api, expected) -> None:
+    # v1.6.0 generated the template for "01" and instantiated [1].
+    template = pickle.loads(
+        b64decode(
+            "gASVjAAAAAAAAACMD2Vzb2xhbmdzLnRhZ2dlZJSMCV9UZW1wbGF0ZZSTlCiMTC9iL2EqLy8qYS9h"
+            "KiovL2EvLy8qXD5xQS8+Ly8qXD5xQi8+Ly8+cUEvQy8vPnFCL0QvL3FBLy8vcUIvLy9DLzAvL0Qv"
+            "MS8kPnFBcUKUjAMvLy+UjAEklIwBYZSMAWKUhpSFlE50lFKULg=="
+        )
+    )
+    program = pickle.loads(
+        b64decode(
+            "gASVeQAAAAAAAACMD2Vzb2xhbmdzLnRhZ2dlZJSMB19UYWdnZWSUk5SMTC9iL2EqLy8qYS9hKiov"
+            "L2EvLy8qXD5xQS8+Ly8qXD5xQi8+Ly8+cUEvQy8vPnFCL0QvL3FBLy8vcUIvLy9DLzAvL0QvMS9i"
+            "PnFBcUKUjAMvLy+UToeUUpQu"
+        )
+    )
+    assert type(template) is esolangs.TemplateArtifact
+    assert type(program) is esolangs.ProgramArtifact
+    assert template == expected
+    assert program == template.fill([1])
+    assert api.run(program).output == "1"
+    assert "".join(api.run(template.fill([bit])).output for bit in (0, 1)) == "01"
+    for record in (template, program):
+        assert pickle.loads(pickle.dumps(record)) == record
+
+
 def test_slashes_literal_dollar_and_serialized_template() -> None:
     assert esolangs.run("///", "/a/$/a").output == "$"
     assert (
@@ -122,6 +150,7 @@ def test_slashes_literal_dollar_and_serialized_template() -> None:
     api = esolangs.Language("///")
     artifact = api.from_json(legacy)
     assert isinstance(artifact, esolangs.TemplateArtifact)
+    _check_legacy_tagged_pickles(api, artifact)
     start = artifact.source.index("$")
     assert artifact.spans == ((start, start + 1),)
     for bit in (0, 1):

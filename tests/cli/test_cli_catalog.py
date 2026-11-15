@@ -11,7 +11,7 @@ import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES, _table
-from tests.support.cli_support import call_both
+from tests.support.cli_support import _program, call_both
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 
@@ -34,7 +34,7 @@ def _python_cli(
     )
 
 
-def test_active_catalog_lists_in_every_format(monkeypatch, capsys) -> None:
+def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> None:
     scope = esolangs.Catalog([])
     monkeypatch.setattr(_table, "CATALOG", scope)
     assert esolangs.list_languages(catalog=scope) == []
@@ -71,6 +71,56 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys) -> None:
         assert not facts["boolean_generator"]
         assert facts["generator_scaling"] is None
         assert facts["examples"] == []
+
+    lf_name, cr_name, unreachable = "Scoped\nCatalog", "Scoped\rCatalog", "No\r\nAlias"
+    # This name is reachable and must not become the spelling of a different row.
+    escaped_name = r"Scoped\nCatalog"
+    restrictions = "first line\nsecond line"
+    scope = esolangs.Catalog(
+        [
+            replace(original, name=lf_name, id="scoped_lf", aliases=()),
+            replace(
+                original,
+                name=cr_name,
+                id="unsafe\rid",
+                aliases=("scoped_cr",),
+                backend=replace(original.backend, restrictions=restrictions),
+            ),
+            replace(original, name=escaped_name, id="escaped", aliases=()),
+            replace(original, name=unreachable, id="unsafe\nid", aliases=()),
+        ]
+    )
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    expected = {
+        lf_name: "scoped_lf",
+        cr_name: "scoped_cr",
+        escaped_name: escaped_name,
+        unreachable: f"{unreachable!r} (see --json)",
+    }
+    canonical = esolangs.list_languages(catalog=scope)
+    labels = [expected[name] for name in canonical]
+    plain, error = call_both(["list"], capsys)
+    assert (plain.splitlines(), error) == (labels, "")
+    text, error = call_both(["list", "--details"], capsys)
+    rows = text.splitlines()[1:]
+    assert not error
+    assert len(rows) == len(labels)
+    width = max(map(len, labels))
+    assert [row[:width].rstrip() for row in rows] == labels
+    assert r"(first line\nsecond line)" in text
+
+    output, _ = call_both(["list", "--json"], capsys)
+    assert json.loads(output) == canonical
+    output, _ = call_both(["list", "--json", "--details"], capsys)
+    records = json.loads(output)
+    assert [record["name"] for record in records] == canonical
+    assert records[canonical.index(cr_name)]["generator_restrictions"] == restrictions
+
+    path = _program(tmp_path, "+.")
+    for name in (lf_name, cr_name, escaped_name):
+        spelling = expected[name]
+        assert scope.resolve(spelling) == name
+        assert call_both(["run", spelling, path], capsys) == ("\x01", "")
 
 
 @pytest.mark.medium

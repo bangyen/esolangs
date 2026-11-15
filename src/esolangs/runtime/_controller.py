@@ -11,6 +11,7 @@ from esolangs.exceptions import ArgumentError, EsolangError, steps_exhausted
 from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome, _failed_outcome
 from esolangs.results import Completion, CompletionReport, ExecutionResult
+from esolangs.runtime._drive import _checked_halted
 from esolangs.runtime._validate import _argument_repr, _has_backing_type
 from esolangs.runtime._vm_protocol import VM
 from esolangs.vm import (
@@ -68,7 +69,7 @@ class ExecutionController:
         """Whether the wrapped VM has finished executing."""
         wrapped = self.vm
         try:
-            return wrapped.halted
+            return _checked_halted(wrapped.halted)
         except EsolangError as error:
             self._observe_inspection_fault(wrapped, error)
             raise
@@ -160,7 +161,7 @@ class ExecutionController:
         self._observer_fault = None
         wrapped = self.vm
         try:
-            active = not wrapped.halted
+            active = not _checked_halted(wrapped.halted)
         except EsolangError as error:
             self._observe_inspection_fault(wrapped, error)
             raise

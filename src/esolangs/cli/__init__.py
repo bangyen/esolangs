@@ -104,7 +104,7 @@ from esolangs.runtime._program import Program
 from esolangs.runtime._source import native_file_terminator
 from esolangs.runtime._validate import _argument_repr
 from esolangs.runtime.memory import format_integer
-from esolangs.runtime.source_hints import can_render_argument
+from esolangs.runtime.source_hints import can_render_argument, is_option
 
 
 def describe(language: str, *, catalog: Catalog | None = None) -> LanguageInfo:
@@ -225,6 +225,19 @@ def _catalog_names(
     ]
 
 
+def _listed_name(name: str, *, catalog: Catalog, encoding: str) -> str:
+    """Use an accepted one-line spelling when the display name spans lines."""
+    if name.splitlines() == [name]:
+        return name
+    declaration = catalog.languages[name]
+    spellings = (
+        spelling
+        for spelling in (declaration.id, *declaration.aliases)
+        if spelling.isprintable() and can_render_argument(spelling, encoding)
+    )
+    return min(spellings, key=is_option, default=f"{name!r} (see --json)")
+
+
 def _list(rest: list[str]) -> None:
     """Print languages matching the requested capabilities."""
     value_options = _VALUE_OPTIONS["list"]
@@ -242,8 +255,9 @@ def _list(rest: list[str]) -> None:
         if as_json:
             _write_output(json.dumps(names, indent=2) + "\n")
         else:
+            encoding = _display_encoding(sys.stdout)
             for name in names:
-                _display(name)
+                _display(_listed_name(name, catalog=catalog, encoding=encoding))
         return
     with _errors():
         records = [
@@ -266,7 +280,12 @@ def _list(rest: list[str]) -> None:
             + "\n"
         )
         return
-    width = max(map(len, catalog.languages), default=0)
+    encoding = _display_encoding(sys.stdout)
+    displayed = {
+        name: _listed_name(name, catalog=catalog, encoding=encoding)
+        for name in catalog.languages
+    }
+    width = max(map(len, displayed.values()), default=0)
     # The legend lived in `list --help` only, so the marker columns arrived
     # unexplained for anyone who ran the thing before reading about it.
     _display(
@@ -274,7 +293,7 @@ def _list(rest: list[str]) -> None:
         f"int=interpreter-only; then any generator cap"
     )
     for facts in records:
-        name = facts["name"]
+        name = displayed[facts["name"]]
         marks = " ".join(
             filter(
                 None,
@@ -289,7 +308,7 @@ def _list(rest: list[str]) -> None:
         restriction = facts["generator_restrictions"]
         suffix = f" max-inputs={_argument_repr(limit)}" if limit is not None else ""
         if restriction:
-            suffix += f" ({restriction})"
+            suffix += f" ({_printable(restriction)})"
         _display(f"{name.ljust(width)}  {marks}{suffix}")
 
 

@@ -102,24 +102,31 @@ def _origin(
     return owner, settings
 
 
-def _restore_artifact_slots(artifact: Artifact, state: list[object]) -> None:
-    for item, value in zip(fields(artifact), state, strict=False):
-        object.__setattr__(artifact, item.name, value)
-    settings = artifact.settings
+def _restore_legacy_settings(
+    language: str, settings: DialectSettings | None
+) -> DialectSettings | None:
     choices = None if settings is None else DialectSettings._legacy_choices(settings)  # noqa: SLF001
     if choices is None:
-        return
+        return settings
 
     from esolangs.registry._catalog import get_catalog, resolve_origin
 
     catalog = get_catalog(None)
-    name = resolve_origin(artifact.language, catalog=catalog)
+    name = resolve_origin(language, catalog=catalog)
     if name is None:
-        raise ArgumentError(f"cannot restore legacy settings for {artifact.language}")
+        raise ArgumentError(f"cannot restore legacy settings for {language}")
     schema = catalog.languages[name].runtime.dialect_schema or DialectSchema(
         name, {}, {}
     )
-    object.__setattr__(artifact, "settings", DialectSettings(schema, **choices))
+    return DialectSettings(schema, **choices)
+
+
+def _restore_artifact_slots(artifact: Artifact, state: list[object]) -> None:
+    for item, value in zip(fields(artifact), state, strict=False):
+        object.__setattr__(artifact, item.name, value)
+    settings = _restore_legacy_settings(artifact.language, artifact.settings)
+    if settings is not artifact.settings:
+        object.__setattr__(artifact, "settings", settings)
 
 
 @dataclass(frozen=True, slots=True)

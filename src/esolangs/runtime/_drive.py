@@ -82,7 +82,7 @@ def finalize(
     else:
         if cycle is not None:
             raise ValueError("boundary-cycle evidence requires periodic completion")
-        if not machine.halted:
+        if not _checked_halted(machine.halted):
             raise ValueError("completion requires a halted machine")
         if policy is Completion.POST_HALT:
             machine.step()
@@ -109,6 +109,13 @@ def _repeat_evidence(
 
 def _invalid_halted() -> InterpreterLimitError:
     return InterpreterLimitError("machine halted must be a bool")
+
+
+def _checked_halted(halted: object) -> bool:
+    """Read a caller's halt result as an actual boolean."""
+    if halted is False or halted is True:
+        return halted
+    raise ArgumentError("machine halted must be a bool")
 
 
 def drive_until_repeat(
