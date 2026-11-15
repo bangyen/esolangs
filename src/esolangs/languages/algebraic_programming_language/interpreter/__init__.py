@@ -104,7 +104,7 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -199,6 +199,8 @@ class _Machine:
         self.io = io
         self.lines = tuple(_blocks(code)) if isinstance(code, str) else code
         self.state = _State(MappingProxyType({}), MappingProxyType({}), (), 0)
+        self._line_inputs: list[_Number] = []
+        self._pending_token: str | None = None
         # Identity -> (serial, object): holding the object keeps its id
         # from being reused, so a serial names one object for the run.
         self._serials: dict[int, tuple[int, object]] = {}
@@ -259,8 +261,14 @@ class _Machine:
         # Definition installation is determined by source and the line cursor.
         # Its compiled code and location tables are read-only schema, not payload.
         # Evaluation-budget ticks belong to the shell, like VM step limits.
+        line: int | WorkspaceVariant = self.line
+        if self._line_inputs or self._pending_token is not None:
+            line = WorkspaceVariant(
+                "pending_line",
+                (line, tuple(map(_value, self._line_inputs)), self._pending_token),
+            )
         return _WORKSPACE_MODEL.capture(
-            line=self.line,
+            line=line,
             globals=frozenset(
                 (key, _value(value)) for key, value in self.state.globals.items()
             ),
@@ -283,7 +291,7 @@ class _Machine:
         never rewritten, reported as first-seen serials rather than raw
         ``id``s so a snapshot is small and the same on every run.
         """
-        return (
+        state = (
             self.line,
             tuple(sorted((k, self._key(v)) for k, v in self.state.globals.items())),
             tuple(
@@ -302,6 +310,12 @@ class _Machine:
             ),
             self.io.progress(),
         )
+        if self._line_inputs or self._pending_token is not None:
+            return (
+                *state,
+                (tuple(map(self._key, self._line_inputs)), self._pending_token),
+            )
+        return state
 
     def frame_entry_key(self, frame: object) -> tuple[object, ...]:
         """Return what ``frame`` is about to run, for the ancestor check.
@@ -351,21 +365,26 @@ class _Machine:
         """
         if self.halted:
             return
-        inputs: list[_Number] = []
+        inputs = self._line_inputs
         while True:
             try:
                 state, out = _advance(self.state, self.lines, inputs, self._WORK_LIMIT)
             except _NeedInput:
                 inputs.append(self._read_number())
+                self._pending_token = None
                 continue
             break
         self.state = state
+        inputs.clear()
         if out is not None:
             self.io.print_str(out)
 
     def _read_number(self) -> _Number:
-        """Read one whitespace-delimited numeric token."""
-        text = self.io.input_token().strip()
+        """Parse the next token, retaining it if conversion fails."""
+        text = self._pending_token
+        if text is None:
+            text = self.io.input_token().strip()
+            self._pending_token = text
         try:
             return _number(text)
         except ValueError as exc:

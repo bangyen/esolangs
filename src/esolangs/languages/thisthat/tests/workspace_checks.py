@@ -21,7 +21,7 @@ def check_accounting_thisthat(bucket):
         WorkspaceOracle,
     )
     records = full_oracle.cases()
-    assert len(records) == 67
+    assert len(records) == 68
     assert 0 <= bucket < 9
     for index, case in enumerate(records):
         selected = 1 if index == 65 else index % 9

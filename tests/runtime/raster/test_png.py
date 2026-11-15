@@ -1037,6 +1037,53 @@ def test_png_writer_refuses_foreign_dialect_owner(language: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "language", one(source_kind="raster", boolean_generator=True, width_effect="layout")
+)
+@pytest.mark.parametrize("choices", [{}, {"ink": 1}])
+def test_typed_png_writers_validate_dialect_schema(
+    language: str, choices: dict[str, int], tmp_path: Path
+) -> None:
+    api = esolangs.Language(language)
+    original = api.catalog.languages[language]
+    schema = esolangs.DialectSchema(language, {"ink": (0, 1)}, {"ink": 0})
+    runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
+    scoped = esolangs.Catalog([replace(original, runtime=runtime, backend=None)]).bind(
+        language
+    )
+    artifact = api.generate("01")
+    assert isinstance(artifact, esolangs.ProgramArtifact)
+    pixels = artifact.source
+    assert isinstance(pixels, esolangs.Raster)
+    raw = pixels.to_png()
+    foreign = scoped.settings(**choices)
+    installed = api.settings()
+    path = tmp_path / "source.png"
+    metadata = {"scale": artifact.scale, "input_arity": artifact.input_arity}
+    for write in (
+        lambda settings, catalog=None: png.attach_source_metadata(
+            raw, language, settings, catalog=catalog, **metadata
+        ),
+        lambda settings, catalog=None: png.write_source(
+            pixels.rows, language, settings, catalog=catalog, **metadata
+        ),
+    ):
+        unscoped = write(foreign)
+        assert write(foreign, scoped.catalog) == unscoped
+        path.write_bytes(unscoped)
+        assert scoped.from_file(path) == replace(artifact, settings=foreign)
+
+        with pytest.raises(esolangs.ArgumentError, match="use a different schema"):
+            write(foreign, api.catalog)
+
+        tagged = write(installed, api.catalog)
+        assert tagged == write(installed)
+        path.write_bytes(tagged)
+        restored = api.from_file(path)
+        assert restored == replace(artifact, settings=installed)
+        assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+
+
+@pytest.mark.parametrize(
     ("scale", "arity", "field"),
     [
         (0, 1, "scale"),

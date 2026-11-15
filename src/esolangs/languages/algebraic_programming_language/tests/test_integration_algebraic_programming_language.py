@@ -9,6 +9,52 @@ from esolangs.vm import make_vm, run_until_halt_or_ancestor
 from tests.support.reference import REFERENCE
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("stdin", "error_type", "message", "position", "reads", "past_end", "pending"),
+    [
+        (
+            "2 oops 9 8",
+            esolangs.HaltError,
+            "input 'oops' is not a number",
+            6,
+            2,
+            0,
+            "oops",
+        ),
+        ("2", esolangs.InputExhaustedError, "past the end", 1, 1, 1, None),
+    ],
+)
+def test_retried_line_bindings_keep_the_original_input(
+    stdin, error_type, message, position, reads, past_end, pending
+) -> None:
+    api = esolangs.Language("Algebraic Programming Language")
+    source = "a + b"
+    result = api.run(source, stdin="2 3")
+    assert (result.output, result.input_position, result.input_reads) == ("5\n", 3, 2)
+    for outcome in (
+        api.execute(source, stdin=stdin),
+        api.prepare(source).execute(stdin=stdin),
+        api.execute(source, stdin=stdin, isolated=True),
+    ):
+        assert type(outcome.error) is error_type
+        assert message in str(outcome.error)
+        assert outcome.observation == esolangs.ExecutionResult(
+            "", position, reads, past_end
+        )
+
+    dbg = api.make_debugger(source, stdin=stdin)
+    for attempt, resume in enumerate((dbg.step, dbg.run, dbg.step), 1):
+        with pytest.raises(error_type, match=message) as caught:
+            resume()
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "", position, reads, attempt * past_end, steps=0
+        )
+        assert dbg.ip == (0,)
+        assert dbg.memory == []
+        assert dbg.snapshot()[-1] == ((("integer", 2),), pending)
+
+
 class TestTheVmPathRefusesLikeRunDoes:
     """``run`` translated an interpreter's exceptions and the VM did not."""
 

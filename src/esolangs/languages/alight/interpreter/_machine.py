@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import assert_never
+from typing import Literal, assert_never
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.alight.dialect import (
@@ -57,7 +57,7 @@ from esolangs.languages.alight.interpreter._walk import (
     _turned,
 )
 from esolangs.languages.alight.interpreter._workspace import _Graph
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
@@ -715,6 +715,7 @@ class _Machine:
     ) -> None:
         self.io = io
         self._input_reads = 0
+        self._pending_input: Fraction | Literal["eof"] | None = None
         image = (
             code
             if isinstance(code, _Image)
@@ -751,11 +752,14 @@ class _Machine:
         """Capture semantic walkers and reachable lists without cycle serializers."""
         graph = _Graph()
         walkers = tuple(graph.walker(walker) for walker in self.walkers)
+        cursor: int | WorkspaceVariant = self.io.progress()
+        if self._pending_input is not None:
+            cursor = WorkspaceVariant("pending_input", (cursor, self._pending_input))
         return _WORKSPACE_MODEL.capture(
             walkers=walkers,
             heap=graph.heap(),
             stopped=self.halted,
-            input_cursor=self.io.progress(),
+            input_cursor=cursor,
             input_reads=self._input_reads,
         )
 
@@ -764,11 +768,14 @@ class _Machine:
         # Every walker, not only the innermost: a callee that returns to a
         # caller standing somewhere else is a different state, and a lap
         # that consumed a line is not a repeat.
-        return (
+        state = (
             _freeze(tuple(walker.key() for walker in self.walkers)),
             self.halted,
             self._input_reads,
         )
+        if self._pending_input is not None:
+            return (*state, self._pending_input)
+        return state
 
     #: ``ip`` is a cell of the program's own rectangle: the first two
     #: parts are a row and a column, and the rest is a heading.  Without
@@ -791,7 +798,7 @@ class _Machine:
         """The suspended callers, outermost first."""
         return self.core.views.stack
 
-    def _read_char(self) -> _Value:
+    def _read_char(self) -> Fraction | Literal["eof"]:
         """Read one character, or ``eof`` when the input is exhausted."""
         try:
             raw = self.io.input_char()
@@ -808,13 +815,14 @@ class _Machine:
         """
         if self.halted:
             return
-        value: _Value | object = _MISSING
         while True:
+            value = self._pending_input if self._pending_input is not None else _MISSING
             try:
                 self.core, output = _advance(self.core, value)
                 break
             except _NeedInputError:
-                value = self._read_char()
+                self._pending_input = self._read_char()
+        self._pending_input = None
         if output is not None:
             self.io.print_char(chr(output))
 

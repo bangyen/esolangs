@@ -597,7 +597,7 @@ def attach_source_metadata(
     input_arity: int | None = None,
     catalog: Catalog | None = None,
 ) -> bytes:
-    """Tag PNG pixels with their owner, resolving language aliases in ``catalog``."""
+    """Tag PNG source, validating aliases and settings in an explicit catalog."""
     if catalog is not None:
         from esolangs.registry._catalog import get_catalog
 
@@ -645,4 +645,8 @@ def attach_source_metadata(
         if type(input_arity) is not int or input_arity < 1:
             raise ArgumentError("input_arity must be a positive integer")
         metadata["input_arity"] = input_arity
+    if catalog is not None and settings is not None:
+        from esolangs.settings import dialect_options
+
+        dialect_options(settings.language, settings, catalog=catalog)
     return write_metadata(data, metadata)

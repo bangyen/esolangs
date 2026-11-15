@@ -5,6 +5,8 @@ from itertools import product
 
 import pytest
 
+import esolangs
+from esolangs.debugger import make_debugger
 from esolangs.languages.flowchart.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -567,6 +569,34 @@ def test_a_byte_finished_before_a_faulting_read_is_not_swallowed() -> None:
         _run_to_end(machine)
     assert io.events == [("read", ord("1")), ("print", 0xFF)]
     assert io.getvalue() == "\xff"
+
+
+def test_a_failed_tick_does_not_repeat_accepted_io() -> None:
+    lines = _two_pointer_program()
+    complete = "\n".join(lines)
+    lines[-1] = lines[-1].removesuffix("─(( ))")
+    debugger = make_debugger("Flowchart", "\n".join(lines), stdin="AB")
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=8)) == "max_steps"
+    position = debugger.ip
+    with pytest.raises(esolangs.ProgramError, match="non-end node has no exit path"):
+        debugger.step()
+    observed, snapshot = debugger.observation, debugger.snapshot()
+    assert observed == esolangs.ExecutionResult("ÿ", 2, 2, 0, steps=8)
+    for _ in range(9):
+        with pytest.raises(
+            esolangs.ProgramError, match="non-end node has no exit path"
+        ):
+            debugger.step()
+        assert (debugger.ip, debugger.observation, debugger.snapshot()) == (
+            position,
+            observed,
+            snapshot,
+        )
+
+    result = esolangs.run(
+        "Flowchart", complete, stdin="AB", limits=esolangs.ExecutionLimits(max_steps=10)
+    )
+    assert (result.steps, result.output) == (10, "ÿ")
 
 
 def test_workspace_ignores_pointer_cycle_views_and_sorted_caches(monkeypatch):

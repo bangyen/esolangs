@@ -1,6 +1,7 @@
 """Execution keeps the same behavior across source and input containers."""
 
 import base64
+import errno
 import gzip
 import io
 import json
@@ -445,6 +446,31 @@ def test_invalid_export_destination_does_not_consume_source(
     api.to_file(source, destination)
     assert destination.read_bytes() == b"+."
     assert api.run(destination).output == "\x01"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX filename limits")
+def test_overlong_export_destination_does_not_consume_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    limit = os.pathconf(tmp_path, "PC_NAME_MAX")
+    if limit < 1:
+        pytest.skip("filesystem does not specify a filename limit")
+    monkeypatch.chdir(tmp_path)
+    source = io.BytesIO(b"skip+.")
+    source.seek(4)
+    api = esolangs.Language(REFERENCE)
+
+    with pytest.raises(esolangs.ProgramError, match="cannot save") as caught:
+        api.to_file(source, "x" * (limit + 1))
+    cause = caught.value.__cause__
+    assert isinstance(cause, OSError)
+    assert cause.errno == errno.ENAMETOOLONG
+    assert source.tell() == 4
+
+    destination = "x" * limit
+    api.to_file(source, destination)
+    assert Path(destination).read_bytes() == b"+."
+    assert api.run(Path(destination)).output == "\x01"
 
 
 def test_invalid_export_destination_does_not_open_source_path(tmp_path: Path) -> None:

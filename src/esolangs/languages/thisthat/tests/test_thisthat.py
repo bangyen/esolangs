@@ -5,6 +5,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.thisthat.generator import thisthat
 from esolangs.languages.thisthat.interpreter import (
@@ -18,7 +19,11 @@ from esolangs.languages.thisthat.interpreter import (
 )
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, draw
-from esolangs.vm import run_until_halt
+from esolangs.vm import (
+    _capture_workspace,
+    run_until_halt,
+    run_until_halt_or_all_branches_cycle,
+)
 from tests.interpreters.cursorless_io import CursorlessIO
 from tests.interpreters.oracle_support import check_terminal
 from tests.support.factories import reject_rng_options, rng_factory
@@ -106,6 +111,89 @@ def test_a_retried_tick_flushes_each_print_once_in_order() -> None:
     machine.step()
     assert io.getvalue() == "12"
     assert io.events == ["write:1", "read", "write:2", "read"]
+
+
+def test_a_failed_cycle_retries_with_the_same_draw_input_and_output() -> None:
+    source = "▣───◘───▣\n\n▣─■═◇\n\n▣───◇\n    ║\n    ◇"
+    language = Language("thisthat")
+    dbg = language.make_debugger(source, stdin="21", seed=4)
+    for _ in range(4):
+        dbg.step()
+    pointers = _capture_workspace(dbg.vm).parts[0]
+    for _ in range(2):
+        with pytest.raises(HaltError, match="input must be a bit") as caught:
+            dbg.step()
+        assert caught.value.observation == dbg.observation
+        result = dbg.observation
+        assert (dbg.ip, result.output, result.steps) == ((0, 4), "1", 4)
+        assert (result.input_position, result.input_reads, result.input_past_end) == (
+            1,
+            1,
+            0,
+        )
+        assert dbg.snapshot()[-1] == ((ord("2"),), (0,), 1)
+        workspace = _capture_workspace(dbg.vm).parts[0]
+        assert workspace.kind == "pending_cycle"
+        assert workspace.values == (pointers, *dbg.snapshot()[-1])
+    failure_state = dbg.snapshot()
+    with pytest.raises(HaltError, match="input must be a bit"):
+        run_until_halt_or_all_branches_cycle(dbg, limit=2)
+    assert dbg.snapshot() == failure_state
+    assert dbg.output == "1"
+
+    with pytest.raises(HaltError, match="input must be a bit") as first:
+        language.run(source, stdin="21", seed=4)
+    observed = first.value.observation
+    assert observed is not None
+    assert (observed.output, observed.input_position, observed.input_reads) == (
+        "1",
+        1,
+        1,
+    )
+    control = language.make_debugger(source, stdin="1", seed=4)
+    for _ in range(5):
+        control.step()
+    assert (control.ip, control.output) == ((0, 5), "1")
+    assert len(control.snapshot()) == 8
+    control.run(limits=ExecutionLimits(max_steps=10))
+    assert control.halted
+    assert control.output == "11"
+
+
+def test_a_detached_branch_keeps_the_already_accepted_draw() -> None:
+    class InterruptedDraw:
+        calls = 0
+
+        def randbelow(self, upper):
+            assert upper == 2
+            self.calls += 1
+            if self.calls == 2:
+                raise OSError("draw temporarily unavailable")
+            return 1 if self.calls == 1 else 0
+
+    source = ["▣─◘─▣", "", "▣─◘─▣"]
+    rng = InterruptedDraw()
+    machine = _Machine(source, ScriptedIO(), rng)
+    machine.step()
+    machine.step()
+    with pytest.raises(OSError, match="draw temporarily unavailable"):
+        machine.step()
+    saved = machine.branching_snapshot()
+    assert saved[-1] == ((), (1,), 0)
+    detached = _Machine(source, ScriptedIO(), rng)
+    detached_before = detached.branching_snapshot()
+    with pytest.raises(TimeoutError, match="random merges"):
+        detached.branching_successors(saved, 1)
+    left, right = detached.branching_successors(saved, 2) or ()
+    assert len(left) == len(right) == 8
+    assert [p.position for p in left[0]] == [(1, 0), (3, 2)]
+    assert [p.position for p in right[0]] == [(1, 0), (1, 2)]
+    assert detached.branching_snapshot() == detached_before
+    assert machine.branching_snapshot() == saved
+    assert rng.calls == 2
+    machine.step()
+    assert machine.branching_snapshot() == left
+    assert rng.calls == 3
 
 
 @pytest.mark.parametrize(

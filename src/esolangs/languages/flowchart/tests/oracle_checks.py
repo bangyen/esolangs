@@ -101,7 +101,7 @@ def _actual(machine, case):
     assert type(port._character_reads) is type(port._newline) is bool
     assert port._line_reads == 0
     assert port._pending == ""
-    return (
+    parts = (
         tuple(pointers),
         frozenset((k, v) for k, v in machine.deques.items() if v),
         port.progress(),
@@ -111,6 +111,9 @@ def _actual(machine, case):
         machine.state.outgoing,
         machine.state.used,
     )
+    if machine._tick_input or machine._tick_output:
+        parts += ((tuple(machine._tick_input), machine._tick_output),)
+    return parts
 
 
 def _cycle(parts):
@@ -139,6 +142,21 @@ def _hold(machine, held):
     assert all(hash(c) == ch and hash(w) == wh for c, ch, w, wh in held)
 
 
+def _compare(machine, case, row, io):
+    parts, port = _actual(machine, case), machine.io
+    assert (
+        parts,
+        machine.halted,
+        port.getvalue(),
+        port.position(),
+        port.progress(),
+    ) == row
+    _views(machine, parts)
+    assert machine.snapshot() == _cycle(parts)
+    assert (port.reads, port.past_end, port._character_reads, port._newline) == io
+    return parts
+
+
 def _check(factory, case, cap=64):
     rows, ios = _model(case, cap)
     pending = iter(zip(rows, ios, strict=True))
@@ -146,16 +164,7 @@ def _check(factory, case, cap=64):
 
     def view(machine):
         row, io = next(pending)
-        parts = _actual(machine, case)
-        assert parts == row[0]
-        _views(machine, row[0])
-        assert machine.snapshot() == _cycle(row[0])
-        assert (
-            machine.io.reads,
-            machine.io.past_end,
-            machine.io._character_reads,
-            machine.io._newline,
-        ) == io
+        parts = _compare(machine, case, row, io)
         _hold(machine, held)
         return parts
 
@@ -169,14 +178,12 @@ def _check(factory, case, cap=64):
 def _literal():
     case = _straight(("read", "push_top", "write"), "A")
     assert case.rows == ("( )─/ /─\\[ ]/─\\ \\─(( ))",)
-    rows, _ios = _model(case)
+    rows, ios = _model(case)
     machine = native._Machine(list(case.rows), ScriptedIO("A"))
     witness = workspace.WorkspaceWitness(_WORKSPACE)
     held = []
-    for index, row in enumerate(rows):
-        assert _actual(machine, case) == row[0]
-        _views(machine, row[0])
-        assert machine.snapshot() == _cycle(row[0])
+    for index, (row, io) in enumerate(zip(rows, ios, strict=True)):
+        _compare(machine, case, row, io)
         witness.sample(machine.workspace_snapshot(), row[0])
         _hold(machine, held)
         if index + 1 < len(rows):
@@ -231,23 +238,15 @@ def _failure_history(case, kind, at, prefix=0):
     rejected, idles = 0, 0
     for _tick in range(64):
         row = model.row()
-        assert (
-            _actual(machine, case),
-            machine.halted,
-            port.getvalue(),
-            port.position(),
-            port.progress(),
-        ) == row
-        _views(machine, row[0])
-        assert machine.snapshot() == _cycle(row[0])
-        assert (
-            port.reads,
-            port.past_end,
-            port._character_reads,
-            port._newline,
-        ) == model.io()
+        _compare(machine, case, row, model.io())
         assert events == model.port.events
-        witness.sample(machine.workspace_snapshot(), row[0])
+        parts = row[0]
+        if len(parts) == 9:
+            pointer_state = workspace.WorkspaceVariant(
+                "pending_tick", (parts[0], *parts[-1])
+            )
+            parts = (pointer_state, *parts[1:-1])
+        witness.sample(machine.workspace_snapshot(), parts)
         _hold(machine, held)
         if model.halted:
             idles += 1
@@ -333,20 +332,7 @@ def _masks(case):
             held = []
             for index, (row, io) in enumerate(zip(rows, ios, strict=True)):
                 machine._mask_index = index
-                assert _actual(machine, case) == row[0]
-                _views(machine, row[0])
-                assert machine.snapshot() == _cycle(row[0])
-                assert (
-                    machine.io.getvalue(),
-                    machine.io.position(),
-                    machine.io.progress(),
-                ) == row[2:]
-                assert (
-                    machine.io.reads,
-                    machine.io.past_end,
-                    machine.io._character_reads,
-                    machine.io._newline,
-                ) == io
+                _compare(machine, case, row, io)
                 capture = machine.workspace_snapshot()
                 expected_parts = tuple(
                     None
@@ -398,20 +384,7 @@ def _masks(case):
         machine = Reduced(list(case.rows), ScriptedIO(case.stdin))
         consistent, held = workspace.WorkspaceWitness(reduced), []
         for index, (row, io) in enumerate(zip(rows, ios, strict=True)):
-            assert _actual(machine, case) == row[0]
-            _views(machine, row[0])
-            assert machine.snapshot() == _cycle(row[0])
-            assert (
-                machine.io.getvalue(),
-                machine.io.position(),
-                machine.io.progress(),
-            ) == row[2:]
-            assert (
-                machine.io.reads,
-                machine.io.past_end,
-                machine.io._character_reads,
-                machine.io._newline,
-            ) == io
+            _compare(machine, case, row, io)
             consistent.sample(
                 machine.workspace_snapshot(),
                 tuple(v for i, v in enumerate(row[0]) if i != field),

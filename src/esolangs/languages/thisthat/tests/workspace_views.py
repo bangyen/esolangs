@@ -8,6 +8,9 @@ from types import MappingProxyType
 from typing import NamedTuple
 from unittest.mock import patch
 
+import pytest
+
+from esolangs.exceptions import HaltError
 from esolangs.runtime._json import worker_dumps, worker_loads
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.randomness import FirstDraw, Seeded
@@ -39,7 +42,7 @@ class Held(NamedTuple):
     expected_cycle: object
     parts_plan: object
     cycle_plan: object
-    pointer_plans: tuple
+    pointer_plan: object
 
 
 def exact(actual, expected):
@@ -100,6 +103,8 @@ def cell_shape(value):
 
 def shape(value):
     cls = type(value)
+    if hasattr(value, "kind"):
+        return Shape(cls, (shape((value.kind, value.values)),))
     if cls in (int, bool, str, type(None)):
         return Shape(cls, ())
     assert cls in (tuple, frozenset)
@@ -148,6 +153,8 @@ def typed_value(actual, expected, plan):
         elif node.cls is frozenset:
             assert node.uniform == "cells"
             typed_cells(value)
+        elif hasattr(value, "kind"):
+            pending.append(((value.kind, value.values), node.children[0]))
     assert actual == expected
 
 
@@ -161,29 +168,12 @@ def held_capture(entry, context, schema_plan):
 
 def held_cycle(entry, context):
     actual, expected = entry.cycle, entry.expected_cycle
-    assert type(actual) is tuple and len(actual) == 8
-    pointers = actual[0]
-    assert type(pointers) is tuple and len(pointers) == len(expected[0])
-    for pointer, wanted, plan in zip(
-        pointers, expected[0], entry.pointer_plans, strict=True
-    ):
-        assert type(pointer) is context.native._Pointer
-        assert vars(pointer).keys() == POINTER_FIELDS
-        typed_value(
-            (
-                pointer.position,
-                pointer.previous,
-                pointer.channel,
-                pointer.value,
-                pointer.paused,
-            ),
-            wanted,
-            plan,
-        )
+    assert type(actual) is tuple and len(actual) == len(expected)
+    typed_value(pointer_values(actual[0], context), expected[0], entry.pointer_plan)
     typed_value(actual[1:], expected[1:], entry.cycle_plan)
 
 
-POINTER_FIELDS = frozenset(("position", "previous", "channel", "value", "paused"))
+POINTER_FIELDS = ("position", "previous", "channel", "value", "paused")
 
 
 SCHEMA = (
@@ -205,27 +195,16 @@ def pointer_values(actual, context):
     result = []
     for pointer in actual:
         assert type(pointer) is context.native._Pointer
-        assert set(vars(pointer)) == {
-            "position",
-            "previous",
-            "channel",
-            "value",
-            "paused",
-        }
-        result.append(
-            (
-                pointer.position,
-                pointer.previous,
-                pointer.channel,
-                pointer.value,
-                pointer.paused,
-            )
-        )
+        assert vars(pointer).keys() == set(POINTER_FIELDS)
+        result.append(tuple(getattr(pointer, field) for field in POINTER_FIELDS))
     return tuple(result)
 
 
 def capture(row, context):
-    return context.snapshot(context.model(*SCHEMA), row.parts())
+    pointers, *rest = row.parts()
+    if row.pending is not None:
+        pointers = context.variant("pending_cycle", (pointers, *row.pending))
+    return context.snapshot(context.model(*SCHEMA), (pointers, *rest))
 
 
 def io(port, case, row):
@@ -246,16 +225,18 @@ def construct(case, context):
 
 
 def raw_key(row, grid):
-    return (
-        tuple(tuple(p) for p in row.pointers),
-        tuple(sorted(row.cells)),
-        row.cursor,
-        row.stopped,
-        row.offset,
-        row.reads,
+    pointers, cells, cursor, stopped, offset, reads, ended = row.parts()
+    boundary = (
+        pointers,
+        tuple(sorted(cells)),
+        cursor,
+        stopped,
+        offset,
+        reads,
         grid,
-        row.set_ended,
+        ended,
     )
+    return boundary if row.pending is None else (*boundary, row.pending)
 
 
 class Observer:
@@ -290,7 +271,20 @@ class Observer:
         case, grid, context = self.case, self.grid, self.context
         held = self.held
         meter, oracle = self.meter, self.oracle
-        assert set(vars(raw)) == {"io", "rng", "grid", "state", "_input_reads"}
+        assert set(vars(raw)) == {
+            "io",
+            "rng",
+            "grid",
+            "state",
+            "_input_reads",
+            "_cycle_inputs",
+            "_cycle_draws",
+            "_cycle_output",
+        }
+        exact(
+            (raw._cycle_inputs, raw._cycle_draws, raw._cycle_output),
+            row.pending or ((), (), 0),
+        )
         typed_value(raw.grid, grid, self.grid_plan)
         profile = policies.profile_for("raw")
         if self.rng_plan is not None:
@@ -362,7 +356,7 @@ class Observer:
                     for i, value in enumerate(expected_key[1:])
                 ),
             ),
-            tuple(shape(tuple(p)) for p in row.pointers),
+            shape(expected_key[0]),
         )
         held_capture(entry, context, self.schema_plan)
         held_cycle(entry, context)
@@ -404,12 +398,11 @@ class Observer:
 
     def finish(self):
         """Recheck held originals and report the actual meter."""
-        held, rows = self.held, self.rows
-        case, context = self.case, self.context
-        oracle = self.oracle
-        for entry, _row in zip(held, rows, strict=True):
-            held_capture(entry, context, self.schema_plan)
-            held_cycle(entry, context)
+        held, rows, oracle = self.held, self.rows, self.oracle
+        assert len(held) == len(rows)
+        for entry in held:
+            held_capture(entry, self.context, self.schema_plan)
+            held_cycle(entry, self.context)
             exact(hash(entry.capture), entry.capture_hash)
             exact(hash(entry.cycle), entry.cycle_hash)
         return {
@@ -420,7 +413,7 @@ class Observer:
             "history_pairs": self.history_pairs,
             "current_and_final_retention": True,
             "final_held_pairs": len(held),
-            "name": case.name,
+            "name": self.case.name,
             "boundaries": len(rows),
             "steps": rows[-1].successful,
             "output": rows[-1].output,
@@ -451,7 +444,10 @@ def trace(case, context, *, history=None, window=None, wire=True):
             case, grid, context, plan, history=history, window=window, wire=wire
         )
         for index, row in enumerate(rows):
-            if index:
+            if row.pending is not None:
+                with pytest.raises(HaltError, match="input must be a bit"):
+                    raw.step()
+            elif index:
                 raw.step()
             assert all(source is raw.rng for source, _upper, _value in calls)
             exact(tuple((upper, value) for _source, upper, value in calls), row.draws)

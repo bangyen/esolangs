@@ -48,6 +48,36 @@ CAT_SKIP = grid("alight", "cat_skip.txt")
 REVERSED_CAT = grid("alight", "reversed_cat.txt")
 
 
+@pytest.mark.parametrize("stdin", ["AB", ""])
+def test_retried_input_keeps_the_accepted_character_or_eof(stdin: str) -> None:
+    api = esolangs.Language("Alight")
+    result = api.run("begin;var x;inp x;out x;end", stdin="AB")
+    assert (result.output, result.input_position, result.input_reads) == ("A", 1, 1)
+
+    source = "begin;inp missing;end"
+    reads = int(bool(stdin))
+    accepted = Fraction(65) if stdin else "eof"
+    dbg = api.make_debugger(source, stdin=stdin)
+    dbg.step()
+    position = dbg.ip
+    for resume in (dbg.step, dbg.run, dbg.step):
+        with pytest.raises(HaltError, match="no such variable: 'missing'") as caught:
+            resume()
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "", reads, reads, 1 - reads, steps=1
+        )
+        assert dbg.ip == position
+        assert dbg.snapshot()[-1] == accepted
+
+    raw = _Machine(source, ScriptedIO(stdin))
+    raw.step()
+    with pytest.raises(HaltError, match="no such variable: 'missing'"):
+        raw.step()
+    assert raw.workspace_snapshot().parts[3] == WorkspaceVariant(
+        "pending_input", (reads, accepted)
+    )
+
+
 def _run(code: list[str], stdin: str = "", list_update: str = "in_place") -> str:
     return run_program(run, code, stdin, list_update=list_update)
 

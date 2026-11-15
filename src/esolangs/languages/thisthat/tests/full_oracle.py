@@ -2,7 +2,7 @@
 
 # Declared node rules; no target transition/parser/state supplies expectations.
 # The cycle groups retain one semantic dispatch with local staged IO helpers.
-# ruff: noqa: C901, PT018, FBT003, PERF401
+# ruff: noqa: C901, PT018, FBT003
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
@@ -37,7 +37,7 @@ class Row(NamedTuple):
     successful: int
     events: tuple
     draws: tuple
-    error: str | None
+    pending: tuple | None
 
     @property
     def halted(self):
@@ -115,7 +115,7 @@ class Model:
         self.events, self.draws = [], []
         self.choose = choose if choose is not None else lambda _upper: 0
 
-    def row(self, error=None):
+    def row(self, pending=None):
         return Row(
             self.pointers,
             frozenset(self.cells.items()),
@@ -132,7 +132,7 @@ class Model:
             self.successful,
             tuple(self.events),
             tuple(self.draws),
-            error,
+            pending,
         )
 
     def char(self, point):
@@ -172,6 +172,7 @@ class Model:
         cells, cursor, ended = dict(self.cells), self.cursor, self.set_ended
         following, effects = [], []
         flushed, stopping = 0, False
+        start, first_draw = self.offset, len(self.draws)
 
         def flush():
             nonlocal flushed
@@ -205,7 +206,12 @@ class Model:
                 return None
             if value not in (48, 49):
                 flush()
-                raise InputFaultError("thisthat input must be a bit")
+                pending = (
+                    tuple(map(ord, self.case.stdin[start : self.offset])),
+                    tuple(value for _, value in self.draws[first_draw:]),
+                    flushed,
+                )
+                raise InputFaultError(pending)
             return value - 48
 
         def exits(pointer, channel):
@@ -444,22 +450,17 @@ def cases():
     cat = tuple((pages / "thisthat_cat.txt").read_text().splitlines())
     truth = tuple((pages / "truth-owner-exact.txt").read_text().splitlines())
     kolakoski = tuple((pages / "thisthat_kolakoski.txt").read_text().splitlines())
-    result = []
-    for length in range(6):
-        for values in product("01", repeat=length):
-            result.append(
-                Case("cat-" + "".join(values), cat, " \t".join(values), 256, True)
-            )
-    result.extend(
-        (
-            Case("truth-zero", truth, "0\n", 200, True),
-            Case("truth-one", truth, "1\n", 200, False),
-            Case("kolakoski", kolakoski, "", 4000, False),
-        )
-    )
-    assert len(result) == 66
-    result.append(Case("set-ended-lf", ("▣─◇═◇",), "\n", 32, True))
-    return result
+    return [
+        Case("cat-" + "".join(values), cat, " \t".join(values), 256, True)
+        for length in range(6)
+        for values in product("01", repeat=length)
+    ] + [
+        Case("truth-zero", truth, "0\n", 200, True),
+        Case("truth-one", truth, "1\n", 200, False),
+        Case("kolakoski", kolakoski, "", 4000, False),
+        Case("set-ended-lf", ("▣─◇═◇",), "\n", 32, True),
+        Case("cycle-fault", ("▣───◘───▣", "", "▣─■═◇", "", "▣───◇"), "21", 8, False),
+    ]
 
 
 def predict(case, *, choose=None):
@@ -470,8 +471,8 @@ def predict(case, *, choose=None):
             break
         try:
             machine.step()
-        except InputFaultError:
-            rows.append(machine.row("input"))
+        except InputFaultError as error:
+            rows.append(machine.row(error.args[0]))
             break
         rows.append(machine.row())
     if case.finite:

@@ -186,11 +186,15 @@ def staging_parent(target: _ExplicitPath) -> str:
     # The staged write's errors should name the destination, not a temporary file.
     if "\0" in target.spelling:
         raise ValueError("embedded null character in path")
-    if os.path.isdir(target):
-        raise IsADirectoryError("it is a directory")
     parent = os.path.dirname(target.spelling) or "."
     if not os.path.isdir(parent):
         raise FileNotFoundError("its directory does not exist")
+    # A missing entry can be created. Other lookup errors must surface before
+    # reading a source stream, even when isdir() would simply return False.
+    with suppress(FileNotFoundError):
+        mode = os.lstat(target).st_mode
+        if stat.S_ISDIR(mode) or (stat.S_ISLNK(mode) and os.path.isdir(target)):
+            raise IsADirectoryError("it is a directory")
     return parent
 
 

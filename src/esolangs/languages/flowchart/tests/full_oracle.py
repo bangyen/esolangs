@@ -187,6 +187,7 @@ class _Model:
             0,
         )
         self.input_reads = self.incoming = self.remaining = 0
+        self.replayed, self.flushed = (), 0
 
     def exits(self, box, previous):
         found = []
@@ -280,6 +281,8 @@ class _Model:
             self.run.outgoing,
             self.run.used,
         )
+        if self.replayed or self.flushed:
+            parts += ((self.replayed, self.flushed),)
         return parts, self.halted, self.port.output, self.port.cursor, self.port.cursor
 
     def io(self):
@@ -316,32 +319,36 @@ class _Model:
             assert kind == "switch"
         return pointer._replace(register=register, deque=cursor), outgoing, used
 
+    def next_bit(self):
+        if self.remaining == 0:
+            value = self.port.read()
+            if value is None:
+                return None
+            self.input_reads += 1
+            self.incoming, self.remaining = value % 256, 8
+        result = self.incoming % 2
+        self.incoming //= 2
+        self.remaining -= 1
+        return result
+
     def step(self):
         if self.halted:
             return
         pointers = [self.ride(p) if not p.done else p for p in self.run.pointers]
         deques = dict(self.run.deques)
         outgoing, used = self.run.outgoing, self.run.used
-        pending, flushed = [], 0
-
-        def flush():
-            nonlocal flushed
-            while flushed < len(pending):
-                self.port.write(pending[flushed])
-                flushed += 1
+        pending, replay = [], iter(self.replayed)
 
         def read():
-            flush()
-            if self.remaining == 0:
-                value = self.port.read()
-                if value is None:
-                    return None
-                self.input_reads += 1
-                self.incoming, self.remaining = value % 256, 8
-            result = self.incoming % 2
-            self.incoming //= 2
-            self.remaining -= 1
-            return result
+            saved = next(replay, ...)
+            if saved is not ...:
+                return saved
+            for value in pending[self.flushed :]:
+                self.port.write(value)
+                self.flushed += 1
+            bit = self.next_bit()
+            self.replayed += (bit,)
+            return bit
 
         live = [
             i
@@ -415,7 +422,10 @@ class _Model:
             outgoing,
             used,
         )
-        flush()
+        remaining = pending[self.flushed :]
+        self.replayed, self.flushed = (), 0
+        for value in remaining:
+            self.port.write(value)
 
 
 def _model(case, cap=64):

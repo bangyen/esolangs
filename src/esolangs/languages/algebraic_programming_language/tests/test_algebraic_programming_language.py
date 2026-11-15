@@ -1,6 +1,7 @@
 """Unit tests for the Algebraic Programming Language interpreter."""
 
 from functools import partial
+from struct import pack
 from typing import ClassVar
 
 import pytest
@@ -13,6 +14,7 @@ from esolangs.languages.algebraic_programming_language.interpreter import (
     _State,
     run,
 )
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
@@ -38,6 +40,36 @@ run_and_capture = partial(run_program, run)
 def machine(program: str, stdin: str = "") -> _Machine:
     """Build a machine for the stepping and cycle contracts."""
     return _Machine(program, ScriptedIO(stdin))
+
+
+def test_missing_line_binding_retries_only_the_unaccepted_token() -> None:
+    class InterruptedInput(ScriptedIO):
+        def input_token(self, prompt: str = "Input: ") -> str:
+            if self.reads == 1 and not interrupted:
+                interrupted.append(self.position())
+                raise HaltError("interrupted input")
+            return super().input_token(prompt)
+
+    interrupted: list[int] = []
+    io = InterruptedInput("2.5 3")
+    vm = _Machine("a + b", io)
+    with pytest.raises(HaltError, match="interrupted input"):
+        vm.step()
+    assert interrupted == [3]
+    assert vm.globals == {}
+    saved = vm.workspace_snapshot()
+    assert saved.parts[0] == WorkspaceVariant(
+        "pending_line", (0, (WorkspaceVariant("floating", (pack("!d", 2.5),)),), None)
+    )
+    assert vm.snapshot()[-1] == ((("float", (2.5).hex()),), None)
+
+    vm.step()
+    assert vm.globals == {"a": 2.5, "b": 3}
+    assert vm.workspace_snapshot().parts[0] == 1
+    assert len(vm.snapshot()) == 4
+    while not vm.halted:
+        vm.step()
+    assert (io.getvalue(), io.position(), io.reads) == ("5.5\n", 5, 2)
 
 
 # The wiki's own examples, which are the specification's ground truth,

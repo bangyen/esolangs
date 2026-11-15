@@ -50,7 +50,7 @@ from dataclasses import dataclass, field
 from itertools import product
 from math import prod
 from types import MappingProxyType
-from typing import Any, ClassVar, Literal, NamedTuple
+from typing import Any, ClassVar, Literal, NamedTuple, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.thisthat.lifecycle import CAPABILITIES
@@ -59,7 +59,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import with_hint
@@ -118,7 +118,7 @@ class _Pointer:
 
 type _Cells = Mapping[tuple[int, int], int]
 type _Core = tuple[tuple[_Pointer, ...], _Cells, int, bool, bool]
-type _State = tuple[
+type _Boundary = tuple[
     tuple[_Pointer, ...],
     tuple[tuple[_Point, int], ...],
     int,
@@ -128,6 +128,8 @@ type _State = tuple[
     tuple[str, ...],
     bool,
 ]
+type _Replay = tuple[tuple[int | None, ...], tuple[int, ...], int]
+type _State = _Boundary | tuple[*_Boundary, _Replay]
 
 
 class _StepError(Exception):
@@ -667,6 +669,9 @@ class _Machine:
         self.grid = image.rows
         self.state: _Core = (image.starts, MappingProxyType({}), 0, False, False)
         self._input_reads = 0
+        self._cycle_inputs: tuple[int | None, ...] = ()
+        self._cycle_draws: tuple[int, ...] = ()
+        self._cycle_output = 0
 
     @property
     def pointers(self) -> tuple[_Pointer, ...]:
@@ -715,10 +720,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        pointers = tuple(
+            (p.position, p.previous, p.channel, p.value, p.paused)
+            for p in self.state[0]
+        )
+        pending = self._pending_cycle()
         return _WORKSPACE_MODEL.capture(
-            pointers=tuple(
-                (p.position, p.previous, p.channel, p.value, p.paused)
-                for p in self.state[0]
+            pointers=(
+                pointers
+                if pending is None
+                else WorkspaceVariant("pending_cycle", (pointers, *pending))
             ),
             cells=frozenset(self.state[1].items()),
             cursor=self.state[2],
@@ -730,7 +741,7 @@ class _Machine:
 
     def snapshot(self) -> _State:
         pointers, cells, cursor, halted, set_ended = self.state
-        return (
+        boundary: _Boundary = (
             pointers,
             tuple(sorted(cells.items())),
             cursor,
@@ -740,6 +751,13 @@ class _Machine:
             self.grid,
             set_ended,
         )
+        pending = self._pending_cycle()
+        return boundary if pending is None else (*boundary, pending)
+
+    def _pending_cycle(self) -> _Replay | None:
+        if self._cycle_inputs or self._cycle_draws or self._cycle_output:
+            return self._cycle_inputs, self._cycle_draws, self._cycle_output
+        return None
 
     def branching_snapshot(self) -> _State:
         """Return immutable state for exhaustive random-merge search."""
@@ -747,7 +765,7 @@ class _Machine:
 
     def branching_halted(self, state: object) -> bool:
         """Report whether a branch halted or lost every pointer."""
-        if not isinstance(state, tuple) or len(state) != 8:
+        if not isinstance(state, tuple) or len(state) not in (8, 9):
             return False
         return bool(state[3]) or not state[0]
 
@@ -755,17 +773,20 @@ class _Machine:
         self, state: object, limit: int
     ) -> tuple[_State, ...] | None:
         """Return every random-merge successor, or ``None`` before input or a flag."""
-        if not isinstance(state, tuple) or len(state) != 8:
+        if not isinstance(state, tuple) or len(state) not in (8, 9):
             raise TypeError("invalid thisthat branch state")
         current: _State = state
         if self.branching_halted(current):
             if limit < 1:
                 return None
             return (current,)
-        pointers, cells, cursor, halted, progress, reads, grid, set_ended = current
+        boundary = cast(_Boundary, state[:8])
+        replay: _Replay | None = state[8] if len(state) == 9 else None
+        inputs, draws, _written = replay or ((), (), 0)
+        pointers, cells, cursor, halted, progress, reads, grid, set_ended = boundary
         if grid != self.grid:
             raise ValueError("branch belongs to another thisthat program")
-        if any(
+        if replay is None and any(
             _char(grid, pointer.position) == "◇"
             and (pointer.channel == "execution" or pointer.value is None)
             for pointer in pointers
@@ -779,7 +800,8 @@ class _Machine:
                 count = sum(pointer.channel == channel for pointer in arrived)
                 if count > 1:
                     radices.append(count)
-        branch_count = prod(radices)
+        remaining = radices[len(draws) :]
+        branch_count = prod(remaining)
         if branch_count > limit:
             raise with_hint(
                 TimeoutError(
@@ -797,10 +819,17 @@ class _Machine:
             halted,
             set_ended,
         )
-        choices = product(*(range(radix) for radix in radices))
+        choices = product(*(range(radix) for radix in remaining))
         successors = []
         for branch_choices in choices:
-            new_core, _effects = _advance(core, grid, draws=tuple(branch_choices))
+            try:
+                new_core, _effects = _advance(
+                    core, grid, inputs, draws=(*draws, *branch_choices)
+                )
+            except _NeedInputError:
+                return None
+            except _FaultError as fault:
+                raise fault.cause from None
             new_pointers, new_cells, new_cursor, new_halted, new_ended = new_core
             successors.append(
                 (
@@ -840,10 +869,12 @@ class _Machine:
             following=following,
         )
 
-    def _flush(self, effects: tuple[int, ...], flushed: int) -> None:
-        """Write the prints beyond ``flushed``; a prefix is written once."""
+    def _flush(self, effects: tuple[int, ...], flushed: int, *, pending: bool) -> None:
+        """Write prints beyond the accepted prefix, tracking incomplete cycles."""
         for value in effects[flushed:]:
             self.io.print_num(value)
+            if pending:
+                self._cycle_output += 1
 
     def step(self) -> None:
         """Execute one cycle, reading, drawing and writing as the shell.
@@ -855,32 +886,33 @@ class _Machine:
         """
         if self.halted:
             return
-        inputs: tuple[int | None, ...] = ()
-        draws: tuple[int, ...] = ()
-        flushed = 0
         while True:
             try:
-                core, effects = _advance(self.state, self.grid, inputs, draws=draws)
+                core, effects = _advance(
+                    self.state, self.grid, self._cycle_inputs, self._cycle_draws
+                )
             except _NeedInputError as need:
-                self._flush(need.effects, flushed)
-                flushed = len(need.effects)
+                self._flush(need.effects, self._cycle_output, pending=True)
                 # One IO attempt per ``◇`` read, EOF included, so the port
                 # sees exactly the reads the single-pass original made.
                 try:
-                    inputs = (*inputs, self.io.input_char())
+                    self._cycle_inputs = (*self._cycle_inputs, self.io.input_char())
                     self._input_reads += 1
                 except EOFError:
-                    inputs = (*inputs, None)
+                    self._cycle_inputs = (*self._cycle_inputs, None)
             except _NeedDrawError as need:
-                self._flush(need.effects, flushed)
-                flushed = len(need.effects)
-                draws = (*draws, draw(self.rng, need.upper))
+                self._flush(need.effects, self._cycle_output, pending=True)
+                self._cycle_draws = (*self._cycle_draws, draw(self.rng, need.upper))
             except _FaultError as fault:
-                self._flush(fault.effects, flushed)
+                self._flush(fault.effects, self._cycle_output, pending=True)
                 raise fault.cause from None
             else:
                 self.state = core
-                self._flush(effects, flushed)
+                flushed = self._cycle_output
+                if self._cycle_inputs or self._cycle_draws or flushed:
+                    self._cycle_inputs = self._cycle_draws = ()
+                    self._cycle_output = 0
+                self._flush(effects, flushed, pending=False)
                 return
 
 

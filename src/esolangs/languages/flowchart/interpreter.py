@@ -118,7 +118,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -524,6 +524,8 @@ class _Machine:
         # owns these because reading is the shell's job; the output byte a
         # partial write gathers is part of the pure run.
         self._incoming = self._remaining = 0
+        self._tick_input: list[int | None] = []
+        self._tick_output = 0
         image = _prepare_source(code) if isinstance(code, list) else code
         self.grid, self.width, nodes, start, exits = image
         self.nodes = dict(nodes)
@@ -594,8 +596,13 @@ class _Machine:
             )
             for p in self.pointers
         )
+        pending = self._pending_tick()
         return _WORKSPACE_MODEL.capture(
-            pointers=pointers,
+            pointers=(
+                pointers
+                if pending is None
+                else WorkspaceVariant("pending_tick", (pointers, *pending))
+            ),
             deques=frozenset((k, tuple(v)) for k, v in self.deques.items() if v),
             input_cursor=self.io.progress(),
             input_reads=self._input_reads,
@@ -607,7 +614,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        state = (
             tuple(p.state() for p in self.pointers),
             tuple(sorted((k, tuple(v)) for k, v in self.deques.items() if v)),
             self.io.progress(),
@@ -617,6 +624,14 @@ class _Machine:
             self.state.outgoing,
             self.state.used,
         )
+        pending = self._pending_tick()
+        return state if pending is None else (*state, pending)
+
+    def _pending_tick(self) -> tuple[tuple[int | None, ...], int] | None:
+        """Retain effects that a retry must replay without repeating IO."""
+        if self._tick_input or self._tick_output:
+            return tuple(self._tick_input), self._tick_output
+        return None
 
     def step(self) -> None:
         r"""Run one node per live pointer, in the spec's pointer order.
@@ -634,8 +649,7 @@ class _Machine:
         """
         if self.halted:
             return
-        bits: list[int | None] = []
-        flushed: list[int] = []
+        bits = self._tick_input
         while True:
             try:
                 run, printed = _advance(
@@ -644,24 +658,32 @@ class _Machine:
             except _NeedBitError as request:
                 # Flush what earlier pointers wrote before this read, so the
                 # event order matches the pointer order that produced it.
-                self._flush(request.printed, flushed)
+                self._flush(request.printed, self._tick_output, pending=True)
                 bits.append(self._read_bit())
                 continue
             except BaseException as fault:
                 # A later pointer's fault must not swallow a byte an earlier
                 # one already finished.
-                self._flush(getattr(fault, "printed", ()), flushed)
+                self._flush(
+                    getattr(fault, "printed", ()), self._tick_output, pending=True
+                )
                 raise
-            self.state = run
-            self._flush(printed, flushed)
-            return
+            break
+        self.state = run
+        flushed = self._tick_output
+        if bits or flushed:
+            bits.clear()
+            self._tick_output = 0
+        self._flush(printed, flushed)
 
-    def _flush(self, printed: tuple[int, ...], flushed: list[int]) -> None:
-        """Write the bytes of ``printed`` beyond those already written."""
-        delta = printed[len(flushed) :]
-        for code in delta:
+    def _flush(
+        self, printed: tuple[int, ...], flushed: int, *, pending: bool = False
+    ) -> None:
+        """Write beyond the accepted output prefix of this tick."""
+        for code in printed[flushed:]:
             self.io.print_char(chr(code))
-        flushed.extend(delta)
+            if pending:
+                self._tick_output += 1
 
     def _read_bit(self) -> int | None:
         """Read the next input bit, low bit first, or ``None`` at EOF."""
