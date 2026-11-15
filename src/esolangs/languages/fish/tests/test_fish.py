@@ -28,11 +28,17 @@ from tests.support.raises import assert_halts_with_hint
 def test_branching_detectors_only_inspect_the_debugger_state(detector) -> None:
     debugger = make_debugger("Fish", '"A"o;')
     initial = debugger.snapshot()
+    with pytest.raises(TimeoutError, match="0 branching states"):
+        detector(debugger, 0)
     assert detector(debugger, 20) is True
     assert debugger.snapshot() == initial
     assert debugger.observation.steps == 0
     assert debugger.output == ""
     assert complete_vm(debugger.vm) == "A"
+    halted = debugger.snapshot()
+    assert detector(debugger.vm, 0) is True
+    assert detector(debugger, 0) is True
+    assert debugger.snapshot() == halted
 
 
 def _run(source: str, stdin: str = "", rng: object = None) -> str:

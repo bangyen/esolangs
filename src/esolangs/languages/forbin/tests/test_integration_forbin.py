@@ -4,7 +4,7 @@ import pytest
 
 import esolangs.debugger as debugger_api
 from esolangs.exceptions import InputExhaustedError
-from esolangs.vm import run_until_halt_or_ancestor
+from esolangs.vm import run_until_halt, run_until_halt_or_ancestor
 from tests.support.vm_support import assert_proof_fault
 
 
@@ -18,6 +18,31 @@ def test_live_detectors_keep_vm_fault_evidence(*, debugged: bool) -> None:
         "A",
         debugged=debugged,
     )
+
+
+@pytest.mark.parametrize("debugged", [False, True])
+def test_ancestor_detector_recognizes_a_known_halt_at_zero_budget(
+    *, debugged: bool
+) -> None:
+    make = debugger_api.make_debugger if debugged else debugger_api.make_vm
+    machine = make("Forbin", "main { x = 1; }")
+    snapshot = machine.snapshot()
+    with pytest.raises(TimeoutError, match="after 0 pushed frames"):
+        run_until_halt_or_ancestor(machine, limit=0)
+    assert machine.snapshot() == snapshot
+    assert run_until_halt(machine, limit=2) is True
+    snapshot = machine.snapshot()
+    assert run_until_halt_or_ancestor(machine, limit=0) is True
+    assert machine.snapshot() == snapshot
+
+
+def test_ancestor_detector_examines_the_last_allowed_push() -> None:
+    source = "main { f 0; }\nf x { f 0; }"
+    machine = debugger_api.make_vm("Forbin", source)
+    with pytest.raises(TimeoutError, match="after 1 pushed frames"):
+        run_until_halt_or_ancestor(machine, limit=1)
+    machine = debugger_api.make_vm("Forbin", source)
+    assert run_until_halt_or_ancestor(machine, limit=2) is False
 
 
 class TestForbin:

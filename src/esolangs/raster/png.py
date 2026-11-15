@@ -10,6 +10,7 @@ import zlib
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
+from esolangs._dialect import DialectSettings
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._validate import check_scale
@@ -18,7 +19,6 @@ from esolangs.runtime.source_hints import syntax_error
 if TYPE_CHECKING:
     from esolangs.raster import Pixel, Rows
     from esolangs.registry._catalog import Catalog
-    from esolangs.settings import DialectSettings
 
 _UNLOADED = object()
 Image: Any = _UNLOADED
@@ -604,11 +604,17 @@ def attach_source_metadata(
         catalog = get_catalog(catalog)
     if language is None and settings is None and scale is None and input_arity is None:
         return _backing_bytes(data)
-    if settings is not None:
-        owner = settings.language
-        if language is not None and not isinstance(language, str):
+    if language is not None:
+        if not isinstance(language, str):
             raise ArgumentError("PNG language must be a string")
-        spelling = owner if language is None else str.__str__(language)
+        language = str.__str__(language)
+        if not language.strip():
+            raise ArgumentError("PNG language must be nonblank")
+    if settings is not None:
+        if not isinstance(settings, DialectSettings):
+            raise ArgumentError("settings must be a DialectSettings or None")
+        owner = settings.language
+        spelling = owner if language is None else language
         if (
             catalog is not None
             or spelling.strip().casefold() != owner.strip().casefold()

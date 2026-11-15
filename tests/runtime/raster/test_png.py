@@ -1061,6 +1061,47 @@ def test_typed_png_writers_reject_invalid_numeric_metadata(scale, arity, field) 
             write()
 
 
+@pytest.mark.parametrize(
+    ("owner", "message"),
+    [
+        ("", "must be nonblank"),
+        (" \t ", "must be nonblank"),
+        (True, "must be a string"),
+    ],
+)
+def test_typed_png_writers_require_a_nonblank_owner(owner, message) -> None:
+    pixels = esolangs.Raster((((1, 2, 3),),))
+    raw = pixels.to_png()
+    for write in (
+        lambda: png.attach_source_metadata(raw, owner, None, 1),
+        lambda: png.write_source(pixels.rows, owner, None, 1),
+    ):
+        with pytest.raises(esolangs.ArgumentError, match=f"PNG language {message}"):
+            write()
+
+    metadata = {"version": 1, "language": owner}
+    tagged = png.write_metadata(raw, metadata)
+    assert png.read_metadata(tagged) == metadata
+    assert esolangs.Raster.from_png(tagged) == pixels
+    with pytest.raises(esolangs.ProgramError):
+        read_png_artifact(one(source_kind="raster")[0], tagged)
+
+
+def test_typed_png_writers_reject_untyped_settings() -> None:
+    pixels = esolangs.Raster((((1, 2, 3),),))
+    raw = pixels.to_png()
+    language = one(source_kind="raster")[0]
+    settings = object()
+    for write in (
+        lambda: png.attach_source_metadata(raw, language, settings, 1),
+        lambda: png.write_source(pixels.rows, language, settings, 1),
+    ):
+        with pytest.raises(
+            esolangs.ArgumentError, match="settings must be a DialectSettings or None"
+        ):
+            write()
+
+
 @pytest.mark.parametrize("language", one(source_kind="raster"))
 def test_non_ascii_dialect_metadata_uses_utf8_only_when_needed(
     language, tmp_path

@@ -292,7 +292,7 @@ def run_until_halt_or_all_branches_cycle(
     A language with no random instruction raises :class:`TypeError`.
     """
     limit = check_whole(limit, "limit")
-    machine = cast(
+    state = cast(
         _BranchingStepMachine,
         _unwrap(
             machine,
@@ -302,7 +302,9 @@ def run_until_halt_or_all_branches_cycle(
             "branching_halted and branching_successors",
         ),
     )
-    return _branch_search(machine, limit).halts
+    if isinstance(machine, _SteppableMachine) and machine.halted:
+        return True
+    return _branch_search(state, limit).halts
 
 
 class _BranchResult(NamedTuple):
@@ -431,9 +433,18 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     runner = _proof_runner(machine, state)
     ancestors: list[tuple[int, Hashable]] = []
     pushes = 0
-    while pushes < limit:
-        if runner.halted:
-            return True
+    while not runner.halted:
+        if pushes >= limit:
+            raise with_hint(
+                TimeoutError(
+                    f"undecided after {limit} pushed frames: neither halted nor "
+                    "repeated an ancestor's entry state"
+                ),
+                (
+                    "increase the pushed-frame limit; changing arguments "
+                    "may prevent an ancestor match"
+                ),
+            )
         depth_before = len(state.frames)
         runner.step()
         if len(state.frames) <= depth_before:
@@ -448,16 +459,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
         if any(key == ancestor for _, ancestor in ancestors):
             return False
         ancestors.append((depth, key))
-    raise with_hint(
-        TimeoutError(
-            f"undecided after {limit} pushed frames: neither halted nor repeated "
-            "an ancestor's entry state"
-        ),
-        (
-            "increase the pushed-frame limit; changing arguments "
-            "may prevent an ancestor match"
-        ),
-    )
+    return True
 
 
 @runtime_checkable

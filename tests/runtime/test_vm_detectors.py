@@ -49,24 +49,30 @@ class TestTheDetectorsTakeAVM:
         with pytest.raises(TypeError, match="steppable with a snapshot"):
             run_until_halt_or_cycle(object())
 
-    def test_a_zero_branch_cap_stops_before_exploring(self) -> None:
+    @pytest.mark.parametrize("root_halted", [False, True])
+    def test_a_zero_branch_cap_stops_before_exploring(
+        self, *, root_halted: bool
+    ) -> None:
         """A zero cap stops before exploring the initial branching state."""
 
-        class _Unbounded:
+        class _BranchOnly:
             def branching_snapshot(self) -> int:
                 return 0
 
             def branching_halted(self, _state: int) -> bool:
-                return False
+                return root_halted
 
             def branching_successors(self, state: int, _limit: int) -> list[int]:
                 return [state + 1]
 
         with pytest.raises(TimeoutError, match="branching states"):
-            run_until_halt_or_all_branches_cycle(
-                _Unbounded(),
-                limit=0,
-            )
+            run_until_halt_or_all_branches_cycle(_BranchOnly(), limit=0)
+
+    def test_a_live_halt_still_requires_branch_compatibility(self) -> None:
+        vm = make_vm(REFERENCE, "")
+        assert vm.halted
+        with pytest.raises(TypeError, match="branch-enumerable"):
+            run_until_halt_or_all_branches_cycle(vm, limit=0)
 
 
 @pytest.mark.parametrize(("program", "limit"), [("", 0), ("+", 1)])
