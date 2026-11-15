@@ -136,20 +136,56 @@ def test_stdin_reads_prefetched_file_bytes(tmp_path, monkeypatch) -> None:
 
 
 @pytest.mark.parametrize("use_poll", [False, True])
-def test_stdin_reads_prefetched_pipe_bytes(monkeypatch, use_poll) -> None:
+def test_stdin_reads_prefetched_pipe_bytes(monkeypatch, capsys, use_poll) -> None:
     if use_poll and not hasattr(select, "poll"):
         pytest.skip("poll unavailable")
     if not use_poll:
         monkeypatch.delattr(select, "poll", raising=False)
     reader, writer = os.pipe()
     encoded = "λ".encode()
+
+    class InvertedBytes(bytes):
+        def __bool__(self):
+            return bytes.__len__(self) == 0
+
+        def __bytes__(self):
+            raise AssertionError("binary reads must retain the backing bytes")
+
     with os.fdopen(reader) as stdin, os.fdopen(writer, "wb", buffering=0) as feed:
         feed.write(encoded[:1])
         assert stdin.buffer.peek(1) == encoded[:1]
         feed.write(encoded[1:])
         feed.close()
         monkeypatch.setattr(sys, "stdin", stdin)
+        name = "read1" if use_poll else "read"
+        read = getattr(stdin.buffer, name)
+        pending = True
+
+        def delayed(size):
+            nonlocal pending
+            if pending:
+                pending = False
+                return None
+            return InvertedBytes(read(size))
+
+        monkeypatch.setattr(stdin.buffer, name, delayed)
         assert _read_stdin(1) == "λ"
+        assert not pending
+        assert os.get_blocking(reader)
+
+        monkeypatch.setattr(stdin.buffer, name, lambda _size: 0)
+        with pytest.raises(SystemExit) as exited:
+            _read_stdin(1)
+        assert exited.value.code == 2
+        assert "cannot read stdin: binary stream read must return bytes" in (
+            capsys.readouterr().err
+        )
+
+        monkeypatch.setattr(stdin.buffer, name, lambda _size: None)
+        with pytest.raises(SystemExit) as exited:
+            _read_stdin(0.02)
+        assert exited.value.code == 124
+        assert "stdin did not reach EOF" in capsys.readouterr().err
         assert os.get_blocking(reader)
 
 
@@ -391,7 +427,7 @@ def test_reader_thread_inherits_the_callers_context(monkeypatch) -> None:
         supplied.reset(token)
 
 
-def test_reader_threads_propagate_unexpected_errors(monkeypatch) -> None:
+def test_reader_threads_propagate_unexpected_errors(monkeypatch, capsys) -> None:
     class BrokenInput(io.StringIO):
         def read(self, *_args, **_kwargs):
             raise RuntimeError("reader failed")
@@ -406,6 +442,18 @@ def test_reader_threads_propagate_unexpected_errors(monkeypatch) -> None:
     monkeypatch.setattr("esolangs.cli.io.open", broken_read, raising=False)
     with pytest.raises(RuntimeError, match="file reader failed"):
         _bounded_read("program.txt", None)
+
+    class InvalidBytes(io.BytesIO):
+        def read(self, _size=-1):
+            return 0
+
+    monkeypatch.setattr("esolangs.cli.io.open", lambda *_args: InvalidBytes())
+    with pytest.raises(SystemExit) as exited:
+        _bounded_read("program.txt", None)
+    assert exited.value.code == 2
+    assert "cannot read program.txt: binary stream read must return bytes" in (
+        capsys.readouterr().err
+    )
 
 
 def test_terminal_stdin_returns_without_reading(monkeypatch) -> None:

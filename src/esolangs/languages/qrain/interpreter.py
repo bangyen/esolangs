@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Mapping
+from itertools import islice
 from types import MappingProxyType
 from typing import Any, NamedTuple
 
@@ -47,9 +48,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.brackets import match_brackets
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 
 
 class _State(NamedTuple):
@@ -98,6 +99,7 @@ class _Machine:
         self.state = tuple.__new__(_State, (0, 0))
         self.queues: dict[int, deque[int]] = {}
         self.out: deque[int] = deque()
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -122,8 +124,14 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        accepted = self._writer.accepted
+        control = (self.state.pc, self.state.ptr)
         return _WORKSPACE_MODEL.capture(
-            control=(self.state.pc, self.state.ptr),
+            control=(
+                control
+                if not accepted
+                else WorkspaceVariant("pending_output", (*control, accepted))
+            ),
             queues=frozenset((i, tuple(q)) for i, q in self.queues.items() if q),
             output_bits=tuple(self.out),
             input_cursor=self.io.progress(),
@@ -131,7 +139,27 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         queues = tuple(sorted((i, tuple(q)) for i, q in self.queues.items() if q))
-        return (self.state, queues, tuple(self.out), self.io.progress())
+        boundary = (self.state, queues, tuple(self.out), self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
+
+    def _transfer(self, queue: deque[int]) -> None:
+        moved = min(8, len(queue))
+        if len(self.out) + moved < 8:
+            self.out.extend(queue.popleft() for _ in range(moved))
+            return
+
+        # Keep both queues intact until the byte has been written.
+        bits = (*self.out, *islice(queue, moved))
+        char = chr(sum(bit << i for i, bit in enumerate(bits[:8])))
+        if isinstance(self.io, ScriptedIO):
+            self._writer.write(self.io, char, first=lambda: self.io.print_char(char))
+        else:
+            self.io.print_char(char)
+        for _ in range(moved):
+            queue.popleft()
+        self.out.clear()
+        self.out.extend(bits[8:])
 
     def step(self) -> None:
         if self.halted:
@@ -150,10 +178,7 @@ class _Machine:
                 )
             queue.popleft()
         elif command == ".":
-            self.out.extend(queue.popleft() for _ in range(min(8, len(queue))))
-            if len(self.out) >= 8:
-                byte = sum(self.out.popleft() << i for i in range(8))
-                self.io.print_char(chr(byte))
+            self._transfer(queue)
         elif command == ",":
             try:
                 byte = self.io.input_char() % 256

@@ -1,10 +1,16 @@
 """Qrain queue, output-bitstream and loop semantics, each output derived by hand."""
 
+from dataclasses import replace
+
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.qrain import interpreter as native
 from esolangs.languages.qrain.interpreter import run
+from esolangs.runtime._state import WorkspaceVariant
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
 
@@ -54,3 +60,62 @@ def test_dequeue_of_empty_queue_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     with pytest.raises(HaltError):
         _run("<-")
+
+    _check_output_retry(monkeypatch)
+
+
+def _check_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    language = Language("Qrain")
+    limits = ExecutionLimits(max_steps=8)
+    write = ScriptedIO._write
+    attempts: list[object] = []
+    prefix_output = ""
+
+    def reject_first(port: ScriptedIO, value: object) -> None:
+        attempts.append(value)
+        if len(attempts) == 1:
+            write(port, prefix_output)
+            raise HaltError("temporary writer refusal")
+        write(port, value)
+
+    for source, stdin, char, prefix, eof in (
+        ("+.>,.", "A", "\x83", 4, 0),
+        (",.", "", "\x00", 1, 1),
+    ):
+        clean = language.make_debugger(source, stdin=stdin)
+        assert clean.run(limits=limits) == "halted"
+        assert clean.observation.output == char
+        assert clean.observation.input_past_end == eof
+        for accepted in (0, 1):
+            replay = language.make_debugger(source, stdin=stdin)
+            for _ in range(prefix):
+                replay.step()
+            before = replay.observation
+            boundary = replay.snapshot()
+            workspace = _capture_workspace(replay.vm)
+            control, *workspace_state = workspace.parts
+            assert isinstance(control, tuple)
+            attempts.clear()
+            prefix_output = char[:accepted]
+
+            with monkeypatch.context() as scoped:
+                scoped.setattr(ScriptedIO, "_write", reject_first)
+                with pytest.raises(HaltError, match="temporary writer refusal") as exc:
+                    replay.step()
+                partial = replace(before, output=prefix_output)
+                assert exc.value.observation == replay.observation == partial
+                if accepted:
+                    assert replay.snapshot() == (*boundary, accepted)
+                    assert _capture_workspace(replay.vm).parts == (
+                        WorkspaceVariant("pending_output", (*control, accepted)),
+                        *workspace_state,
+                    )
+                else:
+                    assert replay.snapshot() == boundary
+                    assert _capture_workspace(replay.vm) == workspace
+                assert replay.run(limits=limits) == "halted"
+            assert attempts == [char] * (2 - accepted)
+            assert replay.observation == clean.observation
+            assert replay.snapshot() == clean.snapshot()
+            assert _capture_workspace(replay.vm) == _capture_workspace(clean.vm)
+            assert exc.value.observation == partial

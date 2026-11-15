@@ -48,6 +48,7 @@ from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._files import (
     _BLOCK,
     StreamReadTimeoutError,
+    _binary_chunk,
     _binary_snapshot,
     _SourceDirectory,
     _time_remaining,
@@ -255,7 +256,7 @@ def _bounded_read(
                         return _binary_snapshot(
                             handle, None, size, deadline, handle.read1
                         )
-                result = read_snapshot(handle, size=max_bytes + 1)
+                result = _binary_chunk(read_snapshot(handle, size=max_bytes + 1))
                 if len(result) > max_bytes:
                     _fail(
                         f"{path} is larger than the {max_bytes // 1024} KiB "
@@ -264,7 +265,7 @@ def _bounded_read(
                 return result
         except StreamReadTimeoutError:
             raise
-        except OSError as exc:
+        except (OSError, TypeError) as exc:
             _fail(source_read_error(path, exc))
 
     def _on_timeout() -> None:
@@ -304,6 +305,11 @@ def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:
     return None
 
 
+def _wait_for_pipe_data(deadline: float | None) -> None:
+    remaining = _time_remaining(deadline)
+    sleep(0.01 if remaining is None else min(0.01, remaining))
+
+
 def _read_pipe_without_poll(
     stream: BufferedReader, fd: int, deadline: float | None
 ) -> bytes:
@@ -311,7 +317,7 @@ def _read_pipe_without_poll(
     blocking = os.get_blocking(fd)
     data = bytearray()
     while True:
-        remaining = _time_remaining(deadline)
+        _time_remaining(deadline)
         if blocking:
             os.set_blocking(fd, False)
         try:
@@ -323,11 +329,12 @@ def _read_pipe_without_poll(
                 os.set_blocking(fd, True)
         if chunk is None:
             # Restore the caller's mode before waiting for more data.
-            sleep(0.01 if remaining is None else min(0.01, remaining))
-        elif not chunk:
+            _wait_for_pipe_data(deadline)
+            continue
+        chunk = _binary_chunk(chunk)
+        if not chunk:
             return bytes(data)
-        else:
-            data.extend(chunk)
+        data.extend(chunk)
 
 
 def _read_buffered_stdin(stream: BufferedReader, deadline: float | None) -> bytes:
@@ -354,12 +361,21 @@ def _read_buffered_stdin(stream: BufferedReader, deadline: float | None) -> byte
     while True:
         remaining = _time_remaining(deadline)
         timeout = None if remaining is None else min(ceil(remaining * 1000), 2**31 - 1)
-        if poller.poll(timeout):
-            # read1 consumes buffered bytes or performs at most one ready read.
-            chunk = stream.read1(_BLOCK)
-            if not chunk:
-                return bytes(data)
-            data.extend(chunk)
+        if not poller.poll(timeout):
+            continue
+        _time_remaining(deadline)
+        # read1 consumes buffered bytes or performs at most one ready read.
+        try:
+            chunk: bytes | None = stream.read1(_BLOCK)
+        except BlockingIOError:
+            chunk = None
+        if chunk is None:
+            _wait_for_pipe_data(deadline)
+            continue
+        chunk = _binary_chunk(chunk)
+        if not chunk:
+            return bytes(data)
+        data.extend(chunk)
 
 
 @contextmanager
@@ -381,9 +397,12 @@ def _override_io_method(
 
 
 def _read_stdin_bytes(stream: BinaryIO, deadline: float | None) -> bytes:
-    if isinstance(stream, BufferedReader):
-        return _read_buffered_stdin(stream, deadline)
-    return read_snapshot(stream)
+    value = (
+        _read_buffered_stdin(stream, deadline)
+        if isinstance(stream, BufferedReader)
+        else read_snapshot(stream)
+    )
+    return _binary_chunk(value)
 
 
 def _prefetched_utf8_prefix(stdin: TextIOWrapper, data: bytes) -> int:
@@ -534,7 +553,7 @@ def _read_stdin(
             _fail(exc)
         except EsolangError as exc:
             _fail(exc, _exit_code(exc))
-        except OSError as exc:
+        except (OSError, TypeError) as exc:
             _fail(input_read_error(exc))
 
     def _on_timeout() -> None:

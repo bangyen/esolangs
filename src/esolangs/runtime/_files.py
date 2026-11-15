@@ -66,6 +66,13 @@ def _time_remaining(deadline: float | None) -> float | None:
     return remaining
 
 
+def _binary_chunk(value: object) -> bytes:
+    """Use the stored bytes before testing for EOF or accumulating input."""
+    if not _has_backing_type(value, bytes):
+        raise TypeError("binary stream read must return bytes")
+    return bytes.__bytes__(value)
+
+
 def _binary_snapshot(
     stream: FileIO | BufferedReader | BufferedRWPair,
     fd: int | None,
@@ -92,10 +99,11 @@ def _binary_snapshot(
             poller.poll(
                 None if remaining is None else min(ceil(remaining * 1000), 2**31 - 1)
             )
-        elif not chunk:
+            continue
+        block = _binary_chunk(chunk)
+        if not block:
             break
-        else:
-            data.extend(chunk)
+        data.extend(block)
     return bytes(data)
 
 

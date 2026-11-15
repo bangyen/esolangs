@@ -95,7 +95,7 @@ def test_invocation_rejects_options_before_accessing_streams(route, options, mes
             invoke(Untouched(), stdin=Untouched(), seed=1, **options)
 
 
-def test_standalone_scripted_io_binds_its_reader_once() -> None:
+def test_managed_input_binding_and_binary_chunks() -> None:
     class Input:
         calls = 0
 
@@ -107,6 +107,49 @@ def test_standalone_scripted_io_binds_its_reader_once() -> None:
     stdin = Input()
     assert ScriptedIO(stdin).input_char() == ord("A")
     assert stdin.calls == 1
+
+    class FalseBytes(bytes):
+        def __len__(self):
+            return 0
+
+        def __bytes__(self) -> bytes:
+            return b"not the backing"
+
+    class ChunkedPair(io.BufferedRWPair):
+        def __init__(self, *chunks):
+            super().__init__(io.BytesIO(), io.BytesIO())
+            self.chunks = iter(chunks)
+
+        def read(self, size=-1):
+            assert size > 0
+            return next(self.chunks, b"")
+
+    api = esolangs.Language(REFERENCE)
+    for packet in (bytes, FalseBytes):
+        with ChunkedPair(packet(b","), packet(b".")) as program:
+            prepared = api.prepare(program)
+        assert prepared.artifact.source == ",."
+        with ChunkedPair(packet(b"A")) as managed_input:
+            assert prepared.run(stdin=managed_input).output == "A"
+        with ChunkedPair(packet(b",.")) as program:
+            portable = api.from_json(api.to_json(program))
+        assert portable.source == ",."
+        assert api.run(portable, stdin="A").output == "A"
+
+    for invalid, message in (
+        (None, "stream would block"),
+        ([65], "binary stream read must return bytes"),
+    ):
+        with (
+            ChunkedPair(b",", invalid) as program,
+            pytest.raises(esolangs.ProgramError, match=message),
+        ):
+            api.prepare(program)
+        with (
+            ChunkedPair(b"A", invalid) as managed_input,
+            pytest.raises(esolangs.ArgumentError, match=message),
+        ):
+            api.run(",.", stdin=managed_input)
 
 
 @pytest.fixture

@@ -33,6 +33,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
 
@@ -78,7 +79,7 @@ def _advance(state: _State, sym: str) -> _State:
     elif sym == "INVERT":
         reg ^= 1
     elif reg:
-        if not (target := int(sym[4:])):
+        if not (target := parse_integer(sym[4:])):
             raise HaltError(
                 "GOTO 0 names no command; commands count from 1",
                 hint="GOTO 1 jumps to the first command",

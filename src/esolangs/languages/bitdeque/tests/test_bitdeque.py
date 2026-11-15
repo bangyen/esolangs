@@ -1,5 +1,6 @@
 """Bitdeque interpreter behavior."""
 
+import sys
 from functools import partial
 
 import pytest
@@ -8,6 +9,7 @@ import esolangs
 from esolangs import run as execute
 from esolangs.exceptions import HaltError
 from esolangs.languages.bitdeque.interpreter import _Machine, run
+from esolangs.results import Completion
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
@@ -82,6 +84,27 @@ class TestTheWikiExample:
 
     def test_a_goto_past_the_last_command_ends_the_run(self) -> None:
         assert run_and_capture("INVERT GOTO 9 PUSH") == ""
+        api = esolangs.Language("Bitdeque")
+        code = "INVERT PUSH GOTO\n" + "٩" * 4301
+        limits = esolangs.ExecutionLimits(max_steps=3)
+        cap = sys.get_int_max_str_digits()
+        try:
+            sys.set_int_max_str_digits(4300)
+            for options in (
+                {},
+                {"limits": limits},
+                {"isolated": True, "limits": limits},
+            ):
+                result = api.run(code, **options)
+                assert result.output == "1"
+                assert result.completion.kind is Completion.POST_HALT
+            debugger = api.make_debugger(code)
+            assert debugger.run(limits=limits) == "halted"
+            assert debugger.ip == 10**4301 - 2
+            assert debugger.observation.steps == 3
+            assert debugger.output == "1"
+        finally:
+            sys.set_int_max_str_digits(cap)
 
 
 class TestStepMachine:

@@ -2,6 +2,7 @@
 
 import itertools
 import random
+from decimal import Decimal
 
 import pytest
 
@@ -59,11 +60,7 @@ def _model(code, _stdin="λ\nunused", cap=_CAP):
         elif command == "EJECT":
             register = bool(queue.pop(0)) if queue else False
         elif register:
-            try:
-                target = int(operand)
-            except ValueError:
-                trace.append(view())
-                return "syntax", trace
+            target = int(Decimal(operand))
             if target == 0:
                 error = "target"
             else:
