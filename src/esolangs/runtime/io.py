@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import io as _stdlib_io
 import re
+from collections.abc import Callable
 
 from esolangs.exceptions import ArgumentError, InputExhaustedError
-from esolangs.runtime._input import InputSource, read_input
+from esolangs.runtime._input import CheckedInput, InputSource, read_input
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -293,3 +294,14 @@ class ScriptedIO(IO):
     def getvalue(self) -> str:
         """Return everything written so far."""
         return self._buffer.getvalue()
+
+
+def _scripted_io(
+    stdin: CheckedInput, factory: Callable[[InputSource], ScriptedIO]
+) -> ScriptedIO:
+    """Use the bound reader for standard I/O and the stream for custom factories."""
+    if isinstance(stdin, (str, bytes)):
+        return factory(stdin)
+    if factory is ScriptedIO:
+        return ScriptedIO(read_input(stdin))
+    return factory(stdin.stream)

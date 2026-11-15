@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import IO
 
 from esolangs.exceptions import ArgumentError, EsolangError
@@ -13,10 +15,21 @@ from esolangs.runtime.source_hints import with_hint
 type InputSource = str | bytes | IO[str] | IO[bytes]
 
 
-def check_input(source: InputSource) -> None:
-    """Check the input container without consuming a stream."""
+@dataclass(frozen=True, slots=True)
+class _BoundReader:
+    """Keep the checked reader and the stream that owns its descriptor."""
+
+    stream: IO[str] | IO[bytes]
+    read: Callable[..., str | bytes | None]
+
+
+type CheckedInput = str | bytes | _BoundReader
+
+
+def check_input(source: InputSource) -> CheckedInput:
+    """Bind the input reader without consuming a stream."""
     if isinstance(source, (str, bytes)):
-        return
+        return source
     try:
         reader = getattr(source, "read", None)
     except EsolangError:
@@ -31,6 +44,7 @@ def check_input(source: InputSource) -> None:
             ),
             ("to read a file, pass its open stream or its UTF-8 text contents"),
         )
+    return _BoundReader(source, reader)
 
 
 def _read_failed(error: Exception) -> ArgumentError:
@@ -40,11 +54,15 @@ def _read_failed(error: Exception) -> ArgumentError:
     )
 
 
-def read_input(source: InputSource) -> str:
+def read_input(source: InputSource | CheckedInput) -> str:
     """Snapshot remaining input; binary input is UTF-8 text."""
-    check_input(source)
+    bound = source if isinstance(source, _BoundReader) else check_input(source)
     try:
-        value = source if isinstance(source, (str, bytes)) else read_snapshot(source)
+        value = (
+            read_snapshot(bound.stream, reader=bound.read)
+            if isinstance(bound, _BoundReader)
+            else bound
+        )
         if isinstance(value, bytes):
             return bytes.decode(value, "utf-8")
         if isinstance(value, str):

@@ -24,7 +24,7 @@ from esolangs.runtime._execution import (
     prepare_call,
     runtime_hook,
 )
-from esolangs.runtime._input import InputSource
+from esolangs.runtime._input import CheckedInput, InputSource
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import (
     MachineFactory,
@@ -35,7 +35,7 @@ from esolangs.runtime._machine import (
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime._source import ProgramSource, check_scale_for, effective_scale
 from esolangs.runtime._vm_protocol import VM
-from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.io import ScriptedIO, _scripted_io
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 
@@ -161,7 +161,7 @@ class PreparedProgram:
 
     def _execute_native(
         self,
-        stdin: InputSource,
+        stdin: CheckedInput,
         *,
         seed: int | None,
         io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
@@ -196,7 +196,7 @@ class PreparedProgram:
             self.language,
             runner,
             code,
-            io_factory(stdin),
+            _scripted_io(stdin, io_factory),
             catalog=self.catalog,
         )
 

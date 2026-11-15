@@ -426,11 +426,15 @@ def _generate(rest: list[str]) -> None:
     )
     if binary and sys.stdout.isatty():
         # Unary's gzip once landed on a terminal unannounced.
+        alternative = ""
+        if not isinstance(program, Raster):
+            alternative = (
+                " or replace --gzip with --plain" if gzip else " or pass --plain"
+            )
         _fail(
             f"{artifact.language} generates "
             f"{'a PNG' if isinstance(program, Raster) else 'gzip'}; "
-            f"redirect stdout to a file"
-            + ("" if isinstance(program, Raster) else " or pass --plain")
+            f"redirect stdout to a file{alternative}"
         )
     with _errors():  # A raster renders here, and may exceed the pixel limit.
         _emit(artifact, plain="--plain" in flags, gzip=gzip)

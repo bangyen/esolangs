@@ -2,7 +2,7 @@
 
 import gzip
 import json
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import pytest
@@ -188,6 +188,37 @@ def test_explicit_template_marker_still_requires_exact_spans(language: str) -> N
     ):
         with pytest.raises(esolangs.ProgramError):
             api.from_json(json.dumps({**value, **corrupt}))
+
+
+@pytest.mark.parametrize("language", one(parameterized=True))
+def test_explicit_zero_input_template_can_be_filled_after_reload(language: str) -> None:
+    api = esolangs.Language(language)
+    generated = api.generate("00")
+    assert isinstance(generated, esolangs.TemplateArtifact)
+    filled = generated.fill([0])
+    record = esolangs.TemplateArtifact(
+        filled.source,
+        language,
+        esolangs.TemplateBindings(char=generated.bindings.char),
+        settings=filled.settings,
+    )
+    restored = api.from_json(api.to_json(record))
+    assert isinstance(restored, esolangs.TemplateArtifact)
+    assert restored == record
+    for bits in ([], ()):
+        assert restored.bindings.fill(restored.source, bits) == filled.source
+        assert restored.fill(bits) == api.instantiate(restored, bits) == filled
+        assert (
+            restored.evaluate(bits).answer == api.evaluate(restored, bits).answer == "0"
+        )
+    with pytest.raises(esolangs.ArgumentError, match="0 inputs"):
+        api.instantiate(restored, [0])
+    with pytest.raises(esolangs.ArgumentError, match="must not be empty"):
+        generated.fill([])
+    with pytest.raises(esolangs.TruthTableError):
+        api.generate("0")
+    with pytest.raises(esolangs.ArgumentError, match="must not be empty"):
+        esolangs.encode_inputs(REFERENCE, [])
 
 
 def test_portable_storage_preserves_compression_for_text_languages(
@@ -523,6 +554,43 @@ def test_portable_compression_respects_raw_export_budget() -> None:
         assert restored == expected
         with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
             str(restored.source)
+
+
+def test_portable_compression_retains_only_the_declared_budget_fields() -> None:
+    @dataclass(frozen=True, kw_only=True)
+    class JobLimits(esolangs.TextLimits):
+        job: str = "preview"
+
+    api = esolangs.Language(REFERENCE)
+    budgets = {"plain_chars": 0, "generation_chars": 2, "gzip_bytes": 100}
+    base = esolangs.TextLimits(**budgets)
+    supplied = JobLimits(**budgets)
+    compressed = gzip.compress(b"..", mtime=1)
+    for build in (
+        lambda limits: esolangs.CompressedText(compressed, limits=limits),
+        lambda limits: esolangs.CompressedText.from_chunks(("..",), limits=limits),
+        lambda limits: esolangs.CompressedText.repeated(".", 2, limits=limits),
+    ):
+        plain = build(base)
+        assert plain.limits is base
+        source = build(supplied)
+        assert type(source.limits) is esolangs.TextLimits
+        assert source == plain
+        assert source.to_gzip() == plain.to_gzip()
+        artifact = api.from_source(source)
+        document = api.to_json(artifact)
+        assert json.loads(document)["limits"] == budgets
+        restored = api.from_json(document)
+        assert restored == artifact
+        assert api.run(restored).output == "\x00\x00"
+
+    source = esolangs.CompressedText(compressed, limits=base)
+    legacy = esolangs.CompressedText(compressed, limits=base)
+    # Older pickles can restore the original subclass without a constructor.
+    object.__setattr__(legacy, "limits", supplied)
+    document = api.to_json(legacy)
+    assert json.loads(document)["limits"] == budgets
+    assert api.from_json(document) == api.from_source(source)
 
 
 def test_large_record_integers_stay_json_numbers() -> None:

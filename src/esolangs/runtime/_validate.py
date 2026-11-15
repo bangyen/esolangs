@@ -172,8 +172,10 @@ def check_bit_count(bits: list[int], inputs: int, subject: str) -> None:
         )
 
 
-def check_bits(bits: object, what: str = "bits") -> list[int]:
-    """Return a nonempty list or tuple of integer bits, or refuse it."""
+def check_bits(
+    bits: object, what: str = "bits", *, allow_empty: bool = False
+) -> list[int]:
+    """Validate and freeze integer bits, optionally accepting a zero-input row."""
     from esolangs.exceptions import ArgumentError
     from esolangs.runtime.source_hints import with_hint
 
@@ -192,7 +194,7 @@ def check_bits(bits: object, what: str = "bits") -> list[int]:
         else bit
         for bit in entries
     ]
-    if not values:
+    if not values and not allow_empty:
         raise with_hint(
             ArgumentError(f"{what} must not be empty; a program reads at least one"),
             ("pass integer bits as a list or tuple, for example [0, 1]"),

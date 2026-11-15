@@ -168,8 +168,9 @@ class TemplateBindings:
         spans: Sequence[tuple[int, int]] | None = None,
     ) -> str:
         """Bind integer bits in source, refusing missing or stray runs."""
-        bits = check_bits(bits, "bits")
-        check_bit_count(bits, self.inputs, "template")
+        inputs = self.inputs
+        bits = check_bits(bits, "bits", allow_empty=inputs == 0)
+        check_bit_count(bits, inputs, "template")
         if not isinstance(source, str):
             raise TemplateError("template source must be text")
         source = str.__str__(source)
@@ -243,8 +244,9 @@ class TemplateArtifact:
         Needs no catalog, unlike :func:`esolangs.instantiate`, which also
         checks the language and table and re-wraps.
         """
-        bits = check_bits(bits, "bits")
-        check_bit_count(bits, self.bindings.inputs, f"{self.language} template")
+        inputs = self.bindings.inputs
+        bits = check_bits(bits, "bits", allow_empty=inputs == 0)
+        check_bit_count(bits, inputs, f"{self.language} template")
         return ProgramArtifact(
             fill_runs(
                 self.source,

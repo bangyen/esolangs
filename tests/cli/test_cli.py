@@ -320,15 +320,22 @@ class TestOutputAndAbridging:
     ) -> None:
         """PNG and gzip bytes went to the terminal unannounced."""
         with patch.object(sys.stdout, "isatty", lambda: True):
-            for args in (
-                ["generate", _RASTER, "0110"],
-                ["generate", _GZIP, "01"],
-                ["generate", REFERENCE, "01", "--gzip"],
+            for args, alternative in (
+                (["generate", _RASTER, "0110"], ""),
+                (["generate", _GZIP, "01"], " or pass --plain"),
+                (
+                    ["generate", REFERENCE, "01", "--gzip"],
+                    " or replace --gzip with --plain",
+                ),
             ):
                 with pytest.raises(SystemExit) as exit_:
                     call_main(args, capsys)
                 assert exit_.value.code == 2
-                assert "redirect stdout" in capsys.readouterr().err
+                output = capsys.readouterr()
+                assert not output.out
+                assert output.err.rstrip().endswith(
+                    f"redirect stdout to a file{alternative}"
+                )
 
 
 class TestGenerateArgumentTypes:

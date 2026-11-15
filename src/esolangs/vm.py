@@ -59,7 +59,7 @@ from esolangs.runtime._execution import (
     interpreter_errors,
     interpreter_module,
 )
-from esolangs.runtime._input import InputSource
+from esolangs.runtime._input import CheckedInput, InputSource, check_input
 from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._state import WorkspaceSnapshot
@@ -67,7 +67,7 @@ from esolangs.runtime._traits import trait, traits
 from esolangs.runtime._validate import check_seed, check_whole
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime._vm_views import machine_views
-from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.io import ScriptedIO, _scripted_io
 from esolangs.settings import DialectSettings
 
 if TYPE_CHECKING:
@@ -119,7 +119,7 @@ class _DelegatingVM:
         self,
         language: str,
         program: PreparedProgram,
-        stdin: InputSource = "",
+        stdin: CheckedInput = "",
         *,
         seed: int | None = None,
         reproducible: bool = True,
@@ -131,7 +131,7 @@ class _DelegatingVM:
 
         catalog = get_catalog(catalog)
         self.language = language
-        self._io = io_factory(stdin)
+        self._io = _scripted_io(stdin, io_factory)
         self._capabilities = catalog.languages[language].runtime.capabilities
         with interpreter_errors(
             f"the {language} interpreter recursed deeper than CPython's stack "
@@ -361,12 +361,10 @@ def _make_vm(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    from esolangs.runtime._input import check_input
-
     name = catalog.resolve(language)
     seed = check_seed(seed)
     check_seed_for(name, seed, catalog=catalog)
-    check_input(stdin)
+    checked = check_input(stdin)
     if prepared is None:
         from esolangs.runtime._prepared import prepare_program
 
@@ -386,7 +384,7 @@ def _make_vm(
         return _DelegatingVM(
             name,
             prepared,
-            stdin,
+            checked,
             seed=seed,
             reproducible=reproducible,
             observe_initialization=observe_initialization,

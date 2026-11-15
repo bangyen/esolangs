@@ -40,7 +40,12 @@ def evaluate_artifact(
     declaration = catalog.languages[name]
     contract = declaration.contract
     values, pattern = _answer_codec(name, contract)
-    row = check_bits(bits, "bits")
+    row = check_bits(
+        bits,
+        "bits",
+        allow_empty=isinstance(artifact, TemplateArtifact)
+        and artifact.bindings.inputs == 0,
+    )
     program: ProgramArtifact[Program]
     if isinstance(artifact, TemplateArtifact):
         if not declaration.parameterized:

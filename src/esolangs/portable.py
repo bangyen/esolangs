@@ -15,7 +15,12 @@ from esolangs.artifacts import (
     TemplateArtifact,
     TemplateBindings,
 )
-from esolangs.compressed import CompressedText, TextLimits, _check_plain
+from esolangs.compressed import (
+    CompressedText,
+    TextLimits,
+    _check_plain,
+    _normalize_limits,
+)
 from esolangs.exceptions import (
     ArgumentError,
     GeneratorCapError,
@@ -222,10 +227,11 @@ def to_json(
             source=base64.b64encode(image).decode("ascii"),
         )
     elif isinstance(body, CompressedText):
+        limits = _normalize_limits(body.limits)
         document.update(
             kind="gzip",
             source=base64.b64encode(body.to_gzip()).decode("ascii"),
-            limits=asdict(body.limits) if body.limits is not None else None,
+            limits=asdict(limits) if limits is not None else None,
         )
     else:
         document.update(kind="text", source=str(body))

@@ -111,6 +111,15 @@ def read_snapshot(
 ) -> bytes: ...
 
 
+@overload
+def read_snapshot(
+    stream: IO[str] | IO[bytes],
+    *,
+    size: int | None = None,
+    reader: Callable[..., str | bytes | None],
+) -> str | bytes: ...
+
+
 def read_snapshot(
     stream: IO[str] | IO[bytes],
     *,

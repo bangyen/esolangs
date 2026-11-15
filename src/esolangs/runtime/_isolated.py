@@ -453,7 +453,7 @@ def _invoke_worker(
             with stream_read_deadline(acquisition_deadline):
                 if monotonic() >= acquisition_deadline:
                     return
-                check_input(stdin)
+                checked_input = check_input(stdin)
                 if monotonic() >= acquisition_deadline:
                     return
                 artifact = _check_program(
@@ -467,7 +467,7 @@ def _invoke_worker(
                 check_scale_for(name, retained_scale, catalog=catalog)
                 if monotonic() >= acquisition_deadline:
                     return
-                captured_input = read_input(stdin)
+                captured_input = read_input(checked_input)
             if monotonic() >= acquisition_deadline:
                 return
             box.append(

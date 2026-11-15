@@ -480,7 +480,7 @@ def _check_template_bits(
     name: str, bits: list[int] | tuple[int, ...], inputs: int
 ) -> list[int]:
     """Validate a row before generating or filling its template."""
-    values = check_bits(bits, "bits")
+    values = check_bits(bits, "bits", allow_empty=inputs == 0)
     try:
         check_bit_count(values, inputs, f"{name} template")
     except ArgumentError as error:

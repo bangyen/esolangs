@@ -205,7 +205,6 @@ def _execute_invocation(
             preparation_timeout=preparation_timeout,
             catalog=catalog,
         )
-    check_input(stdin)
     if max_steps is not None:
         return _execute_bounded(
             language,
@@ -219,6 +218,7 @@ def _execute_invocation(
             io_factory=io_factory,
             prepared=prepared,
         )
+    checked = check_input(stdin)
     if prepared is None:
         prepared = prepare_program(
             language,
@@ -229,7 +229,7 @@ def _execute_invocation(
             module_loader=interpreter_module,
         )
     return prepared._execute_native(  # noqa: SLF001
-        stdin, seed=seed, io_factory=io_factory
+        checked, seed=seed, io_factory=io_factory
     )
 
 

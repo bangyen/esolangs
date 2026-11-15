@@ -70,11 +70,17 @@ def _check_gzip(limits: TextLimits, count: int) -> None:
 _BLOCK = 65536
 
 
-def _check_limits(limits: object) -> None:
-    """Refuse a ``limits`` that is not a TextLimits or None."""
-    if limits is not None and not isinstance(limits, TextLimits):
-        # ``limits=5`` raised a bare AttributeError from ``_check_gzip``.
+def _normalize_limits(limits: object) -> TextLimits | None:
+    """Store only the validated budgets shared by native and portable gzip."""
+    if limits is None or type(limits) is TextLimits:
+        return limits
+    if not isinstance(limits, TextLimits):
         raise ArgumentError("limits must be a TextLimits or None")
+    return TextLimits(
+        plain_chars=limits.plain_chars,
+        generation_chars=limits.generation_chars,
+        gzip_bytes=limits.gzip_bytes,
+    )
 
 
 @dataclass(frozen=True)
@@ -92,8 +98,8 @@ class CompressedText:
         if not isinstance(self.data, bytes):
             raise ProgramError("gzip source must be bytes")
         object.__setattr__(self, "data", bytes.__bytes__(self.data))
-        _check_limits(self.limits)
-        limits = self.limits
+        limits = _normalize_limits(self.limits)
+        object.__setattr__(self, "limits", limits)
         if limits is not None:
             _check_gzip(limits, len(self.data))
         size = 0
@@ -124,7 +130,7 @@ class CompressedText:
         cls, chunks: Iterable[str], *, limits: TextLimits | None = None
     ) -> CompressedText:
         """Compress text deterministically without collecting expanded source."""
-        _check_limits(limits)
+        limits = _normalize_limits(limits)
         if not isinstance(chunks, Iterable):
             raise ArgumentError("chunks must be an iterable of strings")
         output = io.BytesIO()
@@ -212,7 +218,7 @@ class CompressedText:
         cls, character: str, count: int, *, limits: TextLimits | None = None
     ) -> CompressedText:
         """Compress count copies of one character using bounded chunks."""
-        _check_limits(limits)
+        limits = _normalize_limits(limits)
         if (
             not isinstance(character, str)
             or str.__len__(character) != 1

@@ -9,7 +9,68 @@ from threading import Event, Thread
 import pytest
 
 import esolangs
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import complete_vm
 from tests.support.reference import REFERENCE
+
+
+@pytest.mark.parametrize("prepared", [False, True])
+@pytest.mark.parametrize("route", ["native", "bounded", "isolated", "vm", "debugger"])
+def test_invocation_uses_the_first_managed_input_reader(prepared, route) -> None:
+    events = []
+
+    class Program:
+        def read(self):
+            events.append("source")
+            return ",."
+
+    class Input:
+        @property
+        def read(self):
+            events.append("lookup")
+            value = b"A" if events.count("lookup") == 1 else b"B"
+
+            def consume():
+                events.append("read")
+                return value
+
+            return consume
+
+    api = esolangs.Language(REFERENCE)
+    target = api.prepare(Program()) if prepared else api
+    arguments = () if prepared else (Program(),)
+    stdin = Input()
+    if route == "vm":
+        output = complete_vm(target.make_vm(*arguments, stdin=stdin))
+    elif route == "debugger":
+        debugger = target.make_debugger(*arguments, stdin=stdin)
+        assert debugger.run() == "halted"
+        output = debugger.output
+    else:
+        limits = esolangs.ExecutionLimits(max_steps=2) if route == "bounded" else None
+        result = target.run(
+            *arguments, stdin=stdin, limits=limits, isolated=route == "isolated"
+        )
+        output = result.output
+        assert result.input_position == result.input_reads == 1
+
+    assert output == "A"
+    ordered = ["source", "lookup"] if prepared else ["lookup", "source"]
+    assert events == [*ordered, "read"]
+
+
+def test_standalone_scripted_io_binds_its_reader_once() -> None:
+    class Input:
+        calls = 0
+
+        @property
+        def read(self):
+            self.calls += 1
+            return lambda: "A" if self.calls == 1 else "B"
+
+    stdin = Input()
+    assert ScriptedIO(stdin).input_char() == ord("A")
+    assert stdin.calls == 1
 
 
 @pytest.fixture

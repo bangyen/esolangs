@@ -134,6 +134,16 @@ def test_gzip_budget_and_hash_use_builtin_bytes() -> None:
         CompressedText(buffer, limits=limits)
 
 
+def test_compression_revalidates_budget_fields_from_a_subclass() -> None:
+    class UncheckedLimits(esolangs.TextLimits):
+        def __post_init__(self) -> None:
+            pass
+
+    limits = UncheckedLimits(plain_chars=-1, generation_chars=2, gzip_bytes=100)
+    with pytest.raises(esolangs.ArgumentError, match="nonnegative"):
+        CompressedText.from_chunks(("..",), limits=limits)
+
+
 def test_compression_uses_underlying_string_contents_and_length() -> None:
     class Text(str):
         def __len__(self):
