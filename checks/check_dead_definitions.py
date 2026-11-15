@@ -13,7 +13,8 @@ The rule is deliberately narrow:
 
 A public name outside ``generation/`` is package API and may be consumed by the
 suite alone (``_cycles.py``'s termination provers), so it is not judged here.
-Dunder names are protocol hooks.  ``from m import x as y`` counts a use of
+Dunder names are protocol hooks. Legacy pickle globals are resolved by
+module and name from serialized files. ``from m import x as y`` counts a use of
 ``y`` as a use of ``x``.  Tests are not read: a name only a test reaches is
 exactly the case to report, and the fix is to move it under ``tests/``.
 
@@ -29,6 +30,15 @@ import sys
 from collections import Counter
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+# These globals are exercised by the archived Piet and Slashes pickles.
+_LEGACY_PICKLE_GLOBALS = frozenset(
+    {
+        ("src/esolangs/raster/__init__.py", "_rebuilt"),
+        ("src/esolangs/tagged.py", "_Tagged"),
+        ("src/esolangs/tagged.py", "_Template"),
+    }
+)
 
 
 def _top_level_names(node: ast.stmt) -> set[str]:
@@ -83,6 +93,8 @@ def _forward_names(text: str) -> set[str]:
 def _judged(path: pathlib.Path, root: pathlib.Path, name: str) -> bool:
     """Whether ``name`` defined in ``path`` is one this check reports."""
     if name.startswith("__") and name.endswith("__"):
+        return False
+    if (path.relative_to(root).as_posix(), name) in _LEGACY_PICKLE_GLOBALS:
         return False
     if root / "src" / "esolangs" / "generation" in path.parents or (
         root / "src" / "esolangs" / "languages" in path.parents

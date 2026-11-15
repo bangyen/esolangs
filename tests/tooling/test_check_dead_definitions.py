@@ -29,13 +29,23 @@ def test_a_planted_unread_name_is_reported(tmp_path: Path) -> None:
             "src/esolangs/generation/gen.py": (
                 "def gen(t):\n    return t\n\n\ndef _old_route(t):\n    return t * 2\n"
             ),
+            "src/esolangs/other.py": "def _Tagged():\n    pass\n",
+            "src/esolangs/raster/__init__.py": "def _rebuilt():\n    pass\n",
             "src/esolangs/registry.py": (
                 "from esolangs.generation.gen import gen\nLANGS = {'g': gen}\n"
+            ),
+            "src/esolangs/tagged.py": (
+                "def _Tagged():\n    pass\n\n\ndef _Template():\n    pass\n\n\n"
+                "def _unused():\n    pass\n"
             ),
         },
     )
     found = checker.dead_definitions(root)
-    assert [(p.name, n) for p, n, _ in found] == [("gen.py", "_old_route")]
+    assert [(p.name, n) for p, n, _ in found] == [
+        ("gen.py", "_old_route"),
+        ("other.py", "_Tagged"),
+        ("tagged.py", "_unused"),
+    ]
 
 
 def test_an_import_alias_counts_as_a_read(tmp_path: Path) -> None:
