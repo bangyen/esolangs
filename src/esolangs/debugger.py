@@ -309,7 +309,7 @@ class Debugger(_ExecutionController):
             _raise_halt_fault(self)
         if hits - suppressed:
             return "breakpoint"
-        return "halted" if halted else None
+        return "halted" if halted else "active"
 
 
 def make_debugger(

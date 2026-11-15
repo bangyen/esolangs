@@ -547,6 +547,12 @@ class _StdoutError(Exception):
 class _StdoutEncodingError(Exception):
     """Output text cannot be written as UTF-8."""
 
+    def __init__(self, error: UnicodeEncodeError) -> None:
+        super().__init__(
+            f"output contains a surrogate at character {error.start} "
+            "and cannot be encoded as UTF-8"
+        )
+
 
 def _write_all[DataT: (str, bytes, memoryview)](
     write: Callable[[DataT], int | None],
@@ -700,10 +706,7 @@ def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
         try:
             data = data.encode("utf-8")
         except UnicodeEncodeError as exc:
-            raise _StdoutEncodingError(
-                f"output contains a surrogate at character {exc.start} "
-                "and cannot be encoded as UTF-8"
-            ) from exc
+            raise _StdoutEncodingError(exc) from exc
     try:
         if isinstance(data, bytes):
             if stream is None:

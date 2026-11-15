@@ -9,7 +9,7 @@ import pytest
 
 import esolangs
 from esolangs import run, vm
-from esolangs.debugger import make_debugger
+from esolangs.debugger import Debugger, make_debugger
 from esolangs.languages.cyclic_tag import interpreter
 from esolangs.results import Completion, CompletionReport
 from tests.support.vm_support import assert_vm_finalization_is_shared
@@ -62,6 +62,7 @@ assert module in sys.modules, 'loading control did not fire'
         debug.step()
         assert debug.observation == finalized
         assert debug.snapshot() == snapshot
+    _check_callback_replacement_boundaries(monkeypatch)
     _check_callback_halt_boundaries(monkeypatch)
     monkeypatch.setattr(
         interpreter,
@@ -70,6 +71,62 @@ assert module in sys.modules, 'loading control did not fire'
     )
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
         run("Cyclic tag", ",1")
+
+
+def _check_callback_replacement_boundaries(monkeypatch):
+    for after_dump, active in ((False, True), (True, True), (True, False)):
+        receiver = make_debugger("Cyclic tag", ",1")
+        debug = Debugger(receiver)
+        if not after_dump:
+            receiver.step()
+        replacement = vm.make_vm("Cyclic tag", ",0")
+        if not active:
+            replacement.step()
+        checked = []
+
+        def swap(
+            machine,
+            *,
+            after=after_dump,
+            target=replacement,
+            seen=checked,
+            receiver=receiver,
+        ):
+            seen.append((machine.halted, machine.output))
+            if machine.halted and bool(machine.output) == after:
+                receiver.vm = target
+            return False
+
+        debug.break_when(swap)
+        limits = esolangs.ExecutionLimits(max_steps=int(after_dump))
+        expected_halt = "max_steps" if active else "halted"
+        assert debug.run(limits=limits) == expected_halt
+        assert debug.observation.steps == int(after_dump)
+        if active:
+            assert not debug.halted
+            assert debug.output == ""
+            assert checked[-1] == (False, "")
+            assert debug.run(limits=esolangs.ExecutionLimits(max_steps=1)) == "halted"
+        assert debug.output == "0"
+        assert debug.observation.completion.kind is Completion.POST_HALT
+        assert debug.observation.steps == int(after_dump) + int(active)
+
+    now = [0.0]
+    monkeypatch.setattr("esolangs.runtime._controller.monotonic", lambda: now[0])
+    debug = make_debugger("Cyclic tag", ",")
+
+    def swap_after_deadline(_machine):
+        debug.clear_breakpoints()
+        debug.vm = vm.make_vm("Cyclic tag", ",1")
+        now[0] = 2.0
+        return False
+
+    debug.break_when(swap_after_deadline)
+    deadline = esolangs.ExecutionLimits(execution_timeout=1, max_steps=1)
+    assert debug.run(limits=deadline) == "execution_timeout"
+    assert not debug.halted
+    assert debug.output == ""
+    assert debug.observation.steps == 0
 
 
 def _check_callback_halt_boundaries(monkeypatch):

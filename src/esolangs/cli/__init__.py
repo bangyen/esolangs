@@ -93,7 +93,7 @@ from esolangs.cli.io import (
 )
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
-from esolangs.exceptions import EsolangError, ProgramError
+from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
 from esolangs.operations.boolean_io import _answer_codec, _read_output_answer
 from esolangs.raster import png
 from esolangs.registry import Catalog, LanguageDeclaration, SourceKind, get_catalog
@@ -331,7 +331,13 @@ def _emit(
             else ""
         )
         if gzip:
-            _write_output(CompressedText.from_chunks((program, ending)).to_gzip())
+            try:
+                compressed = CompressedText.from_chunks((program, ending))
+            except ArgumentError as error:
+                if isinstance(error.__cause__, UnicodeEncodeError):
+                    raise _StdoutEncodingError(error.__cause__) from error
+                raise
+            _write_output(compressed.to_gzip())
         else:
             _write_output(program + ending)
     elif isinstance(program, CompressedText):

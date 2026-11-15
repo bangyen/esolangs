@@ -457,6 +457,33 @@ def _grey_rows(
     return (width, rows) if rows else None
 
 
+def _pack_grey_rows(rows: list[bytes | bytearray | memoryview], width: int) -> bytes:
+    """Recheck widths after callbacks, pinning mutable rows until packed."""
+    parts: list[bytes | memoryview] = []
+    pinned: list[memoryview] = []
+    try:
+        for row in rows:
+            if type(row) is bytearray:
+                view = memoryview(row)
+                pinned.append(view)
+                part: bytes | memoryview = view
+            elif type(row) is memoryview:
+                part = row
+            else:
+                part = _backing_bytes(row)
+            size = part.nbytes if type(part) is memoryview else len(part)
+            if size != width:
+                raise syntax_error(
+                    "greyscale row width changed while encoding",
+                    "provide nonempty, equal-width rows of greyscale pixels",
+                )
+            parts.append(part)
+        return b"".join(parts)
+    finally:
+        for view in pinned:
+            view.release()
+
+
 def write_grey(pixels: list[bytearray]) -> bytes:
     """Encode rectangular greyscale rows as PNG bytes."""
     if type(pixels) is not list and _has_backing_type(pixels, list):
@@ -472,14 +499,7 @@ def write_grey(pixels: list[bytearray]) -> bytes:
         height = len(rows)
         image = _require_image()
         _check_pixel_limit(width, height, image.MAX_IMAGE_PIXELS)
-        parts = (
-            _backing_bytes(row)
-            if type(row) not in (bytes, bytearray)
-            and (_has_backing_type(row, bytes) or _has_backing_type(row, bytearray))
-            else row
-            for row in rows
-        )
-        raw = b"".join(parts)
+        raw = _pack_grey_rows(rows, width)
     return _write(image, "L", width, height, raw)
 
 
@@ -520,12 +540,13 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
 
     if type(pixels) is not tuple and _has_backing_type(pixels, tuple):
         pixels = tuple(tuple.__iter__(pixels))
+    shape_hint = "provide nonempty, equal-width rows of RGB pixels"
     height = len(pixels)
     width = _row_width(pixels[0]) if height else 0
     if not height or not width or any(_row_width(row) != width for row in pixels):
         raise syntax_error(
             "expected a non-empty 2-D RGB image",
-            "provide nonempty, equal-width rows of RGB pixels",
+            shape_hint,
         )
     image = _require_image()
     _check_pixel_limit(width, height, image.MAX_IMAGE_PIXELS)
@@ -533,6 +554,7 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
     packed_pixels: dict[int, tuple[tuple[int, int, int], bytes]] = {}
     cache_pixels = True
     parts = []
+    row_bytes = width * 3
     for row in pixels:
         cached = packed_rows.get(id(row))
         if cached is not None:
@@ -581,10 +603,14 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
                 immutable = False
         if repeats:
             raw.extend(previous_bytes * repeats)
+        if len(raw) != row_bytes:
+            raise syntax_error("RGB row width changed while encoding", shape_hint)
         packed = bytes(raw)
         parts.append(packed)
         if immutable and len(packed_rows) < 1024:
             packed_rows[id(row)] = row, packed
+    if len(parts) != height:
+        raise syntax_error("RGB row count changed while encoding", shape_hint)
     return _write(image, "RGB", width, height, b"".join(parts))
 
 

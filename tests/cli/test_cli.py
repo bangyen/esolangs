@@ -14,8 +14,10 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.cli import _generate, main
+from esolangs.cli import _emit, _generate, main
+from esolangs.cli.io import _StdoutEncodingError
 from esolangs.registry import LANGUAGES, _table
+from esolangs.registry._backend import BooleanBackend
 from tests.support.cli_support import _failure, _program, _refused, call_main, run_cli
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
@@ -328,11 +330,62 @@ class TestProgramFailuresAreReported:
 class TestOutputAndAbridging:
     """The two output conventions: byte-exact when piped, readable when not."""
 
-    def test_gzip_export(self, capsysbinary) -> None:
+    def test_gzip_export(self, capsysbinary, monkeypatch) -> None:
         _generate([REFERENCE, "01", "--gzip"])
         data = capsysbinary.readouterr().out
         expected = esolangs.generate(REFERENCE, "01").source + "\n"
         assert gzip.decompress(data).decode() == expected
+        assert esolangs.run(REFERENCE, data, stdin="1").output == "1"
+
+        declaration = LANGUAGES[REFERENCE]
+        source = ",."
+        backend = BooleanBackend(entrypoint=lambda _request: source)
+        scope = esolangs.Catalog([replace(declaration, backend=backend)])
+        monkeypatch.setattr(_table, "CATALOG", scope)
+        for flags in ([], ["--gzip"]):
+            args = ["esolangs", "generate", *flags, REFERENCE, "01"]
+            monkeypatch.setattr(sys, "argv", args)
+            main()
+            rendered, diagnostic = capsysbinary.readouterr()
+            assert not diagnostic
+            assert esolangs.run(REFERENCE, rendered, stdin="1").output == "1"
+
+        source += "\ud800"
+        artifact = scope.bind(REFERENCE).generate("01")
+        assert scope.bind(REFERENCE).run(artifact, stdin="1").output == "1"
+        for flags in ([], ["--gzip"]):
+            monkeypatch.setattr(
+                sys, "argv", ["esolangs", "generate", *flags, REFERENCE, "01"]
+            )
+            with pytest.raises(SystemExit) as exited:
+                main()
+            assert exited.value.code == 1
+            assert capsysbinary.readouterr() == (
+                b"",
+                b"output contains a surrogate at character 2 "
+                b"and cannot be encoded as UTF-8\n",
+            )
+
+        with pytest.raises(_StdoutEncodingError) as caught:
+            _emit(artifact, plain=False, gzip=True, catalog=scope)
+        compression_error = caught.value.__cause__
+        assert isinstance(compression_error, esolangs.ArgumentError)
+        assert isinstance(compression_error.__cause__, UnicodeEncodeError)
+        assert compression_error.__cause__.object.startswith(source)
+
+        for error in (
+            esolangs.ArgumentError("invalid compressor options"),
+            esolangs.GeneratorCapError("compressed size bound"),
+        ):
+
+            def refuse(*_args, failure=error):
+                raise failure
+
+            with monkeypatch.context() as active:
+                active.setattr(esolangs.CompressedText, "from_chunks", refuse)
+                with pytest.raises(type(error)) as untouched:
+                    _emit(artifact, plain=False, gzip=True, catalog=scope)
+                assert untouched.value is error
 
     @pytest.mark.medium
     def test_raster_bits_refusal_points_to_a_working_input_pipeline(

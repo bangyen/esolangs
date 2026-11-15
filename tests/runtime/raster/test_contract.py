@@ -185,6 +185,21 @@ def test_raster_png_uses_backing_bytearrays(
     assert first.acquired == first.released == short.acquired == short.released == 1
     assert unread.acquired == unread.released == 0
 
+    class ResizeOnRead(Once):
+        def __buffer__(self, flags: int) -> memoryview:
+            widened.append(99)
+            narrowed.pop()
+            return super().__buffer__(flags)
+
+    widened, narrowed = map(bytearray, grey)
+    source = ResizeOnRead(memoryview(grey[0]))
+    with pytest.raises(ValueError, match="greyscale row width changed"):
+        png.write_grey([widened, narrowed, source])
+    assert source.acquired == source.released == 1
+    assert widened.pop() == 99
+    narrowed.append(grey[1][-1])
+    assert [widened, narrowed] == grey
+
     relocated = tmp_path / "other"
     relocated.mkdir()
     unrelated = relocated / destination.name
@@ -270,6 +285,25 @@ def test_raster_freezes_backing_tuples_at_each_level() -> None:
         assert png.write_source(supplied, None, None, 1) == png.write_source(
             rows, None, None, 1
         )
+
+    class ResizeOnMeasure(list):
+        def __len__(self) -> int:
+            widened.append(pixel)
+            narrowed.pop()
+            return list.__len__(self)
+
+    widened, narrowed = [pixel], [substitute]
+    with pytest.raises(ValueError, match="RGB row width changed"):
+        png.write_rgb([widened, narrowed, ResizeOnMeasure([pixel])])
+    assert (len(widened), len(narrowed)) == (2, 0)
+
+    class ExtraRow(list):
+        def __iter__(self):
+            yield from list.__iter__(self)
+            yield row
+
+    with pytest.raises(ValueError, match="RGB row count changed"):
+        png.write_rgb(ExtraRow([row]))
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)

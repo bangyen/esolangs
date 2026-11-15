@@ -25,7 +25,7 @@ from esolangs.vm import (
 )
 
 StopReason = Literal["halted", "breakpoint", "max_steps", "execution_timeout"]
-type _StopRequest = Literal["halted", "breakpoint"] | None
+type _StopRequest = Literal["active", "halted", "breakpoint"] | None
 
 _DRIVER_FIELDS = (
     "halted",
@@ -59,7 +59,7 @@ class ExecutionController:
         """Observe a completed step; debugger subclasses record watches."""
 
     def _stop_requested(self) -> _StopRequest:
-        """Return a breakpoint or a halt reached while checking one."""
+        """Return a breakpoint or the VM state after checking callbacks."""
         return None
 
     @property
@@ -212,29 +212,46 @@ class ExecutionController:
         _raise_halt_fault(self)
         deadline = None if timeout is None else monotonic() + timeout
         start = self._steps
-        while not self.halted:
-            if deadline is not None and monotonic() >= deadline:
-                return "execution_timeout"
+        while True:
+            while not self.halted:
+                if deadline is not None and monotonic() >= deadline:
+                    return "execution_timeout"
+                requested = self._stop_requested()
+                if requested is not None:
+                    if requested == "breakpoint":
+                        return requested
+                    if requested == "halted":
+                        break
+                if deadline is not None and monotonic() >= deadline:
+                    return "execution_timeout"
+                if max_steps is not None and self._steps - start >= max_steps:
+                    return "max_steps"
+                self._take_step()
+
+            # The final command and the dump can each trigger a breakpoint.
             requested = self._stop_requested()
-            if requested is not None:
+            if requested == "breakpoint":
+                return requested
+            if requested == "active":
+                continue
+            if self.dumps_on_the_post_halt_step and not self._has_dumped():
+                if deadline is not None and monotonic() >= deadline:
+                    return "execution_timeout"
+                receiver = self.vm
+                owner = _controller_vm(receiver)
+                self._take_step()
+                requested = self._stop_requested()
                 if requested == "breakpoint":
                     return requested
-                break
-            if deadline is not None and monotonic() >= deadline:
-                return "execution_timeout"
-            if max_steps is not None and self._steps - start >= max_steps:
-                return "max_steps"
-            self._take_step()
-        # The final command and the dump can each trigger a breakpoint.
-        if self._stop_requested() == "breakpoint":
-            return "breakpoint"
-        if self.dumps_on_the_post_halt_step and not self._has_dumped():
-            if deadline is not None and monotonic() >= deadline:
-                return "execution_timeout"
-            self._take_step()
-            if self._stop_requested() == "breakpoint":
-                return "breakpoint"
-        return "halted"
+                if (
+                    requested == "active"
+                    or self.vm is not receiver
+                    or _controller_vm(receiver) is not owner
+                ):
+                    # A new receiver gets its own command and dump boundaries.
+                    _raise_halt_fault(self)
+                    continue
+            return "halted"
 
     def _repeat_execution(
         self, vm: _DelegatingVM, max_steps: int

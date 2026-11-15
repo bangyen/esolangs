@@ -134,6 +134,22 @@ def test_breakpoint_callback_can_clear_the_breakpoint_it_hits(
     assert dbg.run(limits=limits) == "halted"
     assert dbg.output == "\x01"
 
+    dbg = debugger_api.make_debugger(REFERENCE, "")
+    replacement = debugger_api.make_vm(REFERENCE, "+.")
+    checked = []
+
+    def replace_at_halt(vm):
+        checked.append((vm.halted, vm.output))
+        if vm is not replacement:
+            dbg.vm = replacement
+        return False
+
+    dbg.break_when(replace_at_halt)
+    assert dbg.run(limits=limits) == "halted"
+    assert checked == [(True, ""), (False, ""), (False, ""), (True, "\x01")]
+    assert dbg.observation.steps == 2
+    assert dbg.output == "\x01"
+
 
 def test_manual_step_can_clear_a_suppressed_breakpoint() -> None:
     dbg = debugger_api.make_debugger(REFERENCE, "+.")
