@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from io import StringIO
 from pathlib import Path
 from queue import Queue
 from threading import Event, Thread
@@ -127,6 +128,35 @@ def test_syntax_rejection_preserves_known_zero_input_counters(budgets) -> None:
     outcome = esolangs.execute(REFERENCE, object(), limits=limits)
     assert isinstance(outcome.error, esolangs.ProgramError)
     assert outcome.error.observation is None
+    if not budgets:
+        _check_vm_initialization_rejection()
+
+
+def _check_vm_initialization_rejection() -> None:
+    api = esolangs.Language(REFERENCE)
+    refusal = esolangs.ProgramError("stdin acquisition refused")
+
+    class RefusesInput:
+        def read(self):
+            raise refusal
+
+    for create in (api.make_vm, api.make_debugger):
+        stdin = StringIO("X")
+        with pytest.raises(esolangs.ProgramError, match="unmatched") as syntax:
+            create("[", stdin=stdin)
+        assert stdin.tell() == 1
+        assert syntax.value.observation == ExecutionResult("", 0, 0, 0)
+
+        stdin = StringIO("X")
+        with pytest.raises(esolangs.ProgramError) as source:
+            create(object(), stdin=stdin)
+        assert stdin.tell() == 0
+        assert source.value.observation is None
+
+        with pytest.raises(esolangs.ProgramError, match="acquisition refused") as read:
+            create("+.", stdin=RefusesInput())
+        assert read.value is refusal
+        assert refusal.observation is None
 
 
 @pytest.mark.medium

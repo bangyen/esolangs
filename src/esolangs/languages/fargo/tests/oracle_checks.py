@@ -300,7 +300,7 @@ def check_case(
                 assert type(caught) is error_type(rows[0].error, route == 0)
                 assert str(caught) == rows[0].message
                 if route:
-                    assert caught.observation is None
+                    assert caught.observation == esolangs.ExecutionResult("", 0, 0, 0)
                     assert caught.partial_output == ""
             else:
                 raise AssertionError("invalid definitions read input or constructed")

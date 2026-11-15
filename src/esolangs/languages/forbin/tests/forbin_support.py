@@ -138,7 +138,7 @@ def check_constructor_error_observations() -> None:
                 assert execute(route, source) == ExecutionResult(
                     "A", 0, 0, 0, completion=halted, steps=1 if counted else None
                 )
-    # Failed debugger construction has no observation. Run has acquired stdin.
+    # All public routes have acquired stdin before reporting this rejection.
     for source in ("", "main {"):
         artifact = esolangs.ProgramArtifact(source, "Forbin")
         for create in (make_vm, make_debugger):
@@ -146,7 +146,7 @@ def check_constructor_error_observations() -> None:
                 create("Forbin", artifact, stdin="")
             assert type(caught.value) is ProgramError
             assert caught.value.partial_output == ""
-            assert caught.value.observation is None
+            assert caught.value.observation == ExecutionResult("", 0, 0, 0)
         with pytest.raises(ProgramError) as caught:
             esolangs.run("Forbin", artifact, limits=ExecutionLimits(max_steps=64))
         assert caught.value.partial_output == ""
@@ -179,7 +179,7 @@ def check_constructor_error_observations() -> None:
             make_vm("Forbin", artifact, stdin="λ")
         assert str(caught.value) == "preparation refusal"
         assert caught.value.partial_output == ""
-        assert caught.value.observation is None
+        assert caught.value.observation == ExecutionResult("", 0, 0, 0)
     # A factory's existing truthful observation must not be replaced either.
     declared = []
 

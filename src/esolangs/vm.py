@@ -225,7 +225,6 @@ class _DelegatingVM:
         *,
         seed: int | None = None,
         reproducible: bool = True,
-        observe_initialization: bool = False,
         catalog: Catalog | None = None,
         io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     ) -> None:
@@ -247,7 +246,6 @@ class _DelegatingVM:
             "limit allows while loading this program",
             self._io,
             language=language,
-            omit_empty_io=not observe_initialization,
         ):
             factory = program._factory(  # noqa: SLF001
                 seed=seed, reproducible=reproducible
@@ -654,7 +652,6 @@ def _make_vm(
     catalog: Catalog | None = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     prepared: PreparedProgram | None = None,
-    observe_initialization: bool = False,
 ) -> VM:
     """Prepare a scoped VM with an invocation-owned input/output factory."""
     from esolangs.registry._catalog import get_catalog
@@ -680,7 +677,6 @@ def _make_vm(
         catalog=catalog,
         io_factory=io_factory,
         prepared=prepared,
-        observe_initialization=observe_initialization,
     )
 
 
@@ -696,7 +692,6 @@ def _make_checked_vm(
     io_factory: Callable[[InputSource], ScriptedIO],
     prepared: PreparedProgram | None,
     reproducible: bool = True,
-    observe_initialization: bool = False,
 ) -> VM:
     """Load a step machine after validating invocation choices and input shape."""
     if prepared is None:
@@ -721,7 +716,6 @@ def _make_checked_vm(
             stdin,
             seed=seed,
             reproducible=reproducible,
-            observe_initialization=observe_initialization,
             catalog=catalog,
             io_factory=io_factory,
         )

@@ -285,7 +285,6 @@ def interpreter_errors(
     *,
     language: str | None = None,
     input_acquired: bool = False,
-    omit_empty_io: bool = False,
     on_observation: Callable[[ExecutionResult], None] | None = None,
 ) -> Iterator[None]:
     """Translate interpreter failures, preserving public errors and prior output."""
@@ -341,19 +340,16 @@ def interpreter_errors(
         if io_obj is not None:
             written = io_obj.getvalue()
             counters = io_obj.position(), io_obj.reads, io_obj.past_end
-            if not omit_empty_io or written or any(counters):
-                observation = ExecutionResult(written, *counters)
-                if error.observation is not None:
-                    _remember_failure_evidence(error, observation)
-                else:
-                    error.observation = observation
-                    error.partial_output = written
-                    if on_observation is not None:
-                        on_observation(observation)
-                    if written:
-                        error.add_note(
-                            f"the program printed {written[:200]!r} before this"
-                        )
+            observation = ExecutionResult(written, *counters)
+            if error.observation is not None:
+                _remember_failure_evidence(error, observation)
+            else:
+                error.observation = observation
+                error.partial_output = written
+                if on_observation is not None:
+                    on_observation(observation)
+                if written:
+                    error.add_note(f"the program printed {written[:200]!r} before this")
         elif input_acquired and error.observation is None:
             error.observation = ExecutionResult(error.partial_output, 0, 0, 0)
         if error is original:

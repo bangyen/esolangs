@@ -365,6 +365,25 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
     machine = SimpleNamespace(snapshot=lambda: 0)
     _check_invalid_halted(scoped, prepared, source, active, expected, machine)
 
+    _check_reused_initialization_fault(scoped, interpreter, original, monkeypatch)
+
+
+def _check_reused_initialization_fault(scoped, interpreter, original, monkeypatch):
+    prior_observation = original.observation
+
+    def reject(_source, _options):
+        raise original
+
+    monkeypatch.setattr(interpreter, "custom_initialize", reject)
+    limits = esolangs.ExecutionLimits(max_steps=0)
+    observed = scoped.execute("+.", stdin="B", limits=limits)
+    with pytest.raises(esolangs.ArgumentError, match="custom step binding") as reused:
+        scoped.make_debugger("+.", stdin="B")
+    assert reused.value is observed.error is original
+    assert observed.observation == esolangs.ExecutionResult("", 0, 0, 0)
+    assert original.observation is prior_observation
+    assert original.partial_output == "A"
+
 
 def _check_invalid_halted(scoped, prepared, source, limits, expected, machine):
     def refuse_step():

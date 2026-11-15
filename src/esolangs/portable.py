@@ -262,6 +262,8 @@ def to_json(
             setters=template.bindings.setters,
             spans=template.spans,
         )
+        if template.generation_width is not None:
+            document["generation_width"] = template.generation_width
     else:
         if artifact.input_arity is not None:
             document["input_arity"] = artifact.input_arity
@@ -431,12 +433,14 @@ def _load_template(
     catalog: Catalog | None = None,
 ) -> TemplateArtifact:
     """Restore a ``template`` document's template and setters."""
+    from esolangs.operations.source import positive_metadata_field
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
     if not isinstance(value["char"], str) or len(value["char"]) != 1:
         raise ValueError("template char must be one character")
     _require_template_capability(name, catalog=catalog)
+    width = positive_metadata_field(value, "generation_width")
     pairs = value["setters"]
     if not isinstance(pairs, list) or any(
         not isinstance(pair, list)
@@ -462,6 +466,7 @@ def _load_template(
         TemplateBindings(char=value["char"], setters=tuple(pairs)),
         settings=settings,
         spans=spans,
+        generation_width=width,
     )
 
 
@@ -519,8 +524,7 @@ def from_json(
         if kind == "template":
             fields |= {"char", "setters"}
             # Early version-1 writers relied on the template's inferred spans.
-            if "spans" in value:
-                fields.add("spans")
+            fields |= value.keys() & {"spans", "generation_width"}
         elif "input_arity" in value:
             fields.add("input_arity")
         if set(value) != fields:

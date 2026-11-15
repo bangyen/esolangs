@@ -174,6 +174,7 @@ def read_artifact(
                 program.bindings,
                 settings=settings,
                 spans=program.spans,
+                generation_width=program.generation_width,
             )
         return ProgramArtifact(
             source,

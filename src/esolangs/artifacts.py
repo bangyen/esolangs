@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field, fields
+from inspect import getattr_static
 from reprlib import recursive_repr
 
 import esolangs
@@ -32,6 +33,7 @@ from esolangs.runtime._validate import (
     check_bit_count,
     check_bits,
     check_scale,
+    check_width,
 )
 from esolangs.runtime.memory import repr_value
 
@@ -104,9 +106,13 @@ def _origin(
     return owner, settings
 
 
-def _restore_artifact_slots(artifact: Artifact, state: list[object]) -> None:
-    for item, value in zip(fields(artifact), state, strict=True):
-        object.__setattr__(artifact, item.name, value)
+def _restore_artifact_slots(
+    artifact: Artifact, state: list[object], *, names: Sequence[str] | None = None
+) -> None:
+    if names is None:
+        names = tuple(item.name for item in fields(artifact))
+    for name, value in zip(names, state, strict=True):
+        object.__setattr__(artifact, name, value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,15 +235,40 @@ def _freeze_span(span: tuple[int, int]) -> tuple[int, int]:
     return start, end
 
 
+def _template_pickle_fields(artifact: TemplateArtifact) -> tuple[str, ...]:
+    return tuple(
+        item.name for item in fields(artifact) if item.name != "generation_width"
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class TemplateArtifact:
-    """Text with explicit input bindings; never runnable source."""
+    """Text with explicit input bindings; never runnable source.
+
+    The generation width, when present, identifies a native layout to check.
+    """
 
     source: str
     language: str
     bindings: TemplateBindings
     settings: DialectSettings | None = field(default=None, kw_only=True)
     spans: tuple[tuple[int, int], ...] | None = field(default=None, kw_only=True)
+    generation_width: int | None = field(
+        default=None, kw_only=True, repr=False, compare=False
+    )
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Retain the pickle layout for frozen slotted dataclass subclasses."""
+        super(TemplateArtifact, cls).__init_subclass__(**kwargs)
+        methods = ("__getstate__", "__setstate__")
+        # Frozen slots dataclasses otherwise replace inherited pickle hooks.
+        if all(
+            method not in cls.__dict__
+            and getattr_static(cls, method) is TemplateArtifact.__dict__[method]
+            for method in methods
+        ):
+            for method in methods:
+                setattr(cls, method, TemplateArtifact.__dict__[method])
 
     def __post_init__(self) -> None:
         """Require every placeholder to belong to an input."""
@@ -269,9 +300,27 @@ class TemplateArtifact:
         except (TypeError, ValueError) as error:
             raise TemplateError(str(error)) from error
 
+        width = check_width(self.generation_width)
+        object.__setattr__(self, "generation_width", width)
+
+    def __getstate__(self) -> list[object]:
+        """Keep the old slot layout and append a width only when present."""
+        state = [getattr(self, name) for name in _template_pickle_fields(self)]
+        if self.generation_width is not None:
+            state.append(self.generation_width)
+        return state
+
     def __setstate__(self, state: list[object]) -> None:
-        """Restore exactly the current pickle fields."""
-        _restore_artifact_slots(self, state)
+        """Restore the template fields and an optional native width."""
+        names = _template_pickle_fields(self)
+        width = None
+        if len(state) == len(names) + 1:
+            width = check_width(state[-1])
+            if width is None:
+                raise ValueError("invalid retained generation width")
+            state = state[:-1]
+        _restore_artifact_slots(self, state, names=names)
+        object.__setattr__(self, "generation_width", width)
 
     def evaluate(
         self,

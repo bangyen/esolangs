@@ -111,7 +111,6 @@ def _termination_result(
             settings=settings,
             catalog=catalog,
             io_factory=io_factory,
-            observe_initialization=True,
         )
         machine = factory(name, source, stdin=stdin, prepared=prepared)
         steps: int | None = None

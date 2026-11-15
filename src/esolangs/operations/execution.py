@@ -232,7 +232,6 @@ def _execute_invocation(
             io_factory=io_factory,
             prepared=prepared,
             reproducible=False,
-            observe_initialization=True,
         )
         return ExecutionController(machine)._execute(max_steps=max_steps)  # noqa: SLF001
     assert prepared is not None

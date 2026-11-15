@@ -1,7 +1,7 @@
 """Immutable artifacts retain bindings, execution and persistence metadata."""
 
 import pickle
-from dataclasses import FrozenInstanceError, replace
+from dataclasses import FrozenInstanceError, dataclass, replace
 from pathlib import Path
 
 import pytest
@@ -34,6 +34,45 @@ _PILOTS = [
 ]
 
 
+@dataclass(frozen=True, slots=True)
+class _TemplateWithLabel(esolangs.TemplateArtifact):
+    label: str = "width control"
+
+
+def _check_template_width_pickle(template: esolangs.TemplateArtifact) -> None:
+    labeled = _TemplateWithLabel(
+        template.source,
+        template.language,
+        template.bindings,
+        settings=template.settings,
+        spans=template.spans,
+        generation_width=template.generation_width,
+    )
+
+    class PreWidth:
+        def __reduce__(self):
+            return (
+                object.__new__,
+                (_TemplateWithLabel,),
+                [
+                    labeled.source,
+                    labeled.language,
+                    labeled.bindings,
+                    labeled.settings,
+                    labeled.spans,
+                    labeled.label,
+                ],
+            )
+
+    restored = pickle.loads(pickle.dumps(labeled))
+    assert restored == labeled
+    assert restored.generation_width == labeled.generation_width
+    legacy = pickle.loads(pickle.dumps(PreWidth()))
+    assert legacy == replace(labeled, generation_width=None)
+    assert legacy.label == labeled.label
+    assert legacy.generation_width is None
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize(("language", "table"), _PILOTS)
 def test_artifact_persistence_executes_the_same_table(
@@ -60,6 +99,7 @@ def test_artifact_persistence_executes_the_same_table(
         assert source.language == restored.language == language
         assert esolangs.Language(language).from_json(document) == restored
         if isinstance(restored, TemplateArtifact):
+            _check_template_width_pickle(replace(restored, generation_width=8))
             assert restored.bindings == source.bindings
             for isolated, max_steps in ((False, None), (False, 10_000), (True, 10_000)):
                 with pytest.raises(esolangs.TemplateError):

@@ -311,6 +311,7 @@ def _generate(
             settings,
             catalog,
             probes=probes,
+            generation_width=request.width,
         )
     if lang.runtime.source_kind is SourceKind.RASTER:
         if not isinstance(generated, Raster):
@@ -361,6 +362,7 @@ def _structured_template(
     catalog: Catalog,
     *,
     probes: _TemplateProbes | None = None,
+    generation_width: int | None = None,
 ) -> TemplateArtifact:
     """Preserve the backend's slot positions alongside its rendered source."""
     text = layout.source
@@ -384,6 +386,7 @@ def _structured_template(
         bindings,
         settings=settings,
         spans=layout.spans,
+        generation_width=generation_width,
     )
 
 
@@ -534,6 +537,50 @@ def _matches_width_layout(
     return False
 
 
+def _template_text(template: TemplateArtifact, char: str) -> str | None:
+    """Put the stored slots in the generator's spelling for comparison."""
+    if template.bindings.char == char:
+        return template.source
+    spans = template.spans
+    if spans is None:
+        return None
+    text = layout_fragments(
+        TemplateLayout(template.source, spans).fragments(), char=char
+    ).source
+    try:
+        validate_spans(text, char, template.bindings.setters, spans)
+    except ValueError:
+        return None
+    return text
+
+
+def _same_generated_template(
+    rendered: Artifact, template: TemplateArtifact, text: str
+) -> bool:
+    return (
+        isinstance(rendered, TemplateArtifact)
+        and text == rendered.source
+        and template.spans == rendered.spans
+        and template.bindings.setters == rendered.bindings.setters
+    )
+
+
+def _matches_retained_width(
+    template: TemplateArtifact,
+    text: str,
+    render: Callable[[int], Artifact],
+    width: int | None,
+) -> bool:
+    if width is None:
+        return False
+    try:
+        rendered = render(width)
+    except (ArgumentError, GeneratorCapError):
+        # This catalog can have a replacement renderer for the same owner.
+        return False
+    return _same_generated_template(rendered, template, text)
+
+
 def _is_template_for(
     template: TemplateArtifact,
     name: str,
@@ -551,9 +598,15 @@ def _is_template_for(
     options = {} if settings is None else DialectSettings.options(settings)
     settings = _generation_settings(name, options, settings, catalog=catalog)
     backend = catalog.languages[name].backend
+    retained = (
+        template.generation_width
+        if width is None and backend is not None and backend.layout_width
+        else None
+    )
     probes = _TemplateProbes()
 
-    def render(*, width: int | None = None, balance: bool = False) -> Artifact:
+    @cache
+    def render(width: int | None = None, *, balance: bool = False) -> Artifact:
         return _generate(
             name,
             truth_table,
@@ -569,28 +622,18 @@ def _is_template_for(
         canonical = render()
         default_available = True
     except GeneratorCapError:
-        if width is None or backend is None or not backend.layout_width:
+        fallback_width = width if width is not None else retained
+        if fallback_width is None or backend is None or not backend.layout_width:
             raise
-        canonical = render(width=width)
+        canonical = render(fallback_width)
         default_available = False
     if not isinstance(canonical, TemplateArtifact):
         return False
     bindings = canonical.bindings
     if len(template.bindings.setters) != bindings.inputs:
         return False
-    text = template.source
-    if template.bindings.char != bindings.char:
-        spans = template.spans
-        if spans is None:
-            return False
-        text = layout_fragments(
-            TemplateLayout(text, spans).fragments(), char=bindings.char
-        ).source
-        try:
-            validate_spans(text, bindings.char, template.bindings.setters, spans)
-        except ValueError:
-            return False
-    if not probes.matches_bindings(
+    text = _template_text(template, bindings.char)
+    if text is None or not probes.matches_bindings(
         template.bindings,
         text,
         char=bindings.char,
@@ -599,6 +642,8 @@ def _is_template_for(
     ):
         return False
     plain = canonical.source
+    if not default_available and retained is not None:
+        return _same_generated_template(canonical, template, text)
     matches_canonical = text == plain
     if matches_canonical or not default_available:
         return matches_canonical
@@ -609,13 +654,14 @@ def _is_template_for(
         canonical_layout, backend.wrap
     )
 
-    @cache
     def layout(width: int) -> str:
-        source = render(width=width).source
+        source = render(width).source
         if not isinstance(source, str):
             raise TemplateError("template layouts must return text")
         return source
 
+    if _matches_retained_width(template, text, render, retained):
+        return True
     if width_aware and _matches_width_layout(text, layout, width):
         return True
     if backend.same_layout is not None:
@@ -633,12 +679,7 @@ def _is_template_for(
         balanced = render(balance=True)
     except GeneratorCapError:
         return False
-    return (
-        isinstance(balanced, TemplateArtifact)
-        and text == balanced.source
-        and template.spans == balanced.spans
-        and template.bindings.setters == balanced.bindings.setters
-    )
+    return _same_generated_template(balanced, template, text)
 
 
 def _stdin_template_error(name: str) -> TemplateError:
@@ -695,7 +736,8 @@ def instantiate(
     Args:
         template: The TemplateArtifact returned by :func:`generate` or portable loading.
         bits: One integer 0 or 1 per input.
-        width: As for :func:`generate`.
+        width: As for :func:`generate`. Checked replay can use the retained
+            generation width if no width is supplied.
         truth_table: Check whether the layout and setters match that table's
             generated template. The placeholder marker may be relabeled.
 

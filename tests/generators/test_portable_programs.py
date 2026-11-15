@@ -3,6 +3,7 @@
 import gzip
 import io
 import json
+import pickle
 import zlib
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -327,6 +328,7 @@ def test_explicit_template_marker_round_trips_in_its_catalog(language: str) -> N
     template = api.generate("01", settings=api.settings())
     assert isinstance(template, esolangs.TemplateArtifact)
     legacy = api.to_json(template)
+    assert "generation_width" not in json.loads(legacy)
     assert api.to_json(api.from_json(legacy)) == legacy
 
     marker = "💡"
@@ -353,6 +355,21 @@ def test_explicit_template_marker_round_trips_in_its_catalog(language: str) -> N
         saved["language"] = wrong_owner
         with pytest.raises(esolangs.ProgramError, match="program language must be"):
             api.from_json(json.dumps(saved))
+
+    # Supplying settings rebuilds the artifact at the source boundary.
+    width = 10**4301
+    sized = replace(explicit, settings=None, generation_width=width)
+    restored = api.from_json(api.to_json(sized, settings=explicit.settings))
+    assert restored == replace(explicit, generation_width=width)
+    for raw_width in (None, True, 0, -1, 8.0, "8"):
+        damaged = json.loads(document)
+        damaged["generation_width"] = raw_width
+        with pytest.raises(esolangs.ProgramError, match="generation_width must be"):
+            api.from_json(json.dumps(damaged))
+    damaged = json.loads(api.to_json(api.from_source("")))
+    damaged["generation_width"] = 8
+    with pytest.raises(esolangs.ProgramError, match="unexpected or missing fields"):
+        api.from_json(json.dumps(damaged))
 
 
 @pytest.mark.parametrize("language", one(parameterized=True))
@@ -845,14 +862,18 @@ def _check_width_provider_reuse() -> None:
         restored = api.from_json(api.to_json(generated))
         assert isinstance(restored, esolangs.TemplateArtifact)
         assert "\n" in restored.source
-        for bit, width, witnesses in ((0, 8, [8]), (1, None, [1, 8])):
+        for bit, width in ((0, 8), (1, None)):
             requests.clear()
             extracted.clear()
             filled = api.instantiate(restored, [bit], width=width, truth_table="01")
             assert [request.width for request in requests] == (
-                [None, *witnesses] if layout_width else [None]
+                [None, 8] if layout_width else [None]
             )
-            extra = [(_identity_layout(1).source, 1)] if width is None else []
+            extra = (
+                [(_identity_layout(1).source, 1)]
+                if width is None and not layout_width
+                else []
+            )
             assert extracted == [
                 (_identity_layout().source, 1),
                 (restored.source, 1),
@@ -874,8 +895,13 @@ def _check_width_provider_reuse() -> None:
 def test_checked_portable_instantiation_uses_the_requested_native_width() -> None:
     _check_width_provider_reuse()
     original = LANGUAGES[REFERENCE]
+    refuse_guesses = False
 
     def emit(request: GenerationRequest) -> TemplateLayout:
+        if refuse_guesses and request.width == 1:
+            raise esolangs.ArgumentError(
+                "guessed width is outside this renderer's domain"
+            )
         width = None if request.width is None else max(1, request.width - 1)
         return _identity_layout(width)
 
@@ -891,11 +917,43 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
     restored = api.from_json(api.to_json(record))
     assert isinstance(restored, esolangs.TemplateArtifact)
     assert restored == record
+    assert restored.generation_width == 8
     assert max(map(len, restored.source.splitlines())) == 7
+    pickled = pickle.loads(pickle.dumps(restored))
+    assert pickled == restored
+    legacy = api.from_json(api.to_json(replace(restored, generation_width=None)))
+    assert legacy.generation_width is None
     for bit in (0, 1):
-        filled = api.instantiate(restored, [bit], width=8, truth_table="01")
-        assert filled == restored.fill([bit])
+        for candidate in (record, restored, pickled):
+            filled = api.instantiate(candidate, [bit], truth_table="01")
+            assert filled == restored.fill([bit])
+            assert api.run(filled).output == str(bit)
+        filled = api.instantiate(legacy, [bit], width=8, truth_table="01")
         assert api.run(filled).output == str(bit)
+    for unchecked_width in (legacy, replace(restored, generation_width=9)):
+        with pytest.raises(esolangs.TemplateError, match="not the template"):
+            api.instantiate(unchecked_width, [1], truth_table="01")
+
+    refuse_guesses = True
+    assert api.run(api.instantiate(restored, [1], truth_table="01")).output == "1"
+
+    retired_width = esolangs.ArgumentError("renderer no longer accepts width 8")
+
+    def replacement_emit(request: GenerationRequest) -> TemplateLayout:
+        if request.width == 8:
+            raise retired_width
+        return _identity_layout(request.width)
+
+    replacement = esolangs.Catalog(
+        [replace(original, backend=replace(backend, entrypoint=replacement_emit))]
+    ).bind(REFERENCE)
+    migrated = replacement.from_json(api.to_json(restored))
+    for bit in (0, 1):
+        filled = replacement.instantiate(migrated, [bit], truth_table="01")
+        assert replacement.run(filled).output == str(bit)
+    with pytest.raises(esolangs.ArgumentError) as caught:
+        replacement.instantiate(migrated, [1], truth_table="01", width=8)
+    assert caught.value is retired_width
 
     cap = esolangs.GeneratorCapError("renderer cannot lay out this width")
 
@@ -957,13 +1015,20 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
     assert isinstance(restored, esolangs.TemplateArtifact)
     assert restored == saved
     for bit in (0, 1):
-        filled = explicit.instantiate(restored, [bit], truth_table="01", width=8)
-        assert filled == restored.fill([bit])
-        assert explicit.run(filled).output == str(bit)
-    for width, error in ((None, default_cap), (1, cap)):
-        with pytest.raises(esolangs.GeneratorCapError) as caught:
-            explicit.instantiate(restored, [1], truth_table="01", width=width)
-        assert caught.value is error
+        for width in (None, 8):
+            filled = explicit.instantiate(
+                restored, [bit], truth_table="01", width=width
+            )
+            assert filled == restored.fill([bit])
+            assert explicit.run(filled).output == str(bit)
+    with pytest.raises(esolangs.GeneratorCapError) as caught:
+        explicit.instantiate(restored, [1], truth_table="01", width=1)
+    assert caught.value is cap
+    with pytest.raises(esolangs.GeneratorCapError) as caught:
+        explicit.instantiate(
+            replace(restored, generation_width=None), [1], truth_table="01"
+        )
+    assert caught.value is default_cap
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         explicit.instantiate(changed, [1], truth_table="01", width=8)
 
