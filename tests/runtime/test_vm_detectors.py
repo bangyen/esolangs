@@ -497,6 +497,18 @@ def _check_malformed_branch_states(monkeypatch) -> None:
             assert caught.value.partial_output == output
         states[field] = original
 
+    with monkeypatch.context() as hooks:
+        hooks.setattr(Machine, "branching_successors", 7)
+        debug = api.make_debugger(artifact, stdin="1")
+        with pytest.raises(TypeError, match="branching_successors must be callable"):
+            run_until_halt_or_all_branches_cycle(debug, limit=2)
+        with pytest.raises(
+            InterpreterLimitError, match="branching_successors must be callable"
+        ) as caught:
+            api.evaluate(artifact, [1], limits=limits)
+        assert caught.value.observation == ExecutionResult("1", 1, 1, 0)
+        assert caught.value.partial_output == "1"
+
     original = TypeError("branching callback refused")
 
     def refuse(*_args):

@@ -461,11 +461,12 @@ def test_runtime_hooks_keep_nested_errors_and_record_their_own_output(
         check_original(caught.value)
         assert debugger.observation == result.observation
 
-        machine = scoped.make_vm("+.", stdin="B")
-        with pytest.raises(error_type) as caught:
-            vm.complete_vm(machine)
-        check_original(caught.value)
-        assert machine.output == result.observation.output
+        for make in (scoped.make_vm, scoped.make_debugger):
+            machine = make("+.", stdin="B")
+            with pytest.raises(error_type) as caught:
+                vm.complete_vm(machine)
+            check_original(caught.value)
+            assert machine.output == result.observation.output
 
         contract = replace(
             declaration.contract,

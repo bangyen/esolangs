@@ -7,7 +7,7 @@ import re
 import struct
 import sys
 import zlib
-from collections.abc import Iterator, Sequence
+from collections.abc import Buffer, Iterator, Sequence
 from json import JSONDecoder
 from typing import TYPE_CHECKING, Any
 
@@ -46,6 +46,7 @@ def _require_image() -> Any:
 
 _SIGNATURE = b"\x89PNG\r\n\x1a\n"
 _REEXPORT = "restore or re-export the complete PNG image"
+_IHDR = struct.Struct(">IIBBBBB")
 
 # PNG colour type codes (IHDR byte 9).
 _GREY = 0
@@ -177,7 +178,12 @@ def _scan_chunks(
                 raise syntax_error(
                     "PNG IHDR must appear first and only once", _REEXPORT
                 )
-            header = struct.unpack(">IIBBBBB", body)
+            if len(body) != _IHDR.size:
+                raise syntax_error(
+                    f"PNG IHDR must be {_IHDR.size} bytes",
+                    "restore or re-export the drawing as a valid PNG",
+                )
+            header = _IHDR.unpack(body)
         elif kind == b"PLTE":
             if palette is not None or in_image_data:
                 raise syntax_error("PNG PLTE must appear once before IDAT", _REEXPORT)
@@ -420,18 +426,37 @@ def _write(image: Any, mode: str, width: int, height: int, raw: bytes) -> bytes:
     return output.getvalue()
 
 
+def _grey_width(row: Buffer) -> int:
+    """Measure the same backing bytes that the writer will encode."""
+    if _has_backing_type(row, bytearray):
+        return bytearray.__len__(row)
+    if _has_backing_type(row, bytes):
+        return bytes.__len__(row)
+    with memoryview(row) as buffer:
+        return buffer.nbytes
+
+
 def write_grey(pixels: list[bytearray]) -> bytes:
     """Encode rectangular greyscale rows as PNG bytes."""
+    if type(pixels) is not list and _has_backing_type(pixels, list):
+        pixels = list(list.__iter__(pixels))
     height = len(pixels)
-    width = len(pixels[0]) if height else 0
-    if not height or not width or any(len(row) != width for row in pixels):
+    width = _grey_width(pixels[0]) if height else 0
+    if not height or not width or any(_grey_width(row) != width for row in pixels):
         raise syntax_error(
             "expected a non-empty 2-D greyscale image with equal-length rows",
             "provide nonempty, equal-width rows of greyscale pixels",
         )
     image = _require_image()
     _check_pixel_limit(width, height, image.MAX_IMAGE_PIXELS)
-    return _write(image, "L", width, height, b"".join(pixels))
+    parts = (
+        _backing_bytes(row)
+        if type(row) not in (bytes, bytearray)
+        and issubclass(type(row), (bytes, bytearray))
+        else row
+        for row in pixels
+    )
+    return _write(image, "L", width, height, b"".join(parts))
 
 
 def write_grey_file(path: str, pixels: list[bytearray]) -> None:

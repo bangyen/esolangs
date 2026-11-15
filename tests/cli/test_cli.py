@@ -505,10 +505,29 @@ _REFUSALS = {
 }
 
 
-def test_option_passes_cannot_steal_another_options_value(capsys) -> None:
-    for options in (["--settings", "--set"], ["--settings=--set"]):
+def test_option_passes_cannot_steal_another_options_value(capsys, tmp_path) -> None:
+    for options in (["--settings", "--set"], ["--settings=--set"], ["-s", "--set"]):
         _, error = _failure(["generate", *options, REFERENCE, "01"], capsys)
         assert "--settings is not valid JSON" in error
+
+    for command, operands in (
+        ("list", []),
+        ("describe", [REFERENCE]),
+        ("encode-inputs", [REFERENCE, "01"]),
+        ("read-answer", [REFERENCE]),
+    ):
+        for args in (["-s", "{}"], ["-s={}"]):
+            assert _failure([command, *args, *operands], capsys) == (
+                "",
+                f"unknown option: {args[0]}\n",
+            )
+    assert _failure(["help", "-s"], capsys) == ("", "unknown command: -s\n")
+
+    path = _program(tmp_path, ",.")
+    for args in (["--settings", "{}"], ["-s", "{}"], ["-s={}"]):
+        program = call_main(["generate", *args, REFERENCE, "01"], capsys)
+        assert esolangs.run(REFERENCE, program, stdin="1").output == "1"
+        assert call_main(["run", *args, REFERENCE, path], capsys, stdin="Q") == "Q"
 
 
 @pytest.mark.parametrize(("command", "operand"), [("generate", "01"), ("run", "p.txt")])

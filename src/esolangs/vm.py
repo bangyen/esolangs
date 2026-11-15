@@ -121,9 +121,10 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
 def _retain_fault_steps(vm: VM, error: EsolangError, steps: int) -> None:
     """Add measured commands to a fault observed by this VM."""
     if error.observation is not None:
+        owner = _controller_vm(vm)
         observation = replace(error.observation, steps=steps)
-        if isinstance(vm, _DelegatingVM):
-            _record_vm_fault(vm, error, observation)
+        if isinstance(owner, _DelegatingVM):
+            _record_vm_fault(owner, error, observation)
         else:
             error.observation = observation
 
@@ -418,18 +419,24 @@ def _post_halt_dumped(vm: VM) -> bool:
     return isinstance(vm, _DelegatingVM) and vm._dump_pending is False  # noqa: SLF001
 
 
+def _controller_vm(vm: VM) -> VM:
+    """Find the VM whose I/O a library controller observes."""
+    if isinstance(vm, _DelegatingVM):
+        return vm
+    from esolangs.runtime._controller import ExecutionController
+
+    return _controller_vm(vm.vm) if isinstance(vm, ExecutionController) else vm
+
+
 def _capture_observation(
     vm: VM, report: CompletionReport | None = None
 ) -> ExecutionResult:
     """Capture live IO without stepping or claiming output finalization."""
-    if isinstance(vm, _DelegatingVM):
+    owner = _controller_vm(vm)
+    if isinstance(owner, _DelegatingVM):
         # Use owned code; unrelated instance attributes remain caller-owned.
-        return _DelegatingVM._result(vm, report)  # noqa: SLF001
-    from esolangs.runtime._controller import ExecutionController
-
-    if isinstance(vm, ExecutionController):
-        return _capture_observation(vm.vm, report)
-    return ExecutionResult(vm.output, None, None, None, completion=report)
+        return _DelegatingVM._result(owner, report)  # noqa: SLF001
+    return ExecutionResult(owner.output, None, None, None, completion=report)
 
 
 def _record_vm_fault(vm: VM, error: EsolangError, observation: ExecutionResult) -> None:

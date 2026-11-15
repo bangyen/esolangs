@@ -81,19 +81,24 @@ def test_vm_completion_cap_keeps_custom_input_counters_unknown():
 def test_vm_completion_fault_counts_steps_completed_in_this_call(
     already_completed, limit
 ):
-    vm = make_vm(REFERENCE, ",.,", stdin="A")
-    for _ in range(already_completed):
-        vm.step()
-    with pytest.raises(esolangs.InputExhaustedError) as caught:
-        complete_vm(vm, max_steps=limit)
-    assert caught.value.partial_output == "A"
-    assert caught.value.observation == esolangs.ExecutionResult(
-        "A", 1, 1, 1, steps=2 - already_completed
-    )
+    from esolangs.debugger import make_debugger
+
+    for make in (make_vm, make_debugger):
+        vm = make(REFERENCE, ",.,", stdin="A")
+        for _ in range(already_completed):
+            vm.step()
+        with pytest.raises(esolangs.InputExhaustedError) as caught:
+            complete_vm(vm, max_steps=limit)
+        assert caught.value.partial_output == "A"
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "A", 1, 1, 1, steps=2 - already_completed
+        )
 
 
 @pytest.mark.parametrize("observed", [False, True])
 def test_vm_completion_preserves_caller_owned_fault_evidence(*, observed: bool):
+    from esolangs.debugger import Debugger
+
     fault = esolangs.HaltError("caller fault")
     if observed:
         fault.observation = esolangs.ExecutionResult("A", None, None, None)
@@ -102,6 +107,8 @@ def test_vm_completion_preserves_caller_owned_fault_evidence(*, observed: bool):
     class Custom:
         halted = False
         self_halts = True
+        steppable_to_answer = True
+        dumps_on_the_post_halt_step = False
         output = ""
 
         def step(self):
@@ -116,6 +123,11 @@ def test_vm_completion_preserves_caller_owned_fault_evidence(*, observed: bool):
         esolangs.ExecutionResult("A", None, None, None, steps=1) if observed else None
     )
     assert fault.observation == expected
+
+    with pytest.raises(esolangs.HaltError) as caught:
+        complete_vm(Debugger(Custom()), max_steps=None)
+    assert caught.value is fault
+    assert fault.observation == esolangs.ExecutionResult("A", None, None, None, steps=1)
 
 
 def test_custom_vm_io_fields_stay_caller_owned():

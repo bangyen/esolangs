@@ -126,10 +126,12 @@ def _normalize_options(command: str, rest: list[str]) -> list[str]:
             normalized.extend(rest[i:])
             break
         name, sep, inline = arg.partition("=")
-        name = _SHORT_OPTIONS.get(name, name)
-        if name in names and not sep and i + 1 < len(rest) and rest[i + 1] != "--":
-            i += 1
-            sep, inline = "=", rest[i]
+        canonical = _SHORT_OPTIONS.get(name, name)
+        if canonical in names:
+            name = canonical
+            if not sep and i + 1 < len(rest) and rest[i + 1] != "--":
+                i += 1
+                sep, inline = "=", rest[i]
         normalized.append(name + sep + inline)
         i += 1
     return normalized

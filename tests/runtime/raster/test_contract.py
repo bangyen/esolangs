@@ -3,6 +3,8 @@
 import base64
 import json
 import sys
+import zlib
+from array import array
 from dataclasses import replace
 from importlib.resources import files
 from pathlib import Path
@@ -101,7 +103,7 @@ def test_raster_png_refuses_released_input_buffers() -> None:
         Raster.from_png(buffer)
 
 
-def test_raster_png_decodes_the_backing_bytearray() -> None:
+def test_raster_png_uses_backing_bytearrays(tmp_path: Path) -> None:
     expected = Raster((((1, 2, 3),),))
     raw = expected.to_png()
     other = Raster((((9, 8, 7),),))
@@ -117,6 +119,37 @@ def test_raster_png_decodes_the_backing_bytearray() -> None:
     assert Raster.from_png(bytearray(raw)) == expected
     assert Raster.from_png(substitute) == other
     assert Raster.from_png(AlternateBytes(raw)) == expected
+
+    class AlternateRow(bytearray):
+        def __len__(self):
+            return 1
+
+        def __buffer__(self, _flags):
+            return memoryview(b"\x00")
+
+    class AlternateRows(list):
+        def __iter__(self):
+            return iter([bytearray([0])])
+
+        def __getitem__(self, _index):
+            return bytearray([0])
+
+    grey = [bytearray([7, 31]), bytearray([53, 89])]
+    overridden = AlternateRows([AlternateRow(row) for row in grey])
+    encoded = png.write_grey(grey)
+    assert png.write_grey(overridden) == encoded
+    destination = tmp_path / "greyscale.png"
+    png.write_grey_file(str(destination), overridden)
+    assert destination.read_bytes() == encoded
+    assert png.read_grey(encoded) == grey
+    assert Raster.from_png(encoded).rows == (
+        ((7, 7, 7), (31, 31, 31)),
+        ((53, 53, 53), (89, 89, 89)),
+    )
+    buffer = array("H", [0x1122, 0x3344])
+    levels = bytearray(buffer.tobytes())
+    for row in (buffer, memoryview(buffer)):
+        assert png.write_grey([row]) == png.write_grey([levels])
 
     class ClaimedBytes:
         probes = 0
@@ -208,6 +241,28 @@ def test_a_malformed_png_is_a_program_error(language: str, tmp_path: Path) -> No
     path.write_bytes(truncated)
     with pytest.raises(esolangs.ProgramError):
         _check_program(language, path)
+
+    raster = Raster((((7, 31, 53),),))
+    encoded = raster.to_png()
+    header = encoded[16:29]
+    for body in (header[:-1], header + b"\0"):
+        chunk = b"IHDR" + body
+        malformed = (
+            encoded[:8]
+            + len(body).to_bytes(4, "big")
+            + chunk
+            + zlib.crc32(chunk).to_bytes(4, "big")
+            + encoded[33:]
+        )
+        for read in (png.read_rgb, png.read_grey, Raster.from_png):
+            with pytest.raises(ValueError, match="IHDR must be 13 bytes") as caught:
+                read(malformed)
+            assert "re-export" in caught.value.__notes__[0]
+        path.write_bytes(malformed)
+        with pytest.raises(esolangs.ProgramError, match="IHDR must be 13 bytes"):
+            esolangs.from_file(language, path)
+    path.write_bytes(encoded)
+    assert esolangs.from_file(language, path).source == raster
 
 
 def test_raster_detaches_mutable_pixels() -> None:

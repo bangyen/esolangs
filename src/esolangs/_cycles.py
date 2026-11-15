@@ -128,17 +128,28 @@ def _protocol_state(machine: object, adapter: object, protocol: type[Any]) -> ob
         state = getattr(adapter, "_machine", None)
         if not isinstance(state, protocol):
             return None
-    _check_proof_methods(state, _PROOF_METHODS[protocol])
+    _check_proof_methods(
+        state,
+        _PROOF_METHODS[protocol],
+        error_type=_BranchingUnavailableError
+        if protocol is _BranchingStepMachine
+        else TypeError,
+    )
     return state
 
 
-def _check_proof_methods(machine: object, methods: tuple[str, ...]) -> None:
+def _check_proof_methods(
+    machine: object,
+    methods: tuple[str, ...],
+    *,
+    error_type: type[TypeError] = TypeError,
+) -> None:
     """Runtime protocol membership alone accepts non-callable methods."""
     if isinstance(machine, type):
-        raise TypeError("a proof requires a machine instance")
+        raise error_type("a proof requires a machine instance")
     for name in methods:
         if not callable(getattr(machine, name, None)):
-            raise TypeError(f"{type(machine).__name__}.{name} must be callable")
+            raise error_type(f"{type(machine).__name__}.{name} must be callable")
 
 
 def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> object:
