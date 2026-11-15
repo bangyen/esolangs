@@ -40,6 +40,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer
 
 #: Reset from exactly these two; a range check is the C comment's bug.
 _TRAPS = (-1, 256)
@@ -71,7 +72,8 @@ def _advance(state: _State, code: str) -> tuple[_State, str | None]:
         value *= value
     if value in _TRAPS:
         value = 0
-    return (ind + 1, value, False), f"{value}\n" if command == "o" else None
+    output = f"{format_integer(value)}\n" if command == "o" else None
+    return (ind + 1, value, False), output
 
 
 class _Machine:

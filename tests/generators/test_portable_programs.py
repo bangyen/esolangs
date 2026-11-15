@@ -144,6 +144,27 @@ def test_template_kind_requires_parameterized_language() -> None:
 
 
 @pytest.mark.parametrize("language", one(parameterized=True))
+def test_ordered_template_setters_round_trip(language: str) -> None:
+    api = esolangs.Language(language)
+    template = api.generate("01")
+    assert isinstance(template, esolangs.TemplateArtifact)
+    document = api.to_json(template)
+    setters = template.bindings.setters
+    for supplied in (setters, [list(pair) for pair in setters], map(iter, setters)):
+        bindings = replace(template.bindings, setters=supplied)
+        assert bindings.setters == setters
+        assert api.to_json(replace(template, bindings=bindings)) == document
+    restored = api.from_json(document)
+    for bit in (0, 1):
+        assert api.evaluate(restored, [bit]).answer == str(bit)
+
+    malformed = json.loads(document)
+    malformed["setters"] = ["01"]
+    with pytest.raises(esolangs.ProgramError, match="setters must be pairs of strings"):
+        api.from_json(json.dumps(malformed))
+
+
+@pytest.mark.parametrize("language", one(parameterized=True))
 def test_explicit_template_marker_round_trips_in_its_catalog(language: str) -> None:
     declaration = esolangs.Language(language).catalog.languages[language]
     alias = "Private Alias"

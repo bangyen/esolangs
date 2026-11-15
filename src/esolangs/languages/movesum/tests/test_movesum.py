@@ -2,8 +2,11 @@
 
 import pytest
 
+from esolangs import ExecutionCapError, ExecutionLimits, Language
 from esolangs.exceptions import HaltError
-from esolangs.languages.movesum.interpreter import run
+from esolangs.languages.movesum.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import complete_vm
 from tests.interpreters.runner import native_runner
 
 out = native_runner(run)
@@ -63,3 +66,59 @@ def test_the_array_is_unbounded_to_the_right() -> None:
 def test_a_negative_input_is_refused() -> None:
     with pytest.raises(HaltError, match="negative"):
         out("0=0\nmove -1 1\nmove 1 -1", "-1\n")
+
+
+@pytest.mark.medium
+def test_large_decimal_moves_and_output() -> None:
+    api = Language("Movesum")
+    number = "1" + "0" * 5000
+    address = "2" + "0" * 5000
+    source = f"{address}=42\nmove {address} -1"
+    expected = number + " " + number
+    assert api.run(f"{address}={number}\nmove {address} -1").output == expected
+    limits = ExecutionLimits(max_steps=3)
+    for isolated in (False, True):
+        result = api.run(source, stdin=number, limits=limits, isolated=isolated)
+        assert (
+            result.output,
+            result.input_position,
+            result.input_reads,
+            result.steps,
+        ) == (
+            expected,
+            len(number),
+            1,
+            3,
+        )
+    assert complete_vm(api.make_vm(source, stdin=number), max_steps=3) == expected
+    cap = len(number) + 3
+    with pytest.raises(ExecutionCapError) as caught:
+        api.run(source, stdin=number, limits=ExecutionLimits(max_output=cap))
+    assert caught.value.bound == "max_output"
+    assert caught.value.partial_output == expected[:cap]
+    with pytest.raises(HaltError, match="negative input"):
+        api.run(source, stdin="-" + number)
+
+
+def test_failed_output_does_not_commit_a_quiet_step(monkeypatch) -> None:
+    source = "0=1\nmove 0 -1"
+    io = ScriptedIO("")
+    machine = _Machine(source, io)
+    machine.step()
+    machine.step()
+    before = machine.snapshot()
+
+    def fail(_text):
+        raise HaltError("write refused")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(io, "print_str", fail)
+        for _ in range(2):
+            with pytest.raises(HaltError, match="write refused"):
+                machine.step()
+            assert not machine.halted
+            assert machine.snapshot() == before
+            assert io.getvalue() == "1"
+    machine.step()
+    assert machine.halted
+    assert io.getvalue() == "1 1"

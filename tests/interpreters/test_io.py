@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.runtime.memory import format_integer
 from tests.interpreters.cursorless_io import PositionlessIO
 
 
@@ -20,6 +21,17 @@ def test_print_num_writes_past_the_int_str_digit_cap(capsys) -> None:
     scripted = ScriptedIO("")
     scripted.print_num(-(10**5000))
     assert scripted.getvalue() == "-" + text
+
+
+def test_format_integer_uses_backing_value() -> None:
+    class Number(int):
+        def __str__(self) -> str:
+            return "wrapped"
+
+        __repr__ = __str__
+
+    assert format_integer(Number(42)) == "42"
+    assert format_integer(Number(10**5000)) == "1" + "0" * 5000
 
 
 def test_interactive_character_reads_preserve_the_complete_line() -> None:

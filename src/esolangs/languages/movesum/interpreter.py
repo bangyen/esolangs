@@ -57,6 +57,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 #: ``(ind, array, quiet, printed)``: the next command, the touched cells, the
@@ -89,7 +90,7 @@ def _parse(code: str) -> tuple[list[tuple[str, str]], list[_Command]]:
         if line == "sum":
             program.append(None)
         elif move := _MOVE.fullmatch(line):
-            program.append((int(move[1]), int(move[2])))
+            program.append((parse_integer(move[1]), parse_integer(move[2])))
         else:
             raise syntax_error(
                 f"not a Movesum instruction: {line!r}", "write 'move A B' or 'sum'"
@@ -195,15 +196,17 @@ class _Machine:
         except EOFError:
             return 0
         if number < 0:
-            raise HaltError(f"negative input {number} in an unsigned array")
+            raise HaltError(
+                f"negative input {format_integer(number)} in an unsigned array"
+            )
         return number
 
     def _seed(self) -> _State:
         """Read the first line, replacing each ``42`` by an input number."""
         array: dict[int, int] = {}
         for key, value in self.pairs:
-            k = self._number() if key == "42" else int(key)
-            array[k] = self._number() if value == "42" else int(value)
+            k = self._number() if key == "42" else parse_integer(key)
+            array[k] = self._number() if value == "42" else parse_integer(value)
         return (0, MappingProxyType(array), 0, False)
 
     def step(self) -> None:
@@ -215,9 +218,11 @@ class _Machine:
         command = self.program[self.state[0]]
         value = self._number() if command and command[0] < 0 <= command[1] else None
         spaced = self.state[3]
-        self.state, out = _advance(self.state, self.program, value)
+        pending, out = _advance(self.state, self.program, value)
         if out is not None:
-            self.io.print_str(f" {out}" if spaced else str(out))
+            text = format_integer(out)
+            self.io.print_str(" " + text if spaced else text)
+        self.state = pending
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

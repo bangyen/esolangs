@@ -24,7 +24,11 @@ def parse_integer(source: str) -> int:
 
 def format_integer(value: int) -> str:
     """Format an integer without CPython's decimal conversion cap."""
-    return str(Decimal(value))
+    try:
+        # Use the backing integer, including for subclasses.
+        return int.__repr__(value)
+    except (TypeError, ValueError):
+        return str(Decimal(value))
 
 
 #: CPython's int/str digit-cap ValueError, an implementation limit.  Matched

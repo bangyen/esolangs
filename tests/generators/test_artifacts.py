@@ -135,6 +135,25 @@ def test_template_record_refuses_invalid_shape(source, setters) -> None:
         TemplateArtifact(source, REFERENCE, TemplateBindings(setters=setters))
 
 
+@pytest.mark.parametrize(
+    "setters",
+    [
+        {("0", "1")},
+        {"01": ("1", "0")},
+        "",
+        b"",
+        [frozenset({"0", "1"})],
+        [{"0": "1", "1": "0"}],
+        ["01"],
+    ],
+)
+def test_template_bindings_require_ordered_pairs(setters) -> None:
+    with pytest.raises(
+        esolangs.TemplateError, match=r"^setters must be pairs of strings$"
+    ):
+        TemplateBindings(setters=setters)
+
+
 @pytest.mark.parametrize("language", _EMBEDDING)
 def test_generated_and_restored_bindings_need_no_recovery(
     language, monkeypatch

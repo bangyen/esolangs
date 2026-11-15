@@ -1,6 +1,7 @@
 """LaserFuck through the shared API, CLI and machinery."""
 
 import inspect
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -9,9 +10,15 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
 from esolangs.cli.help import help_text
+from esolangs.results import Completion, CompletionReport
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
+from esolangs.vm import (
+    _capture_workspace,
+    complete_vm,
+    make_vm,
+    run_until_halt_or_all_branches_cycle,
+)
 from tests.support.cli_support import call_both, call_main
 from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated, overruns
@@ -121,6 +128,50 @@ class TestLaserFuck:
         _run_all(vm)
         vm.step()  # the dump, which run performs as its own last step
         assert vm.output == io_obj.getvalue()
+
+
+@pytest.mark.parametrize("debugger", [False, True])
+def test_a_failed_dump_does_not_repeat_its_output(*, debugger: bool) -> None:
+    language = esolangs.Language("LaserFuck")
+    source = "ÿ}o+>,+x"
+    limits = esolangs.ExecutionLimits(max_steps=5)
+    if debugger:
+        debug = language.make_debugger(source, stdin="\U0010ffff", seed=0)
+        vm = debug.vm
+        drive = partial(debug.run, limits=limits)
+    else:
+        vm = language.make_vm(source, stdin="\U0010ffff", seed=0)
+        drive = partial(complete_vm, vm, max_steps=5)
+    saved = []
+    for _ in range(2):
+        with pytest.raises(esolangs.ProgramError, match=r"chr\(\) arg") as stopped:
+            drive()
+        assert vm.halted
+        assert stopped.value.partial_output == vm.output == "\x01"
+        assert stopped.value.observation == esolangs.ExecutionResult(
+            "\x01", 1, 1, 0, steps=5 if debugger else None
+        )
+        saved.append((vm.snapshot(), _capture_workspace(vm)))
+    assert saved[0] == saved[1]
+    snapshot, workspace = saved[0]
+    assert snapshot[-1] == workspace.parts[-1] == (1,)
+
+
+def test_byte_dump_succeeds_at_the_character_boundary_and_step_cap() -> None:
+    language = esolangs.Language("LaserFuck")
+    debugger = language.make_debugger("ÿ}o+>,+x", stdin="\U0010fffe", seed=0)
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=5)) == "halted"
+    result = debugger.observation
+    assert result == esolangs.ExecutionResult(
+        "\x01\U0010ffff",
+        1,
+        1,
+        0,
+        steps=5,
+        completion=CompletionReport(Completion.POST_HALT),
+    )
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
+    assert debugger.observation == result
 
 
 class TestASeedMakesARunRepeat:

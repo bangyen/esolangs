@@ -64,7 +64,7 @@ class _Model:
             frozenset(self.bridges),
             self.position,
             self.second,
-            self.dumped,
+            (len(self.output),) if self.output and not self.dumped else self.dumped,
             self.reads,
             self.draws,
         )
@@ -121,11 +121,13 @@ class _Model:
         if self.halted:
             if not self.dumped:
                 values = [v for v, painted in self.tape if painted and v >= 0]
-                self.output = (
-                    "".join(map(chr, values))
-                    if self.grid and self.grid[0].startswith("ÿ")
-                    else "\n".join(map(str, values))
-                )
+                if self.grid and self.grid[0].startswith("ÿ"):
+                    for value in values[len(self.output) :]:
+                        if value > 0x10FFFF:
+                            return "syntax"
+                        self.output += chr(value)
+                else:
+                    self.output = "\n".join(map(str, values))
                 self.dumped = True
             return None
         y, x, direction = self.beams[self.index]
@@ -166,8 +168,10 @@ def _model(source, stdin, heading, split):
             return error, trace
     if machine.halted:
         for _ in range(3):
-            machine.step(stdin)
+            error = machine.step(stdin)
             trace.append(machine.row())
+            if error:
+                return error, trace
     return None, trace
 
 
@@ -180,7 +184,7 @@ def _view(machine):
         machine.jmp,
         machine.pos,
         machine._second_start,
-        machine._dumped,
+        machine._dump_state,
         machine._input_reads,
         machine._draws,
     )
@@ -231,6 +235,8 @@ def check_raw_laserfuck():
         _check(_Machine, source, stdin)
     for source in ([], [""], ["oo"], ["nothing"], [" ", "o+x"]):
         _check(_Machine, source)
+    for stdin in ("\U0010fffe", "\U0010ffff"):
+        _check(_Machine, ["ÿ}o+>,+x"], stdin)
 
     class WrongHeading(_Machine):
         def __init__(self, code, io, _rng):

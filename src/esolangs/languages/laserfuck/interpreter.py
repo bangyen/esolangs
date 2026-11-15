@@ -275,6 +275,7 @@ class _Machine:
         self.pos = (0, 0, 0)
         self._second_start = False
         self._dumped = False
+        self._dump_prefix = 0
         #: No step yet: only then is the drawn heading still a branch point.
         self._fresh = True
         #: Where the ``o`` marker sits, kept so a branching search can place
@@ -323,6 +324,11 @@ class _Machine:
         """The tape's cell values, without their paint flags."""
         return [v for v, _ in flatten(self.tape)]
 
+    @property
+    def _dump_state(self) -> bool | tuple[int]:
+        """Capture an unfinished byte dump's written prefix separately."""
+        return (self._dump_prefix,) if self._dump_prefix else self._dumped
+
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
         return _WORKSPACE_MODEL.capture(
@@ -335,7 +341,7 @@ class _Machine:
             input_reads=self._input_reads,
             random_draws=self._draws,
             second_start=self._second_start,
-            dumped=self._dumped,
+            dumped=self._dump_state,
         )
 
     def snapshot(self) -> tuple[object, ...]:
@@ -351,7 +357,7 @@ class _Machine:
             self._draws,
             self.text,
             self._second_start,
-            self._dumped,
+            self._dump_state,
         )
 
     # The all-random-outcomes search.  Its state deliberately drops ``pos``
@@ -511,10 +517,13 @@ class _Machine:
         first_row = self.text[0] if self.text else []
         byte_mode = bool(first_row) and first_row[0] == "\u00ff"
         shown = [val for val, touched in flatten(self.tape) if touched and val >= 0]
+        if byte_mode:
+            for index in range(self._dump_prefix, len(shown)):
+                self.io.print_char(chr(shown[index]))
+                self._dump_prefix = index + 1
+            self._dump_prefix = 0
+            return
         for index, val in enumerate(shown):
-            if byte_mode:
-                self.io.print_char(chr(val))
-                continue
             if index:
                 self.io.print_str("\n")  # between values, never trailing
             self.io.print_num(val)

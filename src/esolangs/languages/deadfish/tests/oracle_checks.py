@@ -2,6 +2,7 @@
 
 import itertools
 import random
+from decimal import Decimal
 
 import pytest
 
@@ -39,10 +40,7 @@ def _model(source):
             if value in {-1, 256}:
                 value = 0
             if command == "o":
-                try:
-                    output += str(value) + "\n"
-                except ValueError:
-                    return "syntax", [*trace, view()]
+                output += f"{Decimal(value):f}\n"
             position += 1
         trace.append(view())
     if stopped or position == len(source):

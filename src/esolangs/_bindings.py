@@ -1,6 +1,6 @@
 """Ordered source-template bindings, independent of Boolean synthesis."""
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence, Set
 
 #: One ``(zero, one)`` pair per input, in name order: what a template's
 #: runs are filled with.  Each pair is equal width, checked by
@@ -8,11 +8,18 @@ from collections.abc import Sequence
 #: of the object rather than of every caller.
 Setters = tuple[tuple[str, str], ...]
 
+_UNORDERED_OR_SCALAR = (Mapping, Set, str, bytes, bytearray, memoryview)
 
-def check_setters(setters: Sequence[tuple[str, str]]) -> Setters:
-    """Return ``setters`` as a tuple, refusing a pair of unequal width."""
+
+def check_setters(setters: Iterable[Iterable[str]]) -> Setters:
+    """Freeze ordered pairs of equally wide source strings."""
+    if isinstance(setters, _UNORDERED_OR_SCALAR):
+        raise ValueError("setters must be pairs of strings")
     checked = []
-    for i, (raw_zero, raw_one) in enumerate(setters):
+    for i, pair in enumerate(setters):
+        if isinstance(pair, _UNORDERED_OR_SCALAR):
+            raise ValueError("setters must be pairs of strings")
+        raw_zero, raw_one = pair
         if not isinstance(raw_zero, str) or not isinstance(raw_one, str):
             raise ValueError("setters must be pairs of strings")
         zero, one = str.__str__(raw_zero), str.__str__(raw_one)
