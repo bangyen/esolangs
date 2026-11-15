@@ -118,7 +118,7 @@ A space option has no remaining use.
 
 ### Optimizations not shipped
 
-Each missed the 10% bar:
+See the [optimization criteria](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
 
 - ArrowQueue's rotations cost 19, 39, and 63 characters at k=1, 2, 3. Their
   2.1% gain misses the 10% bar, so plain order ships (d5bac32).
@@ -674,8 +674,8 @@ Shipped limits, in inputs:
 
 Size is measured from rendered output, and correctness claims require running
 the generated program. A generator guarantees its size class, not its
-constant; constant-factor tweaks beyond the canonical set ship only at 10% or
-more where they run (`docs/CONTRIBUTING.md`). Execution measurements exclude
+constant. The [optimization criteria](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping)
+cover constant-factor changes. Execution measurements exclude
 loading and use the worst sampled parity row. A sub-10 ms run does not
 establish an exponent.
 
@@ -918,14 +918,9 @@ The collection has 117 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
-Its floor is 31; every language but the three interpreter-only classics
-(Deadfish, HQ9+, Nope.) has a generator. The 2D screen intersected
-1,543 unimplemented with 567 two-dimensional pages, then filtered 36 by prior
-verdicts, co-categories, I/O and branch vocabulary, and page length.
-
-- Alight was admitted by the 2D screen.
-- Super SNUSP was admitted by the 2D screen.
-- Pinyin was rejected by the 2D screen.
+Its floor is 31. Deadfish, HQ9+ and Nope. are interpreter-only.
+The 2D screen admitted Alight and Super SNUSP and rejected Pinyin.
+Screening data is in `a7b3f7abd:docs/limitations.md`.
 
 ### How a language is admitted
 
@@ -983,25 +978,9 @@ bounds; Malbolge's cap leaves no asymptotic question). Adopted 2026-10-21;
 Vandevelo was removed under it. It is the one ground that depends on the
 repo's work.
 
-Nothing else decides membership: not collection order, the repo's
-generators, their sizes or a construction they share. Re-spelling,
-family and bespoke-construction grounds (2026-10-15 to 2026-10-29) are
-gone; a macro-expressibility ground was tested and dropped because it
-excluded IEBEL, which three cold judges called distinct from Subleq. A
-Brainfuck derivative is judged like any language (`bf_derivative` in
-`[curation]` records the wiki category only). A rule change lands only
-with its membership diff, in one commit.
-
-Cohesion is not a membership criterion: it is a property of the set, and
-no per-language test measured it. Tested 2026-10-29 and dropped: a
-model-of-computation niche classifier (one niche held Whitespace, Befunge,
-FALSE, Piet, Fish and Chicken); a cold-judge "distinct reason" panel on
-Sonnet (IEBEL's verdict flipped with the prompt) and on Opus, over the 82
-nearest-member pairs too (judges agree, 93-95% run to run, but even S\*bleq's
-redundant verdicts lean on "Subleq is Turing-complete", so no bar flags it
-without counting strength); name similarity (cuts originals named after a member,
-misses IEBEL); a size cap (choosing who leaves needs a ranking, and
-backlinks gate only the fame route).
+The rules above govern membership. The `bf_derivative` field in
+`[curation]` records the wiki category. A rule change lands with its
+membership diff in one commit. See retired criteria and counterexamples in `a7b3f7abd:docs/limitations.md`.
 
 ### Recognition sources
 

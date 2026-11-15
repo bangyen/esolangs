@@ -35,26 +35,11 @@ evidence, not optimization tasks.
     placement and threaded rates inside the 9,897-cell complement), or
     new mathematics toward the 46,076 bits an impossibility proof needs
     beyond counting.
-  - *Next lead (2026-10-27; tested 2026-10-31, refuted as stated):*
-    the deposit half of the claim is true -- a lockstep fall-through
-    sweep deposits a full word for exactly one source cell (a real
-    296-cell program in the shipped interpreter, 94 of 94 deposits
-    matching the stepper), against 21 cells measured for the shipped
-    label phase.  The application half fails: the sweep placed 0 of
-    the 74 shipped label cells in every configuration (best steered
-    case 8-10), because a prescribed word at a prescribed cell is
-    exactly what a sweep cannot do (still about 21 cells, as shipped).
-    The stated residue count matches nothing measured -- `p` sweeps
-    leave 36-41 of 94 residues uncovered, the `*` family 11, never
-    29; steering completes coverage only through two windows or the
-    k=5 family at 5 cells per word.  The five value bands are not
-    there either: `p` deposits form two narrow bands, `*` deposits
-    three rotation rails of width at most 31.  Nor does the lead move
-    the paused reseed's economics: the deposits its first stage
-    counts are few (12) and all prescribed, so the saving is at most
-    about 240 cells against that stage's 1,113-cell kill line; any
-    value is bulk seeding at the later stages' scale, through a
-    redesign inside the paused loop.
+  - *Bulk seeding lead:* a 296-cell fall-through sweep matched all 94 word
+    deposits against the stepper but placed 0 of the 74 shipped label cells
+    without steering (best steered case: 8–10). Revisit for bulk deposits inside
+    the paused loop.
+    Sweep results in `a7b3f7abd:docs/roadmap.md`.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
@@ -77,24 +62,11 @@ constant and ignored-input tables. The completed constant-table audit is in
 history at `f35aa4023`.
 
 - **Malbolge navigation, inexpressibility for an algebraic
-  signature:** the closed-form question is closed under the
-  bounded-read definition in [limitations](limitations.md#searches)
-  — a lower bound excludes every rule factoring through cycle data
-  plus bounded algebraic features (a reproducing formula needs at
-  least 59 forced cell reads; no navigation with at most three
-  jumps per `goto` fits at n=1, the cheapest ending at 6,607).
-  The open remainder is signature-relative: no term of any size
-  over the restricted algebraic signature (reads only at derived
-  indices, per-trit algebra, no equality against arbitrary value
-  constants, no random access) computes the optimal first step.
-  The preservation route to it was attempted (2026-10-31) and is
-  closed: the invariant relations are fully classified (values
-  admit only the trivial two; positions admit a period-94
-  family), no surviving relation separates, and the joint
-  domain test is empty.  What remains is a proof by
-  non-product or non-uniform relations, unpriced, or a term
-  exhibiting the contrary.  See
-  [limitations](limitations.md#searches).
+  signature:** the [bounded-read lower bound](limitations.md#searches)
+  excludes rules based on cycle data and bounded algebraic features. The open question is whether a term over the restricted algebraic
+  signature can compute the optimal first step. The classified invariant
+  relations give no separation. Reopen with a separating non-product or
+  non-uniform relation, or a term computing the step.
 - **Wiki candidate screening:** the 2026-11-12 refresh has 2,555 language
   pages outside `Implemented` and `Unimplemented`; a screen of 803 left nine
   candidates, none run through an interpreter yet.
