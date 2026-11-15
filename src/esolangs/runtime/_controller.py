@@ -168,8 +168,12 @@ class ExecutionController:
         owner = _controller_vm(wrapped)
         if isinstance(owner, _DelegatingVM):
             return _post_halt_dumped(owner)
+        if self._faulted_owner is owner:
+            return False
         saved = self._dumped
-        return saved is not None and saved[0] is wrapped and saved[1] is owner
+        return (
+            saved is not None and saved[0] is wrapped and saved[1] is owner
+        ) or _post_halt_dumped(wrapped)
 
     def run(self, *, limits: ExecutionLimits | None = None) -> StopReason:
         """Execute until the machine halts, a breakpoint fires, or a bound ends it.

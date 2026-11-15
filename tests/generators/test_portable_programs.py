@@ -193,7 +193,7 @@ def test_template_kind_requires_parameterized_language() -> None:
 
 
 @pytest.mark.parametrize("language", one(parameterized=True))
-def test_ordered_template_setters_round_trip(language: str) -> None:
+def test_ordered_template_setters_round_trip(language: str, tmp_path: Path) -> None:
     api = esolangs.Language(language)
     template = api.generate("01")
     assert isinstance(template, esolangs.TemplateArtifact)
@@ -202,10 +202,42 @@ def test_ordered_template_setters_round_trip(language: str) -> None:
     for supplied in (setters, [list(pair) for pair in setters], map(iter, setters)):
         bindings = replace(template.bindings, setters=supplied)
         assert bindings.setters == setters
-        assert api.to_json(replace(template, bindings=bindings)) == document
-    restored = api.from_json(document)
+        retained = replace(template, bindings=bindings)
+        assert retained.bindings is bindings
+        assert api.to_json(retained) == document
+
+    class AlternateInputs(esolangs.TemplateBindings):
+        @property
+        def inputs(self) -> int:
+            return super().inputs + 1
+
+    alternate = AlternateInputs(char=template.bindings.char, setters=setters)
+    converted = replace(template, bindings=alternate)
+    assert type(converted.bindings) is esolangs.TemplateBindings
+    assert api.to_json(converted) == document
+    restored = api.from_json(api.to_json(converted))
+    legacy = replace(template)
+    object.__setattr__(legacy, "bindings", alternate)
+    path = tmp_path / "program"
     for bit in (0, 1):
-        assert api.evaluate(restored, [bit]).answer == str(bit)
+        expected = template.fill([bit]).source
+        for shape in (tuple, list):
+
+            class AlternateSpans(shape):
+                def __iter__(self):
+                    yield (-1, -1)
+
+            supplied_spans = AlternateSpans(template.spans)
+            assert (
+                alternate.fill(template.source, [bit], spans=supplied_spans) == expected
+            )
+        for candidate in (template, converted, restored, legacy):
+            assert api.evaluate(candidate, [bit]).answer == str(bit)
+            filled = api.instantiate(candidate, [bit], truth_table="01")
+            assert filled.source == expected
+            api.to_file(filled, path)
+            assert path.read_bytes() == expected.encode("utf-8")
+            assert api.read_answer(api.run(path).output) == str(bit)
 
     malformed = json.loads(document)
     malformed["setters"] = ["01"]

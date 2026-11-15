@@ -52,7 +52,7 @@ def evaluate_artifact(
         bits,
         "bits",
         allow_empty=_has_backing_type(artifact, TemplateArtifact)
-        and artifact.bindings.inputs == 0,
+        and not artifact.bindings.setters,
     )
     program: ProgramArtifact[Program]
     if _has_backing_type(artifact, TemplateArtifact):

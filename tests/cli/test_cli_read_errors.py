@@ -382,6 +382,7 @@ def test_terminal_stdin_returns_without_reading(monkeypatch) -> None:
     monkeypatch.setattr(stream, "isatty", lambda: True)
     monkeypatch.setattr(sys, "stdin", stream)
     assert _read_stdin() == ""
+    assert _read_stdin(1) == ""
     assert stream.tell() == 0
 
 
@@ -509,7 +510,9 @@ def test_blocked_readers_obey_their_deadline(
     path = tmp_path / "program"
     path.write_bytes(b"A")
     assert _bounded_read(str(path), 1) == b"A"
-    for target in ("buffer", "read") if reader == "stdin" else ("open",):
+    for target in (
+        ("closed", "isatty", "buffer", "read") if reader == "stdin" else ("open",)
+    ):
         _check_late_reader_does_not_probe(monkeypatch, capsys, path, target)
 
 
@@ -519,6 +522,7 @@ def _check_late_reader_does_not_probe(monkeypatch, capsys, path, target) -> None
     probes = []
 
     def delay():
+        assert threading.current_thread() is not threading.main_thread()
         threads.append(threading.current_thread())
         assert released.wait(3)
 
@@ -541,13 +545,23 @@ def _check_late_reader_does_not_probe(monkeypatch, capsys, path, target) -> None
         probes.clear()
 
         class Input:
-            closed = False
+            @property
+            def closed(self):
+                if target == "closed":
+                    delay()
+                return False
 
             def isatty(self):
+                if target == "isatty":
+                    delay()
+                if target == "closed":
+                    probes.append("isatty")
                 return False
 
             @property
             def buffer(self):
+                if target in ("closed", "isatty"):
+                    probes.append("buffer")
                 if target == "buffer":
                     delay()
                     return file
@@ -579,6 +593,10 @@ def _check_late_reader_does_not_probe(monkeypatch, capsys, path, target) -> None
         assert binary.tell() == 0
         if target != "open":
             assert file.tell() == 0
+        if target in ("closed", "isatty"):
+            with monkeypatch.context() as patch:
+                patch.setattr(sys, "stdin", Input())
+                assert _read_stdin(1) == "A"
     capsys.readouterr()
 
 

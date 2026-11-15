@@ -437,9 +437,13 @@ def _raise_halt_fault(vm: object) -> None:
 
 
 def _post_halt_dumped(vm: VM) -> bool:
-    """Whether the registered VM has recorded a successful finalization step."""
-    owner = _controller_vm(vm)
-    return isinstance(owner, _DelegatingVM) and owner._dump_pending is False  # noqa: SLF001
+    """Whether this VM or its controller chain observed a completed dump."""
+    if isinstance(vm, _DelegatingVM):
+        return vm._dump_pending is False  # noqa: SLF001
+
+    from esolangs.runtime._controller import ExecutionController
+
+    return isinstance(vm, ExecutionController) and vm._has_dumped()  # noqa: SLF001
 
 
 def _controller_vm[T](vm: T) -> T | VM:

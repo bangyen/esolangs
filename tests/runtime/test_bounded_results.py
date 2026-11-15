@@ -302,6 +302,10 @@ def test_caller_owned_vm_finalization_remains_local():
         calls = 0
         output = ""
 
+        @property
+        def memory(self):
+            return [1]
+
         def step(self):
             self.output = "A"
             self.calls += 1
@@ -311,11 +315,21 @@ def test_caller_owned_vm_finalization_remains_local():
     first, second = Debugger(vm), Debugger(vm)
     assert first.observation == esolangs.ExecutionResult("A", None, None, None, steps=0)
     limits = esolangs.ExecutionLimits(max_steps=0)
+    history = first.watch_cell(0)
     assert first.run(limits=limits) == "halted"
     assert first.run(limits=limits) == "halted"
     assert first.observation.completion.kind is Completion.POST_HALT
     assert second.observation.completion is None
     assert vm.calls == 2
+
+    nested = Debugger(Debugger(first))
+    assert nested.observation == first.observation
+    for live in (first, nested):
+        assert complete_vm(live, max_steps=0) == "A"
+        assert live.run(limits=limits) == "halted"
+    assert history == [1]
+    assert vm.calls == 2
+
     assert second.run(limits=limits) == "halted"
     assert second.observation == first.observation
     assert vm.calls == 3
@@ -349,7 +363,9 @@ def test_caller_owned_vm_finalization_remains_local():
         "pre", None, None, None, steps=0
     )
     assert retry.observation.completion is None
-    assert retry.run(limits=limits) == "halted"
+    nested_retry = Debugger(retry)
+    assert complete_vm(nested_retry, max_steps=0) == "predone"
+    assert nested_retry.run(limits=limits) == "halted"
     assert retry.output == "predone"
     assert retry.observation.completion.kind is Completion.POST_HALT
     assert retry.observation.steps == 0

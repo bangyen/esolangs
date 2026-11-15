@@ -461,6 +461,18 @@ def _is_terminal(stream: object) -> bool:
         return False
 
 
+def _probe_stdin(stream: object, deadline: float | None) -> bool | None:
+    """Return the terminal state, or None for a closed stream."""
+    _time_remaining(deadline)
+    closed = getattr(stream, "closed", False)
+    _time_remaining(deadline)
+    if closed:
+        return None
+    terminal = _is_terminal(stream)
+    _time_remaining(deadline)
+    return terminal
+
+
 def _read_stdin(
     timeout: float | None = None,
     hint: str = "",
@@ -474,13 +486,8 @@ def _read_stdin(
     long waits. A terminal prompt opts into interactive input.
     """
     stdin = sys.stdin
-    if stdin is None or getattr(stdin, "closed", False):
+    if stdin is None:
         return ""
-    terminal = _is_terminal(stdin)
-    if terminal:
-        if terminal_prompt is None:
-            return ""
-        _note(terminal_prompt)
     deadline = None if timeout is None else monotonic() + timeout
 
     def _read_text() -> str:
@@ -523,13 +530,27 @@ def _read_stdin(
             _TIMEOUT_EXIT,
         )
 
+    def _read_probed(*, terminal: bool | None) -> str:
+        if terminal is None or (terminal and terminal_prompt is None):
+            return ""
+        if terminal and terminal_prompt is not None:
+            _note(terminal_prompt)
+        return _read_text()
+
     # An interactive read has no deadline. Keeping it on the main thread
     # lets Ctrl-C interrupt it without leaving a reader holding stdin's lock.
-    if terminal and timeout is None:
-        result = _read_text()
+    terminal = _probe_stdin(stdin, None) if timeout is None else None
+    if timeout is None and terminal is not False:
+        result = _read_probed(terminal=terminal)
     else:
+        # A managed adapter's terminal probes can block just like its read.
+        read = (
+            _read_text
+            if timeout is None
+            else lambda: _read_probed(terminal=_probe_stdin(stdin, deadline))
+        )
         result = _slurp_thread(
-            _read_text, timeout, notice=_waiting_notice(hint), on_timeout=_on_timeout
+            read, timeout, notice=_waiting_notice(hint), on_timeout=_on_timeout
         )
     if (hidden := _smuggled_bytes(result)) is not None:
         _fail(input_read_error(f"not text ({_decode_note(hidden)})"))

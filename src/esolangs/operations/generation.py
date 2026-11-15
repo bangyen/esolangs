@@ -417,7 +417,7 @@ def _is_template_for(
     if not isinstance(canonical, TemplateArtifact):
         return False
     bindings = canonical.bindings
-    if template.bindings.inputs != bindings.inputs:
+    if len(template.bindings.setters) != bindings.inputs:
         return False
     text = template.source
     if template.bindings.char != bindings.char:
@@ -596,7 +596,7 @@ def instantiate(
         )
     if resolve_origin(template.language, catalog=catalog) != name:
         raise TemplateError(f"template belongs to {template.language}, not {name}")
-    bits = _check_template_bits(name, bits, template.bindings.inputs)
+    bits = _check_template_bits(name, bits, len(template.bindings.setters))
     if truth_table is not None:
         truth_table = check_table_text(truth_table)
         if not _is_template_for(

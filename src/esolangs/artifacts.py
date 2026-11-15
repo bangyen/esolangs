@@ -10,6 +10,7 @@ import esolangs
 from esolangs._bindings import (
     TEMPLATE_CHAR,
     Setters,
+    _stored_items,
     check_setters,
     fill_runs,
     runs,
@@ -191,7 +192,7 @@ class TemplateBindings:
         spans: Sequence[tuple[int, int]] | None = None,
     ) -> str:
         """Bind integer bits in source, refusing missing or stray runs."""
-        inputs = self.inputs
+        inputs = len(self.setters)
         bits = check_bits(bits, "bits", allow_empty=inputs == 0)
         check_bit_count(bits, inputs, "template")
         if not _has_backing_type(source, str):
@@ -199,7 +200,7 @@ class TemplateBindings:
         source = str.__str__(source)
         try:
             if spans is not None:
-                spans = tuple(_freeze_span(span) for span in spans)
+                spans = tuple(_freeze_span(span) for span in _stored_items(spans))
                 validate_spans(source, self.char, self.setters, spans)
             return fill_runs(source, self.char, self.setters, bits, spans=spans)
         except EsolangError:
@@ -237,19 +238,19 @@ class TemplateArtifact:
         object.__setattr__(self, "language", owner)
         if settings is not self.settings:
             object.__setattr__(self, "settings", settings)
+        bindings = self.bindings
+        if type(bindings) is not TemplateBindings:
+            bindings = TemplateBindings(char=bindings.char, setters=bindings.setters)
+            object.__setattr__(self, "bindings", bindings)
         try:
             if self.spans is None:
-                spans = tuple(
-                    runs(self.source, self.bindings.char, self.bindings.setters)
-                )
+                spans = tuple(runs(self.source, bindings.char, bindings.setters))
                 object.__setattr__(self, "spans", spans)
             else:
                 if not _has_backing_type(self.spans, tuple):
                     raise ValueError("template needs one span per input")
                 spans = tuple(_freeze_span(span) for span in tuple.__iter__(self.spans))
-                validate_spans(
-                    self.source, self.bindings.char, self.bindings.setters, spans
-                )
+                validate_spans(self.source, bindings.char, bindings.setters, spans)
                 object.__setattr__(self, "spans", spans)
         except EsolangError:
             raise
@@ -274,7 +275,7 @@ class TemplateArtifact:
         Needs no catalog, unlike :func:`esolangs.instantiate`, which also
         checks the language and table and re-wraps.
         """
-        inputs = self.bindings.inputs
+        inputs = len(self.bindings.setters)
         bits = check_bits(bits, "bits", allow_empty=inputs == 0)
         check_bit_count(bits, inputs, f"{self.language} template")
         return ProgramArtifact(
