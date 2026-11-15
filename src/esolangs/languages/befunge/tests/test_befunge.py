@@ -448,8 +448,11 @@ def test_a_clean_branch_can_prove_halt_after_an_unforkable_sibling() -> None:
         run_until_halt_or_all_branches_cycle(api.make_vm("&@"), limit=4)
 
     for make in (api.make_vm, api.make_debugger):
-        rejected = make("&.@", stdin="oops 7")
-        good = make("&.@", stdin="7")
+        rejected = make('"A",&.@', stdin="oops 7")
+        good = make('"A",&.@', stdin="7")
+        for vm in (rejected, good):
+            assert not run_until_halt(vm, limit=4)
+            assert vm.output == "A"
         for proof in (run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle):
             with pytest.raises(TimeoutError, match="needs input"):
                 proof(rejected, limit=4)
@@ -464,10 +467,15 @@ def test_a_clean_branch_can_prove_halt_after_an_unforkable_sibling() -> None:
             with pytest.raises(esolangs.ArgumentError, match="got 'oops'") as replay:
                 proof(rejected, limit=4)
             assert replay.value is not known.value
-            assert replay.value.__notes__ == known.value.__notes__
+            assert [
+                *replay.value.__notes__,
+                "the program printed 'A' before this",
+            ] == known.value.__notes__
+            assert replay.value.observation == esolangs.ExecutionResult("A", 4, 1, 0)
+            assert replay.value.partial_output == "A"
             assert known.value.observation == captured
             assert rejected.snapshot() == saved
             assert proof(good, limit=4) is True
-            assert good.output == ""
+            assert good.output == "A"
         assert run_until_halt(good, limit=2)
-        assert good.output == "7 "
+        assert good.output == "A7 "

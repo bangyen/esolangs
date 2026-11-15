@@ -70,7 +70,6 @@ from esolangs.cli.args import (
 from esolangs.cli.help import COMMANDS, USAGE, help_text
 from esolangs.cli.hints import (
     _as_argument,
-    _can_render_argument,
     _cli_error_text,
     _did_you_mean,
     _display_encoding,
@@ -105,6 +104,7 @@ from esolangs.runtime._program import Program
 from esolangs.runtime._source import native_file_terminator
 from esolangs.runtime._validate import _argument_repr
 from esolangs.runtime.memory import format_integer
+from esolangs.runtime.source_hints import can_render_argument
 
 
 def describe(language: str, *, catalog: Catalog | None = None) -> LanguageInfo:
@@ -516,7 +516,7 @@ def _generate(rest: list[str]) -> None:
         _emit(artifact, plain="--plain" in flags, gzip=gzip, catalog=catalog)
     if isinstance(artifact, TemplateArtifact):
         original = shlex.join(before)
-        if _can_render_argument(original, encoding):
+        if can_render_argument(original, encoding):
             advice = f"fill them with: esolangs generate --bits <bits> {original}"
         else:
             options_text = repair_options(declaration)

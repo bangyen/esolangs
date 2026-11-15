@@ -13,7 +13,7 @@ from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._validate import _has_backing_type
 
 if TYPE_CHECKING:
-    from esolangs._cycles import _SteppableMachine
+    from esolangs._cycles import _BranchingStepMachine, _SteppableMachine
     from esolangs.runtime._vm_protocol import VM
 
 
@@ -245,3 +245,21 @@ def _step_proof_receiver(
         _retain_observer_steps(runner, error, completed)
         raise
     check_receiver()
+
+
+def _read_branch_root(machine: _BranchingStepMachine, adapter: object) -> Hashable:
+    """Read a detached root, retaining owned IO if the live snapshot fails."""
+    try:
+        return machine.branching_snapshot()
+    except EsolangError as error:
+        from esolangs.vm import _capture_observation, _DelegatingVM, _record_vm_fault
+
+        if isinstance(adapter, _DelegatingVM):
+            owner: object = adapter._machine  # noqa: SLF001 - enforce ownership
+            if (
+                machine is owner
+                and error.observation is None
+                and not error.partial_output
+            ):
+                _record_vm_fault(adapter, error, _capture_observation(adapter))
+        raise

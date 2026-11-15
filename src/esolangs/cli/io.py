@@ -797,22 +797,22 @@ def _flush_stdout() -> None:
         stdout.flush()
 
 
-def _emit_partial(exc: EsolangError) -> None:
-    """Write whatever the program printed before ``exc`` to stdout.
+def _emit_partial(output: str) -> None:
+    """Write the current invocation's output before reporting its failure.
 
     A program printing ``Hi`` then underflowing gave empty stdout
     where ``debug`` showed ``output: 'Hi'``.  On stdout so a pipe sees the
     same prefix either way.
     """
-    if not exc.partial_output:
+    if not output:
         return
     try:
-        _write_output(exc.partial_output)
+        _write_output(output)
     except _StdoutEncodingError as error:
         _note(f"note: omitted partial output. {error}")
         return
     # Terminal only, as on success: a pipe got "\x01\n" for "\x01", and a
     # --max-output 3 cap 4 bytes.
-    if not exc.partial_output.endswith("\n") and _is_terminal(sys.stdout):
+    if not output.endswith("\n") and _is_terminal(sys.stdout):
         _write_output("\n")
     _flush_stdout()

@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import shlex
 
-from esolangs.cli.hints import _as_argument, _can_render_argument
+from esolangs.cli.hints import _as_argument
 from esolangs.registry import Catalog, SourceKind, get_catalog
 from esolangs.runtime._json import record_dumps
 from esolangs.runtime.memory import repr_value
+from esolangs.runtime.source_hints import can_render_argument
 
 
 def _capability_examples(
@@ -48,7 +49,7 @@ def _capability_examples(
                 operand = repr_value(value) if isinstance(value, int) else value
                 setting = shlex.quote(f"{key}={operand}")
                 dialects = f"  esolangs generate --settings {settings} {quoted} 0110"
-                if _can_render_argument(setting, encoding):
+                if can_render_argument(setting, encoding):
                     dialects += f"\n  esolangs generate --set {setting} {quoted} 0110"
                 break
     return templates, dialects

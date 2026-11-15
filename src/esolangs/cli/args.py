@@ -16,10 +16,8 @@ from esolangs._language import Language
 from esolangs.cli.help import command_synopsis
 from esolangs.cli.hints import (
     _as_argument,
-    _can_render_argument,
     _cli_error_text,
     _did_you_mean,
-    _is_option,
 )
 from esolangs.cli.io import _fail
 from esolangs.exceptions import EsolangError
@@ -27,6 +25,7 @@ from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._json import record_dumps, record_loads
 from esolangs.runtime._validate import check_scale, check_timeout
 from esolangs.runtime.memory import _hit_digit_cap, format_integer, parse_integer
+from esolangs.runtime.source_hints import can_render_argument, is_option
 from esolangs.settings import DialectSettings
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -154,7 +153,7 @@ def _split_positional(
         # ``-w`` used to be kept as one, so the error named whichever word
         # then landed in the wrong slot.  A leading digit is exempt so a
         # negative number can still be an argument.
-        if _is_option(arg) and arg.partition("=")[0] not in known:
+        if is_option(arg) and arg.partition("=")[0] not in known:
             name = arg.partition("=")[0]
             suggest = set(known) | set(vocabulary) | _GLOBAL_FLAGS
             _fail(f"unknown option: {arg}{_did_you_mean(name, suggest)}")
@@ -494,7 +493,7 @@ def _copyable_generation_options(
 ) -> list[str] | str:
     """Keep runnable flags or explain why the original option must be reused."""
     hidden = [
-        argument for argument in options if not _can_render_argument(argument, encoding)
+        argument for argument in options if not can_render_argument(argument, encoding)
     ]
     if not hidden:
         return options

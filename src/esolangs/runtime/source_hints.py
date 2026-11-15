@@ -1,9 +1,36 @@
 """Actionable notes on rejected source, without changing its diagnostic."""
 
+import shlex
 from collections.abc import Iterable
 from difflib import get_close_matches
 
 from esolangs.exceptions import ProgramError, ProgramNotFoundError
+
+
+def is_option(value: str) -> bool:
+    """Tell whether the CLI reads a leading dash as an option."""
+    return len(value) > 1 and value[0] == "-" and not value[1].isdigit()
+
+
+def can_render_argument(value: str, encoding: str) -> bool:
+    """Check that a displayed value can be passed verbatim as an argument."""
+    if "\0" in value:
+        return False
+    try:
+        value.encode(encoding)
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def shell_argument(
+    value: str, *, encoding: str = "utf-8", force_separator: bool = False
+) -> str | None:
+    """Quote a CLI operand and protect a leading dash from option parsing."""
+    if not can_render_argument(value, encoding):
+        return None
+    separator = "-- " if force_separator or is_option(value) else ""
+    return separator + shlex.quote(value)
 
 
 def syntax_error(

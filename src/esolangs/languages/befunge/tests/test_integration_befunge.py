@@ -2,6 +2,7 @@
 
 import io
 import os
+import shlex
 import subprocess
 import sys
 from dataclasses import replace
@@ -13,18 +14,38 @@ import pytest
 import esolangs
 from esolangs import run
 from esolangs.debugger import make_debugger
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, _table
 from tests.proofs._ledger import load
-from tests.support.cli_support import _failure, run_cli
+from tests.support.cli_support import _failure, call_both, run_cli
 from tests.support.input_convention import assert_reads_tokens_on_one_line
 
 _RANDOM_BRANCH = "?.@\n. @\n@ @"
 
 
-def test_generator_cap_hint_reaches_cli(capsys) -> None:
+def test_generator_and_runtime_hints_reach_cli(capsys, tmp_path, monkeypatch) -> None:
     _, err = _failure(["generate", "Befunge", "0010" * (1 << 12)], capsys)
     assert "fixed 80x25 grid" in err
     assert err.count("hint:") == 1
+
+    name = "--Scoped Befunge"
+    identifier = "scoped_befunge"
+    declaration = replace(LANGUAGES["Befunge"], name=name, id=identifier)
+    catalog = esolangs.Catalog([declaration])
+    api = catalog.bind(name)
+    monkeypatch.setattr(_table, "CATALOG", catalog)
+    path = tmp_path / "source.bf"
+    path.write_text("Ā", encoding="utf-8")
+    result = api.execute(path)
+    assert result.status == "rejected"
+    assert isinstance(result.error, esolangs.ProgramError)
+    hint = result.error.__notes__[0]
+    copied = shlex.split(hint.split(" with ", 1)[1])
+    assert copied == ["esolangs", "describe", "--spec", "--", name]
+    command = ["run", identifier, str(path)]
+    assert _failure(command, capsys) == ("", f"{result.error}\n{hint}\n")
+    assert call_both(copied[1:], capsys) == (api.describe().spec + "\n", "")
+    path.write_text('"A",@')
+    assert call_both(command, capsys) == ("A", "")
 
 
 def test_generator_cap_hint() -> None:

@@ -21,7 +21,12 @@ from esolangs.registry import (
     LanguageDeclaration,
     get_catalog,
 )
-from esolangs.runtime.source_hints import error_text
+from esolangs.runtime.source_hints import (
+    can_render_argument,
+    error_text,
+    is_option,
+    shell_argument,
+)
 
 #: A run stopped by its ``--execution-timeout``, following timeout(1).  Distinct from
 #: a program error's 1, which it shared. A timeout leaves termination
@@ -214,26 +219,10 @@ def _input_sentence(facts: LanguageInfo) -> str:
     return f'one line per bit, e.g. "{lines}"'
 
 
-def _is_option(value: str) -> bool:
-    """Tell whether a leading dash makes a standalone operand an option."""
-    return len(value) > 1 and value[0] == "-" and not value[1].isdigit()
-
-
 def _display_encoding(stream: object) -> str:
     """Use ASCII for copyable text when a stream declares no codec."""
     encoding: str | None = getattr(stream, "encoding", None)
     return encoding or "ascii"
-
-
-def _can_render_argument(value: str, encoding: str) -> bool:
-    """Check that a displayed value can be passed verbatim as an argument."""
-    if "\0" in value:
-        return False
-    try:
-        value.encode(encoding)
-    except UnicodeEncodeError:
-        return False
-    return True
 
 
 def _as_argument(
@@ -245,7 +234,7 @@ def _as_argument(
 ) -> str | None:
     """Quote a renderable language operand, protecting option-shaped names."""
     codec = encoding or _display_encoding(sys.stderr)
-    if _is_option(language) or not _can_render_argument(language, codec):
+    if is_option(language) or not can_render_argument(language, codec):
         with suppress(UnknownLanguageError):
             declaration = catalog.languages[catalog.resolve(language)]
             language = next(
@@ -256,11 +245,8 @@ def _as_argument(
                         *declaration.aliases,
                         declaration.name,
                     )
-                    if _can_render_argument(spelling, codec)
+                    if can_render_argument(spelling, codec)
                 ),
                 language,
             )
-    if not _can_render_argument(language, codec):
-        return None
-    separator = "-- " if force_separator or _is_option(language) else ""
-    return separator + shlex.quote(language)
+    return shell_argument(language, encoding=codec, force_separator=force_separator)

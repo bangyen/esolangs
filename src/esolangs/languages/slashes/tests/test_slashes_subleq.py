@@ -1,5 +1,6 @@
 """/// execution, dialects, and linear source regressions."""
 
+import json
 import random
 
 import pytest
@@ -110,6 +111,28 @@ def test_slashes_literal_dollar_and_serialized_template() -> None:
     io = ScriptedIO()
     native.run(partial, io)
     assert esolangs.run("///", partial).output == io.getvalue()
+
+    # dump_program("///", generate("///", "01")) at 517ab78cf predates spans.
+    legacy = (
+        '{"char":"$","format":"esolangs.program","kind":"template","language":"///",'
+        '"setters":[["a","b"]],"settings":null,"source":'
+        r'"/b/a*//*a/a**//a///*\\>qA/>//*\\>qB/>//>qA/C//>qB/D//qA///qB///C/0//D/1/$>qAqB",'
+        '"version":1}'
+    )
+    api = esolangs.Language("///")
+    artifact = api.from_json(legacy)
+    assert isinstance(artifact, esolangs.TemplateArtifact)
+    start = artifact.source.index("$")
+    assert artifact.spans == ((start, start + 1),)
+    for bit in (0, 1):
+        assert api.run(artifact.fill([bit])).output == str(bit)
+    canonical = api.to_json(artifact)
+    value = json.loads(canonical)
+    assert value == {**json.loads(legacy), "spans": [[start, start + 1]]}
+    assert api.to_json(api.from_json(canonical)) == canonical
+    for spans in (None, [], [[True, start + 1]], [[start + 1, start + 2]]):
+        with pytest.raises(esolangs.ProgramError, match="span"):
+            api.from_json(json.dumps({**value, "spans": spans}))
 
 
 @pytest.mark.parametrize("tail", ["$", ">qAqB", "x>qAqB", "$>qAq", "$>qAqZ", "$>qA"])

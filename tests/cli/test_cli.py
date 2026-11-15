@@ -157,14 +157,58 @@ class TestInProcess:
         assert "unknown command: zzz" in capsys.readouterr().err
 
     def test_partial_output_on_a_pipe_is_byte_exact(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch
     ) -> None:
-        """A failed run added "\\n" to a pipe, against `run --help`."""
+        """An error can retain the output of an earlier invocation."""
+        from esolangs.runtime._execution import interpreter_module
+
         path = tmp_path / "p.txt"
         path.write_text("+.,")
-        with pytest.raises(SystemExit):
-            call_main(["run", REFERENCE, str(path)], capsys)
-        assert capsys.readouterr().out == "\x01"
+        command = ["run", REFERENCE, str(path)]
+        output, diagnostic = _failure(command, capsys, code=1)
+        assert output == "\x01"
+        assert diagnostic.startswith("program read past the end of input")
+
+        api = esolangs.Language(REFERENCE)
+        first = api.execute(path)
+        shared = first.error
+        assert isinstance(shared, esolangs.InputExhaustedError)
+        assert shared.partial_output == first.observation.output == output
+        module = interpreter_module(REFERENCE)
+        hook = LANGUAGES[REFERENCE].runtime.completion_entrypoint
+        original = getattr(module, hook)
+
+        def reuse_error(program, io, **kwargs):
+            try:
+                return original(program, io, **kwargs)
+            except esolangs.InputExhaustedError:
+                raise shared from None
+
+        monkeypatch.setattr(module, hook, reuse_error)
+        path.write_text("++.,")
+        result = api.execute(path)
+        assert result.error is shared
+        assert shared.partial_output == "\x01"
+        assert result.observation.output == "\x02"
+        assert _failure(command, capsys, code=1) == (
+            result.observation.output,
+            diagnostic,
+        )
+
+        class RefusesInput:
+            def read(self):
+                raise shared
+
+        assert api.execute(path, stdin=RefusesInput()).observation.output == ""
+        with (
+            patch.object(sys, "argv", ["esolangs", *command]),
+            patch.object(sys, "stdin", RefusesInput()),
+            pytest.raises(SystemExit) as exited,
+        ):
+            main()
+        assert exited.value.code == 1
+        assert capsys.readouterr() == ("", diagnostic)
+        assert shared.partial_output == "\x01"
 
     def test_max_memory_names_the_flag(
         self,

@@ -120,7 +120,7 @@ def run(
     ).unwrap()
 
 
-def _run_loaded(
+def _execute_loaded(
     program: ProgramArtifact[Program],
     *,
     stdin: InputSource,
@@ -129,7 +129,7 @@ def _run_loaded(
     isolated: bool,
     scale: int | None,
     catalog: Catalog,
-) -> ExecutionResult:
+) -> ExecutionOutcome:
     """Run the native snapshot already validated before CLI stdin acquisition."""
     return _execute_outcome(
         program.language,
@@ -141,7 +141,7 @@ def _run_loaded(
         scale=scale,
         catalog=catalog,
         _loaded=program,
-    ).unwrap()
+    )
 
 
 @_capture_outcome

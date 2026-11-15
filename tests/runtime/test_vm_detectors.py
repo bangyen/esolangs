@@ -12,6 +12,7 @@ from esolangs.exceptions import (
     ArgumentError,
     ExecutionCapError,
     ExecutionTimeoutError,
+    HaltError,
     InterpreterLimitError,
 )
 from esolangs.languages.brainfuck.interpreter import _Machine as Brainfuck
@@ -562,6 +563,7 @@ def _check_malformed_branch_states(monkeypatch) -> None:
     assert result.termination.branches.terminal == (1,)
     assert result.observation == ExecutionResult("1!", 1, 1, 0)
     _check_branch_successor_containers(api, artifact, limits, Machine, monkeypatch)
+    _check_branch_root_faults(api, artifact, Machine, monkeypatch)
 
     class EqualUnhashable(list):
         __hash__ = None
@@ -619,6 +621,68 @@ def _check_malformed_branch_states(monkeypatch) -> None:
             with pytest.raises(TypeError, match="branching callback refused") as caught:
                 api.evaluate(artifact, [1], limits=limits)
             assert caught.value is original
+
+
+def _check_branch_root_faults(api, artifact, machine, monkeypatch):
+    prepared = api.prepare(artifact)
+    initial = ExecutionResult("1", 1, 1, 0)
+    foreign = ExecutionResult("caller", 4, 2, 0, steps=7)
+    detectors = (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle)
+
+    def refuse(*_args):
+        raise failure
+
+    class CallerBranch(Debugger):
+        branching_snapshot = refuse
+
+        def branching_halted(self, _state):
+            pytest.fail("branch root fault must precede traversal")
+
+        def branching_successors(self, _state, _limit):
+            pytest.fail("branch root fault must precede traversal")
+
+    with monkeypatch.context() as hooks:
+        hooks.setattr(machine, "branching_snapshot", refuse)
+        for make, expected in (
+            (lambda: api.make_vm(artifact, stdin="1"), initial),
+            (lambda: Debugger(prepared.make_debugger(stdin="1")), initial),
+            (lambda: machine(ScriptedIO("1")), None),
+            (lambda: CallerBranch(prepared.make_vm(stdin="1")), None),
+        ):
+            for detector in detectors:
+                live = make()
+                for observation, output in (
+                    (None, ""),
+                    (foreign, "caller"),
+                    (None, "caller"),
+                ):
+                    failure = HaltError("branch root fault")
+                    failure.observation = observation
+                    failure.partial_output = output
+                    with pytest.raises(HaltError, match="branch root fault") as caught:
+                        detector(live, limit=2)
+                    assert caught.value is failure
+                    if observation is None and not output and expected is not None:
+                        assert failure.observation == expected
+                        assert failure.partial_output == expected.output
+                    else:
+                        assert failure.observation is observation
+                        assert failure.partial_output == output
+                assert not live.halted
+                if isinstance(live, Debugger):
+                    assert live.observation == replace(initial, steps=0)
+
+    with monkeypatch.context() as hooks:
+        hooks.setattr(machine, "branching_successors", refuse)
+        for detector in detectors:
+            failure = HaltError("detached successor fault")
+            live = prepared.make_debugger(stdin="1")
+            with pytest.raises(HaltError, match="detached successor fault") as caught:
+                detector(live, limit=2)
+            assert caught.value is failure
+            assert failure.observation is None
+            assert failure.partial_output == ""
+            assert live.observation == replace(initial, steps=0)
 
 
 def _check_branch_successor_containers(api, artifact, limits, machine, monkeypatch):

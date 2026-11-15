@@ -17,6 +17,7 @@ from esolangs.runtime._proof import (
     BranchProof,
     CycleDecision,
     _proof_receiver_check,
+    _read_branch_root,
     _step_proof_receiver,
 )
 from esolangs.runtime._validate import _call_signature, _has_backing_type, check_whole
@@ -349,7 +350,7 @@ def _drive_halt_or_cycle(
         ),
     )
     adapter = _checked_adapter(machine)
-    language, declared_random = _proof_runtime(adapter)
+    _, declared_random = _proof_runtime(adapter)
     halted_before = machine.halted
     branch = (
         None
@@ -365,7 +366,7 @@ def _drive_halt_or_cycle(
     # machine's own draw source, so "some path halts" after a fork is not
     # this run's answer (a FirstDraw(0) coin loops where the other halts).
     if branch is not None:
-        return _branch_cycle(branch, limit, evidence=evidence, language=language)
+        return _branch_cycle(branch, limit, evidence=evidence, adapter=adapter)
     if (require_branches or declared_random) and not halted_before:
         raise _BranchingUnavailableError(
             "termination proof for an active random machine requires branch enumeration"
@@ -447,13 +448,13 @@ def _branch_cycle(
     limit: int | None,
     *,
     evidence: bool,
-    language: str | None,
+    adapter: object,
 ) -> bool | CycleDecision:
     result = _branch_search(
         branch,
         10_000 if limit is None else limit,
         evidence=evidence,
-        language=language,
+        adapter=adapter,
     )
     if not result.halts or not result.forked:
         return (
@@ -491,7 +492,8 @@ def run_until_halt_or_all_branches_cycle(
     A language with no random instruction raises :class:`TypeError`.
     """
     limit = check_whole(limit, "limit")
-    language, declared_random = _proof_runtime(_checked_adapter(machine))
+    adapter = _checked_adapter(machine)
+    _, declared_random = _proof_runtime(adapter)
     if declared_random and isinstance(machine, _SteppableMachine) and machine.halted:
         return True
     state = cast(
@@ -506,7 +508,7 @@ def run_until_halt_or_all_branches_cycle(
     )
     if isinstance(machine, _SteppableMachine) and machine.halted:
         return True
-    return _branch_search(state, limit, language=language).halts
+    return _branch_search(state, limit, adapter=adapter).halts
 
 
 class _BranchResult(NamedTuple):
@@ -598,12 +600,13 @@ def _branch_search(
     limit: int,
     *,
     evidence: bool = False,
-    language: str | None = None,
+    adapter: object,
 ) -> _BranchResult:
     """Find a clean halt, or prove that every reachable state stays in the graph."""
     if not limit:
         raise _branch_budget(limit, evidence=evidence)
-    root = machine.branching_snapshot()
+    root = _read_branch_root(machine, adapter)
+    language, _ = _proof_runtime(adapter)
     pending = deque([root])
     discovered = _branch_root_states(root)
     exceeded = False

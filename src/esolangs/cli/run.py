@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from contextlib import nullcontext
 from time import monotonic
+from typing import NoReturn
 
 from esolangs import ExecutionLimits
 from esolangs.cli.args import (
@@ -46,8 +47,12 @@ from esolangs.exceptions import (
     ExecutionBudgetError,
     TemplateError,
 )
-from esolangs.operations.execution import _execution_route, _run_loaded, default_total
-from esolangs.registry import get_catalog
+from esolangs.operations.execution import (
+    _execute_loaded,
+    _execution_route,
+    default_total,
+)
+from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._execution import check_seed_for, check_worker_runtime
 from esolangs.runtime._files import _source_directory
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
@@ -63,6 +68,15 @@ def _remaining(timeout: float | None, elapsed: float, flag: str) -> float | None
     if remaining <= 0:
         _fail(f"{flag} expired while loading the program or stdin", _TIMEOUT_EXIT)
     return remaining
+
+
+def _fail_run(error: EsolangError, language: str, catalog: Catalog) -> NoReturn:
+    """Report a run failure without assuming it came from execution."""
+    if isinstance(error, TemplateError):
+        _fail(_template_hint(error, language, catalog=catalog))
+    if isinstance(error, ExecutionBudgetError):
+        _fail(_timeout_text(error), _TIMEOUT_EXIT)
+    _fail(error, _exit_code(error))
 
 
 def _run(rest: list[str]) -> None:
@@ -177,36 +191,28 @@ def _run(rest: list[str]) -> None:
                 "; send the input this program needs, or close stdin",
                 timeout_flag=flag,
             )
-        _remaining(acquisition, monotonic() - started, flag)
-        with (
-            _unbounded_notice("run")
-            if acquisition is None and max_steps is None
-            else nullcontext(),
-            _acquisition_started_at(started),
-        ):
-            output = _run_loaded(
-                program,
-                stdin=stdin,
-                limits=limits,
-                seed=seed,
-                scale=scale,
-                isolated=isolated,
-                catalog=catalog,
-            ).output
-    except TemplateError as exc:
-        _fail(_template_hint(exc, language, catalog=catalog))
-    except ExecutionBudgetError as exc:
-        # Distinct from a program error's 1, following timeout(1), so a
-        # script can tell "ran out of time" from "the program broke".  Those
-        # shared exit 1, which made the termination languages'
-        # answer indistinguishable from a crash.
-        _emit_partial(exc)
-        _fail(_timeout_text(exc), _TIMEOUT_EXIT)
-    except EsolangError as exc:
-        # A usage error (an unknown language) is still 2; anything the
-        # program itself did is the program's failure, and exits 1.
-        _emit_partial(exc)
-        _fail(exc, _exit_code(exc))
+    except EsolangError as acquisition_error:
+        _fail_run(acquisition_error, language, catalog)
+    _remaining(acquisition, monotonic() - started, flag)
+    with (
+        _unbounded_notice("run")
+        if acquisition is None and max_steps is None
+        else nullcontext(),
+        _acquisition_started_at(started),
+    ):
+        outcome = _execute_loaded(
+            program,
+            stdin=stdin,
+            limits=limits,
+            seed=seed,
+            scale=scale,
+            isolated=isolated,
+            catalog=catalog,
+        )
+    output = outcome.observation.output
+    if (error := outcome.error) is not None:
+        _emit_partial(output)
+        _fail_run(error, language, catalog)
     _write_output(output)
     # Piped output stays byte-exact -- it gets compared and diffed -- but a
     # result with no trailing newline runs into the next shell prompt.

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib
-import shlex
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import fields, is_dataclass
@@ -31,7 +30,7 @@ from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.memory import _hit_digit_cap
 from esolangs.runtime.randomness import Seeded
-from esolangs.runtime.source_hints import with_hint
+from esolangs.runtime.source_hints import shell_argument, with_hint
 from esolangs.settings import dialect_options
 
 
@@ -150,11 +149,8 @@ def _value_error_hint(message: str, language: str | None) -> str:
     for fragment, hint in _VALUE_ERROR_HINTS:
         if fragment in message:
             return hint
-    if language is not None:
-        return (
-            "check the language syntax with esolangs describe --spec "
-            f"{shlex.quote(language)}"
-        )
+    if language is not None and (argument := shell_argument(language)) is not None:
+        return f"check the language syntax with esolangs describe --spec {argument}"
     return "check the operands and input against the language's syntax"
 
 
