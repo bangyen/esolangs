@@ -90,6 +90,9 @@ def test_invocation_rejects_options_before_accessing_streams(route, options, mes
 
     with pytest.raises(esolangs.ArgumentError, match=message):
         invoke(Untouched(), stdin=Untouched(), **options)
+    if "scale" in options:
+        with pytest.raises(esolangs.ArgumentError, match=message):
+            invoke(Untouched(), stdin=Untouched(), seed=1, **options)
 
 
 def test_standalone_scripted_io_binds_its_reader_once() -> None:
@@ -451,12 +454,23 @@ def test_invalid_stdin_leaves_program_stream_at_its_original_offset(route, tmp_p
         if route == "bounded":
             options["limits"] = esolangs.ExecutionLimits(max_steps=2)
 
+    class InheritedReader(io.BytesIO):
+        @property
+        def closed(self):
+            pytest.fail("stdin preflight dispatched a custom closed property")
+
+        def readable(self):
+            pytest.fail("stdin preflight dispatched a custom readability check")
+
     closed = io.BytesIO()
     closed.close()
+    inherited_closed = InheritedReader()
+    inherited_closed.close()
     with (tmp_path / "write-only").open("wb") as write_only:
         for stdin, cause in (
             (b"\xff", UnicodeDecodeError),
             (closed, ValueError),
+            (inherited_closed, ValueError),
             (write_only, io.UnsupportedOperation),
         ):
             with pytest.raises(
@@ -466,9 +480,23 @@ def test_invalid_stdin_leaves_program_stream_at_its_original_offset(route, tmp_p
             assert type(caught.value.__cause__) is cause
             assert source.tell() == 4
         assert not write_only.closed
-    result = invoke(source, stdin="é".encode(), **options)
-    if route == "vm":
-        assert complete_vm(result, max_steps=2) == "é"
-    elif route == "debugger":
-        assert result.run() == "halted"
-    assert result.output == "é"
+
+    read_sizes = []
+
+    class OverrideReader(InheritedReader):
+        def read(self, size=-1):
+            read_sizes.append(size)
+            assert size != 0
+            return "é".encode()
+
+    overridden = OverrideReader()
+    overridden.close()
+    for stdin in ("é".encode(), InheritedReader("é".encode()), overridden):
+        source.seek(4)
+        result = invoke(source, stdin=stdin, **options)
+        if route == "vm":
+            assert complete_vm(result, max_steps=2) == "é"
+        elif route == "debugger":
+            assert result.run() == "halted"
+        assert result.output == "é"
+    assert read_sizes == [-1]

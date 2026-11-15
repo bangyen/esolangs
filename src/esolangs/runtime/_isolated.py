@@ -24,7 +24,11 @@ from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._acquire import acquire, preparation_expired
-from esolangs.runtime._execution import check_worker_runtime, interpreter_errors
+from esolangs.runtime._execution import (
+    check_seed_for,
+    check_worker_runtime,
+    interpreter_errors,
+)
 from esolangs.runtime._files import stream_read_deadline
 from esolangs.runtime._input import InputSource, check_input, read_input
 from esolangs.runtime._json import canonical_integer, worker_dumps, worker_loads
@@ -399,7 +403,6 @@ def _invoke_worker(
     catalog = get_catalog(catalog)
 
     max_output, max_memory = check_limits(max_output, max_memory, isolated=True)
-    seed = check_seed(seed)
     if max_steps is not None:
         max_steps = check_whole(max_steps, "max_steps")
     # The default total adds worker startup time to a validated execution budget.
@@ -419,6 +422,8 @@ def _invoke_worker(
     settings, scale = _check_source_options(
         name, program, settings, scale, catalog=catalog
     )
+    seed = check_seed(seed)
+    check_seed_for(name, seed, catalog=catalog)
     started = _ACQUISITION_STARTED.get()
     if started is None:
         started = monotonic()

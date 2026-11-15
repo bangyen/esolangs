@@ -144,12 +144,13 @@ def _execute_invocation(
     program = anchor_program_source(program)
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    if not isolated and prepared is None:
-        settings, scale = _check_source_options(
-            name, program, settings, scale, catalog=catalog
-        )
-    seed = check_seed(seed)
-    check_seed_for(name, seed, catalog=catalog)
+    if not isolated:
+        if prepared is None:
+            settings, scale = _check_source_options(
+                name, program, settings, scale, catalog=catalog
+            )
+        seed = check_seed(seed)
+        check_seed_for(name, seed, catalog=catalog)
     timeout = check_timeout(timeout)
     check_flag(isolated, "isolated")
     max_output, max_memory = check_limits(max_output, max_memory, isolated=isolated)

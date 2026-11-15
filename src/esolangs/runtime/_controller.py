@@ -65,7 +65,12 @@ class ExecutionController:
     @property
     def halted(self) -> bool:
         """Whether the wrapped VM has finished executing."""
-        return self.vm.halted
+        wrapped = self.vm
+        try:
+            return wrapped.halted
+        except EsolangError as error:
+            self._observe_halt_fault(wrapped, error)
+            raise
 
     @property
     def output(self) -> str:
@@ -134,10 +139,25 @@ class ExecutionController:
         """
         self._take_step()
 
+    def _observe_fault(self, vm: VM, error: EsolangError) -> None:
+        observation = replace(_capture_observation(vm), steps=self._steps)
+        _record_vm_fault(vm, error, observation)
+
+    def _observe_halt_fault(self, vm: VM, error: EsolangError) -> None:
+        owner = _controller_vm(vm)
+        if isinstance(owner, _DelegatingVM) or (
+            error.observation is None and not error.partial_output
+        ):
+            self._observe_fault(owner, error)
+
     def _take_step(self) -> None:
         """Drive a command or finalization step, accounting for its effects."""
         wrapped = self.vm
-        active = not wrapped.halted
+        try:
+            active = not wrapped.halted
+        except EsolangError as error:
+            self._observe_halt_fault(wrapped, error)
+            raise
         owner = (
             _controller_vm(wrapped)
             if isinstance(wrapped, ExecutionController)
@@ -149,8 +169,7 @@ class ExecutionController:
             self._faulted_owner = None if isinstance(owner, _DelegatingVM) else owner
             if active and self._faulted_owner is not None:
                 self._active_fault = (wrapped, owner, exc)
-            observation = replace(_capture_observation(owner), steps=self._steps)
-            _record_vm_fault(owner, exc, observation)
+            self._observe_fault(owner, exc)
             raise
         if active:
             self._faulted_owner = None

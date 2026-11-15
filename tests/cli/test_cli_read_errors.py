@@ -166,11 +166,26 @@ import sys
 from codecs import getincrementaldecoder
 from io import TextIOWrapper
 from esolangs.cli import io, main
-if os.environ.get("ESOLANGS_TEST_STDIN_SUBCLASS") == "yes":
+adapter = os.environ["ESOLANGS_TEST_STDIN_ADAPTER"]
+if adapter == "subclass":
     class Wrapped(TextIOWrapper):
         __slots__ = ("other_decoder",)
     sys.stdin = Wrapped(sys.stdin.detach(), encoding="utf-8", newline=None)
     sys.stdin.other_decoder = getincrementaldecoder("utf-8")()
+elif adapter in ("forwarding", "answer"):
+    class Meta(type):
+        def __getattribute__(self, name):
+            if name == "read":
+                raise AssertionError("read must not be looked up on the class")
+            return super().__getattribute__(name)
+    class Forwarding(TextIOWrapper, metaclass=Meta):
+        def read(self, size=-1):
+            return super().read(size)
+    sys.stdin = Forwarding(sys.stdin.detach(), encoding="utf-8", newline="")
+elif adapter == "instance":
+    sys.stdin.reconfigure(newline="")
+    read_text = sys.stdin.read
+    sys.stdin.read = lambda size=-1: read_text(size).upper()
 assert sys.stdin.read(1) == "A"
 stream = sys.stdin.buffer
 read = stream.read
@@ -185,6 +200,9 @@ assert sys.stdin.read() == ""
         ("ascii:strict", "eof", b"AB", "é\r\n".encode()),
         ("latin-1", "eof", b"AB\xc3", b"\xa9\r\n"),
         ("utf-8", "subclass", b"AB\xc3", b"\xa9\r\n"),
+        ("utf-8", "forwarding", b"Ab\xc3", b"\xa9\r\n"),
+        ("utf-8", "instance", b"Ab\xc3", b"\xa9\r\n"),
+        ("utf-8", "answer", b"A1", b""),
         ("utf-8:replace", "invalid", b"AB", b"\xff"),
         ("utf-8:replace", "invalid", b"AB", b"\xbd"),
         ("utf-8:ignore", "invalid", b"AB", b"\xbd"),
@@ -196,16 +214,17 @@ assert sys.stdin.read() == ""
     )
     for encoding, action, prefix, suffix in cases:
         with subtests.test(encoding=encoding, action=action):
-            options = ["--preparation-timeout", "1"] if action == "timeout" else []
-            command = [
-                sys.executable,
-                "-c",
-                script,
-                "run",
-                *options,
-                REFERENCE,
-                str(path),
-            ]
+            options = (
+                ["--preparation-timeout", "1"]
+                if action in {"timeout", "forwarding"}
+                else []
+            )
+            args = (
+                ["read-answer", REFERENCE]
+                if action == "answer"
+                else ["run", *options, REFERENCE, str(path)]
+            )
+            command = [sys.executable, "-c", script, *args]
             reader, writer = os.pipe()
             with (
                 os.fdopen(reader, "rb", buffering=0) as source,
@@ -220,9 +239,7 @@ assert sys.stdin.read() == ""
                     env={
                         **os.environ,
                         "PYTHONIOENCODING": encoding,
-                        "ESOLANGS_TEST_STDIN_SUBCLASS": (
-                            "yes" if action == "subclass" else "no"
-                        ),
+                        "ESOLANGS_TEST_STDIN_ADAPTER": action,
                     },
                 ) as child:
                     try:
@@ -234,6 +251,9 @@ assert sys.stdin.read() == ""
                         if action in {
                             "eof",
                             "subclass",
+                            "forwarding",
+                            "instance",
+                            "answer",
                             "invalid",
                             "replacement",
                             "extra",
@@ -246,7 +266,18 @@ assert sys.stdin.read() == ""
                     finally:
                         if child.poll() is None:
                             child.kill()
-            if action in {"eof", "subclass", "replacement"}:
+            if action in {"forwarding", "instance", "answer"}:
+                expected = {
+                    "forwarding": "bé\r\n",
+                    "instance": "BÉ\r\n",
+                    "answer": "1\n",
+                }
+                assert (child.returncode, output, diagnostic) == (
+                    0,
+                    expected[action].encode(),
+                    b"",
+                )
+            elif action in {"eof", "subclass", "replacement"}:
                 # The reference interpreter stores the low byte of U+FFFD.
                 scalar = "\xfd" if action == "replacement" else "é"
                 assert (child.returncode, output, diagnostic) == (

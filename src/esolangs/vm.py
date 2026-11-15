@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable, Hashable
+from contextlib import AbstractContextManager
 from dataclasses import replace
 from functools import partial
 from inspect import getattr_static
@@ -197,9 +198,22 @@ class _DelegatingVM:
     def _remember_fault(self, observation: ExecutionResult) -> None:
         self._fault_observation = observation
 
+    def _interpreter_errors(self) -> AbstractContextManager[None]:
+        return interpreter_errors(
+            f"the {self.language} interpreter recursed deeper than "
+            "CPython's stack limit allows on this program",
+            self._io,
+            language=self.language,
+            on_observation=self._remember_fault,
+        )
+
     @property
     def halted(self) -> bool:
-        return self._machine.halted
+        try:
+            return self._machine.halted
+        except Exception:
+            with self._interpreter_errors():
+                raise
 
     def step(self) -> None:
         """Execute one instruction, translating what the interpreter raises.
@@ -209,31 +223,32 @@ class _DelegatingVM:
         ``RecursionError`` :class:`~esolangs.exceptions.InterpreterLimitError`.
         """
         dumping: bool | None = False
+        started = False
         try:
             dumping = self._dump_pending and self._machine.halted
+            started = True
             self._machine.step()
         except Exception:
             # Translation is needed only on failure; a context per instruction
             # dominated the wrapper cost in the generator-size sweep.
             try:
-                with interpreter_errors(
-                    f"the {self.language} interpreter recursed deeper than "
-                    "CPython's stack limit allows on this program",
-                    self._io,
-                    language=self.language,
-                    on_observation=self._remember_fault,
-                ):
+                with self._interpreter_errors():
                     raise
             except EsolangError as error:
                 # A pending dump can be retried. A failed command that moved
                 # the machine to its halt position supplies no completion.
                 if (
-                    not dumping
+                    started
+                    and not dumping
                     and self._dump_pending is not False
                     and self._halt_fault is None
-                    and self._machine.halted
                 ):
-                    self._halt_fault = error
+                    try:
+                        if self._machine.halted:
+                            self._halt_fault = error
+                    except Exception:
+                        # A failed inspection cannot replace the command fault.
+                        pass
                 raise
         if dumping:
             self._dump_pending = False
@@ -244,13 +259,7 @@ class _DelegatingVM:
         exact_repeat = self._capabilities.complete_on_exact_repeat
         if not exact_repeat and self.steppable_to_answer:
             return None
-        with interpreter_errors(
-            f"the {self.language} interpreter recursed deeper than "
-            "CPython's stack limit allows on this program",
-            self._io,
-            language=self.language,
-            on_observation=self._remember_fault,
-        ):
+        with self._interpreter_errors():
             if exact_repeat:
                 return drive_until_repeat(machine, step=step)
             stride = getattr(machine, "commands_per_pass", None)

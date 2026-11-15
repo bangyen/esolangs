@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from inspect import getattr_static
 from io import (
     BufferedRandom,
     BufferedReader,
@@ -15,7 +16,7 @@ from io import (
     StringIO,
     TextIOWrapper,
 )
-from types import BuiltinMethodType
+from types import BuiltinMethodType, GetSetDescriptorType
 from typing import IO, cast
 
 from esolangs.exceptions import ArgumentError, EsolangError
@@ -51,6 +52,26 @@ _STANDARD_STREAMS = (
 )
 
 
+def _preflight_standard_reader(stream: IO[str] | IO[bytes], reader: object) -> None:
+    """Check native stream mode without probing user-defined reader methods."""
+    if (
+        not _has_backing_type(reader, BuiltinMethodType)
+        or reader.__self__ is not stream
+        or reader.__name__ != "read"
+    ):
+        return
+    for kind in _STANDARD_STREAMS:
+        if not issubclass(type(stream), kind):
+            continue
+        if getattr_static(stream, "read") is not kind.read:
+            continue
+        closed = cast("GetSetDescriptorType", kind.closed).__get__(stream)
+        if closed or not kind.readable(cast(IOBase, stream)):
+            # The native reader supplies the precise error without consuming input.
+            reader(0)
+        return
+
+
 def check_input(source: InputSource) -> CheckedInput:
     """Validate literal stdin or bind a reader without consuming its stream."""
     if _has_backing_type(source, str):
@@ -60,16 +81,7 @@ def check_input(source: InputSource) -> CheckedInput:
     stream = cast("IO[str] | IO[bytes]", source)
     try:
         reader = getattr(stream, "read", None)
-        kind = type(stream)
-        if (
-            kind in _STANDARD_STREAMS
-            and _has_backing_type(reader, BuiltinMethodType)
-            and reader.__self__ is stream
-            and (stream.closed or not kind.readable(cast(IOBase, stream)))
-        ):
-            # Let the standard reader supply its own error. A zero-size read
-            # cannot consume input, even if one half of a stream pair is open.
-            reader(0)
+        _preflight_standard_reader(stream, reader)
     except EsolangError as error:
         _remember_acquisition_failure(error)
         raise

@@ -250,6 +250,122 @@ def test_a_failed_halt_cannot_be_completed_by_a_peer(monkeypatch):
     assert run_until_halt(control, limit=0)
     assert run_until_halt_or_cycle(control, limit=0)
 
+    _check_halt_read_fault_evidence(api, monkeypatch)
+    _check_caller_halt_read_evidence()
+
+
+def _check_halt_read_fault_evidence(api, monkeypatch):
+    from esolangs.debugger import Debugger
+    from esolangs.runtime._execution import interpreter_module
+
+    original = esolangs.HaltError("command failed")
+    reads = []
+    mode = "typed"
+
+    class Machine:
+        finished = False
+        checks = 0
+
+        def __init__(self, io):
+            self.io = io
+
+        @property
+        def halted(self):
+            self.checks += 1
+            if (self.finished and mode != "valid") or (
+                mode == "before_step" and self.checks == 2
+            ):
+                error_type = ValueError if mode == "bare" else esolangs.HaltError
+                error = error_type("halt inspection failed")
+                reads.append(error)
+                raise error
+            return self.finished
+
+        def step(self):
+            self.io.print_char(chr(self.io.input_char()))
+            self.finished = True
+            if mode == "command":
+                raise original
+
+    monkeypatch.setattr(
+        interpreter_module(api.name),
+        "halt_inspection",
+        lambda *_args: Machine,
+        raising=False,
+    )
+    declaration = api.catalog.languages[api.name]
+    runtime = replace(declaration.runtime, machine_preparation="halt_inspection")
+    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    limits = esolangs.ExecutionLimits(max_steps=2)
+    expected = esolangs.ExecutionResult("A", 1, 1, 0, steps=1)
+    for mode in ("typed", "bare"):
+        error_type = esolangs.ProgramError if mode == "bare" else esolangs.HaltError
+        calls = (
+            lambda: scoped.execute("+.", stdin="A", limits=limits).unwrap(),
+            lambda: Debugger(scoped.make_debugger("+.", stdin="A")).run(limits=limits),
+            lambda: complete_vm(scoped.make_vm("+.", stdin="A"), max_steps=2),
+        )
+        for drive in calls:
+            reads.clear()
+            with pytest.raises(error_type, match="halt inspection") as caught:
+                drive()
+            if mode == "bare":
+                assert reads == [caught.value.__cause__]
+            else:
+                assert reads == [caught.value]
+            assert caught.value.partial_output == "A"
+            assert caught.value.observation == expected
+
+    mode = "before_step"
+    with pytest.raises(esolangs.HaltError, match="halt inspection") as caught:
+        scoped.make_debugger("+.", stdin="A").run(limits=limits)
+    assert caught.value.observation == esolangs.ExecutionResult("", 0, 0, 0, steps=0)
+
+    mode = "command"
+    reads.clear()
+    with pytest.raises(esolangs.HaltError, match="command failed") as caught:
+        scoped.make_vm("+.", stdin="A").step()
+    assert caught.value is original
+    assert original.observation == replace(expected, steps=None)
+    assert len(reads) == 1
+
+    mode = "valid"
+    completed = scoped.run("+.", stdin="A", limits=limits)
+    assert completed == replace(expected, completion=completed.completion)
+    assert completed.completion.kind is Completion.HALTED
+    debug = scoped.make_debugger("+.", stdin="A")
+    assert debug.run(limits=limits) == "halted"
+    assert debug.observation == completed
+    assert complete_vm(scoped.make_vm("+.", stdin="A"), max_steps=2) == "A"
+
+
+def _check_caller_halt_read_evidence():
+    from esolangs.debugger import Debugger
+
+    original = esolangs.HaltError("foreign observation")
+    expected = esolangs.ExecutionResult("foreign", 1, 1, 0, steps=7)
+    original.observation = expected
+    original.partial_output = expected.output
+
+    class Custom:
+        output = "outer"
+        self_halts = steppable_to_answer = True
+        dumps_on_the_post_halt_step = False
+
+        @property
+        def halted(self):
+            raise original
+
+        def step(self):
+            pytest.fail("the failed halt inspection must not take a step")
+
+    live = Debugger(Custom())
+    with pytest.raises(esolangs.HaltError, match="foreign observation") as caught:
+        live.run(limits=esolangs.ExecutionLimits(max_steps=0))
+    assert caught.value is original
+    assert original.observation is expected
+    assert original.partial_output == expected.output
+
 
 def test_post_halt_completion_stays_pending_until_dump():
     from esolangs.debugger import Debugger, make_debugger

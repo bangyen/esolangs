@@ -20,6 +20,7 @@ from encodings.utf_8_sig import IncrementalDecoder as UTF8SigDecoder
 from errno import EAGAIN
 from functools import partial
 from gc import get_referents
+from inspect import getattr_static
 from io import (
     BufferedReader,
     FileIO,
@@ -56,6 +57,7 @@ from esolangs.runtime._files import (
 from esolangs.runtime._input import input_read_error, read_input
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource, _open_program_path
+from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
 from esolangs.runtime.source_hints import source_read_error
 from esolangs.settings import DialectSettings
@@ -452,6 +454,30 @@ def _read_wrapped_stdin(
     return _read_stdin_bytes(stream, deadline).decode("utf-8")
 
 
+def _custom_text_reader(stdin: TextIOWrapper) -> bool:
+    """Whether the caller supplies how a text wrapper reads."""
+    return (
+        getattr_static(type(stdin), "__getattribute__")
+        is not TextIOWrapper.__getattribute__
+        or getattr_static(stdin, "read", None) is not TextIOWrapper.read
+    )
+
+
+def _snapshot_stdin(stdin: TextIO, deadline: float | None) -> str:
+    _time_remaining(deadline)
+    with stream_read_deadline(deadline):
+        if _has_backing_type(stdin, TextIOWrapper) and _custom_text_reader(stdin):
+            # Bypassing this reader can lose text it already decoded.
+            return read_input(stdin)
+        stream = cast("BinaryIO | None", getattr(stdin, "buffer", None))
+        _time_remaining(deadline)
+        if stream is None:
+            return read_input(stdin)
+        if _has_backing_type(stdin, TextIOWrapper) and hasattr(stream, "__dict__"):
+            return _read_wrapped_stdin(stdin, stream, deadline)
+        return _read_stdin_bytes(stream, deadline).decode("utf-8")
+
+
 def _is_terminal(stream: object) -> bool:
     """Treat missing or unavailable terminal probes as nonterminal streams."""
     try:
@@ -492,19 +518,7 @@ def _read_stdin(
 
     def _read_text() -> str:
         try:
-            _time_remaining(deadline)
-            stream = cast("BinaryIO | None", getattr(stdin, "buffer", None))
-            _time_remaining(deadline)
-            with stream_read_deadline(deadline):
-                if stream is None:
-                    return read_input(stdin)
-                if (
-                    isinstance(stdin, TextIOWrapper)
-                    and type(stdin).read is TextIOWrapper.read
-                    and hasattr(stream, "__dict__")
-                ):
-                    return _read_wrapped_stdin(stdin, stream, deadline)
-                return _read_stdin_bytes(stream, deadline).decode("utf-8")
+            return _snapshot_stdin(stdin, deadline)
         except StreamReadTimeoutError:
             raise
         except UnicodeDecodeError as exc:
