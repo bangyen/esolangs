@@ -312,7 +312,11 @@ def _proof_snapshot_reader(
 
 
 def _proof_snapshot(
-    reader: Callable[[], Hashable], adapter: object, steps: int | None
+    reader: Callable[[], Hashable],
+    adapter: object,
+    steps: int | None,
+    *,
+    check_hash: bool = False,
 ) -> Hashable:
     try:
         state = reader()
@@ -331,6 +335,14 @@ def _proof_snapshot(
         if steps is not None and isinstance(adapter, _DelegatingVM):
             _retain_fault_steps(adapter, error, steps)
         raise
+    if check_hash:
+        try:
+            _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
+        except EsolangError as error:
+            from esolangs.vm import _retain_snapshot_key_fault
+
+            _retain_snapshot_key_fault(reader, error, steps)
+            raise
     return state
 
 
@@ -383,9 +395,8 @@ def _drive_halt_or_cycle(
     if halted_before:
         return _exact_halt(0, check_receiver, evidence=evidence)
     reader, check_each_snapshot = _proof_snapshot_reader(machine)
-    tortoise = _check_snapshot_hash(
-        _proof_snapshot(reader, adapter, None if evidence else 0),
-        _ProofSnapshotUnavailableError,
+    tortoise = _proof_snapshot(
+        reader, adapter, None if evidence else 0, check_hash=True
     )
     first_step = length = steps = 0
     power = 1
@@ -418,30 +429,53 @@ def _drive_halt_or_cycle(
         if _checked_halted(machine.halted):
             return _exact_halt(steps, check_receiver, evidence=evidence)
         state = _proof_snapshot(reader, adapter, None if evidence else steps)
-        if check_each_snapshot:
-            _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
-        if state == tortoise:
-            if not check_each_snapshot and state is not tortoise:
+        at_checkpoint = length == power
+        try:
+            if check_each_snapshot:
                 _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
-            if check_receiver is not None:
-                check_receiver()
-            return (
-                CycleDecision(
-                    halts=False,
-                    commands=steps,
-                    cycle=BoundaryCycle(tortoise, first_step, steps, 1),
-                )
-                if evidence
-                else False
+            repeated = bool(state == tortoise)
+            if not check_each_snapshot and (
+                state is not tortoise if repeated else at_checkpoint
+            ):
+                _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
+        except EsolangError as error:
+            from esolangs.vm import _retain_snapshot_key_fault
+
+            _retain_snapshot_key_fault(reader, error, None if evidence else steps)
+            raise
+        if repeated:
+            return _exact_repeat(
+                tortoise, first_step, steps, reader, check_receiver, evidence=evidence
             )
-        if length == power:
-            if not check_each_snapshot:
-                _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
+        if at_checkpoint:
             tortoise = state
             first_step = steps
             power *= 2
             length = 0
     return _exact_halt(steps, check_receiver, evidence=evidence)
+
+
+def _exact_repeat(
+    state: Hashable,
+    first_step: int,
+    steps: int,
+    reader: Callable[[], Hashable],
+    check_receiver: Callable[[], None] | None,
+    *,
+    evidence: bool,
+) -> bool | CycleDecision:
+    if check_receiver is not None:
+        check_receiver()
+    if not evidence:
+        return False
+    try:
+        cycle = BoundaryCycle(state, first_step, steps, 1)
+    except EsolangError as error:
+        from esolangs.vm import _retain_snapshot_key_fault
+
+        _retain_snapshot_key_fault(reader, error, None)
+        raise
+    return CycleDecision(halts=False, commands=steps, cycle=cycle)
 
 
 def _branch_cycle(
@@ -1134,12 +1168,15 @@ def _drive_until_halt(
     *,
     stop: Callable[[], bool] | None = None,
     on_fault: Callable[[EsolangError, int], None] | None = None,
+    check_active: Callable[[], None] | None = None,
 ) -> int | None:
     """Count completed commands on halt or fault, returning None on a stop."""
     _checked_adapter(machine)
     steps = 0
     try:
         while not _checked_halted(machine.halted):
+            if check_active is not None:
+                check_active()
             if limit is not None and steps >= limit:
                 return None
             if stop is not None:

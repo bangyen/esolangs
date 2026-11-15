@@ -24,6 +24,7 @@ class Catalog:
     languages: Mapping[str, LanguageDeclaration]
     _by_id: Mapping[str, str]
     _by_folded: Mapping[str, str]
+    _by_origin_slug: Mapping[str, tuple[str, ...]]
     _by_boolean: Mapping[str, LanguageDeclaration]
     _example_stems: Mapping[str, str]
     _runners: Mapping[str, tuple[str, bool]]
@@ -45,7 +46,11 @@ class Catalog:
         if len(ids) != len(records):
             raise ArgumentError("catalog language identifiers must be unique")
         folded: dict[str, str] = {}
+        origins: dict[str, list[str]] = {}
         for language in records:
+            slug = canonical_id(language.name)
+            if slug:
+                origins.setdefault(slug, []).append(language.name)
             for spelling in (language.id, language.name, *language.aliases):
                 key = spelling.strip().casefold()
                 if key in folded and folded[key] != language.name:
@@ -56,6 +61,11 @@ class Catalog:
         object.__setattr__(self, "languages", MappingProxyType(languages))
         object.__setattr__(self, "_by_id", MappingProxyType(ids))
         object.__setattr__(self, "_by_folded", MappingProxyType(folded))
+        object.__setattr__(
+            self,
+            "_by_origin_slug",
+            MappingProxyType({slug: tuple(owners) for slug, owners in origins.items()}),
+        )
         object.__setattr__(
             self,
             "_by_boolean",
@@ -200,8 +210,10 @@ def resolve_origin(origin: str, *, catalog: Catalog) -> str | None:
     if owner is not None and folded == owner.strip().casefold():
         return owner
     slug = canonical_id(origin)
-    owner = catalog._by_id.get(slug)  # noqa: SLF001 - catalog-owned index
-    # A lookup alias or unrelated ID can name a different owner in another scope.
-    if owner is not None and _matches_origin_slug(origin, owner, slug=slug):
-        return owner
-    return None
+    # IDs can differ from display slugs or point to unrelated languages.
+    owners = tuple(
+        owner
+        for owner in catalog._by_origin_slug.get(slug, ())  # noqa: SLF001
+        if _matches_origin_slug(origin, owner, slug=slug)
+    )
+    return owners[0] if len(owners) == 1 else None

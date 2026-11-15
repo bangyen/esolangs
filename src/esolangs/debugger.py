@@ -144,20 +144,33 @@ class Debugger(_ExecutionController):
         (Cyclic tag records the dump in its snapshot). The underlying
         machine must provide ``snapshot()``.
         """
-        return _check_snapshot_hash(self._snapshot_value(), ArgumentError)
+        return self._read_snapshot()[0]
 
     def _snapshot_value(self) -> Hashable:
+        return self._read_snapshot(check_hash=False)[0]
+
+    def _read_snapshot(
+        self, *, check_hash: bool = True
+    ) -> tuple[Hashable, _DelegatingVM | None]:
         vm = self.vm
         snapshot: Callable[[], Hashable] | None = getattr(vm, "snapshot", None)
         if not callable(snapshot):
             raise _SnapshotUnavailableError(vm)
-        if (
-            isinstance(vm, _DelegatingVM)
-            and type(snapshot) is MethodType
-            and snapshot.__func__ is _DelegatingVM.snapshot
-        ):
-            return vm._snapshot_value()  # noqa: SLF001 - delegate the state lookup
-        return snapshot()
+        owner = None
+        method = snapshot.__func__ if type(snapshot) is MethodType else None
+        if isinstance(vm, _DelegatingVM) and method is _DelegatingVM.snapshot:
+            state, owner = vm._snapshot_value(), vm  # noqa: SLF001
+        elif isinstance(vm, Debugger) and method is Debugger.snapshot:
+            state, owner = vm._read_snapshot()  # noqa: SLF001 - same observer API
+        else:
+            state = snapshot()
+        if check_hash:
+            _check_snapshot_hash(
+                state,
+                ArgumentError,
+                on_fault=None if owner is None else owner._observe_snapshot_key_fault,  # noqa: SLF001
+            )
+        return state, owner
 
     def break_at(self, ip: int | tuple[int, ...]) -> None:
         """Stop when the program counter reaches ``ip``.

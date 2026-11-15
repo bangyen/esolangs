@@ -3,7 +3,7 @@
 from collections.abc import Callable, Hashable
 from typing import Protocol, runtime_checkable
 
-from esolangs.exceptions import ArgumentError, InterpreterLimitError
+from esolangs.exceptions import ArgumentError, EsolangError, InterpreterLimitError
 from esolangs.runtime._lifecycle import (
     HALTED_REPORT,
     POST_HALT_REPORT,
@@ -44,12 +44,21 @@ class _SnapshotUnavailableError(ArgumentError):
 _SNAPSHOT_HASH_ERROR = "snapshot() must return a hashable state"
 
 
-def _check_snapshot_hash(state: Hashable, error_type: type[Exception]) -> Hashable:
+def _check_snapshot_hash(
+    state: Hashable,
+    error_type: type[Exception],
+    *,
+    on_fault: Callable[[EsolangError], None] | None = None,
+) -> Hashable:
     """Validate the returned state independently of the snapshot hook itself."""
     try:
         hash(state)
     except TypeError as error:
         raise error_type(_SNAPSHOT_HASH_ERROR) from error
+    except EsolangError as error:
+        if on_fault is not None:
+            on_fault(error)
+        raise
     return state
 
 

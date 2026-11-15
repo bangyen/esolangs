@@ -13,7 +13,7 @@ import esolangs
 from esolangs import ProgramArtifact
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import InputSlot, TemplateLayout, layout_tokens
-from esolangs.generation.wrap import TokenWrapper
+from esolangs.generation.wrap import TokenWrapper, wrap_chars
 from esolangs.registry import LANGUAGES
 from esolangs.registry._backend import TemplateSpec
 from tests.support.dialect_support import CASES
@@ -689,10 +689,24 @@ def test_checked_portable_instantiation_accepts_balanced_eof_slot() -> None:
     slot = InputSlot(0)
     plain = layout_tokens(["+" * 48 + ".", slot], separator="")
     balanced = layout_tokens(["+" * 24 + "\n" + "+" * 24 + ".", slot], separator="")
+    requests = []
+    extracted = []
+
+    def emit(request: GenerationRequest) -> TemplateLayout:
+        assert request not in requests
+        requests.append(request)
+        return plain
+
+    def setters(text: str, inputs: int):
+        key = text, inputs
+        assert key not in extracted
+        extracted.append(key)
+        return (("", ""),) * inputs
+
     backend = replace(
         original.backend,
-        entrypoint=lambda _: plain,
-        template=TemplateSpec(pair=("", "")),
+        entrypoint=emit,
+        template=TemplateSpec(setters=setters),
         balance=lambda _: balanced,
     )
     api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
@@ -701,18 +715,32 @@ def test_checked_portable_instantiation_accepts_balanced_eof_slot() -> None:
     assert isinstance(restored, esolangs.TemplateArtifact)
     assert restored == record
     assert restored.spans == ((50, 50),)
+    requests.clear()
+    extracted.clear()
     default = api.generate("00")
+    requests.clear()
+    extracted.clear()
     assert api.run(api.instantiate(default, [1], truth_table="00")).output == "0"
+    assert [request.width for request in requests] == [None]
+    assert extracted == [(plain.source, 1)]
+    requests.clear()
+    extracted.clear()
     with pytest.raises(esolangs.ProgramError, match="requires a slot-aware wrapper"):
         api.generate("00", width=1)
     for bit in (0, 1):
         assert api.evaluate(restored, [bit]).answer == "0"
+        requests.clear()
+        extracted.clear()
         filled = api.instantiate(restored, [bit], truth_table="00")
+        assert [request.width for request in requests] == [None]
+        assert extracted == [(plain.source, 1), (balanced.source, 1)]
         assert filled == restored.fill([bit])
         assert api.run(filled).output == "0"
 
     changed = replace(restored, source="+" + restored.source, spans=((51, 51),))
     assert api.run(changed.fill([0])).output == "1"
+    requests.clear()
+    extracted.clear()
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         api.instantiate(changed, [0], truth_table="00")
 
@@ -770,7 +798,65 @@ def test_template_layout_keeps_eof_slots_on_an_empty_line(source: str) -> None:
     )
 
 
+def _check_width_provider_reuse() -> None:
+    original = LANGUAGES[REFERENCE]
+    requests = []
+    extracted = []
+
+    def emit(request: GenerationRequest) -> TemplateLayout:
+        assert request not in requests
+        requests.append(request)
+        return _identity_layout(request.width)
+
+    def setters(text: str, inputs: int):
+        key = text, inputs
+        assert key not in extracted
+        extracted.append(key)
+        return (("x", "+"),) * inputs
+
+    for layout_width in (False, True):
+        backend = replace(
+            original.backend,
+            entrypoint=emit,
+            template=TemplateSpec(setters=setters),
+            layout_width=layout_width,
+            wrap=None if layout_width else wrap_chars,
+        )
+        api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+        requests.clear()
+        extracted.clear()
+        generated = api.generate("01", width=8)
+        restored = api.from_json(api.to_json(generated))
+        assert isinstance(restored, esolangs.TemplateArtifact)
+        assert "\n" in restored.source
+        for bit, width, witnesses in ((0, 8, [8]), (1, None, [1, 8])):
+            requests.clear()
+            extracted.clear()
+            filled = api.instantiate(restored, [bit], width=width, truth_table="01")
+            assert [request.width for request in requests] == (
+                [None, *witnesses] if layout_width else [None]
+            )
+            extra = [(_identity_layout(1).source, 1)] if width is None else []
+            assert extracted == [
+                (_identity_layout().source, 1),
+                (restored.source, 1),
+                *extra,
+            ]
+            assert api.run(filled).output == str(bit)
+
+        altered = replace(
+            restored, bindings=replace(restored.bindings, setters=(("+", "x"),))
+        )
+        assert api.run(altered.fill([0])).output == "1"
+        requests.clear()
+        extracted.clear()
+        with pytest.raises(esolangs.TemplateError, match="not the template"):
+            api.instantiate(altered, [0], width=8, truth_table="01")
+        assert [request.width for request in requests] == [None]
+
+
 def test_checked_portable_instantiation_uses_the_requested_native_width() -> None:
+    _check_width_provider_reuse()
     original = LANGUAGES[REFERENCE]
 
     def emit(request: GenerationRequest) -> TemplateLayout:

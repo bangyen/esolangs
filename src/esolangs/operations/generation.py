@@ -45,6 +45,7 @@ from esolangs.registry import (
     render_template,
     template_setters,
 )
+from esolangs.registry._backend import Generator
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._validate import (
     _has_backing_type,
@@ -165,6 +166,47 @@ def _generation_settings(
     return settings
 
 
+class _TemplateProbes:
+    """Reuse successful backend results within one checked instantiation."""
+
+    def __init__(self) -> None:
+        self._sources: dict[GenerationRequest, tuple[Generator, GeneratedProgram]] = {}
+        self.bindings: dict[tuple[str, int], TemplateBindings] = {}
+
+    def generate(self, hook: Generator, request: GenerationRequest) -> GeneratedProgram:
+        saved = self._sources.get(request)
+        if saved is None or saved[0] is not hook:
+            saved = hook, call_backend(hook, request)
+            self._sources[request] = saved
+        return saved[1]
+
+    def matches_bindings(
+        self,
+        supplied: TemplateBindings,
+        text: str,
+        *,
+        char: str,
+        language_id: str,
+        catalog: Catalog,
+    ) -> bool:
+        inputs = len(supplied.setters)
+        key = text, inputs
+        checked = self.bindings.get(key)
+        if checked is None:
+            try:
+                expected = check_setters(
+                    template_setters(language_id, text, inputs, catalog=catalog)
+                )
+            except EsolangError:
+                raise
+            except ValueError:
+                # A setter extractor can reject a caller-supplied source layout.
+                return False
+            checked = TemplateBindings(char=char, setters=expected)
+            self.bindings[key] = checked
+        return supplied.setters == checked.setters
+
+
 def _generate(
     resolved: str,
     truth_table: str,
@@ -175,6 +217,7 @@ def _generate(
     balance: bool = False,
     scale: int | None = None,
     catalog: Catalog,
+    probes: _TemplateProbes | None = None,
 ) -> Artifact:
     """Render with validated dialect choices, including during layout probes."""
     lang = catalog.languages[resolved]
@@ -203,6 +246,7 @@ def _generate(
                 width=width,
                 balance=balance,
                 catalog=catalog,
+                probes=probes,
             ),
         )
         # Materialize the base so upscaled() checks the pixel limit now, not
@@ -229,20 +273,18 @@ def _generate(
     truth_table = check_table_text(truth_table)
     if balance:
         return _generate_balanced(
-            resolved, truth_table, options, settings, catalog=catalog
+            resolved, truth_table, options, settings, catalog=catalog, probes=probes
         )
     width = check_width(width)
     inputs = _validate_truth_table(truth_table)
     backend.check_arity(resolved, inputs)
     fn = backend.generate
     laid_out = width is not None and backend.layout_width
-    generated = call_backend(
-        fn,
-        GenerationRequest(
-            truth_table,
-            width if laid_out else None,
-            _backend_options(schema, options),
-        ),
+    request = GenerationRequest(
+        truth_table, width if laid_out else None, _backend_options(schema, options)
+    )
+    generated = (
+        call_backend(fn, request) if probes is None else probes.generate(fn, request)
     )
     if isinstance(generated, TemplateLayout):
         if backend.template is None or lang.runtime.source_kind is SourceKind.RASTER:
@@ -268,6 +310,7 @@ def _generate(
             inputs,
             settings,
             catalog,
+            probes=probes,
         )
     if lang.runtime.source_kind is SourceKind.RASTER:
         if not isinstance(generated, Raster):
@@ -316,14 +359,25 @@ def _structured_template(
     inputs: int,
     settings: DialectSettings | None,
     catalog: Catalog,
+    *,
+    probes: _TemplateProbes | None = None,
 ) -> TemplateArtifact:
     """Preserve the backend's slot positions alongside its rendered source."""
-    text, char, pairs = call_backend(
-        render_template, language_id, layout.source, inputs, catalog=catalog
-    )
-    bindings = TemplateBindings(char=char, setters=pairs)
-    if bindings.inputs != inputs:
-        raise ProgramError(f"{name}'s template must bind all {inputs} inputs")
+    text = layout.source
+    # A backend-supplied str subclass may carry data its own setter reads.
+    if type(text) is not str:
+        probes = None
+    key = text, inputs
+    bindings = probes.bindings.get(key) if probes is not None else None
+    if bindings is None:
+        text, char, pairs = call_backend(
+            render_template, language_id, text, inputs, catalog=catalog
+        )
+        bindings = TemplateBindings(char=char, setters=pairs)
+        if bindings.inputs != inputs:
+            raise ProgramError(f"{name}'s template must bind all {inputs} inputs")
+        if probes is not None:
+            probes.bindings[key] = bindings
     return TemplateArtifact(
         text,
         name,
@@ -340,9 +394,12 @@ def _generate_balanced(
     settings: DialectSettings | None,
     *,
     catalog: Catalog,
+    probes: _TemplateProbes | None = None,
 ) -> Artifact:
     """Return ``generate(..., balance=True)``: the default, rebuilt squarest."""
-    default = _generate(name, truth_table, options, settings, catalog=catalog)
+    default = _generate(
+        name, truth_table, options, settings, catalog=catalog, probes=probes
+    )
     source = default.source
     inputs = len(truth_table).bit_length() - 1
     lang = catalog.languages[name]
@@ -386,7 +443,13 @@ def _generate_balanced(
         )
         if isinstance(text, TemplateLayout) and isinstance(default, TemplateArtifact):
             return _structured_template(
-                text, lang.id, name, default.bindings.inputs, settings, catalog
+                text,
+                lang.id,
+                name,
+                default.bindings.inputs,
+                settings,
+                catalog,
+                probes=probes,
             )
         if isinstance(default, TemplateArtifact):
             raise ProgramError(f"{name}'s template balancer did not return slots")
@@ -488,15 +551,27 @@ def _is_template_for(
     options = {} if settings is None else DialectSettings.options(settings)
     settings = _generation_settings(name, options, settings, catalog=catalog)
     backend = catalog.languages[name].backend
+    probes = _TemplateProbes()
+
+    def render(*, width: int | None = None, balance: bool = False) -> Artifact:
+        return _generate(
+            name,
+            truth_table,
+            options,
+            settings,
+            width=width,
+            balance=balance,
+            catalog=catalog,
+            probes=probes,
+        )
+
     try:
-        canonical = _generate(name, truth_table, options, settings, catalog=catalog)
+        canonical = render()
         default_available = True
     except GeneratorCapError:
         if width is None or backend is None or not backend.layout_width:
             raise
-        canonical = _generate(
-            name, truth_table, options, settings, width=width, catalog=catalog
-        )
+        canonical = render(width=width)
         default_available = False
     if not isinstance(canonical, TemplateArtifact):
         return False
@@ -515,18 +590,13 @@ def _is_template_for(
             validate_spans(text, bindings.char, template.bindings.setters, spans)
         except ValueError:
             return False
-    try:
-        expected = check_setters(
-            template_setters(
-                catalog.languages[name].id, text, bindings.inputs, catalog=catalog
-            )
-        )
-    except EsolangError:
-        raise
-    except ValueError:
-        # A setter extractor can reject a caller-supplied source layout.
-        return False
-    if template.bindings.setters != expected:
+    if not probes.matches_bindings(
+        template.bindings,
+        text,
+        char=bindings.char,
+        language_id=catalog.languages[name].id,
+        catalog=catalog,
+    ):
         return False
     plain = canonical.source
     matches_canonical = text == plain
@@ -541,9 +611,7 @@ def _is_template_for(
 
     @cache
     def layout(width: int) -> str:
-        source = _generate(
-            name, truth_table, options, settings, width=width, catalog=catalog
-        ).source
+        source = render(width=width).source
         if not isinstance(source, str):
             raise TemplateError("template layouts must return text")
         return source
@@ -562,9 +630,7 @@ def _is_template_for(
     ):
         return False
     try:
-        balanced = _generate(
-            name, truth_table, options, settings, balance=True, catalog=catalog
-        )
+        balanced = render(balance=True)
     except GeneratorCapError:
         return False
     return (

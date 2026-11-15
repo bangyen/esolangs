@@ -1,5 +1,6 @@
 """CV(N)(C) through the shared API, CLI and machinery."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -70,3 +71,15 @@ class TestPathAndTextTrailingNewline:
 def test_the_override_name_specifically(name: str) -> None:
     """Named, so a future override cannot quietly reintroduce the gap."""
     assert esolangs.describe(f" {name} ").name == name
+    api = esolangs.Language(name)
+    artifact = api.generate("01")
+    expected = artifact.evaluate([1])
+    assert expected.answer == expected.observation.output == "1"
+    for settings in (None, api.settings()):
+        tagged = replace(artifact, language="cv_n_c", settings=settings)
+        assert tagged.evaluate([1]) == api.prepare(tagged).evaluate([1]) == expected
+        restored = api.from_json(api.to_json(tagged))
+        assert restored.language == api.name
+        assert restored.evaluate([1]) == expected
+    with pytest.raises(esolangs.ProgramError, match="generated for"):
+        api.run(replace(artifact, language="cvnc"))

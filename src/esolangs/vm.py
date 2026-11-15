@@ -25,7 +25,7 @@ from collections.abc import Callable, Hashable
 from contextlib import AbstractContextManager
 from dataclasses import replace
 from inspect import getattr_static
-from types import FunctionType, ModuleType
+from types import FunctionType, MethodType, ModuleType
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 import esolangs._cycles as _cycles
@@ -105,10 +105,14 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
         _retain_fault_steps(vm, error, steps + completed)
 
     while True:
-        if not vm.self_halts and not _checked_halted(vm.halted):
-            raise ArgumentError("completion requires a machine that self-halts")
+        _require_self_halt(vm)
         remaining = None if max_steps is None else max_steps - steps
-        completed = _drive_until_halt(vm, remaining, on_fault=retain)
+        completed = _drive_until_halt(
+            vm,
+            remaining,
+            on_fault=retain,
+            check_active=_completion_receiver_guard(vm),
+        )
         if completed is None:
             _check_driver_fields(vm, "vm", "output")
             error = steps_exhausted("VM completion exhausted max_steps")
@@ -120,6 +124,35 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
         if _finalize_halted_vm(vm, steps):
             _check_driver_fields(vm, "vm", "output")
             return vm.output
+
+
+def _require_self_halt(vm: VM) -> None:
+    if not vm.self_halts and not _checked_halted(vm.halted):
+        raise ArgumentError("completion requires a machine that self-halts")
+
+
+def _completion_receiver_guard(vm: VM) -> Callable[[], None] | None:
+    """Check the active completion contract when a controller changes routes."""
+    from esolangs.runtime._controller import (
+        ExecutionController,
+        _receiver_matches,
+        _receiver_tail,
+    )
+
+    if not isinstance(vm, ExecutionController):
+        return None
+    wrapped = vm.vm
+    tail = _receiver_tail(wrapped)
+
+    def check_active() -> None:
+        nonlocal wrapped, tail
+        if vm.vm is wrapped and (tail is None or _receiver_matches(vm, wrapped, tail)):
+            return
+        _require_self_halt(vm)
+        wrapped = vm.vm
+        tail = _receiver_tail(wrapped)
+
+    return check_active
 
 
 def _finalize_halted_vm(vm: VM, steps: int) -> bool:
@@ -365,7 +398,20 @@ class _DelegatingVM:
 
     def snapshot(self) -> Hashable:
         """Return the underlying machine's complete hashable state."""
-        return _check_snapshot_hash(self._snapshot_value(), ArgumentError)
+        return _check_snapshot_hash(
+            self._snapshot_value(),
+            ArgumentError,
+            on_fault=self._observe_snapshot_key_fault,
+        )
+
+    def _observe_snapshot_key_fault(
+        self, error: EsolangError, steps: int | None = None
+    ) -> None:
+        if error.observation is None and not error.partial_output:
+            observation = self._result(None)
+            if steps is not None:
+                observation = replace(observation, steps=steps)
+            _record_vm_fault(self, error, observation)
 
     def _snapshot_value(self) -> Hashable:
         """Read a state for a consumer that handles its own evidence validation."""
@@ -524,6 +570,18 @@ def _capture_observation(
         # Use owned code; unrelated instance attributes remain caller-owned.
         return _DelegatingVM._result(owner, report)  # noqa: SLF001
     return ExecutionResult(owner.output, None, None, None, completion=report)
+
+
+def _retain_snapshot_key_fault(
+    reader: Callable[[], Hashable], error: EsolangError, steps: int | None
+) -> None:
+    """Attach IO only when the proof used the registered VM's own snapshot."""
+    if (
+        type(reader) is MethodType
+        and reader.__func__ is _DelegatingVM._snapshot_value  # noqa: SLF001
+        and isinstance(owner := reader.__self__, _DelegatingVM)
+    ):
+        owner._observe_snapshot_key_fault(error, steps)  # noqa: SLF001
 
 
 def _record_vm_fault(vm: VM, error: EsolangError, observation: ExecutionResult) -> None:

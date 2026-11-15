@@ -44,6 +44,13 @@ def test_prepared_constructor_accepts_owner_spelling_and_refuses_invalid_types()
     with pytest.raises(esolangs.ArgumentError, match="catalog must be a Catalog"):
         esolangs.PreparedProgram(artifact, object())
 
+    malformed = esolangs.ProgramArtifact("[", api.name)
+    with pytest.raises(esolangs.ProgramError) as expected:
+        api.prepare(malformed)
+    with pytest.raises(esolangs.ProgramError) as caught:
+        esolangs.PreparedProgram(malformed, api.catalog)
+    assert caught.value.args == expected.value.args
+
     class ClaimedArtifact:
         def __init__(self, claim: type) -> None:
             self.claim = claim
@@ -93,21 +100,42 @@ def test_prepared_constructor_refuses_foreign_ownership(
         api.from_json(owner.to_json(artifact))
 
 
-def test_stored_owner_slug_is_independent_of_a_lookup_alias() -> None:
+def test_stored_owner_slug_is_independent_of_lookup() -> None:
     declaration = esolangs.Language(REFERENCE).catalog.languages[REFERENCE]
-    owner = replace(declaration, name="Scoped Runtime", id="")
-    decoy = replace(
-        declaration, name="Alias Runtime", id="", aliases=("scoped-runtime",)
-    )
-    catalog = esolangs.Catalog([owner, decoy])
-    assert catalog.bind("scoped-runtime").name == decoy.name
-    api = catalog.bind(owner.name)
-    artifact = esolangs.ProgramArtifact(",.", " scoped-runtime ")
-    direct = esolangs.PreparedProgram(artifact, catalog)
-    assert direct.language == owner.name
-    assert direct.run(stdin="1").output == "1"
-    assert artifact.evaluate([1], catalog=catalog).answer == "1"
-    assert api.evaluate(artifact, [1]).answer == "1"
+    for owner_id, decoy_id, aliases in (
+        ("", "", ("scoped-runtime",)),
+        ("owner", "scoped_runtime", ()),
+    ):
+        owner = replace(declaration, name="Scoped Runtime", id=owner_id)
+        decoy = replace(declaration, name="Alias Runtime", id=decoy_id, aliases=aliases)
+        catalog = esolangs.Catalog([owner, decoy])
+        assert catalog.bind("scoped-runtime").name == decoy.name
+        api = catalog.bind(owner.name)
+        artifact = esolangs.ProgramArtifact(",.", " scoped-runtime ")
+        direct = esolangs.PreparedProgram(artifact, catalog)
+        assert direct.language == owner.name
+        assert direct.run(stdin="1").output == "1"
+        assert artifact.evaluate([1], catalog=catalog).answer == "1"
+        assert api.evaluate(artifact, [1]).answer == "1"
+    _check_ambiguous_owner_slug_requires_a_display_name()
+
+
+def _check_ambiguous_owner_slug_requires_a_display_name() -> None:
+    declaration = esolangs.Language(REFERENCE).catalog.languages[REFERENCE]
+    left = replace(declaration, name="Scoped Runtime", id="scoped_runtime")
+    right = replace(declaration, name="Scoped-Runtime", id="runtime_right")
+    catalog = esolangs.Catalog([left, right])
+    ambiguous = esolangs.ProgramArtifact("+.", "scoped—runtime")
+    assert catalog.resolve(ambiguous.language) == left.name
+    for owner in (left, right):
+        api = catalog.bind(owner.name)
+        canonical = replace(ambiguous, language=f" {owner.name.upper()} ")
+        assert api.prepare(canonical).language == owner.name
+        assert api.run(canonical).output == "\x01"
+        with pytest.raises(esolangs.ProgramError, match="generated for"):
+            api.run(ambiguous)
+    with pytest.raises(esolangs.ProgramError, match="generated for"):
+        ambiguous.evaluate([1], catalog=catalog)
 
 
 @pytest.mark.medium

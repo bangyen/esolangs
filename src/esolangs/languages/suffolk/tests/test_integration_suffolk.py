@@ -22,6 +22,7 @@ from tests.support.certification_barrier import guarded_worker
 from tests.support.cli_support import run_cli
 from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated
+from tests.support.reference import REFERENCE
 from tests.support.vm_support import (
     _STEP_BUDGET,
     _row,
@@ -84,6 +85,31 @@ def test_a_non_self_halting_machine_can_already_be_finished() -> None:
     assert not vm.self_halts
     assert run_until_halt(vm, 2)
     assert complete_vm(vm, max_steps=0) == run("Suffolk", ",", stdin="1").output
+
+    class SwapAfterCommand(debugger_api.Debugger):
+        def __init__(self, replacement):
+            super().__init__(make_vm(REFERENCE, "+."))
+            self.replacement = replacement
+
+        def step(self):
+            super().step()
+            self.vm = self.replacement
+
+    for max_steps in (1, 4):
+        active = make_vm("Suffolk", ",.", stdin="B")
+        original_ip = active.ip
+        with pytest.raises(esolangs.ArgumentError, match="machine that self-halts"):
+            complete_vm(active, max_steps=max_steps)
+        outer = debugger_api.Debugger(SwapAfterCommand(active))
+        with pytest.raises(esolangs.ArgumentError, match="machine that self-halts"):
+            complete_vm(outer, max_steps=max_steps)
+        assert outer.observation.steps == 1
+        assert active.ip == original_ip
+        assert active.output == ""
+
+    already_halted = debugger_api.Debugger(SwapAfterCommand(vm))
+    assert complete_vm(already_halted, max_steps=1) == vm.output
+    assert already_halted.observation.steps == 1
 
 
 def test_the_value_growth_detector_proves_a_climb_and_declines_a_repeat() -> None:
@@ -285,6 +311,7 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     with pytest.raises(TypeError, match="snapshot comparison") as caught:
         prepared.execute(stdin="A", limits=limits)
     assert caught.value is original
+    _check_snapshot_key_faults(scoped, interpreter, monkeypatch)
 
     monkeypatch.setattr(
         vm,
@@ -305,6 +332,119 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     monkeypatch.setattr(interpreter, "_execute", lambda *_args: POST_HALT_REPORT)
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
         esolangs.run("Suffolk", "<")
+
+
+def _check_snapshot_key_faults(api, interpreter, monkeypatch):
+    fault = None
+    fail_hash = None
+    hashes = 0
+
+    class Key:
+        def __hash__(self):
+            nonlocal hashes
+            hashes += 1
+            if fault is not None and hashes == fail_hash:
+                raise fault
+            return 29
+
+        def __eq__(self, other):
+            if fault is not None and fail_hash is None:
+                raise fault
+            return isinstance(other, Key)
+
+    class Machine:
+        halted = dumps_on_the_post_halt_step = False
+        steppable_to_answer = True
+        snapshot = staticmethod(Key)
+
+        def __init__(self, io):
+            self.io = io
+            io.print_char(chr(io.input_char()))
+
+        def step(self):
+            self.io.print_str("!")
+
+        @property
+        def output(self):
+            return self.io.getvalue()
+
+    class CallerSnapshot(debugger_api.Debugger):
+        def snapshot(self):
+            return Key()
+
+    with monkeypatch.context() as hooks:
+        hooks.setattr(interpreter, "custom_prepare", lambda *_args: Machine)
+        prepared = api.prepare("<")
+        limits = esolangs.ExecutionLimits(max_steps=2)
+
+        def make_debugger():
+            return prepared.make_debugger(stdin="A")
+
+        def prove():
+            return run_until_halt_or_cycle(make_debugger(), limit=2)
+
+        calls = (
+            (lambda: prepared.make_vm(stdin="A").snapshot(), 1, None, True),
+            (lambda: make_debugger().snapshot(), 1, None, True),
+            (lambda: debugger_api.Debugger(make_debugger()).snapshot(), 2, None, True),
+            (prove, 1, 0, True),
+            (prove, None, 1, True),
+            (lambda: prepared.run(stdin="A", limits=limits), 1, 0, True),
+            (lambda: prepared.run(stdin="A", limits=limits), None, 1, True),
+            (
+                lambda: debugger_api.Debugger(
+                    debugger_api.Debugger(Machine(ScriptedIO("A")))
+                ).snapshot(),
+                2,
+                None,
+                False,
+            ),
+            (
+                lambda: run_until_halt_or_cycle(
+                    CallerSnapshot(prepared.make_vm(stdin="A")), limit=2
+                ),
+                1,
+                0,
+                False,
+            ),
+        )
+        for invoke, fail_hash, steps, owned in calls:
+            fault = esolangs.HaltError("snapshot key refused")
+            hashes = 0
+            with pytest.raises(
+                esolangs.HaltError, match="snapshot key refused"
+            ) as caught:
+                invoke()
+            assert caught.value is fault
+            if fail_hash is not None:
+                assert hashes == fail_hash
+            if owned:
+                output = "A!" if steps == 1 else "A"
+                assert fault.observation == esolangs.ExecutionResult(
+                    output, 1, 1, 0, steps=steps
+                )
+                assert fault.partial_output == output
+            else:
+                assert fault.observation is None
+                assert fault.partial_output == ""
+
+        foreign = esolangs.ExecutionResult("other", 2, 1, 0, steps=7)
+        for observation in (None, foreign):
+            fault = esolangs.HaltError("foreign key fault")
+            fault.observation = observation
+            fault.partial_output = "other"
+            fail_hash = None
+            with pytest.raises(esolangs.HaltError, match="foreign key fault") as caught:
+                prove()
+            assert caught.value is fault
+            assert fault.observation is observation
+            assert fault.partial_output == "other"
+
+        fault = None
+        assert prove() is False
+        result = prepared.run(stdin="A", limits=limits)
+        assert result.output == "A!"
+        assert result.steps == result.completion.cycle.repeat_pass == 1
 
 
 @pytest.mark.medium

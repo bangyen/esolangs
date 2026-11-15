@@ -133,7 +133,7 @@ class PreparedProgram:
     )
 
     def __post_init__(self) -> None:
-        """Retain validated dialect options and immutable shaped source."""
+        """Validate source and retain its machine preparation."""
         from esolangs.operations.source import _check_program
 
         if not _has_backing_type(self.artifact, ProgramArtifact):
@@ -149,6 +149,7 @@ class PreparedProgram:
         )
         check_scale_for(artifact.language, artifact.scale, catalog=catalog)
         self._bind_artifact(artifact, catalog)
+        self._bind_machine()
 
     @classmethod
     def _from_checked(
@@ -224,6 +225,15 @@ class PreparedProgram:
     ) -> tuple[RunnerProgram, dict[str, Any]]:
         code = list(self._code) if isinstance(self._code, tuple) else self._code
         return code, self._options(seed=seed, reproducible=reproducible)
+
+    def _bind_machine(self) -> None:
+        """Prepare the machine before returning a reusable program."""
+        with interpreter_errors(
+            f"the {self.language} interpreter recursed deeper than CPython's stack "
+            "limit allows while preparing this program",
+            language=self.language,
+        ):
+            self._factory()
 
     def _factory(
         self, *, seed: int | None = None, reproducible: bool = True
@@ -455,12 +465,7 @@ def _prepare_checked_program(
             module = module_loader(name, catalog=catalog)
         prepared._bind_module(module)  # noqa: SLF001 - preparation owns module binding
     if bind_machine:
-        with interpreter_errors(
-            f"the {name} interpreter recursed deeper than CPython's stack "
-            "limit allows while preparing this program",
-            language=name,
-        ):
-            prepared._factory()  # noqa: SLF001 - preparation owns the plan
+        prepared._bind_machine()  # noqa: SLF001 - preparation owns the plan
     return prepared
 
 
