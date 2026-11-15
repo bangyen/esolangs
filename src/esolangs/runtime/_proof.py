@@ -247,6 +247,12 @@ def _step_proof_receiver(
     check_receiver()
 
 
+def _check_branch_halt(halted: object, error_type: type[TypeError]) -> None:
+    """A detached terminal certificate requires a true boolean."""
+    if halted is not True:
+        raise error_type("branching_halted must return a bool")
+
+
 def _read_branch_root(machine: _BranchingStepMachine, adapter: object) -> Hashable:
     """Read a detached root, retaining owned IO if the live snapshot fails."""
     try:

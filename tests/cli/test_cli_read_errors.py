@@ -11,6 +11,7 @@ import sys
 import threading
 from collections.abc import Buffer, Iterator
 from contextvars import ContextVar
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ from esolangs.cli.io import (
     _read_stdin,
     _write_output,
 )
+from esolangs.registry import _table
 from tests.support.reference import REFERENCE
 
 
@@ -749,9 +751,48 @@ def test_cli_completes_text_adapter_writes_or_reports_the_partial_failure(
         diagnostic = capsys.readouterr().err
         assert "no input" in diagnostic or "end of input" in diagnostic
 
+        class ProbeAfterWrite(io.StringIO):
+            def __init__(self, *, closes: bool) -> None:
+                super().__init__()
+                self.closes = closes
+                self.accepted = ""
+
+            def write(self, text: str) -> int:
+                count = super().write(text)
+                self.accepted = self.getvalue()
+                if self.closes:
+                    self.close()
+                return count
+
+            def isatty(self) -> bool:
+                if self.closed:
+                    return super().isatty()
+                raise ValueError("invalid terminal probe callback")
+
+        for source in ("+.", "+.,"):
+            path.write_text(source)
+            for closes in (False, True):
+                stdout = ProbeAfterWrite(closes=closes)
+                with monkeypatch.context() as patch:
+                    patch.setattr(sys, "stdout", stdout)
+                    patch.setattr(sys, "stdin", io.StringIO())
+                    patch.setattr(
+                        sys, "argv", ["esolangs", "run", REFERENCE, str(path)]
+                    )
+                    with pytest.raises(SystemExit) as exited:
+                        main()
+                assert stdout.accepted == "\x01"
+                assert exited.value.code == (120 if closes else 70)
+                diagnostic = capsys.readouterr().err
+                assert diagnostic.startswith(
+                    "cannot write stdout:" if closes else "internal error: ValueError:"
+                )
+
 
 @pytest.mark.parametrize("gzip_export", [False, True], ids=["display", "gzip"])
-def test_cli_completes_short_raw_adapter_writes(tmp_path, monkeypatch, gzip_export):
+def test_cli_completes_short_raw_adapter_writes(
+    tmp_path, monkeypatch, capsys, gzip_export
+):
     class ShortRaw(io.RawIOBase):
         def __init__(self, limit: int | None = None) -> None:
             super().__init__()
@@ -802,6 +843,33 @@ def test_cli_completes_short_raw_adapter_writes(tmp_path, monkeypatch, gzip_expo
             )
             == "1"
         )
+
+        original = _table.LANGUAGES[REFERENCE]
+        backend = original.backend
+        assert backend is not None
+        raw = ShortRaw()
+        with io.TextIOWrapper(raw, encoding="utf-8") as stdout:
+
+            def close_stdout(request):
+                source = backend.generate(request)
+                stdout.close()
+                return source
+
+            declaration = replace(
+                original, backend=replace(backend, entrypoint=close_stdout)
+            )
+            scope = esolangs.Catalog([declaration])
+            with monkeypatch.context() as patch:
+                patch.setattr(_table, "CATALOG", scope)
+                patch.setattr(sys, "stdout", stdout)
+                patch.setattr(
+                    sys, "argv", ["esolangs", "generate", "--gzip", REFERENCE, "01"]
+                )
+                with pytest.raises(SystemExit) as exited:
+                    main()
+        assert exited.value.code == 120
+        assert not raw.data
+        assert capsys.readouterr().err.startswith("cannot write stdout:")
     else:
         assert data == f"esolangs {esolangs.__version__}\r".encode("utf-16-le")
         for encoding, limit, expected in (

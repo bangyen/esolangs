@@ -277,6 +277,7 @@ class ExecutionController:
                     return "max_steps"
                 self._take_step()
 
+            _raise_halt_fault(self)
             # The final command and the dump can each trigger a breakpoint.
             requested = self._stop_requested()
             if requested == "breakpoint":

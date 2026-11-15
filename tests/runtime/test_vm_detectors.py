@@ -562,6 +562,23 @@ def _check_malformed_branch_states(monkeypatch) -> None:
     result = api.evaluate(artifact, [1], limits=limits)
     assert result.termination.branches.terminal == (1,)
     assert result.observation == ExecutionResult("1!", 1, 1, 0)
+    diagnostic = "branching_halted must return a bool"
+    for invalid in ("still active", 0):
+        with monkeypatch.context() as hooks:
+            hooks.setattr(
+                Machine,
+                "branching_halted",
+                lambda _self, state, value=invalid: value if state == (1,) else False,
+            )
+            for detector in detectors:
+                debugger = api.make_debugger(artifact, stdin="1")
+                with pytest.raises(TypeError, match=diagnostic):
+                    detector(debugger, limit=2)
+                assert not debugger.halted
+                assert debugger.observation == ExecutionResult("1", 1, 1, 0, steps=0)
+            with pytest.raises(InterpreterLimitError, match=diagnostic) as caught:
+                api.evaluate(artifact, [1], limits=limits)
+            assert caught.value.observation == ExecutionResult("1", 1, 1, 0)
     _check_branch_successor_containers(api, artifact, limits, Machine, monkeypatch)
     _check_branch_root_faults(api, artifact, Machine, monkeypatch)
 

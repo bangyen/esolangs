@@ -1,8 +1,10 @@
 """Piet through the shared API, CLI and machinery."""
 
 import importlib
+import pickle
 import subprocess
 import sys
+from base64 import b64decode
 from dataclasses import replace
 
 import pytest
@@ -61,6 +63,37 @@ def test_raster_interpreter_owns_loading_and_scale_support() -> None:
         ).output
         == "1"
     )
+    _check_legacy_raster_pickles()
+
+
+def _check_legacy_raster_pickles() -> None:
+    # eee29c069 pickled generate("Piet", "01", scale=2) and its raw source.
+    artifact = pickle.loads(
+        b64decode(
+            "gASVvgAAAAAAAACMEmVzb2xhbmdzLmFydGlmYWN0c5SMD1Byb2dyYW1BcnRpZmFjdJSTlCmBlF2U"
+            "KIwPZXNvbGFuZ3MucmFzdGVylIwIX3JlYnVpbHSUk5QoKChL/0vAS8CHlGgISwBLAEsAh5RoCWgJ"
+            "aAlLwEv/S/+HlGgKdJRoCyhoCGgIaAhoCEsASwBLwIeUaAxoCmgKdJRoDShoCWgJaAloCWgJaAlo"
+            "CmgKdJRoDnSUTk5LAnSUUpSMBFBpZXSUTksCZWIu"
+        )
+    )
+    raster = pickle.loads(
+        b64decode(
+            "gASVgwAAAAAAAACMD2Vzb2xhbmdzLnJhc3RlcpSMCF9yZWJ1aWx0lJOUKCgoS/9LwEvAh5RoA0sA"
+            "SwBLAIeUaARoBGgES8BL/0v/h5RoBXSUaAYoaANoA2gDaANLAEsAS8CHlGgHaAVoBXSUaAgoaARo"
+            "BGgEaARoBGgEaAVoBXSUaAl0lE5OSwJ0lFKULg=="
+        )
+    )
+    assert type(raster) is Raster
+    assert raster == artifact.source
+    assert (len(raster.rows[0]), len(raster.rows)) == (8, 6)
+    assert (artifact.language, artifact.scale, artifact.input_arity) == (
+        "Piet",
+        2,
+        None,
+    )
+    assert "".join(run("Piet", artifact, stdin=bit).output for bit in "01") == "01"
+    for value in (artifact, raster):
+        assert pickle.loads(pickle.dumps(value)) == value
 
 
 class TestSpecAbortsRatherThanReturningNothing:

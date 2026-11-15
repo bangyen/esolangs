@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from contextlib import nullcontext
 from time import monotonic
 from typing import NoReturn
@@ -34,10 +33,10 @@ from esolangs.cli.hints import (
 from esolangs.cli.io import (
     _emit_partial,
     _fail,
-    _is_terminal,
     _note,
     _read_program,
     _read_stdin,
+    _stdout_is_terminal,
     _unbounded_notice,
     _write_output,
 )
@@ -217,7 +216,7 @@ def _run(rest: list[str]) -> None:
     _write_output(output)
     # Piped output stays byte-exact -- it gets compared and diffed -- but a
     # result with no trailing newline runs into the next shell prompt.
-    if output and not output.endswith("\n") and _is_terminal(sys.stdout):
+    if output and not output.endswith("\n") and _stdout_is_terminal():
         _write_output("\n")
     source = program.source
     empty = isinstance(source, (str, CompressedText)) and not source
@@ -230,7 +229,7 @@ def _run(rest: list[str]) -> None:
     # get from an empty file or the wrong path.  Say so on a terminal, where
     # the alternative is a blank line and no way to tell the two apart; a
     # pipe still receives exactly the empty output.
-    if not output and _is_terminal(sys.stdout):
+    if not output and _stdout_is_terminal():
         _note(
             f"{language}: the program ran and printed nothing"
             f"{' (the file contains no source)' if empty else ''}"

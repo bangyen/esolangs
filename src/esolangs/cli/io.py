@@ -740,7 +740,7 @@ def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
 
 @contextmanager
 def _stdout_destination() -> Iterator[TextIO]:
-    """Classify write and flush failures at the output destination."""
+    """Classify failures at the output destination."""
     stream = sys.stdout
     try:
         if stream is None or getattr(stream, "closed", False):
@@ -755,6 +755,12 @@ def _stdout_destination() -> Iterator[TextIO]:
         if not getattr(stream, "closed", False):
             raise
         raise _StdoutError(exc) from exc
+
+
+def _stdout_is_terminal() -> bool:
+    """Check stdout under the same closure policy as writes and flushing."""
+    with _stdout_destination() as stdout:
+        return _is_terminal(stdout)
 
 
 def _write_text(stream: TextIO, data: str) -> int:
@@ -813,6 +819,6 @@ def _emit_partial(output: str) -> None:
         return
     # Terminal only, as on success: a pipe got "\x01\n" for "\x01", and a
     # --max-output 3 cap 4 bytes.
-    if not output.endswith("\n") and _is_terminal(sys.stdout):
+    if not output.endswith("\n") and _stdout_is_terminal():
         _write_output("\n")
     _flush_stdout()

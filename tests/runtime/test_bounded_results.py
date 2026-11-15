@@ -251,6 +251,7 @@ def test_a_failed_halt_cannot_be_completed_by_a_peer(monkeypatch):
     assert run_until_halt(control, limit=0)
     assert run_until_halt_or_cycle(control, limit=0)
 
+    _check_switched_terminal_halt(lambda: api.make_vm("+."), first, failure)
     _check_halt_read_fault_evidence(api, monkeypatch)
     _check_caller_halt_read_evidence()
     _check_observer_failure_evidence(api, monkeypatch)
@@ -755,6 +756,8 @@ def _check_caller_owned_failed_halt():
             assert caught.value is original
             assert original.observation == live.observation == partial
 
+    _check_switched_terminal_halt(Custom, outer, original)
+
     # An explicit replacement cannot inherit the previous VM's failure.
     replacement = Custom()
     replacement.step()
@@ -792,6 +795,73 @@ def _check_caller_owned_failed_halt():
     assert live.output == "done"
     assert live.observation.completion.kind is Completion.HALTED
     assert live.observation.steps == 1
+
+
+def _check_switched_terminal_halt(fresh, failed, failure):
+    from esolangs.debugger import Debugger
+    from esolangs.vm import run_until_halt
+
+    class SwitchAfterStep(Debugger):
+        def __init__(self, vm, target):
+            super().__init__(vm)
+            self.target = target
+
+        def step(self):
+            super().step()
+            self.vm = self.target
+
+    class Watched:
+        halted = False
+        self_halts = steppable_to_answer = True
+        dumps_on_the_post_halt_step = False
+        output = ""
+
+        def step(self):
+            self.output = "active"
+
+        @property
+        def memory(self):
+            self.live.vm = self.target
+            return [7]
+
+    class PendingDump:
+        halted = self_halts = steppable_to_answer = dumps_on_the_post_halt_step = True
+        output = ""
+
+        def step(self):
+            self.output += "dumped"
+
+    limits = esolangs.ExecutionLimits(max_steps=1)
+    original = failure.observation
+    clean = fresh()
+    assert run_until_halt(clean, limit=2)
+    for target in (failed, clean):
+        raw = Watched()
+        raw.target = target
+        watch = Debugger(raw)
+        raw.live = watch
+        history = watch.watch_cell(0)
+        pending = PendingDump()
+        cases = (
+            (run_until_halt, SwitchAfterStep(fresh(), target), True, 1),
+            (complete_vm, SwitchAfterStep(fresh(), target), target.output, 1),
+            (lambda vm, _cap: vm.run(limits=limits), watch, "halted", 1),
+            (complete_vm, SwitchAfterStep(pending, target), target.output, 0),
+        )
+        for invoke, live, result, steps in cases:
+            if target is failed:
+                with pytest.raises(esolangs.HaltError) as caught:
+                    invoke(live, steps)
+                assert caught.value is failure
+                assert failure.observation is original
+                assert live.observation.completion is None
+            else:
+                assert invoke(live, steps) == result
+                assert live.observation.completion.kind is Completion.HALTED
+            assert live.vm is target
+            assert live.observation.steps == steps
+        assert history == [7]
+        assert pending.output == "dumped"
 
 
 def test_debugger_does_not_invent_periodic_completion():

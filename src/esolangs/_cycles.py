@@ -16,6 +16,7 @@ from esolangs.runtime._proof import (
     BranchFailure,
     BranchProof,
     CycleDecision,
+    _check_branch_halt,
     _proof_receiver_check,
     _read_branch_root,
     _step_proof_receiver,
@@ -618,7 +619,8 @@ def _branch_search(
     forked = False
     while pending:
         state = pending.popleft()
-        if machine.branching_halted(state):
+        if (halted := machine.branching_halted(state)) is not False:
+            _check_branch_halt(halted, _BranchingUnavailableError)
             proof = (
                 BranchProof(root, tuple(transitions), halts=True, terminal=state)
                 if transitions is not None and not forked
@@ -1183,8 +1185,7 @@ def _drive_until_halt(
                 requested = bool(stop())
                 halted: bool = machine.halted
                 if halted:
-                    _checked_adapter(machine)
-                    return steps
+                    break
                 if requested:
                     return None
             machine.step()
@@ -1193,4 +1194,5 @@ def _drive_until_halt(
         if on_fault is not None:
             on_fault(error, steps)
         raise
+    _checked_adapter(machine)
     return steps

@@ -140,6 +140,13 @@ def _assign(
     return raster
 
 
+def _rebuilt(
+    rows: Rows, _language: object, _settings: object, _scale: object
+) -> Raster:
+    """Restore old pickles as pixels; enclosing artifacts store their own metadata."""
+    return Raster(rows)
+
+
 def lazy_raster(
     materialize: Callable[[], Rows],
     payload: object | None = None,

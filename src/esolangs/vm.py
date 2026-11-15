@@ -116,6 +116,8 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     except EsolangError as error:
         _retain_fault_steps(vm, error, steps)
         raise
+    if dump_pending:
+        _raise_halt_fault(vm)
     _check_driver_fields(vm, "vm", "output")
     return vm.output
 
