@@ -5,8 +5,10 @@ from functools import partial
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, HaltError, Language
 from esolangs.languages.egl import interpreter as native
 from esolangs.languages.egl.interpreter import _advance, _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.cursorless_io import CursorlessIO
 from tests.interpreters.runner import run_program
@@ -46,6 +48,47 @@ def test_character_input(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch,
         cases=(("", "10"),) * 3,
     )
+    _check_output_retry(monkeypatch)
+
+
+def _check_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    api = Language("EGL")
+    write = ScriptedIO._write
+    limits = ExecutionLimits(max_steps=4)
+    for source, output, steps, accepted in (
+        ("1,1:+=+=", "12", 4, 0),
+        ("1,1:+=+=", "12", 4, 1),
+        ("1,1:+#", "|1|\n", 2, 2),
+    ):
+        complete = api.run(source, limits=limits)
+        assert (complete.output, complete.steps) == (output, steps)
+        fault = HaltError("output refused")
+        attempts = []
+
+        def refuse_once(
+            port, value, *, fault=fault, accepted=accepted, attempts=attempts
+        ):
+            attempts.append(value)
+            if len(attempts) == 1:
+                if accepted:
+                    write(port, value[:accepted])
+                raise fault
+            write(port, value)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(ScriptedIO, "_write", refuse_once)
+            debugger = api.make_debugger(source)
+            debugger.step()
+            before = debugger.snapshot()
+            with pytest.raises(HaltError, match="output refused") as caught:
+                debugger.step()
+            assert caught.value is fault
+            assert fault.observation == ExecutionResult(
+                output[:accepted], 0, 0, 0, steps=1
+            )
+            assert (debugger.snapshot() == before) is (accepted == 0)
+            assert debugger.run(limits=limits) == "halted"
+            assert debugger.observation == complete
 
 
 def test_a_cursorless_read_loop_is_not_a_cycle() -> None:

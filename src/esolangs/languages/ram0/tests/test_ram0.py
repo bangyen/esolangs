@@ -1,17 +1,23 @@
 """Unit tests for RAM0 interpreter."""
 
+import sys
+from dataclasses import replace
+
 import pytest
 
-from esolangs.exceptions import HaltError, InterpreterLimitError
+from esolangs import ExecutionLimits, ExecutionResult, Language
+from esolangs.exceptions import HaltError
 from esolangs.languages.ram0.interpreter import _Machine, run
+from esolangs.runtime._lifecycle import POST_HALT_REPORT
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
     StateViewContract,
 )
 from tests.interpreters.runner import run_printing
-from tests.support.raises import assert_rejected_with_hint
 
 
 def dump(code: str) -> str:
@@ -96,7 +102,7 @@ class TestStepMachine:
         # exactly one A was skipped: skipping none leaves 2, skipping both 0
         assert machine.z == 1
 
-    def test_state_is_dumped_only_once(self) -> None:
+    def test_state_is_dumped_only_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Stepping a halted machine again does not repeat the dump."""
         machine = _Machine("A", ScriptedIO(""))
         while not machine.halted:
@@ -104,6 +110,7 @@ class TestStepMachine:
         machine.step()  # dumps
         machine.step()  # must not dump again
         assert machine.io.getvalue() == "z: 1\nn: 0\nram: {}"
+        _check_dump_retry(monkeypatch)
 
 
 def _machine(code: object) -> object:
@@ -135,8 +142,107 @@ class TestStateViewValues:
 
 
 @pytest.mark.medium
-def test_a_literal_past_the_host_digit_cap_is_a_limit_with_a_hint() -> None:
-    """Legal source the host cannot convert: a limit, not malformed source."""
-    assert_rejected_with_hint(
-        "RAM0", "1" * 4301, "PYTHONINTMAXSTRDIGITS", error=InterpreterLimitError
-    )
+def test_wide_gotos_keep_the_target_and_domain_faults() -> None:
+    api = Language("RAM0")
+    zeros = "0" * 641
+    wide = "9" * 641
+    expected = "z: 1\nn: 0\nram: {}"
+    policy = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        for limits, isolated in (
+            (None, False),
+            (ExecutionLimits(max_steps=3), False),
+            (ExecutionLimits(max_steps=3), True),
+        ):
+            for source, output, steps in (
+                (f"A {wide} A", expected, 2),
+                (f"A {zeros}3 A", "z: 2\nn: 0\nram: {}", 3),
+                (f"C {zeros} A", expected, 2),
+            ):
+                observed = api.run(
+                    source, stdin="unused", limits=limits, isolated=isolated
+                )
+                assert observed == ExecutionResult(
+                    output,
+                    0,
+                    0,
+                    0,
+                    completion=POST_HALT_REPORT,
+                    steps=None if limits is None else steps,
+                )
+            fault = api.execute(f"A {zeros} A", limits=limits, isolated=isolated)
+            assert fault.status == "fault"
+            assert type(fault.error) is HaltError
+            assert (
+                str(fault.error) == f"goto {zeros} at command 2: commands count from 1"
+            )
+            assert "jump to a command number of 1 or more" in " ".join(
+                fault.error.__notes__
+            )
+            assert fault.observation == ExecutionResult(
+                "", 0, 0, 0, steps=None if limits is None else 1
+            )
+
+        debugger = api.make_debugger(f"A {wide} A")
+        debugger.step()
+        debugger.step()
+        assert debugger.halted
+        assert debugger.ip == 10**641 - 2
+    finally:
+        sys.set_int_max_str_digits(policy)
+
+
+def _check_dump_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    api = Language("RAM0")
+    source = "A N A S 99 A"
+    expected = "z: 2\nn: 1\nram: {\n    1: 2\n}"
+    complete = ExecutionResult(expected, 0, 0, 0, completion=POST_HALT_REPORT, steps=5)
+    clean = api.make_debugger(source, stdin="unused")
+    assert clean.run(limits=ExecutionLimits(max_steps=5)) == "halted"
+    assert clean.observation == complete
+
+    write = ScriptedIO._write
+    attempts: list[object] = []
+    prefix = ""
+
+    def reject_first(port: ScriptedIO, value: object) -> None:
+        attempts.append(value)
+        if len(attempts) == 1:
+            write(port, prefix)
+            raise HaltError("temporary dump refusal")
+        write(port, value)
+
+    limits = ExecutionLimits(max_steps=0)
+    for accepted in (0, 2, len(expected)):
+        attempts.clear()
+        prefix = expected[:accepted]
+        replay = api.make_debugger(source, stdin="unused")
+        for _ in range(5):
+            replay.step()
+        assert replay.halted
+        boundary = replay.snapshot()
+        workspace = _capture_workspace(replay.vm)
+        with monkeypatch.context() as scoped:
+            scoped.setattr(ScriptedIO, "_write", reject_first)
+            with pytest.raises(HaltError, match="dump refusal") as exc:
+                replay.run(limits=limits)
+            partial = replace(complete, output=prefix, completion=None)
+            assert exc.value.observation == replay.observation == partial
+            if accepted:
+                assert replay.snapshot() == (*boundary, accepted)
+                assert _capture_workspace(replay.vm).parts == (
+                    *workspace.parts[:-1],
+                    WorkspaceVariant("pending_output", (accepted,)),
+                )
+            else:
+                assert replay.snapshot() == boundary
+                assert _capture_workspace(replay.vm) == workspace
+            assert replay.run(limits=limits) == "halted"
+            replay.step()
+        remaining = [expected[accepted:]] if accepted < len(expected) else []
+        assert attempts == [expected, *remaining]
+        assert replay.observation == complete
+        assert replay.snapshot() == clean.snapshot()
+        assert _capture_workspace(replay.vm) == _capture_workspace(clean.vm)
+        assert exc.value.observation == partial

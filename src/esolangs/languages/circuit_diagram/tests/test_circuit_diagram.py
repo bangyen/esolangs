@@ -3,6 +3,8 @@ r"""Unit tests for the Circuit Diagram interpreter."""
 # Deferred: ``_lru_cache_wrapper[...]`` is not subscriptable before 3.13.
 from __future__ import annotations
 
+import subprocess
+import sys
 import time
 from collections import OrderedDict
 from functools import _lru_cache_wrapper, lru_cache, partial
@@ -286,13 +288,22 @@ class TestParseErrors:
             run(["-.a.-:"], ScriptedIO("1\n"))
         assert str(caught.value) == "'a' at (2, 0) takes 2 input(s), found 1"
 
-    def test_an_output_is_exempt_from_the_out_port_count(self) -> None:
+    def test_an_output_is_exempt_from_the_out_port_count(self, tmp_path) -> None:
         """An output sinks its wire and drives nothing, so arity skips its ports."""
         parser = _Parser(_Grid(["-.~.-:"]))
         outputs = [g for g in parser.gates if g.kind == _OUTPUT]
         assert outputs, "the program has an output gate"
         assert [(len(g.inputs), len(g.outputs)) for g in outputs] == [(1, 0)]
         assert output_for(["-.~.-:"], "1\n") == "0"
+
+        path = tmp_path / "circuit"
+        command = [sys.executable, "-m", interpreter.__name__, str(path)]
+        for newline in ("\n", "\u2028"):
+            path.write_bytes((")-3-:" + newline).encode())
+            result = subprocess.run(
+                command, input=b"", capture_output=True, check=True, timeout=5
+            )
+            assert (result.stdout, result.stderr) == (b"111", b"")
 
 
 class TestWireLabelErrors:

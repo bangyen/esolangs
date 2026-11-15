@@ -30,8 +30,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
+from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.persistent import (
     Chunked,
     append,
@@ -113,12 +114,13 @@ def _advance(state: _State, op: str, index: _Index) -> _State:
     # Avoid reflective replacement; [interpreter_ablations.direct_state_construction].
     ind = state.ind
     if op.isdigit():
-        if not int(op):
+        target = parse_integer(op)
+        if not target:
             raise HaltError(
                 f"goto {op} at command {ind + 1}: commands count from 1",
                 hint="jump to a command number of 1 or more",
             )
-        return _State(int(op) - 1, state.z, state.n, state.ram, state.dumped)
+        return _State(target - 1, state.z, state.n, state.ram, state.dumped)
     z, n, ram = change(state.z, state.n, state.ram, op, index)
     if op == "C" and not z:
         ind += 1
@@ -161,6 +163,7 @@ class _Machine:
         self.size = len(self.tokens)
         self.state = _State(0, 0, 0, (), dumped=False)
         self._index: _Index = {}
+        self._writer = _BufferedOutput()
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -212,13 +215,18 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=self.state.ind,
             zero_register=self.state.z,
             number_register=self.state.n,
             cells=flatten(self.state.ram),
             input_cursor=self.io.progress(),
-            dumped=self.state.dumped,
+            dumped=(
+                WorkspaceVariant("pending_output", (accepted,))
+                if accepted
+                else self.state.dumped
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
@@ -229,7 +237,9 @@ class _Machine:
         # in it are different states, and the value is already hashable.
         # It used to be re-packed into a frozenset here, O(cells) per step.
         ind, z, n, ram, _dumped = self.state
-        return (ind, z, n, ram)
+        boundary = (ind, z, n, ram)
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _dump(self, z: int, n: int, ram: _Ram) -> None:
         """Print the final registers and RAM in their insertion order."""
@@ -238,7 +248,11 @@ class _Machine:
             rendered += f"\n    {addr}: {value},"
         if ram:
             rendered = rendered[:-1] + "\n"
-        self.io.print_str(rendered + "}")
+        rendered += "}"
+        if isinstance(self.io, ScriptedIO):
+            self._writer.write(self.io, rendered)
+        else:
+            self.io.print_str(rendered)
 
     def step(self) -> None:
         """Execute one token, dumping the state once the cursor runs off.

@@ -2,6 +2,7 @@
 
 import itertools
 import random
+from decimal import Decimal
 
 import pytest
 
@@ -49,10 +50,7 @@ def _model(source):
             break
         command, next_pc = commands[pc], pc + 1
         if command.isdecimal():
-            try:
-                target = int(command)
-            except ValueError:
-                return "syntax", [*trace, view()]
+            target = int(Decimal(command))
             if target:
                 next_pc = target - 1
             else:

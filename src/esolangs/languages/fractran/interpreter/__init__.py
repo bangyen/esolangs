@@ -51,7 +51,8 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
+from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
 
 #: A fraction, as the numerator and denominator it was written with.
@@ -200,6 +201,8 @@ class _Machine:
         self._selected: int | None = None
         self.io = io
         self.printed = False
+        self._writer = _BufferedOutput()
+        self._pending_result: tuple[int, str] | None = None
 
     @property
     def _factors(self) -> Factors:
@@ -249,16 +252,6 @@ class _Machine:
         return self._selected
 
     @property
-    def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
-        return (self.value, self.printed)
-
-    @_state.setter
-    def _state(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields."""
-        self._integer, self.printed = state
-
-    @property
     def halted(self) -> bool:
         """Whether no fraction divides the value any more."""
         return self.printed and self._next() is None
@@ -285,17 +278,37 @@ class _Machine:
             register = WorkspaceVariant(
                 "prime_exponents", (frozenset((p, e) for p, e in entries if e),)
             )
+        accepted = self._writer.accepted
+        printed = (
+            WorkspaceVariant("pending_output", (self.printed, accepted))
+            if accepted
+            else self.printed
+        )
         return _WORKSPACE_MODEL.capture(
-            register=register, printed=self.printed, input_cursor=self.io.progress()
+            register=register, printed=printed, input_cursor=self.io.progress()
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        boundary = (
             self._integer if self._index is None else self._factors,
             self.printed,
             self.io.progress(),
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
+
+    def _write_result(self, value: int, text: str | None = None) -> None:
+        io = self.io
+        if isinstance(io, ScriptedIO):
+            if text is None:
+                text = format_integer(value)
+                self._pending_result = value, text
+            self._writer.write(io, text, first=lambda: io.print_num(value))
+            self._pending_result = None
+        else:
+            io.print_num(value)
+        self.printed = True
 
     def step(self) -> None:
         """Fire one fraction, or print the final value and stop.
@@ -307,20 +320,25 @@ class _Machine:
         if self.halted:
             return
         index = self._next()
+        if index is None and self._pending_result is not None:
+            self._write_result(*self._pending_result)
+            return
         if self._index is None:
-            self._state, out = _advance(self._state, self.fractions, index)
+            (self._integer, _), out = _advance(
+                (self._integer, self.printed), self.fractions, index
+            )
         elif self._cursor is None:
-            (self._scan_factors, self.printed), out = _advance_sparse(
+            (self._scan_factors, _), out = _advance_sparse(
                 (self._scan_factors, self.printed), self._index, index
             )
         else:
-            self.printed, writes, out = _advance_indexed(
+            _, writes, out = _advance_indexed(
                 self._cursor.value, self._index, index, printed=self.printed
             )
             if index is not None:
                 self._cursor.apply(index, writes)
         if out is not None:
-            self.io.print_num(out)
+            self._write_result(out)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

@@ -1,5 +1,7 @@
 """Unit tests for the Flowchart interpreter."""
 
+import subprocess
+import sys
 from functools import partial
 from itertools import product
 
@@ -160,11 +162,20 @@ class TestParsing:
         assert _turn_left(south) == east
         assert _turn_left(east) == north
 
-    def test_only_the_newline_is_stripped_from_a_row(self) -> None:
+    def test_only_the_newline_is_stripped_from_a_row(self, tmp_path) -> None:
         """Trailing spaces stay, since a column is a position in the grid."""
         machine = _Machine(["( )─(( ))  \n"], ScriptedIO(""))
         assert machine.width == 11
         assert machine.grid == ("( )─(( ))  ",)
+
+        path = tmp_path / "flowchart"
+        command = [sys.executable, "-m", run.__module__, str(path)]
+        for newline in ("\n", "\u2028"):
+            path.write_bytes((r"( )─\ \─(( ))  " + newline).encode())
+            result = subprocess.run(
+                command, input=b"", capture_output=True, check=True, timeout=5
+            )
+            assert (result.stdout, result.stderr) == (b"\0", b"")
 
     def test_nodes_touching_side_by_side_are_rejected(self) -> None:
         with pytest.raises(ValueError, match="nodes touch without a path"):

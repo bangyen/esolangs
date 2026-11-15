@@ -43,9 +43,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.brackets import match_brackets
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -168,6 +168,7 @@ class _Machine:
         )
         self.io = io
         self._input_reads = 0
+        self._writer = _BufferedOutput()
         self.state: _State = (
             0,
             0,
@@ -192,8 +193,14 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        instruction = self.state[0]
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state[0],
+            instruction=(
+                WorkspaceVariant("pending_output", (instruction, accepted))
+                if accepted
+                else instruction
+            ),
             row=self.state[1],
             column=self.state[2],
             cells=self.state[3],
@@ -203,7 +210,9 @@ class _Machine:
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.progress(), self._input_reads)
+        boundary = (*self.state, self.io.progress(), self._input_reads)
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         if self.halted:
@@ -213,13 +222,16 @@ class _Machine:
         if command == "x":
             value = self.io.input_char()
             self._input_reads += 1
-        self.state, output = _advance(
+        state, output = _advance(
             self.state, self.code, self.pairs, self.width, self.height, value
         )
-        if isinstance(output, str):
-            self.io.print_str(output)
-        elif output is not None:
-            self.io.print_str(format_integer(output))
+        if output is not None:
+            text = output if isinstance(output, str) else format_integer(output)
+            if isinstance(self.io, ScriptedIO):
+                self._writer.write(self.io, text)
+            else:
+                self.io.print_str(text)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

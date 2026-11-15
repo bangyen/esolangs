@@ -9,7 +9,7 @@ import re
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, resolve
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import machine_traits
 from tests.interpreters.spec_sections import (
@@ -481,6 +481,9 @@ class TestEntryPointConventions:
             assert kwargs.keys() <= {"shape", "loader"}
             shape = ast.literal_eval(kwargs.get("shape", ast.Constant(value="text")))
             assert shape in ("text", "keep", "strip")
+            owner = resolve(path.relative_to(_INTERPRETERS).parts[1])
+            if LANGUAGES[owner].runtime.split:
+                assert shape != "keep", f"{owner}: runtime strips line separators"
             loader = kwargs.get("loader")
             wanted = (
                 {"str"}

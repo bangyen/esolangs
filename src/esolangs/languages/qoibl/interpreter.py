@@ -41,6 +41,7 @@ from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
@@ -626,4 +627,4 @@ def run(code: list[str] | str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    script_main(run, shape="keep")
+    script_main(run, shape="strip", loader=native_text_source)

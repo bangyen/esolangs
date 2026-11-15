@@ -1,5 +1,8 @@
 """thisthat instruction and concurrency semantics."""
 
+import gzip
+import subprocess
+import sys
 from contextlib import nullcontext
 from itertools import product
 
@@ -261,10 +264,20 @@ def test_advance_requests_input_rather_than_reading() -> None:
     assert moved[0]  # and the pointer still goes on
 
 
-def test_loader_push_pop_and_horizontal_route() -> None:
+def test_loader_push_pop_and_horizontal_route(tmp_path) -> None:
     io = ScriptedIO("0\n")
     run(thisthat("01").splitlines(), io)
     assert io.getvalue() == "0"
+
+    path = tmp_path / "grid"
+    source = "▣─■═◇".encode()
+    command = [sys.executable, "-m", run.__module__, str(path)]
+    for body in (source, source + b"\n", gzip.compress(source + b"\r\n", mtime=0)):
+        path.write_bytes(body)
+        result = subprocess.run(
+            command, input=b"", capture_output=True, check=True, timeout=5
+        )
+        assert (result.stdout, result.stderr) == (b"1", b"")
 
 
 def test_invalid_programs_abort() -> None:

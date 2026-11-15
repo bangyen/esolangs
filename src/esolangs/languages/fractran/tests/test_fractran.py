@@ -3,15 +3,16 @@
 import random
 import re
 import sys
+from dataclasses import replace
 from fractions import Fraction
 from itertools import product
 
 import pytest
 
-from esolangs import ExecutionLimits, InterpreterLimitError, Language
+from esolangs import ExecutionLimits, HaltError, InterpreterLimitError, Language
 from esolangs.languages.fractran.interpreter import _choose, _Machine, _parse, run
 from esolangs.languages.fractran.interpreter import index as fractran_index
-from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
 
@@ -65,6 +66,12 @@ def test_decimal_exponent_preserves_int_conversion_limit() -> None:
             assert language.execute("2 3/2^1", **options).unwrap().output == "3"
         sys.set_int_max_str_digits(0)
         assert language.execute(source, isolated=True).unwrap().output == "3"
+        expected = str(2**2200)
+        sys.set_int_max_str_digits(640)
+        assert len(expected) > 640
+        assert language.run("2^2200", limits=ExecutionLimits(max_steps=1)).output == (
+            expected
+        )
     finally:
         sys.set_int_max_str_digits(limit)
 
@@ -258,7 +265,7 @@ def test_the_pointer_is_the_offset_of_the_fraction_about_to_fire() -> None:
     assert machine.ip == source.index("7/3")
 
 
-def test_the_final_print_is_its_own_step() -> None:
+def test_the_final_print_is_its_own_step(monkeypatch: pytest.MonkeyPatch) -> None:
     """``halted`` stays false until the value has been printed."""
     machine = _Machine("7", ScriptedIO(""))
     assert not machine.halted
@@ -266,6 +273,84 @@ def test_the_final_print_is_its_own_step() -> None:
     machine.step()
     assert machine.halted
     assert machine.ip is None
+
+    language = Language("FRACTRAN")
+    write = ScriptedIO._write
+    limits = ExecutionLimits(max_steps=2)
+    for source, result, indexed, cursor in (
+        ("2 123/2", 123, True, True),
+        ("2 123/2 " + "1/4 " * 16, 123, True, False),
+        ("2 321/2", 321, False, False),
+    ):
+        machine = _Machine(source, ScriptedIO(""))
+        assert (machine._index is not None, machine._cursor is not None) == (
+            indexed,
+            cursor,
+        )
+        output = str(result)
+        complete = language.run(source, limits=limits)
+        assert (complete.output, complete.steps) == (output, 2)
+        for accepted in range(len(output) + 1):
+            attempts: list[object] = []
+            fault = HaltError("temporary final print refusal")
+
+            def refuse_first(
+                io: ScriptedIO,
+                value: object,
+                *,
+                attempts: list[object] = attempts,
+                fault: HaltError = fault,
+                prefix: str = output[:accepted],
+            ) -> None:
+                attempts.append(value)
+                if len(attempts) == 1:
+                    write(io, prefix)
+                    raise fault
+                write(io, value)
+
+            with monkeypatch.context() as patch:
+                patch.setattr(ScriptedIO, "_write", refuse_first)
+                debugger = language.make_debugger(source)
+                debugger.step()
+                boundary = debugger.snapshot()
+                partial = replace(debugger.observation, output=output[:accepted])
+                with pytest.raises(HaltError, match="final print refusal") as caught:
+                    debugger.run(limits=limits)
+                assert caught.value is fault
+                assert fault.observation == debugger.observation == partial
+                assert not debugger.halted
+                assert debugger.snapshot() == (
+                    (*boundary, accepted) if accepted else boundary
+                )
+                assert debugger.run(limits=limits) == "halted"
+                assert debugger.observation == complete
+                assert fault.observation == partial
+            assert attempts[0] == result
+            if accepted < len(output):
+                assert attempts[1:] == [output[accepted:] if accepted else result]
+            else:
+                assert len(attempts) == 1
+
+    class RefusingIO(IO):
+        def __init__(self) -> None:
+            super().__init__()
+            self.attempts: list[object] = []
+
+        def _write(self, value: object) -> None:
+            self.attempts.append(value)
+            if len(self.attempts) == 1:
+                raise HaltError("no output accepted")
+
+    port = RefusingIO()
+    machine = _Machine("7", port)
+    boundary = machine.snapshot()
+    with pytest.raises(HaltError, match="no output accepted"):
+        machine.step()
+    assert not machine.halted
+    assert machine.snapshot() == boundary
+    machine.step()
+    assert machine.halted
+    assert port.attempts == [7, 7]
 
 
 def test_a_non_positive_numerator_is_refused() -> None:
