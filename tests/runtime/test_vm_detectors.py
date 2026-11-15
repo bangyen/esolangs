@@ -45,7 +45,7 @@ class TestTheDetectorsTakeAVM:
             run_until_halt_or_value_growth(make_vm(REFERENCE, "+[>+]"))
 
     def test_an_object_that_is_neither_raises_type_error(self) -> None:
-        """The unwrap looks one level deep, and no further."""
+        """An object without compatible interpreter state cannot supply a proof."""
         with pytest.raises(TypeError, match="steppable with a snapshot"):
             run_until_halt_or_cycle(object())
 

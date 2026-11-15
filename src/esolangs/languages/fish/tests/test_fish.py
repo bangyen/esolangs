@@ -4,16 +4,35 @@ from itertools import product
 
 import pytest
 
+from esolangs.debugger import make_debugger
 from esolangs.exceptions import HaltError
 from esolangs.languages.fish.interpreter import _advance, _Machine, prepare_machine, run
 from esolangs.runtime import _termination
 from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
+from esolangs.vm import (
+    complete_vm,
+    run_until_halt_or_all_branches_cycle,
+    run_until_halt_or_cycle,
+)
 from tests.support.certification_barrier import guarded_worker
 from tests.support.execution import termination_observed
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_halts_with_hint
+
+
+@pytest.mark.parametrize(
+    "detector", [run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle]
+)
+def test_branching_detectors_only_inspect_the_debugger_state(detector) -> None:
+    debugger = make_debugger("Fish", '"A"o;')
+    initial = debugger.snapshot()
+    assert detector(debugger, 20) is True
+    assert debugger.snapshot() == initial
+    assert debugger.observation.steps == 0
+    assert debugger.output == ""
+    assert complete_vm(debugger.vm) == "A"
 
 
 def _run(source: str, stdin: str = "", rng: object = None) -> str:

@@ -69,8 +69,22 @@ def test_metadata_commands_work_without_docstrings(args: list[str]) -> None:
 
 
 @pytest.mark.medium
+def test_grep_skips_specs_excluded_by_capabilities() -> None:
+    result = _python_cli(
+        ["list", "--json", "--interpreter-only", "--inputs", "1", "--grep", "."],
+        strip_docstrings=True,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"[]\n", b"")
+
+
+@pytest.mark.medium
 @pytest.mark.parametrize(
-    "args", [["list", "--grep", "."], ["describe", "--spec", REFERENCE]]
+    "args",
+    [
+        ["list", "--grep", "."],
+        ["list", "--source-kind", "text", "--inputs", "1", "--grep", "."],
+        ["describe", "--spec", REFERENCE],
+    ],
 )
 def test_spec_queries_explain_missing_docstrings(args: list[str]) -> None:
     result = _python_cli(args, strip_docstrings=True)
@@ -117,9 +131,9 @@ def test_large_input_count_uses_declared_generator_bounds() -> None:
 
 
 def test_filters_match_in_every_output_format(capsys) -> None:
-    filters = ["--interpreter-only", "--grep", "."]
+    filters = ["--interpreter-only", "--source-kind", "text", "--grep", "."]
     names = _names(filters, capsys)
-    assert names == languages(boolean_generator=False)
+    assert names == languages(boolean_generator=False, source_kind="text")
     text, error = call_both(["list", *filters], capsys)
     assert (text.splitlines(), error) == (names, "")
     text, error = call_both(["list", *filters, "--details"], capsys)

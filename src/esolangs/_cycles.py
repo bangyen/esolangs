@@ -70,27 +70,30 @@ class _BranchingStepMachine(Protocol):
         """
 
 
-def _raise_recorded_halt_fault(machine: object) -> None:
-    """Check registered adapters before inspecting a stopped machine."""
+def _checked_adapter(machine: object) -> object:
+    """Find the live VM beneath an observer and check for a recorded halt fault."""
     from esolangs.runtime._controller import ExecutionController
     from esolangs.vm import _raise_halt_fault
 
     adapter = machine.vm if isinstance(machine, ExecutionController) else machine
     _raise_halt_fault(adapter)
+    return adapter
 
 
 def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> object:
-    """Return ``machine``, or the interpreter state a :class:`VM` wraps.
+    """Find proof state on a machine, its VM, or the underlying interpreter.
 
     The protocol is tried before the unwrap, so a raw machine is handed
     back as is.  ``role`` names what the argument failed to be.
     ``protocol`` is ``type[Any]`` with a ``cast`` at each caller: mypy
     refuses a protocol class where ``type[T]`` is expected.
     """
-    _raise_recorded_halt_fault(machine)
+    adapter = _checked_adapter(machine)
     if isinstance(machine, protocol):
         return machine
-    inner = getattr(machine, "_machine", None)
+    if adapter is not machine and isinstance(adapter, protocol):
+        return adapter
+    inner = getattr(adapter, "_machine", None)
     if isinstance(inner, protocol):
         return inner
     raise with_hint(
@@ -101,6 +104,11 @@ def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> ob
         ),
         hint,
     )
+
+
+def _proof_runner(machine: object, state: _SteppableMachine) -> _SteppableMachine:
+    """Keep step effects and fault translation on the supplied live surface."""
+    return machine if isinstance(machine, _SteppableMachine) else state
 
 
 def _refuse_random(machine: object, proof: str) -> None:
@@ -410,7 +418,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     """
     limit = check_whole(limit, "limit")
     _refuse_random(machine, "replayed-ancestor")
-    machine = cast(
+    state = cast(
         _FramedMachine,
         _unwrap(
             machine,
@@ -420,22 +428,23 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
             "otherwise try exact-state cycle detection",
         ),
     )
+    runner = _proof_runner(machine, state)
     ancestors: list[tuple[int, Hashable]] = []
     pushes = 0
     while pushes < limit:
-        if machine.halted:
+        if runner.halted:
             return True
-        depth_before = len(machine.frames)
-        machine.step()
-        if len(machine.frames) <= depth_before:
+        depth_before = len(state.frames)
+        runner.step()
+        if len(state.frames) <= depth_before:
             continue
         pushes += 1
-        depth = len(machine.frames) - 1
+        depth = len(state.frames) - 1
         # A frame at or above this depth belongs to a call that has since
         # returned, so drop it rather than compare against a dead ancestor.
         while ancestors and ancestors[-1][0] >= depth:
             ancestors.pop()
-        key = machine.frame_entry_key(machine.frames[-1])
+        key = state.frame_entry_key(state.frames[-1])
         if any(key == ancestor for _, ancestor in ancestors):
             return False
         ancestors.append((depth, key))
@@ -535,7 +544,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     """
     limit = check_whole(limit, "limit")
     _refuse_random(machine, "tape-growth")
-    machine = cast(
+    state = cast(
         _TapeMachine,
         _unwrap(
             machine,
@@ -545,6 +554,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             "otherwise try exact-state cycle detection",
         ),
     )
+    runner = _proof_runner(machine, state)
     # One record per position holds all three certificates.  ``snapshot``
     # keeps the broad, one-period comparison; ``origin`` proves a steady
     # wave after its first full phase; the ``wave_*`` fields are Brent's
@@ -553,14 +563,14 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     # is invalid if the period ever reached the left edge.
     visits: dict[Hashable, _GrowthVisit] = {}
     for _ in range(limit):
-        if machine.halted:
+        if runner.halted:
             return True
-        ip, ptr, tape = machine.ip, machine.ptr, machine.tape
+        ip, ptr, tape = state.ip, state.ptr, state.tape
         for seen in visits.values():
             seen.lowest = min(seen.lowest, ptr)
             seen.origin_low = min(seen.origin_low, ptr)
             seen.wave_low = min(seen.wave_low, ptr)
-        cursor = machine.input_position()
+        cursor = state.input_position()
         current: _Snapshot = (ptr, tape, cursor)
         visit = visits.get(ip)
         if visit is None:
@@ -595,8 +605,8 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
                 visit.wave_low = ptr
                 visit.wave_power *= 2
                 visit.wave_length = 0
-        machine.step()
-    if machine.halted:
+        runner.step()
+    if runner.halted:
         return True
     raise with_hint(
         TimeoutError(
@@ -688,7 +698,7 @@ def run_until_halt_or_value_growth(
     """
     limit = check_whole(limit, "limit")
     _refuse_random(machine, "value-growth")
-    machine = cast(
+    state = cast(
         _AffineMachine,
         _unwrap(
             machine,
@@ -698,6 +708,7 @@ def run_until_halt_or_value_growth(
             "cells need exact-state cycle detection",
         ),
     )
+    runner = _proof_runner(machine, state)
     # One slack per step in a single log, and per key the last three steps
     # that visited it, so a lap is a slice rather than a list of its own.
     # Collecting slacks per waiting key would append once for every key
@@ -706,17 +717,17 @@ def run_until_halt_or_value_growth(
     slacks: list[int | None] = []
     visits: dict[Hashable, list[_Visit]] = {}
     for index in range(limit):
-        if machine.halted:
+        if runner.halted:
             return True
-        slacks.append(machine.clamp_slack)
-        key = machine.key
+        slacks.append(state.clamp_slack)
+        key = state.key
         seen = visits.setdefault(key, [])
-        seen.append((index, machine.values, machine.input_position()))
+        seen.append((index, state.values, state.input_position()))
         del seen[:-3]
         if len(seen) == 3 and _climbs_forever(seen, slacks):
             return False
-        machine.step()
-    if machine.halted:
+        runner.step()
+    if runner.halted:
         return True
     raise with_hint(
         TimeoutError(
@@ -794,7 +805,7 @@ def _drive_until_halt(
     on_fault: Callable[[EsolangError, int], None] | None = None,
 ) -> int | None:
     """Count completed commands on halt or fault, returning None on a stop."""
-    _raise_recorded_halt_fault(machine)
+    _checked_adapter(machine)
     steps = 0
     try:
         while not machine.halted:

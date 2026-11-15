@@ -1036,6 +1036,31 @@ def test_png_writer_refuses_foreign_dialect_owner(language: str) -> None:
             write()
 
 
+@pytest.mark.parametrize(
+    ("scale", "arity", "field"),
+    [
+        (0, 1, "scale"),
+        (True, 1, "scale"),
+        (1, -1, "input_arity"),
+        (1, True, "input_arity"),
+    ],
+)
+def test_typed_png_writers_reject_invalid_numeric_metadata(scale, arity, field) -> None:
+    pixels = esolangs.Raster((((1, 2, 3),),))
+    raw = pixels.to_png()
+    language = one(source_kind="raster")[0]
+    for write in (
+        lambda: png.attach_source_metadata(
+            raw, language, None, scale, input_arity=arity
+        ),
+        lambda: png.write_source(pixels.rows, language, None, scale, input_arity=arity),
+    ):
+        with pytest.raises(
+            esolangs.ArgumentError, match=f"{field} must be a positive integer"
+        ):
+            write()
+
+
 @pytest.mark.parametrize("language", one(source_kind="raster"))
 def test_non_ascii_dialect_metadata_uses_utf8_only_when_needed(
     language, tmp_path

@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
+from esolangs.runtime._validate import check_scale
 from esolangs.runtime.source_hints import syntax_error
 
 if TYPE_CHECKING:
@@ -632,8 +633,10 @@ def attach_source_metadata(
             key: {"integer": hex(value)} if type(value) is int else value
             for key, value in settings._items  # noqa: SLF001
         },
-        "scale": scale,
+        "scale": None if scale is None else check_scale(scale),
     }
     if input_arity is not None:
+        if type(input_arity) is not int or input_arity < 1:
+            raise ArgumentError("input_arity must be a positive integer")
         metadata["input_arity"] = input_arity
     return write_metadata(data, metadata)

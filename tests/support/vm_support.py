@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import sys
+from collections.abc import Callable
 from dataclasses import replace
 from typing import Literal
 
@@ -13,7 +14,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.results import Completion
 from esolangs.runtime._vm_protocol import VM
-from esolangs.vm import _capture_result, complete_vm
+from esolangs.vm import _capture_result, complete_vm, run_until_halt_or_cycle
 from tests.support.reference import REFERENCE
 
 
@@ -23,6 +24,30 @@ def _step_to_halt(dbg: debugger_api.Debugger, budget: int = 200_000) -> None:
         if dbg.halted:
             return
         dbg.step()
+
+
+def assert_proof_fault(
+    detector: Callable[[VM, int], bool],
+    language: str,
+    source: str,
+    error_type: type[esolangs.EsolangError],
+    output: str,
+    *,
+    debugged: bool,
+    stdin: str = "",
+) -> None:
+    """Compare a live detector's fault evidence with exact-cycle detection."""
+    observations = []
+    for decide in (run_until_halt_or_cycle, detector):
+        vm = debugger_api.make_vm(language, source, stdin=stdin)
+        runner = debugger_api.Debugger(vm) if debugged else vm
+        with pytest.raises(error_type) as caught:
+            decide(runner, 20)
+        assert runner.output == caught.value.partial_output == output
+        assert caught.value.observation is not None
+        assert caught.value.observation.completion is None
+        observations.append(caught.value.observation)
+    assert observations[0] == observations[1]
 
 
 def assert_vm_finalization_is_shared(

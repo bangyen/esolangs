@@ -1,6 +1,23 @@
 """Forbin through the shared API, CLI and machinery."""
 
+import pytest
+
 import esolangs.debugger as debugger_api
+from esolangs.exceptions import InputExhaustedError
+from esolangs.vm import run_until_halt_or_ancestor
+from tests.support.vm_support import assert_proof_fault
+
+
+@pytest.mark.parametrize("debugged", [False, True])
+def test_live_detectors_keep_vm_fault_evidence(*, debugged: bool) -> None:
+    assert_proof_fault(
+        run_until_halt_or_ancestor,
+        "Forbin",
+        "main { out 0,1,0,0,0,0,0,1; x = (in 0); }",
+        InputExhaustedError,
+        "A",
+        debugged=debugged,
+    )
 
 
 class TestForbin:

@@ -5,7 +5,7 @@ from itertools import product
 
 import pytest
 
-from esolangs import ExecutionLimits
+from esolangs import ExecutionLimits, InputExhaustedError
 from esolangs.languages.brainfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle, run_until_halt_or_growth
@@ -14,8 +14,21 @@ from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
 from tests.support.reference import REFERENCE
+from tests.support.vm_support import assert_proof_fault
 
 bf = importlib.import_module("esolangs.languages.brainfuck.interpreter")
+
+
+@pytest.mark.parametrize("debugged", [False, True])
+def test_live_detectors_keep_vm_fault_evidence(*, debugged: bool) -> None:
+    assert_proof_fault(
+        run_until_halt_or_growth,
+        REFERENCE,
+        "+.,",
+        InputExhaustedError,
+        "\x01",
+        debugged=debugged,
+    )
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:

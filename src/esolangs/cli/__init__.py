@@ -203,12 +203,13 @@ def _catalog_names(options: dict[str, str], flags: set[str]) -> list[str]:
         except (re.error, OverflowError, RecursionError) as exc:
             _fail(f"--grep is not a valid regular expression: {exc}")
     wanted = [_FLAG_FILTERS[flag] for flag in flags if flag in _FLAG_FILTERS]
+    # Only candidates that pass the capability filters need interpreter specs.
     return [
         name
         for name in list_languages()
         if all(test(LANGUAGES[name]) for test in wanted)
-        and (pattern is None or pattern.search(_spec(name)))
         and (not options or _catalog_matches(name, options, inputs))
+        and (pattern is None or pattern.search(_spec(name)))
     ]
 
 

@@ -22,7 +22,20 @@ from tests.support.certification_barrier import guarded_worker
 from tests.support.cli_support import run_cli
 from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated
-from tests.support.vm_support import _STEP_BUDGET, _row
+from tests.support.vm_support import _STEP_BUDGET, _row, assert_proof_fault
+
+
+@pytest.mark.parametrize("debugged", [False, True])
+def test_live_detectors_keep_vm_fault_evidence(*, debugged: bool) -> None:
+    assert_proof_fault(
+        run_until_halt_or_value_growth,
+        "Suffolk",
+        ",.,.",
+        esolangs.ProgramError,
+        "@",
+        debugged=debugged,
+        stdin="A\U0010ffff",
+    )
 
 
 class TestSelfHaltsIsAWarningNotAGuarantee:
