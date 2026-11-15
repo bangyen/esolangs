@@ -1,7 +1,7 @@
 """The five hang detectors."""
 
 from dataclasses import replace
-from functools import wraps
+from functools import lru_cache, wraps
 from random import Random
 
 import pytest
@@ -150,8 +150,19 @@ def test_stop_callback_only_fires_before_a_permitted_step() -> None:
     def adapter() -> bool:
         return True
 
-    assert run_until_halt(vm, limit=2, stop=adapter) is False
-    assert vm.ip == 0
+    @wraps(adapter)
+    def needs_argument(_event) -> bool:
+        return True
+
+    @wraps(adapter)
+    def forwards(*args, **kwargs) -> bool:
+        return adapter(*args, **kwargs)
+
+    with pytest.raises(ArgumentError, match="without arguments"):
+        run_until_halt(vm, limit=2, stop=needs_argument)
+    for predicate in (adapter, forwards, lru_cache(adapter)):
+        assert run_until_halt(vm, limit=2, stop=predicate) is False
+        assert vm.ip == 0
     assert run_until_halt(vm, limit=2, stop=bool)
 
 

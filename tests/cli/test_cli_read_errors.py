@@ -9,13 +9,14 @@ import signal
 import subprocess
 import sys
 import threading
-from collections.abc import Iterator
+from collections.abc import Buffer, Iterator
 from contextvars import ContextVar
 from pathlib import Path
 
 import pytest
 
 import esolangs
+from esolangs.cli import io as cli_io
 from esolangs.cli import main
 from esolangs.cli.io import (
     _bounded_read,
@@ -556,6 +557,91 @@ def _check_late_reader_does_not_probe(monkeypatch, capsys, path, target) -> None
         if target != "open":
             assert file.tell() == 0
     capsys.readouterr()
+
+
+@pytest.mark.parametrize("gzip_export", [False, True], ids=["display", "gzip"])
+def test_cli_completes_short_raw_adapter_writes(tmp_path, monkeypatch, gzip_export):
+    class ShortRaw(io.RawIOBase):
+        def __init__(self, limit: int | None = None) -> None:
+            super().__init__()
+            self.data = bytearray()
+            self.limit = limit
+
+        def writable(self) -> bool:
+            return True
+
+        def write(self, data: Buffer) -> int:
+            size = 2
+            if self.limit is not None:
+                size = min(size, self.limit - len(self.data))
+            segment = memoryview(data)[:size]
+            self.data.extend(segment)
+            return len(segment)
+
+    raw = ShortRaw()
+    with (
+        io.TextIOWrapper(raw, encoding="utf-16-le", newline="\r") as stdout,
+        monkeypatch.context() as patch,
+    ):
+        patch.setattr(sys, "stdout", stdout)
+        if gzip_export:
+            patch.setattr(
+                sys, "argv", ["esolangs", "generate", "--gzip", REFERENCE, "01"]
+            )
+            main()
+        else:
+            patch.setattr(sys, "argv", ["esolangs", "--version"])
+            with pytest.raises(SystemExit) as exited:
+                main()
+            assert exited.value.code == 0
+    data = bytes(raw.data)
+    if gzip_export:
+        expected = tmp_path / "expected.gz"
+        esolangs.to_file(
+            REFERENCE,
+            esolangs.generate(REFERENCE, "01"),
+            expected,
+            gzip=True,
+            normalize=True,
+        )
+        assert data == expected.read_bytes()
+        assert (
+            esolangs.read_answer(
+                REFERENCE, esolangs.run(REFERENCE, data, stdin="1").output
+            )
+            == "1"
+        )
+    else:
+        assert data == f"esolangs {esolangs.__version__}\r".encode("utf-16-le")
+        for encoding, limit, expected in (
+            ("utf-8", None, "unknown option: --élan\n".encode()),
+            ("ascii", None, b"unknown option: --\\xe9lan\n"),
+            ("utf-8", 19, "unknown option: --é".encode()[:19]),
+        ):
+            raw = ShortRaw(limit)
+            with (
+                io.TextIOWrapper(raw, encoding=encoding, write_through=True) as stderr,
+                monkeypatch.context() as patch,
+            ):
+                patch.setattr(sys, "stderr", stderr)
+                patch.setattr(sys, "argv", ["esolangs", "list", "--élan"])
+                with pytest.raises(SystemExit) as exited:
+                    main()
+                assert exited.value.code == 2
+                assert bytes(raw.data) == expected
+
+        raw = ShortRaw()
+        with (
+            io.TextIOWrapper(raw, encoding="utf-8", write_through=True) as stderr,
+            monkeypatch.context() as patch,
+        ):
+            patch.setattr(sys, "stderr", stderr)
+            patch.setattr(cli_io, "_output_ready", lambda _stream: not raw.data)
+            with cli_io._complete_stderr_writes():
+                cli_io._diagnostic("optional notice\n", ready_only=True)
+                assert bytes(raw.data) == b"op"
+                cli_io._diagnostic("required notice\n")
+            assert bytes(raw.data) == b"oprequired notice\n"
 
 
 def test_output_escapes_unencodable_text_without_a_binary_buffer(monkeypatch) -> None:

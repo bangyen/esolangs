@@ -53,12 +53,9 @@ from esolangs import (
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli.args import (
     _VALUE_OPTIONS,
-    _abandon_output,
     _check_count,
     _decimal_integer,
-    _diagnostic,
     _errors,
-    _fail,
     _normalize_options,
     _pop_flags,
     _pop_options,
@@ -80,7 +77,11 @@ from esolangs.cli.hints import (
     _shell_hint,
 )
 from esolangs.cli.io import (
+    _abandon_output,
+    _complete_stderr_writes,
     _complete_stdout_writes,
+    _diagnostic,
+    _fail,
     _flush_stdout,
     _read_stdin,
     _StdoutEncodingError,
@@ -686,12 +687,13 @@ def main() -> None:
     Anything else is a bug in this package, not the program being run, and
     exits 70 with a one-line report instead of a traceback.
     """
-    try:
-        _run_cli()
-    except KeyboardInterrupt:
-        with suppress(KeyboardInterrupt):
-            _diagnostic("interrupted\n", ready_only=True)
-        sys.exit(130)
+    with _complete_stderr_writes():
+        try:
+            _run_cli()
+        except KeyboardInterrupt:
+            with suppress(KeyboardInterrupt):
+                _diagnostic("interrupted\n", ready_only=True)
+            sys.exit(130)
 
 
 def _run_cli() -> None:

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
+from inspect import Signature, signature
 from reprlib import recursive_repr
+from sys import getrecursionlimit
 from typing import TypeGuard
 
 # Preserve quoted literals as a group when removing default repr addresses.
@@ -17,6 +20,24 @@ _INFINITE = (float("inf"), float("-inf"))
 #: ``threading.TIMEOUT_MAX``; see :func:`check_timeout`.
 _TIMEOUT_CEILING = 2_592_000.0
 _ISOLATED_TIMEOUT = 30.0
+
+
+def _call_signature(callback: Callable[..., object]) -> Signature:
+    """Inspect the invoked wrapper, with a fallback for opaque C decorators."""
+    seen = {}
+    while True:
+        try:
+            return signature(callback, follow_wrapped=False)
+        except ValueError:
+            seen[id(callback)] = callback
+            wrapped = getattr(callback, "__wrapped__", None)
+            if (
+                not callable(wrapped)
+                or id(wrapped) in seen
+                or len(seen) >= getrecursionlimit()
+            ):
+                raise
+            callback = wrapped
 
 
 def _has_backing_type[T](value: object, kind: type[T]) -> TypeGuard[T]:

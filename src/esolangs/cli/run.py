@@ -11,7 +11,6 @@ from esolangs.cli.args import (
     _VALUE_OPTIONS,
     _check_count,
     _errors,
-    _fail,
     _integer,
     _nonnegative,
     _pop_flags,
@@ -32,6 +31,7 @@ from esolangs.cli.hints import (
 )
 from esolangs.cli.io import (
     _emit_partial,
+    _fail,
     _note,
     _read_program,
     _read_stdin,

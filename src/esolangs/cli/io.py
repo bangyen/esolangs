@@ -13,11 +13,12 @@ import sys
 import threading
 from codecs import IncrementalEncoder, lookup
 from collections.abc import Buffer, Callable, Iterator
-from contextlib import AbstractContextManager, contextmanager, nullcontext
-from contextvars import copy_context
+from contextlib import AbstractContextManager, contextmanager, nullcontext, suppress
+from contextvars import ContextVar, copy_context
 from encodings.utf_8 import IncrementalDecoder as UTF8Decoder
 from encodings.utf_8_sig import IncrementalDecoder as UTF8SigDecoder
 from errno import EAGAIN
+from functools import partial
 from gc import get_referents
 from io import (
     BufferedReader,
@@ -29,11 +30,16 @@ from io import (
 )
 from math import ceil
 from time import monotonic, sleep
-from typing import BinaryIO, cast
+from typing import BinaryIO, NoReturn, TextIO, cast
 
 from esolangs.artifacts import ProgramArtifact
-from esolangs.cli.args import _abandon_output, _diagnostic, _fail
-from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note, _exit_code, _timeout_text
+from esolangs.cli.hints import (
+    _TIMEOUT_EXIT,
+    _cli_error_text,
+    _decode_note,
+    _exit_code,
+    _timeout_text,
+)
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
 from esolangs.operations.source import _check_program
 from esolangs.registry import Catalog, get_catalog
@@ -534,12 +540,17 @@ class _StdoutEncodingError(Exception):
 
 
 def _write_all[DataT: (str, bytes, memoryview)](
-    write: Callable[[DataT], int | None], data: DataT
+    write: Callable[[DataT], int | None],
+    data: DataT,
+    *,
+    before_write: Callable[[], None] | None = None,
 ) -> int:
     """Finish positive short writes and refuse a destination that stops accepting."""
     total = len(data)
     offset = 0
     while offset < total:
+        if before_write is not None:
+            before_write()
         written = write(data[offset:])
         if not written:
             raise BlockingIOError(
@@ -552,21 +563,108 @@ def _write_all[DataT: (str, bytes, memoryview)](
 
 
 @contextmanager
-def _complete_stdout_writes() -> Iterator[None]:
-    """Check unbuffered stdout writes without changing the text encoder."""
-    raw = getattr(sys.stdout, "buffer", None)
+def _complete_raw_writes(
+    stream: TextIO, *, before_write: Callable[[], None] | None = None
+) -> Iterator[None]:
+    """Check unbuffered writes without changing the stream's text encoder."""
+    raw = getattr(stream, "buffer", None)
     if not isinstance(raw, RawIOBase):
         yield
         return
     write = raw.write
 
     def complete(data: Buffer) -> int:
-        return _write_all(write, memoryview(data).cast("B"))
+        return _write_all(write, memoryview(data).cast("B"), before_write=before_write)
 
     # TextIOWrapper discards the raw write count. Guard the existing stream
     # rather than replacing the wrapper and losing its encoder state.
     with _override_io_method(raw, "write", complete):
         yield
+
+
+def _complete_stdout_writes() -> AbstractContextManager[None]:
+    return _complete_raw_writes(sys.stdout)
+
+
+_READY_ONLY: ContextVar[bool] = ContextVar("diagnostic_ready_only", default=False)
+
+
+class _DiagnosticUnavailableError(Exception):
+    """An optional diagnostic would wait on a busy destination."""
+
+
+def _abandon_output(stream: TextIO) -> None:
+    """Keep Python's shutdown flush from retrying the failed destination."""
+    with suppress(AttributeError, OSError, ValueError), open(os.devnull, "wb") as sink:
+        os.dup2(sink.fileno(), stream.fileno())
+
+
+def _output_ready(stream: TextIO) -> bool:
+    """Check whether an optional notice can write without waiting on a pipe."""
+    try:
+        fd = stream.fileno()
+    except (AttributeError, OSError, ValueError):
+        return True  # Caller-provided streams such as StringIO have no descriptor.
+    try:
+        if hasattr(select, "poll"):
+            poller = select.poll()
+            poller.register(fd, select.POLLOUT)
+            return bool(poller.poll(0))
+        # On platforms without poll, pipe readiness cannot be checked here.
+        return not stat.S_ISFIFO(os.fstat(fd).st_mode)
+    except (OSError, ValueError):
+        return False
+
+
+def _check_diagnostic_ready(stream: TextIO) -> None:
+    if _READY_ONLY.get() and not _output_ready(stream):
+        raise _DiagnosticUnavailableError
+
+
+def _complete_stderr_writes() -> AbstractContextManager[None]:
+    stream = sys.stderr
+    return _complete_raw_writes(
+        stream, before_write=partial(_check_diagnostic_ready, stream)
+    )
+
+
+def _diagnostic(message: str, *, ready_only: bool = False) -> None:
+    """Write to stderr without changing the command's outcome if it fails."""
+    stream = sys.stderr
+    if stream is None:
+        return
+    check_ready = partial(_check_diagnostic_ready, stream)
+
+    def write(data: str) -> int:
+        try:
+            return stream.write(data)
+        except UnicodeEncodeError:
+            # A caller-supplied text adapter may lack reconfigure().
+            escaped = data.encode("ascii", "backslashreplace").decode("ascii")
+            _write_all(stream.write, escaped, before_write=check_ready)
+            return len(data)
+
+    token = _READY_ONLY.set(ready_only)
+    try:
+        _write_all(write, message, before_write=check_ready)
+        check_ready()
+        stream.flush()
+    except KeyboardInterrupt:
+        _abandon_output(stream)
+        raise
+    except OSError:
+        _abandon_output(stream)
+    except (_DiagnosticUnavailableError, ValueError):
+        pass
+    finally:
+        _READY_ONLY.reset(token)
+
+
+def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
+    if isinstance(message, BaseException):
+        message = _cli_error_text(message)
+    _diagnostic(message + "\n")
+    sys.exit(code)
 
 
 def _write_text(data: str) -> int:

@@ -5,14 +5,14 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
-from inspect import getattr_static, signature
+from inspect import getattr_static
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
 from esolangs.runtime._drive import _check_snapshot_hash, _SnapshotUnavailableError
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchFailure, BranchProof, CycleDecision
-from esolangs.runtime._validate import _has_backing_type, check_whole
+from esolangs.runtime._validate import _call_signature, _has_backing_type, check_whole
 from esolangs.runtime.source_hints import with_hint
 
 if TYPE_CHECKING:
@@ -1042,7 +1042,7 @@ def _check_stop(stop: object) -> None:
     if not callable(stop):
         raise ArgumentError("stop must be callable or None")
     try:
-        parameters = signature(stop, follow_wrapped=False)
+        parameters = _call_signature(stop)
     except (TypeError, ValueError):
         return  # Callables such as bool do not expose an inspectable signature.
     try:

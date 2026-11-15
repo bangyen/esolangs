@@ -7,19 +7,15 @@ are written once rather than per command.
 
 from __future__ import annotations
 
-import os
 import re
-import select
-import stat
-import sys
 from collections.abc import Collection, Iterator
-from contextlib import contextmanager, suppress
-from typing import NoReturn, TextIO
+from contextlib import contextmanager
 
 from esolangs._dialect import DialectSchema
 from esolangs._language import Language
 from esolangs.cli.help import command_synopsis
 from esolangs.cli.hints import _as_argument, _cli_error_text, _did_you_mean, _is_option
+from esolangs.cli.io import _fail
 from esolangs.exceptions import EsolangError
 from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._json import record_loads
@@ -41,57 +37,6 @@ _ARGUMENTS = {
     "describe": ("<language>",),
     "read-answer": ("<language>",),
 }
-
-
-def _abandon_output(stream: TextIO) -> None:
-    """Keep Python's shutdown flush from retrying the failed destination."""
-    with suppress(OSError, ValueError), open(os.devnull, "wb") as sink:
-        os.dup2(sink.fileno(), stream.fileno())
-
-
-def _output_ready(stream: TextIO) -> bool:
-    """Check whether an optional notice can write without waiting on a pipe."""
-    try:
-        fd = stream.fileno()
-    except (OSError, ValueError):
-        return True  # Caller-provided streams such as StringIO have no descriptor.
-    try:
-        if hasattr(select, "poll"):
-            poller = select.poll()
-            poller.register(fd, select.POLLOUT)
-            return bool(poller.poll(0))
-        # On platforms without poll, pipe readiness cannot be checked here.
-        return not stat.S_ISFIFO(os.fstat(fd).st_mode)
-    except (OSError, ValueError):
-        return False
-
-
-def _diagnostic(message: str, *, ready_only: bool = False) -> None:
-    """Write to stderr without changing the command's outcome if it fails."""
-    stream = sys.stderr
-    if stream is None or (ready_only and not _output_ready(stream)):
-        return
-    try:
-        try:
-            stream.write(message)
-        except UnicodeEncodeError:
-            # A caller-supplied text adapter may lack reconfigure().
-            stream.write(message.encode("ascii", "backslashreplace").decode("ascii"))
-        stream.flush()
-    except KeyboardInterrupt:
-        _abandon_output(stream)
-        raise
-    except OSError:
-        _abandon_output(stream)
-    except ValueError:
-        pass  # A closed adapter or one that rejected even the escaped message.
-
-
-def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
-    if isinstance(message, BaseException):
-        message = _cli_error_text(message)
-    _diagnostic(message + "\n")
-    sys.exit(code)
 
 
 _SHORT_OPTIONS = {"-s": "--settings"}

@@ -92,7 +92,8 @@ def generate(
             being about twice as tall as wide, then source length, then
             width.  A raster minimizes max(width, height) in pixels, then
             pixel area, then width.  Excludes ``width``.
-        scale: Raster only; replicates pixels after layout (None: native output).
+        scale: Replicate pixels after layout for runtimes supporting raster
+            scaling. None and 1 keep the native size.
         settings: Dialect choices from ``describe(language).dialect_settings``.
 
     Raises:
@@ -101,8 +102,8 @@ def generate(
             ``2**n``.
         ArgumentError: The language has no Boolean generator (``esolangs list
             --details`` marks it ``int``), or an option is invalid or combined
-            with one it excludes (``balance`` with ``width``, ``scale`` for a
-            text language).
+            with one it excludes (``balance`` with ``width``, a scale above 1
+            for a runtime that does not support raster scaling).
         GeneratorCapError: The table exceeds the generator's cap
             (``describe(language).generator_max_inputs`` and
             ``.generator_restrictions``).
@@ -112,7 +113,9 @@ def generate(
 
     catalog = get_catalog(catalog)
     options = dialect_options(language, settings, catalog=catalog)
-    schema = catalog.languages[catalog.resolve(language)].runtime.dialect_schema
+    resolved = catalog.resolve(language)
+    lang = catalog.languages[resolved]
+    schema = lang.runtime.dialect_schema
     if schema is not None and (choices := schema.defaults | options) != options:
         # Partial overrides still generate against the remaining defaults.
         settings = _settings_for(language, choices, catalog=catalog)
@@ -120,13 +123,15 @@ def generate(
     if scale is not None:
         scale = check_scale(scale)
     if scale not in (None, 1):
-        if (
-            catalog.languages[catalog.resolve(language)].runtime.source_kind
-            is not SourceKind.RASTER
-        ):
+        if lang.runtime.source_kind is not SourceKind.RASTER:
             raise with_hint(
                 ArgumentError("scale is only supported for raster generators"),
                 "omit scale for text languages; apply it only to raster source",
+            )
+        if not lang.runtime.capabilities.supports_scale:
+            raise with_hint(
+                ArgumentError(f"{resolved} does not support raster scaling"),
+                "omit scale or use scale=1 to keep the native size",
             )
         artifact = cast(
             ProgramArtifact[Raster],
@@ -153,8 +158,6 @@ def generate(
                 "balance when choosing a fixed width"
             ),
         )
-    resolved = catalog.resolve(language)
-    lang = catalog.languages[resolved]
     backend = lang.backend
     if backend is None:
         # The language reads input but cannot meet the generator's size contract.
@@ -209,7 +212,11 @@ def generate(
         if not isinstance(generated, Raster):
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
         return ProgramArtifact(
-            generated, resolved, settings=settings, scale=1, input_arity=inputs
+            generated,
+            resolved,
+            settings=settings,
+            scale=1 if lang.runtime.capabilities.supports_scale else None,
+            input_arity=inputs,
         )
     if backend.template is not None:
         raise ProgramError(f"{resolved}'s template generator did not return slots")
@@ -302,6 +309,7 @@ def _generate_balanced(
             balanced = _freeze_compressed(result)._inherit_limits(source.limits)  # noqa: SLF001
         return replace(default, source=balanced)
     if isinstance(source, Raster):
+        assert isinstance(default, ProgramArtifact)
         if balancer is None:
             return default
         result = call_backend(
@@ -310,9 +318,7 @@ def _generate_balanced(
         )
         if not isinstance(result, Raster):
             raise ProgramError(f"{name}'s balancer did not return a Raster")
-        return ProgramArtifact(
-            result, name, settings=settings, scale=1, input_arity=inputs
-        )
+        return replace(default, source=result)
     if balancer is not None:
         balance_source: GeneratedProgram = source
         if isinstance(default, TemplateArtifact) and default.spans is not None:

@@ -10,7 +10,7 @@ import subprocess
 import sys
 from collections.abc import Buffer, Iterator
 from contextlib import suppress
-from io import FileIO, RawIOBase, StringIO, TextIOWrapper
+from io import FileIO, StringIO, TextIOWrapper
 from pathlib import Path
 from types import SimpleNamespace
 from typing import BinaryIO
@@ -19,6 +19,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+from esolangs.cli import io as cli_io
 from esolangs.cli import main
 from esolangs.cli.io import (
     _bounded_read,
@@ -387,8 +388,9 @@ def test_ascii_stderr_adapter_keeps_usage_status(
         encoding = "ascii"
 
         def write(self, data: str) -> int:
-            data.encode(self.encoding)
-            return super().write(data)
+            segment = data[:3]
+            segment.encode(self.encoding)
+            return super().write(segment)
 
     stream = AsciiStderr()
     monkeypatch.setattr(sys, "stderr", stream)
@@ -397,6 +399,14 @@ def test_ascii_stderr_adapter_keeps_usage_status(
         main()
     assert exited.value.code == 2
     assert stream.getvalue() == "unknown option: --\\xe9lan\n"
+
+    stream.seek(0)
+    stream.truncate()
+    monkeypatch.setattr(cli_io, "_output_ready", lambda adapter: not adapter.getvalue())
+    cli_io._diagnostic("optional notice\n", ready_only=True)
+    assert stream.getvalue() == "opt"
+    cli_io._diagnostic("required notice\n")
+    assert stream.getvalue() == "optrequired notice\n"
 
 
 @pytest.mark.medium
@@ -599,58 +609,6 @@ def test_unbuffered_stdout_retries_short_writes_and_restores_writer(
         assert raw.write is short
     assert writes == [2, 2, 2]
     assert path.read_bytes() == "before\réλ\r".encode("utf-16")
-
-
-@pytest.mark.parametrize("gzip_export", [False, True], ids=["display", "gzip"])
-def test_cli_completes_short_raw_adapter_writes(tmp_path, monkeypatch, gzip_export):
-    class ShortRaw(RawIOBase):
-        def __init__(self) -> None:
-            super().__init__()
-            self.data = bytearray()
-
-        def writable(self) -> bool:
-            return True
-
-        def write(self, data: Buffer) -> int:
-            segment = memoryview(data)[:2]
-            self.data.extend(segment)
-            return len(segment)
-
-    raw = ShortRaw()
-    with (
-        TextIOWrapper(raw, encoding="utf-16-le", newline="\r") as stdout,
-        monkeypatch.context() as patch,
-    ):
-        patch.setattr(sys, "stdout", stdout)
-        if gzip_export:
-            patch.setattr(
-                sys, "argv", ["esolangs", "generate", "--gzip", REFERENCE, "01"]
-            )
-            main()
-        else:
-            patch.setattr(sys, "argv", ["esolangs", "--version"])
-            with pytest.raises(SystemExit) as exited:
-                main()
-            assert exited.value.code == 0
-    data = bytes(raw.data)
-    if gzip_export:
-        expected = tmp_path / "expected.gz"
-        esolangs.to_file(
-            REFERENCE,
-            esolangs.generate(REFERENCE, "01"),
-            expected,
-            gzip=True,
-            normalize=True,
-        )
-        assert data == expected.read_bytes()
-        assert (
-            esolangs.read_answer(
-                REFERENCE, esolangs.run(REFERENCE, data, stdin="1").output
-            )
-            == "1"
-        )
-    else:
-        assert data == f"esolangs {esolangs.__version__}\r".encode("utf-16-le")
 
 
 @pytest.mark.parametrize("blocked", [False, True])

@@ -1,5 +1,7 @@
 """Tests for the breakpoint/watch debugger over the VM."""
 
+from functools import lru_cache, wraps
+
 import pytest
 
 import esolangs
@@ -49,6 +51,30 @@ def test_breakpoint_predicate_is_checked_once_at_a_stop() -> None:
     assert positions == [0]
     assert dbg.observation.steps == 0
     assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=4)) == "halted"
+
+    @wraps(first_check)
+    def needs_extra(vm, flag):
+        return flag and first_check(vm)
+
+    def two_args(vm, flag):
+        return flag and vm.ip == 0
+
+    @wraps(two_args)
+    def takes_only_vm(vm):
+        return vm.ip == 0
+
+    @wraps(takes_only_vm)
+    def forwards(*args, **kwargs):
+        return takes_only_vm(*args, **kwargs)
+
+    cached = lru_cache(takes_only_vm)
+    for predicate in (takes_only_vm, forwards, cached, lru_cache(cached)):
+        dbg = debugger_api.make_debugger(REFERENCE, "+.")
+        with pytest.raises(esolangs.ArgumentError, match="predicate must take one"):
+            dbg.break_when(needs_extra)
+        dbg.break_when(predicate)
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "breakpoint"
+        assert dbg.observation.steps == 0
 
 
 def test_breakpoint_callback_cannot_start_a_command_after_deadline(monkeypatch) -> None:

@@ -9,7 +9,6 @@ step, so ``break_at`` on the initial position fires without executing it.
 from __future__ import annotations
 
 from collections.abc import Callable, Hashable, Sequence
-from inspect import signature
 from types import MethodType
 from typing import get_args
 
@@ -21,7 +20,12 @@ from esolangs.runtime._controller import StopReason as StopReason
 from esolangs.runtime._drive import _check_snapshot_hash, _SnapshotUnavailableError
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._source import ProgramSource
-from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_whole
+from esolangs.runtime._validate import (
+    _argument_repr,
+    _call_signature,
+    _has_backing_type,
+    check_whole,
+)
 from esolangs.runtime._vm_protocol import VM
 from esolangs.settings import DialectSettings
 from esolangs.vm import _DelegatingVM, make_vm
@@ -230,7 +234,7 @@ class Debugger(_ExecutionController):
                 f"predicate must be callable, got {type(predicate).__name__}"
             )
         try:
-            signature(predicate).bind(self.vm)
+            _call_signature(predicate).bind(self.vm)
         except TypeError as exc:
             raise ArgumentError(
                 f"predicate must take one argument, the VM; "

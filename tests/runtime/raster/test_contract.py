@@ -1041,7 +1041,7 @@ def test_retained_scale_is_validated(scale) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 def test_explicit_scale_overrides_png_metadata(
-    language, monkeypatch, native_png
+    language, monkeypatch, native_png, tmp_path: Path
 ) -> None:
     module = _execution_runtime.interpreter_module(language)
     assert not hasattr(module, "supports_scale")
@@ -1063,3 +1063,18 @@ def test_explicit_scale_overrides_png_metadata(
     monkeypatch.setattr(module, "supports_scale", True)
     with pytest.raises(esolangs.ArgumentError, match="scale"):
         esolangs.run(language, changed, scale=2, catalog=catalog)
+
+    scoped = catalog.bind(language)
+    for balance in (False, True):
+        generated = scoped.generate("01", balance=balance)
+        assert generated.scale is None
+        assert scoped.generate("01", balance=balance, scale=1) == generated
+        path = tmp_path / "native.png"
+        scoped.to_file(generated, path)
+        native = scoped.from_file(path)
+        portable = scoped.from_json(scoped.to_json(generated))
+        assert generated == native == portable
+        for record in (generated, native, portable):
+            assert "".join(scoped.evaluate(record, [b]).answer for b in (0, 1)) == "01"
+    with pytest.raises(esolangs.ArgumentError, match="does not support raster scaling"):
+        scoped.generate("01", scale=2)
