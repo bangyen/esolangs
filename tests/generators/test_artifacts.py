@@ -135,9 +135,13 @@ def test_template_record_refuses_invalid_shape(source, setters) -> None:
         TemplateArtifact(source, REFERENCE, TemplateBindings(setters=setters))
 
 
-@pytest.mark.parametrize(
-    "setters",
-    [
+def test_template_bindings_require_ordered_pairs() -> None:
+    class ReportedString:
+        @property
+        def __class__(self):
+            return str
+
+    for setters in (
         {("0", "1")},
         {"01": ("1", "0")},
         "",
@@ -145,13 +149,39 @@ def test_template_record_refuses_invalid_shape(source, setters) -> None:
         [frozenset({"0", "1"})],
         [{"0": "1", "1": "0"}],
         ["01"],
-    ],
-)
-def test_template_bindings_require_ordered_pairs(setters) -> None:
-    with pytest.raises(
-        esolangs.TemplateError, match=r"^setters must be pairs of strings$"
+        [(ReportedString(), "1")],
     ):
-        TemplateBindings(setters=setters)
+        with pytest.raises(
+            esolangs.TemplateError, match=r"^setters must be pairs of strings$"
+        ):
+            TemplateBindings(setters=setters)
+    with pytest.raises(esolangs.TemplateError, match="char must be one character"):
+        TemplateBindings(char=ReportedString())
+    with pytest.raises(esolangs.TemplateError, match="template needs text source"):
+        TemplateArtifact(ReportedString(), REFERENCE, TemplateBindings())
+
+    class OrderedPair:
+        @property
+        def __class__(self):
+            return tuple
+
+        def __iter__(self):
+            return iter(("0", "1"))
+
+    bindings = TemplateBindings(setters=[OrderedPair()])
+    assert bindings.fill("$", [1]) == "1"
+    with pytest.raises(esolangs.TemplateError, match="spans must be pairs of offsets"):
+        TemplateArtifact("$", REFERENCE, bindings, spans=(OrderedPair(),))
+
+    failure = esolangs.ProgramError("could not acquire setters")
+
+    class FailingPair(OrderedPair):
+        def __iter__(self):
+            raise failure
+
+    with pytest.raises(esolangs.ProgramError) as caught:
+        TemplateBindings(setters=[FailingPair()])
+    assert caught.value is failure
 
 
 @pytest.mark.parametrize("language", _EMBEDDING)

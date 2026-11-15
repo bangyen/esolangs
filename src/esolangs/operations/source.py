@@ -24,7 +24,7 @@ from esolangs.runtime._source import (
     check_raster_gzip,
     source_for,
 )
-from esolangs.runtime._validate import check_flag, check_scale
+from esolangs.runtime._validate import _has_backing_type, check_flag, check_scale
 from esolangs.runtime.source_hints import program_error_context, source_read_error
 from esolangs.settings import (
     DialectSettings,
@@ -43,7 +43,7 @@ def check_origin(
     catalog = get_catalog(catalog)
     if origin is None:
         return
-    if not isinstance(origin, str):
+    if not _has_backing_type(origin, str):
         raise ProgramError("source language must be a string")
     canonical = resolve_origin(origin, catalog=catalog)
     if canonical != language:
@@ -130,7 +130,9 @@ def read_artifact(
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
     settings = effective_settings(name, program, settings, catalog=catalog)
-    if isinstance(program, (ProgramArtifact, TemplateArtifact)):
+    if _has_backing_type(program, ProgramArtifact) or _has_backing_type(
+        program, TemplateArtifact
+    ):
         check_origin(name, program.language, catalog=catalog)
         source = source_for(
             name,
@@ -212,7 +214,7 @@ def _check_program(
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    if isinstance(program, TemplateArtifact):
+    if _has_backing_type(program, TemplateArtifact):
         raise TemplateError("fill the template before execution")
     record = read_artifact(
         name,
@@ -249,7 +251,7 @@ def from_source(
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    if isinstance(source, ProgramArtifact):
+    if _has_backing_type(source, ProgramArtifact):
         raise ProgramError(
             f"from_source takes source, not a {source.language} artifact; "
             "pass its .source"

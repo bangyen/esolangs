@@ -6,7 +6,7 @@ from esolangs._dialect import DialectSchema, Scalar
 from esolangs._dialect import DialectSettings as DialectSettings
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
 from esolangs.outcomes import _remember_acquisition_failure
-from esolangs.runtime._validate import _argument_repr
+from esolangs.runtime._validate import _argument_repr, _has_backing_type
 
 if TYPE_CHECKING:
     from esolangs.registry._catalog import Catalog
@@ -39,7 +39,7 @@ def dialect_options(
 
     if settings is None:
         return {}
-    if not isinstance(settings, DialectSettings):
+    if not _has_backing_type(settings, DialectSettings):
         raise ArgumentError(
             f"settings must be a DialectSettings object, got {type(settings).__name__}"
         )
@@ -81,14 +81,11 @@ def effective_settings(
 
     catalog = get_catalog(catalog)
 
-    if settings is not None and not isinstance(settings, DialectSettings):
-        raise ArgumentError(
-            f"settings must be a DialectSettings object, got {type(settings).__name__}"
-        )
     dialect_options(language, settings, catalog=catalog)
-    if not isinstance(program, (ProgramArtifact, TemplateArtifact)) or resolve_origin(
-        program.language, catalog=catalog
-    ) != catalog.resolve(language):
+    if not (
+        _has_backing_type(program, ProgramArtifact)
+        or _has_backing_type(program, TemplateArtifact)
+    ) or resolve_origin(program.language, catalog=catalog) != catalog.resolve(language):
         return settings
     retained = program.settings
     dialect_options(language, retained, catalog=catalog)

@@ -12,6 +12,7 @@ from esolangs.registry._catalog import Catalog, get_catalog
 from esolangs.registry._language import LanguageDeclaration
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
 from esolangs.runtime._definition import SourceKind
+from esolangs.runtime._validate import _has_backing_type
 
 __all__ = [
     "BY_BOOLEAN",
@@ -91,7 +92,7 @@ def _template(
 ) -> tuple[str, TemplateSpec | None]:
     """Normalize an identifier and look up its declared input bindings."""
     catalog = get_catalog(catalog)
-    if not isinstance(language_id, str):
+    if not _has_backing_type(language_id, str):
         raise ArgumentError(
             f"a language identifier must be a string, got {type(language_id).__name__}"
         )
@@ -159,7 +160,7 @@ def wiki_url(name: str) -> str:
     again for the README -- so the same broken link shipped in both, and a
     fix to either would have left the other wrong.
     """
-    if not isinstance(name, str):
+    if not _has_backing_type(name, str):
         raise ArgumentError(
             f"a language name must be a string, got {type(name).__name__}"
         )

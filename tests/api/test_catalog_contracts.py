@@ -24,6 +24,15 @@ from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
 
+class _PretendsToBe:
+    def __init__(self, kind: type) -> None:
+        self.kind = kind
+
+    @property
+    def __class__(self) -> type:
+        return self.kind
+
+
 def test_catalog_aliases_use_the_same_normalization_as_lookup() -> None:
     original = LANGUAGES[REFERENCE]
     scoped = esolangs.Catalog([replace(original, aliases=("  scoped-bf  ",))])
@@ -31,7 +40,7 @@ def test_catalog_aliases_use_the_same_normalization_as_lookup() -> None:
     other = replace(original, name="other", id="other", aliases=("scoped-bf",))
     with pytest.raises(esolangs.ArgumentError, match="one owner"):
         scoped.with_language(other)
-    for alias in (None, " "):
+    for alias in (None, " ", _PretendsToBe(str)):
         with pytest.raises(esolangs.ArgumentError, match="nonblank strings"):
             esolangs.Catalog([replace(original, aliases=(alias,))])
 
@@ -89,12 +98,16 @@ def test_catalog_freezes_declaration_spellings_before_indexing() -> None:
         def strip(self, _chars=None):
             raise AssertionError("declaration called the string wrapper")
 
+    class WrappedAliases(tuple):
+        def __iter__(self):
+            raise AssertionError("declaration called the alias tuple wrapper")
+
     original = LANGUAGES[REFERENCE]
     record = replace(
         original,
         name=WrappedText("Private interpreter"),
         id=WrappedText("private_interpreter"),
-        aliases=(WrappedText("PRIVATE-ALIAS"),),
+        aliases=WrappedAliases((WrappedText("PRIVATE-ALIAS"),)),
     )
     for scoped in (
         esolangs.Catalog([record]),
@@ -145,13 +158,20 @@ def test_template_metadata_uses_the_backing_identifier() -> None:
         render_template(identifier, "", 1)
     with pytest.raises(esolangs.TemplateError, match="unknown language"):
         template_setters(identifier, "", 1)
-    with pytest.raises(esolangs.ArgumentError, match="identifier must be a string"):
-        template_char([])
+    for bad in ([], _PretendsToBe(str)):
+        with pytest.raises(esolangs.ArgumentError, match="identifier must be a string"):
+            template_char(bad)
 
 
 def test_bad_declaration_name_is_a_public_argument_error() -> None:
-    with pytest.raises(esolangs.ArgumentError, match="nonblank strings"):
-        replace(LANGUAGES[REFERENCE], name=42, id="")
+    declaration = LANGUAGES[REFERENCE]
+    for bad in (42, _PretendsToBe(str)):
+        with pytest.raises(esolangs.ArgumentError, match="nonblank strings"):
+            replace(declaration, name=bad, id="")
+    with pytest.raises(esolangs.ArgumentError, match="identifiers must be nonempty"):
+        replace(declaration, id=_PretendsToBe(str))
+    with pytest.raises(esolangs.ArgumentError, match="aliases must be immutable"):
+        replace(declaration, aliases=_PretendsToBe(tuple))
 
 
 @pytest.mark.parametrize("identifier", ["", "private_interpreter"])
@@ -178,6 +198,8 @@ def test_wiki_urls_use_utf8_backing_text() -> None:
     assert wiki_url(WrappedName("Private \N{SNAKE}")).endswith("/Private_%F0%9F%90%8D")
     with pytest.raises(esolangs.ArgumentError, match="names must be valid UTF-8"):
         wiki_url("Private\ud800")
+    with pytest.raises(esolangs.ArgumentError, match="name must be a string"):
+        wiki_url(_PretendsToBe(str))
 
 
 def test_boolean_text_arguments_use_string_storage() -> None:
@@ -193,6 +215,15 @@ def test_boolean_text_arguments_use_string_storage() -> None:
     api = esolangs.Language(REFERENCE)
     bound = api.catalog.bind(WrappedText(REFERENCE))
     assert type(bound.name) is str
+    fake = _PretendsToBe(str)
+    with pytest.raises(esolangs.ArgumentError, match="name must be a string"):
+        esolangs.Language(fake)
+    with pytest.raises(esolangs.TruthTableError, match="truth table must be a string"):
+        bound.generate(fake)
+    with pytest.raises(esolangs.TruthTableError, match="truth table must be a string"):
+        bound.encode_inputs([1], truth_table=fake)
+    with pytest.raises(esolangs.ArgumentError, match="output must be a string"):
+        bound.read_answer(fake)
     table = WrappedText("01")
     assert bound.encode_inputs([1], truth_table=table) == "1"
     assert bound.read_answer(WrappedText("1\n")) == "1"
@@ -235,10 +266,31 @@ def test_boolean_adapters_use_stdin_contract_without_a_generator() -> None:
 
 
 def test_read_answer_uses_the_first_group_of_the_last_match() -> None:
+    class Symbols(tuple):
+        def __len__(self) -> int:
+            raise AssertionError("checked the symbols' overridden length")
+
+        def __iter__(self):
+            raise AssertionError("iterated the symbols' override")
+
     original = LANGUAGES[REFERENCE]
-    contract = replace(original.contract, answer_pattern=r"([01])([ab])")
+    symbols = Symbols(("0", "1"))
+    contract = replace(
+        original.contract,
+        alphabet=symbols,
+        answer_values=symbols,
+        answer_pattern=r"([01])([ab])",
+    )
     scoped = esolangs.Catalog([replace(original, contract=contract)])
     assert scoped.bind(REFERENCE).read_answer("0a, 1b") == "1"
+    assert scoped.bind(REFERENCE).encode_inputs([1]) == "1"
+    for bad in (_PretendsToBe(tuple), (_PretendsToBe(str), "1")):
+        contract = replace(original.contract, alphabet=bad, answer_values=bad)
+        bound = esolangs.Catalog([replace(original, contract=contract)]).bind(REFERENCE)
+        with pytest.raises(esolangs.ProgramError, match="invalid answer encoding"):
+            bound.read_answer("1")
+        with pytest.raises(esolangs.ProgramError, match="invalid input encoding"):
+            bound.encode_inputs([1])
 
 
 @pytest.mark.parametrize(
@@ -291,10 +343,14 @@ def test_row_number_encodes_a_large_positive_input() -> None:
 
 def test_read_answer_reports_a_malformed_catalog_pattern() -> None:
     original = LANGUAGES[REFERENCE]
-    contract = replace(original.contract, answer_pattern="wat(")
-    scoped = esolangs.Catalog([replace(original, contract=contract)])
-    with pytest.raises(esolangs.ProgramError, match="invalid answer pattern"):
-        scoped.bind(REFERENCE).read_answer("1")
+    for pattern in ("wat(", _PretendsToBe(str), _PretendsToBe(re.Pattern)):
+        contract = replace(original.contract, answer_pattern=pattern)
+        bound = esolangs.Catalog([replace(original, contract=contract)]).bind(REFERENCE)
+        with pytest.raises(esolangs.ProgramError, match="invalid answer pattern"):
+            bound.read_answer("1")
+        if type(pattern) is not str:
+            with pytest.raises(esolangs.ProgramError, match="invalid answer pattern"):
+                bound.describe()
 
 
 def test_scoped_description_uses_the_declared_runtime() -> None:

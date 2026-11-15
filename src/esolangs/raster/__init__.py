@@ -10,7 +10,7 @@ from operator import is_not
 from typing import cast
 
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
-from esolangs.runtime._validate import _argument_repr, check_scale
+from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_scale
 from esolangs.runtime.source_hints import syntax_error
 
 from . import png
@@ -51,14 +51,16 @@ def _freeze_iterable_rows(rows: Rows) -> Rows:
     validated: dict[int, Pixel] = {}
     validated_rows: dict[int, tuple[Pixel, ...]] = {}
     frozen_rows = []
-    iterable = tuple.__iter__(rows) if isinstance(rows, tuple) else rows
+    iterable = tuple.__iter__(rows) if _has_backing_type(rows, tuple) else rows
     for row in iterable:
         exact_tuple = type(row) is tuple
         if exact_tuple and id(row) in validated_rows:
             frozen_rows.append(validated_rows[id(row)])
             continue
         pixels = (
-            tuple.__iter__(row) if not exact_tuple and isinstance(row, tuple) else row
+            tuple.__iter__(row)
+            if not exact_tuple and _has_backing_type(row, tuple)
+            else row
         )
         frozen_row: list[Pixel] | None = None if exact_tuple else []
         previous: Pixel | None = None
@@ -102,7 +104,7 @@ def _freeze_pixel(pixel: Iterable[int]) -> Pixel:
     """Store built-in integers so callers cannot alter value or hash semantics."""
     if type(pixel) is tuple:
         frozen = pixel
-    elif isinstance(pixel, tuple):
+    elif _has_backing_type(pixel, tuple):
         frozen = tuple(tuple.__iter__(pixel))
     else:
         frozen = tuple(pixel)
@@ -111,7 +113,7 @@ def _freeze_pixel(pixel: Iterable[int]) -> Pixel:
     red, green, blue = frozen
     if not type(red) is type(green) is type(blue) is int:
         if any(
-            isinstance(channel, bool) or not isinstance(channel, int)
+            type(channel) is bool or not _has_backing_type(channel, int)
             for channel in frozen
         ):
             raise _pixel_error()
@@ -272,14 +274,15 @@ class Raster:
         bytes-like is an :class:`~esolangs.exceptions.ArgumentError`.
         """
         payload: object = data
-        if not isinstance(payload, (bytes, bytearray, memoryview)):
-            # ``None`` read "'NoneType' object is not subscriptable".
-            raise ArgumentError(f"PNG data must be bytes, got {type(data).__name__}")
-        if isinstance(payload, memoryview):
+        if _has_backing_type(payload, memoryview):
             try:
                 payload = payload.tobytes()
             except ValueError as exc:
                 raise ArgumentError(f"cannot read PNG data: {exc}") from exc
+        elif not (
+            _has_backing_type(payload, bytes) or _has_backing_type(payload, bytearray)
+        ):
+            raise ArgumentError(f"PNG data must be bytes, got {type(data).__name__}")
         try:
             decoded = png._rgb_rows(payload)  # noqa: SLF001
             # Inside the guard too: a 0x0 image decodes cleanly and then

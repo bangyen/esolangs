@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
-from typing import IO, TYPE_CHECKING
+from typing import IO, TYPE_CHECKING, cast
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
@@ -19,7 +19,7 @@ from esolangs.raster import Raster
 from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._files import explicit_path, read_snapshot
 from esolangs.runtime._program import Program
-from esolangs.runtime._validate import check_scale
+from esolangs.runtime._validate import _has_backing_type, check_scale
 from esolangs.runtime.source_hints import (
     program_error_context,
     source_read_error,
@@ -58,27 +58,33 @@ def _read_container(
     label = "the program"
     reading_stream = False
     try:
-        if isinstance(source, (ProgramArtifact, TemplateArtifact)):
+        if _has_backing_type(source, ProgramArtifact) or _has_backing_type(
+            source, TemplateArtifact
+        ):
             source = source.source
-        if isinstance(source, _FileSource):
+        if _has_backing_type(source, _FileSource):
             return source.read(), source.path
-        if isinstance(source, os.PathLike):
-            path = explicit_path(source)
+        if issubclass(type(source), os.PathLike):
+            path = explicit_path(cast("os.PathLike[str]", source))
             label = str(path)
             with open(path, "rb") as file:
                 return read_snapshot(file), label
-        if isinstance(source, (Raster, CompressedText)):
+        if _has_backing_type(source, Raster) or _has_backing_type(
+            source, CompressedText
+        ):
             return source, None
         value = source
-        if not isinstance(source, (str, bytes)):
+        if not issubclass(type(source), (str, bytes)):
             label = "the program stream"
             reading_stream = True
             reader = getattr(source, "read", None)
             if callable(reader):
-                value = read_snapshot(source, reader=reader)
-        if isinstance(value, str):
+                value = read_snapshot(
+                    cast("IO[str] | IO[bytes]", source), reader=reader
+                )
+        if _has_backing_type(value, str):
             return str.__str__(value), None
-        if isinstance(value, bytes):
+        if _has_backing_type(value, bytes):
             return bytes.__bytes__(value), None
     except (OSError, TypeError, ValueError) as exc:
         if _is_acquisition_failure(exc):
@@ -110,8 +116,8 @@ def _read_gzip(data: bytes, label: str | None) -> CompressedText:
 
 def check_raster_gzip(language: str, source: object) -> None:
     """Report gzip text presented to a raster language before decoding it."""
-    if isinstance(source, CompressedText) or (
-        isinstance(source, bytes) and bytes.startswith(source, _GZIP_SIGNATURE)
+    if _has_backing_type(source, CompressedText) or (
+        _has_backing_type(source, bytes) and bytes.startswith(source, _GZIP_SIGNATURE)
     ):
         raise with_hint(
             ProgramError(
@@ -128,13 +134,13 @@ def text_source(
     value, path = _read_container(source)
     if label is None:
         label = path
-    if isinstance(value, bytes) and value.startswith(_GZIP_SIGNATURE):
+    if _has_backing_type(value, bytes) and value.startswith(_GZIP_SIGNATURE):
         value = _read_gzip(value, label)
-    if isinstance(value, CompressedText):
+    if _has_backing_type(value, CompressedText):
         # Construction already enforced the generation budget. plain_chars
         # limits raw export; loading an interpreter's source is not export.
         value = "".join(value.chunks())
-    if isinstance(value, bytes):
+    if _has_backing_type(value, bytes):
         try:
             value = value.decode("utf-8")
         except UnicodeDecodeError as exc:
@@ -144,7 +150,7 @@ def text_source(
                 "save the text program as UTF-8 before running it",
                 error_type=ProgramError,
             ) from exc
-    if not isinstance(value, str):
+    if not _has_backing_type(value, str):
         raise syntax_error(
             f"program must be a string of source or a Path, got {type(value).__name__}",
             "pass text source or UTF-8 bytes; use pathlib.Path for a text filename",
@@ -181,7 +187,7 @@ def _native_compressed_source(
 ) -> str | CompressedText:
     """Normalize a gzip-native language without expanding it into one string."""
     value = compressed_text_source(source)
-    if isinstance(value, CompressedText):
+    if _has_backing_type(value, CompressedText):
         return CompressedText.from_chunks(
             _native_chunks(value.chunks()), limits=value.limits
         )
@@ -191,9 +197,9 @@ def _native_compressed_source(
 def compressed_text_source(source: ProgramSource | _FileSource) -> str | CompressedText:
     """Keep gzip source compressed; accept ordinary text containers too."""
     value, path = _read_container(source)
-    if isinstance(value, CompressedText):
+    if _has_backing_type(value, CompressedText):
         return value
-    if isinstance(value, bytes) and value.startswith(_GZIP_SIGNATURE):
+    if _has_backing_type(value, bytes) and value.startswith(_GZIP_SIGNATURE):
         return _read_gzip(value, path)
     return text_source(value, label=path)
 
@@ -201,9 +207,9 @@ def compressed_text_source(source: ProgramSource | _FileSource) -> str | Compres
 def raster_source(source: ProgramSource | _FileSource) -> Raster:
     """Load a Raster or lossless PNG bytes from any supported container."""
     value, _path = _read_container(source)
-    if isinstance(value, bytes):
+    if _has_backing_type(value, bytes):
         return Raster.from_png(value)
-    if not isinstance(value, Raster):
+    if not _has_backing_type(value, Raster):
         raise syntax_error(
             f"program must be a Raster or a Path, got {type(value).__name__}",
             "pass a Raster or PNG bytes; use pathlib.Path for a PNG filename",
@@ -257,7 +263,7 @@ def effective_scale(
     catalog = get_catalog(catalog)
     if (
         scale is None
-        and isinstance(program, ProgramArtifact)
+        and _has_backing_type(program, ProgramArtifact)
         and resolve_origin(program.language, catalog=catalog)
         == catalog.resolve(language)
     ):

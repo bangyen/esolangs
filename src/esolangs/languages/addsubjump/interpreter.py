@@ -35,6 +35,7 @@ Decisions:
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import partial
 from types import MappingProxyType
 from typing import Any
 
@@ -45,8 +46,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.memory import parse_integer as _integer
 from esolangs.runtime.source_hints import syntax_error
@@ -549,6 +550,9 @@ class _Machine:
         self.io = io
         memory = _parse(code) if isinstance(code, str) else code
         self.state: _State = (memory, 0, 0, 0, 0)
+        self._pending_selector: int | None = None
+        self._pending_output: tuple[str, _State] | None = None
+        self._writer = _BufferedOutput()
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -596,15 +600,26 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
         cells, length = self.state[0]
+        pending = self._output_boundary()
         return _WORKSPACE_MODEL.capture(
             cells=frozenset(cells.items()),
             extent=length,
-            instruction=self.state[1],
+            instruction=(
+                self.state[1]
+                if pending is None
+                else WorkspaceVariant("pending_output", (self.state[1], *pending))
+            ),
             zero=self.state[2],
             negative=self.state[3],
             flag_update=self.state[4],
-            input_cursor=self.io.progress(),
+            input_cursor=self._input_boundary(),
         )
+
+    def _input_boundary(self) -> int | WorkspaceVariant:
+        cursor = self.io.progress()
+        if self._pending_selector is None:
+            return cursor
+        return WorkspaceVariant("pending_input", (cursor, self._pending_selector))
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
@@ -618,12 +633,21 @@ class _Machine:
         # than a frozenset because a frozenset's repr is unstable across
         # processes, which the mutation baselines compare.
         (cells, length) = self.state[0]
-        return (
+        boundary = (
             tuple(sorted(cells.items())),
             length,
             *self.state[1:],
-            self.io.progress(),
+            self._input_boundary(),
         )
+        pending = self._output_boundary()
+        return boundary if pending is None else (*boundary, pending)
+
+    def _output_boundary(self) -> tuple[object, ...] | None:
+        if self._pending_output is None:
+            return None
+        char, state = self._pending_output
+        # Writing the port leaves memory unchanged.
+        return (char, *state[1:], self._writer.accepted or 0)
 
     def step(self) -> None:
         """Execute one instruction, advancing the pointer.
@@ -633,6 +657,11 @@ class _Machine:
         """
         if self.halted:
             return
+        io = self.io
+        pending = self._pending_output
+        if pending is not None:
+            self._finish_output(*pending)
+            return
         operands = _operands(self.state)
         a, b, _c, d = operands
         if _too_large(self.state, a):
@@ -640,10 +669,41 @@ class _Machine:
                 f"memory address {format_integer(a)} is too large",
                 hint="keep memory addresses within the interpreter allocation limit",
             )
-        reads = tuple(self.io.input_char() for addr in (d, b) if addr == _IO)
-        value, self.state = _advance(self.state, reads, operands)
+        reads: tuple[int, ...]
+        if d == b == _IO and isinstance(io, ScriptedIO):
+            reads = self._read_pair(io)
+        else:
+            reads = tuple(io.input_char() for addr in (d, b) if addr == _IO)
+        value, state = _advance(self.state, reads, operands)
+        if a == _IO and isinstance(io, ScriptedIO):
+            char = chr(value & 0xFF)
+            self._pending_output = (char, state)
+            self._finish_output(char, state)
+            return
+        self.state = state
         if a == _IO:
-            self.io.print_char(chr(value & 0xFF))
+            io.print_char(chr(value & 0xFF))
+
+    def _read_pair(self, io: ScriptedIO) -> tuple[int, int]:
+        selector = self._pending_selector
+        if selector is None:
+            selector = io.input_char()
+        past_end = io.past_end
+        try:
+            operand = io.input_char()
+        except BaseException:
+            # Physical EOF exhausts this fixed input. A port refusal can be retried.
+            self._pending_selector = selector if io.past_end == past_end else None
+            raise
+        self._pending_selector = None
+        return selector, operand
+
+    def _finish_output(self, char: str, state: _State) -> None:
+        io = self.io
+        assert isinstance(io, ScriptedIO)
+        self._writer.write(io, char, first=partial(io.print_char, char))
+        self.state = state
+        self._pending_output = None
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

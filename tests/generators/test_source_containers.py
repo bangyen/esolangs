@@ -843,6 +843,17 @@ def test_source_declaration_and_export_validate_the_language_kind(
             assert not path.exists()
 
 
+class _ClaimedContainer:
+    def __init__(self, claimed: type) -> None:
+        self.claimed = claimed
+        self.probes = 0
+
+    @property
+    def __class__(self) -> type:
+        self.probes += 1
+        return self.claimed
+
+
 def test_raw_and_stream_sources_use_the_underlying_string_or_bytes() -> None:
     class Text(str):
         def __str__(self):
@@ -873,6 +884,15 @@ def test_raw_and_stream_sources_use_the_underlying_string_or_bytes() -> None:
         assert api.run(stream).output == "\x01"
         assert stream.reads == 1
         assert api.from_json(api.to_json(Stream(source))) == expected
+    for claimed in (str, bytes, esolangs.ProgramArtifact):
+        fake = _ClaimedContainer(claimed)
+        for limits in (None, esolangs.ExecutionLimits(total_timeout=5)):
+            for source in (fake, Stream(fake)):
+                result = api.execute(source, limits=limits)
+                assert result.status == "rejected"
+                assert type(result.error) is esolangs.ProgramError
+                assert "program must be" in str(result.error)
+        assert fake.probes == 0
 
 
 @pytest.mark.medium
@@ -894,6 +914,27 @@ def test_stdin_subclasses_keep_the_same_bytes_in_every_execution_route() -> None
             assert (
                 esolangs.run(REFERENCE, ",.", stdin=stdin, limits=limits).output == "A"
             )
+
+    class Stream:
+        def __init__(self, value: object) -> None:
+            self.value = value
+
+        def read(self) -> object:
+            return self.value
+
+    for claimed in (str, bytes):
+        fake = _ClaimedContainer(claimed)
+        for limits in (
+            None,
+            esolangs.ExecutionLimits(max_steps=10),
+            esolangs.ExecutionLimits(total_timeout=5),
+        ):
+            for source in (fake, Stream(fake)):
+                result = esolangs.execute(REFERENCE, ",.", stdin=source, limits=limits)
+                assert result.status == "rejected"
+                assert type(result.error) is esolangs.ArgumentError
+                assert "stdin" in str(result.error)
+        assert fake.probes == 0
 
 
 @pytest.mark.parametrize("normalize", [False, True])

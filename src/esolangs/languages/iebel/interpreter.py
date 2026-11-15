@@ -39,6 +39,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Any, NamedTuple
 
 from esolangs.languages.iebel.lifecycle import CAPABILITIES
@@ -47,8 +48,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -140,6 +141,7 @@ class _Machine:
         self.ops = _parse(code) if isinstance(code, str) else code
         self.io = io
         self.state: _State = (0, (0,) * 256)
+        self._writer = _BufferedOutput()
 
     @property
     def ip(self) -> tuple[int]:
@@ -154,24 +156,37 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        instruction = self.state[0]
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state[0],
+            instruction=(
+                instruction
+                if accepted is None
+                else WorkspaceVariant("pending_output", (instruction, accepted))
+            ),
             registers=self.state[1],
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def step(self) -> None:
         """Run one instruction; the read and the write happen here."""
         if self.halted:
             return
-        byte = self.io.input_char() if self.ops[self.state[0]].c == -3 else None
-        self.state, out = _advance(self.state, self.ops, byte)
+        io = self.io
+        byte = io.input_char() if self.ops[self.state[0]].c == -3 else None
+        state, out = _advance(self.state, self.ops, byte)
+        if out is not None and isinstance(io, ScriptedIO):
+            self._writer.write(io, out, first=partial(io.print_char, out))
+            out = None
+        self.state = state
         if out is not None:
-            self.io.print_char(out)
+            io.print_char(out)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

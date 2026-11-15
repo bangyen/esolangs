@@ -55,6 +55,12 @@ def test_truth_machine_zero(monkeypatch) -> None:
         "IEBEL", "0 0 -3\n0 1 -2\n0 0 -1", interpreter, "_parse", monkeypatch
     )
 
+    from tests.support.vm_support import assert_rejected_output_retry
+
+    assert_rejected_output_retry(
+        "IEBEL", "0 65 -2", "A", "A", prefix=0, monkeypatch=monkeypatch
+    )
+
 
 def test_truth_machine_one_loops() -> None:
     machine = _Machine(TRUTH, ScriptedIO("1"))

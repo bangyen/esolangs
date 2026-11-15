@@ -9,7 +9,7 @@ from contextlib import ExitStack
 from dataclasses import asdict, replace
 from functools import partial
 from os import PathLike
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from esolangs.artifacts import (
     Artifact,
@@ -40,6 +40,7 @@ from esolangs.runtime._source import (
     ProgramSource,
     native_file_terminator,
 )
+from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.source_hints import program_error_context, with_hint
 from esolangs.settings import (
     DialectSettings,
@@ -72,7 +73,7 @@ def _native_file_bytes(
     record: Artifact, *, gzip: bool, terminate: bool
 ) -> Iterable[bytes]:
     """Encode a native file, retaining gzip bytes when no conversion is needed."""
-    if isinstance(record, TemplateArtifact):
+    if not _has_backing_type(record, ProgramArtifact):
         raise with_hint(
             TemplateError(
                 "a template's native file would run with its placeholders unfilled"
@@ -80,7 +81,7 @@ def _native_file_bytes(
             "fill it with instantiate() first, or keep the bindings with to_json()",
         )
     body = record.source
-    if isinstance(body, Raster):
+    if _has_backing_type(body, Raster):
         if gzip:
             raise ProgramError("gzip export requires text; rasters use PNG")
         return (
@@ -92,17 +93,17 @@ def _native_file_bytes(
                 input_arity=record.input_arity,
             ),
         )
-    if isinstance(body, CompressedText) and gzip and not terminate:
-        return (body.to_gzip(),)
     limits = None
     chunks: Iterable[str]
-    if isinstance(body, CompressedText):
+    if _has_backing_type(body, CompressedText):
+        if gzip and not terminate:
+            return (body.to_gzip(),)
         limits = body.limits
         chunks = body.chunks() if gzip else body.plain_chunks()
         if terminate and not gzip and limits is not None:
             _check_plain(limits, len(body) + 1)
     else:
-        chunks = (body,)
+        chunks = (cast("str", body),)
     if terminate:
         chunks = _terminated_text(chunks, plain_limits=None if gzip else limits)
     if gzip:
@@ -169,8 +170,9 @@ def to_file(
     publish: Callable[[Iterable[bytes]], None] = partial(write_staged, target)
     with ExitStack() as reservation:
         # Paths can open a FIFO, and a reader can consume bytes irreversibly.
-        if isinstance(program, PathLike) or not isinstance(
-            program,
+        kind = type(program)
+        if issubclass(kind, PathLike) or not issubclass(
+            kind,
             (str, bytes, Raster, CompressedText, ProgramArtifact, TemplateArtifact),
         ):
             if gzip and runtime.source_kind is SourceKind.RASTER:
@@ -248,38 +250,42 @@ def to_json(
         "language": name,
         "settings": encoded,
     }
-    if isinstance(artifact, ProgramArtifact) and artifact.input_arity is not None:
-        document["input_arity"] = artifact.input_arity
-    body = artifact.source
-    if isinstance(artifact, TemplateArtifact):
+    if not _has_backing_type(artifact, ProgramArtifact):
         _require_template_capability(name, catalog=catalog)
+        template = cast("TemplateArtifact", artifact)
         document.update(
             kind="template",
-            source=artifact.source,
-            char=artifact.bindings.char,
-            setters=artifact.bindings.setters,
-            spans=artifact.spans,
-        )
-    elif isinstance(body, Raster):
-        image = png.write_rgb(body.rows)
-        try:
-            image = png.attach_source_metadata(image, name, settings, artifact.scale)
-        except png.SourceMetadataSizeError:
-            if artifact.scale is not None:
-                document["scale"] = artifact.scale
-        document.update(
-            kind="png",
-            source=base64.b64encode(image).decode("ascii"),
-        )
-    elif isinstance(body, CompressedText):
-        limits = _normalize_limits(body.limits)
-        document.update(
-            kind="gzip",
-            source=base64.b64encode(body.to_gzip()).decode("ascii"),
-            limits=asdict(limits) if limits is not None else None,
+            source=template.source,
+            char=template.bindings.char,
+            setters=template.bindings.setters,
+            spans=template.spans,
         )
     else:
-        document.update(kind="text", source=str(body))
+        if artifact.input_arity is not None:
+            document["input_arity"] = artifact.input_arity
+        body = artifact.source
+        if _has_backing_type(body, Raster):
+            image = png.write_rgb(body.rows)
+            try:
+                image = png.attach_source_metadata(
+                    image, name, settings, artifact.scale
+                )
+            except png.SourceMetadataSizeError:
+                if artifact.scale is not None:
+                    document["scale"] = artifact.scale
+            document.update(
+                kind="png",
+                source=base64.b64encode(image).decode("ascii"),
+            )
+        elif _has_backing_type(body, CompressedText):
+            limits = _normalize_limits(body.limits)
+            document.update(
+                kind="gzip",
+                source=base64.b64encode(body.to_gzip()).decode("ascii"),
+                limits=asdict(limits) if limits is not None else None,
+            )
+        else:
+            document.update(kind="text", source=str(body))
     try:
         # The check ``from_json`` makes: a lone surrogate dumped as a
         # ``\ud800`` escape, which it then refused.
@@ -496,7 +502,7 @@ def from_json(
     from esolangs.operations.source import positive_metadata_field, read_artifact
 
     name = catalog.resolve(language)
-    if not isinstance(document, str):
+    if not _has_backing_type(document, str):
         raise ArgumentError("document must be a JSON string")
     try:
         value = record_loads(document)

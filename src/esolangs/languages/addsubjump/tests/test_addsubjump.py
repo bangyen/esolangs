@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.addsubjump.interpreter import (
     _advance,
@@ -110,11 +111,50 @@ class TestAssemblyErrors:
 
 
 class TestInstruction:
-    def test_output_a_memory_cell(self) -> None:
+    def test_output_a_memory_cell(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # The wiki's example -1 1 0 -7 outputs memory address 1 and then
         # jumps to the *literal* address 0, which loops; here the value cell
         # is at address 4 and c = -1 is a special address, so the run ends.
         assert _run("-1 4 -1 -7 65") == "A"
+
+        api = Language("AddSubJump")
+        source, stdin = "-1 -1 -1 -1", "\x00A"
+        limits = ExecutionLimits(max_steps=1)
+        expected = api.run(source, stdin=stdin, limits=limits)
+        assert (expected.output, expected.steps, expected.input_reads) == ("A", 1, 2)
+        write = ScriptedIO.print_char
+        for accepted in (0, 1):
+            attempts = []
+
+            def refuse(io, char, _attempts=attempts, _accepted=accepted):
+                _attempts.append(char)
+                if len(_attempts) == 1:
+                    if _accepted:
+                        write(io, char)
+                    raise HaltError("temporary writer refusal")
+                write(io, char)
+
+            with monkeypatch.context() as port:
+                port.setattr(ScriptedIO, "print_char", refuse)
+                debugger = api.make_debugger(source, stdin=stdin)
+                start = debugger.snapshot()
+                with pytest.raises(
+                    HaltError, match="temporary writer refusal"
+                ) as fault:
+                    debugger.run(limits=limits)
+                partial = ExecutionResult("A"[:accepted], 2, 2, 0, steps=0)
+                assert fault.value.observation == debugger.observation == partial
+                assert debugger.ip == 0
+                assert not debugger.halted
+                assert debugger.snapshot() == (
+                    *start[:-1],
+                    2,
+                    ("A", -1, 0, 0, 0, accepted),
+                )
+                assert debugger.run(limits=limits) == "halted"
+                assert debugger.observation == expected
+                assert fault.value.observation == partial
+                assert attempts == ["A"] * (1 if accepted else 2)
 
     def test_adds_through_the_constant_one(self) -> None:
         # memory[12] += 1 twice (d = -7 is the constant 0, so the += branch),
@@ -153,7 +193,9 @@ class TestSpecialAddresses:
             assert machine.memory[8] == (4 if selector else 10)
         assert machine.halted
 
-    def test_second_port_read_exhaustion_preserves_memory(self) -> None:
+    def test_second_port_read_exhaustion_preserves_memory(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         port = ScriptedIO(chr(1))
         machine = _Machine("8 -1 -1 -1 0 0 0 0 7", port)
         before = machine.state
@@ -161,6 +203,46 @@ class TestSpecialAddresses:
             machine.step()
         assert machine.state == before
         assert port.reads == 1
+
+        api = Language("AddSubJump")
+        source = "-1 -1 -1 -1"
+        limits = ExecutionLimits(max_steps=1)
+        debugger = api.make_debugger(source, stdin="A")
+        initial = debugger.snapshot()
+        for count in (1, 2):
+            with pytest.raises(InputExhaustedError) as exhausted:
+                debugger.run(limits=limits)
+            assert debugger.snapshot() == (*initial[:-1], 1)
+            assert exhausted.value.observation == ExecutionResult(
+                "", 1, 1, count, steps=0
+            )
+
+        expected = api.run(source, stdin="AB", limits=limits)
+        assert (expected.output, expected.steps, expected.input_reads) == ("B", 1, 2)
+        read = ScriptedIO.input_char
+        positions = []
+
+        def refuse_second(io, *args):
+            positions.append(io.position())
+            if len(positions) == 2:
+                raise HaltError("second operand temporarily unavailable")
+            return read(io, *args)
+
+        monkeypatch.setattr(ScriptedIO, "input_char", refuse_second)
+        debugger = api.make_debugger(source, stdin="AB")
+        with pytest.raises(
+            HaltError, match="second operand temporarily unavailable"
+        ) as failure:
+            debugger.run(limits=limits)
+        partial = ExecutionResult("", 1, 1, 0, steps=0)
+        assert failure.value.observation == debugger.observation == partial
+        pending = debugger.snapshot()[-1]
+        assert pending.kind == "pending_input"
+        assert pending.values == (1, ord("A"))
+        assert debugger.run(limits=limits) == "halted"
+        assert debugger.observation == expected
+        assert failure.value.observation == partial
+        assert positions == [0, 1, 1]
 
     def test_constants(self) -> None:
         # -6 = 1, -7 = 0, -8 = -1: memory[30] = 1 + 0 + (-1) = 0.

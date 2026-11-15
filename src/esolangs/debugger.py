@@ -19,7 +19,7 @@ from esolangs.runtime._controller import ExecutionController as _ExecutionContro
 from esolangs.runtime._controller import StopReason as StopReason
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._source import ProgramSource
-from esolangs.runtime._validate import _argument_repr, check_whole
+from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_whole
 from esolangs.runtime._vm_protocol import VM
 from esolangs.settings import DialectSettings
 from esolangs.vm import SnapshotVM, make_vm
@@ -142,14 +142,16 @@ class Debugger(_ExecutionController):
         ``break_when(lambda vm: vm.ip is None)``.
         A position never reached is accepted (the protocol has no ``len``).
         """
-        if isinstance(ip, tuple):
+        if _has_backing_type(ip, tuple):
             ip = tuple(tuple.__iter__(ip))
-        if isinstance(ip, int) and not isinstance(ip, bool):
+        if type(ip) is not bool and _has_backing_type(ip, int):
             ip = int.__int__(ip)  # AddSubJump and Subleq halt at -8 and -1.
         elif (
-            isinstance(ip, tuple)
+            _has_backing_type(ip, tuple)
             and ip
-            and all(isinstance(part, int) and not isinstance(part, bool) for part in ip)
+            and all(
+                type(part) is not bool and _has_backing_type(part, int) for part in ip
+            )
         ):
             ip = tuple(int.__int__(part) for part in ip)
         else:
@@ -172,7 +174,7 @@ class Debugger(_ExecutionController):
         A non-``int`` ``value`` raises ``ArgumentError``.
         """
         index = check_whole(index, "index")
-        if isinstance(value, bool) or not isinstance(value, int):
+        if type(value) is bool or not _has_backing_type(value, int):
             raise ArgumentError(
                 f"value must be an integer, got {_argument_repr(value)}"
             )
@@ -198,7 +200,7 @@ class Debugger(_ExecutionController):
         A non-string or empty ``text`` is refused here, not from inside the run
         loop; an empty one would stop before the first step.
         """
-        if not isinstance(text, str):
+        if not _has_backing_type(text, str):
             raise ArgumentError(f"text must be a string, got {type(text).__name__}")
         text = str.__str__(text)
         if not text:

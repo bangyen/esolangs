@@ -5,7 +5,10 @@ import pytest
 from esolangs import InputExhaustedError, Language
 from esolangs.languages.switchcase.interpreter import run
 from tests.interpreters.runner import native_runner
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 _output = native_runner(run)
 
@@ -52,7 +55,7 @@ def test_wide_arithmetic_and_numeric_output_ignore_the_host_digit_cap() -> None:
     assert_digit_cap_independent("SwitchCase", "$_\n0?#@", digits, digits)
 
 
-def test_rejected_numeric_input_stays_at_the_port() -> None:
+def test_rejected_io_stays_at_the_port(monkeypatch: pytest.MonkeyPatch) -> None:
     source = "$_\n0?#@"
     assert_rejected_input_retry(
         "SwitchCase", source, "oops 7", "7", "7", position=4, reads=1, prefix=1
@@ -65,3 +68,9 @@ def test_rejected_numeric_input_stays_at_the_port() -> None:
             debugger.step()
         assert debugger.snapshot() == boundary
         assert debugger.observation.input_past_end == attempts
+    assert_rejected_output_retry(
+        "SwitchCase", "$_\n0?+65.@", "A", "A65", prefix=2, monkeypatch=monkeypatch
+    )
+    assert_rejected_output_retry(
+        "SwitchCase", "$_\n0?+123@", "123", "123", prefix=2, monkeypatch=monkeypatch
+    )

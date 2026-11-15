@@ -111,6 +111,20 @@ def test_raster_png_decodes_the_backing_bytearray() -> None:
     assert Raster.from_png(substitute) == other
     assert Raster.from_png(AlternateBytes(raw)) == expected
 
+    class ClaimedBytes:
+        probes = 0
+
+        @property
+        def __class__(self) -> type:
+            self.probes += 1
+            return bytes
+
+    false_buffer = ClaimedBytes()
+    for decode in (Raster.from_png, png.read_rgb, png.read_metadata):
+        with pytest.raises(esolangs.ArgumentError, match="PNG data must be bytes"):
+            decode(false_buffer)
+    assert false_buffer.probes == 0
+
 
 def test_raster_freezes_backing_tuples_at_each_level() -> None:
     class AlternateTuple(tuple):

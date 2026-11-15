@@ -65,8 +65,8 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import trunc_div, trunc_mod
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import syntax_error
@@ -310,6 +310,7 @@ class _Machine:
         self.grid = program.grid
         self.io, self._rng = io, rng
         self._rejected_input = RejectedInput()
+        self._writer = _BufferedOutput()
         self.state = _State((0, 0, 1, 0), self.grid, None, string=False, done=False)
 
     @property
@@ -336,6 +337,8 @@ class _Machine:
         while rest is not None:
             value, rest = rest
             stack.append(value)
+        cursor = self._rejected_input.cursor(self.io.progress())
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             x=self.state.cursor[0],
             y=self.state.cursor[1],
@@ -345,17 +348,24 @@ class _Machine:
             stack=tuple(reversed(stack)),
             string=self.state.string,
             stopped=self.state.done,
-            input_cursor=self._rejected_input.cursor(self.io.progress()),
+            input_cursor=(
+                cursor
+                if accepted is None
+                else WorkspaceVariant("pending_output", (cursor, accepted))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         cursor, grid, stack, string, done = self.state
-        return self._rejected_input.snapshot(
+        boundary = self._rejected_input.snapshot(
             (*cursor, grid, _values(stack), string, done, self.io.progress())
         )
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def branching_snapshot(self) -> _State:
-        """Return the current state as the hang search's starting point."""
+        """Acquire a branch root or replay the fault of an already rejected read."""
+        self._rejected_input.raise_if_rejected()
         return self.state
 
     def branching_halted(self, state: object) -> bool:
@@ -402,15 +412,18 @@ class _Machine:
                     raise
         random_dir = draw(self._rng, 4) if reads == "draw" else None
         try:
-            self.state, effect = _advance(
-                self.state, char_input, number_input, random_dir
-            )
+            state, effect = _advance(self.state, char_input, number_input, random_dir)
         except HaltError as error:
             if number_input is not None:
                 self._rejected_input.remember(error)
             raise
+        io = self.io
+        if effect is not None and isinstance(io, ScriptedIO):
+            self._writer.write(io, effect)
+            effect = None
+        self.state = state
         if effect is not None:
-            self.io.print_str(effect)
+            io.print_str(effect)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

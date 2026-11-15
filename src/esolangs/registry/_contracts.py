@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from esolangs.exceptions import ProgramError
+from esolangs.runtime._validate import _has_backing_type
 
 type AnswerMode = Literal["output", "dump", "termination"]
 #: The input shapes whose bits arrive as one unseparated character run.
@@ -42,9 +43,11 @@ class BooleanContract:
 
 def answer_pattern_text(name: str, pattern: object) -> str | None:
     """Return a portable text pattern with its matching flags."""
-    if isinstance(pattern, str):
+    if _has_backing_type(pattern, str):
         return str.__str__(pattern) or None
-    if not isinstance(pattern, re.Pattern) or not isinstance(pattern.pattern, str):
+    if not _has_backing_type(pattern, re.Pattern) or not _has_backing_type(
+        pattern.pattern, str
+    ):
         raise ProgramError(f"{name} has an invalid answer pattern; expected text")
     flags = "".join(
         letter

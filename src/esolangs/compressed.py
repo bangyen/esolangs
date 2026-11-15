@@ -14,7 +14,7 @@ from typing import ClassVar
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
 from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
 from esolangs.runtime._files import explicit_path, write_staged
-from esolangs.runtime._validate import _argument_repr, check_width
+from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_width
 from esolangs.runtime.memory import repr_value
 from esolangs.runtime.source_hints import syntax_error
 
@@ -78,7 +78,7 @@ def _normalize_limits(limits: object) -> TextLimits | None:
     """Store only the validated budgets shared by native and portable gzip."""
     if limits is None or type(limits) is TextLimits:
         return limits
-    if not isinstance(limits, TextLimits):
+    if not _has_backing_type(limits, TextLimits):
         raise ArgumentError("limits must be a TextLimits or None")
     return TextLimits(
         plain_chars=limits.plain_chars,
@@ -99,7 +99,7 @@ class CompressedText:
 
     def __post_init__(self) -> None:
         """Validate the stream and measure its expanded characters."""
-        if not isinstance(self.data, bytes):
+        if not _has_backing_type(self.data, bytes):
             raise ProgramError("gzip source must be bytes")
         object.__setattr__(self, "data", bytes.__bytes__(self.data))
         limits = _normalize_limits(self.limits)
@@ -156,7 +156,7 @@ class CompressedText:
     ) -> CompressedText:
         """Compress text deterministically without collecting expanded source."""
         limits = _normalize_limits(limits)
-        if not isinstance(chunks, Iterable):
+        if not issubclass(type(chunks), Iterable):
             raise ArgumentError("chunks must be an iterable of strings")
         if limits is not None:
             _check_gzip(limits, _MIN_GZIP_BYTES)
@@ -165,7 +165,7 @@ class CompressedText:
         has_newline = False
         with gzip.GzipFile(fileobj=output, mode="wb", filename="", mtime=0) as stream:
             for text in chunks:
-                if not isinstance(text, str):
+                if not _has_backing_type(text, str):
                     # ``[b"x"]`` raised AttributeError from ``.encode``.
                     raise ArgumentError(
                         f"chunks must be strings, got {type(text).__name__}"
@@ -247,7 +247,7 @@ class CompressedText:
         """Compress count copies of one character using bounded chunks."""
         limits = _normalize_limits(limits)
         if (
-            not isinstance(character, str)
+            not _has_backing_type(character, str)
             or str.__len__(character) != 1
             or type(count) is not int
             or count < 0

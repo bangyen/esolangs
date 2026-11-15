@@ -16,7 +16,7 @@ from esolangs._bindings import (
     validate_spans,
 )
 from esolangs.compressed import CompressedText
-from esolangs.exceptions import ArgumentError, ProgramError, TemplateError
+from esolangs.exceptions import ArgumentError, EsolangError, ProgramError, TemplateError
 from esolangs.limits import ExecutionLimits
 from esolangs.raster import Raster
 from esolangs.results import ExecutionResult
@@ -26,7 +26,12 @@ from esolangs.runtime._proof import (
     TerminationResult,
     checked_termination,
 )
-from esolangs.runtime._validate import check_bit_count, check_bits, check_scale
+from esolangs.runtime._validate import (
+    _has_backing_type,
+    check_bit_count,
+    check_bits,
+    check_scale,
+)
 from esolangs.runtime.memory import repr_value
 
 __all__ = [
@@ -51,12 +56,12 @@ class BooleanEvaluation:
     def __post_init__(self) -> None:
         """Require a bit backed by completed execution or a termination proof."""
         answer = self.answer
-        if type(answer) is not str and issubclass(type(answer), str):
+        if type(answer) is not str and _has_backing_type(answer, str):
             answer = str.__str__(answer)
             object.__setattr__(self, "answer", answer)
         if type(answer) is not str or answer not in ("0", "1"):
             raise ArgumentError("a Boolean evaluation requires an answer bit")
-        if not isinstance(self.observation, ExecutionResult):
+        if not _has_backing_type(self.observation, ExecutionResult):
             raise ArgumentError(
                 "a Boolean evaluation requires an execution observation"
             )
@@ -73,14 +78,14 @@ class BooleanEvaluation:
 
 def _origin(language: str, settings: DialectSettings | None) -> str:
     """Validate explicit provenance without consulting the language catalog."""
-    if not isinstance(language, str):
+    if not _has_backing_type(language, str):
         raise ArgumentError("an artifact requires a language")
     language = str.__str__(language)
     if not language.strip():
         raise ArgumentError("an artifact requires a language")
     if settings is None:
         return language
-    if not isinstance(settings, DialectSettings):
+    if not _has_backing_type(settings, DialectSettings):
         raise ArgumentError("settings must be a DialectSettings or None")
     owner = settings.language
     if owner != language and owner.strip().casefold() != language.strip().casefold():
@@ -101,18 +106,19 @@ class ProgramArtifact[Source: Program]:
 
     def __post_init__(self) -> None:
         """Validate source storage and explicit provenance."""
-        if isinstance(self.source, TemplateArtifact):
+        kind = type(self.source)
+        if issubclass(kind, TemplateArtifact):
             raise TemplateError("fill the template before declaring runnable source")
-        if not isinstance(self.source, (str, Raster, CompressedText)):
+        if not issubclass(kind, (str, Raster, CompressedText)):
             raise ProgramError("a program needs text, compressed source, or a raster")
-        if isinstance(self.source, str):
+        if _has_backing_type(self.source, str):
             object.__setattr__(self, "source", str.__str__(self.source))
         object.__setattr__(self, "language", _origin(self.language, self.settings))
         if self.input_arity is not None and (
             type(self.input_arity) is not int or self.input_arity < 1
         ):
             raise ArgumentError("input_arity must be a positive integer")
-        if isinstance(self.source, Raster):
+        if issubclass(kind, Raster):
             if self.scale is not None:
                 object.__setattr__(self, "scale", check_scale(self.scale))
         elif self.scale is not None:
@@ -150,12 +156,14 @@ class TemplateBindings:
 
     def __post_init__(self) -> None:
         """Freeze bindings and require equal-width alternatives."""
-        if not isinstance(self.char, str) or str.__len__(self.char) != 1:
+        if not _has_backing_type(self.char, str) or str.__len__(self.char) != 1:
             raise TemplateError("template char must be one character")
         object.__setattr__(self, "char", str.__str__(self.char))
         try:
             setters = check_setters(self.setters)
             object.__setattr__(self, "setters", setters)
+        except EsolangError:
+            raise
         except (TypeError, ValueError) as error:
             raise TemplateError(str(error)) from error
 
@@ -175,7 +183,7 @@ class TemplateBindings:
         inputs = self.inputs
         bits = check_bits(bits, "bits", allow_empty=inputs == 0)
         check_bit_count(bits, inputs, "template")
-        if not isinstance(source, str):
+        if not _has_backing_type(source, str):
             raise TemplateError("template source must be text")
         source = str.__str__(source)
         try:
@@ -183,13 +191,15 @@ class TemplateBindings:
                 spans = tuple(_freeze_span(span) for span in spans)
                 validate_spans(source, self.char, self.setters, spans)
             return fill_runs(source, self.char, self.setters, bits, spans=spans)
+        except EsolangError:
+            raise
         except (TypeError, ValueError) as error:
             raise TemplateError(str(error)) from error
 
 
 def _freeze_span(span: tuple[int, int]) -> tuple[int, int]:
     """Freeze actual tuple offsets without dispatching subclass methods."""
-    if not isinstance(span, tuple):
+    if not _has_backing_type(span, tuple):
         raise ValueError("template spans must be pairs of offsets")
     start, end = tuple.__iter__(span)
     return start, end
@@ -207,7 +217,7 @@ class TemplateArtifact:
 
     def __post_init__(self) -> None:
         """Require every placeholder to belong to an input."""
-        if not isinstance(self.source, str) or not isinstance(
+        if not _has_backing_type(self.source, str) or not _has_backing_type(
             self.bindings, TemplateBindings
         ):
             raise TemplateError("template needs text source and TemplateBindings")
@@ -220,13 +230,15 @@ class TemplateArtifact:
                 )
                 object.__setattr__(self, "spans", spans)
             else:
-                if not isinstance(self.spans, tuple):
+                if not _has_backing_type(self.spans, tuple):
                     raise ValueError("template needs one span per input")
                 spans = tuple(_freeze_span(span) for span in tuple.__iter__(self.spans))
                 validate_spans(
                     self.source, self.bindings.char, self.bindings.setters, spans
                 )
                 object.__setattr__(self, "spans", spans)
+        except EsolangError:
+            raise
         except (TypeError, ValueError) as error:
             raise TemplateError(str(error)) from error
 

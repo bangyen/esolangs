@@ -9,6 +9,7 @@ from time import monotonic
 from esolangs.exceptions import ExecutionTimeoutError
 from esolangs.runtime._files import stream_read_deadline
 from esolangs.runtime._input import CheckedInput, InputSource, check_input, read_input
+from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
 
 
@@ -90,7 +91,7 @@ class PendingInput:
 
 def bind_prepared_input(stdin: InputSource, timeout: float) -> str | PendingInput:
     """Bind fresh stdin under a deadline without consuming the reader yet."""
-    if isinstance(stdin, (str, bytes)):
+    if _has_backing_type(stdin, str) or _has_backing_type(stdin, bytes):
         return read_input(stdin)
     deadline = monotonic() + timeout
     context = copy_context()

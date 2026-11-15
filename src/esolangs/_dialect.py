@@ -10,7 +10,7 @@ from typing import cast, overload
 from unicodedata import normalize
 
 from esolangs.exceptions import ArgumentError
-from esolangs.runtime._validate import _argument_repr
+from esolangs.runtime._validate import _argument_repr, _has_backing_type
 from esolangs.runtime.memory import repr_value
 
 type Scalar = int | str
@@ -31,21 +31,23 @@ class DialectSchema:
         defaults: Mapping[str, Scalar],
     ) -> None:
         """Freeze the schema and require a typed default for every choice."""
-        if not isinstance(language, str) or not str.__str__(language).strip():
+        if not _has_backing_type(language, str) or not str.__str__(language).strip():
             raise ArgumentError("a dialect schema requires a language")
-        if not isinstance(choices, Mapping) or not isinstance(defaults, Mapping):
+        if not issubclass(type(choices), Mapping) or not issubclass(
+            type(defaults), Mapping
+        ):
             raise ArgumentError("dialect choices and defaults must be mappings")
         if choices.keys() != defaults.keys():
             raise ArgumentError("dialect defaults must match declared choices")
         frozen = {}
         frozen_defaults = {}
         for key, declared in choices.items():
-            if not isinstance(key, str):
+            if not _has_backing_type(key, str):
                 raise ArgumentError("dialect names must be identifiers")
             name = str.__str__(key)
             if not name.isidentifier() or iskeyword(name) or name in frozen:
                 raise ArgumentError("dialect names must be distinct identifiers")
-            if not isinstance(declared, tuple):
+            if not _has_backing_type(declared, tuple):
                 raise ArgumentError("dialect enums must be tuples")
             values = tuple(tuple.__iter__(declared))
             if not values or any(type(value) not in (int, str) for value in values):
@@ -86,12 +88,12 @@ class DialectSchema:
 
     def validate(self, choices: Mapping[str, Scalar]) -> dict[str, Scalar]:
         """Copy overrides after validating them within this language's scope."""
-        if not isinstance(choices, Mapping):
+        if not issubclass(type(choices), Mapping):
             raise ArgumentError("dialect overrides must be a mapping")
         known = self.choices
         checked: dict[str, Scalar] = {}
         for given, value in choices.items():
-            if not isinstance(given, str):
+            if not _has_backing_type(given, str):
                 raise ArgumentError("dialect override names must be strings")
             key = str.__str__(given)
             if key in checked:
@@ -144,7 +146,7 @@ class DialectSettings:
         """Freeze choices against an explicit schema; use Language.settings."""
         # Keep the keyword constructor working when no positional schema was supplied.
         declared = choices.pop("schema", None) if schema is None else schema
-        if not isinstance(declared, DialectSchema):
+        if not _has_backing_type(declared, DialectSchema):
             raise ArgumentError("dialect settings require a language schema")
         checked = declared.validate(cast("dict[str, Scalar]", choices))
         object.__setattr__(self, "_schema", declared)

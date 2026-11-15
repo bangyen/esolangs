@@ -466,13 +466,31 @@ def test_custom_runtime_defaults_follow_declared_runner_keywords(monkeypatch) ->
 
 
 def test_dialect_schema_reports_invalid_mapping_arguments() -> None:
-    with pytest.raises(esolangs.ArgumentError, match="mappings"):
-        esolangs.DialectSchema(REFERENCE, [], {})
+    from collections.abc import Mapping
+
+    class ReportedType:
+        def __init__(self, reported):
+            self.reported = reported
+
+        @property
+        def __class__(self):
+            return self.reported
+
     schema = esolangs.DialectSchema(REFERENCE, {}, {})
-    with pytest.raises(esolangs.ArgumentError, match="mapping"):
-        schema.validate([])
-    with pytest.raises(esolangs.ArgumentError, match="names must be strings"):
-        schema.validate({1: "left"})
+    for invalid in ([], ReportedType(Mapping)):
+        with pytest.raises(esolangs.ArgumentError, match="mappings"):
+            esolangs.DialectSchema(REFERENCE, invalid, {})
+        with pytest.raises(esolangs.ArgumentError, match="mapping"):
+            schema.validate(invalid)
+    for name in (1, ReportedType(str)):
+        with pytest.raises(esolangs.ArgumentError, match="names must be strings"):
+            schema.validate({name: "left"})
+    with pytest.raises(esolangs.ArgumentError, match="requires a language"):
+        esolangs.DialectSchema(ReportedType(str), {}, {})
+    with pytest.raises(esolangs.ArgumentError, match="enums must be tuples"):
+        esolangs.DialectSchema(REFERENCE, {"mode": ReportedType(tuple)}, {"mode": "a"})
+    with pytest.raises(esolangs.ArgumentError, match="require a language schema"):
+        DialectSettings(ReportedType(esolangs.DialectSchema))
 
 
 def test_dialect_schema_freezes_enum_tuple_contents() -> None:

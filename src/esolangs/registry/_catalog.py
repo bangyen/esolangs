@@ -14,6 +14,7 @@ import esolangs
 from esolangs.exceptions import ArgumentError, UnknownLanguageError
 from esolangs.registry._language import LanguageDeclaration
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
+from esolangs.runtime._validate import _has_backing_type
 
 
 @dataclass(frozen=True, slots=True, eq=False, init=False, repr=False)
@@ -121,7 +122,7 @@ class Catalog:
         and slugging them onto Piet and brainfuck ran the wrong one.  A miss raises
         :class:`UnknownLanguageError` naming the closest registered spellings.
         """
-        if not isinstance(name, str):
+        if not _has_backing_type(name, str):
             # Before ``canonical_id`` touches it: a ``None`` name would otherwise
             # escape as ``'NoneType' object has no attribute 'replace'`` from
             # inside the API.

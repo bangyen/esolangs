@@ -17,6 +17,7 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec, SourceKind
+from esolangs.runtime._validate import _has_backing_type
 
 if TYPE_CHECKING:
     from esolangs.registry._backend import BooleanBackend
@@ -105,7 +106,7 @@ class LanguageDeclaration:
     def __post_init__(self) -> None:
         """Validate assembled capabilities and fill an absent canonical id."""
         if (
-            not isinstance(self.name, str)
+            not _has_backing_type(self.name, str)
             or not (name := str.__str__(self.name)).strip()
         ):
             raise ArgumentError("catalog language names must be nonblank strings")
@@ -115,16 +116,19 @@ class LanguageDeclaration:
             raise ArgumentError(
                 "catalog language names must be valid UTF-8 text"
             ) from error
-        if not isinstance(self.id, str):
+        if not _has_backing_type(self.id, str):
             raise ArgumentError("catalog language identifiers must be nonempty strings")
         identifier = str.__str__(self.id) or canonical_id(name)
         if not identifier.strip():
             raise ArgumentError("catalog language identifiers must be nonempty strings")
-        if not isinstance(self.aliases, tuple):
+        if not _has_backing_type(self.aliases, tuple):
             raise ArgumentError("catalog aliases must be immutable tuples")
         aliases = []
         for alias in tuple.__iter__(self.aliases):
-            if not isinstance(alias, str) or not (text := str.__str__(alias)).strip():
+            if (
+                not _has_backing_type(alias, str)
+                or not (text := str.__str__(alias)).strip()
+            ):
                 raise ArgumentError(
                     "catalog identifiers and aliases must be nonblank strings"
                 )

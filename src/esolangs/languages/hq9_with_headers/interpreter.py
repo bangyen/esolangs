@@ -55,6 +55,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from functools import partial
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -66,8 +67,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 
 _BEGIN = "==== HEADER ===="
@@ -423,6 +424,7 @@ class _Machine:
         self.ops: Sequence[_Op] = ops
         self.io = io
         self.state: _State = (0, persistent.chunked([None] * count))
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -440,15 +442,23 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        instruction = self.state[0]
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state[0],
+            instruction=(
+                instruction
+                if accepted is None
+                else WorkspaceVariant("pending_output", (instruction, accepted))
+            ),
             cells=persistent.flatten(self.state[1]),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def _read(self, kind: str) -> int:
         """Serve ``[>>, v]`` (0 at EOF) or ``[>>. v]`` (digits to a non-digit)."""
@@ -477,11 +487,21 @@ class _Machine:
             return
         kind = self.ops[self.state[0]].kind
         value = self._read(kind) if kind in ("readc", "readn") else None
-        self.state, out = _advance(self.state, self.ops, value)
+        state, out = _advance(self.state, self.ops, value)
+        io = self.io
+        if out is not None and isinstance(io, ScriptedIO):
+            if isinstance(out, int):
+                self._writer.write(
+                    io, format_integer(out), first=partial(io.print_num, out)
+                )
+            else:
+                self._writer.write(io, out)
+            out = None
+        self.state = state
         if isinstance(out, int):
-            self.io.print_num(out)
+            io.print_num(out)
         elif out is not None:
-            self.io.print_str(out)
+            io.print_str(out)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

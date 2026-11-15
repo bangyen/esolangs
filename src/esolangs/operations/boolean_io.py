@@ -14,15 +14,15 @@ from esolangs.exceptions import (
 from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import CHAR_STREAMS, BooleanContract
 from esolangs.results import ExecutionResult
-from esolangs.runtime._validate import check_bits
+from esolangs.runtime._validate import _has_backing_type, check_bits
 from esolangs.runtime.memory import format_integer
 
 
 def _symbol_pair(name: str, values: object, encoding: str) -> tuple[str, str]:
     """Validate a scoped contract's two distinct spellings for the bits."""
-    if isinstance(values, tuple) and tuple.__len__(values) == 2:
+    if _has_backing_type(values, tuple) and tuple.__len__(values) == 2:
         zero, one = tuple.__iter__(values)
-        if isinstance(zero, str) and isinstance(one, str):
+        if _has_backing_type(zero, str) and _has_backing_type(one, str):
             zero, one = str.__str__(zero), str.__str__(one)
             if zero != one:
                 return zero, one
@@ -46,9 +46,9 @@ def _answer_codec(
             )
         return values, None
     source: object = contract.answer_pattern
-    if isinstance(source, re.Pattern) and isinstance(source.pattern, str):
+    if _has_backing_type(source, re.Pattern) and _has_backing_type(source.pattern, str):
         return values, source
-    if not isinstance(source, str):
+    if not _has_backing_type(source, str):
         raise ProgramError(f"{name} has an invalid answer pattern; expected text")
     source = str.__str__(source)
     if not source:
@@ -169,11 +169,14 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    if not isinstance(output, str):
-        # One raise: mypy, seeing ``str``, accepts only that as unreachable.
+    if not _has_backing_type(output, str):
         raise ArgumentError(
             f"output must be a string, got {type(output).__name__}"
-            + ("; pass its .output" if isinstance(output, ExecutionResult) else "")
+            + (
+                "; pass its .output"
+                if _has_backing_type(output, ExecutionResult)
+                else ""
+            )
         )
     output = str.__str__(output)
     contract = catalog.languages[name].contract

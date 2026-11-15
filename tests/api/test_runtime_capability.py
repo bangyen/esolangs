@@ -98,10 +98,16 @@ sys.meta_path.insert(0, Barrier())
 schema = runpy.run_path(sys.argv[1])
 options = {}
 if sys.argv[2] == 'RuntimeSpec':
-    options = dict(machine_preparation='prepare_machine',
-                   completion_entrypoint='_execute', capabilities=object())
+    class HookName(str):
+        def isidentifier(self):
+            raise AssertionError('runtime called a hook name override')
+    options = dict(machine_preparation=HookName('prepare_machine'),
+                   completion_entrypoint=HookName('_execute'), capabilities=object())
 record = schema[sys.argv[2]](**options)
 assert is_dataclass(record)
+for key in ('machine_preparation', 'completion_entrypoint'):
+    if key in options:
+        assert type(getattr(record, key)) is str
 field = fields(record)[0]
 try:
     setattr(record, field.name, getattr(record, field.name))

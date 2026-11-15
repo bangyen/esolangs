@@ -13,6 +13,7 @@ from typing import NamedTuple
 from esolangs.exceptions import TruthTableError
 from esolangs.generation.lookup import prefix_counts as _prefix_counts
 from esolangs.generation.lookup import symmetric_outputs as _symmetric_outputs
+from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.source_hints import with_hint
 
 # ``ord("0")``.  Input digits arrive as 48/49 from a byte-oriented read, and a
@@ -183,7 +184,7 @@ class SubtreeDiagram:
 
 def check_table_text(truth_table: object) -> str:
     """Return the truth table's text, independent of subclass behavior."""
-    if not isinstance(truth_table, str):
+    if not _has_backing_type(truth_table, str):
         raise with_hint(
             TruthTableError(
                 f"truth table must be a string of '0' and '1', got "

@@ -17,6 +17,7 @@ from typing import IO, cast, overload
 
 from esolangs.exceptions import ArgumentError, EsolangError
 from esolangs.outcomes import _remember_acquisition_failure
+from esolangs.runtime._validate import _has_backing_type
 
 _STREAM_DEADLINE: ContextVar[float | None] = ContextVar("stream_deadline", default=None)
 _BLOCK = 65_536
@@ -129,17 +130,20 @@ def read_snapshot(
     reader: Callable[..., str | bytes | None] | None = None,
 ) -> str | bytes:
     """Read from the current position, reusing an already-bound reader if given."""
-    fd = _nonblocking_fd(stream) if isinstance(stream, IOBase) else None
+    fd = _nonblocking_fd(stream) if _has_backing_type(stream, IOBase) else None
     deadline = _STREAM_DEADLINE.get()
     _time_remaining(deadline)
-    if isinstance(stream, BufferedRWPair):
+    if _has_backing_type(stream, BufferedRWPair):
         # The reader's fd is private. Sized reads distinguish None from EOF,
         # while an unbounded read can return a prefix before the writer closes.
         return _binary_snapshot(stream, None, size, deadline, reader)
     if fd is not None:
         if hasattr(select, "poll") and (
-            isinstance(stream, FileIO)
-            or (isinstance(stream, BufferedReader) and isinstance(stream.raw, FileIO))
+            _has_backing_type(stream, FileIO)
+            or (
+                _has_backing_type(stream, BufferedReader)
+                and _has_backing_type(stream.raw, FileIO)
+            )
         ):
             return _binary_snapshot(stream, fd, size, deadline, reader)
         raise BlockingIOError(
@@ -168,7 +172,7 @@ class _ExplicitPath:
 
 def explicit_path(path: str | PathLike[str]) -> _ExplicitPath:
     """Validate a path argument before opening or reading a file."""
-    if isinstance(path, _ExplicitPath):
+    if _has_backing_type(path, _ExplicitPath):
         return path
     try:
         spelling = fspath(path)
@@ -177,7 +181,7 @@ def explicit_path(path: str | PathLike[str]) -> _ExplicitPath:
         raise
     except (TypeError, ValueError) as error:
         raise ArgumentError("path must be a str or PathLike returning str") from error
-    if not isinstance(spelling, str):
+    if not _has_backing_type(spelling, str):
         raise ArgumentError("path must be a str or PathLike returning str")
     spelling = str.__str__(spelling)
     if not spelling:

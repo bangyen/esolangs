@@ -56,8 +56,8 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -229,6 +229,7 @@ class _Machine:
         self.cases = _parse(code) if isinstance(code, str) else code
         self.state: _State = (0, None, 0, (("_", 0),))
         self._input_retry = RejectedInput()
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -246,14 +247,22 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
         case, branch, command, environment = self.state
+        activation = (case, branch, command, frozenset(environment))
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            activation=(case, branch, command, frozenset(environment)),
+            activation=(
+                activation
+                if accepted is None
+                else WorkspaceVariant("pending_output", (activation, accepted))
+            ),
             input_cursor=self._input_retry.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self._input_retry.snapshot((self.state, self.io.progress()))
+        state = self._input_retry.snapshot((self.state, self.io.progress()))
+        accepted = self._writer.accepted
+        return state if accepted is None else (*state, accepted)
 
     def step(self) -> None:
         if self.halted:
@@ -268,7 +277,11 @@ class _Machine:
                     value = self.io.input_char()
                 elif op == "#":
                     value = self._input_retry.read(self.io, self.io.input_num)
-        self.state, out = _advance(self.state, self.cases, value)
+        advanced, out = _advance(self.state, self.cases, value)
+        if out is not None and isinstance(self.io, ScriptedIO):
+            self._writer.write(self.io, out)
+            out = None
+        self.state = advanced
         if out is not None:
             self.io.print_str(out)
 

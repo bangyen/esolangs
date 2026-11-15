@@ -24,7 +24,10 @@ from esolangs.vm import (
 from tests.interpreters.runner import run_program
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 
 @pytest.mark.medium
@@ -181,9 +184,12 @@ def test_put_outside_the_grid_is_ignored() -> None:
     assert moved[1] == (("p",),)
 
 
-def test_integer_and_character_input() -> None:
+def test_integer_and_character_input(monkeypatch: pytest.MonkeyPatch) -> None:
     assert run_befunge("&.@", "5\n") == "5 "
     assert run_befunge("~,@", "A\n") == "A"
+    assert_rejected_output_retry(
+        "Befunge", "99*.1.@", "81 ", "81 1 ", prefix=3, monkeypatch=monkeypatch
+    )
 
 
 def test_random_direction_uses_the_supplied_draw() -> None:
@@ -440,3 +446,28 @@ def test_a_clean_branch_can_prove_halt_after_an_unforkable_sibling() -> None:
     assert vm.snapshot() == saved
     with pytest.raises(TimeoutError, match="needs input"):
         run_until_halt_or_all_branches_cycle(api.make_vm("&@"), limit=4)
+
+    for make in (api.make_vm, api.make_debugger):
+        rejected = make("&.@", stdin="oops 7")
+        good = make("&.@", stdin="7")
+        for proof in (run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle):
+            with pytest.raises(TimeoutError, match="needs input"):
+                proof(rejected, limit=4)
+        with pytest.raises(esolangs.ArgumentError, match="got 'oops'") as known:
+            rejected.step()
+        captured = known.value.observation
+        assert (captured.input_position, captured.input_reads) == (4, 1)
+        saved = rejected.snapshot()
+        good.step()
+
+        for proof in (run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle):
+            with pytest.raises(esolangs.ArgumentError, match="got 'oops'") as replay:
+                proof(rejected, limit=4)
+            assert replay.value is not known.value
+            assert replay.value.__notes__ == known.value.__notes__
+            assert known.value.observation == captured
+            assert rejected.snapshot() == saved
+            assert proof(good, limit=4) is True
+            assert good.output == ""
+        assert run_until_halt(good, limit=2)
+        assert good.output == "7 "

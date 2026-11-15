@@ -21,6 +21,7 @@ from typing import IO, cast
 from esolangs.exceptions import ArgumentError, EsolangError
 from esolangs.outcomes import _remember_acquisition_failure
 from esolangs.runtime._files import read_snapshot
+from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.source_hints import with_hint
 
 #: A stream is consumed from its current position.  Spelled with ``typing.IO``
@@ -52,18 +53,19 @@ _STANDARD_STREAMS = (
 
 def check_input(source: InputSource) -> CheckedInput:
     """Validate literal stdin or bind a reader without consuming its stream."""
-    if isinstance(source, str):
+    if _has_backing_type(source, str):
         return str.__str__(source)
-    if isinstance(source, bytes):
+    if _has_backing_type(source, bytes):
         return _decode_input(source)
+    stream = cast("IO[str] | IO[bytes]", source)
     try:
-        reader = getattr(source, "read", None)
-        kind = type(source)
+        reader = getattr(stream, "read", None)
+        kind = type(stream)
         if (
             kind in _STANDARD_STREAMS
-            and isinstance(reader, BuiltinMethodType)
-            and reader.__self__ is source
-            and (source.closed or not kind.readable(cast(IOBase, source)))
+            and _has_backing_type(reader, BuiltinMethodType)
+            and reader.__self__ is stream
+            and (stream.closed or not kind.readable(cast(IOBase, stream)))
         ):
             # Let the standard reader supply its own error. A zero-size read
             # cannot consume input, even if one half of a stream pair is open.
@@ -81,7 +83,7 @@ def check_input(source: InputSource) -> CheckedInput:
             ),
             ("to read a file, pass its open stream or its UTF-8 text contents"),
         )
-    return _BoundReader(source, reader)
+    return _BoundReader(stream, reader)
 
 
 def input_read_error(detail: Exception | str) -> ArgumentError:
@@ -101,7 +103,11 @@ def _decode_input(value: bytes) -> str:
 
 def read_input(source: InputSource | CheckedInput) -> str:
     """Snapshot remaining input; binary input is UTF-8 text."""
-    bound = source if isinstance(source, _BoundReader) else check_input(source)
+    bound = (
+        source
+        if _has_backing_type(source, _BoundReader)
+        else check_input(cast("InputSource", source))
+    )
     if isinstance(bound, str):
         return bound
     try:
@@ -111,9 +117,9 @@ def read_input(source: InputSource | CheckedInput) -> str:
         raise
     except (OSError, TypeError, ValueError) as exc:
         raise input_read_error(exc) from exc
-    if isinstance(value, bytes):
+    if _has_backing_type(value, bytes):
         return _decode_input(value)
-    if isinstance(value, str):
+    if _has_backing_type(value, str):
         return str.__str__(value)
     raise with_hint(
         ArgumentError("stdin stream must return a string or bytes"),

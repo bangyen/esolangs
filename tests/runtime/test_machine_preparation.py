@@ -52,6 +52,44 @@ def test_preparation_refuses_wrong_shapes_and_options():
 def test_missing_runtime_hooks_are_public_program_errors() -> None:
     api = esolangs.Language(REFERENCE)
     record = api.catalog.languages[api.name]
+
+    class PretendName:
+        @property
+        def __class__(self) -> type[str]:
+            return str
+
+        def isidentifier(self) -> bool:
+            return True
+
+    class HookName(str):
+        def __str__(self) -> str:
+            raise AssertionError("stringified the runtime name override")
+
+        def isidentifier(self) -> bool:
+            raise AssertionError("checked the hook name's overridden identifier")
+
+        def __hash__(self) -> int:
+            raise AssertionError("looked up the hook name's override")
+
+    hooks = {}
+    for key in ("machine_preparation", "completion_entrypoint"):
+        with pytest.raises(ValueError, match=f"runtime {key} must name"):
+            replace(record.runtime, **{key: PretendName()})
+        hooks[key] = HookName(getattr(record.runtime, key))
+    with pytest.raises(ValueError, match="runtime interpreter must be a string"):
+        replace(record.runtime, interpreter=PretendName())
+    assert record.runtime.interpreter is not None
+    runtime = replace(
+        record.runtime, interpreter=HookName(record.runtime.interpreter), **hooks
+    )
+    assert type(runtime.interpreter) is str
+    assert all(type(getattr(runtime, key)) is str for key in hooks)
+    wrapped = esolangs.Catalog([replace(record, runtime=runtime)]).bind(api.name)
+    assert wrapped.run("+.").output == "\x01"
+    debugger = wrapped.make_debugger("+.")
+    assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "halted"
+    assert debugger.output == "\x01"
+
     no_prepare = replace(record.runtime, machine_preparation="absent_preparation")
     scoped = esolangs.Catalog([replace(record, runtime=no_prepare)]).bind(api.name)
     assert scoped.run("+.").output == "\x01"

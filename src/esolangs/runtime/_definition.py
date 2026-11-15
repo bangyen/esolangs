@@ -163,8 +163,19 @@ class RuntimeSpec:
             raise TypeError("runtime capabilities must be declared")
         for name in ("machine_preparation", "completion_entrypoint"):
             value = getattr(self, name)
-            if not isinstance(value, str) or not value.isidentifier():
+            if (
+                not issubclass(type(value), str)
+                or not (identifier := str.__str__(value)).isidentifier()
+            ):
                 raise ValueError(f"runtime {name} must name a declared entry point")
+            if type(value) is not str:
+                object.__setattr__(self, name, identifier)
+        interpreter = self.interpreter
+        if interpreter is not None:
+            if not issubclass(type(interpreter), str):
+                raise ValueError("runtime interpreter must be a string or None")
+            if type(interpreter) is not str:
+                object.__setattr__(self, "interpreter", str.__str__(interpreter))
         seed = self.reproducible_seed
         if type(seed) is bool or not issubclass(type(seed), int):
             from esolangs.exceptions import ArgumentError

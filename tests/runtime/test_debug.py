@@ -8,6 +8,15 @@ from tests.support.pick import one
 from tests.support.reference import REFERENCE
 
 
+class _PretendsToBe:
+    def __init__(self, kind: type) -> None:
+        self.kind = kind
+
+    @property
+    def __class__(self) -> type:
+        return self.kind
+
+
 class TestRun:
     def test_run_to_completion_matches_interpreter(self) -> None:
         dbg = debugger_api.make_debugger(REFERENCE, "+++[>+++<-]>.")
@@ -126,7 +135,18 @@ def test_debugger_breakpoint_and_watch_counts_use_integer_storage() -> None:
         def __eq__(self, _other):
             raise AssertionError("subclass equality must not affect a breakpoint")
 
+    class Position(tuple):
+        def __iter__(self):
+            raise AssertionError("breakpoint iterated the position wrapper")
+
     dbg = debugger_api.make_debugger(REFERENCE, "+.")
+    for bad in (_PretendsToBe(int), _PretendsToBe(tuple), (_PretendsToBe(int),)):
+        with pytest.raises(esolangs.ArgumentError, match="ip must be an integer"):
+            dbg.break_at(bad)
+    with pytest.raises(esolangs.ArgumentError, match="this language's ip is an index"):
+        dbg.break_at(Position((Index(0),)))
+    with pytest.raises(esolangs.ArgumentError, match="value must be an integer"):
+        dbg.break_on_cell(0, _PretendsToBe(int))
     watch = dbg.watch_cell(Index(0))
     dbg.break_at(Index(0))
     dbg.break_on_cell(Index(0), Index(1))
@@ -149,6 +169,8 @@ def test_output_breakpoints_use_the_string_contents() -> None:
             raise AssertionError("subclass rendering must not affect a breakpoint")
 
     dbg = debugger_api.make_debugger(REFERENCE, ",.", stdin="A")
+    with pytest.raises(esolangs.ArgumentError, match="text must be a string"):
+        dbg.break_on_output(_PretendsToBe(str))
     with pytest.raises(esolangs.ArgumentError, match="non-empty string"):
         dbg.break_on_output(Text(""))
     dbg.break_on_output(Text("A"))

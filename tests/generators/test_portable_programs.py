@@ -132,10 +132,42 @@ def test_invalid_fields(field, value) -> None:
 
 
 def test_document_argument_and_invalid_settings() -> None:
+    class ReportedType:
+        def __init__(self, reported):
+            self.reported = reported
+
+        @property
+        def __class__(self):
+            return self.reported
+
     with pytest.raises(esolangs.ArgumentError, match="JSON string"):
         esolangs.from_json("Brainfuck", b"{}")
     with pytest.raises(esolangs.ArgumentError):
         esolangs.to_json("Brainfuck", "+.", settings={})
+    api = esolangs.Language(REFERENCE)
+    with pytest.raises(esolangs.ArgumentError, match="JSON string"):
+        api.from_json(ReportedType(str))
+    with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
+        api.to_json("+.", settings=ReportedType(esolangs.DialectSettings))
+    with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
+        ProgramArtifact(
+            "+.", REFERENCE, settings=ReportedType(esolangs.DialectSettings)
+        )
+    for kind in (str, esolangs.CompressedText, esolangs.Raster):
+        with pytest.raises(esolangs.ProgramError, match="a program needs"):
+            ProgramArtifact(ReportedType(kind), REFERENCE)
+    with pytest.raises(esolangs.ArgumentError, match="requires a language"):
+        ProgramArtifact("+.", ReportedType(str))
+    with pytest.raises(esolangs.ProgramError, match="gzip source must be bytes"):
+        esolangs.CompressedText(ReportedType(bytes))
+    with pytest.raises(esolangs.ArgumentError, match="TextLimits"):
+        esolangs.CompressedText.from_chunks(
+            ("+.",), limits=ReportedType(esolangs.TextLimits)
+        )
+    with pytest.raises(esolangs.ArgumentError, match="chunks must be strings"):
+        esolangs.CompressedText.from_chunks([ReportedType(str)])
+    with pytest.raises(esolangs.ArgumentError, match="one character"):
+        esolangs.CompressedText.repeated(ReportedType(str), 1)
 
     from tests.support.pick import first
 
@@ -755,7 +787,13 @@ def test_no_op_compressed_wrap_retains_the_archive_and_caps(tmp_path: Path) -> N
     limits = esolangs.TextLimits(
         plain_chars=size, generation_chars=size, gzip_bytes=len(data)
     )
-    compressed = esolangs.CompressedText(data, limits=limits)
+
+    class CompressedSubclass(esolangs.CompressedText):
+        @property
+        def __class__(self):
+            return esolangs.Raster
+
+    compressed = CompressedSubclass(data, limits=limits)
     wrapped = compressed.wrapped(size + 1)
     assert wrapped is compressed
     assert wrapped.limits is limits
@@ -765,10 +803,10 @@ def test_no_op_compressed_wrap_retains_the_archive_and_caps(tmp_path: Path) -> N
 
     api = esolangs.Language(REFERENCE)
     restored = api.from_json(api.to_json(wrapped))
-    assert restored == api.from_source(compressed)
+    assert restored == api.from_source(esolangs.CompressedText(data, limits=limits))
     assert api.run(restored).output == chr(1000 % 256)
     path = tmp_path / "program.gz"
-    api.to_file(restored, path, gzip=True)
+    api.to_file(wrapped, path, gzip=True)
     assert path.read_bytes() == data
     assert api.run(api.from_file(path)).output == chr(1000 % 256)
 

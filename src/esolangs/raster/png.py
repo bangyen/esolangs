@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 from esolangs._dialect import DialectSettings
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
-from esolangs.runtime._validate import check_scale
+from esolangs.runtime._validate import _has_backing_type, check_scale
 from esolangs.runtime.source_hints import program_error_context, syntax_error
 
 if TYPE_CHECKING:
@@ -69,9 +69,11 @@ _COLOUR_NAMES = {
 
 def _backing_bytes(data: bytes | bytearray) -> bytes:
     """Read the stored payload without invoking Python subclass hooks."""
-    if isinstance(data, bytearray):
+    if _has_backing_type(data, bytearray):
         return bytes(bytearray.copy(data))
-    return bytes.__bytes__(data)
+    if _has_backing_type(data, bytes):
+        return bytes.__bytes__(data)
+    raise ArgumentError(f"PNG data must be bytes, got {type(data).__name__}")
 
 
 def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
@@ -768,13 +770,13 @@ def attach_source_metadata(
     if language is None and settings is None and scale is None and input_arity is None:
         return _backing_bytes(data)
     if language is not None:
-        if not isinstance(language, str):
+        if not _has_backing_type(language, str):
             raise ArgumentError("PNG language must be a string")
         language = str.__str__(language)
         if not language.strip():
             raise ArgumentError("PNG language must be nonblank")
     if settings is not None:
-        if not isinstance(settings, DialectSettings):
+        if not _has_backing_type(settings, DialectSettings):
             raise ArgumentError("settings must be a DialectSettings or None")
         owner = settings.language
         spelling = owner if language is None else language

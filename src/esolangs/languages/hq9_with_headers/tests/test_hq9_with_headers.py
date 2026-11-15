@@ -13,6 +13,7 @@ from esolangs.languages.hq9_with_headers.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_output_retry
 
 _HQ = """==== HEADER ====
 COMMAND FLOW
@@ -106,6 +107,19 @@ def test_wiki_hq9_example_prints_its_title(monkeypatch: pytest.MonkeyPatch) -> N
         monkeypatch,
         cases=(("", "Hello, World!QHQQHQ"),) * 3,
     )
+
+    for body, startup, value in (
+        (['p("AB")'], ["p()"], "AB"),
+        (["p(Vx)"], ["x = 14"], 14),
+    ):
+        assert_rejected_output_retry(
+            "HQ9+ with headers",
+            _source("1", {"P": body}, startup, "P"),
+            value,
+            str(value),
+            prefix=1,
+            monkeypatch=monkeypatch,
+        )
 
     # Startup supplies the operands. Flow executes the arithmetic before print
     # despite their opposite order in the source program.
