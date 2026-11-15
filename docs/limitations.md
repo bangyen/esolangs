@@ -156,517 +156,84 @@ See the [optimization criteria](CONTRIBUTING.md#what-makes-a-generator-optimizat
 
 ### Searches
 
-Malbolge's generator had two table-independent searches.  The short
-layout is a construction now; navigation is a bounded heuristic, and
-its closed-form question is closed under the bounded-read
-definition below; the one signature-relative route past that
-definition was attempted and its preservation form is closed:
+Malbolge's table-independent navigation (`emitter.py`'s `goto`) scans the
+next 32 cells and weighs jumps against walking, using pointer chains, cycle
+follows and bounded second-jump scans. Its main line ends at cell 6,548 for
+one input, below the 6,561 boundary. On the recorded memory states, the
+cheapest paths with at most three jumps per `goto` end at 6,607, and
+allowing four jumps brings the end to 6,558.
 
-- A legal-source bank of `j` glyphs at addresses 34–128 reflects
-  `D` on 34–127. The sequence `joj` decrements on that ring, preserving
-  `A`. Starting at 37 or 84, `*jojj` overwrites `A` and synthesizes a
-  persistent pointer to 19,716 or 39,383. With a chosen legal return glyph,
-  the native out-and-back routes reuse those pointers in 20 or 10
-  instructions, respectively, at all 94 instruction phases. A bank
-  layout that covers the generator's full address range remains open.
-  Rotations and the three existing constant-accumulator operations
-  reach 28 pointer words for destinations 6,561–6,999 from printable
-  seeds. The chain from glyph 35 to pointer 6,560 uses two rotations
-  and three crazy operations. A legal return glyph at cell 70
-  lets a 57-instruction native fragment synthesize and use that
-  pointer with preloaded constants.
+The bounded-read lower bound concerns fixed probes plus cycle data
+(effective start and target). Across the traced states and their
+single-cell unwrite variants, changing any of 59 distinct cells can
+change the optimal first step. A fixed probe set of at most 58 cells
+therefore fails. A separate witness excludes even the full written
+pattern, and one state forces 15 reads with adaptive probes. The
+restricted algebraic signature (derived indices and per-trit algebra,
+with arbitrary constant equality and random access excluded) remains
+open for terms of any size. The classified invariant relations gave no
+separating product relation.
 
-- Navigation (`emitter.py` `goto`) is a deterministic bounded
-  heuristic, the chain-valued scan-greedy -- not a closed form.  From
-  the current cell it scans the next 32 cells' jump landings and
-  prices each by its walk to the source plus a value built from
-  deterministic pointer-chase chains, `g`-cycle follows and bounded
-  second-jump scans; it jumps via the cheapest when that beats
-  walking, and repeats.  The chains were fitted on the replaced
-  search's traces, not derived from the machine's algebra, and the
-  heuristic still prices candidate landings, so it is a cheaper
-  search in kind, not a formula.  Whole navigations are memoised
-  (438 distinct states serve 5,551 `goto`s).  The main line ends at
-  cell 6,548 at n=1 (5,753 at n=16); the code must end below 6,561,
-  where the hubs and stubs start.  The breadth-first search it
-  replaced ended at 6,532 at n=1 (5,487 at n=16), over 5,571 path
-  cells; against the traced corpus (5,194 programs) the heuristic's
-  behaviour is byte-equivalent to the search's.  The pure closed
-  forms tried first fail outright (a forward walk, a `j` through
-  the cell at `d`, or a walk to the next unwritten cell with
-  `g = t - 1`, then one more hop): the best of the three ends at
-  41,244 at n=1.  The label priming is not where a form could win:
-  its span costs 609 path cells under the search, within 112 of a
-  proved floor of 497 in its frame (its `p p` returns to the cell
-  it just wrote 74 times, a forward-only pass leaves `A` equal to
-  the cell just written, and no row of `crazy` is constant, so it
-  cannot bring the next cell to the same value).
-  Paths stay short because an unwritten cell jumps to `g(a) + 1`, which
-  permutes the pointer region 34..127 (cycles 1, 1, 2, 2, 7, 17, 64); once
-  it is written, a cell past 127 costs a walk up from 127.  Replaying the
-  search's memory states, the cheapest navigation with at most 1, 2, 3, 4
-  jumps per `goto` ends at 8,534, 6,876, 6,607, 6,558 at n=1 (7,784,
-  5,817, 5,548, 5,501 at n=16; unlimited reproduces the search exactly).
-  So no navigation with at most three jumps per `goto` fits at n=1:
-  a fitting navigation jumps about four times per `goto` there, or
-  writes the cells in a different order (the phase order is in fact
-  legally forced; see below).
-  A closed form, as the term is now used, carries a complexity
-  bound: each `goto`'s path is computed by a formula whose
-  dependence on the state factors through the cycle data (the
-  effective start and the target) and a fixed set of algebraic
-  features of `mem` -- cell values at a fixed probe set, the
-  written pattern on a fixed region, a fixed trit partition at a
-  fixed probe set -- the set fixed before any trace is seen and
-  totalling at most 58 cell reads per decision.  A formula that
-  reads the whole state, or whose term size or reads are
-  unbounded, is outside the term.  Under that definition the
-  question is closed, by a lower bound.  A `goto`'s state is fixed
-  by the emission stream, so the traced states are the build's
-  reachable states; among them are pairs with the same cycle data
-  whose optimal -- and cheapest-at-most-four-jump -- first steps
-  are disjoint, and every such pair's difference contains cell
-  130, so any probe set omitting cell 130 is excluded at any
-  size.  The `{0, 2}`-seedability partition agrees on the minimal
-  pair at all 420 cells while its first steps are disjoint, so
-  that class is excluded at all cells; the other trit partitions
-  and the written-pattern regions are excluded short of their
-  hitting sets (minimum size 2).  On the perturbation domain --
-  the traced states plus their single-cell unwrite variants, in
-  scope because a formula correct only on the traced states is a
-  table in function form -- 345 single-cell flips change the
-  optimal first step (368 for the four-jump qualification),
-  spread over 59 cells (64): a surviving probe set must contain
-  all of them, so a reproducing formula needs at least 59 cell
-  reads, over the bound; one `goto` (392) alone forces 15 reads
-  before its first step, adaptive procedures included, and a
-  single revalue flip (at `goto` 511) excludes even the full
-  written pattern.  Full-state formulas of unbounded size and reads are
-  the remainder, outside the amended definition by construction.
-  The narrowed record behind the bound: cycle-follow schemas hold
-  an optimum for only 32 of 525 `goto`s at n=1, and the best
-  successor-follow schema on the full `mem` functional graph ends
-  at 9,172; reordering is closed (the A-closed blocks are the
-  finest legal granularity, and the one algebra-derived order
-  loses 878 cells of oracle headroom).  Any-size inexpressibility
-  over a signature with equality and conditionals is moreover
-  constructively false: a greedy decision tree interpolates the
-  optimal first-step function in 424 nodes over the 525 reachable
-  states, and 5,667 over the full 30,926-state domain.  The signature-relative route -- inexpressibility of any size
-  for the restricted algebraic signature (reads only at derived
-  indices, per-trit algebra, no equality against arbitrary value
-  constants, no random access), by a preservation argument over
-  the algebra's invariant relations -- was attempted
-  (2026-10-31), and its invariant computation is complete on
-  both factors.  On values, the only equivalences preserved by
-  `crazy`, `rot`, tritwise ops and `+1` are equality and the
-  universal relation: `+1` is a single 59,049-cycle, so its
-  invariant equivalences are exactly the mod-3^k partitions,
-  which `crazy` and the tritwise ops all preserve and `rot`
-  kills at every 1<=k<=9.  On positions, the period-94
-  congruences (mod 94, 188, 282, 376) genuinely survive the
-  successor and walk steps -- but each fails separation at the
-  relation level, and the domain test is empty: among 17,615
-  same-memory state pairs at distinct positions, none is
-  jointly congruent in effective start and target, so no
-  product relation separates the optimal first step, for the
-  optimum or for the cheapest four-jump paths.  The statement
-  itself, that no term of the restricted signature of any size
-  computes the optimal first step, remains open in both
-  directions: a proof would need non-product or non-uniform
-  relations (unpriced), and no such term has been exhibited.
-  A fresh, in-place `o`/`p`/`*` startup cannot deposit words 127..419:
-  accumulator trits 4..8 remain equal in `{0, 1}`, and encryption of a
-  printable result stays printable. Separating `C` and `D` or revisiting
-  modified operands falls outside this obstruction.
-  A separated, revisiting 420-cell prefix does deposit 170 at cell 152
-  and restores `A = 0`; its full n=1 build with walk-potential routing still
-  collides with the table at a measured main end of 9,958.
-- Short-layout seeds and stubs (`digits.py` `_short_layout`, n <= 15) are
-  a construction, the canonical-action rule: a chain's action on a
-  pointer-region value is fully determined by `(r, F)` -- `r` its number
-  of `rot` ops and `F` the composition of its `K` ops' per-trit maps
-  (`K0 = [1, 1, 2]`, `K1 = [0, 0, 2]`, `K2 = [0, 2, 1]`) -- so the 1,365
-  chains of at most five ops collapse to 59 actions, and the rule takes
-  one shortest chain per action (the identity action, whose shortest
-  chain is empty, is carried by `K2 K2`, because chains must be
-  non-empty).  Each label's hub, then stub, takes the lowest feasible
-  address over those 59 canonical chains, by the fewest ops, then the
-  nearest walked cell, then the chain string.  The canonical chains'
-  address set equals the full reach of all chains of at most five ops
-  (939 addresses on both sides), and feasibility depends only on the
-  address, so the lowest-feasible-address choice is exact, not a
-  search's pick.  A hub address is feasible when every trit of it lies
-  in {0, 2} -- the seedability condition, restated without a chain: the
-  chain value must have no 0 trit, or the second pointer cell's re-swap
-  reads 0 (n = 14 failed rows 28, 29 on it) -- and its two data cells
-  clear the tables and the picks before it.  Measured source lengths
-  are unchanged: 13,340 characters to n = 13, 19,683 at 14, 52,480 at
-  15; the smallest `g` instead ends the main code past the lowest table
-  cell.  n = 16's tables span 6,561..59,039, so it keeps the whole store.
+Short-layout seeds and stubs through fifteen inputs use canonical actions.
+Rotation count and the composed per-trit map reduce 1,365 chains of up to
+five operations to 59 actions, preserving all 939 reachable addresses.
+Placement selects the lowest-cost feasible action. Hub addresses need
+trits in {0, 2}, and their two data cells must clear tables and earlier
+placements.
 
 ### Largest input counts
 
-`describe(language).generator_max_inputs` names each cap; three
-generators have one.
+`describe(language).generator_max_inputs` reports the three caps:
 
-- Befunge: thirteen inputs. A six-bit ASCII lookup fills the 80x25 grid,
-  and the finite source space excludes some sixteen-input tables
+- Befunge supports thirteen inputs via a six-bit ASCII lookup in the
+  80×25 grid. Finite source space excludes some sixteen-input tables
   ([exceptions and walls](proofs/index.md#exceptions-and-walls)).
-- Unary: at most nine inputs in the current unrolled generator; see
-  [Unary](#unary).
-- Malbolge:
-  Malbolge's source-embedded generator covers sixteen inputs with one
-  positional build: the first `n - 1` inputs fill a readout word three bits
-  per two-trit digit, one cell per row pair, and the answer stub reads the
-  last; below sixteen the unused reads are held at `0`, so every arity's
-  cells are a subset of sixteen's. At seventeen it covers only tables
-  that ignore an input -- the same build over the projection, with
-  one read discarded to keep the stream aligned -- or that are
-  constant on Hamming-weight classes, whose first fold group reads
-  four inputs and writes their popcount as its digit, so the readout
-  names the first sixteen inputs' weight and one cell serves each
-  weight's class pair. Named rows of one witness of each family
-  execute in the sparse suite. Boundary rows execute at every arity
-  and every row at ten. Construction details and measurements are in
-  [construction summary](proofs/index.md#malbolge-bound).
+- Unary's current unrolled generator supports [at most nine inputs](#unary).
+- Malbolge supports all tables through sixteen inputs. Positional
+  addressing packs the first inputs three bits per two-trit digit, and
+  the last input selects one of two answers per cell. At seventeen the
+  shipped construction covers tables that ignore an input or are constant
+  on Hamming-weight classes. Named rows of both families execute in the
+  sparse suite. See the [construction summary](proofs/index.md#malbolge-bound).
 
-  Seventeen remains open. Native capture, semantic readout, footer dispatch and
-  terminal-output components execute separately; no source computes an arbitrary
-  full 17-input truth table. Raw record addresses can overlap executing code,
-  so relocation must precede capture. The reduced LAST-only layout is short by
-  8,432 cells before adding the remaining query, selector and metadata. This is
-  a deficit for that construction, not an impossibility bound.
-  The shipped cap remains sixteen for general tables.
+Malbolge's seventeen-input construction and impossibility questions both
+remain open. The current two-answer readout would need 65,536 cells in a
+59,049-cell store. The counting proof excludes some eighteen-input tables
+and needs another 46,076 bits of structure to exclude a seventeen-input
+table. A length restriction fails on a ten-input witness whose answer
+depends on cell 58,967. A per-program dependence restriction fails on the
+one-input identity program `'o'*59046 + '/<v'`, where every cell matters.
+A bound over one normal form per table remains open.
 
-  A scratch arithmetic control (2026-11-03) halves a runtime word with
-  one byte-identical 13,368-character source: 33 native cases pass,
-  including 0 and 59,048; changing the final `p` to `*` fails at 121.
-  Its algebra checks all 59,049 words; native execution is not exhaustive.
-  It reads one word, not seventeen ASCII bits. Character normalization,
-  packed-group addressing, bit selection and the full layout remain unbuilt.
-  A separate shared two-word `crazy` fold uses 4,428 characters and 4,447
-  steps: 17 runtime input pairs pass on byte-identical source, and a
-  source mutation installing the wrong operation fails. Its indirect
-  operand records do not establish a general decoder or table placement.
+Construction-specific results for seventeen:
 
-  Provenance: the `scripts/malbolge17/` archive survives at `09ab2fad`
-  and `b42d79e` (deleted in `0f4b0284`), on the old module layout.
-  Its existence does not verify the historical measurements below.
-  Re-derived since: the counting gap (exactly 46,076
-  bits), the window conflict graph (independence number 8, chromatic
-  number exactly 12), the phase theorem, the three-cell lockstep ceiling
-  (137 of 512 clean triples) and the orbit packing (41,949 cells, 2,401
-  collision pairs). The shipped sixteen-input build measures 11.1 cells
-  a `goto` (416 gotos, 4,608 path cells, 82% of them label navigation).
-  The routing floors (2.99 certified, 3.6 annealed), the 7,234 pointer
-  saturation, the 110-a-phase lockstep rate, the 2.77-a-hit budget and
-  the 19,537-cell union are unverified records, and so are the route
-  closures resting on them.
+- The address-independent window conflict graph has independence number
+  8 and chromatic number 12. State conditioning can attain eight clean
+  meanings per address with four interval states, at additional routing
+  cost. The archived three-cell, seven-meaning build had room for 2.77
+  cells per jump against a 2.99 lower bound on the reconstructed routing
+  model. The original routing and integration records lack retained
+  tooling, so the exact historical comparison remains unverified.
+- Adjacent-cell, threaded, streaming, hub, membership, permutation and
+  marching approaches hit reachability, layout or measured cost limits.
+  Native marching controls establish finite instruction reuse. The
+  word-mediated landing variant executes one case at 21 cells per
+  deposited word. A full build must still fit the 9,897-cell complement
+  and pass the parity and per-row checks in the [roadmap](roadmap.md).
+- Native scratch controls include arithmetic halving (33 cases on one
+  13,368-character program) and a shared two-word `crazy` fold (17 input
+  pairs on one 4,428-character program). Mutants failed both controls.
+  The reduced LAST-only layout was already 8,432 cells short before the
+  remaining query and selector. General ASCII input, packed addressing
+  and bit selection still need a full composition.
+- Without `i`/`j`, reset execution keeps `C == D`. A `p` gets its own
+  instruction character, and the input pair (49, 48) is unreachable.
+  That restricted machine cannot express NOT at any length.
 
-  The seven-meaning integration was re-measured end to end (2026-10-21;
-  its notes and tooling were not preserved, see Provenance above).
-  Navigation (`o`/`j`) is 93-94% of its emitted cells; a walked cell holding
-  `target - 1` lets one `j` land `D` on a hot cell, which cut the address
-  fold from 10,420 to 7,234 cells and the integrated decoder from 13,177 to
-  12,303, every control passing (16,384 address rows, 5,488 decoder cases).
-  Fold and decoder together, code and data, occupy 19,537 cells against the
-  9,897-cell table complement: a 9,640-cell deficit. It is a navigation
-  deficit, not a design one: pricing every `goto` to a cell at or above 34
-  at one cell leaves fold 1,404 and decoder 4,015 (+956 data), a 6,375-cell
-  union under the complement (the earlier 13,228 figure teleported only
-  targets at or above 128). The slack is in the window 34..127: the fold
-  spends 5,355 of its 7,234 cells on 630 gotos there (8.5 a hit; targets
-  45, 34, 37, 38 and 97 cost 2,256), and its greedy pointer selection
-  stops after twelve: with the tail moved out of the parity-reducer's way
-  (C2190 to C40096) every further candidate builds but none shrinks the
-  fold, since a pointer takes a window cell the labels and reducer used and
-  the reducer grows by more than the pointer saves. The pointer mechanism
-  is saturated at 7,234 (2026-10-21, notes not preserved). Nor
-  can the window's contents be rechosen to approach one cell a hit: `D`
-  moves only to `D + 1` or `mem[D] + 1`, so routing is a walk on a
-  94-node out-degree-2 graph, and annealing all 94 contents over their
-  eight admissible characters for the fold's 628 low gotos alone floors
-  at 3.6 cells a hit (2,254 model cells against 3,725 for the shipped
-  contents, which the planner prices at 5,355); over the 31 unpinned
-  cells, 4.8. That floor is tight and optimistic: 63 million moves over
-  four seeds in a C port of the same model reach 2,231-2,253 (3.55-3.59
-  a hit), and the planner's `goto` is already an exact breadth-first
-  search, its 1.44x gap to the model being operated cells that hold
-  accumulators rather than their startup characters, so the pinned 4.8
-  is the honest figure. The fold's low navigation can lose at most about a
-  thousand cells. Priced together: the teleport oracles leave 2,743
-  non-navigation cells in the decoder and 682 in the fold, so the
-  complement affords 5,516 cells for their 1,994 gotos, 2.77 a hit, under
-  the 3.6 floor (unions 11,559 at 3.6 a hit, 13,953 at 4.8; a target
-  above 127 costs a window walk plus one `j` besides). The 3.6 in
-  that pricing is an annealed optimum, not a proved bound; what
-  certifies is 2.99: a flow relaxation over fractional contents
-  proves at least 2.99 cells a hit for this routing class on the
-  closest surviving reconstruction of the fold's pair distribution
-  (525 window pairs from the archived join build, whose own annealed
-  optimum is 3.48 a hit at a 5M-move anneal; samples of the same
-  distribution priced from 50 to 3,000 pairs rise from about 2.8
-  a hit and saturate at 3.43-3.46, no density reaching 3.6), so
-  the model optimum on the reconstruction lies between 2.99
-  certified and 3.48 annealed — and 2.77 a hit is under the
-  certified figure too, so the closure does not rest on the anneal.
-  The three-cell,
-  seven-meaning family is closed unless a layout needs a quarter fewer
-  gotos at the floor cost. Low pointer cells in
-  the decoder's window are blocked: every window cell is a
-  neighbour-escape landing, so a freed cell needs a chain-built pointer
-  whose probe cell names an N cell, and the chain vocabulary reaches too
-  few values.
-
-  A seventeen-input layout needs more than two table bits in almost every
-  cell, and the cell's character is the only per-row freedom: at address `h`
-  the loader admits the eight characters `33 + (k - h) % 94`, and `j` lands
-  the data pointer on window cell `T + 1`. Everything a decoder does after
-  that is a function of that cell, so eight distinct meanings per address
-  need the 94 window cells coloured so that no address's eight cells share a
-  class. That conflict graph (42 of the 93 offset differences) has
-  independence number 8 (`test_window_classes.py`, a 0.02 s bitset search):
-  at most eight cells per class, so eight classes reach 64 cells, not 94,
-  and a proper colouring needs twelve (SAT: twelve suffice, scratch). With
-  eight classes the best annealed assignment leaves about 1.2 duplicate
-  characters per address, 2.7 bits per cell where 2.67 are needed for
-  131,072 table bits in at most 49,152 addressable cells. The two earlier
-  layouts (2026-10-13/14, three cells per fourteen-bit prefix, and the
-  seven-class label window) assumed eight or seven clean meanings per cell;
-  the first also needs three pairwise disjoint 16,384-cell digit maps, and
-  any aligned four-trit window of three such maps carries at least 96 of
-  its 81 values, so no three are disjoint.
-
-  An address-aware decoder can distinguish all eight loader symbols.
-  For character value `x` at address `a`, the residue
-  `(x - 33 + a) % 47` takes eight distinct values. All 752
-  symbol-phase pairs round-trip through the loader. This packs 131,072
-  bits into 43,691 source characters. Native address selection and
-  residue decoding remain open.
-  The low three trits distinguish seven symbols at every phase.
-  Three consecutive base-seven symbols hold one byte, so 16,384
-  independently indexed blocks use 49,152 payload characters and
-  leave 9,897 cells. All 131,072 bit lookups of a sample table passed
-  in Python after loading the payload. Native lookup remains open.
-  A 302-character native control starts with `ji` to skip its
-  operand glyphs. Two all-ones words six cells apart in the loader
-  tail synthesize zero, and the next tail word seeds a low trit of
-  two. Four `p` operations then compute NAND on the low trits of
-  source operands. All four input pairs halt in 200–229 steps.
-  A 129-character control instead reads two ASCII bits and prints
-  their NAND in 40 instructions for every input pair. It saves both
-  inputs in the low bank and routes around the rotated formatter cell.
-  A 127-character control chains two NAND gates in 53 instructions
-  on all four input pairs. Its second gate jumps over the low bank
-  and leaves AND in the accumulator’s low trit. Scaling the wiring
-  to the decoder remains open.
-
-  A period-47 rule cannot supply seven meanings either
-  (`test_window_classes.py`). Its difference graph has independence 4.
-  A six-point class covering all 47 translates has 48 incidences;
-  deleting one point from the sole doubled translate leaves five
-  independent points, impossible. Each class needs at least seven points,
-  so seven classes need 49 > 47. Period-94 and stateful rules remain open.
-
-  For the parity-conditioned map on even address shifts, the even and odd
-  source offsets project to `{3, 24, 33, 42}` and `{3, 14, 17, 32}`
-  modulo 47. The difference graph of their seven-offset union has
-  independence 4 (`test_window_classes.py`). For a class with `a`
-  equal-label pairs, removing one pair per overlapping incidence leaves
-  at most four disjoint translates. The pairs thus cover at most
-  `6a + 4` shifts. Its `b` unpaired entries cover at most `4b` more.
-  Covering 47 forces `3a + 2b >= 22`. If the sheets disagree at `d`
-  positions, summing over seven classes gives `141 + d >= 154`, so at
-  least thirteen pairs must differ.
-
-  Each meaning in that parity-conditioned map also needs at least
-  thirteen entries. Twelve four-shift blocks could cover 47 shifts only
-  with one overlap. Translate it to zero and choose the two blocks that
-  meet there. None of the twenty choices leaves a region tiled by ten
-  disjoint blocks (`test_window_classes.py`). Seven meanings therefore
-  occupy at least 91 of the 94 entries.
-
-  Seven equally spaced translates of one shape, even with sheet swaps,
-  cannot cover. The shape has thirteen entries, so the translates leave
-  three vacancies. In units of the translation step, the column counts
-  satisfy `m(i) - m(i-7) = vacancy(i-1) - vacancy(i)`. Normalizing one
-  vacancy to zero gives 105 feasible profiles. Each has occupied pairs
-  at distances `d` and `7-d` for some `d` in 1..6. Disjointness requires
-  the swap-bit XOR to be constant at each distance. Along the seven-cycle
-  of stride `d`, these constraints force constant or alternating swaps.
-  Constant swaps would need 49 entries on one sheet. Alternating swaps
-  place the shape on a 94-cycle with thirteen gaps of at least seven.
-  None of the 455 distributions of the three extra gaps covers both
-  orientations at any of the 46 nonzero steps, even after shifting the
-  odd sheet by any residue. That last shift also covers a fixed swap
-  generator with unequal increments: conjugate by a sheet shift to use
-  their average step. A zero average gives order two
-  (`test_window_classes.py`).
-
-  If the odd sheet is a shifted copy of the even sheet with colors
-  permuted, a fixed color must cover the union of the two shifted offset
-  sets. No seven positions cover that union at any shift
-  (`test_window_classes.py`). With `f` fixed colors and `o` other odd
-  cycles, the 13-entry minimum per meaning gives
-  `47 >= 8f + (13(7-f) + o)/2`. There is at most one fixed color.
-  With one fixed color, all other cycles have even length. At shifts 10 and 39
-  the union has six offsets and needs at least nine positions per fixed
-  color, which excludes fixed colors entirely.
-
-  Carrying state across groups does not escape it (2026-10-25, audit M5):
-  in the one-query architecture the only cross-group state is entry state
-  the fold delivers, a function of the group's address, so a stateful
-  decoder is one meaning map per state class. Clean eight meanings per
-  address are attainable that way — four address-interval states suffice,
-  their read sets at most 26 residues and each eight-colourable
-  (colourings exhibited and verified in the audit notes) — so the
-  colouring bound does not extend across the state boundary. The price
-  closes it instead: the packing is fixed at 49,152 cells and the
-  annealed assignment already achieves it, so cleaner meanings are worth
-  no cells, while state-conditioning the merged-stream decoder's 181
-  window episodes costs at least 181 further episodes per added state,
-  869 cells at two states and 2,606 at four at the operated 4.8 a hit,
-  against the planner-stream design's 370-cell margin. Three states are
-  excluded for interval splits — the colouring case they turned on is
-  settled against them (a 34-residue interval read set needs more than
-  eight colours; CDCL SAT with a checked proof, 2026-10-26) — and are
-  priced out either way; two states are excluded for interval and parity
-  splits.
-
-  Reading adjacent cells does not escape the window (2026-10-21, exhaustive):
-  `v[h+1] - v[h]` is phase-free, but a decoder reaches it only through
-  back-to-back `*`/`p` reads, since `D` advances once per instruction.
-  Over all 730 such chains (`*` then `p`; `p` after each of the 729
-  constants that touch a character's di-trits, then `p`), the best
-  three-cell read lands on 110 distinct cells at its worst phase against the
-  256 a byte needs (two cells: 38 of 64), no triple lands phase-free, and
-  every chain's state space is at most 243 cells, since `crazy` acts per
-  di-trit (9.7 s by a script that was not preserved; the identity control
-  scores 512). Mixing a per-window-cell constant instead is
-  the measured landing decoder above.
-
-  Shared cells do not rescue the count (2026-10-20, model): the holes of the
-  sixteen-input map are reached by forcing one digit to its missing value,
-  so a hole cell is shared by eight prefixes and must be combined by XOR
-  across prefixes. That is a linear system only when each cell's eight
-  characters map to an affine flat of classes, which with twelve or more
-  classes means every address's eight classes form a 3-flat; annealing over
-  5- to 7-bit class words never got below 110 violated addresses of 94. The
-  one address-independent combination, the window-position difference of a
-  prefix's own and shared characters (a code run whose length is linear in
-  the landing cell), only exposes the parity of the op index, because
-  `Z_94` has a single character to `GF(2)`.
-
-  Navigation, not ops, is sixteen's cost: of 3,618 code cells, 427 are `p`,
-  `*`, `/` or `i`, and 3,191 are `o` or `j` (`o` 2,558, `j` 633).
-  Sweeps cannot cut the label window's share (2026-10-16, model): every
-  sequence of up to five chained `p`/`*` sweeps over cells 34..127 leaves at
-  least 61 distinct values, so a class's pointers still need priming: `p`
-  twice per cell from `A` = all-1, and the walk back (prime 799 cells for
-  72, seeds 554 for 68) stays. Contiguous class runs would shorten seeding,
-  but a run must be 22 cells long to meet every table address's eight
-  pointers, and seven classes need 154 > 94.
-
-  The composition routes priced since (2026-10, audit rounds 1-8) close
-  on measurement, mechanism or eligibility:
-
-  - Threaded-stream emission was falsified by replay: the fold's slices
-    thread at 16.36 cells an episode and the decoder setup's at 28.11,
-    for a composed union of 27,212 cells. Streaming the decoder instead
-    dies on the encoder side: three `rot`/`crazy` steps with a
-    character-sized operand reach about 8 of a group's 256 bytes from
-    any input state, a 96.5-96.9% per-group reachability failure.
-  - A hub substrate steering the archived fold and decoder closes on
-    eligibility: under the full census only 10 of its 45 hub positions
-    survive (140 of the walked window [0, 420) are census fact targets,
-    concentrated at 34..155, the components' own target space), for a
-    best corrected union of 16,165 cells; widening the walk reaches a
-    10,227 floor-ledger union, still over. Re-addressing the components
-    to free the dense block priced a fitting union of 8,503 on paper,
-    but the re-lay is not realizable: the decoder's landing idiom
-    encodes window addresses as source characters, so its
-    residue-faithful window embedding in 34..127 is the shipped one,
-    and the fold's seam cannot move +94 in its tuned walk graph (entry
-    stream 1,091 to 2,688 cells, assembly overlaps) -- a priced layout
-    nobody has built is a prediction, not a route, until its build
-    passes its gates.
-  - A membership decoder closes on mechanism: no two-valued equality
-    test exists as a `crazy` combine of depth at most 3 in the fold's
-    exit representation, and the surviving dispatch floors at about
-    1,026 counted cells, a break-even of about 53 rows.
-  - The permutation fence is settled with its criterion sharpened: a
-    family fences only if its both-stub classes number at most 36,864,
-    and at most the product of its digit-image counts. C17 counts
-    65,416 classes and is out on the count; D17 counts 32,896 and is
-    out on wiring, an invariant digit readout's image holding at most
-    10 values against its 32,896 classes.
-  - Marching, data-initialized decoders were recorded at 11,170 cells
-    before data in the screened layouts. This is not a universal loop
-    bound: encryption cycles return, and `i` encrypts its destination,
-    leaving its own instruction unchanged. A native 178-character control
-    (2026-11-03) halts after 105 steps with `p`, no-op, `p` at cell 86.
-    Its layout is `j@30`, `p@86`, `i@91`, `v@93`, source words 85 at
-    165/171 and 92 at 177, all other cells `o`. The `p`-to-`o` mutant
-    makes the same three passes without writing the two payload cells.
-    A paid bootstrap extends this to 27 passes and 14 `p` reads in
-    5,415 characters and 5,470 steps, including the return-pointer setup;
-    a source mutation installing rotation instead of the `p` opcode fails.
-    These establish finite instruction reuse, not a general decoder loop.
-
-  An open route is a decoder variant whose field-read landing is
-  word-mediated -- the continuation address borne by a setup-deposited
-  word, not a source character -- exhibited at single-case scale in
-  the shipped interpreter at a measured 21 cells per deposited word.
-  The full variant build is unbuilt, and no union is quoted for it.
-
-  Counting bounds each family independently of mixer quality:
-
-  - stubs need three gap-3 cells per row: `3 * 2**n <= 59049`, hence `n <= 14`;
-  - cascades need one cell per row per level above ~9k code cells: `n <= 15`;
-  - last-input cells need `2**(n-1) <= 59049`: `n <= 16`.
-
-  The positional build meets the last bound. A cell answering the final two
-  inputs would need sixteen labels, but its address admits eight characters.
-  Seventeen inputs need more than two table bits per cell across almost the
-  whole store.
-
-  The language itself has a separate limit. Malbolge has 59,049 cells and
-  eight valid decoded instructions at each occupied source cell -- the
-  decipherment cycles with the cell index, and `_XLAT1` holds each instruction
-  character exactly once -- hence fewer than `sum(8**k for k in range(59050)) <
-  2**177148` programs against `2**262144` truth tables on 18 inputs, one
-  table per program: some 18-input tables have no Malbolge program.
-  Malbolge is therefore a language exception, not merely a ceiling.
-
-  Seventeen -- the registry target -- needs the count under `2**131072`, a
-  factor `2**46076` below it, and counting does not get there. A length cut
-  needs every answer inside the first 43,690 cells, but cell 58,967 alone
-  flips row 299 at ten inputs (`0` against `1`, both executed). An alphabet
-  cut buys `log2(8/k)` bits in all -- one bit at `k = 4` -- against single
-  cells realising 5 to 8 distinct behaviours (12 of 20 sampled walked-code
-  cells at 5 or more). A dependence cut (answers resting on at most 24,434
-  cells, the largest `K` with `C(59049, K) * 8**K < 2**131072`) is false per
-  program: `'o'*59046 + '/<v'` computes the one-input identity and every
-  cell flips it, so only a cut over one normal-form program per table
-  remains open. An impossibility proof needs at least 46,076 bits of
-  structure beyond the raw count, and all seven candidate strategies
-  for finding that structure are dead with named obstructions
-  (2026-10, audit R2-10): the impossibility track is routeless absent
-  new mathematics, and seventeen stays open exactly as far as the
-  counting leaves it -- no stronger claim is proved.
-
-  Malbolge without `i`/`j` cannot express NOT. Straight-line `c == d` from
-  the reset state gives a `p` its own cell's instruction character, one of 94
-  values in 33..126, and the input pair `(49, 48)` is unreachable, so NOT is
-  not expressible at any length.
-
-
-Shipped limits, in inputs:
-
-| Generator | Dense | Parity | Limit |
-| --- | ---: | ---: | --- |
-| Malbolge | 16 | 16 | Every arity addresses positionally, three bits per two-trit digit, so no row collides; that readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell, seven-meaning packing is closed at the routing floor, and the composition routes since are closed on eligibility, mechanism or measured rates, with one decoder variant open (above; [scaling](proofs/index.md#malbolge-bound)). |
+See `a2373c8aa:docs/limitations.md` for the detailed Malbolge measurements,
+counterexamples, and provenance under **Searches** and **Largest input
+counts**. The older `scripts/malbolge17/` archive survives at `09ab2fad`
+and `b42d79e` on the old module layout.
 
 ### Size lower bounds
 
