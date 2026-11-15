@@ -16,10 +16,35 @@ hides this using [`describe`](#describe) metadata.
 | `list` | list the languages; `--details` adds the generator, template and example markers; `--json --details` gives a record of `describe` fields per language to filter with `jq` |
 | `describe` | how one language reads input and where its answer lands |
 
-See [layout](#balance-and-scale), [dialect settings](#dialect-settings)
-and [execution limits](#bounded-execution) for options that affect a run.
-`list --inputs N` filters by the declared generator cap. Individual table
-restrictions still apply.
+See each command’s `--help` for option details.
+
+| Option | Commands | Does |
+| --- | --- | --- |
+| `--width [N]` | generate | wrap or lay out to N columns (default 80); what it does per language is `describe`'s `width_effect` |
+| `--balance` | generate | pick the layout fitting the smallest on-screen square; excludes `--width` |
+| `--bits BITS` | generate | fill a template's input slots, printing a runnable program |
+| `--plain` | generate | write compressed text as plain text instead of gzip |
+| `--gzip` | generate | compress any text export; excludes `--plain` and raster PNGs |
+| `--scale N` | generate, run | enlarge raster pixels after layout; on `run`, override the detected scale |
+| `-s`, `--settings JSON` | generate, run | dialect overrides as JSON |
+| `--set KEY=VALUE` | generate, run | one dialect override, repeatable, applied after `--settings` |
+| `--execution-timeout SECONDS` | run | stop the run after this long; unbounded by default |
+| `--total-timeout SECONDS` | run | bound input acquisition, worker startup, preparation, and execution |
+| `--preparation-timeout SECONDS` | run | bound loading the program, before it runs |
+| `--isolated` | run | run in a subprocess, 30 seconds by default |
+| `--max-output N` | run | cap output in characters; implies `--isolated` |
+| `--max-memory BYTES` | run | cap the worker's address space (Linux); implies `--isolated` |
+| `--max-steps N` | run | bound commands cooperatively, with optional isolation |
+| `--seed N` | run | fix a random language's draws |
+| `--details` | list | add the marker column |
+| `--json` | list, describe | print JSON |
+| `--generator`, `--interpreter-only` | list | only languages with, or without, a generator |
+| `--grep REGEX` | list | only languages whose spec matches |
+| `--source-kind KIND` | list | text or raster source |
+| `--input-shape SHAPE` | list | stdin interface, or template for embedded inputs |
+| `--answer-mode MODE` | list | output, dump, or termination |
+| `--inputs N` | list | declared generator cap permits N; table restrictions still apply |
+| `--spec` | describe | print the interpreter's own description of the language |
 
 `encode-inputs` and `read-answer` wrap `run` for one input row:
 
