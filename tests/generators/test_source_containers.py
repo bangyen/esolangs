@@ -1,7 +1,9 @@
 """Execution keeps the same behavior across source and input containers."""
 
+import base64
 import gzip
 import io
+import json
 import os
 from pathlib import Path
 from threading import Event, Thread
@@ -13,6 +15,7 @@ import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.operations.source import _check_program
 from esolangs.registry import LANGUAGES
+from tests.support.cli_support import _failure
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages, one_where
 from tests.support.reference import REFERENCE
@@ -325,6 +328,58 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
     assert path.read_bytes() == b"+,\r\n.\r\n"
     assert _check_program(REFERENCE, path).source == "+,\r\n.\r\n"
     assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
+
+
+@pytest.mark.parametrize(
+    ("data", "message", "hint"),
+    [
+        (
+            gzip.compress(b"+.\xff", mtime=0),
+            "invalid UTF-8 at decoded byte 2",
+            "save the text program as UTF-8",
+        ),
+        (
+            gzip.compress(b"+.", mtime=0)[:-1],
+            "truncated gzip source",
+            "complete gzip file",
+        ),
+        (
+            gzip.compress(b"+.", mtime=0)[:-8] + bytes(8),
+            "CRC check failed",
+            "valid gzip file",
+        ),
+    ],
+    ids=["invalid-utf8", "truncated", "crc"],
+)
+def test_gzip_diagnostics_keep_filename_and_repair_hint(
+    data: bytes, message: str, hint: str, tmp_path: Path, capsys
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    path = tmp_path / "source"
+    path.write_bytes(data)
+    for acquire in (
+        api.from_file,
+        api.prepare,
+        api.to_json,
+        lambda path: api.run(path, isolated=True),
+    ):
+        with pytest.raises(esolangs.ProgramError, match=message) as caught:
+            acquire(path)
+        assert str(path) in str(caught.value)
+        assert any(hint in note for note in caught.value.__notes__)
+    _, stderr = _failure(["run", REFERENCE, str(path)], capsys)
+    assert str(path) in stderr
+    assert message in stderr
+    assert hint in stderr
+
+    valid = gzip.compress(b"+.", mtime=0)
+    document = json.loads(api.to_json(valid))
+    document["source"] = base64.b64encode(data).decode("ascii")
+    with pytest.raises(esolangs.ProgramError, match=message) as caught:
+        api.from_json(json.dumps(document))
+    assert any(hint in note for note in caught.value.__notes__)
+    path.write_bytes(valid)
+    assert api.prepare(path).run().output == "\x01"
 
 
 @pytest.mark.parametrize("gzip_output", [False, True])

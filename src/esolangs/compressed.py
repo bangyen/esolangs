@@ -15,6 +15,7 @@ from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
 from esolangs.runtime._files import explicit_path, write_staged
 from esolangs.runtime._validate import _argument_repr, check_width
 from esolangs.runtime.memory import repr_value
+from esolangs.runtime.source_hints import syntax_error
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -118,14 +119,35 @@ class CompressedText:
         """Yield decoded text in bounded chunks, validating gzip and UTF-8."""
         if not self.data:
             raise ProgramError("gzip source contains no gzip member")
+        expanded_bytes = 0
         try:
             decoder = codecs.getincrementaldecoder("utf-8")()
             with gzip.GzipFile(fileobj=io.BytesIO(self.data)) as stream:
                 while block := stream.read(_BLOCK):
+                    expanded_bytes += len(block)
                     yield decoder.decode(block)
                 yield decoder.decode(b"", final=True)
-        except (OSError, EOFError, UnicodeError, zlib.error) as error:
-            raise ProgramError("invalid gzip UTF-8 source") from error
+        except UnicodeDecodeError as error:
+            # The decoder's input includes any partial UTF-8 sequence from the
+            # preceding block, so its byte offsets are relative to that suffix.
+            offset = expanded_bytes - len(error.object) + error.start
+            raise syntax_error(
+                f"invalid UTF-8 at decoded byte {offset} in gzip source",
+                "save the text program as UTF-8 before compressing it",
+                error_type=ProgramError,
+            ) from error
+        except EOFError as error:
+            raise syntax_error(
+                "truncated gzip source",
+                "restore or re-export the complete gzip file",
+                error_type=ProgramError,
+            ) from error
+        except (OSError, zlib.error) as error:
+            raise syntax_error(
+                f"invalid gzip source: {error}",
+                "restore or re-export the program as a valid gzip file",
+                error_type=ProgramError,
+            ) from error
 
     @classmethod
     def from_chunks(

@@ -427,6 +427,27 @@ def test_option_passes_cannot_steal_another_options_value(capsys) -> None:
         assert "--settings is not valid JSON" in error
 
 
+@pytest.mark.parametrize(("command", "operand"), [("generate", "01"), ("run", "p.txt")])
+@pytest.mark.parametrize(
+    ("option", "message"),
+    [
+        ("--settings", "--settings is not valid JSON"),
+        ("-s", "--settings is not valid JSON"),
+        ("--set", "--set needs KEY=VALUE"),
+    ],
+)
+def test_settings_operand_error_precedes_arity(
+    capsys: pytest.CaptureFixture[str],
+    command: str,
+    operand: str,
+    option: str,
+    message: str,
+) -> None:
+    stdout, error = _failure([command, option, REFERENCE, operand], capsys)
+    assert stdout == ""
+    assert error.startswith(message)
+
+
 def test_deep_settings_document_is_a_usage_error() -> None:
     document = '{"setting":' + "[" * 10_000 + "0" + "]" * 10_000 + "}"
     result = run_cli("generate", "--settings", document, REFERENCE, "01")

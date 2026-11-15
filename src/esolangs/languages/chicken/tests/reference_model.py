@@ -176,6 +176,16 @@ class Reference:
             self.pc += offset
 
     def step(self):
+        cells = self.cells[:]
+        pc, stopped, output = self.pc, self.stopped, self.output
+        try:
+            self._step()
+        except (ModelError, ValueError):
+            self.cells = cells
+            self.pc, self.stopped, self.output = pc, stopped, output
+            raise
+
+    def _step(self):
         if self.stopped:
             return
         if not 0 <= self.pc < len(self.cells):

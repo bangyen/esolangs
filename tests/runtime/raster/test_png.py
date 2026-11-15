@@ -555,6 +555,36 @@ def test_png_metadata_stops_at_iend(language: str, tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("language", one(source_kind="raster"))
+def test_named_png_damage_and_portable_wrapper_keep_repair_notes(
+    language: str, tmp_path: Path
+) -> None:
+    api = esolangs.Language(language)
+    pixels = esolangs.Raster((((1, 2, 3),),))
+    good = pixels.to_png()
+    truncated = good[:-12]
+    path = tmp_path / "source.png"
+    path.write_bytes(truncated)
+    with pytest.raises(esolangs.ProgramError, match="no complete IEND") as native:
+        api.from_file(path)
+    assert str(path) in str(native.value)
+    assert native.value.__notes__
+
+    value = json.loads(api.to_json(pixels))
+    value["source"] = base64.b64encode(truncated).decode("ascii")
+    with pytest.raises(esolangs.ProgramError, match="no complete IEND") as portable:
+        api.from_json(json.dumps(value))
+    assert portable.value.__notes__ == native.value.__notes__
+
+    path.write_bytes(good)
+    assert api.from_file(path).source == pixels
+    with pytest.raises(
+        esolangs.ProgramError, match="requires text source"
+    ) as wrong_kind:
+        esolangs.from_file(REFERENCE, path)
+    assert str(path) in str(wrong_kind.value)
+
+
+@pytest.mark.parametrize("language", one(source_kind="raster"))
 def test_png_source_kind_checked_before_dependency(
     language, tmp_path, monkeypatch
 ) -> None:

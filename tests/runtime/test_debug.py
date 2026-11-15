@@ -76,6 +76,48 @@ def test_manual_steps_rearm_a_breakpoint_after_leaving_it() -> None:
     assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "breakpoint"
 
 
+@pytest.mark.parametrize("replace_breakpoint", [False, True])
+def test_breakpoint_callback_can_clear_the_breakpoint_it_hits(
+    *,
+    replace_breakpoint: bool,
+) -> None:
+    dbg = debugger_api.make_debugger(REFERENCE, "+.")
+    limits = esolangs.ExecutionLimits(max_steps=2)
+
+    def clear(vm):
+        dbg.clear_breakpoints()
+        if replace_breakpoint:
+            dbg.break_at(vm.ip)
+        return True
+
+    dbg.break_when(clear)
+    assert dbg.run(limits=limits) == "breakpoint"
+    if replace_breakpoint:
+        assert dbg.run(limits=limits) == "breakpoint"
+        assert dbg.ip == 0
+    dbg.step()
+    assert dbg.run(limits=limits) == "halted"
+    assert dbg.output == "\x01"
+
+
+def test_manual_step_can_clear_a_suppressed_breakpoint() -> None:
+    dbg = debugger_api.make_debugger(REFERENCE, "+.")
+    limits = esolangs.ExecutionLimits(max_steps=2)
+
+    def replace_after_step(vm):
+        if vm.ip == 1:
+            dbg.clear_breakpoints()
+            dbg.break_at(1)
+        return True
+
+    dbg.break_when(replace_after_step)
+    assert dbg.run(limits=limits) == "breakpoint"
+    dbg.step()
+    assert dbg.run(limits=limits) == "breakpoint"
+    assert dbg.observation.steps == 1
+    assert dbg.run(limits=limits) == "halted"
+
+
 def test_debugger_breakpoint_and_watch_counts_use_integer_storage() -> None:
     class Index(int):
         def __hash__(self):

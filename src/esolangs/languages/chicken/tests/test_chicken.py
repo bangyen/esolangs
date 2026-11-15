@@ -2,17 +2,19 @@
 
 import json
 import sys
+from functools import partial
 from pathlib import Path
 
 import pytest
 
-from esolangs import ExecutionLimits
+from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs import run as execute
 from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.chicken.interpreter import _Machine, run
 from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime._result_wire import decode_decision, encode_decision
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace, complete_vm
 from tests.support.execution import termination_observed
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 
@@ -114,6 +116,7 @@ def test_a_string_is_truthy_even_when_it_reads_as_zero() -> None:
 def test_load_reads_the_input_and_the_stack() -> None:
     assert _go((11, 6, 1), "xy") == "y"
     assert _go((13, 6, 0)) == "6"  # cell 3 is the second line, 6 chickens
+    assert _go((16, 6, 0)) == "undefined"  # cell 6 would be the popped address
     assert _go((10 + 7, 6, 0)) == "undefined"
     assert _go((10 + 9, 6, 2)) == "undefined"  # cell 2 holds a number
 
@@ -213,6 +216,53 @@ def test_bad_words_are_rejected_with_a_repair_hint() -> None:
 )
 def test_runtime_failures_carry_a_repair_hint(counts, message, hint) -> None:
     assert_halts_with_hint("Chicken", _lines(*counts), message, hint)
+
+
+@pytest.mark.parametrize("debugger", [False, True])
+@pytest.mark.parametrize(
+    ("counts", "stdin", "message", "steps"),
+    [
+        ((11, 6, 0), "&#55296;", "code point 55296", 2),
+        ((10, 6, 99, 1), "", "undefined source", 1),
+        ((10, 10, 11, 3, 7), "", "non-index address -1", 4),
+        ((11, 1, 8), "", "non-integer offset chicken", 2),
+        ((10, 6, 0, 1, 2), "", "stack array", 3),
+    ],
+)
+def test_fault_preserves_operands_and_instruction_on_retry(
+    counts, stdin, message, steps, *, debugger: bool
+) -> None:
+    api = Language("Chicken")
+    source = _lines(*counts)
+    limits = ExecutionLimits(max_steps=steps + 1)
+    if debugger:
+        debug = api.make_debugger(source, stdin=stdin)
+        vm = debug.vm
+        assert debug.run(limits=ExecutionLimits(max_steps=steps)) == "max_steps"
+        drive = partial(debug.run, limits=limits)
+    else:
+        vm = api.make_vm(source, stdin=stdin)
+        for _ in range(steps):
+            vm.step()
+        drive = partial(complete_vm, vm, max_steps=steps + 1)
+    state, workspace = vm.snapshot(), _capture_workspace(vm)
+    for _ in range(2):
+        with pytest.raises(HaltError, match=message) as stopped:
+            drive()
+        assert not vm.halted
+        assert stopped.value.partial_output == vm.output == ""
+        assert stopped.value.observation == ExecutionResult(
+            "", len(stdin), 1, 0, steps=steps if debugger else None
+        )
+        assert vm.snapshot() == state
+        assert _capture_workspace(vm) == workspace
+
+
+def test_successful_output_finishes_at_the_exact_budget() -> None:
+    vm = Language("Chicken").make_vm(_lines(11, 6, 0), stdin="&#65;")
+    assert complete_vm(vm, max_steps=3) == "A"
+    assert vm.halted
+    assert vm.ip == 6
 
 
 def test_code_point_past_unicode_halts() -> None:

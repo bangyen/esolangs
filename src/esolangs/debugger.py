@@ -71,9 +71,14 @@ class Debugger(_ExecutionController):
     def step(self) -> None:
         """Execute a command and rearm breakpoints whose conditions clear."""
         super().step()
-        self._suppressed = {
-            index for index in self._suppressed if self._breakpoints[index](self.vm)
+        breakpoints = self._breakpoints
+        still_holding = {
+            index
+            for index in self._suppressed
+            if self._breakpoints is breakpoints and breakpoints[index](self.vm)
         }
+        if self._breakpoints is breakpoints:
+            self._suppressed = still_holding
 
     @property
     def ip(self) -> int | tuple[int, ...] | None:
@@ -203,6 +208,7 @@ class Debugger(_ExecutionController):
         """Stop when ``predicate(vm)`` holds; a catch-all for the rest.
 
         Callability and arity are checked here, not from inside the run loop.
+        Breakpoints added during a callback take effect at the next check.
         """
         if not callable(predicate):
             raise ArgumentError(
@@ -227,8 +233,9 @@ class Debugger(_ExecutionController):
 
         Resuming already suppresses the last hit until its condition goes false.
         """
-        self._breakpoints.clear()
-        self._suppressed.clear()
+        # Give an active callback scan a distinct list and suppression set.
+        self._breakpoints = []
+        self._suppressed = set()
 
     def watch_cell(self, index: int) -> list[int | None]:
         """Record ``memory[index]`` each step, returning the history.
@@ -266,10 +273,16 @@ class Debugger(_ExecutionController):
         Invisible for position and value breakpoints; the whole story for
         :meth:`break_on_output`, whose ``text in vm.output`` is true forever.
         """
-        hits = {i for i, cond in enumerate(self._breakpoints) if cond(self.vm)}
-        stopped = bool(hits - self._suppressed)
-        self._suppressed = hits
-        return stopped
+        breakpoints = self._breakpoints
+        suppressed = self._suppressed
+        hits = {
+            i
+            for i, cond in enumerate(breakpoints[:])
+            if self._breakpoints is breakpoints and cond(self.vm)
+        }
+        if self._breakpoints is breakpoints:
+            self._suppressed = hits
+        return bool(hits - suppressed)
 
 
 def make_debugger(

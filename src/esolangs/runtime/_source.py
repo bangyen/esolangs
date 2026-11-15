@@ -20,7 +20,7 @@ from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._files import explicit_path, read_snapshot
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import check_scale
-from esolangs.runtime.source_hints import syntax_error, with_hint
+from esolangs.runtime.source_hints import program_error_context, syntax_error, with_hint
 
 if TYPE_CHECKING:
     from esolangs.registry._catalog import Catalog
@@ -94,15 +94,25 @@ def _read_container(
     )
 
 
+def _read_gzip(data: bytes, label: str | None) -> CompressedText:
+    """Validate compressed source with its optional native filename."""
+    try:
+        return CompressedText(data)
+    except ProgramError as error:
+        if label is None:
+            raise
+        raise program_error_context(f"cannot read {label}: {error}", error) from error
+
+
 def text_source(
     source: ProgramSource | _FileSource, *, label: str | None = None
 ) -> str:
     """Decode UTF-8 source without changing line endings or terminators."""
     value, path = _read_container(source)
     if label is None:
-        label = path or "the program"
+        label = path
     if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
-        value = CompressedText(value)
+        value = _read_gzip(value, label)
     if isinstance(value, CompressedText):
         # Construction already enforced the generation budget. plain_chars
         # limits raw export; loading an interpreter's source is not export.
@@ -112,7 +122,8 @@ def text_source(
             value = value.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise syntax_error(
-                f"cannot read {label}: not text (invalid UTF-8 at byte {exc.start})",
+                f"cannot read {label or 'the program'}: not text "
+                f"(invalid UTF-8 at byte {exc.start})",
                 "save the text program as UTF-8 before running it",
                 error_type=ProgramError,
             ) from exc
@@ -166,7 +177,7 @@ def compressed_text_source(source: ProgramSource | _FileSource) -> str | Compres
     if isinstance(value, CompressedText):
         return value
     if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
-        return CompressedText(value)
+        return _read_gzip(value, path)
     return text_source(value, label=path)
 
 

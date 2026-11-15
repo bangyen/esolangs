@@ -411,13 +411,16 @@ def _set_value(key: str, raw: str, language: str) -> int | str:
     return raw
 
 
-def _settings_of(
+type _SettingsArguments = tuple[dict[str, object], list[tuple[str, str]]]
+
+
+def _settings_arguments(
     options: dict[str, str],
-    set_pairs: list[str] | tuple[str, ...] = (),
-    *,
-    language: str | None = None,
-) -> DialectSettings | None:
-    """Parse dialect overrides from JSON and/or ``--set KEY=VALUE`` pairs."""
+    set_pairs: list[str],
+) -> _SettingsArguments | None:
+    """Check settings operand syntax before counting positionals."""
+    if "--settings" not in options and not set_pairs:
+        return None
     values: dict[str, object] = {}
     if "--settings" in options:
         try:
@@ -427,18 +430,25 @@ def _settings_of(
         if not isinstance(parsed, dict):
             _fail("--settings must be a JSON object")
         values.update(parsed)
-    if language is None and (values or set_pairs or "--settings" in options):
-        _fail("dialect settings require a language")
+    pairs: list[tuple[str, str]] = []
+    for pair in set_pairs:
+        key, sep, raw = pair.partition("=")
+        if not sep or not key:
+            _fail(f"--set needs KEY=VALUE, got {pair!r}")
+        pairs.append((key, raw))
+    return values, pairs
+
+
+def _settings_of(
+    arguments: _SettingsArguments | None, *, language: str
+) -> DialectSettings | None:
+    """Validate choices against the selected language's schema."""
+    if arguments is None:
+        return None
+    values, pairs = arguments
     try:
-        for pair in set_pairs:
-            key, sep, raw = pair.partition("=")
-            if not sep or not key:
-                _fail(f"--set needs KEY=VALUE, got {pair!r}")
-            assert language is not None
-            values[key] = _set_value(key, raw, language)
-        if not values and "--settings" not in options and not set_pairs:
-            return None
-        assert language is not None
-        return Language(language).settings(**values)  # type: ignore[arg-type]
+        overrides = {key: _set_value(key, raw, language) for key, raw in pairs}
+        choices = values | overrides
+        return Language(language).settings(**choices)  # type: ignore[arg-type]
     except EsolangError as exc:
         _fail(str(exc))

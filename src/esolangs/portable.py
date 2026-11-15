@@ -36,7 +36,7 @@ from esolangs.runtime._source import (
     ProgramSource,
     native_file_terminator,
 )
-from esolangs.runtime.source_hints import with_hint
+from esolangs.runtime.source_hints import program_error_context, with_hint
 from esolangs.settings import (
     DialectSettings,
     _settings_for,
@@ -492,4 +492,6 @@ def from_json(
             if isinstance(error, json.JSONDecodeError)
             else ""
         )
-        raise ProgramError(f"invalid portable program: {error}{hint}") from error
+        raise program_error_context(
+            f"invalid portable program: {error}{hint}", error
+        ) from error

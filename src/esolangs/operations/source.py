@@ -22,6 +22,7 @@ from esolangs.runtime._source import (
     source_for,
 )
 from esolangs.runtime._validate import check_flag, check_scale
+from esolangs.runtime.source_hints import program_error_context
 from esolangs.settings import (
     DialectSettings,
     _merge_settings,
@@ -88,10 +89,7 @@ def read_png_metadata(
     except (ProgramError, MissingDependencyError):
         raise
     except Exception as error:
-        failure = ProgramError(f"not a readable PNG: {error}")
-        for note in getattr(error, "__notes__", ()):
-            failure.add_note(note)
-        raise failure from error
+        raise program_error_context(f"not a readable PNG: {error}", error) from error
 
 
 def read_artifact(
@@ -145,7 +143,14 @@ def read_artifact(
         value.startswith(b"\x89PNG\r\n\x1a\n")
         or catalog.languages[name].runtime.source_kind is SourceKind.RASTER
     ):
-        return read_png_artifact(name, value, settings=settings, catalog=catalog)
+        try:
+            return read_png_artifact(name, value, settings=settings, catalog=catalog)
+        except ProgramError as error:
+            if path is None or type(error) is not ProgramError:
+                raise
+            raise program_error_context(
+                f"cannot read {path}: {error}", error
+            ) from error
     # Re-wrap file bytes so a decoding error names the file, not its bytes.
     named = (
         _FileSource(path, value)

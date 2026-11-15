@@ -19,6 +19,7 @@ from esolangs.cli.args import (
     _pop_set_pairs,
     _scale_of,
     _seed_of,
+    _settings_arguments,
     _settings_of,
     _split_positional,
     _timeout_of,
@@ -129,9 +130,10 @@ def _run(rest: list[str]) -> None:
     rest = _split_positional(rest, set(), value_options | {"--set", "--isolated"})
     seed = _seed_of(options)
     scale = _scale_of(options)
+    settings_arguments = _settings_arguments(options, set_pairs)
     _check_count("run", rest, 2)
     language, path = rest
-    settings = _settings_of(options, set_pairs, language=language)
+    settings = _settings_of(settings_arguments, language=language)
     catalog = get_catalog()
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever

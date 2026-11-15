@@ -92,7 +92,7 @@ def test_catalog_displays_and_help_keep_large_integer_settings(
     monkeypatch, capsys
 ) -> None:
     from esolangs.cli import help as help_module
-    from esolangs.cli.args import _settings_of
+    from esolangs.cli.args import _settings_arguments, _settings_of
 
     threshold = sys.int_info.str_digits_check_threshold
     previous_limit = sys.get_int_max_str_digits()
@@ -138,8 +138,11 @@ def test_catalog_displays_and_help_keep_large_integer_settings(
         pair = shlex.split(help_commands[1])[3]
         assert pair.startswith("mode=0x")
         for settings in (
-            _settings_of({"--settings": json_option}, language=REFERENCE),
-            _settings_of({}, [pair], language=REFERENCE),
+            _settings_of(
+                _settings_arguments({"--settings": json_option}, []),
+                language=REFERENCE,
+            ),
+            _settings_of(_settings_arguments({}, [pair]), language=REFERENCE),
         ):
             assert settings is not None
             assert settings.options()["mode"] == large

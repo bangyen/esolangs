@@ -151,6 +151,14 @@ def test_corrupt_or_non_utf8_gzip_is_a_program_error(data: bytes) -> None:
         CompressedText(data)
 
 
+@pytest.mark.parametrize("tail", [b"\xf0\x9f\xff", b"\xf0\x9f"])
+def test_invalid_utf8_offset_spans_gzip_decode_blocks(tail: bytes, monkeypatch) -> None:
+    monkeypatch.setattr("esolangs.compressed._BLOCK", 4)
+    invalid = gzip.compress(b"abc" + tail, mtime=0)
+    with pytest.raises(esolangs.ProgramError, match="invalid UTF-8 at decoded byte 3"):
+        CompressedText(invalid)
+
+
 def test_existing_gzip_counts_only_through_first_chunk_over_budget() -> None:
     class Monitored(CompressedText):
         def chunks(self):

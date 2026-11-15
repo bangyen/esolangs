@@ -64,6 +64,7 @@ from esolangs.cli.args import (
     _pop_set_pairs,
     _pop_width,
     _scale_of,
+    _settings_arguments,
     _settings_of,
     _split_positional,
 )
@@ -376,9 +377,10 @@ def _generate(rest: list[str]) -> None:
         value_options | flag_options | {"--width", "--set"},
     )
     eaten = _eaten_width_note(before) if width is not None and not bare else ""
+    settings_arguments = _settings_arguments(options, set_pairs)
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
     language, table = rest
-    settings = _settings_of(options, set_pairs, language=language)
+    settings = _settings_of(settings_arguments, language=language)
     catalog = get_catalog()
     try:
         declaration = catalog.languages[catalog.resolve(language)]

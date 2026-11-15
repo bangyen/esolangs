@@ -166,21 +166,21 @@ def test_invalid_settings_fail_before_reading(language, settings, options) -> No
 def test_settings_require_the_public_object(operation, capsys) -> None:
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
         operation(REFERENCE, Unreadable(), settings={})
-    from esolangs.cli.args import _settings_of
+    from esolangs.cli.args import _settings_arguments, _settings_of
 
     for value in (2, 3):
         document = '{"cell_modulus":2,"cell_modulus":' + str(value) + "}"
-        with pytest.raises(SystemExit) as caught:
-            _settings_of({"--settings": document})
-        assert caught.value.code == 2
-        assert "duplicate field" in capsys.readouterr().err
+        _, error = _failure(
+            [operation.__name__, "--settings", document, REFERENCE, "01"], capsys
+        )
+        assert "duplicate field" in error
+    language = one_where(lambda info: "cell_modulus" in info.dialect_settings)[0]
     assert _settings_of(
-        {"--settings": '{"cell_modulus":255}'},
-        ["cell_modulus=256"],
-        language=one_where(lambda info: "cell_modulus" in info.dialect_settings)[0],
-    ) == esolangs.Language(
-        one_where(lambda info: "cell_modulus" in info.dialect_settings)[0]
-    ).settings(cell_modulus=256)
+        _settings_arguments(
+            {"--settings": '{"cell_modulus":255}'}, ["cell_modulus=256"]
+        ),
+        language=language,
+    ) == esolangs.Language(language).settings(cell_modulus=256)
 
 
 def test_cli_help_shows_literal_settings_json(capsys) -> None:

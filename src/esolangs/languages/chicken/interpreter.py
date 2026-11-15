@@ -295,32 +295,34 @@ class _Machine:
             self.io.progress(),
         )
 
-    def _pop(self) -> _Value:
-        return self.cells.pop() if self.cells else None
+    def _operand(self, depth: int) -> _Value:
+        return self.cells[-depth] if len(self.cells) >= depth else None
 
-    def _get(self, index: int | None) -> _Value:
-        if index is None or index >= len(self.cells):
+    def _get(self, index: int | None, stop: int) -> _Value:
+        if index is None or index >= stop:
             return None
         return self.cells[index]
 
     def _load(self) -> None:
-        address = _key(self._pop())
-        source = self._get(_key(self._get(self.pointer)))
-        self.pointer += 1
+        # Code and data share the stack, so both lookups see the operand popped.
+        top = len(self.cells) - 1
+        address = _key(self.cells[top])
+        source = self._get(_key(self._get(self.pointer + 1, top)), top)
         if source is None:
             raise HaltError(
                 "Chicken load from an undefined source",
                 hint="name a source cell holding the array, a string or a number",
             )
         if isinstance(source, _Self):
-            self.cells.append(self._get(address))
+            value = self._get(address, top)
         elif isinstance(source, str) and address is not None:
-            self.cells.append(source[address] if address < len(source) else None)
+            value = source[address] if address < len(source) else None
         else:
-            self.cells.append(None)
+            value = None
+        self.cells[top] = value
 
     def _store(self) -> None:
-        address, value = self._pop(), self._pop()
+        address, value = self.cells[-1], self._operand(2)
         index = _key(address)
         if index is None:
             raise HaltError(
@@ -328,25 +330,33 @@ class _Machine:
                 hint="store to a non-negative integer address",
             )
         check_address(index, "Chicken")
-        if index >= len(self.cells):
-            self.cells.extend([None] * (index + 1 - len(self.cells)))
-        self.cells[index] = value
+        stop = max(0, len(self.cells) - 2)
+        if index >= stop:
+            tail: list[_Value] = [None] * (index + 1 - stop)
+            tail[-1] = value
+            self.cells[stop:] = tail
+        else:
+            del self.cells[stop:]
+            self.cells[index] = value
 
-    def _jump(self) -> None:
-        offset, condition = self._pop(), self._pop()
-        if not _truthy(condition):
-            return
-        if not isinstance(offset, int):
+    def _jump(self) -> int:
+        offset = self.cells[-1]
+        if not _truthy(self._operand(2)):
+            offset = 0
+        elif not isinstance(offset, int):
             raise HaltError(
                 f"Chicken jump by the non-integer offset {_text(offset)}",
                 hint="push an integer offset before jumping",
             )
-        self.pointer += offset
+        del self.cells[-2:]
+        return offset
 
     def _exit(self) -> None:
-        text = _text(self._pop())
-        self.done = True
+        text = _text(self._operand(1))
         self.io.print_str(_ENTITY.sub(_unescape, text))
+        if self.cells:
+            self.cells.pop()
+        self.done = True
 
     def step(self) -> None:
         if self.done:
@@ -355,25 +365,29 @@ class _Machine:
             self._exit()  # an undefined opcode is falsy: the exit arm
             return
         cell = self.cells[self.pointer]
-        self.pointer += 1
+        pointer = self.pointer + 1
         if type(cell) is int and 0 <= cell <= 9:
             if cell == 0:
                 self._exit()
             elif cell == 1:
                 self.cells.append("chicken")
             elif cell in (2, 3, 4, 5, 9):
-                top = self._pop()
-                below = top if cell == 9 else self._pop()
-                self.cells.append(_advance(cell, below, top))
+                top = self.cells[-1]
+                if cell == 9:
+                    self.cells[-1] = _advance(cell, top, top)
+                else:
+                    value = _advance(cell, self._operand(2), top)
+                    self.cells[-2:] = [value]
             elif cell == 6:
                 self._load()
+                pointer += 1
             elif cell == 7:
                 self._store()
             else:
-                self._jump()
-            return
-        number = _number(cell) - 10
-        self.cells.append(number)
+                pointer += self._jump()
+        else:
+            self.cells.append(_number(cell) - 10)
+        self.pointer = pointer
 
 
 def _unescape(match: re.Match[str]) -> str:

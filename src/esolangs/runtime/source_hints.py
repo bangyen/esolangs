@@ -3,6 +3,8 @@
 from collections.abc import Iterable
 from difflib import get_close_matches
 
+from esolangs.exceptions import ProgramError
+
 
 def syntax_error(
     message: str, hint: str, *, error_type: type[ValueError] = ValueError
@@ -11,6 +13,14 @@ def syntax_error(
     error = error_type(message)
     error.add_note(f"hint: {hint}")
     return error
+
+
+def program_error_context(message: str, cause: BaseException) -> ProgramError:
+    """Keep the cause's repair notes when adding source or transport context."""
+    failure = ProgramError(message)
+    for note in getattr(cause, "__notes__", ()):
+        failure.add_note(note)
+    return failure
 
 
 def keyword_hint(word: str, known: Iterable[str], fallback: str) -> str:
