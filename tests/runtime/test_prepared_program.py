@@ -136,6 +136,9 @@ def _check_ambiguous_owner_slug_requires_a_display_name() -> None:
             api.run(ambiguous)
     with pytest.raises(esolangs.ProgramError, match="generated for"):
         ambiguous.evaluate([1], catalog=catalog)
+    without_matching_id = esolangs.Catalog([replace(left, id="runtime_left"), right])
+    with pytest.raises(esolangs.UnknownLanguageError):
+        without_matching_id.resolve(ambiguous.language)
 
 
 @pytest.mark.medium

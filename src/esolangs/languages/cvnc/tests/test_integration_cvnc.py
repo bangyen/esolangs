@@ -78,7 +78,7 @@ def test_the_override_name_specifically(name: str) -> None:
     for settings in (None, api.settings()):
         tagged = replace(artifact, language="cv_n_c", settings=settings)
         assert tagged.evaluate([1]) == api.prepare(tagged).evaluate([1]) == expected
-        restored = api.from_json(api.to_json(tagged))
+        restored = esolangs.from_json("cv_n_c", api.to_json(tagged))
         assert restored.language == api.name
         assert restored.evaluate([1]) == expected
     with pytest.raises(esolangs.ProgramError, match="generated for"):

@@ -150,6 +150,8 @@ class Catalog:
             own = _symbols(match, *self.languages[match].aliases)
             if not _symbols(name) - own:
                 return match
+        if (match := resolve_origin(name, catalog=self)) is not None:
+            return match
         close = self._close_ids(name, SUGGESTION_CUTOFF)
         if not close:
             # A head of a long name is too far for difflib: "lol" scores 0.18
