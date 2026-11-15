@@ -8,13 +8,14 @@ import struct
 import sys
 import zlib
 from collections.abc import Iterator, Sequence
+from json import JSONDecoder
 from typing import TYPE_CHECKING, Any
 
 from esolangs._dialect import DialectSettings
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._validate import check_scale
-from esolangs.runtime.source_hints import syntax_error
+from esolangs.runtime.source_hints import program_error_context, syntax_error
 
 if TYPE_CHECKING:
     from esolangs.raster import Pixel, Rows
@@ -502,10 +503,32 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
 
 _METADATA_CHUNK = b"esOL"
 _METADATA_LIMIT = 16_384
+_JSON_TOKEN = re.compile(r"[^ \r\n\t]")
 
 
 class SourceMetadataSizeError(ProgramError):
     """Source metadata exceeds the native PNG chunk budget."""
+
+
+def _decode_metadata(body: bytes) -> dict[str, Any]:
+    if len(body) > _METADATA_LIMIT:
+        raise ValueError("duplicate or oversized esolangs PNG metadata")
+    decoded = record_loads(body.decode("utf-8-sig"))
+    if not isinstance(decoded, dict):
+        raise ValueError("esolangs PNG metadata must be an object")
+    try:
+        check_record_utf8(decoded)
+    except UnicodeEncodeError as error:
+        raise ProgramError(f"PNG metadata is not valid UTF-8 text: {error}") from error
+    return decoded
+
+
+def _check_version(metadata: dict[str, Any]) -> None:
+    version = metadata.get("version")
+    if type(version) is not int or version < 1:
+        raise ValueError("invalid esolangs PNG metadata version")
+    if version != 1:
+        raise ValueError("unsupported esolangs PNG metadata version")
 
 
 def read_metadata(data: bytes) -> dict[str, Any] | None:
@@ -514,50 +537,59 @@ def read_metadata(data: bytes) -> dict[str, Any] | None:
     for kind, body in _chunks(_backing_bytes(data)):
         if kind != _METADATA_CHUNK:
             continue
-        if found is not None or len(body) > _METADATA_LIMIT:
+        if found is not None:
             raise ValueError("duplicate or oversized esolangs PNG metadata")
-        decoded = record_loads(body.decode("utf-8-sig"))
-        if not isinstance(decoded, dict):
-            raise ValueError("esolangs PNG metadata must be an object")
-        try:
-            check_record_utf8(decoded)
-        except UnicodeEncodeError as error:
-            raise ProgramError(
-                f"PNG metadata is not valid UTF-8 text: {error}"
-            ) from error
-        found = decoded
-    if found is None:
-        return None
-    version = found.get("version")
-    if type(version) is not int or version < 1:
-        raise ValueError("invalid esolangs PNG metadata version")
-    if version != 1:
-        raise ValueError("unsupported esolangs PNG metadata version")
+        found = _decode_metadata(body)
+    if found is not None:
+        _check_version(found)
     return found
 
 
 def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
     """Append source metadata before IEND; image editors may discard it."""
+    body = _encode_metadata(metadata)
+    data = _backing_bytes(data)
+    position, end = _metadata_span(data, locate_existing=False)
+    return _write_metadata_chunk(data, body, position, end)
+
+
+def _encode_metadata(metadata: dict[str, Any]) -> bytes:
     utf8 = _utf8_metadata(metadata)
     body = record_dumps(metadata).encode("ascii")
-    if len(body) > _METADATA_LIMIT:
-        body = utf8
-    if len(body) > _METADATA_LIMIT:
+    if len(body) <= _METADATA_LIMIT:
+        return body
+    if len(utf8) > _METADATA_LIMIT:
         raise SourceMetadataSizeError("oversized esolangs PNG metadata")
-    data = _backing_bytes(data)
+    return utf8
+
+
+def _metadata_span(data: bytes, *, locate_existing: bool) -> tuple[int, int]:
+    """Find the existing chunk or the insertion point before IEND."""
     # A PNG datastream can end before the last byte of its enclosing file.
     position = len(_SIGNATURE)
+    previous = None
     for kind, contents in _chunks(data):
         if kind == b"IEND":
             break
-        position += 12 + len(contents)
+        end = position + 12 + len(contents)
+        if locate_existing and kind == _METADATA_CHUNK:
+            if previous is not None:
+                raise ProgramError("duplicate esolangs PNG metadata")
+            previous = position, end
+        position = end
+    return (position, position) if previous is None else previous
+
+
+def _write_metadata_chunk(data: bytes, body: bytes, start: int, end: int) -> bytes:
+    if len(body) > _METADATA_LIMIT:
+        raise SourceMetadataSizeError("oversized esolangs PNG metadata")
     chunk = _METADATA_CHUNK + body
     return (
-        data[:position]
+        data[:start]
         + struct.pack(">I", len(body))
         + chunk
         + struct.pack(">I", zlib.crc32(chunk) & 0xFFFFFFFF)
-        + data[position:]
+        + data[end:]
     )
 
 
@@ -567,6 +599,137 @@ def _utf8_metadata(metadata: dict[str, Any]) -> bytes:
         return record_dumps(metadata, ensure_ascii=False).encode("utf-8")
     except UnicodeEncodeError as error:
         raise ProgramError(f"PNG metadata is not valid UTF-8 text: {error}") from error
+
+
+def _token_offset(text: str, position: int) -> int:
+    match = _JSON_TOKEN.search(text, position)
+    assert match is not None  # the complete object has already been decoded
+    return match.start()
+
+
+def _update_metadata_body(
+    body: bytes,
+    stored: dict[str, Any],
+    additions: dict[str, Any],
+    *,
+    ensure_ascii: bool,
+) -> bytes:
+    """Edit only claim values, preserving legal extension numbers and spelling."""
+    text = body.decode("utf-8")
+    decoder = JSONDecoder(parse_int=str, parse_float=str)
+    position = text.index("{") + 1
+    start = 0
+    parts = []
+    for key in stored:
+        _, key_end = decoder.raw_decode(text, _token_offset(text, position))
+        value_start = _token_offset(text, _token_offset(text, key_end) + 1)
+        _, value_end = decoder.raw_decode(text, value_start)
+        position = _token_offset(text, value_end) + 1
+        if key in additions:
+            parts.append(text[start:value_start])
+            parts.append(record_dumps(additions[key], ensure_ascii=ensure_ascii))
+            start = value_end
+    close = position - 1
+    parts.append(text[start:close])
+    new_fields = {key: value for key, value in additions.items() if key not in stored}
+    if new_fields:
+        parts.extend((",", record_dumps(new_fields, ensure_ascii=ensure_ascii)[1:-1]))
+    parts.append(text[close:])
+    return "".join(parts).encode("utf-8")
+
+
+def _retained_owner(
+    owner: Any, requested: str | None, *, catalog: Catalog | None
+) -> str | None:
+    if owner is None:
+        return None
+    if not isinstance(owner, str) or not owner.strip():
+        raise ValueError("stored PNG language must be a nonblank string")
+    if catalog is None:
+        if (
+            requested is None
+            or owner.strip().casefold() == requested.strip().casefold()
+        ):
+            return owner
+    else:
+        from esolangs.registry._catalog import resolve_origin
+
+        canonical = resolve_origin(owner, catalog=catalog)
+        if canonical is None:
+            raise ValueError(f"stored PNG language {owner!r} is not a catalog owner")
+        if requested in (None, canonical):
+            return canonical
+    raise ValueError(f"conflicting PNG language {owner!r} and {requested!r}")
+
+
+def _check_retained_settings(
+    saved: Any, requested: Any, owner: str | None, *, catalog: Catalog | None
+) -> None:
+    from esolangs.portable import _decode_settings_choices
+
+    if owner is None:
+        raise ValueError("stored PNG settings need a language to apply to")
+    choices = _decode_settings_choices(saved)
+    if any(type(value) not in (int, str) for value in choices.values()):
+        raise ValueError("stored PNG settings must be integer or string choices")
+    if catalog is not None:
+        schema = catalog.languages[owner].runtime.dialect_schema
+        if schema is not None:
+            schema.validate(choices)
+        elif choices:
+            raise ValueError(f"{owner} declares no PNG dialect settings")
+    if requested is not None and choices != _decode_settings_choices(requested):
+        raise ValueError("conflicting PNG settings")
+
+
+def _missing_claims(
+    stored: dict[str, Any], requested: dict[str, Any], *, catalog: Catalog | None
+) -> dict[str, Any]:
+    owner = _retained_owner(
+        stored.get("language"), requested["language"], catalog=catalog
+    )
+    if (settings := stored.get("settings")) is not None:
+        _check_retained_settings(
+            settings, requested["settings"], owner, catalog=catalog
+        )
+    for key in ("scale", "input_arity"):
+        value = stored.get(key)
+        if value is None and (key == "scale" or key not in stored):
+            continue
+        if type(value) is not int or value < 1:
+            raise ValueError(f"stored PNG {key} must be a positive integer")
+        if requested.get(key) not in (None, value):
+            raise ValueError(f"conflicting PNG {key}")
+    return {
+        key: value
+        for key, value in requested.items()
+        if value is not None and stored.get(key) is None
+    }
+
+
+def _attach_metadata(
+    data: bytes, metadata: dict[str, Any], *, catalog: Catalog | None
+) -> bytes:
+    data = _backing_bytes(data)
+    start, end = _metadata_span(data, locate_existing=True)
+    if start == end:
+        return _write_metadata_chunk(data, _encode_metadata(metadata), start, end)
+    body = data[start + 8 : end - 4]
+    try:
+        stored = _decode_metadata(body)
+        _check_version(stored)
+        additions = _missing_claims(stored, metadata, catalog=catalog)
+    except ProgramError:
+        raise
+    except (ValueError, RecursionError) as error:
+        raise program_error_context(f"cannot tag PNG: {error}", error) from error
+    if not additions:
+        return data
+    _utf8_metadata(additions)
+    updated = _update_metadata_body(body, stored, additions, ensure_ascii=True)
+    if len(updated) > _METADATA_LIMIT:
+        updated = _update_metadata_body(body, stored, additions, ensure_ascii=False)
+    return _write_metadata_chunk(data, updated, start, end)
 
 
 def write_source(
@@ -597,7 +760,7 @@ def attach_source_metadata(
     input_arity: int | None = None,
     catalog: Catalog | None = None,
 ) -> bytes:
-    """Tag PNG source, validating aliases and settings in an explicit catalog."""
+    """Add absent source claims to PNG bytes, refusing conflicting metadata."""
     if catalog is not None:
         from esolangs.registry._catalog import get_catalog
 
@@ -649,4 +812,4 @@ def attach_source_metadata(
         from esolangs.settings import dialect_options
 
         dialect_options(settings.language, settings, catalog=catalog)
-    return write_metadata(data, metadata)
+    return _attach_metadata(data, metadata, catalog=catalog)

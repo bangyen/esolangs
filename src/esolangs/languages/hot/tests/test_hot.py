@@ -4,7 +4,10 @@ import pytest
 
 from esolangs.languages.hot.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 
 @pytest.mark.medium
@@ -31,6 +34,12 @@ def test_a_starved_head_gets_f_appended() -> None:
     from .oracle_checks import check_raw_hot
 
     check_raw_hot()
+
+
+def test_rejected_output_keeps_the_framing_bit(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert_rejected_output_retry(
+        "Hot", "D(D(C(C K)))", "1", "1", prefix=1, monkeypatch=monkeypatch
+    )
 
 
 def test_an_unmatched_close_is_refused() -> None:

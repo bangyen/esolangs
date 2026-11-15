@@ -4,6 +4,7 @@ import io
 import os
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ import pytest
 import esolangs
 from esolangs import run
 from esolangs.debugger import make_debugger
+from esolangs.registry import LANGUAGES
 from tests.proofs._ledger import load
 from tests.support.cli_support import _failure, run_cli
 from tests.support.input_convention import assert_reads_tokens_on_one_line
@@ -192,3 +194,40 @@ def test_cli_large_decimal_seed_matches_python(tmp_path: Path) -> None:
         )
         outputs.append(expected)
     assert outputs[0] != outputs[1]
+
+    original = LANGUAGES["Befunge"]
+
+    class Counterfeit:
+        @property
+        def __class__(self) -> type:
+            raise AssertionError("use the seed's backing type")
+
+    for invalid in (None, 1.5, False, "7", Counterfeit()):
+        with pytest.raises(
+            esolangs.ArgumentError, match="reproducible_seed must be an integer"
+        ):
+            replace(original.runtime, reproducible_seed=invalid)
+
+    class Seed(int):
+        def __int__(self) -> int:
+            raise AssertionError("use the seed's backing integer")
+
+    previous_limit = sys.get_int_max_str_digits()
+    sys.set_int_max_str_digits(sys.int_info.str_digits_check_threshold)
+    try:
+        for (_, seed), expected in zip(cases, outputs, strict=True):
+            runtime = replace(original.runtime, reproducible_seed=Seed(seed))
+            assert type(runtime.reproducible_seed) is int
+            assert runtime.reproducible_seed == seed
+            declaration = replace(original, runtime=runtime)
+            shown = repr(seed) if seed in (0, 1) else hex(seed)
+            assert f"reproducible_seed={shown}," in repr(runtime)
+            assert repr(runtime) in repr(declaration)
+
+            scoped = esolangs.Catalog([declaration]).bind(declaration.name)
+            for _ in range(2):
+                debugger = scoped.make_debugger(_RANDOM_BRANCH)
+                assert debugger.run(limits=limits) == "halted"
+                assert debugger.output == expected
+    finally:
+        sys.set_int_max_str_digits(previous_limit)

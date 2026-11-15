@@ -50,7 +50,7 @@ from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import count, parse, stack, unwind
-from esolangs.runtime.io import IO, _input_exhausted
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput, _input_exhausted
 from esolangs.runtime.source_hints import syntax_error
 
 #: How many arguments each rewrite takes.
@@ -108,6 +108,7 @@ class _Machine:
         self.bits = 0
         self._rejected_input: str | None = None
         self.exit_code: int | None = None
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -131,8 +132,14 @@ class _Machine:
             term, rest = rest
             args.append(term)
         cursor = self.io.progress()
+        expression = (self.state[0], tuple(args))
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            expression=(self.state[0], tuple(args)),
+            expression=(
+                expression
+                if accepted is None
+                else WorkspaceVariant("pending_output", (expression, accepted))
+            ),
             input_ended=self.ended,
             input_bits=self.bits,
             exit_code=self.exit_code,
@@ -145,8 +152,17 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        state = (self.state, self.ended, self.bits, self.exit_code, self.io.progress())
-        return state if self._rejected_input is None else (*state, self._rejected_input)
+        state: tuple[object, ...] = (
+            self.state,
+            self.ended,
+            self.bits,
+            self.exit_code,
+            self.io.progress(),
+        )
+        if self._rejected_input is not None:
+            state = (*state, self._rejected_input)
+        accepted = self._writer.accepted
+        return state if accepted is None else (*state, accepted)
 
     def _read(self) -> int:
         """Return the next input bit."""
@@ -186,6 +202,9 @@ class _Machine:
         if isinstance(result, int):
             self.exit_code = result
             return
+        if out is not None and isinstance(self.io, ScriptedIO):
+            self._writer.write(self.io, str(out))
+            out = None
         self.state = result
         if out is not None:
             self.io.print_str(str(out))

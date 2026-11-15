@@ -17,6 +17,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
+from tests.support.vm_support import assert_rejected_output_retry
 
 
 @pytest.mark.parametrize(
@@ -47,10 +48,19 @@ def test_halts(program: str, message: str) -> None:
         run_program(run, program)
 
 
-def test_arithmetic_prints_a_number() -> None:
+def test_arithmetic_prints_a_number(monkeypatch: pytest.MonkeyPatch) -> None:
     assert run_program(run, "1 2+.") == "3"
     assert run_program(run, "7 2/.") == "3"
     assert run_program(run, "7_ 2/.") == "-3"  # truncates toward zero
+    assert_rejected_output_retry(
+        "FALSE", "123.", 123, "123", prefix=1, monkeypatch=monkeypatch
+    )
+    assert_rejected_output_retry(
+        "FALSE", '"AB" 65,', "AB", "ABA", prefix=0, monkeypatch=monkeypatch
+    )
+    assert_rejected_output_retry(
+        "FALSE", "65,", "A", "A", prefix=1, monkeypatch=monkeypatch
+    )
 
 
 def test_comparison_is_minus_one_for_true() -> None:

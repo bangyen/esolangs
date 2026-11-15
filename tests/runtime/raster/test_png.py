@@ -837,6 +837,8 @@ def test_duplicate_source_metadata_is_refused() -> None:
     data = png.write_metadata(data, {"version": 1})
     with pytest.raises(ProgramError, match="duplicate"):
         read_png_artifact(one(source_kind="raster")[0], data)
+    with pytest.raises(ProgramError, match="duplicate"):
+        png.attach_source_metadata(data, None, None, 1)
     for body in (
         b'{"version":1,"version":1}',
         b'{"version":1,"settings":{"cell_modulus":2,"cell_modulus":2}}',
@@ -902,6 +904,10 @@ def test_source_metadata_ignores_only_valid_json_extensions(
     assert esolangs.Raster.from_png(data) == pixels
     if token == "1e5000":
         assert api.from_file(path) == api.from_json(document) == api.from_source(pixels)
+        tagged = png.attach_source_metadata(data, api.name, None, None, input_arity=1)
+        assert b"1e5000" in tagged
+        path.write_bytes(tagged)
+        assert api.from_file(path) == replace(api.from_source(pixels), input_arity=1)
     else:
         for load in (lambda: api.from_file(path), lambda: api.from_json(document)):
             with pytest.raises(

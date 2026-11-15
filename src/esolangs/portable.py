@@ -308,6 +308,14 @@ def decode_settings(
     """Restore saved dialect settings; shared with PNG metadata."""
     if value is None:
         return None
+    choices = _decode_settings_choices(value)
+    if language is None:
+        raise ValueError("settings need a language to apply to")
+    return _settings_for(language, choices, catalog=catalog)
+
+
+def _decode_settings_choices(value: Any) -> dict[str, Any]:
+    """Decode settings payloads without binding or invoking a dialect."""
     if not isinstance(value, dict):
         raise ValueError("settings must be an object or null")
     choices: dict[str, Any] = {}
@@ -321,9 +329,7 @@ def decode_settings(
                 raise ValueError("integer settings need a hexadecimal string")
             item = int(literal, 16)
         choices[key] = item
-    if language is None:
-        raise ValueError("settings need a language to apply to")
-    return _settings_for(language, choices, catalog=catalog)
+    return choices
 
 
 def _load_png(

@@ -73,6 +73,7 @@ Decisions:
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import Enum, auto
+from functools import partial
 from typing import Any, NamedTuple, cast
 
 from esolangs.exceptions import HaltError
@@ -83,8 +84,8 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._proof import BranchFailure, branch_outcomes
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import with_hint
@@ -134,6 +135,8 @@ class _Print:
 
 
 type _Effect = _Print
+type _PendingOutput = tuple[_State, tuple[_Effect, ...]]
+type _BranchState = _State | tuple[_State]
 
 
 class _NeedRead(Exception):  # noqa: N818 - a control signal, not an error
@@ -641,6 +644,8 @@ class _Machine:
         self._input_reads = 0
         self._random_draws = 0
         self._rng = rng
+        self._pending_output: _PendingOutput | None = None
+        self._writer = _BufferedOutput()
         self.prog = _translate(code) if isinstance(code, str) else code.program
         self.n = len(self.prog)
         self.tape: tuple[int, ...] = (0,)
@@ -670,11 +675,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        pending = self._output_boundary()
         return _WORKSPACE_MODEL.capture(
             tape=self.tape,
             loops=self.loop,
             pointer=self.ptr,
-            instruction=self.ind,
+            instruction=(
+                self.ind
+                if pending is None
+                else WorkspaceVariant("pending_output", (self.ind, *pending))
+            ),
             repeat=self.rep,
             origin=self.origin,
             input_cursor=self.io.progress(),
@@ -682,9 +692,20 @@ class _Machine:
             draws=self._random_draws,
         )
 
+    def _output_boundary(self) -> tuple[object, ...] | None:
+        pending = self._pending_output
+        if pending is None:
+            return None
+        state, effects = pending
+        return (
+            state,
+            tuple((effect.value, effect.as_char, effect.count) for effect in effects),
+            self._writer.accepted or 0,
+        )
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        boundary = (
             self.tape,
             self.loop,
             self.ptr,
@@ -696,14 +717,18 @@ class _Machine:
             self._input_reads,
             self._random_draws,
         )
+        pending = self._output_boundary()
+        return boundary if pending is None else (*boundary, pending)
 
-    def branching_snapshot(self) -> _State:
-        """Return the initial no-future-input state for branch exploration."""
-        return self._state
+    def branching_snapshot(self) -> _BranchState:
+        """Return the current control state or the target of an unflushed command."""
+        pending = self._pending_output
+        return self._state if pending is None else (pending[0],)
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has run past the translated program."""
-        return cast(_State, state)[3] >= self.n
+        current = cast(_BranchState, state)
+        return len(current) != 1 and current[3] >= self.n
 
     def branching_successors(
         self, state: object, limit: int
@@ -716,14 +741,15 @@ class _Machine:
         """
         if limit < 1:
             return None
+        current = cast(_BranchState, state)
+        if len(current) == 1:
+            return current
         pending: list[tuple[int, ...]] = [()]
         successors: list[_State | BranchFailure] = []
         while pending:
             coins = pending.pop()
             try:
-                next_state, _effects = _advance(
-                    cast(_State, state), self.prog, self.n, (), coins
-                )
+                next_state, _effects = _advance(current, self.prog, self.n, (), coins)
             except _NeedCoin as need_coin:
                 if len(pending) + len(successors) + 2 > limit:
                     raise with_hint(
@@ -762,6 +788,9 @@ class _Machine:
         """
         if self.halted:
             return
+        if self._pending_output is not None:
+            self._finish_output(*self._pending_output)
+            return
         start = self._state
         reads: tuple[str | int, ...] = ()
         coins: tuple[int, ...] = ()
@@ -788,20 +817,47 @@ class _Machine:
                 self._restore(halt.state)
                 raise halt.error from None
             break
-        for effect in effects:
-            self._write(effect)
+        if effects:
+            self._finish_output(state, effects)
+        else:
+            self._restore(state)
+
+    def _finish_output(self, state: _State, effects: tuple[_Effect, ...]) -> None:
+        """Finish this command without replaying accepted reads, draws or writes."""
+        for index, effect in enumerate(effects):
+            try:
+                self._write(effect)
+            except BaseException:
+                if isinstance(self.io, ScriptedIO):
+                    self._pending_output = state, effects[index:]
+                raise
+        self._pending_output = None
         self._restore(state)
 
     def _write(self, effect: _Effect) -> None:
         """Perform one collected write, ``count`` times over, as one string."""
+        io = self.io
         if effect.count == 1:
             if effect.as_char:
-                self.io.print_char(chr(effect.value))
+                char = chr(effect.value)
+                if isinstance(io, ScriptedIO):
+                    self._writer.write(io, char, first=partial(io.print_char, char))
+                else:
+                    io.print_char(char)
+            elif isinstance(io, ScriptedIO):
+                self._writer.write(
+                    io,
+                    format_integer(effect.value),
+                    first=partial(io.print_num, effect.value),
+                )
             else:
-                self.io.print_num(effect.value)
+                io.print_num(effect.value)
             return
         piece = chr(effect.value) if effect.as_char else format_integer(effect.value)
-        self.io.print_str(piece * effect.count)
+        if isinstance(io, ScriptedIO):
+            self._writer.write(io, piece * effect.count)
+        else:
+            io.print_str(piece * effect.count)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

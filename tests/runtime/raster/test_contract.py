@@ -480,6 +480,14 @@ def test_portable_raster_applies_settings_absent_from_png(tmp_path: Path) -> Non
     document["source"] = base64.b64encode(native).decode("ascii")
     assert api.from_json(json.dumps(document)) == record
     explicit_none = png.write_metadata(bare, {**metadata, "settings": None})
+    for previous in (native, explicit_none):
+        tagged = png.attach_source_metadata(previous, api.name, record.settings, 2)
+        path.write_bytes(tagged)
+        assert api.from_file(path) == record
+        assert (
+            png.attach_source_metadata(tagged, api.name, record.settings, None)
+            is tagged
+        )
     document["source"] = base64.b64encode(explicit_none).decode("ascii")
     with pytest.raises(
         esolangs.ProgramError, match="conflicting PNG and document settings"
@@ -508,7 +516,7 @@ def test_portable_scale_validates_its_type_and_embedded_agreement() -> None:
 
 
 def test_portable_png_accepts_embedded_arity_when_claims_agree(
-    native_png, monkeypatch
+    native_png, monkeypatch, tmp_path: Path
 ) -> None:
     api = esolangs.Language(RASTER_LANGUAGES[0])
     original = api.generate("01")
@@ -519,6 +527,27 @@ def test_portable_png_accepts_embedded_arity_when_claims_agree(
 
     native = native_png(original)
     assert png.read_metadata(native)["input_arity"] == 1
+    assert (
+        png.attach_source_metadata(
+            native, api.name, None, original.scale, input_arity=1
+        )
+        is native
+    )
+    suffix = b"unrelated bytes after IEND"
+    filled = png.attach_source_metadata(
+        legacy + suffix, api.name, None, None, input_arity=1
+    )
+    assert filled == native + suffix
+    path = tmp_path / "source.png"
+    path.write_bytes(filled)
+    assert api.from_file(path) == original
+    assert [api.evaluate(api.from_file(path), [bit]).answer for bit in (0, 1)] == [
+        "0",
+        "1",
+    ]
+    for scale, arity, field in ((2, 1, "scale"), (None, 2, "input_arity")):
+        with pytest.raises(esolangs.ProgramError, match=rf"conflicting PNG {field}"):
+            png.attach_source_metadata(native, api.name, None, scale, input_arity=arity)
     document["source"] = base64.b64encode(native).decode("ascii")
     assert api.from_json(json.dumps(document)) == original
     del document["input_arity"]
@@ -544,6 +573,10 @@ def test_png_owner_cannot_be_reassigned_by_a_catalog_alias(tmp_path: Path) -> No
     assert api.name == renamed.name
     assert api.from_source(artifact.source).language == api.name
 
+    with pytest.raises(esolangs.ProgramError, match="stored PNG language"):
+        png.attach_source_metadata(
+            path.read_bytes(), api.name, None, 2, catalog=api.catalog
+        )
     for load in (lambda: api.from_file(path), lambda: api.prepare(path)):
         with pytest.raises(esolangs.ProgramError, match="generated for"):
             load()
@@ -613,11 +646,16 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
     raster = Raster((((1, 2, 3),),))
     path = tmp_path / "source.png"
     for spelling in (" SCOPED-DRAWING ", " scoped_drawing! "):
-        path.write_bytes(
-            png.write_metadata(
-                raster.to_png(), {"version": 1, "language": spelling, "settings": {}}
-            )
+        tagged = png.write_metadata(
+            raster.to_png(), {"version": 1, "language": spelling, "settings": {}}
         )
+        assert (
+            png.attach_source_metadata(
+                tagged, api.name, api.settings(), None, catalog=catalog
+            )
+            is tagged
+        )
+        path.write_bytes(tagged)
         assert api.from_file(path) == api.from_source(raster, settings=api.settings())
     path.write_bytes(
         png.write_metadata(
@@ -644,6 +682,20 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
     scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(name)
     settings = scoped.settings()
     artifact = replace(installed.generate("01", scale=2), settings=settings)
+    legacy = png.write_metadata(
+        artifact.source.to_png(),
+        {"version": 1, "language": name, "settings": {"mode": 1}},
+    )
+    assert (
+        png.attach_source_metadata(
+            legacy, name, scoped.settings(mode=1), None, catalog=scoped.catalog
+        )
+        is legacy
+    )
+    with pytest.raises(esolangs.ProgramError, match="conflicting PNG settings"):
+        png.attach_source_metadata(
+            legacy, name, scoped.settings(mode=0), None, catalog=scoped.catalog
+        )
     path = tmp_path / "program.png"
     scoped.to_file(artifact, path)
     portable = scoped.to_json(artifact)

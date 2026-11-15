@@ -14,7 +14,7 @@ from esolangs.languages.thue.interpreter import (
     run,
 )
 from esolangs.languages.thue.tests.oracle_checks import check_raw_thue
-from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, Seeded
 from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
@@ -31,10 +31,62 @@ def test_a_rule_prints_and_deletes_its_match() -> None:
     assert run_program(run, "a::=~Hello\n::=\na") == "Hello"
 
 
-def test_two_applicable_print_rules_can_fire_in_either_order() -> None:
+def test_two_applicable_print_rules_can_fire_in_either_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Which one goes first is the draw, so both orders are the language."""
     assert run_program(run, GREETING, rng=FirstDraw(0)) == "Hello world"
     assert run_program(run, GREETING, rng=FirstDraw(1)) == " worldHello"
+
+    api = esolangs.Language("Thue")
+    source = "a::=~AB\nb::=~CD\n::=\nab"
+    limits = esolangs.ExecutionLimits(max_steps=2)
+    expected = api.run(source, seed=4, limits=limits)
+    assert (expected.output, expected.steps) == ("ABCD", 2)
+    write = ScriptedIO.print_str
+    for accepted in range(3):
+        attempts = []
+
+        def refuse(io, text, _attempts=attempts, _accepted=accepted):
+            _attempts.append(text)
+            if len(_attempts) == 1:
+                write(io, text[:_accepted])
+                raise esolangs.HaltError("temporary writer refusal")
+            write(io, text)
+
+        with monkeypatch.context() as port:
+            port.setattr(ScriptedIO, "print_str", refuse)
+            debugger = api.make_debugger(source, seed=4)
+            with pytest.raises(
+                esolangs.HaltError, match="temporary writer refusal"
+            ) as caught:
+                debugger.step()
+            partial = esolangs.ExecutionResult("AB"[:accepted], 0, 0, 0, steps=0)
+            assert caught.value.observation == debugger.observation == partial
+            saved = debugger.snapshot()
+            assert saved[0] == "ab"
+            assert saved[1].values == (0, 0, 0, accepted)
+            assert run_until_halt_or_cycle(debugger, limit=3) is True
+            assert debugger.snapshot() == saved
+            assert attempts == ["AB"]
+            assert debugger.run(limits=limits) == "halted"
+            assert debugger.observation == expected
+            assert caught.value.observation == partial
+            assert attempts == (
+                ["AB", "AB"[accepted:], "CD"] if accepted < 2 else ["AB", "CD"]
+            )
+
+    bare = IO()
+
+    def refuse_bare(_text):
+        raise esolangs.HaltError("bare write interrupted")
+
+    with monkeypatch.context() as port:
+        port.setattr(bare, "print_str", refuse_bare)
+        machine = _Machine(source, bare, Seeded(4))
+        with pytest.raises(esolangs.HaltError, match="bare write interrupted"):
+            machine.step()
+        assert machine.state == "b"
 
 
 def test_a_rewrite_reaches_a_state_no_rule_matches() -> None:
@@ -220,19 +272,50 @@ def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Thue", "a::=b", "line containing only ::=")
 
 
-def test_thue_keeps_the_selected_input_rule_after_eof():
+def test_thue_keeps_the_selected_input_rule_after_eof() -> None:
     api = esolangs.Language("Thue")
     source = "a::=:::\na::=~A\n::=\na"
     dbg = api.make_debugger(source, seed=4)
+    initial = dbg.snapshot()
+    with pytest.raises(TimeoutError, match="needs input or exceeds"):
+        run_until_halt_or_all_branches_cycle(dbg, limit=1)
+    assert run_until_halt_or_all_branches_cycle(dbg, limit=2) is True
+    with pytest.raises(TypeError, match="some draws halt"):
+        run_until_halt_or_cycle(dbg, limit=2)
+    assert dbg.snapshot() == initial
+    assert dbg.observation == esolangs.ExecutionResult("", 0, 0, 0, steps=0)
+
     for count in (1, 2):
         with pytest.raises(esolangs.InputExhaustedError) as caught:
             dbg.step()
-        assert caught.value.observation == esolangs.ExecutionResult(
-            "", 0, 0, count, steps=0
-        )
+        partial = esolangs.ExecutionResult("", 0, 0, count, steps=0)
+        assert caught.value.observation == partial
         assert not dbg.halted
-    assert api.run(source, seed=4, stdin="z\n").input_reads == 1
+        for proof in (run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle):
+            with pytest.raises(TimeoutError, match="needs input"):
+                proof(dbg, limit=2)
+            assert dbg.observation == partial
+
+    for stdin in ("z\n", "\n"):
+        completed = api.run(source, seed=4, stdin=stdin)
+        assert (completed.output, completed.input_position, completed.input_reads) == (
+            "",
+            len(stdin),
+            1,
+        )
     assert api.run(source, seed=0).output == "A"
+    for unreadable in (
+        "a::=:::\n::=\na",
+        "a::=:::\na::=a\n::=\na",
+        "a::=:::\nb::=:::\n::=\nab",
+    ):
+        for proof in (run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle):
+            debugger = api.make_debugger(unreadable, stdin="z\n")
+            with pytest.raises(TimeoutError, match="needs input"):
+                proof(debugger, limit=2)
+            assert debugger.observation == esolangs.ExecutionResult(
+                "", 0, 0, 0, steps=0
+            )
 
 
 def test_branch_search_closes_cycles_at_the_exact_state_limit() -> None:

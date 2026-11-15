@@ -78,6 +78,39 @@ def test_recursive_invalid_limit_keeps_the_typed_error() -> None:
         sys.set_int_max_str_digits(cap)
 
 
+def test_validation_uses_backing_types_without_reading_class_properties() -> None:
+    probes: list[type] = []
+
+    class Disguise:
+        def __init__(self, claimed: type) -> None:
+            self.claimed = claimed
+
+        @property
+        def __class__(self) -> type:
+            probes.append(self.claimed)
+            return self.claimed
+
+        def __repr__(self) -> str:
+            raise ValueError("unavailable representation")
+
+    for name, invoke in (
+        ("max_steps", lambda: esolangs.ExecutionLimits(max_steps=Disguise(int))),
+        ("max_memory", lambda: esolangs.ExecutionLimits(max_memory=Disguise(int))),
+        (
+            "total_timeout",
+            lambda: esolangs.ExecutionLimits(total_timeout=Disguise(float)),
+        ),
+        ("width", lambda: esolangs.generate(REFERENCE, "01", width=Disguise(int))),
+        ("seed", lambda: esolangs.run(REFERENCE, "+.", seed=Disguise(int))),
+        ("isolated", lambda: esolangs.run(REFERENCE, "+.", isolated=Disguise(bool))),
+        ("bits", lambda: esolangs.encode_inputs(REFERENCE, [Disguise(int)])),
+        ("bits", lambda: esolangs.encode_inputs(REFERENCE, Disguise(list))),
+    ):
+        with pytest.raises(esolangs.ArgumentError, match=name):
+            invoke()
+    assert not probes
+
+
 def test_large_artifact_and_dialect_metadata_repr() -> None:
     cap = sys.get_int_max_str_digits()
     try:

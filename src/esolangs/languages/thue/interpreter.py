@@ -43,7 +43,7 @@ from __future__ import annotations
 from bisect import bisect_left, bisect_right
 from collections.abc import Mapping
 from itertools import accumulate
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 
 from esolangs.languages.thue.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
@@ -51,8 +51,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._proof import BranchFailure, branch_outcomes
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import syntax_error
 
@@ -70,6 +71,7 @@ type _Match = tuple[int, int]
 #: The whole run as a value: the string being rewritten, and nothing else --
 #: where the next rewrite lands is a draw, not state.
 type _State = str
+type _BranchState = _State | tuple[_State, _Match]
 
 
 def _separator(lines: list[str]) -> int | None:
@@ -359,7 +361,8 @@ class _Machine:
         self._text = _Text(state, [lhs for lhs, _rhs in self.rules])
         self.io = io
         self._rng = rng
-        self._pending_input: _Slot | None = None
+        self._pending_match: _Slot | None = None
+        self._writer = _BufferedOutput()
 
     @property
     def state(self) -> _State:
@@ -394,47 +397,55 @@ class _Machine:
 
     def _input_cursor(self) -> int | WorkspaceVariant:
         cursor = self.io.progress()
-        if self._pending_input is not None:
-            match = self._text.position(self._pending_input)
+        pending = self._pending_match
+        if pending is None:
+            return cursor
+        match = self._text.position(pending)
+        if self.rules[pending.rule][1] == _INPUT:
             return WorkspaceVariant("pending_input", (cursor, *match))
-        return cursor
+        return WorkspaceVariant(
+            "pending_output", (cursor, *match, self._writer.accepted or 0)
+        )
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return rewrite state and input progress, including a suspended read."""
+        """Return rewrite state and input progress, including a suspended rule."""
         return (self.state, self._input_cursor())
 
-    # The all-draws search, over the string alone: a ``:::`` rule declines to
-    # fork, and a ``~`` rule's output cannot change what matches later.
-
-    def branching_snapshot(self) -> _State:
-        """Return the current state as the search's starting point."""
-        return self.state
+    def branching_snapshot(self) -> _BranchState:
+        """Return the text and any already selected rewrite."""
+        text = self.state
+        pending = self._pending_match
+        return text if pending is None else (text, self._text.position(pending))
 
     def branching_halted(self, state: object) -> bool:
-        """Report whether no rule matches ``state``."""
-        return not _matches(str(state), self.rules)
+        """Report whether no rule matches the text and no rewrite is pending."""
+        return isinstance(state, str) and not _matches(state, self.rules)
 
     def branching_successors(
         self, state: object, limit: int
-    ) -> tuple[_State, ...] | None:
-        """Return the state after every rewrite the draw could choose.
-
-        ``None`` declines, as a random-input language does: a ``:::`` rule wants a
-        line of input, which a pure search has no business taking.
-        """
+    ) -> tuple[_State | BranchFailure, ...] | None:
+        """Explore every matching rule, retaining unreadable input alternatives."""
         if limit < 1:
             return None
-        text = str(state)
-        found = _matches(text, self.rules)
+        if isinstance(state, str):
+            text, found = state, _matches(state, self.rules)
+        else:
+            text, match = cast("tuple[_State, _Match]", state)
+            found = (match,)
         if len(found) > limit:
             return None
-        if any(self.rules[index][1] == _INPUT for index, _at in found):
-            return None
-        return tuple(_advance(text, self.rules, match)[0] for match in found)
+        return branch_outcomes(
+            [
+                BranchFailure()
+                if self.rules[match[0]][1] == _INPUT
+                else _advance(text, self.rules, match)[0]
+                for match in found
+            ]
+        )
 
     def step(self) -> None:
-        """Perform one rewrite, drawing which one among those available."""
-        match = self._pending_input
+        """Perform one rewrite, drawing once among the available matches."""
+        match = self._pending_match
         if match is None:
             count = sum(self._text.totals)
             if not count:
@@ -443,11 +454,15 @@ class _Machine:
         rhs = self.rules[match.rule][1]
         line = None
         if rhs == _INPUT:
-            self._pending_input = match
+            self._pending_match = match
             line = self.io.input_str()
         replacement, out = _rewrite(rhs, line)
+        if out is not None and isinstance(self.io, ScriptedIO):
+            self._pending_match = match
+            self._writer.write(self.io, out)
+            out = None
         self._text.replace(match, replacement)
-        self._pending_input = None
+        self._pending_match = None
         if out is not None:
             self.io.print_str(out)
 

@@ -5,7 +5,7 @@ from itertools import product
 
 import pytest
 
-from esolangs import ExecutionLimits, InputExhaustedError, Language
+from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.painfuck.interpreter import _Machine as Painfuck
 from esolangs.languages.painfuck.interpreter import prepare_machine
@@ -407,7 +407,9 @@ def test_painfuck_one_halting_coin_refutes_an_all_branches_hang() -> None:
         run_until_halt_or_cycle(looping, limit=64)
 
 
-def test_branch_search_keeps_clean_and_faulting_outcomes() -> None:
+def test_branch_search_keeps_clean_and_faulting_outcomes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     machine = Painfuck(_encode("b"), ScriptedIO())
     start = machine.branching_snapshot()
     assert machine.branching_halted(start) is False
@@ -433,6 +435,55 @@ def test_branch_search_keeps_clean_and_faulting_outcomes() -> None:
             run_until_halt_or_all_branches_cycle(machine, limit=1)
         assert run_until_halt_or_all_branches_cycle(machine, limit=2) is True
         assert machine.snapshot() == saved
+
+    write = ScriptedIO._write
+    for target, answer, accepted, raw_first, draws, steps in (
+        ("pyu", "\x02", 0, "\x02", 1, 2),
+        ("pyu", "\x02", 1, "\x02", 1, 2),
+        ("cpyo", "14", 1, 14, 1, 2),
+        ("cyo", "0000", 2, "0000", 7, 1),
+    ):
+        source = _encode(target)
+        limits = ExecutionLimits(max_steps=steps)
+        expected = api.run(source, seed=4, limits=limits)
+        assert (expected.output, expected.steps) == (answer, steps)
+        attempts = []
+        faults = 2 if accepted < len(answer) else 1
+
+        def refuse(io, value, _attempts=attempts, _accepted=accepted, _faults=faults):
+            _attempts.append(value)
+            if len(_attempts) <= _faults:
+                if len(_attempts) == 1:
+                    write(io, str(value)[:_accepted])
+                raise HaltError("temporary writer refusal")
+            write(io, value)
+
+        with monkeypatch.context() as port:
+            port.setattr(ScriptedIO, "_write", refuse)
+            debugger = api.make_debugger(source, seed=4)
+            partial = ExecutionResult(answer[:accepted], 0, 0, 0, steps=steps - 1)
+            saved = None
+            for _ in range(faults):
+                with pytest.raises(
+                    HaltError, match="temporary writer refusal"
+                ) as caught:
+                    debugger.run(limits=limits)
+                assert caught.value.observation == debugger.observation == partial
+                snapshot = debugger.snapshot()
+                assert snapshot[9] == draws
+                assert snapshot[-1][-1] == accepted
+                assert saved is None or saved == snapshot
+                saved = snapshot
+                assert run_until_halt_or_cycle(debugger, limit=2) is True
+                assert debugger.snapshot() == saved
+
+            assert debugger.run(limits=ExecutionLimits(max_steps=1)) == "halted"
+            assert debugger.observation == expected
+            assert debugger.snapshot()[9] == draws
+            assert attempts == [
+                raw_first,
+                *([answer[accepted:]] * 2 if faults == 2 else []),
+            ]
 
 
 def test_painfuck_later_coin_can_escape_repeated_visible_state() -> None:

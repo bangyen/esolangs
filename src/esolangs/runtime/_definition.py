@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from enum import StrEnum
+from reprlib import recursive_repr
 from types import FunctionType
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -142,8 +143,14 @@ class RuntimeSpec:
     #: Explicit machine traits and optional debug surface.
     capabilities: MachineCapabilities = field(kw_only=True)
 
+    @recursive_repr()
+    def __repr__(self) -> str:
+        from esolangs.runtime.memory import repr_record
+
+        return repr_record(self, fields(RuntimeSpec))
+
     def __post_init__(self) -> None:
-        """Require lifecycle declarations and exact dialect defaults."""
+        """Require lifecycle declarations and valid runtime defaults."""
         if type(self.source_policy) not in (
             TextSourcePolicy,
             LineSourcePolicy,
@@ -158,6 +165,16 @@ class RuntimeSpec:
             value = getattr(self, name)
             if not isinstance(value, str) or not value.isidentifier():
                 raise ValueError(f"runtime {name} must name a declared entry point")
+        seed = self.reproducible_seed
+        if type(seed) is bool or not issubclass(type(seed), int):
+            from esolangs.exceptions import ArgumentError
+            from esolangs.runtime._validate import _argument_repr
+
+            raise ArgumentError(
+                f"reproducible_seed must be an integer, got {_argument_repr(seed)}"
+            )
+        if type(seed) is not int:
+            object.__setattr__(self, "reproducible_seed", int.__int__(seed))
         if self.dialect is None:
             if self.dialect_schema is not None:
                 raise ValueError("dialect metadata requires a validator")

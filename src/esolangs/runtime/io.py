@@ -311,16 +311,23 @@ class _BufferedOutput:
 
     accepted: int | None = None
 
-    def write(self, io: ScriptedIO, text: str) -> None:
+    def write(
+        self, io: ScriptedIO, text: str, *, first: Callable[[], None] | None = None
+    ) -> None:
         """Write the pending suffix and keep its progress if the port fails."""
         sent = self.accepted or 0
         if not sent or sent < len(text):
             before = io._buffer.tell()  # noqa: SLF001 - this module owns the buffer
             try:
-                io.print_str(text[sent:])
+                if sent == 0 and first is not None:
+                    first()
+                else:
+                    io.print_str(text[sent:])
             except BaseException:
                 self.accepted = sent + io._buffer.tell() - before  # noqa: SLF001
                 raise
+        elif text:
+            io._newline = not text.endswith("\n")  # noqa: SLF001 - completed write
         self.accepted = None
 
 

@@ -5,7 +5,10 @@ import pytest
 from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Language
 from esolangs.languages.kiss.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 
 @pytest.mark.medium
@@ -41,11 +44,14 @@ def test_the_cat_exits_zero_after_echoing(monkeypatch) -> None:
     )
 
 
-def test_only_the_head_is_rewritten() -> None:
+def test_only_the_head_is_rewritten(monkeypatch: pytest.MonkeyPatch) -> None:
     """The argument ``K K K`` stays unreduced while the head outputs."""
     machine = _Machine("K (K K K)", ScriptedIO())
     machine.step()
     assert machine.stack == ["K", "K", "K"]
+    assert_rejected_output_retry(
+        "Kiss", "K K", "0", "0", prefix=0, monkeypatch=monkeypatch
+    )
 
 
 @pytest.mark.medium

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from reprlib import recursive_repr
+from typing import TypeGuard
 
 # Preserve quoted literals as a group when removing default repr addresses.
 _REPR_ADDRESS = re.compile(
@@ -18,17 +19,22 @@ _TIMEOUT_CEILING = 2_592_000.0
 _ISOLATED_TIMEOUT = 30.0
 
 
+def _has_backing_type[T](value: object, kind: type[T]) -> TypeGuard[T]:
+    """Use the real type when calling a built-in descriptor directly."""
+    return issubclass(type(value), kind)
+
+
 @recursive_repr(fillvalue="[...]")
 def _argument_repr(value: object) -> str:
     """Describe rejected values even beyond CPython's decimal rendering cap."""
     try:
         shown = repr(value)
     except ValueError:
-        if isinstance(value, int):
+        if _has_backing_type(value, int):
             value = int.__int__(value)
             sign = "negative " if value < 0 else ""
             return f"<{sign}integer with {value.bit_length()} bits>"
-        if isinstance(value, list):
+        if _has_backing_type(value, list):
             try:
                 items = map(_argument_repr, list.__iter__(value))
                 return "[" + ", ".join(items) + "]"
@@ -37,7 +43,7 @@ def _argument_repr(value: object) -> str:
         return f"<{type(value).__name__}>"
     except Exception:  # A caller's ``__repr__`` that raises (RuntimeError).
         return f"<{type(value).__name__}>"
-    if isinstance(value, str) or " at 0x" not in shown:
+    if _has_backing_type(value, str) or " at 0x" not in shown:
         return shown
     # A default repr carries an address ("<object object at 0x10...>") that
     # differs per run; strip it, keeping the rest ("[<object object>]").
@@ -49,7 +55,7 @@ def check_whole(value: object, name: str) -> int:
     from esolangs.exceptions import ArgumentError
     from esolangs.runtime.source_hints import with_hint
 
-    if isinstance(value, int) and not isinstance(value, bool):
+    if type(value) is not bool and _has_backing_type(value, int):
         value = int.__int__(value)
         if value >= 0:
             return value
@@ -66,7 +72,7 @@ def check_memory_size(value: object) -> int:
     """Return the positive whole byte count shared by the limits and worker."""
     from esolangs.exceptions import ArgumentError
 
-    if isinstance(value, int) and not isinstance(value, bool):
+    if type(value) is not bool and _has_backing_type(value, int):
         value = int.__int__(value)
         if value > 0:
             return value
@@ -86,7 +92,7 @@ def check_seed(seed: object) -> int | None:
 
     if seed is None:
         return None
-    if isinstance(seed, int) and not isinstance(seed, bool):
+    if type(seed) is not bool and _has_backing_type(seed, int):
         return int.__int__(seed)
     raise with_hint(
         ArgumentError(f"seed must be an integer or None, got {_argument_repr(seed)}"),
@@ -108,16 +114,17 @@ def check_timeout(
 
     if timeout is None:
         return None
-    if isinstance(timeout, bool) or not isinstance(timeout, int | float):
+    if type(timeout) is not bool and _has_backing_type(timeout, int):
+        timeout = int.__int__(timeout)
+    elif _has_backing_type(timeout, float):
+        timeout = float.__float__(timeout)
+    else:
         raise with_hint(
             ArgumentError(
                 f"{name} must be a number or None, got {_argument_repr(timeout)}"
             ),
             (f"set {_timeout_noun(name)} in seconds, for example {name}=5.0"),
         )
-    timeout = (
-        int.__int__(timeout) if isinstance(timeout, int) else float.__float__(timeout)
-    )
     if timeout != timeout or timeout in _INFINITE:
         raise with_hint(
             ArgumentError(f"{name} must be finite, got {_argument_repr(timeout)}"),
@@ -152,7 +159,7 @@ def check_width(width: object) -> int | None:
 
     if width is None:
         return None
-    if isinstance(width, bool) or not isinstance(width, int):
+    if type(width) is bool or not _has_backing_type(width, int):
         raise with_hint(
             ArgumentError(
                 f"width must be an integer or None, got {_argument_repr(width)}"
@@ -187,7 +194,11 @@ def check_bits(
     from esolangs.exceptions import ArgumentError
     from esolangs.runtime.source_hints import with_hint
 
-    if isinstance(bits, str) or not isinstance(bits, list | tuple):
+    if _has_backing_type(bits, list):
+        entries = list.__iter__(bits)
+    elif _has_backing_type(bits, tuple):
+        entries = tuple.__iter__(bits)
+    else:
         raise with_hint(
             ArgumentError(
                 f"{what} must be a list or tuple of 0s and 1s, "
@@ -195,10 +206,11 @@ def check_bits(
             ),
             ("pass integer bits as a list or tuple, for example [0, 1]"),
         )
-    entries = list.__iter__(bits) if isinstance(bits, list) else tuple.__iter__(bits)
     values = [
         int.__int__(bit)
-        if type(bit) is not int and isinstance(bit, int) and not isinstance(bit, bool)
+        if type(bit) is not int
+        and type(bit) is not bool
+        and _has_backing_type(bit, int)
         else bit
         for bit in entries
     ]
@@ -207,11 +219,8 @@ def check_bits(
             ArgumentError(f"{what} must not be empty; a program reads at least one"),
             ("pass integer bits as a list or tuple, for example [0, 1]"),
         )
-    if any(
-        isinstance(bit, bool) or not isinstance(bit, int) or bit not in (0, 1)
-        for bit in values
-    ):
-        if any(isinstance(bit, bool) for bit in values):
+    if any(type(bit) is not int or bit not in (0, 1) for bit in values):
+        if any(type(bit) is bool for bit in values):
             # Said separately because "must be 0 or 1" reads as wrong when
             # you passed True.  Before this check `[True, False]` and
             # `[1.0, 0.0]` were accepted and selected a different row.
@@ -265,7 +274,7 @@ def check_scale(scale: object) -> int:
 
     value = (
         int.__int__(scale)
-        if isinstance(scale, int) and not isinstance(scale, bool)
+        if type(scale) is not bool and _has_backing_type(scale, int)
         else 0
     )
     if value < 1:
@@ -285,7 +294,7 @@ def check_flag(value: object, name: str) -> bool:
     """Return ``value`` if it is a bool; ``isolated="no"`` read as True."""
     from esolangs.exceptions import ArgumentError
 
-    if not isinstance(value, bool):
+    if type(value) is not bool:
         raise ArgumentError(
             f"{name} must be True or False, got {_argument_repr(value)}"
         )

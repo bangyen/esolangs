@@ -44,6 +44,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
+from functools import partial
 from operator import add, and_, mul, or_, sub
 from string import ascii_lowercase
 from types import MappingProxyType
@@ -56,8 +57,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import trunc_div, wrap_int32
 from esolangs.runtime.source_hints import syntax_error
 
@@ -486,6 +487,7 @@ class _Machine:
         )
         self.io = io
         self.state: _State = ((), (None,) * _VARS, (_Frame(0, len(self.code)),))
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -526,16 +528,23 @@ class _Machine:
             else (frame.pc, frame.end)
             for frame in self.state[2]
         )
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             stack=tuple(value(item) for item in self.state[0]),
             variables=tuple(value(item) for item in self.state[1]),
-            frames=frames,
+            frames=(
+                frames
+                if accepted is None
+                else WorkspaceVariant("pending_output", (frames, accepted))
+            ),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def step(self) -> None:
         """Execute one command, with the reads and writes the transition asks."""
@@ -554,16 +563,28 @@ class _Machine:
                 # their own languages.  Letting it escape made
                 # the reference's own cat loop (``[^1_=~][,]#``) a crash.
                 char_input = None
-        self.state, effect = _advance(state, self.code, self.closers, char_input)
+        advanced, effect = _advance(state, self.code, self.closers, char_input)
         if effect is None:
+            self.state = advanced
             return
+        io = self.io
         kind, value = effect
         if kind == "num":
-            self.io.print_num(int(value))
+            number = int(value)
+            text = str(number)
+            first = partial(io.print_num, number)
         elif kind == "char":
-            self.io.print_char(chr(int(value)))
+            text = chr(int(value))
+            first = partial(io.print_char, text)
         else:
-            self.io.print_str(str(value))
+            text = str(value)
+            first = partial(io.print_str, text)
+        if isinstance(io, ScriptedIO):
+            self._writer.write(io, text, first=first)
+        else:
+            self.state = advanced
+            first()
+        self.state = advanced
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

@@ -49,7 +49,7 @@ from esolangs.runtime.combinators import Args as _Args
 from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import Term as _Term
 from esolangs.runtime.combinators import parse, stack
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 #: How many arguments each rule takes.
@@ -151,6 +151,7 @@ class _Machine:
         self.ended = False
         self.odd = False
         self.halted = False
+        self._writer = _BufferedOutput()
 
     @property
     def ip(self) -> tuple[int, ...]:
@@ -173,11 +174,16 @@ class _Machine:
             term, rest = rest
             args.append(term)
         cursor = self.io.progress()
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             expression=(self.state[0], tuple(args)),
             pending_bit=self.pending,
             input_ended=self.ended,
-            output_odd=self.odd,
+            output_odd=(
+                self.odd
+                if accepted is None
+                else WorkspaceVariant("pending_output", (self.odd, accepted))
+            ),
             stopped=self.halted,
             input_cursor=(
                 cursor
@@ -188,7 +194,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        state = (
+        state: tuple[object, ...] = (
             self.state,
             self.pending,
             self.ended,
@@ -196,7 +202,10 @@ class _Machine:
             self.halted,
             self.io.progress(),
         )
-        return state if self._rejected_input is None else (*state, self._rejected_input)
+        if self._rejected_input is not None:
+            state = (*state, self._rejected_input)
+        accepted = self._writer.accepted
+        return state if accepted is None else (*state, accepted)
 
     def _read(self) -> int:
         """Return the next stream bit: a marker 1 before each input bit."""
@@ -228,13 +237,19 @@ class _Machine:
         if self.halted:
             return
         bit = self._read() if self.state[0] == "A" else None
-        self.state, out = _advance(self.state, bit)
+        advanced, out = _advance(self.state, bit)
         if out is None:
+            self.state = advanced
             return
         if self.odd:
-            self.io.print_str(str(out))
+            if isinstance(self.io, ScriptedIO):
+                self._writer.write(self.io, str(out))
+            else:
+                self.state = advanced
+                self.io.print_str(str(out))
         elif not out:
             self.halted = True
+        self.state = advanced
         self.odd = not self.odd
 
 

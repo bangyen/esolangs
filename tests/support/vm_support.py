@@ -16,6 +16,7 @@ from esolangs.results import Completion
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime._vm_protocol import VM
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
     _capture_result,
     _capture_workspace,
@@ -114,6 +115,59 @@ def assert_rejected_input_retry(
         assert _capture_workspace(dbg.vm).parts[-1] == WorkspaceVariant(
             "rejected_input", data
         )
+
+
+def assert_rejected_output_retry(
+    name: str,
+    source: str,
+    value: int | str,
+    output: str,
+    *,
+    prefix: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Resume a debugger after a sink accepts zero, some or all of a write."""
+    language = esolangs.Language(name)
+    limits = esolangs.ExecutionLimits(max_steps=32)
+    expected = language.run(source, limits=limits)
+    assert expected.output == output
+    write = ScriptedIO._write
+    text = str(value)
+
+    def check(accepted: int) -> None:
+        attempts: list[object] = []
+
+        def refuse_first(io: ScriptedIO, payload: object) -> None:
+            attempts.append(payload)
+            if len(attempts) == 1:
+                write(io, text[:accepted])
+                raise esolangs.HaltError("temporary writer refusal")
+            write(io, payload)
+
+        with monkeypatch.context() as port:
+            port.setattr(ScriptedIO, "_write", refuse_first)
+            debugger = language.make_debugger(source)
+            for _ in range(prefix):
+                debugger.step()
+            boundary = debugger.snapshot()
+            with pytest.raises(
+                esolangs.HaltError, match="temporary writer refusal"
+            ) as fault:
+                debugger.run(limits=limits)
+            partial = esolangs.ExecutionResult(text[:accepted], 0, 0, 0, steps=prefix)
+            assert fault.value.observation == debugger.observation == partial
+            assert not debugger.halted
+            assert debugger.snapshot() == (*boundary, accepted)
+            assert debugger.run(limits=limits) == "halted"
+            assert debugger.observation == expected
+            assert fault.value.observation == partial
+            assert type(attempts[0]) is type(value)
+            assert attempts[0] == value
+            if accepted < len(text):
+                assert attempts[1] == (text[accepted:] if accepted else value)
+
+    for accepted in range(len(text) + 1):
+        check(accepted)
 
 
 def assert_vm_finalization_is_shared(
