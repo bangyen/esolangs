@@ -65,6 +65,13 @@ _COLOUR_NAMES = {
 }
 
 
+def _backing_bytes(data: bytes | bytearray) -> bytes:
+    """Read the stored payload without invoking Python subclass hooks."""
+    if isinstance(data, bytearray):
+        return bytes(bytearray.copy(data))
+    return bytes.__bytes__(data)
+
+
 def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
     """Yield validated chunks through the end of the PNG datastream."""
     if data[:8] != _SIGNATURE:
@@ -337,8 +344,9 @@ def _validate_png(
     return width, depth, colour, palette or b""
 
 
-def _read(data: bytes, mode: str) -> tuple[bytes, int]:
+def _read(data: bytes | bytearray, mode: str) -> tuple[bytes, int]:
     image = _require_image()
+    data = _backing_bytes(data)
     width, depth, colour, palette = _validate_png(data, image.MAX_IMAGE_PIXELS)
     with image.open(io.BytesIO(data), formats=["PNG"]) as opened:
         opened.load()
@@ -364,7 +372,7 @@ def read_grey(data: bytes) -> list[bytearray]:
 _RGB_RUN = re.compile(rb"(.{3})\1*", re.DOTALL)
 
 
-def _rgb_rows(data: bytes) -> Rows:
+def _rgb_rows(data: bytes | bytearray) -> Rows:
     """Decode immutable RGB rows, reusing up to 1024 pixels and row patterns."""
     raw, width = _read(data, "RGB")
     palette: dict[bytes, Pixel] = {}
@@ -502,7 +510,7 @@ class SourceMetadataSizeError(ProgramError):
 def read_metadata(data: bytes) -> dict[str, Any] | None:
     """Read bounded UTF-8 version-one source metadata."""
     found: dict[str, Any] | None = None
-    for kind, body in _chunks(data):
+    for kind, body in _chunks(_backing_bytes(data)):
         if kind != _METADATA_CHUNK:
             continue
         if found is not None or len(body) > _METADATA_LIMIT:
@@ -535,6 +543,7 @@ def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
         body = utf8
     if len(body) > _METADATA_LIMIT:
         raise SourceMetadataSizeError("oversized esolangs PNG metadata")
+    data = _backing_bytes(data)
     # A PNG datastream can end before the last byte of its enclosing file.
     position = len(_SIGNATURE)
     for kind, contents in _chunks(data):
@@ -593,7 +602,7 @@ def attach_source_metadata(
 
         catalog = get_catalog(catalog)
     if language is None and settings is None and scale is None and input_arity is None:
-        return data
+        return _backing_bytes(data)
     if settings is not None:
         owner = settings.language
         if language is not None and not isinstance(language, str):

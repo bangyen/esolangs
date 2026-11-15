@@ -890,6 +890,48 @@ def test_metadata_writer_bounds_chunk_size() -> None:
         png.write_metadata(data, {"version": 1, "extra": "x" * 16_384})
 
 
+def test_png_operations_use_stored_bytes() -> None:
+    first = (((1, 2, 3),),)
+    second = (((9, 8, 7),),)
+    raw = png.write_rgb(first)
+    other = png.write_rgb(second)
+    metadata = {"version": 1, "input_arity": 1}
+    alternate = {"version": 1, "input_arity": 2}
+    tagged = png.write_metadata(raw, metadata)
+
+    class AlternateBytes(bytes):
+        def __bytes__(self):
+            return substitute
+
+        def __buffer__(self, _flags):
+            return memoryview(substitute)
+
+        def __getitem__(self, key):
+            return substitute[key]
+
+    substitute = png.write_metadata(other, alternate)
+    shadowed = AlternateBytes(tagged)
+    assert png.read_metadata(substitute) == alternate
+    assert png.read_metadata(shadowed) == metadata
+    assert png.read_rgb(shadowed) == [[(1, 2, 3)]]
+    assert png.read_grey(shadowed) == png.read_grey(raw)
+    damaged = AlternateBytes(tagged[:-1])
+    with pytest.raises(ValueError, match="truncated IEND chunk CRC"):
+        png.read_metadata(damaged)
+    with pytest.raises(ValueError, match="truncated IEND chunk CRC"):
+        png.write_metadata(damaged, metadata)
+
+    substitute = other
+    assert png.attach_source_metadata(raw, None, None, None) is raw
+    plain = png.attach_source_metadata(AlternateBytes(raw), None, None, None)
+    assert type(plain) is bytes
+    assert plain == raw
+    assert png.write_metadata(AlternateBytes(raw), metadata) == tagged
+    assert png.attach_source_metadata(
+        AlternateBytes(raw), None, None, None, input_arity=1
+    ) == png.attach_source_metadata(raw, None, None, None, input_arity=1)
+
+
 @pytest.mark.parametrize("number", [float("nan"), float("inf"), float("-inf")])
 def test_metadata_writer_refuses_nonstandard_json_numbers(number: float) -> None:
     data = png.write_rgb((((1, 2, 3),),))

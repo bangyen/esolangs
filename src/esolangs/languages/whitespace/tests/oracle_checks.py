@@ -170,6 +170,8 @@ def _model(program, offsets, stdin):
         kind, *args = program[pc]
         supplied = None
         if kind in {"read_char", "read_num"}:
+            if not stack:
+                return "halt", [*trace, row()]
             supplied, cursor, error = _read(kind, stdin, cursor)
             if error:
                 return error, [*trace, row()]

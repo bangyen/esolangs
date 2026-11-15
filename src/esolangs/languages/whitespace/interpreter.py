@@ -83,6 +83,7 @@ from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _SPACE, _TAB, _LINE = " ", "\t", "\n"
+_EMPTY_STACK = "the stack is empty, so there is no top to pop"
 type _Instruction = tuple[str, int | str]
 type _Heap = tuple[tuple[int, int], ...]
 type _State = tuple[int, tuple[int, ...], _Heap, tuple[int, ...], bool]
@@ -138,7 +139,7 @@ def _write_heap(heap: _Heap, address: int, value: int) -> _Heap:
 
 def _pop(stack: tuple[int, ...]) -> tuple[int, tuple[int, ...]]:
     if not stack:
-        raise HaltError("the stack is empty, so there is no top to pop")
+        raise HaltError(_EMPTY_STACK)
     return stack[-1], stack[:-1]
 
 
@@ -392,10 +393,15 @@ class _Machine:
         if self.halted:
             return
         kind = self.instructions[self.state[0]][0]
-        char_input = self.io.input_char() if kind == "read_char" else None
-        number_input = (
-            _parse_number(self.io.input_str()) if kind == "read_num" else None
-        )
+        char_input = number_input = None
+        if kind in {"read_char", "read_num"}:
+            # VM.hs matches the destination on the stack before getChar/getLine.
+            if not self.state[1]:
+                raise HaltError(_EMPTY_STACK)
+            if kind == "read_char":
+                char_input = self.io.input_char()
+            else:
+                number_input = _parse_number(self.io.input_str())
         self.state, effect = _advance(
             self.state, self.instructions, self.labels, char_input, number_input
         )

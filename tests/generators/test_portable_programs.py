@@ -68,6 +68,21 @@ def test_invalid_json(document) -> None:
             esolangs.from_json("Brainfuck", duplicated)
 
 
+def test_portable_document_uses_the_backing_text() -> None:
+    class Document(str):
+        def startswith(self, *_args, **_kwargs):
+            raise AssertionError("called the document wrapper")
+
+    api = esolangs.Language(REFERENCE)
+    program = api.from_source("+.")
+    document = api.to_json(program)
+    restored = api.from_json(Document(document))
+    assert restored == program
+    assert api.run(restored).output == "\x01"
+    with pytest.raises(esolangs.ProgramError, match="Unexpected UTF-8 BOM"):
+        api.from_json(Document("\ufeff" + document))
+
+
 @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
 def test_portable_record_refuses_nonstandard_json_constants(constant: str) -> None:
     document = json.loads(esolangs.to_json(REFERENCE, "+."))

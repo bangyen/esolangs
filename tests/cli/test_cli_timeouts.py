@@ -1,5 +1,6 @@
 """What ``--execution-timeout`` bounds, what it costs, and the code it exits with."""
 
+import os
 import subprocess
 import sys
 import time
@@ -35,6 +36,32 @@ _BAD_TIMEOUTS = [
 def test_a_bad_timeout_is_refused_with_exit_2(args, message, tmp_path, capsys) -> None:
     refused = _refused(f"run {args} prog:,.", tmp_path, capsys, "1\n")
     assert message in refused
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("bound", ["max_steps", "max_output"])
+def test_large_execution_budget_matches_python(tmp_path: Path, bound: str) -> None:
+    path = _program(tmp_path, "+.")
+    magnitude = 10**4401 + 1
+    operand = " \t+1_" + "0" * 4400 + "1 "
+    options = {bound: magnitude}
+    limits = esolangs.ExecutionLimits(**options)
+    expected = esolangs.run(REFERENCE, Path(path), limits=limits).output
+    assert expected == "\x01"
+    flag = f"--{bound.replace('_', '-')}"
+    result = subprocess.run(
+        [sys.executable, "-m", "esolangs", "run", f"{flag}={operand}", REFERENCE, path],
+        env={**os.environ, "PYTHONINTMAXSTRDIGITS": "4300"},
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        expected.encode(),
+        b"",
+    )
 
 
 @pytest.mark.parametrize(

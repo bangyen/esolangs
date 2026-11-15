@@ -91,6 +91,52 @@ _read_stdin(0.15)
                 child.kill()
 
 
+@pytest.mark.medium
+@pytest.mark.skipif(
+    not hasattr(signal, "pthread_kill"), reason="requires POSIX signals"
+)
+def test_sigint_delivered_to_the_stdin_reader_exits_130() -> None:
+    code = r"""
+import os
+import signal
+import threading
+from esolangs.cli import io, main
+
+read = io._read_buffered_stdin
+
+def signal_reader(*args):
+    target = threading.get_ident()
+    assert target != threading.main_thread().ident
+
+    def interrupt():
+        os.write(1, b"sending SIGINT\n")
+        signal.pthread_kill(target, signal.SIGINT)
+
+    sender = threading.Timer(0.2, interrupt)
+    sender.daemon = True
+    sender.start()
+    return read(*args)
+
+io._read_buffered_stdin = signal_reader
+main()
+"""
+    with subprocess.Popen(
+        [sys.executable, "-c", code, "read-answer", REFERENCE],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as child:
+        try:
+            assert child.wait(timeout=5) == 130
+            assert child.stdout is not None
+            assert child.stdout.read() == b"sending SIGINT\n"
+            assert child.stderr is not None
+            assert child.stderr.read() == b"interrupted\n"
+        finally:
+            if child.poll() is None:
+                child.kill()
+
+
 def test_reader_thread_inherits_the_callers_context(monkeypatch) -> None:
     supplied = ContextVar("supplied", default="default")
 

@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from esolangs import ExecutionLimits, encode_inputs
+from esolangs import ExecutionLimits, ExecutionResult, Language, encode_inputs
 from esolangs.exceptions import (
     ArgumentError,
     HaltError,
@@ -43,6 +43,7 @@ ADD, SUB, MUL, DIV, MOD = (
 )
 STORE, RETRIEVE = T + T + S, T + T + T
 OUT_CHAR, OUT_NUM = T + L + S + S, T + L + S + T
+READ_CHAR, READ_NUM = T + L + T + S, T + L + T + T
 END = L + L + L
 
 
@@ -96,6 +97,41 @@ def test_a_read_with_no_input_halts() -> None:
     for kind in ("read_char", "read_num"):
         with pytest.raises(HaltError, match="input left"):
             _advance((0, (0,), (), (), False), [(kind, 0)], {})
+
+
+@pytest.mark.parametrize(
+    ("command", "stdin"),
+    [(READ_CHAR, "A"), (READ_CHAR, ""), (READ_NUM, "7\n"), (READ_NUM, "x\n")],
+)
+def test_missing_read_destination_fault_does_not_consume_input(command, stdin) -> None:
+    api = Language("Whitespace")
+    source = command + END
+    for options, steps in (
+        ({}, None),
+        ({"limits": ExecutionLimits(max_steps=2)}, 0),
+        ({"isolated": True}, None),
+    ):
+        outcome = api.execute(source, stdin=stdin, **options)
+        assert isinstance(outcome.error, HaltError)
+        assert str(outcome.error) == "the stack is empty, so there is no top to pop"
+        assert outcome.observation == ExecutionResult("", 0, 0, 0, steps=steps)
+
+    debugger = api.make_debugger(source, stdin=stdin)
+    snapshot = debugger.snapshot()
+    for _ in range(2):
+        with pytest.raises(HaltError, match="the stack is empty") as caught:
+            debugger.step()
+        assert debugger.snapshot() == snapshot
+        assert not debugger.halted
+        assert caught.value.observation == ExecutionResult("", 0, 0, 0, steps=0)
+
+
+def test_char_read_with_destination_still_echoes() -> None:
+    api = Language("Whitespace")
+    source = push(0) + READ_CHAR + push(0) + RETRIEVE + OUT_CHAR + END
+    result = api.run(source, stdin="A", isolated=True)
+    assert result == api.run(source, stdin="A")
+    assert (result.output, result.input_position, result.input_reads) == ("A", 1, 1)
 
 
 def test_advancing_a_done_state_is_a_no_op() -> None:
@@ -275,7 +311,7 @@ def _check_lossless_containers(tmp_path):
 
 
 def test_numeric_reads_consume_one_complete_line() -> None:
-    read = push(65) + OUT_CHAR + push(0) + T + L + T + T
+    read = push(65) + OUT_CHAR + push(0) + READ_NUM
     code = read + push(0) + RETRIEVE + OUT_NUM + END
     valid = {"12\nQ": "12", " -12 \nQ": "-12", "+7": "7", "3\r\nQ": "3"}
     for stdin, expected in valid.items():

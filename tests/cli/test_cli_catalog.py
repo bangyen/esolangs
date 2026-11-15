@@ -94,6 +94,28 @@ def test_generator_and_interpreter_only_partition_catalog(capsys) -> None:
     assert sorted([*generators, *interpreters]) == esolangs.list_languages()
 
 
+@pytest.mark.medium
+def test_large_input_count_uses_declared_generator_bounds() -> None:
+    count = 10**4401 + 1
+    expected = [
+        name
+        for name in esolangs.list_languages()
+        if (facts := esolangs.describe(name)).boolean_generator
+        and (facts.generator_max_inputs is None or count <= facts.generator_max_inputs)
+    ]
+    assert expected
+    operand = "1" + "0" * 4400 + "1"
+    result = subprocess.run(
+        [sys.executable, "-m", "esolangs", "list", "--json", f"--inputs={operand}"],
+        env={**os.environ, "PYTHONINTMAXSTRDIGITS": "4300"},
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
+    assert (result.returncode, result.stderr) == (0, b"")
+    assert json.loads(result.stdout) == expected
+
+
 def test_filters_match_in_every_output_format(capsys) -> None:
     filters = ["--interpreter-only", "--grep", "."]
     names = _names(filters, capsys)

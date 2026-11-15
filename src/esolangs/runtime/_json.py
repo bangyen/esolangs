@@ -27,7 +27,7 @@ def _reject_json_constant(token: str) -> NoReturn:
 def record_loads(document: str) -> Any:
     """Read strict records with unique object keys and arbitrary integers."""
     return json.loads(
-        document,
+        str.__str__(document),
         object_pairs_hook=unique_object,
         parse_int=parse_integer,
         parse_constant=_reject_json_constant,

@@ -93,6 +93,49 @@ def test_raster_png_refuses_released_input_buffers() -> None:
         Raster.from_png(buffer)
 
 
+def test_raster_png_decodes_the_backing_bytearray() -> None:
+    expected = Raster((((1, 2, 3),),))
+    raw = expected.to_png()
+    other = Raster((((9, 8, 7),),))
+    substitute = other.to_png()
+
+    class AlternateBytes(bytearray):
+        def __bytes__(self):
+            return substitute
+
+        def __buffer__(self, _flags):
+            return memoryview(substitute)
+
+    assert Raster.from_png(bytearray(raw)) == expected
+    assert Raster.from_png(substitute) == other
+    assert Raster.from_png(AlternateBytes(raw)) == expected
+
+
+def test_raster_freezes_backing_tuples_at_each_level() -> None:
+    class AlternateTuple(tuple):
+        def __new__(cls, values, substitute):
+            value = super().__new__(cls, values)
+            value.substitute = substitute
+            return value
+
+        def __iter__(self):
+            return iter(self.substitute)
+
+    pixel = (1, 2, 3)
+    substitute = (9, 8, 7)
+    row = (pixel,)
+    rows = (row,)
+    expected = Raster(rows)
+    for supplied in (
+        ((AlternateTuple(pixel, substitute),),),
+        (AlternateTuple(row, (substitute,)),),
+        AlternateTuple(rows, ((substitute,),)),
+    ):
+        stored = Raster(supplied)
+        assert stored == expected
+        assert Raster.from_png(stored.to_png()) == expected
+
+
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
 def test_every_raster_language_generates_shared_source(language: str) -> None:
     program = esolangs.generate(language, "01")

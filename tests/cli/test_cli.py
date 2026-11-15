@@ -2,7 +2,9 @@
 
 import gzip
 import json
+import os
 import shlex
+import subprocess
 import sys
 from io import StringIO
 from pathlib import Path
@@ -66,6 +68,46 @@ class TestInProcess:
             call_main(["generate", "--scale", "999999999", _RASTER, "0110"], capsys)
         assert exc.value.code == 2
         assert "pixel limit" in capsys.readouterr().err
+
+    @pytest.mark.medium
+    def test_large_scale_reaches_the_pixel_limit(self, tmp_path: Path) -> None:
+        language = first(source_kind="raster", state_model="stack")
+        cap = sys.int_info.str_digits_check_threshold
+        huge = 10 ** (cap + 1) - 1
+        api = esolangs.Language(language)
+
+        def generate(scale: str) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "esolangs",
+                    "generate",
+                    f"--scale={scale}",
+                    language,
+                    "01",
+                ],
+                env={**os.environ, "PYTHONINTMAXSTRDIGITS": str(cap)},
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+
+        with pytest.raises(esolangs.ArgumentError, match="pixel limit"):
+            api.generate("01", scale=huge)
+        rejected = generate("9" * (cap + 1))
+        assert (rejected.returncode, rejected.stdout) == (2, b"")
+        assert b"pixel limit; use a smaller scale" in rejected.stderr
+
+        control = generate("2")
+        path = tmp_path / "scaled.png"
+        api.to_file(api.generate("01", scale=2), path)
+        assert (control.returncode, control.stdout, control.stderr) == (
+            0,
+            path.read_bytes(),
+            b"",
+        )
+        assert api.evaluate(api.from_file(path), [1]).answer == "1"
 
     def test_raster_scale_hint_names_the_working_cli_flag(
         self, tmp_path, capsys

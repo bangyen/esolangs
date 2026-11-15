@@ -12,7 +12,7 @@ import re
 import select
 import stat
 import sys
-from collections.abc import Collection, Iterator
+from collections.abc import Callable, Collection, Iterator
 from contextlib import contextmanager, suppress
 from typing import NoReturn, TextIO
 
@@ -165,7 +165,7 @@ def _pop_set_pairs(rest: list[str]) -> tuple[list[str], list[str]]:
 
 
 def _integer_spelling(value: str) -> bool:
-    """Recognize a decimal operand even when conversion would exceed its limit."""
+    """Recognize the optional decimal operand of ``--width``."""
     return re.fullmatch(r"[+-]?\d(?:_?\d)*", value.strip()) is not None
 
 
@@ -391,10 +391,26 @@ def _errors() -> Iterator[None]:
         _fail(exc)
 
 
-def _integer(value: str, name: str, *, kind: str = "an integer") -> int:
+def _decimal_integer(value: str) -> int:
+    """Parse an int-compatible decimal operand without the host digit cap."""
+    digits = value.strip()
+    if digits and digits != value:
+        # Validate padding with int's whitespace rules before stripping it.
+        prefix, _, suffix = value.partition(digits)
+        int(prefix + "0" + suffix)
+    return parse_integer(digits)
+
+
+def _integer(
+    value: str,
+    name: str,
+    *,
+    kind: str = "an integer",
+    parse: Callable[[str], int] = _decimal_integer,
+) -> int:
     """Parse an integer with a flag-specific usage error."""
     try:
-        return int(value)
+        return parse(value)
     except ValueError:
         _fail(f"{name} must be {kind}, got {value!r}")
 
@@ -415,15 +431,7 @@ def _seed_of(options: dict[str, str]) -> int | None:
     value = options.get("--seed")
     if value is None:
         return None
-    try:
-        digits = value.strip()
-        if digits and digits != value:
-            # Validate padding with int's whitespace rules before stripping it.
-            prefix, _, suffix = value.partition(digits)
-            int(prefix + "0" + suffix)
-        return parse_integer(digits)
-    except ValueError:
-        _fail(f"--seed must be a whole number, got {value!r}")
+    return _integer(value, "--seed", kind="a whole number")
 
 
 def _scale_of(options: dict[str, str]) -> int | None:

@@ -181,13 +181,19 @@ class TestTheWidthFlagDoesNotEatTheTable:
         assert out.strip()
 
     @pytest.mark.medium
-    def test_overlong_width_names_the_flag_in_both_forms(self) -> None:
-        digits = "9" * (sys.int_info.str_digits_check_threshold + 1)
+    def test_large_width_matches_python_in_both_forms(self, tmp_path) -> None:
+        cap = sys.int_info.str_digits_check_threshold
+        digits = "9" * (cap + 1)
         env = {
             **os.environ,
-            "PYTHONINTMAXSTRDIGITS": str(sys.int_info.str_digits_check_threshold),
+            "PYTHONINTMAXSTRDIGITS": str(cap),
         }
-        errors = []
+        api = esolangs.Language(REFERENCE)
+        expected = api.generate("01", width=10 ** (cap + 1) - 1)
+        path = tmp_path / "native"
+        api.to_file(expected, path, normalize=True)
+        assert api.read_answer(api.run(path, stdin="1").output) == "1"
+        native = path.read_bytes()
         for options in (["--width", digits], [f"--width={digits}"]):
             result = subprocess.run(
                 [
@@ -204,7 +210,4 @@ class TestTheWidthFlagDoesNotEatTheTable:
                 timeout=10,
                 check=False,
             )
-            assert (result.returncode, result.stdout) == (2, b"")
-            assert result.stderr.startswith(b"--width must be an integer")
-            errors.append(result.stderr)
-        assert errors[0] == errors[1]
+            assert (result.returncode, result.stdout, result.stderr) == (0, native, b"")

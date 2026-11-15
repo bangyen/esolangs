@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from functools import partial
 from itertools import takewhile
@@ -51,13 +51,18 @@ def _freeze_iterable_rows(rows: Rows) -> Rows:
     validated: dict[int, Pixel] = {}
     validated_rows: dict[int, tuple[Pixel, ...]] = {}
     frozen_rows = []
-    for row in rows:
-        if type(row) is tuple and id(row) in validated_rows:
+    iterable = tuple.__iter__(rows) if isinstance(rows, tuple) else rows
+    for row in iterable:
+        exact_tuple = type(row) is tuple
+        if exact_tuple and id(row) in validated_rows:
             frozen_rows.append(validated_rows[id(row)])
             continue
-        frozen_row: list[Pixel] | None = None if type(row) is tuple else []
+        pixels = (
+            tuple.__iter__(row) if not exact_tuple and isinstance(row, tuple) else row
+        )
+        frozen_row: list[Pixel] | None = None if exact_tuple else []
         previous: Pixel | None = None
-        for pixel in row:
+        for pixel in pixels:
             if previous is not None and pixel is previous:
                 if frozen_row is not None:
                     frozen_row.append(pixel)
@@ -93,9 +98,14 @@ def _freeze_iterable_rows(rows: Rows) -> Rows:
     return result
 
 
-def _freeze_pixel(pixel: Pixel) -> Pixel:
+def _freeze_pixel(pixel: Iterable[int]) -> Pixel:
     """Store built-in integers so callers cannot alter value or hash semantics."""
-    frozen = tuple(pixel)
+    if type(pixel) is tuple:
+        frozen = pixel
+    elif isinstance(pixel, tuple):
+        frozen = tuple(tuple.__iter__(pixel))
+    else:
+        frozen = tuple(pixel)
     if len(frozen) != 3:
         raise _pixel_error()
     red, green, blue = frozen
@@ -261,15 +271,17 @@ class Raster:
         :class:`~esolangs.exceptions.ProgramError`; data that is not
         bytes-like is an :class:`~esolangs.exceptions.ArgumentError`.
         """
-        if not isinstance(data, (bytes, bytearray, memoryview)):
+        payload: object = data
+        if not isinstance(payload, (bytes, bytearray, memoryview)):
             # ``None`` read "'NoneType' object is not subscriptable".
             raise ArgumentError(f"PNG data must be bytes, got {type(data).__name__}")
+        if isinstance(payload, memoryview):
+            try:
+                payload = payload.tobytes()
+            except ValueError as exc:
+                raise ArgumentError(f"cannot read PNG data: {exc}") from exc
         try:
-            data = bytes.__bytes__(data) if isinstance(data, bytes) else bytes(data)
-        except ValueError as exc:
-            raise ArgumentError(f"cannot read PNG data: {exc}") from exc
-        try:
-            decoded = png._rgb_rows(data)  # noqa: SLF001
+            decoded = png._rgb_rows(payload)  # noqa: SLF001
             # Inside the guard too: a 0x0 image decodes cleanly and then
             # ``__post_init__`` rejects the empty rows, which is still a bad
             # PNG rather than a caller error.

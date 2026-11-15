@@ -12,7 +12,7 @@ import stat
 import sys
 import threading
 from collections.abc import Buffer, Callable, Iterator
-from contextlib import AbstractContextManager, contextmanager
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from contextvars import copy_context
 from errno import EAGAIN
 from io import BufferedReader, FileIO
@@ -174,13 +174,17 @@ def _slurp_thread[SlurpT](
         except BaseException as exc:
             box.append(exc)
 
+    deadline = None if timeout is None else monotonic() + timeout
     reader = threading.Thread(target=copy_context().run, args=(_slurp,), daemon=True)
     reader.start()
-    if notice is None:
-        reader.join(timeout)
-    else:
-        with notice:
-            reader.join(timeout)
+    with notice if notice is not None else nullcontext():
+        # A signal delivered to the reader may leave the main thread's join
+        # asleep even though Python must handle that signal on the main thread.
+        while reader.is_alive():
+            waited = 0.1 if deadline is None else min(0.1, deadline - monotonic())
+            if waited <= 0:
+                break
+            reader.join(waited)
     if reader.is_alive():
         on_timeout()
     # A finished thread always appended; a live one exited above.

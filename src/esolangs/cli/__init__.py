@@ -56,6 +56,7 @@ from esolangs.cli.args import (
     _VALUE_OPTIONS,
     _abandon_output,
     _check_count,
+    _decimal_integer,
     _diagnostic,
     _errors,
     _fail,
@@ -190,7 +191,7 @@ def _catalog_names(options: dict[str, str], flags: set[str]) -> list[str]:
     inputs = None
     if "--inputs" in options:
         try:
-            inputs = int(options["--inputs"])
+            inputs = _decimal_integer(options["--inputs"])
         except ValueError:
             _fail("--inputs must be a non-negative integer")
         if inputs < 0:
