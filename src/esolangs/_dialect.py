@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from difflib import get_close_matches
 from keyword import iskeyword
 from typing import cast, overload
@@ -128,7 +128,7 @@ class DialectSchema:
 class DialectSettings:
     """Validated overrides bound to one language schema."""
 
-    _bound_schema: DialectSchema | None
+    _schema: DialectSchema
     _items: tuple[tuple[str, Scalar], ...]
 
     @overload
@@ -149,29 +149,16 @@ class DialectSettings:
         if not _has_backing_type(declared, DialectSchema):
             raise ArgumentError("dialect settings require a language schema")
         checked = declared.validate(cast("dict[str, Scalar]", choices))
-        object.__setattr__(self, "_bound_schema", declared)
+        object.__setattr__(self, "_schema", declared)
         object.__setattr__(self, "_items", tuple(sorted(checked.items())))
 
-    def __setstate__(self, state: list[object] | dict[str, object]) -> None:
-        """Restore pre-schema choices until their enclosing artifact binds them."""
-        if isinstance(state, dict):
-            object.__setattr__(self, "_bound_schema", None)
-            object.__setattr__(self, "_items", state["_items"])
-            return
-        for item, value in zip(fields(self), state, strict=False):
-            object.__setattr__(self, item.name, value)
-
-    @property
-    def _schema(self) -> DialectSchema:
-        schema = self._bound_schema
-        if schema is None:
-            raise ArgumentError(
-                "legacy dialect settings require a saved artifact language"
-            )
-        return schema
-
-    def _legacy_choices(self) -> dict[str, Scalar] | None:
-        return dict(self._items) if self._bound_schema is None else None
+    def __setstate__(self, state: list[object]) -> None:
+        """Restore a schema-bound pickle."""
+        schema, items = state
+        if not _has_backing_type(schema, DialectSchema):
+            raise ArgumentError("dialect settings require a language schema")
+        object.__setattr__(self, "_schema", schema)
+        object.__setattr__(self, "_items", items)
 
     @property
     def language(self) -> str:

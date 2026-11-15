@@ -2,7 +2,6 @@
 
 import pickle
 import sys
-from base64 import b64decode
 from dataclasses import replace
 from functools import partial
 
@@ -92,53 +91,6 @@ def _check_portable_template_settings() -> None:
             assert api.run(filled).output == "0"
 
 
-def _check_legacy_pickle_settings(api) -> None:
-    # 4bbca32c3 pickled a program, a template, and their shared pre-schema settings.
-    wire = b64decode(
-        "gASV9gAAAAAAAACMEmVzb2xhbmdzLmFydGlmYWN0c5SMD1Byb2dyYW1BcnRpZmFjdJSTlCmBlF2U"
-        "KIwCLCyUjAdST1RmdWNrlIwRZXNvbGFuZ3Muc2V0dGluZ3OUjA9EaWFsZWN0U2V0dGluZ3OUk5Qp"
-        "gZR9lIwGX2l0ZW1zlIwIcm90YXRpb26UjAdmb3J3YXJklIaUhZRzYk5lYmgAjBBUZW1wbGF0ZUFydGlm"
-        "YWN0lJOUKYGUXZQojAIsQJRoBmgAjBBUZW1wbGF0ZUJpbmRpbmdzlJOUKYGUXZQojAFAlIwBLJSMASuU"
-        "hpSFlGViaApLAUsChpSFlGViaAqHlC4="
-    )
-    program, template, unbound = pickle.loads(wire)
-    forward = api.settings(rotation="forward")
-
-    # v1.6.0 generated "01" in the forward dialect as a tagged str.
-    tagged = pickle.loads(
-        b64decode(
-            "gASV+AAAAAAAAACMD2Vzb2xhbmdzLnRhZ2dlZJSMB19UYWdnZWSUk5SMdystK10rLDw+LStdWy4s"
-            "PD4tK11bLiw8Pi0rXVsuLDw+LStdWy4sPD4tK11bLiw8Pi0rXVsuLSs8PC4sXV0sLCw8XV0rLDw8"
-            "PCsrK11dPDw8PFtbW11bPDw8XV0uLj4+LStdWy4+WywsK11bLixbLC0rXStbPFtdlIwHUk9UZnVj"
-            "a5SMEWVzb2xhbmdzLnNldHRpbmdzlIwPRGlhbGVjdFNldHRpbmdzlJOUKYGUfZSMBl9pdGVtc5SM"
-            "CHJvdGF0aW9ulIwHZm9yd2FyZJSGlIWUc2KHlFKULg=="
-        )
-    )
-    assert tagged == api.from_source(tagged.source, settings=forward)
-    assert "".join(api.run(tagged, stdin=bit).output for bit in "01") == "01"
-    assert pickle.loads(pickle.dumps(tagged)) == tagged
-
-    assert program == api.from_source(",,", settings=forward)
-    assert program.input_arity is None
-    assert template.settings == forward
-    assert template.spans == ((1, 2),)
-    assert api.run(program, stdin="A").output == "A"
-    assert [api.run(template.fill([bit]), stdin="A").output for bit in (0, 1)] == [
-        "A",
-        "",
-    ]
-    for restored in (program, template):
-        assert pickle.loads(pickle.dumps(restored)) == restored
-    with pytest.raises(
-        esolangs.ArgumentError, match="require a saved artifact language"
-    ):
-        unbound.options()
-    with pytest.raises(
-        esolangs.ArgumentError, match="require a saved artifact language"
-    ):
-        api.run(program.source, settings=unbound, stdin="A")
-
-
 def _check_cli_generation_settings(capsys, monkeypatch) -> None:
     from esolangs.cli import main
     from esolangs.registry import _table
@@ -203,7 +155,10 @@ class TestRotation:
         assert generated == api.generate("01", settings=backward)
         assert "".join(api.evaluate(generated, [b]).answer for b in (0, 1)) == "01"
         _check_portable_template_settings()
-        _check_legacy_pickle_settings(api)
+        forward = api.from_source(",,", settings=api.settings(rotation="forward"))
+        restored = pickle.loads(pickle.dumps(forward))
+        assert restored == forward
+        assert api.run(restored, stdin="A").output == "A"
         _check_cli_generation_settings(capsys, monkeypatch)
 
     def test_an_unknown_rotation_is_refused(self) -> None:

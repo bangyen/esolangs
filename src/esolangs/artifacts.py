@@ -16,7 +16,6 @@ from esolangs._bindings import (
     runs,
     validate_spans,
 )
-from esolangs._dialect import DialectSchema
 from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError, TemplateError
 from esolangs.limits import ExecutionLimits
@@ -105,31 +104,9 @@ def _origin(
     return owner, settings
 
 
-def _restore_legacy_settings(
-    language: str, settings: DialectSettings | None
-) -> DialectSettings | None:
-    choices = None if settings is None else DialectSettings._legacy_choices(settings)  # noqa: SLF001
-    if choices is None:
-        return settings
-
-    from esolangs.registry._catalog import get_catalog, resolve_origin
-
-    catalog = get_catalog(None)
-    name = resolve_origin(language, catalog=catalog)
-    if name is None:
-        raise ArgumentError(f"cannot restore legacy settings for {language}")
-    schema = catalog.languages[name].runtime.dialect_schema or DialectSchema(
-        name, {}, {}
-    )
-    return DialectSettings(schema, **choices)
-
-
 def _restore_artifact_slots(artifact: Artifact, state: list[object]) -> None:
-    for item, value in zip(fields(artifact), state, strict=False):
+    for item, value in zip(fields(artifact), state, strict=True):
         object.__setattr__(artifact, item.name, value)
-    settings = _restore_legacy_settings(artifact.language, artifact.settings)
-    if settings is not artifact.settings:
-        object.__setattr__(artifact, "settings", settings)
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,8 +145,7 @@ class ProgramArtifact[Source: Program]:
             raise ArgumentError("scale is only supported for raster programs")
 
     def __setstate__(self, state: list[object]) -> None:
-        """Restore stored slots, defaulting arity for older pickles."""
-        object.__setattr__(self, "input_arity", None)
+        """Restore exactly the current pickle fields."""
         _restore_artifact_slots(self, state)
 
     @recursive_repr()
@@ -294,7 +270,7 @@ class TemplateArtifact:
             raise TemplateError(str(error)) from error
 
     def __setstate__(self, state: list[object]) -> None:
-        """Restore stored slots and bind pre-schema choices to the saved language."""
+        """Restore exactly the current pickle fields."""
         _restore_artifact_slots(self, state)
 
     def evaluate(
