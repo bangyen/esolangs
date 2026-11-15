@@ -8,7 +8,7 @@ sets ``p`` to ``p * p * (b + 1)``, ending at ``2^row``. ``o`` divides ``t`` by
 Size:
     Nonconstant: 317 + 2n chars plus the flow's n + 1 numbers, the checksum and the
     table's decimal digits, at most floor(T log10 2) + 1; 4n + 9 steps;
-    n=10 parity: 661 chars, n=10 random 1847: 661 chars; n=8 zero: 180 chars.
+    n=12 parity: 1,594 chars, n=10 random 1847: 661 chars; n=8 zero: 180 chars.
 
 Decisions:
     A decision tree over ``'JZ`` jumps lists every command number in the
@@ -17,8 +17,8 @@ Decisions:
 
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.requests import GenerationRequest
-from esolangs.runtime._digits import digit_limit_for
 from esolangs.runtime._program import Program
+from esolangs.runtime.memory import format_integer
 
 
 def _hex(command: str) -> str:
@@ -44,8 +44,7 @@ def hq9_with_headers(truth_table: str) -> str:
         answer: tuple[str, ...] = (f'p("{truth_table[0]}")',)
         startup: tuple[str, ...] = ("p()",)
     else:
-        with digit_limit_for(len(truth_table)):
-            table = str(int(truth_table[::-1], 2))
+        table = format_integer(int(truth_table[::-1], 2))
         reads, answer = _READ, _ANSWER
         startup = ("p = 1", "two = 2", f"t = {table}")
     program = "r" * n + "o"

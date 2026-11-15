@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
+from inspect import getattr_static, signature
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_checkable
 
-from esolangs.exceptions import EsolangError, ExecutionBudgetError
+from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchFailure, BranchProof, CycleDecision
 from esolangs.runtime._validate import check_whole
@@ -71,6 +72,26 @@ class _BranchingStepMachine(Protocol):
         """
 
 
+_MISSING = object()
+
+
+def _check_driver(machine: object, argument: str, *fields: str) -> None:
+    """Accept the fields a direct driver needs, including on a forwarding VM."""
+    if isinstance(machine, type) or not callable(getattr(machine, "step", None)):
+        raise ArgumentError(f"{argument} must provide a callable step()")
+    _check_driver_fields(machine, argument, "halted", *fields)
+
+
+def _check_driver_fields(machine: object, argument: str, *fields: str) -> None:
+    """Check fields when the current driver phase needs them."""
+    for name in fields:
+        # Leave ordinary state properties unevaluated during validation.
+        if getattr_static(machine, name, _MISSING) is _MISSING and not hasattr(
+            machine, name
+        ):
+            raise ArgumentError(f"{argument} must provide a {name} attribute")
+
+
 def _checked_adapter(machine: object) -> object:
     """Find the live VM beneath an observer and check for a recorded halt fault."""
     from esolangs.runtime._controller import ExecutionController
@@ -84,11 +105,24 @@ def _checked_adapter(machine: object) -> object:
 def _protocol_state(machine: object, adapter: object, protocol: type[Any]) -> object:
     """Prefer a caller's own proof protocol to any wrapped state."""
     if isinstance(machine, protocol):
-        return machine
-    if adapter is not machine and isinstance(adapter, protocol):
-        return adapter
-    inner = getattr(adapter, "_machine", None)
-    return inner if isinstance(inner, protocol) else None
+        state = machine
+    elif adapter is not machine and isinstance(adapter, protocol):
+        state = adapter
+    else:
+        state = getattr(adapter, "_machine", None)
+        if not isinstance(state, protocol):
+            return None
+    _check_proof_methods(state, _PROOF_METHODS[protocol])
+    return state
+
+
+def _check_proof_methods(machine: object, methods: tuple[str, ...]) -> None:
+    """Runtime protocol membership alone accepts non-callable methods."""
+    if isinstance(machine, type):
+        raise TypeError("a proof requires a machine instance")
+    for name in methods:
+        if not callable(getattr(machine, name, None)):
+            raise TypeError(f"{type(machine).__name__}.{name} must be callable")
 
 
 def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> object:
@@ -114,7 +148,10 @@ def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> ob
 
 def _proof_runner(machine: object, state: _SteppableMachine) -> _SteppableMachine:
     """Keep step effects and fault translation on the supplied live surface."""
-    return machine if isinstance(machine, _SteppableMachine) else state
+    if machine is not state and isinstance(machine, _SteppableMachine):
+        _check_proof_methods(machine, ("step",))
+        return machine
+    return state
 
 
 def _refuse_random(machine: object, proof: str) -> None:
@@ -859,6 +896,19 @@ def _clamps_hold(before: list[int | None], after: list[int | None]) -> bool:
     return True
 
 
+_PROOF_METHODS: dict[type[Any], tuple[str, ...]] = {
+    _StepMachine: ("step", "snapshot"),
+    _BranchingStepMachine: (
+        "branching_snapshot",
+        "branching_halted",
+        "branching_successors",
+    ),
+    _FramedMachine: ("step", "frame_entry_key"),
+    _TapeMachine: ("step", "input_position"),
+    _AffineMachine: ("step", "input_position"),
+}
+
+
 def run_until_halt(
     machine: _SteppableMachine | VM,
     limit: int | None = None,
@@ -868,12 +918,29 @@ def run_until_halt(
     """Step ``machine`` until it halts, or the budget or ``stop`` ends it.
 
     Proves nothing: ``True`` halted, ``False`` still going.  ``limit`` in
-    steps, ``None`` unbounded.  ``stop`` is checked *before* each step
-    (what a breakpoint means).  The machine is left where it stopped.
+    steps, ``None`` unbounded. The zero-argument ``stop`` callback is
+    checked *before* a permitted step. The machine is left where it stopped.
     """
     if limit is not None:
         limit = check_whole(limit, "limit")
+    if stop is not None:
+        _check_stop(stop)
+    _check_driver(machine, "machine")
     return _drive_until_halt(machine, limit, stop=stop) is not None
+
+
+def _check_stop(stop: object) -> None:
+    """Refuse malformed predicates before a zero budget or halt hides them."""
+    if not callable(stop):
+        raise ArgumentError("stop must be callable or None")
+    try:
+        parameters = signature(stop, follow_wrapped=False)
+    except (TypeError, ValueError):
+        return  # Callables such as bool do not expose an inspectable signature.
+    try:
+        parameters.bind()
+    except TypeError as error:
+        raise ArgumentError("stop must be callable without arguments") from error
 
 
 def _drive_until_halt(

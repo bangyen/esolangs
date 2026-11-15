@@ -15,8 +15,18 @@ from codecs import IncrementalEncoder, lookup
 from collections.abc import Buffer, Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from contextvars import copy_context
+from encodings.utf_8 import IncrementalDecoder as UTF8Decoder
+from encodings.utf_8_sig import IncrementalDecoder as UTF8SigDecoder
 from errno import EAGAIN
-from io import BufferedReader, FileIO, RawIOBase, TextIOWrapper, UnsupportedOperation
+from gc import get_referents
+from io import (
+    BufferedReader,
+    FileIO,
+    IncrementalNewlineDecoder,
+    RawIOBase,
+    TextIOWrapper,
+    UnsupportedOperation,
+)
 from math import ceil
 from time import monotonic, sleep
 from typing import BinaryIO, cast
@@ -350,6 +360,28 @@ def _read_stdin_bytes(stream: BinaryIO, deadline: float | None) -> bytes:
     return read_snapshot(stream)
 
 
+def _prefetched_utf8_prefix(stdin: TextIOWrapper, data: bytes) -> int:
+    """Count the new bytes needed by the active UTF-8 decoder."""
+    # TextIOWrapper exposes no decoder attribute. CPython's GC traversal
+    # exposes it after any subclass members. getstate leaves text untouched.
+    # Only feed bytes needed to finish a scalar through a lossy error handler.
+    for decoder in reversed(get_referents(stdin)):
+        if isinstance(
+            decoder, (IncrementalNewlineDecoder, UTF8Decoder, UTF8SigDecoder)
+        ):
+            pending, _ = decoder.getstate()
+            if not pending:
+                return 0
+            width = 2 + (pending[0] >= 0xE0) + (pending[0] >= 0xF0)
+            needed = width - len(pending)
+            (pending + data[:needed]).decode("utf-8")
+            return needed
+    split = 0
+    while split < min(3, len(data)) and 0x80 <= data[split] < 0xC0:
+        split += 1
+    return split
+
+
 def _read_prefetched_stdin(stdin: TextIOWrapper, stream: BinaryIO, data: bytes) -> str:
     """Drain existing text state and preserve the still-unprocessed byte tail."""
     codec = lookup(stdin.encoding)
@@ -357,9 +389,7 @@ def _read_prefetched_stdin(stdin: TextIOWrapper, stream: BinaryIO, data: bytes) 
         codec = lookup("utf-8")  # The active decoder has consumed the signature.
     split = len(data)
     if codec.name == "utf-8":
-        split = 0
-        while split < min(3, len(data)) and 0x80 <= data[split] < 0xC0:
-            split += 1  # Complete a code point started by the earlier read.
+        split = _prefetched_utf8_prefix(stdin, data)
     elif codec.name in {"ascii", "iso8859-1"}:
         split = 0  # A single-byte decoder cannot have a pending code point.
     if data[split : split + 1] == b"\n":

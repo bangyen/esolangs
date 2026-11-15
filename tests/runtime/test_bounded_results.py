@@ -252,7 +252,6 @@ def test_caller_owned_vm_finalization_remains_local():
     class Custom:
         halted = self_halts = steppable_to_answer = dumps_on_the_post_halt_step = True
         _dump_pending = False
-        output = ""
         calls = 0
 
         def step(self):

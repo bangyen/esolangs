@@ -139,12 +139,14 @@ def test_previously_read_stdin_keeps_decoder_state_and_wait_policy(
     script = """
 import os
 import sys
+from codecs import getincrementaldecoder
 from io import TextIOWrapper
 from esolangs.cli import io, main
 if os.environ.get("ESOLANGS_TEST_STDIN_SUBCLASS") == "yes":
     class Wrapped(TextIOWrapper):
-        pass
+        __slots__ = ("other_decoder",)
     sys.stdin = Wrapped(sys.stdin.detach(), encoding="utf-8", newline=None)
+    sys.stdin.other_decoder = getincrementaldecoder("utf-8")()
 assert sys.stdin.read(1) == "A"
 stream = sys.stdin.buffer
 read = stream.read
@@ -160,6 +162,11 @@ assert sys.stdin.read() == ""
         ("latin-1", "eof", b"AB\xc3", b"\xa9\r\n"),
         ("utf-8", "subclass", b"AB\xc3", b"\xa9\r\n"),
         ("utf-8:replace", "invalid", b"AB", b"\xff"),
+        ("utf-8:replace", "invalid", b"AB", b"\xbd"),
+        ("utf-8:ignore", "invalid", b"AB", b"\xbd"),
+        ("utf-8:replace", "replacement", b"AB\xef\xbf", b"\xbd\r\n"),
+        ("utf-8:ignore", "eof", b"AB\xc3", b"\xa9\r\n"),
+        ("utf-8:replace", "extra", b"AB\xe0\xa0", b"\xa0\xa0"),
         ("utf-8", "timeout", b"AB\xc3", b""),
         ("utf-8", "interrupt", b"AB\xc3", b""),
     )
@@ -200,7 +207,13 @@ assert sys.stdin.read() == ""
                         assert child.stderr.readline().startswith(
                             b"still waiting for input"
                         )
-                        if action in {"eof", "subclass", "invalid"}:
+                        if action in {
+                            "eof",
+                            "subclass",
+                            "invalid",
+                            "replacement",
+                            "extra",
+                        }:
                             feed.write(suffix)
                             feed.close()
                         elif action == "interrupt":
@@ -209,17 +222,21 @@ assert sys.stdin.read() == ""
                     finally:
                         if child.poll() is None:
                             child.kill()
-            if action in {"eof", "subclass"}:
+            if action in {"eof", "subclass", "replacement"}:
+                # The reference interpreter stores the low byte of U+FFFD.
+                scalar = "\xfd" if action == "replacement" else "é"
                 assert (child.returncode, output, diagnostic) == (
                     0,
-                    "Bé\r\n".encode(),
+                    f"B{scalar}\r\n".encode(),
                     b"",
                 )
-            elif action == "invalid":
+            elif action in {"invalid", "extra"}:
                 assert (child.returncode, output) == (2, b"")
-                assert diagnostic.startswith(
-                    b"cannot read stdin: not text (invalid UTF-8 at byte 1)\n"
+                offset = 4 if action == "extra" else 1
+                message = (
+                    f"cannot read stdin: not text (invalid UTF-8 at byte {offset})"
                 )
+                assert diagnostic.splitlines()[0].decode() == message
             elif action == "timeout":
                 assert (child.returncode, output) == (124, b"")
                 assert b"stdin did not reach EOF" in diagnostic

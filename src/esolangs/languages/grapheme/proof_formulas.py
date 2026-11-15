@@ -1,12 +1,11 @@
 """Executed command and snapshot-bit bounds."""
 
-from esolangs.runtime._digits import digit_limit_for
+from esolangs.runtime.memory import format_integer
 
 
 def _digits(n: int) -> int:
-    """Decimal digits of 2^T; the cap lifts for the 0.3T of them past n = 13."""
-    with digit_limit_for(1 << n):
-        return len(str(1 << (1 << n)))
+    """Count the decimal digits of 2^T independently of the host cap."""
+    return len(format_integer(1 << (1 << n)))
 
 
 def _lift_bits(n: int, d: int) -> int:

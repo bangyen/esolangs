@@ -2,11 +2,13 @@
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.caballo import interpreter
 from esolangs.languages.caballo.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
+from esolangs.vm import run_until_halt_or_all_branches_cycle
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.support.factories import reject_rng_options, rng_factory
 
@@ -107,6 +109,39 @@ def test_the_output_is_drawn_by_weight(monkeypatch) -> None:
     from tests.support.prepared_support import check_random_plan_reuse
 
     check_random_plan_reuse("Caballo", "(1+qi+qi)", interpreter, "parse", monkeypatch)
+
+    api = Language("Caballo")
+    limits = ExecutionLimits(max_steps=10)
+    source = "(1+qi+qi)"
+    expected = api.run(source, seed=3, limits=limits)
+    assert (expected.output, expected.steps) == ("[]", 10)
+    write = ScriptedIO.print_str
+    attempts = []
+
+    def reject_once(io, text):
+        attempts.append(text)
+        if len(attempts) == 1:
+            raise HaltError("temporary output refusal")
+        write(io, text)
+
+    monkeypatch.setattr(ScriptedIO, "print_str", reject_once)
+    debugger = api.make_debugger(source, seed=3)
+    with pytest.raises(HaltError, match="temporary output refusal") as caught:
+        debugger.run(limits=limits)
+    assert (
+        caught.value.observation
+        == debugger.observation
+        == ExecutionResult("", 0, 1, 0, steps=9)
+    )
+    assert not debugger.halted
+    assert debugger.snapshot()[-1] == ((), 0)
+    assert run_until_halt_or_all_branches_cycle(debugger, limit=2)
+    assert attempts == ["[]"]
+    assert debugger.run(limits=ExecutionLimits(max_steps=1)) == "halted"
+    debugger.step()
+    assert debugger.observation == expected
+    # Seed 3's next draw selects [1], so two identical attempts prove replay.
+    assert attempts == ["[]", "[]"]
 
 
 class _Fixed:

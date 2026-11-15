@@ -734,7 +734,7 @@ class _Machine:
         self.funcs = _prepare_source(code) if isinstance(code, str) else code
         self.state = tuple.__new__(_State, (_Try("main", (), 0), None, 0))
         self.heap: dict[int, _Cell] = {}
-        #: A character ``io::hasNext`` read ahead, ``""`` past EOF, or None.
+        #: A character awaiting ``io::next``, ``""`` past EOF, or None.
         self.ahead: str | None = None
 
     @property
@@ -774,16 +774,11 @@ class _Machine:
             self.io.progress(),
         )
 
-    def _char(self) -> str:
+    def _read_char(self) -> str:
         """Return the next input character, or ``""`` at EOF."""
-        if self.ahead is not None:
-            char = self.ahead
-            self.ahead = None if char else ""
-            return char
         try:
             return chr(self.io.input_char())
         except EOFError:
-            self.ahead = ""
             return ""
 
     def _builtin(self, name: str, values: tuple[str, ...]) -> str:
@@ -800,11 +795,14 @@ class _Machine:
                 raise HaltError(f"Bleh io::print got non-UTF-8 bits {bits}") from exc
         elif name == "debug":
             self.io.print_str(bits or "[]")
-        elif name == "next":
-            return _utf8_bits(self._char())
         else:
             if self.ahead is None:
-                self.ahead = self._char()
+                self.ahead = self._read_char()
+            if name == "next":
+                result = _utf8_bits(self.ahead)
+                if self.ahead:
+                    self.ahead = None
+                return result
             return "1" if self.ahead else "0"
         return ""
 

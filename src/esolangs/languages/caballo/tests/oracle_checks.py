@@ -123,13 +123,12 @@ def check_raw_caballo():
         _check(_Machine, program, seed)
 
     class MissingOutput(_Machine):
-        def _output(self):
-            pass
+        def _output_stack(self, _mapping):
+            return None
 
     with pytest.raises(AssertionError):
         _check(MissingOutput, "i", ())
     _check_full_cases()
-    _check_writer_phase()
     _check_resource_literals()
     _check_seeded_routes()
     _check_public_randomness()
@@ -249,61 +248,6 @@ def _check_full_cases():
             _check_full(Frozen, source, stdin)
 
 
-def _check_writer_phase():
-    from esolangs import ProgramArtifact
-    from esolangs.debugger import make_debugger
-    from esolangs.vm import _capture_workspace
-
-    error, trace, _, _ = _full_model("i", "2", writer_prefix=2, idle_after_failure=2)
-    assert error == "writer"
-    failed_at = next((i for i, row in enumerate(trace) if row[1]))
-    for route in ("raw", "debug"):
-        if route == "raw":
-            io = ScriptedIO("2")
-            machine = _Machine("i", io, _CountedDraw(0))
-        else:
-            machine = make_debugger(
-                "Caballo", ProgramArtifact("i", "Caballo"), stdin="2", seed=0
-            )
-            io = machine.vm._io
-        write = io.print_str
-
-        def interrupted(text, _write=write):
-            _write(text[:2])
-            raise HaltError("controlled writer interruption")
-
-        io.print_str = interrupted
-        captured = []
-        for index, row in enumerate(trace):
-            if index:
-                try:
-                    machine.step()
-                except HaltError:
-                    assert index == failed_at
-                else:
-                    assert index != failed_at
-            snapshot = (
-                machine.workspace_snapshot()
-                if route == "raw"
-                else _capture_workspace(machine.vm)
-            )
-            reference = _FULL_WORKSPACE.capture(
-                **dict(zip(_FULL_WORKSPACE.components, _full_parts(row), strict=True))
-            )
-            assert snapshot == reference
-            assert (io.getvalue(), io.progress(), io.reads, io.past_end) == (
-                row[2],
-                1,
-                1,
-                0,
-            )
-            assert all((saved == expected for saved, expected in captured))
-            captured.append((snapshot, reference))
-            if route == "debug":
-                assert machine.observation.steps == min(index, failed_at - 1)
-                assert machine.observation.completion is None
-
-
 class _Capture(NamedTuple):
     row: tuple
     workspace: object
@@ -333,11 +277,19 @@ def _captured(raw, bounds, draws):
     )
 
 
-def _check_capture(captured, row, witness, held):
+def _check_capture(captured, row, witness, held, *, pending=None):
     _exact_value(captured.row, row)
-    _exact_value(captured.workspace.parts, _full_parts(row))
-    assert captured.cycle == (*row[0][:3], row[-1])
-    witness.sample(captured.workspace, _full_parts(row))
+    parts = cycle = _full_parts(row)
+    if pending is not None:
+        parts = (
+            *parts[:2],
+            workspace.WorkspaceVariant("pending_output", pending),
+            parts[3],
+        )
+        cycle = (*cycle, pending)
+    _exact_value(captured.workspace.parts, parts)
+    assert captured.cycle == cycle
+    witness.sample(captured.workspace, parts)
     held.append(
         (
             captured.workspace,
@@ -545,52 +497,61 @@ def _check_public_randomness():
 
 
 def _check_physical_write():
-    from esolangs import ProgramArtifact, ProgramError
-    from esolangs.debugger import make_debugger
+    from esolangs import ProgramError
 
-    for route in ("raw", "debug"):
-        for count in (0, 2):
-            _, rows, _, _ = _full_model(
-                "i", "2", writer_prefix=count, idle_after_failure=2
-            )
-            failed_at = next(i for i, row in enumerate(rows) if row[1])
-            if route == "raw":
-                machine = _Machine("i", ScriptedIO("2"), Seeded(0))
-                raw = machine
-            else:
-                machine = make_debugger(
-                    "Caballo", ProgramArtifact("i", "Caballo"), stdin="2", seed=0
+    _, rows, _, _ = _full_model("i", "2")
+    active = _active_rows(rows)
+    before, terminal = active[-2:]
+    text = terminal[2]
+    for route, layer, count in product(
+        ("raw", "debug"), ("_write", "print_str"), (0, 2)
+    ):
+        machine, raw, _ = _seeded_machine(route, "i", "2", 0)
+        write = raw.io._write
+        rejection = HaltError if layer == "print_str" else ValueError
+        error = (
+            ProgramError if route == "debug" and rejection is ValueError else rejection
+        )
+        attempts, held = [], []
+        witness = workspace.WorkspaceWitness(_FULL_WORKSPACE)
+
+        def fail(
+            value, _attempts=attempts, _count=count, _write=write, _error=rejection
+        ):
+            assert type(value) is str
+            if not _attempts and _count:
+                _write(value[:_count])
+            _attempts.append(value)
+            raise _error("controlled writer interruption")
+
+        for index, row in enumerate(active[:-1]):
+            if index:
+                machine.step()
+            _check_capture(_captured(raw, [], []), row, witness, held)
+        partial = (*before[:2], text[:count], *before[3:])
+        with patch.object(raw.io, layer, fail):
+            for _ in range(2):
+                with pytest.raises(
+                    error, match="controlled writer interruption"
+                ) as caught:
+                    machine.step()
+                assert type(caught.value) is error
+                _check_capture(
+                    _captured(raw, [], []),
+                    partial,
+                    witness,
+                    held,
+                    pending=((3,), count),
                 )
-                raw = machine.vm._machine
-            original = raw.io._write
-            writes = []
-
-            def fail(value, _writes=writes, _count=count, _original=original):
-                assert type(value) is str
-                assert value == "[3]"
-                _writes.append(value)
-                if _count:
-                    _original(value[:_count])
-                raise ValueError("controlled physical refusal")
-
-            witness = workspace.WorkspaceWitness(_FULL_WORKSPACE)
-            held = []
-            with patch.object(raw.io, "_write", fail):
-                for index, row in enumerate(rows):
-                    if index == failed_at:
-                        expected_error = ValueError if route == "raw" else ProgramError
-                        with pytest.raises(expected_error) as caught:
-                            machine.step()
-                        assert type(caught.value) is expected_error
-                    elif index:
-                        machine.step()
-                    _check_capture(_captured(raw, [], []), row, witness, held)
-                    assert raw.io._newline is False
-                    if route == "debug":
-                        assert machine.observation.steps == min(index, failed_at - 1)
-                        assert machine.observation.completion is None
-                assert writes == ["[3]"]
-            witness.finish()
+                assert raw.io._newline is False
+                if route == "debug":
+                    assert machine.observation.steps == len(active) - 2
+                    assert machine.observation.completion is None
+        assert attempts == [text, text[count:]]
+        for _ in range(3):
+            machine.step()
+            _check_capture(_captured(raw, [], []), terminal, witness, held)
+        witness.finish()
 
 
 def _exact_value(actual, expected):
@@ -605,51 +566,49 @@ def _exact_value(actual, expected):
             assert actual == expected
 
 
-def _draw_failure_rows(source, stdin):
-    _, rows, _, _ = _full_model(source, stdin, ticket=0)
-    failed_at = next(i for i, row in enumerate(rows) if row[1])
-    terminal = rows[failed_at]
-    # Finishing commits the model state before asking the provider for a value.
-    state = (*terminal[0][:4], (), *terminal[0][5:])
-    failed = (state, True, rows[failed_at - 1][2], terminal[3], terminal[4])
-    return [*rows[:failed_at], failed, failed, failed], failed_at
-
-
 def _check_provider_refusal():
     from esolangs import ProgramError
 
-    source, stdin = "(i+ii)", ""
-    rows, failed_at = _draw_failure_rows(source, stdin)
+    source = "(i+ii)"
+    rows = _active_rows(_full_model(source, "", seed=0)[1])
+    prior, terminal = rows[-2:]
     for route in ("raw", "prepared", "vm", "debug"):
-        machine, raw, provider = _seeded_machine(route, source, stdin, 0)
+        machine, raw, provider = _seeded_machine(route, source, "", 0)
         initial = random.Random(0).getstate()
-        bounds, held = [], []
+        attempts, held = [], []
 
-        def refuse(upper, _bounds=bounds):
-            _bounds.append(upper)
+        def refuse(upper, _attempts=attempts):
+            _attempts.append(upper)
             raise ValueError("controlled provider refusal")
 
         witness = workspace.WorkspaceWitness(_FULL_WORKSPACE)
+        for index, row in enumerate(rows[:-1]):
+            if index:
+                machine.step()
+            _check_capture(_captured(raw, [], []), row, witness, held)
+        expected = ValueError if route in ("raw", "prepared") else ProgramError
         with patch.object(provider, "randbelow", refuse):
-            for index, row in enumerate(rows):
-                if index == failed_at:
-                    expected = (
-                        ValueError if route in ("raw", "prepared") else ProgramError
-                    )
-                    with pytest.raises(expected) as caught:
-                        machine.step()
-                    assert type(caught.value) is expected
-                elif index:
+            for _ in range(2):
+                with pytest.raises(
+                    expected, match="controlled provider refusal"
+                ) as caught:
                     machine.step()
-                capture = _captured(raw, bounds, [])
-                _check_capture(capture, row, witness, held)
-                assert capture.rng_state == initial
+                assert type(caught.value) is expected
+                state = prior[0]
+                fault = ((*state[:3], tuple(attempts), *state[4:]), *prior[1:])
+                captured = _captured(raw, attempts, [])
+                _check_capture(captured, fault, witness, held)
+                assert captured.rng_state == initial
                 assert raw._rng is provider
                 assert raw.io._newline is False
                 if route == "debug":
-                    assert machine.observation.steps == min(index, failed_at - 1)
+                    assert machine.observation.steps == len(rows) - 2
                     assert machine.observation.completion is None
-            assert bounds == [2]
+        assert attempts == [2, 2]
+        bounds, draws = [], []
+        _audit_draw(provider, bounds, draws)
+        machine.step()
+        _check_capture(_captured(raw, bounds, draws), terminal, witness, held)
         witness.finish()
 
 

@@ -4,6 +4,8 @@ from itertools import product
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, Language
+from esolangs.exceptions import ProgramError
 from esolangs.languages.bleh.interpreter import _Machine, run
 from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import native_runner
@@ -89,6 +91,31 @@ def test_a_forced_argument_is_read_once(monkeypatch) -> None:
     for char, sentinel in product(("b", "é", "😀"), ("z", "!")):
         assert _out(code, char + sentinel) == char * 2
         check(code, char * 2, char + sentinel, 1)
+
+    api = Language("Bleh")
+    limits = ExecutionLimits(max_steps=30)
+    next_character = "io::print(io::next())"
+    for expression, steps in (
+        (next_character, 3),
+        (f"{{io::hasNext(); {next_character}}}", 7),
+    ):
+        source = f"^:std::io; main := {expression};"
+        debugger = api.make_debugger(source, stdin="\ud800A")
+        with pytest.raises(ProgramError, match="surrogates not allowed") as first:
+            debugger.run(limits=limits)
+        expected = ExecutionResult("", 1, 1, 0, steps=steps)
+        assert first.value.observation == debugger.observation == expected
+        snapshot = debugger.snapshot()
+        assert snapshot[-2] == "\ud800"
+        with pytest.raises(ProgramError, match="surrogates not allowed") as second:
+            debugger.run(limits=limits)
+        assert second.value is not first.value
+        assert second.value.observation == debugger.observation == expected
+        assert debugger.snapshot() == snapshot
+        valid = api.run(source, stdin="éA", limits=limits)
+        assert (valid.output, valid.input_position, valid.input_reads) == ("é", 1, 1)
+        eof = api.run(source, limits=limits)
+        assert (eof.output, eof.input_reads, eof.input_past_end) == ("", 0, 1)
 
     from esolangs.languages.bleh import interpreter
     from tests.support.prepared_support import check_image_reuse

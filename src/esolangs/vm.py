@@ -26,7 +26,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 import esolangs._cycles as _cycles
-from esolangs._cycles import _drive_until_halt
+from esolangs._cycles import _check_driver, _check_driver_fields, _drive_until_halt
 from esolangs._cycles import (
     run_until_halt as run_until_halt,
 )
@@ -86,21 +86,25 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     """
     if max_steps is not None:
         max_steps = check_whole(max_steps, "max_steps")
+    _check_driver(vm, "vm", "self_halts")
     if not vm.self_halts and not vm.halted:
         raise ArgumentError("completion requires a machine that self-halts")
     steps = _drive_until_halt(vm, max_steps, on_fault=partial(_retain_fault_steps, vm))
     if steps is None:
+        _check_driver_fields(vm, "vm", "output")
         error = steps_exhausted("VM completion exhausted max_steps")
         # Without a stop predicate, an active return has used the full budget.
         error.observation = replace(_capture_observation(vm), steps=max_steps)
         error.partial_output = error.observation.output
         raise error
+    _check_driver_fields(vm, "vm", "dumps_on_the_post_halt_step")
     dump_pending = vm.dumps_on_the_post_halt_step and not _post_halt_dumped(vm)
     try:
         finalize(vm, policy=Completion.POST_HALT if dump_pending else Completion.HALTED)
     except EsolangError as error:
         _retain_fault_steps(vm, error, steps)
         raise
+    _check_driver_fields(vm, "vm", "output")
     return vm.output
 
 

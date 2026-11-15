@@ -2,13 +2,13 @@
 
 import random
 from collections.abc import Callable
+from decimal import Decimal
 from typing import NamedTuple
 
 import pytest
 
 from esolangs.generation.helpers import permute_truth_table, reflected_table
 from esolangs.registry import LANGUAGES
-from esolangs.runtime._digits import digit_limit_for
 from scripts.docs.fragments import section
 from scripts.docs.resource_evidence import PACKAGES, _provider
 from tests.support.witness_tables import parity as _parity
@@ -192,9 +192,8 @@ def _grapheme_worst(n: int) -> tuple[str, ...]:
     """The longest lift, 10^(d-1) - 1, and the largest: the top valid residue."""
     t = 1 << n
     span = 1 << t
-    with digit_limit_for(t):  # 0.31T digits, past the 4300 default from n = 14
-        d = len(str(span))
-        top = f"{10 ** (d - 1) - 1:0{t}b}"
+    d = len(str(Decimal(span)))
+    top = f"{10 ** (d - 1) - 1:0{t}b}"
     covered = []
     for j in range(d):
         lo = 10**j % span

@@ -249,15 +249,27 @@ def test_exhaustion_keeps_partial_state_and_can_resume() -> None:
     assert complete_vm(vm, max_steps=2) == "\x01"
 
 
-@pytest.mark.parametrize("budget", [-1, True, 1.5])
-def test_completion_rejects_invalid_budgets(budget) -> None:
-    with pytest.raises(esolangs.ArgumentError):
-        complete_vm(make_vm(REFERENCE, "+."), max_steps=budget)
+def test_completion_rejects_invalid_arguments() -> None:
+    for budget in (-1, True, 1.5):
+        with pytest.raises(esolangs.ArgumentError, match="max_steps"):
+            complete_vm(object(), max_steps=budget)
+    with pytest.raises(esolangs.ArgumentError, match=r"vm.*step"):
+        complete_vm(object())
+    with pytest.raises(esolangs.ArgumentError, match=r"vm.*self_halts"):
+        complete_vm(TestRunUntilHalt._counter(1))
 
 
 @pytest.mark.medium
 def test_completion_can_opt_out_of_the_step_budget() -> None:
-    assert complete_vm(make_vm(REFERENCE, "+."), max_steps=None) == "\x01"
+    vm = make_vm(REFERENCE, "+.")
+
+    class VMProxy:
+        def __getattr__(self, name):
+            return getattr(vm, name)
+
+    proxy = VMProxy()
+    assert run_until_halt(proxy, limit=1) is False
+    assert complete_vm(proxy, max_steps=None) == "\x01"
 
 
 @pytest.mark.parametrize("metadata", ["caller metadata", Completion.PERIODIC])

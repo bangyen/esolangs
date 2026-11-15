@@ -1,13 +1,14 @@
 """The five hang detectors."""
 
 from dataclasses import replace
+from functools import wraps
 from random import Random
 
 import pytest
 
 from esolangs import Catalog, ExecutionLimits, Language
 from esolangs.debugger import Debugger
-from esolangs.exceptions import ExecutionCapError, ExecutionTimeoutError
+from esolangs.exceptions import ArgumentError, ExecutionCapError, ExecutionTimeoutError
 from esolangs.languages.brainfuck.interpreter import _Machine as Brainfuck
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.io import ScriptedIO
@@ -99,8 +100,6 @@ def test_growth_detector_accepts_halt_at_step_limit(program: str, limit: int) ->
 )
 @pytest.mark.parametrize("limit", [float("nan"), float("inf"), 1.5, "3", True, -1])
 def test_invalid_limit_is_refused_before_machine_acquisition(detector, limit) -> None:
-    from esolangs.exceptions import ArgumentError
-
     with pytest.raises(ArgumentError, match="limit"):
         detector(object(), limit=limit)
 
@@ -135,6 +134,37 @@ def test_stop_callback_only_fires_before_a_permitted_step() -> None:
         assert run_until_halt(vm, limit=limit, stop=stop) is (limit == 2)
         assert seen == calls
         assert vm.ip == limit
+    for source, limit in (("", 1), ("++", 0), ("++", 1)):
+        vm = make_vm(REFERENCE, source)
+        for invalid in (1, lambda _required: False):
+            with pytest.raises(ArgumentError, match="stop must be callable"):
+                run_until_halt(vm, limit=limit, stop=invalid)
+        assert vm.ip == 0
+
+    @wraps(lambda _event: False)
+    def adapter() -> bool:
+        return True
+
+    assert run_until_halt(vm, limit=2, stop=adapter) is False
+    assert vm.ip == 0
+    assert run_until_halt(vm, limit=2, stop=bool)
+
+
+def test_halt_driver_requires_a_stepper_before_inspecting_state() -> None:
+    class MissingStep:
+        @property
+        def halted(self):
+            pytest.fail("validation must precede reading state")
+
+    class MissingHalted:
+        def step(self):
+            pytest.fail("validation must precede stepping")
+
+    for machine in (object(), MissingStep()):
+        with pytest.raises(ArgumentError, match=r"machine.*step"):
+            run_until_halt(machine, limit=0)
+    with pytest.raises(ArgumentError, match=r"machine.*halted"):
+        run_until_halt(MissingHalted(), limit=0)
 
 
 def test_branch_search_does_not_hide_an_unexpected_or_global_failure() -> None:
@@ -239,6 +269,29 @@ _PROOFS = [
     run_until_halt_or_growth,
     run_until_halt_or_value_growth,
 ]
+
+
+def test_proof_drivers_refuse_noncallable_members_before_stepping() -> None:
+    class Machine(_Climber):
+        def snapshot(self) -> int:
+            return self.n
+
+    for detector, member, machine in (
+        *(
+            (detector, "step", Machine())
+            for detector in (run_until_halt_or_cycle, *_PROOFS)
+        ),
+        (run_until_halt_or_cycle, "snapshot", Machine()),
+        (
+            run_until_halt_or_all_branches_cycle,
+            "branching_successors",
+            _RandomClimber(),
+        ),
+    ):
+        setattr(machine, member, 1)
+        with pytest.raises(TypeError, match=rf"{member} must be callable"):
+            detector(machine, limit=0)
+        assert machine.n == 0
 
 
 @pytest.mark.parametrize("detector", _PROOFS)

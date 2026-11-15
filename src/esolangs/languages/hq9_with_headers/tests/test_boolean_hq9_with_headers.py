@@ -1,5 +1,6 @@
 """Tests for the HQ9+ with headers Boolean generator."""
 
+import sys
 from unittest.mock import patch
 
 import pytest
@@ -12,6 +13,7 @@ from tests.support.generator_support import (
     three_input_corpus_size,
 )
 from tests.support.witness_tables import SMALL_TABLES as TABLES
+from tests.support.witness_tables import parity
 
 
 def test_every_row_prints_its_answer() -> None:
@@ -27,6 +29,26 @@ def test_every_row_prints_its_answer() -> None:
             with patch.object(generator, "_ANSWER", answer):
                 assert evaluate_generated("HQ9+ with headers", "0011") == "1100"
         assert_every_row("HQ9+ with headers", table)
+
+    language = esolangs.Language("HQ9+ with headers")
+    table = parity(12)
+    cap = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        with patch.object(
+            sys, "set_int_max_str_digits", wraps=sys.set_int_max_str_digits
+        ) as set_cap:
+            program = language.generate(table).source
+            set_cap.assert_not_called()
+        assert len(program) == 1594
+        for row in (0, 1, 2048, 4095):
+            stdin = language.encode_inputs([int(bit) for bit in f"{row:012b}"])
+            result = language.execute(
+                program, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=57)
+            ).unwrap()
+            assert result.output == table[row]
+    finally:
+        sys.set_int_max_str_digits(cap)
 
 
 @pytest.mark.parametrize("bit", ["0", "1"])

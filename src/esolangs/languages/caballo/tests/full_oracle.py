@@ -142,7 +142,6 @@ class _Rendered(NamedTuple):
     """A terminal effect and its independent draw evidence."""
 
     output: str
-    error: str | None
     bounds: tuple[int, ...]
     draws: tuple[int, ...]
 
@@ -157,9 +156,9 @@ def _initial_values(stdin):
     return (None, values)
 
 
-def _finish_output(current, random_source, ticket, writer_prefix):
+def _finish_output(current, random_source, ticket):
     """Choose the terminal positive stack and render one optional effect."""
-    output, error, bounds, draws = ("", None, [], [])
+    output, bounds, draws = "", [], []
     positive = [(stack, weight) for stack, weight in _canonical(current) if weight > 0]
     if positive:
         chosen = positive[0][0]
@@ -175,28 +174,14 @@ def _finish_output(current, random_source, ticket, writer_prefix):
                     chosen = stack
                     break
                 remaining -= weight
-        rendered = "[" + ",".join(format(Decimal(value), "f") for value in chosen) + "]"
-        output += rendered[:writer_prefix]
-        if writer_prefix is not None:
-            error = "writer"
-    return _Rendered(output, error, tuple(bounds), tuple(draws))
+        output = "[" + ",".join(format(Decimal(value), "f") for value in chosen) + "]"
+    return _Rendered(output, tuple(bounds), tuple(draws))
 
 
-def _full_model(
-    source,
-    stdin,
-    *,
-    cap=256,
-    ticket=None,
-    seed=0,
-    writer_prefix=None,
-    idle_after_failure=0,
-):
+def _full_model(source, stdin, *, cap=256, ticket=None, seed=0):
     """Return raw error, trace, constructor IO and exact immutable program view.
 
-    Standard rows retain observed's five fields. State adds draw bounds and
-    successful/failed read counts after the native state/done fields. A controlled
-    writer failure commits done before retaining its prefix; idles stay faulted.
+    State adds draw and read counts after the native state and done fields.
     """
     try:
         tree = _tree(source)
@@ -249,7 +234,6 @@ def _full_model(
         return (state, done, output, consumed, consumed)
 
     trace = [row()]
-    error = None
     for _ in range(cap):
         if done:
             break
@@ -277,11 +261,10 @@ def _full_model(
             work.pop()
             if not work:
                 done = True
-                rendered = _finish_output(current, random_source, ticket, writer_prefix)
+                rendered = _finish_output(current, random_source, ticket)
                 bounds.extend(rendered.bounds)
                 draws.extend(rendered.draws)
                 output += rendered.output
-                error = rendered.error
             else:
                 group = work[-1]
                 total = _combined(group.total, current)
@@ -302,12 +285,9 @@ def _full_model(
                     group.total = total
                     work.append(_Sequence(group.path))
         trace.append(row())
-        if error:
-            trace.extend(row() for _ in range(idle_after_failure))
-            break
-    if done and (not error):
+    if done:
         trace.extend(row() for _ in range(3))
-    return (error, trace, (consumed, reads, past_end), program)
+    return (None, trace, (consumed, reads, past_end), program)
 
 
 def _full_parts(row):

@@ -178,7 +178,7 @@ def test_worker_ignores_python_environment_when_the_parent_does(flag, tmp_path) 
 
 
 @pytest.mark.medium
-def test_worker_preserves_parent_site_flags(tmp_path) -> None:
+def test_worker_preserves_parent_python_startup_policy(tmp_path) -> None:
     executable = sys._base_executable
     userbase = tmp_path / "user-base"
     env = {
@@ -210,24 +210,51 @@ if sys.flags.isolated:
     subprocess.Popen = with_user_site
 cap = esolangs.ExecutionLimits(max_output=1)
 for options in ({}, {'isolated': True}, {'limits': cap}):
-    assert esolangs.run('brainfuck', ',.', stdin='é', **options).output == 'é'
+    output = esolangs.run('brainfuck', ',.', stdin='é', **options).output
+    if output != 'é':
+        raise AssertionError(output)
 """
+
+    def run(*flags: str) -> None:
+        result = subprocess.run(
+            [executable, *flags, "-c", probe, str(package_root), str(userbase)],
+            env=env,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+        assert (result.returncode, result.stdout) == (0, b""), result.stderr
+
+    hook = usersite / "usercustomize.py"
     for with_hook in (False, True):
         if with_hook:
-            (usersite / "usercustomize.py").write_text("print('user-site startup')\n")
+            hook.write_text("print('user-site startup')\n")
             output = subprocess.check_output(
                 [executable, "-c", "pass"], env=env, timeout=10
             )
             assert b"user-site startup" in output
         for flag in ("-s", "-I", "-S"):
-            result = subprocess.run(
-                [executable, flag, "-c", probe, str(package_root), str(userbase)],
-                env=env,
-                capture_output=True,
-                timeout=10,
-                check=False,
-            )
-            assert (result.returncode, result.stdout) == (0, b""), result.stderr
+            run(flag)
+
+    observed = tmp_path / "startup.jsonl"
+    cache = str(tmp_path / "cache prefix")
+    hook.write_text(f"""\
+import json
+import sys
+policy = [sys.dont_write_bytecode, sys.pycache_prefix, sys.flags.optimize]
+with open({str(observed)!r}, 'a', encoding='utf-8') as log:
+    log.write(json.dumps(policy) + '\\n')
+""")
+    for flags, policy in (
+        ((), [False, None, 0]),
+        (("-B",), [True, None, 0]),
+        (("-OO", "-X", f"pycache_prefix={cache}"), [False, cache, 2]),
+    ):
+        observed.unlink(missing_ok=True)
+        run(*flags)
+        assert [json.loads(line) for line in observed.read_text().splitlines()] == [
+            policy
+        ] * 3
 
 
 @pytest.mark.medium

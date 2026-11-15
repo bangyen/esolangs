@@ -53,9 +53,9 @@ archive_context = {  }
 version = 1
 
 [[evidence.anchors]]
-arity = 10
+arity = 12
 rule = "parity"
-size = 661
+size = 1594
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers_request"

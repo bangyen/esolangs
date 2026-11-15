@@ -48,8 +48,12 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+)
+from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.randomness import Randomness, draw
 
@@ -255,6 +259,7 @@ class _Machine:
         self._rng = rng
         self.program = parse(code) if isinstance(code, str) else code
         self.done = False
+        self._pending_output: tuple[_Stack, int] | None = None
         # The input is the initial state, not a command's read, so it is
         # taken here and every step after is a pure transition.
         stack = _read_stack(io.input_all())
@@ -281,17 +286,24 @@ class _Machine:
             distribution=tuple(
                 (tuple(stack), weight) for stack, weight in self.state.mapping
             ),
-            stopped=self.done,
+            stopped=(
+                self.done
+                if self._pending_output is None
+                else WorkspaceVariant("pending_output", self._pending_output)
+            ),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.done, self.io.progress())
+        boundary = (*self.state, self.done, self.io.progress())
+        if self._pending_output is None:
+            return boundary
+        return (*boundary, self._pending_output)
 
     def branching_snapshot(self) -> tuple[object, ...]:
-        """Return the immutable state the branching search walks."""
-        return self.snapshot()
+        """Return the control state, since the selected output cannot change it."""
+        return self.snapshot()[:4]
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has finished and printed."""
@@ -322,25 +334,53 @@ class _Machine:
         """Advance one step; draw and print once the frames run out."""
         if self.done:
             return
-        self.state = _advance(self.state, self.program)
-        if not self.state.frames:
-            self.done = True
-            self._output()
+        moved = _advance(self.state, self.program)
+        if moved.frames:
+            self.state = moved
+            return
+        if self._pending_output is None:
+            stack = self._output_stack(moved.mapping)
+            if stack is not None:
+                self._pending_output = stack, 0
+        if self._pending_output is not None:
+            stack, sent = self._pending_output
+            text = _render(stack)[sent:]
+            if text:
+                self._write_output(moved, stack, sent, text)
+        self.state = moved
+        self.done = True
+        self._pending_output = None
 
-    def _output(self) -> None:
-        """Drop negative weights, then print one stack drawn by weight."""
-        kept = [(s, w) for s, w in self.state.mapping if w > 0]
+    def _write_output(self, moved: _State, stack: _Stack, sent: int, text: str) -> None:
+        io = self.io
+        if not isinstance(io, ScriptedIO):
+            # A bare sink gives no way to tell what it accepted on refusal.
+            self.state = moved
+            self.done = True
+            self._pending_output = None
+            io.print_str(text)
+            return
+        before = len(io.getvalue())
+        try:
+            io.print_str(text)
+        except BaseException:
+            accepted = len(io.getvalue()) - before
+            self._pending_output = stack, sent + accepted
+            raise
+
+    def _output_stack(self, mapping: _Mapping) -> _Stack | None:
+        """Drop negative weights, then choose one stack by weight."""
+        kept = [(s, w) for s, w in mapping if w > 0]
         if not kept:
-            return
+            return None
         if len(kept) == 1:
-            self.io.print_str(_render(kept[0][0]))
-            return
+            return kept[0][0]
         ticket = draw(self._rng, sum(w for _, w in kept))
         for stack, weight in kept:
             if ticket < weight:
-                self.io.print_str(_render(stack))
-                return
+                return stack
             ticket -= weight
+        return None
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

@@ -528,6 +528,17 @@ def _launch(
     }
     env.pop("PYTHONPATH", None)
     env["PYTHONIOENCODING"] = "utf-8"
+    # Use the running interpreter's effective cache policy, which may have
+    # come from command-line flags or changed since startup.
+    for name, value in (
+        ("PYTHONDONTWRITEBYTECODE", "1" if sys.dont_write_bytecode else None),
+        ("PYTHONPYCACHEPREFIX", sys.pycache_prefix),
+        ("PYTHONOPTIMIZE", str(sys.flags.optimize) if sys.flags.optimize else None),
+    ):
+        if value is None:
+            env.pop(name, None)
+        else:
+            env[name] = value
     # Match the importer's string-only search without embedding custom reprs.
     search_path = [str.__str__(path) for path in sys.path if isinstance(path, str)]
     # Site hooks run before the worker can restore the parent's search path.
