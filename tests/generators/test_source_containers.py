@@ -115,6 +115,33 @@ def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
     assert esolangs.run(REFERENCE, source, stdin="Z").output == "Z"
 
 
+def test_managed_program_selects_the_read_descriptor_once() -> None:
+    class Stream:
+        lookups = 0
+        reads = 0
+
+        @property
+        def read(self):
+            self.lookups += 1
+            source = "+." if self.lookups == 1 else "++."
+
+            def snapshot() -> str:
+                self.reads += 1
+                return source
+
+            return snapshot
+
+    api = esolangs.Language(REFERENCE)
+    for run in (
+        api.run,
+        lambda stream: api.prepare(stream).run(),
+        lambda stream: api.run(api.from_json(api.to_json(stream))),
+    ):
+        stream = Stream()
+        assert run(stream).output == "\x01"
+        assert (stream.lookups, stream.reads) == (1, 1)
+
+
 @pytest.mark.skipif(os.name != "posix", reason="requires POSIX nonblocking pipes")
 def test_nonblocking_raw_program_waits_for_a_delayed_suffix() -> None:
     prefix_read = Event()

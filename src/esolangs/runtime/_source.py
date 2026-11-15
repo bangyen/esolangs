@@ -65,8 +65,9 @@ def _read_container(
         if not isinstance(source, (str, bytes)):
             label = "the program stream"
             reading_stream = True
-            if callable(getattr(source, "read", None)):
-                value = read_snapshot(source)
+            reader = getattr(source, "read", None)
+            if callable(reader):
+                value = read_snapshot(source, reader=reader)
         if isinstance(value, str):
             return str.__str__(value), None
         if isinstance(value, bytes):

@@ -6,13 +6,17 @@ carries a size and a deadline, and two notices say why nothing happened.
 
 from __future__ import annotations
 
+import os
+import select
+import stat
 import sys
 import threading
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from contextvars import copy_context
 from io import BufferedReader, FileIO
-from time import monotonic
+from math import ceil
+from time import monotonic, sleep
 from typing import BinaryIO, cast
 
 from esolangs.artifacts import ProgramArtifact
@@ -22,7 +26,9 @@ from esolangs.exceptions import EsolangError
 from esolangs.operations.source import _check_program
 from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._files import (
+    _BLOCK,
     StreamReadTimeoutError,
+    _time_remaining,
     read_snapshot,
     stream_read_deadline,
 )
@@ -241,6 +247,61 @@ def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:
     return None
 
 
+def _read_pipe_without_poll(
+    stream: BufferedReader, fd: int, deadline: float | None
+) -> bytes:
+    """Drain an anonymous pipe where poll is unavailable, including Windows."""
+    blocking = os.get_blocking(fd)
+    data = bytearray()
+    while True:
+        remaining = _time_remaining(deadline)
+        if blocking:
+            os.set_blocking(fd, False)
+        try:
+            chunk: bytes | None = stream.read(_BLOCK)
+        except BlockingIOError:
+            chunk = None
+        finally:
+            if blocking:
+                os.set_blocking(fd, True)
+        if chunk is None:
+            # Restore the caller's mode before waiting for more data.
+            sleep(0.01 if remaining is None else min(0.01, remaining))
+        elif not chunk:
+            return bytes(data)
+        else:
+            data.extend(chunk)
+
+
+def _read_buffered_stdin(stream: BufferedReader, deadline: float | None) -> bytes:
+    """Drain buffered bytes without holding the stdin lock across a pipe wait."""
+    raw = stream.raw
+    if not isinstance(raw, FileIO):
+        return read_snapshot(stream)
+    fd = raw.fileno()
+    mode = os.fstat(fd).st_mode
+    if stat.S_ISREG(mode):
+        return read_snapshot(stream)
+    if not hasattr(select, "poll"):
+        if stat.S_ISFIFO(mode):
+            return _read_pipe_without_poll(stream, fd, deadline)
+        return read_snapshot(raw)
+    if not os.get_blocking(fd):
+        return read_snapshot(stream)
+    poller = select.poll()
+    poller.register(fd, select.POLLIN)
+    data = bytearray()
+    while True:
+        remaining = _time_remaining(deadline)
+        timeout = None if remaining is None else min(ceil(remaining * 1000), 2**31 - 1)
+        if poller.poll(timeout):
+            # read1 consumes buffered bytes or performs at most one ready read.
+            chunk = stream.read1(_BLOCK)
+            if not chunk:
+                return bytes(data)
+            data.extend(chunk)
+
+
 def _read_stdin(
     timeout: float | None = None, hint: str = "", *, timeout_flag: str = ""
 ) -> str:
@@ -260,11 +321,8 @@ def _read_stdin(
         stream = cast("BinaryIO | None", getattr(stdin, "buffer", None))
         try:
             with stream_read_deadline(deadline):
-                # A blocked daemon must leave the BufferedReader unlocked at shutdown.
-                if isinstance(stream, BufferedReader) and isinstance(
-                    stream.raw, FileIO
-                ):
-                    return read_snapshot(stream.raw).decode("utf-8")
+                if isinstance(stream, BufferedReader):
+                    return _read_buffered_stdin(stream, deadline).decode("utf-8")
                 if stream is not None:
                     return read_snapshot(stream).decode("utf-8")
                 return read_snapshot(stdin)

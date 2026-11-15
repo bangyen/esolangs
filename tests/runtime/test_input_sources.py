@@ -85,6 +85,36 @@ def test_nonblocking_text_stdin_does_not_execute_a_partial_input(nonblocking_pip
         assert esolangs.run(REFERENCE, ",.", stdin=source).output == "A"
 
 
+@pytest.mark.parametrize("blocking", [False, True])
+def test_buffered_read_write_pair_reads_through_eof(nonblocking_pipe, blocking):
+    raw, writer = nonblocking_pipe
+    os.set_blocking(raw.fileno(), blocking)
+    with io.FileIO(os.devnull, "wb") as sink, io.BufferedRWPair(raw, sink) as source:
+        writer.write(b"AB")
+        writer.close()
+        assert source.read(1) == b"A"
+        assert esolangs.run(REFERENCE, ",.", stdin=source).output == "B"
+        assert not source.closed
+        assert os.get_blocking(raw.fileno()) is blocking
+
+
+@pytest.mark.parametrize("budget", [{}, {"total_timeout": 5}])
+def test_buffered_read_write_pair_refuses_partial_input(nonblocking_pipe, budget):
+    raw, writer = nonblocking_pipe
+    limits = esolangs.ExecutionLimits(**budget)
+    with io.FileIO(os.devnull, "wb") as sink, io.BufferedRWPair(raw, sink) as source:
+        writer.write(b"A")
+        outcome = esolangs.execute(REFERENCE, ",.,.", stdin=source, limits=limits)
+        assert isinstance(outcome.error, esolangs.ArgumentError)
+        assert "stream would block" in str(outcome.error)
+        assert outcome.observation == esolangs.ExecutionResult("", None, None, None)
+        writer.write(b"B")
+        writer.close()
+        assert esolangs.run(REFERENCE, ",.", stdin=source, limits=limits).output == "B"
+        assert not source.closed
+        assert not os.get_blocking(raw.fileno())
+
+
 @pytest.mark.parametrize("budget", [{}, {"max_steps": 2}, {"total_timeout": 5}])
 def test_stdin_read_access_and_managed_errors_preserve_the_boundary(budget):
     class NoReader:

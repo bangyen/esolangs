@@ -3,21 +3,22 @@
 import os
 import select
 import stat
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from io import BufferedReader, FileIO, IOBase
+from io import BufferedReader, BufferedRWPair, FileIO, IOBase
 from math import ceil
 from os import PathLike, fspath
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import monotonic
-from typing import IO, overload
+from typing import IO, cast, overload
 
 from esolangs.exceptions import ArgumentError
 
 _STREAM_DEADLINE: ContextVar[float | None] = ContextVar("stream_deadline", default=None)
 _BLOCK = 65_536
+_WOULD_BLOCK = "stream would block; supply the complete contents"
 
 
 class StreamReadTimeoutError(TimeoutError):
@@ -60,16 +61,27 @@ def _time_remaining(deadline: float | None) -> float | None:
 
 
 def _binary_snapshot(
-    stream: FileIO | BufferedReader, fd: int, size: int | None, deadline: float | None
+    stream: FileIO | BufferedReader | BufferedRWPair,
+    fd: int | None,
+    size: int | None,
+    deadline: float | None,
+    reader: Callable[..., str | bytes | None] | None,
 ) -> bytes:
-    """Read through true EOF, a byte cap, or the acquisition deadline."""
-    poller = select.poll()
-    poller.register(fd, select.POLLIN)
+    """Read binary chunks through true EOF or a byte cap."""
+    read = (
+        stream.read if reader is None else cast("Callable[[int], bytes | None]", reader)
+    )
+    poller = None
+    if fd is not None:
+        poller = select.poll()
+        poller.register(fd, select.POLLIN)
     data = bytearray()
     while size is None or len(data) < size:
         remaining = _time_remaining(deadline)
-        chunk = stream.read(_BLOCK if size is None else min(_BLOCK, size - len(data)))
+        chunk = read(_BLOCK if size is None else min(_BLOCK, size - len(data)))
         if chunk is None:
+            if poller is None:
+                raise BlockingIOError(_WOULD_BLOCK)
             # poll's millisecond timeout is a C int independently of Python's clock.
             poller.poll(
                 None if remaining is None else min(ceil(remaining * 1000), 2**31 - 1)
@@ -82,33 +94,51 @@ def _binary_snapshot(
 
 
 @overload
-def read_snapshot(stream: IO[str], *, size: int | None = None) -> str: ...
+def read_snapshot(
+    stream: IO[str],
+    *,
+    size: int | None = None,
+    reader: Callable[..., str | None] | None = None,
+) -> str: ...
 
 
 @overload
-def read_snapshot(stream: IO[bytes], *, size: int | None = None) -> bytes: ...
+def read_snapshot(
+    stream: IO[bytes],
+    *,
+    size: int | None = None,
+    reader: Callable[..., bytes | None] | None = None,
+) -> bytes: ...
 
 
 def read_snapshot(
-    stream: IO[str] | IO[bytes], *, size: int | None = None
+    stream: IO[str] | IO[bytes],
+    *,
+    size: int | None = None,
+    reader: Callable[..., str | bytes | None] | None = None,
 ) -> str | bytes:
-    """Read from the current position without closing or changing the stream."""
+    """Read from the current position, reusing an already-bound reader if given."""
     fd = _nonblocking_fd(stream) if isinstance(stream, IOBase) else None
     deadline = _STREAM_DEADLINE.get()
     _time_remaining(deadline)
+    if isinstance(stream, BufferedRWPair):
+        # The reader's fd is private. Sized reads distinguish None from EOF,
+        # while an unbounded read can return a prefix before the writer closes.
+        return _binary_snapshot(stream, None, size, deadline, reader)
     if fd is not None:
         if hasattr(select, "poll") and (
             isinstance(stream, FileIO)
             or (isinstance(stream, BufferedReader) and isinstance(stream.raw, FileIO))
         ):
-            return _binary_snapshot(stream, fd, size, deadline)
+            return _binary_snapshot(stream, fd, size, deadline, reader)
         raise BlockingIOError(
             "cannot detect EOF on this nonblocking stream; "
             "pass a blocking stream or supply the complete contents"
         )
-    value = stream.read() if size is None else stream.read(size)
+    read = stream.read if reader is None else reader
+    value = read() if size is None else read(size)
     if value is None:
-        raise BlockingIOError("stream would block; supply the complete contents")
+        raise BlockingIOError(_WOULD_BLOCK)
     return value
 
 
