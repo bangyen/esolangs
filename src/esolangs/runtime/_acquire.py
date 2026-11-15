@@ -90,8 +90,8 @@ class PendingInput:
 
 
 def bind_prepared_input(stdin: InputSource, timeout: float) -> str | PendingInput:
-    """Bind fresh stdin under a deadline without consuming the reader yet."""
-    if _has_backing_type(stdin, str) or _has_backing_type(stdin, bytes):
+    """Decode bytes or bind a reader under the preparation deadline."""
+    if _has_backing_type(stdin, str):
         return read_input(stdin)
     deadline = monotonic() + timeout
     context = copy_context()
@@ -100,10 +100,11 @@ def bind_prepared_input(stdin: InputSource, timeout: float) -> str | PendingInpu
         with stream_read_deadline(deadline):
             return PendingInput(check_input(stdin), deadline, context)
 
-    return acquire(
+    bound = acquire(
         bind,
         deadline,
         preparation_expired,
         clock=monotonic,
         context=context,
     )
+    return bound.checked if isinstance(bound.checked, str) else bound

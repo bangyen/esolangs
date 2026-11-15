@@ -623,7 +623,7 @@ def test_prepared_stdin_acquisition_respects_preparation_deadline(
 
 
 def test_prepared_input_binding_and_read_share_deadline(monkeypatch) -> None:
-    from esolangs.runtime import _acquire, _prepared
+    from esolangs.runtime import _acquire, _input, _prepared
 
     prepared = esolangs.Language(REFERENCE).prepare(",.")
     stdin = StringIO("A")
@@ -641,6 +641,31 @@ def test_prepared_input_binding_and_read_share_deadline(monkeypatch) -> None:
     )
     assert outcome.bound == "preparation_timeout"
     assert stdin.tell() == 0
+
+    monkeypatch.setattr(_prepared, "runtime_hook", resolve)
+    decode = _input._decode_input
+
+    def delayed_decode(raw):
+        timeline[0] += 2
+        return decode(raw)
+
+    monkeypatch.setattr(_input, "_decode_input", delayed_decode)
+    encoded = "é".encode()
+    for max_steps in (None, 2):
+        limits = esolangs.ExecutionLimits(preparation_timeout=1, max_steps=max_steps)
+        for binary in (encoded, BytesIO(encoded)):
+            stopped = prepared.execute(stdin=binary, limits=limits)
+            assert stopped.bound == "preparation_timeout"
+            assert stopped.observation == esolangs.ExecutionResult("", None, None, None)
+        for binary in (encoded, BytesIO(encoded)):
+            ready = prepared.run(
+                stdin=binary, limits=replace(limits, preparation_timeout=3)
+            )
+            assert (ready.output, ready.input_reads) == ("é", 1)
+        ready = prepared.run(
+            stdin="é", limits=replace(limits, preparation_timeout=1e-30)
+        )
+        assert ready.output == "é"
 
 
 def _check_uniform_outcomes_and_phase_limits():

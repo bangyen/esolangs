@@ -39,7 +39,7 @@ import shlex
 import sys
 from collections.abc import Callable, Mapping
 from contextlib import suppress
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from itertools import chain, pairwise
 from typing import cast, get_args
 
@@ -664,6 +664,8 @@ def _describe(rest: list[str]) -> None:
         input_sentence = (
             _input_sentence(facts, catalog=catalog) if facts.reads_input else ""
         )
+        values, _ = _answer_codec(facts.name, catalog.languages[facts.name].contract)
+        facts = replace(facts, answer_encoding=values)
     # The contract first: how bits go in, where the answer comes out, and
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.

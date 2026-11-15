@@ -1,6 +1,7 @@
 """What the CLI says when something is wrong, and when it stays quiet."""
 
 import io
+import json
 import shlex
 import sys
 from ast import literal_eval
@@ -303,18 +304,40 @@ def test_read_answer_checks_the_catalog_before_stdin(
     out, error = _failure(["read-answer", "--", name], capsys)
     assert not out
     assert message in error
+    metadata = json.loads(call_main(["describe", "--json", "--", name], capsys))
+    assert metadata["answer_encoding"] == list(contract.answer_values)
+    assert metadata["answer_pattern"] == (contract.answer_pattern or None)
     if contract.answer_values == ("diverges", "halts"):
         assert "--execution-timeout <seconds> scoped_answer <program-file>" in error
         help_page = help_text("read-answer")
         assert f"languages that answer by terminating are {name}." in help_page
         assert "reports what its termination means" in help_page
 
+        description = call_main(["describe", "--", name], capsys)
+        assert "termination (diverges for 0, halts for 1)" in description
+    else:
+        output, diagnostic = _failure(["describe", "--", name], capsys)
+        assert not output
+        assert message in diagnostic
+
 
 def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) -> None:
     original = LANGUAGES[REFERENCE]
-    contract = replace(original.contract, answer_pattern="^$", answer_values=("", "1"))
+
+    class AnswerValues(tuple):
+        def __iter__(self):
+            return iter(("other", "incorrect"))
+
+    contract = replace(
+        original.contract, answer_pattern="^$", answer_values=AnswerValues(("", "1"))
+    )
     scope = esolangs.Catalog([replace(original, contract=contract)])
     monkeypatch.setattr(_table, "CATALOG", scope)
+    output = scope.bind(REFERENCE).run("").output
+    assert output == ""
+    description = call_main(["describe", REFERENCE], capsys)
+    assert "printed output ( for 0, 1 for 1)" in description
+    assert "incorrect" not in description
     assert scope.bind(REFERENCE).read_answer("") == "0"
     assert call_both(["read-answer", REFERENCE], capsys) == ("0\n", "")
 
