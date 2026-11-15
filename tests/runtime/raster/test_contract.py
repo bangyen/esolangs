@@ -538,12 +538,21 @@ def test_png_metadata_round_trip_executes(language, scale, native_png) -> None:
 
 
 def test_plain_png_has_no_source_metadata() -> None:
+    from esolangs.operations.source import read_png_metadata
+    from esolangs.runtime._files import StreamReadTimeoutError, stream_read_deadline
+
     source = Raster((((1, 2, 3),),))
-    restored = Raster.from_png(source.to_png())
+    data = source.to_png()
+    restored = Raster.from_png(data)
     assert restored == source
     assert not hasattr(restored, "language")
     assert not hasattr(restored, "settings")
     assert not hasattr(restored, "scale")
+    with stream_read_deadline(0):
+        with pytest.raises(StreamReadTimeoutError):
+            Raster.from_png(data)
+        with pytest.raises(StreamReadTimeoutError):
+            read_png_metadata(RASTER_LANGUAGES[0], data, catalog=CATALOG)
 
 
 def test_png_metadata_integer_fallback_preserves_json_key_rules() -> None:

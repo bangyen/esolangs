@@ -14,6 +14,7 @@ from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failur
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
+from esolangs.runtime._files import StreamReadTimeoutError
 from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import (
@@ -123,7 +124,7 @@ def read_png_metadata(
         scale = None if scale is None else check_scale(scale)
         arity = positive_metadata_field(metadata, "input_arity")
         return metadata, settings, scale, arity
-    except (ProgramError, MissingDependencyError):
+    except (ProgramError, MissingDependencyError, StreamReadTimeoutError):
         raise
     except Exception as error:
         if _is_acquisition_failure(error):

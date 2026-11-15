@@ -1058,12 +1058,23 @@ def test_worker_startup_reports_the_first_expired_deadline(
     ],
 )
 def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
-    from esolangs.runtime import _isolated
+    from esolangs.runtime import _isolated, _raster_wire
     from esolangs.runtime._isolated import _raster_rows, _raster_transport
 
     image = esolangs.Raster(rows)
     runs = _raster_transport(image)
     assert runs is _raster_transport(image)
+    with monkeypatch.context() as patch:
+
+        def refuse_hash(_self):
+            pytest.fail("worker transport hashed an image's pixels")
+
+        patch.setattr(_raster_wire, "_BLOCK", 2)
+        patch.setattr(esolangs.Raster, "__hash__", refuse_hash)
+        distinct = esolangs.Raster(rows)
+        checked = _raster_transport(distinct, lambda: False)
+        assert checked == runs
+        assert checked is _raster_transport(distinct)
     monkeypatch.setattr(
         _isolated,
         "_launch",

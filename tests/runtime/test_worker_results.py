@@ -604,6 +604,7 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
     from esolangs.runtime import _isolated
 
     _check_request_serialization(monkeypatch)
+    _check_raster_acquisition_deadline(monkeypatch)
 
     def serve(value):
         document = json.dumps(value) if isinstance(value, dict) else value
@@ -782,6 +783,72 @@ def _check_request_serialization(monkeypatch) -> None:
         assert outcome.bound == "preparation_timeout"
         assert outcome.observation == ExecutionResult("", None, None, None)
         assert chunks == [payload[:8]]
+
+
+def _check_raster_acquisition_deadline(monkeypatch) -> None:
+    from io import StringIO
+    from threading import Thread
+    from time import monotonic
+
+    from esolangs.raster import lazy_raster
+    from esolangs.registry import SourceKind
+    from esolangs.runtime import _acquire, _files, _isolated, _raster_wire
+
+    spec = next(
+        language
+        for language in LANGUAGES.values()
+        if language.runtime.source_kind is SourceKind.RASTER and language.backend
+    )
+    api = esolangs.Language(spec.name)
+    artifact = api.generate("01")
+    rows = artifact.source.rows
+    clock = [monotonic()]
+    threads = []
+    blocks = []
+    encode = _raster_wire._pixel_groups
+
+    def spawn(*args, **kwargs):
+        thread = Thread(*args, **kwargs)
+        threads.append(thread)
+        return thread
+
+    def no_launch(*_args, **_kwargs):
+        pytest.fail("expired raster acquisition launched a worker")
+
+    def slow_render():
+        clock[0] += 2
+        return rows
+
+    def slow_encode(row):
+        blocks.append(row)
+        clock[0] += 2
+        yield from encode(row)
+
+    # The same cutoff applies before consuming stdin at either raster stage.
+    lazy = lazy_raster(slow_render)
+    solid = esolangs.Raster((((255, 0, 0),) * 9,))
+    with monkeypatch.context() as patch:
+        patch.setattr(_acquire, "Thread", spawn)
+        patch.setattr(_files, "monotonic", lambda: clock[0])
+        patch.setattr(_isolated, "monotonic", lambda: clock[0])
+        patch.setattr(_isolated, "_launch", no_launch)
+        patch.setattr(_raster_wire, "_BLOCK", 2)
+        patch.setattr(_raster_wire, "_pixel_groups", slow_encode)
+        limits = esolangs.ExecutionLimits(preparation_timeout=1, max_steps=2)
+        for image in (lazy, solid):
+            stdin = StringIO("1")
+            try:
+                outcome = api.execute(image, stdin=stdin, limits=limits)
+            finally:
+                for thread in threads:
+                    thread.join(2)
+                    assert not thread.is_alive()
+                threads.clear()
+            assert outcome.bound == "preparation_timeout"
+            assert outcome.observation == ExecutionResult("", None, None, None)
+            assert stdin.tell() == 0
+        assert repr(lazy) == "Raster(unrendered)"
+        assert blocks == [solid.rows[0][:2]]
 
 
 def test_worker_error_requires_explicit_unavailable_observation_and_options():

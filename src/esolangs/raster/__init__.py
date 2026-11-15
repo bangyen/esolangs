@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from functools import partial
-from itertools import takewhile
+from itertools import islice, takewhile
 from operator import is_not
 from typing import cast
 
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
+from esolangs.runtime._files import (
+    _STREAM_DEADLINE,
+    StreamReadTimeoutError,
+    _time_remaining,
+)
 from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_scale
 from esolangs.runtime.source_hints import syntax_error
 
@@ -21,6 +26,26 @@ Rows = tuple[tuple[Pixel, ...], ...]
 #: reference each, 2 GiB).  ``generate("Piet", "0110", scale=99999)`` was
 #: OOM-killed with no message; Line's n=10 program is 74M pixels at scale 1.
 MAX_UPSCALED_PIXELS = 1 << 28
+
+
+def _deadline_items[T](
+    items: Iterable[T], deadline: float | None, block: int = 8192
+) -> Iterable[T]:
+    if deadline is None:
+        return items
+
+    def checked() -> Iterator[T]:
+        iterator = iter(items)
+        while True:
+            _time_remaining(deadline)
+            try:
+                item = next(iterator)
+            except StopIteration:
+                return
+            yield item
+            yield from islice(iterator, block - 1)
+
+    return checked()
 
 
 def _pixel_error() -> ValueError:
@@ -52,7 +77,8 @@ def _freeze_iterable_rows(rows: Rows) -> Rows:
     validated_rows: dict[int, tuple[Pixel, ...]] = {}
     frozen_rows = []
     iterable = tuple.__iter__(rows) if _has_backing_type(rows, tuple) else rows
-    for row in iterable:
+    deadline = _STREAM_DEADLINE.get()
+    for row in _deadline_items(iterable, deadline):
         exact_tuple = type(row) is tuple
         if exact_tuple and id(row) in validated_rows:
             frozen_rows.append(validated_rows[id(row)])
@@ -64,7 +90,7 @@ def _freeze_iterable_rows(rows: Rows) -> Rows:
         )
         frozen_row: list[Pixel] | None = None if exact_tuple else []
         previous: Pixel | None = None
-        for pixel in pixels:
+        for pixel in _deadline_items(pixels, deadline):
             if previous is not None and pixel is previous:
                 if frozen_row is not None:
                     frozen_row.append(pixel)
@@ -215,8 +241,12 @@ class Raster:
     def rows(self) -> Rows:
         """Return RGB rows, materializing lazy source on first access."""
         if self._rows is None:
+            deadline = _STREAM_DEADLINE.get()
+            _time_remaining(deadline)
             materialize = cast("Callable[[], Rows]", self._materialize)
-            object.__setattr__(self, "_rows", _freeze_rows(materialize()))
+            rows = _freeze_rows(materialize())
+            _time_remaining(deadline)
+            object.__setattr__(self, "_rows", rows)
         return cast("Rows", self._rows)
 
     def _normalized(self, scale: int | None = None) -> Rows:
@@ -253,10 +283,17 @@ class Raster:
         def materialize() -> Rows:
             base = self.rows
             check(base)
-            rows = [
-                tuple(pixel for pixel in row for _ in range(scale)) for row in self.rows
-            ]
-            return tuple(row for row in rows for _ in range(scale))
+            deadline = _STREAM_DEADLINE.get()
+            block = max(1, 8192 // scale)
+
+            def replicate[T](items: Iterable[T]) -> tuple[T, ...]:
+                return tuple(
+                    item
+                    for item in _deadline_items(items, deadline, block)
+                    for _ in range(scale)
+                )
+
+            return replicate(replicate(row) for row in base)
 
         return lazy_raster(
             materialize,
@@ -289,7 +326,7 @@ class Raster:
             # ``__post_init__`` rejects the empty rows, which is still a bad
             # PNG rather than a caller error.
             return cls(decoded)
-        except MissingDependencyError:
+        except (MissingDependencyError, StreamReadTimeoutError):
             raise
         except Exception as exc:
             error = ProgramError(f"not a readable PNG: {exc}")

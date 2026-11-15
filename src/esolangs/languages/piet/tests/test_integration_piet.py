@@ -4,7 +4,10 @@ import importlib
 import os
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from io import BytesIO
+from threading import Event, current_thread
 
 import pytest
 
@@ -94,7 +97,7 @@ def test_a_raster_is_refused_as_a_template() -> None:
 
 
 @pytest.mark.medium
-def test_piet_explicit_scale_resolves_ambiguous_image(tmp_path) -> None:
+def test_piet_explicit_scale_resolves_ambiguous_image(tmp_path, monkeypatch) -> None:
     red, light, terminal, black = (255, 0, 0), (255, 192, 192), (192, 0, 192), (0, 0, 0)
     logical = Raster(
         ((light, black, terminal), (light, red, terminal), (black, black, terminal))
@@ -144,6 +147,62 @@ def test_piet_explicit_scale_resolves_ambiguous_image(tmp_path) -> None:
             assert rejected.stdout == b""
             assert b"Not a directory" in rejected.stderr
             assert os.fsencode(spelling) in rejected.stderr
+
+    _check_png_acquisition_timeout(path, monkeypatch)
+
+
+def _check_png_acquisition_timeout(path, monkeypatch) -> None:
+    api = esolangs.Language("Piet")
+    program = api.generate("01", scale=2)
+    api.to_file(program, path)
+    stdin = BytesIO(api.encode_inputs([1]).encode())
+    paused, resume = Event(), Event()
+    threads, opens = [], []
+    inflate = png._inflate_checked
+    pillow = png._require_image()
+    image_open = pillow.open
+
+    def pause_inflate(*args):
+        raw = inflate(*args)
+        threads.append(current_thread())
+        paused.set()
+        assert resume.wait(5)
+        return raw
+
+    def observe_open(*args, **options):
+        opens.append(True)
+        return image_open(*args, **options)
+
+    with monkeypatch.context() as edit, ThreadPoolExecutor() as callers:
+        edit.setattr(png, "_inflate_checked", pause_inflate)
+        edit.setattr(pillow, "open", observe_open)
+        pending = callers.submit(
+            api.execute,
+            path,
+            stdin=stdin,
+            isolated=True,
+            limits=esolangs.ExecutionLimits(preparation_timeout=0.5, total_timeout=5),
+        )
+        try:
+            assert paused.wait(2)
+            outcome = pending.result(3)
+            assert (outcome.status, outcome.bound) == ("limit", "preparation_timeout")
+        finally:
+            resume.set()
+        (reader,) = threads
+        reader.join(2)
+        assert not reader.is_alive()
+    assert not opens
+    assert stdin.tell() == 0
+    assert (
+        api.run(
+            path, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=100)
+        ).output
+        == "1"
+    )
+    restored = api.from_json(api.to_json(api.from_file(path)))
+    assert restored == program
+    assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
 
 
 def _check_worker_proof_scale(image: Raster) -> None:

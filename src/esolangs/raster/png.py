@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 from esolangs._dialect import DialectSettings
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
 from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
+from esolangs.runtime._files import _STREAM_DEADLINE, _time_remaining
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._validate import _has_backing_type, check_scale
 from esolangs.runtime.source_hints import program_error_context, syntax_error
@@ -82,6 +83,8 @@ def _backing_bytes(data: bytes | bytearray) -> bytes:
 
 def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
     """Yield validated chunks through the end of the PNG datastream."""
+    deadline = _STREAM_DEADLINE.get()
+    _time_remaining(deadline)
     if data[:8] != _SIGNATURE:
         raise syntax_error(
             "not a PNG file (bad signature)",
@@ -89,6 +92,7 @@ def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
         )
     pos = 8
     while pos + 8 <= len(data):
+        _time_remaining(deadline)
         (length,) = struct.unpack(">I", data[pos : pos + 4])
         kind = data[pos + 4 : pos + 8]
         body = data[pos + 8 : pos + 8 + length]
@@ -111,6 +115,7 @@ def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
                     "match the data"
                 ),
             )
+        _time_remaining(deadline)
         if kind == b"IEND":
             if body:
                 raise syntax_error("PNG IEND chunk must be empty", _REEXPORT)
@@ -297,6 +302,7 @@ def _check_row_filters(
     interlace: int,
 ) -> None:
     """Walk the passes, refusing a row filter byte above 4."""
+    deadline = _STREAM_DEADLINE.get()
     offset = 0
     passes = (
         [_pass_size(width, height, i) for i in range(len(_ADAM7))]
@@ -307,7 +313,9 @@ def _check_row_filters(
         if not pass_width or not pass_height:
             continue
         stride = (pass_width * channels * depth + 7) // 8
-        for _ in range(pass_height):
+        for row in range(pass_height):
+            if deadline is not None and row % 1024 == 0:
+                _time_remaining(deadline)
             if data_stream[offset] > 4:
                 raise syntax_error(
                     f"unknown PNG row filter {data_stream[offset]}",
@@ -337,6 +345,7 @@ def _validate_png(
     max_image_pixels: int | None,
 ) -> tuple[int, int, int, bytes]:
     """Validate the container and stream before Pillow allocates pixels."""
+    deadline = _STREAM_DEADLINE.get()
     header, palette, idat = _scan_chunks(data)
     if header is None:
         raise syntax_error(
@@ -349,7 +358,9 @@ def _validate_png(
     )
     _check_pixel_limit(width, height, max_image_pixels)
     needed = _expected_stream_size(width, height, channels, depth, interlace)
+    _time_remaining(deadline)
     data_stream = _inflate_checked(idat, needed, width, height, depth)
+    _time_remaining(deadline)
     if colour == _PALETTE and palette is None:
         raise syntax_error(
             "palette PNG has no PLTE chunk", "include a colour palette or export as RGB"
@@ -359,22 +370,32 @@ def _validate_png(
 
 
 def _read(data: bytes | bytearray, mode: str) -> tuple[bytes, int]:
+    deadline = _STREAM_DEADLINE.get()
+    _time_remaining(deadline)
     image = _require_image()
     data = _backing_bytes(data)
     width, depth, colour, palette = _validate_png(data, image.MAX_IMAGE_PIXELS)
+    _time_remaining(deadline)
     with image.open(io.BytesIO(data), formats=["PNG"]) as opened:
+        _time_remaining(deadline)
         opened.load()
+        _time_remaining(deadline)
         if colour == _PALETTE and max(opened.tobytes()) >= len(palette) // 3:
             raise syntax_error(
                 "palette index outside PLTE chunk",
                 ("re-export the PNG so every palette index has a corresponding colour"),
             )
+        _time_remaining(deadline)
         if colour == _GREY and depth == 16:
             # I;16 -> L clips; taking the high byte preserves dark strokes.
             raw = opened.tobytes("raw", "I;16B")
+            _time_remaining(deadline)
             with image.frombytes("L", opened.size, raw[0::2]) as grey:
-                return grey.convert(mode).tobytes(), width
-        return opened.convert(mode).tobytes(), width
+                raw = grey.convert(mode).tobytes()
+        else:
+            raw = opened.convert(mode).tobytes()
+    _time_remaining(deadline)
+    return raw, width
 
 
 def read_grey(data: bytes) -> list[bytearray]:
@@ -388,12 +409,15 @@ _RGB_RUN = re.compile(rb"(.{3})\1*", re.DOTALL)
 
 def _rgb_rows(data: bytes | bytearray) -> Rows:
     """Decode immutable RGB rows, reusing up to 1024 pixels and row patterns."""
+    deadline = _STREAM_DEADLINE.get()
     raw, width = _read(data, "RGB")
     palette: dict[bytes, Pixel] = {}
     patterns: dict[bytes, tuple[Pixel, ...]] = {}
     rows = []
     stride = width * 3
     for offset in range(0, len(raw), stride):
+        if deadline is not None:
+            _time_remaining(deadline)
         scanline = raw[offset : offset + stride]
         row = patterns.get(scanline)
         if row is None:
@@ -403,11 +427,15 @@ def _rgb_rows(data: bytes | bytearray) -> Rows:
                 pixel = palette.get(key)
                 if pixel is None:
                     if len(palette) == 1024:
+                        _time_remaining(deadline)
                         pixels = list(zip(raw[0::3], raw[1::3], raw[2::3], strict=True))
-                        return tuple(
+                        _time_remaining(deadline)
+                        decoded = tuple(
                             tuple(pixels[i : i + width])
                             for i in range(0, len(pixels), width)
                         )
+                        _time_remaining(deadline)
+                        return decoded
                     pixel = (key[0], key[1], key[2])
                     palette[key] = pixel
                 pixels.extend([pixel] * ((run.end() - run.start()) // 3))
@@ -415,6 +443,7 @@ def _rgb_rows(data: bytes | bytearray) -> Rows:
             if len(patterns) < 1024:
                 patterns[scanline] = row
         rows.append(row)
+    _time_remaining(deadline)
     return tuple(rows)
 
 

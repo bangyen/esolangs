@@ -9,8 +9,6 @@ import sys
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager, suppress
 from contextvars import ContextVar
-from functools import lru_cache
-from itertools import chain, groupby, repeat
 from queue import Empty, Full, Queue
 from threading import Event, Thread
 from time import monotonic, sleep
@@ -20,7 +18,7 @@ from esolangs import exceptions
 from esolangs.artifacts import Artifact, ProgramArtifact
 from esolangs.compressed import CompressedText
 from esolangs.outcomes import ExecutionOutcome, _capture_outcome, _failed_outcome
-from esolangs.raster import Pixel, Raster, Rows
+from esolangs.raster import Raster
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._acquire import acquire, preparation_expired
@@ -40,6 +38,7 @@ from esolangs.runtime._json import (
 )
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import TerminationResult
+from esolangs.runtime._raster_wire import _raster_rows, _raster_transport
 from esolangs.runtime._result_wire import (
     _counter,
     decode_result,
@@ -66,7 +65,6 @@ from esolangs.settings import (
 )
 
 type _WorkerResponse = ExecutionOutcome | TerminationResult
-type _RasterRuns = tuple[tuple[int, tuple[tuple[int, Pixel], ...]], ...]
 
 _ACQUISITION_STARTED: ContextVar[float | None] = ContextVar(
     "_ACQUISITION_STARTED", default=None
@@ -104,42 +102,6 @@ def _acquisition_started_at(started: float) -> Iterator[None]:
         yield
     finally:
         _ACQUISITION_STARTED.reset(token)
-
-
-# Scale-3 raster JSON: 13,759,407 -> 18,621 bytes; four rows 5.71s -> 0.62s.
-def _raster_runs(rows: Rows) -> _RasterRuns:
-    """Encode repeated rows and pixels without transmitting renderer payloads."""
-    return tuple(
-        (
-            len(list(repeated_rows)),
-            tuple((len(list(pixels)), pixel) for pixel, pixels in groupby(row)),
-        )
-        for row, repeated_rows in groupby(rows)
-    )
-
-
-@lru_cache(maxsize=4)
-def _raster_transport(image: Raster) -> _RasterRuns:
-    """Reuse immutable pixel transport across rows of isolated evaluation."""
-    return _raster_runs(image.rows)
-
-
-def _raster_rows(runs: _RasterRuns) -> Rows:
-    """Decode pixel-exact rows, sharing immutable repeats."""
-    return tuple(
-        chain.from_iterable(
-            repeat(
-                tuple(
-                    chain.from_iterable(
-                        repeat((pixel[0], pixel[1], pixel[2]), count)
-                        for count, pixel in row
-                    )
-                ),
-                count,
-            )
-            for count, row in runs
-        )
-    )
 
 
 def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.EsolangError:
@@ -470,14 +432,10 @@ def _invoke_worker(
             check_scale_for(name, retained_scale, catalog=catalog)
             if stopped():
                 return None
-            captured_input = read_input(checked_input)
-        if stopped():
-            return None
-        return worker_request(
-            _request_wire(
+            wire = _request_wire(
                 name,
                 artifact.source,
-                captured_input,
+                "",
                 settings=artifact.settings,
                 seed=seed,
                 scale=retained_scale,
@@ -491,9 +449,12 @@ def _invoke_worker(
                 catalog=catalog,
                 _settings_validated=True,
                 chunked=True,
-            ),
-            stopped,
-        )
+                stopped=stopped,
+            )
+            if stopped():
+                return None
+            wire["stdin"] = read_input(checked_input)
+        return worker_request(wire, stopped)
 
     def expired() -> exceptions.ExecutionTimeoutError:
         if preparation_deadline == acquisition_deadline < deadline:
@@ -782,7 +743,9 @@ def _read_worker_output(
     return result
 
 
-def _source_transport(source: Program, *, chunked: bool) -> dict[str, Any]:
+def _source_transport(
+    source: Program, *, chunked: bool, stopped: Callable[[], bool] | None
+) -> dict[str, Any]:
     """Encode all source containers for the JSON worker protocol."""
     if isinstance(source, CompressedText):
         compressed = source.to_gzip()
@@ -794,7 +757,9 @@ def _source_transport(source: Program, *, chunked: bool) -> dict[str, Any]:
             "compressed": True,
         }
     return {
-        "program": _raster_transport(source) if isinstance(source, Raster) else source,
+        "program": _raster_transport(source, stopped)
+        if isinstance(source, Raster)
+        else source,
         "raster": isinstance(source, Raster),
         "compressed": False,
     }
@@ -816,6 +781,7 @@ def _request_wire(
     catalog: Catalog | None = None,
     _settings_validated: bool = False,
     chunked: bool = False,
+    stopped: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     """Encode one complete worker request, including unavailable options."""
     from esolangs.registry._catalog import get_catalog
@@ -828,7 +794,7 @@ def _request_wire(
     )
     return {
         "language": name,
-        **_source_transport(source, chunked=chunked),
+        **_source_transport(source, chunked=chunked, stopped=stopped),
         "stdin": stdin,
         "settings": {
             key: hex(value) if type(value) is int else value
