@@ -38,6 +38,7 @@ from esolangs.registry._contracts import (
     AnswerMode,
     BooleanContract,
     InputShape,
+    answer_pattern_text,
 )
 from esolangs.runtime._program import Program
 
@@ -185,11 +186,12 @@ class BooleanExample:
         return "".join(f"{line}\n" for line in self.inputs)
 
 
-def _contract_fields(contract: BooleanContract) -> dict[str, Any]:
+def _contract_fields(interpreter: str, contract: BooleanContract) -> dict[str, Any]:
     """Return the example fields an interpreter's I/O contract fixes."""
     return {
         "answer_mode": contract.answer_mode,
-        "answer_pattern": contract.answer_pattern,
+        "answer_pattern": answer_pattern_text(interpreter, contract.answer_pattern)
+        or "",
         "answer_values": contract.answer_values,
         "alphabet": contract.alphabet,
         "input_shape": contract.input_shape,
@@ -224,7 +226,7 @@ def _reader(
     if contract.input_shape == "char_stream":
         inputs = ("".join(inputs),)
     return BooleanExample(
-        **_contract_fields(contract),
+        **_contract_fields(interpreter, contract),
         generator=generator,
         table=table,
         interpreter=interpreter,
@@ -249,7 +251,7 @@ def _embedded(
 ) -> BooleanExample:
     """Build an example using its backend's declared input bindings."""
     return BooleanExample(
-        **_contract_fields(_contract_for(interpreter)),
+        **_contract_fields(interpreter, _contract_for(interpreter)),
         generator=generator,
         table=table,
         interpreter=interpreter,

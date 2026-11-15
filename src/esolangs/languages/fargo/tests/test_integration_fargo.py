@@ -7,7 +7,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
-from esolangs.exceptions import ArgumentError
+from esolangs.runtime.memory import parse_integer
 from tests.support.cli_support import call_both
 from tests.support.reference import REFERENCE
 
@@ -22,13 +22,11 @@ def test_describe_leads_with_the_contract(capsys) -> None:
     assert "esolangs describe --spec Fargo" in output
 
 
-class TestAHugeRowIndexIsRefusedNotCrashed:
-    """CPython caps int<->str at 4300 digits; both directions leaked it."""
-
-    def test_encode_inputs_refuses_a_row_index_past_the_digit_cap(self) -> None:
-        """Fargo reads a decimal row index, and 15000 bits name too many digits."""
-        with pytest.raises(ArgumentError):
-            esolangs.encode_inputs("Fargo", [1] * 15000)
+def test_a_huge_row_index_encodes_and_runs() -> None:
+    stdin = esolangs.encode_inputs("Fargo", [1] * 15000)
+    assert stdin.endswith("\n")
+    assert parse_integer(stdin.strip()) == (1 << 15000) - 1
+    assert run("Fargo", f"% 0 @ {14999:b}\n$", stdin=stdin).output == "1"
 
 
 @pytest.mark.parametrize("choices", ["[]", "no json", '{"eof":true}'])

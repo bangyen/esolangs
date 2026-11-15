@@ -15,6 +15,7 @@ from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import CHAR_STREAMS, BooleanContract
 from esolangs.results import ExecutionResult
 from esolangs.runtime._validate import check_bits
+from esolangs.runtime.memory import format_integer
 
 
 def _symbol_pair(name: str, values: object, encoding: str) -> tuple[str, str]:
@@ -113,17 +114,8 @@ def encode_inputs(
     shape = contract.input_shape
     if shape in ("row_index", "row_number"):
         # A row number counts from one, for an input that must be positive.
-        row = sum(bit << (len(bits) - 1 - i) for i, bit in enumerate(bits))
-        row += shape == "row_number"
-        try:
-            return f"{row}\n"
-        except ValueError as exc:
-            # CPython caps int->str at 4300 digits; a bare ValueError broke the
-            # every-error-is-EsolangError promise (``[1] * 15000``).
-            raise ArgumentError(
-                f"{name} reads a decimal row, and {len(bits)} bits name "
-                f"an integer too large to render as one: {exc}"
-            ) from exc
+        row = int("".join("01"[bit] for bit in bits), 2)
+        return format_integer(row + (shape == "row_number")) + "\n"
     if shape not in ("line_per_bit", "char_stream", "char_stream_cyclic"):
         raise ProgramError(f"{name} has an invalid input shape")
     zero, one = _symbol_pair(name, contract.alphabet, "input encoding")

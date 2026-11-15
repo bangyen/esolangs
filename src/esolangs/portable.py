@@ -24,13 +24,13 @@ from esolangs.exceptions import (
 )
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
+from esolangs.runtime._definition import SourceKind
 from esolangs.runtime._files import explicit_path, write_staged
-from esolangs.runtime._json import record_dumps, unique_object
+from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._source import (
     ProgramSource,
     native_file_terminator,
 )
-from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import (
     DialectSettings,
@@ -274,6 +274,16 @@ def decode_settings(
     return _settings_for(language, choices, catalog=catalog)
 
 
+def _positive_field(value: dict[str, Any], key: str) -> int | None:
+    """Validate optional positive integer metadata before opening its payload."""
+    if key not in value:
+        return None
+    field = value[key]
+    if type(field) is not int or field < 1:
+        raise ValueError(f"{key} must be a positive integer")
+    return field
+
+
 def _load_png(
     value: dict[str, Any],
     name: str,
@@ -285,21 +295,18 @@ def _load_png(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
-    from esolangs.operations.source import read_png_artifact
+    from esolangs.operations.source import read_png_metadata
 
+    scale = _positive_field(value, "scale")
     data = base64.b64decode(value["source"], validate=True)
-    record = read_png_artifact(name, data, catalog=catalog)
-    metadata = png.read_metadata(data)
-    if metadata is not None and "settings" in metadata and record.settings != settings:
+    metadata, png_settings, png_scale = read_png_metadata(name, data, catalog=catalog)
+    if "settings" in metadata and png_settings != settings:
         raise ValueError("conflicting PNG and document settings")
-    scale = record.scale
-    if "scale" in value:
-        scale = value["scale"]
-        if type(scale) is not int or scale < 1:
-            raise ValueError("scale must be a positive integer")
-        if metadata is not None and "scale" in metadata and record.scale != scale:
-            raise ValueError("conflicting PNG and document scale")
-    return ProgramArtifact(record.source, name, settings=settings, scale=scale)
+    if scale is None:
+        scale = png_scale
+    elif "scale" in metadata and png_scale != scale:
+        raise ValueError("conflicting PNG and document scale")
+    return ProgramArtifact(Raster.from_png(data), name, settings=settings, scale=scale)
 
 
 def _load_gzip(
@@ -313,6 +320,10 @@ def _load_gzip(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
+    if catalog.languages[name].runtime.source_kind is SourceKind.RASTER:
+        raise ProgramError(
+            f"{name} requires raster source, but the program is gzip text"
+        )
     limits = value["limits"]
     if limits is not None:
         if not isinstance(limits, dict) or set(limits) != {
@@ -430,9 +441,7 @@ def from_json(
     if not isinstance(document, str):
         raise ArgumentError("document must be a JSON string")
     try:
-        value = json.loads(
-            document, object_pairs_hook=unique_object, parse_int=parse_integer
-        )
+        value = record_loads(document)
         if not isinstance(value, dict):
             raise ValueError("document must be an object")
         fields = {"format", "version", "language", "settings", "kind", "source"}
@@ -459,15 +468,13 @@ def from_json(
             raise ValueError("source must be a string")
         # Strict UTF-8 everywhere, as a program file is read: a JSON
         # "\ud800" escape in the source or a setter loaded a lone surrogate.
-        record_dumps(value, ensure_ascii=False).encode("utf-8")
+        check_record_utf8(value)
         settings = _settings(value["settings"], name, catalog=catalog)
         if not isinstance(kind, str) or kind not in _LOADERS:
             raise ValueError("unknown source kind")
+        arity = _positive_field(value, "input_arity")
         artifact = _LOADERS[kind](value, name, settings, catalog=catalog)
-        if isinstance(artifact, ProgramArtifact) and "input_arity" in value:
-            arity = value["input_arity"]
-            if type(arity) is not int or arity < 1:
-                raise ValueError("input_arity must be a positive integer")
+        if isinstance(artifact, ProgramArtifact) and arity is not None:
             artifact = replace(artifact, input_arity=arity)
         return read_artifact(name, artifact, catalog=catalog, preserve_compression=True)
     except (ValueError, TypeError, RecursionError) as error:

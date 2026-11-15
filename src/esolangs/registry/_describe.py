@@ -19,6 +19,7 @@ from esolangs.registry._contracts import (
     SourceForm,
     StateModel,
     WidthEffect,
+    answer_pattern_text,
 )
 from esolangs.registry._info import LanguageInfo as _LanguageInfo
 from esolangs.runtime._execution import interpreter_module
@@ -179,7 +180,7 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
         id=lang.id,
         reads_input=reads_input,
         input_encoding=contract.alphabet if reads_input else None,
-        answer_pattern=contract.answer_pattern or None,
+        answer_pattern=answer_pattern_text(name, contract.answer_pattern),
         answer_encoding=contract.answer_values,
         answer_convention=contract.note or None,
         # Not ``**machine_traits(name)``: mypy cannot check a

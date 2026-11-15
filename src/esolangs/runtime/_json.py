@@ -2,9 +2,11 @@
 
 import json
 import re
-from typing import Any
+from typing import Any, NoReturn
 
-from esolangs.runtime.memory import format_integer
+from esolangs.runtime.memory import format_integer, parse_integer
+
+_SURROGATES = re.compile(r"[\ud800-\udfff]")
 
 
 def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -15,6 +17,35 @@ def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             raise ValueError(f"duplicate field: {key}")
         result[key] = value
     return result
+
+
+def _reject_json_constant(token: str) -> NoReturn:
+    """Refuse Python's nonstandard JSON numeric constants."""
+    raise ValueError(f"invalid JSON constant {token}")
+
+
+def record_loads(document: str) -> Any:
+    """Read strict records with unique object keys and arbitrary integers."""
+    return json.loads(
+        document,
+        object_pairs_hook=unique_object,
+        parse_int=parse_integer,
+        parse_constant=_reject_json_constant,
+    )
+
+
+def check_record_utf8(value: Any) -> None:
+    """Check text in a decoded JSON record without re-encoding its numbers."""
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, str) and _SURROGATES.search(item):
+            item.encode("utf-8")
+        elif isinstance(item, dict):
+            pending.extend(item)
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            pending.extend(item)
 
 
 def canonical_integer(value: Any) -> int:
@@ -33,7 +64,11 @@ def record_dumps(
     """Keep persisted record integers as JSON numbers, including large ones."""
     try:
         return json.dumps(
-            value, ensure_ascii=ensure_ascii, sort_keys=sort_keys, separators=(",", ":")
+            value,
+            ensure_ascii=ensure_ascii,
+            sort_keys=sort_keys,
+            allow_nan=False,
+            separators=(",", ":"),
         )
     except ValueError:
         # Persisted records have finite, shallow containers. Only their integer
@@ -49,7 +84,7 @@ def record_dumps(
                 return (
                     "{"
                     + ",".join(
-                        json.dumps(key, ensure_ascii=ensure_ascii)
+                        json.dumps(key, ensure_ascii=ensure_ascii, allow_nan=False)
                         + ":"
                         + encode(item[key])
                         for key in keys
@@ -58,12 +93,11 @@ def record_dumps(
                 )
             if isinstance(item, (list, tuple)):
                 return "[" + ",".join(map(encode, item)) + "]"
-            return json.dumps(item, ensure_ascii=ensure_ascii)
+            return json.dumps(item, ensure_ascii=ensure_ascii, allow_nan=False)
 
         return encode(value)
 
 
-_SURROGATES = re.compile(r"[\ud800-\udfff]")
 _WORKER_TAGS = ("$python_text", "$python_object", "$python_integer")
 # Keep decimal tokens below even the smallest Python digit cap.
 _WORKER_INTEGER_BITS = 1024

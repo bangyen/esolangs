@@ -395,6 +395,28 @@ def test_portable_scale_validates_its_type_and_embedded_agreement() -> None:
         esolangs.from_json(REFERENCE, json.dumps({**text, "scale": 2}))
 
 
+def test_portable_png_checks_record_metadata_before_pillow(monkeypatch) -> None:
+    api = esolangs.Language(RASTER_LANGUAGES[0])
+    pixels = Raster((((1, 2, 3),),)).upscaled(2)
+    record = esolangs.ProgramArtifact(
+        pixels, api.name, settings=api.settings(), scale=2
+    )
+    document = api.to_json(record)
+    assert api.from_json(document) == record
+    value = json.loads(document)
+    monkeypatch.setattr(png, "Image", None)
+    for changes, message in (
+        ({"input_arity": False}, "input_arity must be a positive integer"),
+        ({"scale": 0}, "scale must be a positive integer"),
+        ({"scale": 3}, "conflicting PNG and document scale"),
+        ({"settings": None}, "conflicting PNG and document settings"),
+    ):
+        with pytest.raises(esolangs.ProgramError, match=message):
+            api.from_json(json.dumps(value | changes))
+    with pytest.raises(esolangs.MissingDependencyError):
+        api.from_json(document)
+
+
 def test_scaling_composes_retained_factors(native_png) -> None:
     source = esolangs.generate(RASTER_LANGUAGES[0], "01", scale=2)
     decoded = _check_program(source.language, native_png(source))

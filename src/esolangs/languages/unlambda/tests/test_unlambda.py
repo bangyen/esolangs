@@ -209,6 +209,44 @@ def test_debugger_and_workspace_repr_keep_deep_shared_terms_readable() -> None:
     )
 
 
+@pytest.mark.medium
+def test_worker_retains_shared_terms_in_a_reachable_cycle() -> None:
+    from dataclasses import replace
+
+    from esolangs import Catalog, ExecutionLimits, Language
+    from esolangs.runtime._json import worker_dumps
+    from esolangs.runtime._result_wire import encode_decision
+
+    api = Language("Unlambda")
+    record = api.catalog.languages[api.name]
+    contract = replace(
+        record.contract, answer_mode="termination", answer_values=("halts", "diverges")
+    )
+    scoped = Catalog([replace(record, contract=contract)]).bind(api.name)
+    caps = ExecutionLimits(max_steps=5000)
+    sizes = []
+    for depth in (8, 14):
+        # S(S(KS)I)I maps x to S x x. Hold the resulting value while its
+        # argument (S I I applied to itself) repeats.
+        source = "`" + "```s``s`ksii" * depth + "i```sii``sii"
+        artifact = scoped.from_source(source)
+        local = scoped.evaluate(artifact, [0], limits=caps)
+        assert local.answer == "1"
+        assert local.termination.commands == 1039
+        sizes.append(len(worker_dumps(encode_decision(local.termination))))
+        worker = scoped.evaluate(artifact, [0], limits=replace(caps, total_timeout=5))
+        assert worker == local
+        continuation = worker.termination.cycle.state[1]
+        value = continuation.frames()[0].value
+        for _ in range(depth):
+            assert value.name == "s2"
+            left, right = value.args
+            assert left is right
+            value = left
+        assert value == _Cmd("i")
+    assert sizes[0] < sizes[1] < 2 * sizes[0]
+
+
 def test_the_continuation_is_the_stack_the_vm_shows() -> None:
     machine = native._Machine("`.A`.Bi", ScriptedIO(""))
     machine.step()

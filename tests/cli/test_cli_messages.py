@@ -3,6 +3,7 @@
 import io
 import shlex
 import sys
+from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -13,6 +14,7 @@ import esolangs
 from esolangs.cli import main
 from esolangs.cli.hints import _timeout_text
 from esolangs.cli.io import _StdoutEncodingError, _write_output
+from esolangs.registry import LANGUAGES, _table
 from tests.support.cli_support import _failure, _refused, call_both, call_main
 from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
@@ -234,6 +236,46 @@ def test_read_answer_leaves_a_timed_out_termination_undecided(capsys, language) 
     out, err = _failure(["read-answer", language], capsys)
     assert out == ""
     assert "A timeout leaves the answer undecided." in err
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"answer_pattern": "("}, "invalid answer pattern"),
+        (
+            {"answer_mode": "termination", "answer_values": ("halts",)},
+            "invalid answer encoding",
+        ),
+        (
+            {"answer_mode": "termination", "answer_values": ("diverges", "halts")},
+            "answers 0 if it diverges and 1 if it halts",
+        ),
+    ],
+)
+def test_read_answer_checks_the_catalog_before_stdin(
+    monkeypatch, capsys, changes, message
+) -> None:
+    original = LANGUAGES[REFERENCE]
+    contract = replace(original.contract, **changes)
+    scope = esolangs.Catalog([replace(original, contract=contract)])
+    monkeypatch.setattr(_table, "CATALOG", scope)
+
+    def unexpected_read(*_args, **_kwargs):
+        pytest.fail("read-answer waited for input despite its catalog refusal")
+
+    monkeypatch.setattr("esolangs.cli._read_stdin", unexpected_read)
+    out, error = _failure(["read-answer", REFERENCE], capsys)
+    assert not out
+    assert message in error
+
+
+def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) -> None:
+    original = LANGUAGES[REFERENCE]
+    contract = replace(original.contract, answer_pattern="^$", answer_values=("", "1"))
+    scope = esolangs.Catalog([replace(original, contract=contract)])
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    assert scope.bind(REFERENCE).read_answer("") == "0"
+    assert call_both(["read-answer", REFERENCE], capsys) == ("0\n", "")
 
 
 def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys) -> None:

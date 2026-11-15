@@ -1,5 +1,6 @@
 """Shared listing and specification contracts."""
 
+import json
 import re
 from dataclasses import replace
 from pathlib import Path
@@ -9,6 +10,7 @@ import pytest
 import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._execution import interpreter_module
+from esolangs.runtime.memory import parse_integer
 from tests.support.cli_support import call_main
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
@@ -138,6 +140,56 @@ def test_read_answer_uses_the_first_group_of_the_last_match() -> None:
     contract = replace(original.contract, answer_pattern=r"([01])([ab])")
     scoped = esolangs.Catalog([replace(original, contract=contract)])
     assert scoped.bind(REFERENCE).read_answer("0a, 1b") == "1"
+
+
+@pytest.mark.parametrize(
+    ("pattern", "output", "values", "expected"),
+    [
+        (
+            re.compile(
+                r"(?m)^ answer : .*? ([01]) $  # final field",
+                re.ASCII | re.IGNORECASE | re.DOTALL | re.VERBOSE,
+            ),
+            "ANSWER: continued\n1\nANSWER: next\n0\ntrailer",
+            ("0", "1"),
+            "0",
+        ),
+        (re.compile(""), "no suffix answer", ("0", ""), "1"),
+    ],
+)
+def test_compiled_answer_pattern_keeps_its_semantics_in_json(
+    monkeypatch, capsys, pattern, output, values, expected
+) -> None:
+    from esolangs import cli
+    from esolangs.registry import _table
+
+    original = LANGUAGES[REFERENCE]
+    contract = replace(original.contract, answer_pattern=pattern, answer_values=values)
+    catalog = esolangs.Catalog([replace(original, contract=contract)])
+    bound = catalog.bind(REFERENCE)
+    rendered = bound.describe().answer_pattern
+    assert isinstance(rendered, str)
+    assert rendered
+    rebuilt = re.compile(rendered)
+    assert rebuilt.flags == pattern.flags
+    assert rebuilt.findall(output) == pattern.findall(output)
+    assert bound.read_answer(output) == expected
+
+    monkeypatch.setattr(_table, "CATALOG", catalog)
+    monkeypatch.setattr(cli, "LANGUAGES", catalog.languages)
+    shown = json.loads(call_main(["describe", "--json", REFERENCE], capsys))
+    assert shown["answer_pattern"] == rendered
+    assert (
+        call_main(["read-answer", REFERENCE], capsys, stdin=output) == expected + "\n"
+    )
+
+
+def test_row_number_encodes_a_large_positive_input() -> None:
+    original = LANGUAGES[REFERENCE]
+    contract = replace(original.contract, input_shape="row_number")
+    scope = esolangs.Catalog([replace(original, contract=contract)])
+    stdin = scope.bind(REFERENCE).encode_inputs([1] * 15000)
+    assert parse_integer(stdin.strip()) == 1 << 15000
 
 
 def test_read_answer_reports_a_malformed_catalog_pattern() -> None:

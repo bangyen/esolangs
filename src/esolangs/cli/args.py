@@ -7,7 +7,6 @@ are written once rather than per command.
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import sys
@@ -20,9 +19,9 @@ from esolangs.cli.help import help_text
 from esolangs.cli.hints import _as_argument, _cli_error_text, _did_you_mean
 from esolangs.exceptions import EsolangError
 from esolangs.registry import resolve
-from esolangs.runtime._json import unique_object
+from esolangs.runtime._json import record_loads
 from esolangs.runtime._validate import check_scale, check_timeout
-from esolangs.runtime.memory import format_integer, parse_integer
+from esolangs.runtime.memory import format_integer
 from esolangs.settings import DialectSettings, dialect_choices
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -412,11 +411,6 @@ def _set_value(key: str, raw: str, language: str) -> int | str:
     return raw
 
 
-def _reject_json_constant(token: str) -> NoReturn:
-    """Refuse Python's nonstandard JSON numeric constants."""
-    raise ValueError(f"invalid JSON constant {token}")
-
-
 def _settings_of(
     options: dict[str, str],
     set_pairs: list[str] | tuple[str, ...] = (),
@@ -427,12 +421,7 @@ def _settings_of(
     values: dict[str, object] = {}
     if "--settings" in options:
         try:
-            parsed = json.loads(
-                options["--settings"],
-                object_pairs_hook=unique_object,
-                parse_int=parse_integer,
-                parse_constant=_reject_json_constant,
-            )
+            parsed = record_loads(options["--settings"])
         except (ValueError, RecursionError) as exc:
             _fail(f"--settings is not valid JSON ({exc}); pass a JSON object")
         if not isinstance(parsed, dict):

@@ -1,6 +1,7 @@
 """Acquire runnable source and validate language ownership."""
 
 from os import PathLike
+from typing import Any
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import (
@@ -50,28 +51,30 @@ def read_png_artifact(
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
+    name = catalog.resolve(language)
+    _, settings, scale = read_png_metadata(name, data, catalog=catalog)
+    return ProgramArtifact(Raster.from_png(data), name, settings=settings, scale=scale)
+
+
+def read_png_metadata(
+    name: str, data: bytes, *, catalog: Catalog
+) -> tuple[dict[str, Any], DialectSettings | None, int | None]:
+    """Validate native source claims without opening the image."""
     from esolangs.portable import decode_settings
 
-    name = catalog.resolve(language)
     if catalog.languages[name].runtime.source_kind is not SourceKind.RASTER:
         raise ProgramError(f"{name} requires text source, but the program is a PNG")
     try:
         metadata = png.read_metadata(data)
-        settings = None
-        scale = None
-        if metadata is not None:
-            origin = metadata.get("language")
-            if origin is not None and not isinstance(origin, str):
-                raise ValueError("PNG language must be a string")
-            check_origin(name, origin, catalog=catalog)
-            settings = decode_settings(
-                metadata.get("settings"), origin, catalog=catalog
-            )
-            scale = metadata.get("scale")
-            if scale is not None:
-                scale = check_scale(scale)
-        raster = Raster.from_png(data)
-        return ProgramArtifact(raster, name, settings=settings, scale=scale)
+        if metadata is None:
+            return {}, None, None
+        origin = metadata.get("language")
+        if origin is not None and not isinstance(origin, str):
+            raise ValueError("PNG language must be a string")
+        check_origin(name, origin, catalog=catalog)
+        settings = decode_settings(metadata.get("settings"), origin, catalog=catalog)
+        scale = metadata.get("scale")
+        return metadata, settings, None if scale is None else check_scale(scale)
     except (ProgramError, MissingDependencyError):
         raise
     except Exception as error:

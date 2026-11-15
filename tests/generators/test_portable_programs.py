@@ -61,6 +61,31 @@ def test_invalid_json(document) -> None:
             esolangs.from_json("Brainfuck", duplicated)
 
 
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_portable_record_refuses_nonstandard_json_constants(constant: str) -> None:
+    document = json.loads(esolangs.to_json(REFERENCE, "+."))
+    document["settings"] = float(constant)
+    with pytest.raises(
+        esolangs.ProgramError, match=f"invalid JSON constant {constant}"
+    ):
+        esolangs.from_json(REFERENCE, json.dumps(document))
+
+
+def test_portable_gzip_rejects_raster_language_before_expansion(monkeypatch) -> None:
+    source = esolangs.CompressedText.from_chunks(("+.",))
+    document = json.loads(esolangs.to_json(REFERENCE, source))
+    assert esolangs.from_json(REFERENCE, json.dumps(document)).source == source
+    name = one(source_kind="raster")[0]
+    document["language"] = name
+
+    def unexpected_expansion(_self):
+        pytest.fail("the raster loader expanded a gzip source")
+
+    monkeypatch.setattr(esolangs.CompressedText, "chunks", unexpected_expansion)
+    with pytest.raises(esolangs.ProgramError, match="requires raster source"):
+        esolangs.from_json(name, json.dumps(document))
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

@@ -756,10 +756,45 @@ def test_source_metadata_bytes_require_utf8(encoding: str, tmp_path: Path) -> No
             api.from_json(document)
 
 
+@pytest.mark.parametrize("token", ["1e5000", "NaN", "Infinity", "-Infinity"])
+def test_source_metadata_ignores_only_valid_json_extensions(
+    token: str, tmp_path: Path
+) -> None:
+    api = esolangs.Language(one(source_kind="raster")[0])
+    pixels = esolangs.Raster((((1, 2, 3),),))
+    raw = pixels.to_png()
+    body = ('{"version":1,"extra":' + token + "}").encode("ascii")
+    data = raw[:-12] + _chunk(b"esOL", body) + raw[-12:]
+    path = tmp_path / "source.png"
+    path.write_bytes(data)
+    portable = json.loads(api.to_json(pixels))
+    portable["source"] = base64.b64encode(data).decode("ascii")
+    document = json.dumps(portable)
+
+    assert esolangs.Raster.from_png(data) == pixels
+    if token == "1e5000":
+        assert api.from_file(path) == api.from_json(document) == api.from_source(pixels)
+    else:
+        for load in (lambda: api.from_file(path), lambda: api.from_json(document)):
+            with pytest.raises(
+                esolangs.ProgramError, match=f"invalid JSON constant {token}"
+            ):
+                load()
+
+
 def test_metadata_writer_bounds_chunk_size() -> None:
     data = png.write_rgb((((1, 2, 3),),))
     with pytest.raises(ValueError, match="oversized"):
         png.write_metadata(data, {"version": 1, "extra": "x" * 16_384})
+
+
+@pytest.mark.parametrize("number", [float("nan"), float("inf"), float("-inf")])
+def test_metadata_writer_refuses_nonstandard_json_numbers(number: float) -> None:
+    data = png.write_rgb((((1, 2, 3),),))
+    with pytest.raises(ValueError, match="Out of range float"):
+        png.write_metadata(data, {"version": 1, "extra": [number]})
+    valid = png.write_metadata(data, {"version": 1, "extra": [1.25]})
+    assert png.read_metadata(valid) == {"version": 1, "extra": [1.25]}
 
 
 @pytest.mark.parametrize("language", one(source_kind="raster"))

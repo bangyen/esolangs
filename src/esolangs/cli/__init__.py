@@ -87,6 +87,7 @@ from esolangs.cli.io import (
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError, ProgramError
+from esolangs.operations.boolean_io import _answer_codec
 from esolangs.raster import png
 from esolangs.registry import LANGUAGES, LanguageDeclaration, get_catalog, resolve
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
@@ -563,27 +564,27 @@ def _read_answer(rest: list[str]) -> None:
     """Read a program's output on stdin and print the answer bit in it."""
     rest = _split_positional(rest, set())
     _check_count("read-answer", rest, 1)
-    language = rest[0]
+    catalog = get_catalog()
     with _errors():
-        declaration = LANGUAGES[resolve(language)]
-    contract = declaration.contract
+        language = catalog.resolve(rest[0])
+        contract = catalog.languages[language].contract
+        (zero, one), _ = _answer_codec(language, contract)
     if contract.answer_mode == "termination":
-        zero, one = contract.answer_values
         _fail(
-            f"{declaration.name} answers 0 if it {zero} and 1 if it {one}, so "
+            f"{language} answers 0 if it {zero} and 1 if it {one}, so "
             f"there is no output to read; use: esolangs run "
-            f"--execution-timeout <seconds> {_as_argument(declaration.name)} "
+            f"--execution-timeout <seconds> {_as_argument(language)} "
             "<program-file> and observe whether it halts. "
             "A timeout leaves the answer undecided."
         )
     output = _read_stdin(hint="; pipe a program's output in, or close stdin")
     # NQ's false answer is a space; only absent output is empty stdin.
     try:
-        answer = read_answer(language, output)
+        answer = read_answer(language, output, catalog=catalog)
     except ProgramError as exc:
         # Output with no readable answer is the program's failure, as in run.
         if not output:
-            language_arg = _as_argument(declaration.name)
+            language_arg = _as_argument(language)
             _fail(
                 "nothing on stdin to read an answer out of; pipe a program's "
                 f"output in: esolangs run {language_arg} prog.txt | esolangs "

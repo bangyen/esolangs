@@ -14,7 +14,13 @@ from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
 from esolangs.runtime._proof import CycleDecision
-from esolangs.runtime._result_wire import decode_result, encode_decision, encode_result
+from esolangs.runtime._result_wire import (
+    _state_from_wire,
+    _state_wire,
+    decode_result,
+    encode_decision,
+    encode_result,
+)
 from esolangs.vm import make_vm
 from tests.support.execution import run_observed
 from tests.support.reference import REFERENCE
@@ -76,6 +82,71 @@ def _assert_catalog_snapshot_round_trips(result, interpreter_only_samples):
                     break
                 vm.step()
                 debugger.step()
+
+
+def test_snapshot_references_preserve_aliases_and_legacy_tree_bytes() -> None:
+    from esolangs.runtime._json import worker_dumps, worker_loads
+
+    first = (8,)
+    second = tuple(iter(first))
+    assert first is not second
+    legacy = {"tuple": [{"tuple": [8]}, {"tuple": [8]}]}
+    assert worker_dumps(_state_wire((first, second))) == json.dumps(legacy)
+    assert _state_from_wire(legacy) == (first, second)
+
+    state = (first, (first,), first)
+    expected = {
+        "tuple": [{"define": [0, {"tuple": [8]}]}, {"tuple": [{"ref": 0}]}, {"ref": 0}]
+    }
+    wire = worker_dumps(_state_wire(state))
+    assert wire == json.dumps(expected)
+    restored = _state_from_wire(worker_loads(wire))
+    assert restored == state
+    assert hash(restored) == hash(state)
+    assert restored[0] is restored[1][0] is restored[2]
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        {"ref": 0},
+        {"ref": True},
+        {"ref": -1},
+        {"define": [0, 1]},
+        {"define": [0, {"ref": 0}]},
+        {"define": [False, {"tuple": [1]}]},
+        {"define": [0, {"tuple": [1]}]},
+        {"define": [0, {"tuple": [{"ref": 0}]}]},
+        {"tuple": [{"ref": 0}, {"define": [0, {"tuple": [1]}]}]},
+        {
+            "tuple": [
+                {"define": [0, {"tuple": [1]}]},
+                {"define": [0, {"tuple": [2]}]},
+                {"ref": 0},
+            ]
+        },
+        {"define": [0, {"tuple": [{"define": [0, {"tuple": [1]}]}, {"ref": 0}]}]},
+    ],
+)
+def test_snapshot_references_reject_malformed_graphs_and_keep_output(state) -> None:
+    with pytest.raises(ValueError, match="snapshot reference"):
+        _state_from_wire(state)
+    cycle = BoundaryCycle((1,), 0, 1, 1)
+    completed = ExecutionResult(
+        "prefix", 0, 0, 0, completion=CompletionReport(Completion.PERIODIC, cycle)
+    )
+    metadata = encode_result(completed)
+    metadata["completion"]["cycle"]["state"] = state
+    response = (
+        json.dumps({"output": "prefix"})
+        + "\n"
+        + json.dumps({"result": "prefix", "execution": metadata})
+    )
+    with pytest.raises(
+        esolangs.InterpreterLimitError, match="invalid isolated"
+    ) as caught:
+        _decode(response, expired=False)
+    assert caught.value.partial_output == "prefix"
 
 
 @pytest.mark.medium
