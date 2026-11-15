@@ -1,19 +1,24 @@
 """Constant roots and template recognition for ///."""
 
+import gzip
 import random
+import sys
+from dataclasses import replace
 
 import pytest
 
 import esolangs
+from esolangs.cli import main
 from esolangs.exceptions import TemplateError
 from esolangs.generation.wrap import balance_score, wrap_program
 from esolangs.languages.slashes import generator as boolean
 from esolangs.languages.slashes.tests.template_shape import _is_unfilled_template
+from esolangs.registry import _table
+from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, make_vm
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
-from tests.support.cli_support import call_both
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import witnesses
 
@@ -106,12 +111,48 @@ def test_partly_filled_constant_still_requires_its_remaining_input() -> None:
     assert esolangs.run("///", "$0").output == "$0"
 
 
-def test_run_cli_treats_a_dollar_as_literal_source(tmp_path, capsys) -> None:
+def test_cli_preserves_literal_source(tmp_path, capsysbinary, monkeypatch) -> None:
     path = tmp_path / "literal.txt"
+    name = "///"
+    run = ["esolangs", "run", name, str(path)]
     path.write_text("$", encoding="utf-8")
-    out, err = call_both(["run", "///", str(path)], capsys)
-    assert out == esolangs.run("///", "$", stdin="").output == "$"
-    assert err == ""
+    monkeypatch.setattr(sys, "argv", run)
+    main()
+    assert capsysbinary.readouterr() == (b"$", b"")
+
+    original = _table.CATALOG.languages[name]
+    backend = BooleanBackend(entrypoint=lambda _request: payload)
+    scope = esolangs.Catalog([replace(original, backend=backend)])
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    generate = ["esolangs", "generate", name, "11"]
+    for source, native in (("1\n", b"1\n\n"), ("1\r", b"1\r\r\n")):
+        limits = esolangs.TextLimits(
+            plain_chars=len(native), generation_chars=32, gzip_bytes=100
+        )
+        payload = esolangs.CompressedText.from_chunks((source,), limits=limits)
+        entry = scope.bind(name)
+        artifact = entry.from_json(entry.to_json(entry.generate("11")))
+        assert entry.run(artifact).output == source
+        for flags in ([], ["--gzip"], ["--plain"]):
+            monkeypatch.setattr(sys, "argv", [*generate, *flags])
+            main()
+            data, error = capsysbinary.readouterr()
+            assert not error
+            assert (data if flags == ["--plain"] else gzip.decompress(data)) == native
+            path.write_bytes(data)
+            monkeypatch.setattr(sys, "argv", run)
+            main()
+            assert capsysbinary.readouterr() == (b"1\n", b"")
+
+    limits = replace(limits, plain_chars=3)
+    payload = esolangs.CompressedText.from_chunks(("1\r",), limits=limits)
+    monkeypatch.setattr(sys, "argv", [*generate, "--plain"])
+    with pytest.raises(SystemExit) as exited:
+        main()
+    assert exited.value.code == 2
+    out, err = capsysbinary.readouterr()
+    assert not out
+    assert b"raw text exceeds the 3-character cap" in err
 
 
 def test_unwrappable_source_is_untouched() -> None:

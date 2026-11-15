@@ -1,17 +1,21 @@
 """Tests for the What!? interpreter."""
 
 import sys
+from dataclasses import replace
 
 import pytest
 
-from esolangs import ExecutionLimits
+from esolangs import ExecutionLimits, Language
 from esolangs import run as public_run
-from esolangs.exceptions import ArgumentError, HaltError
+from esolangs.exceptions import ArgumentError, HaltError, ProgramError
 from esolangs.languages.what import interpreter as native
 from esolangs.languages.what.interpreter import _Machine, run
 from esolangs.results import ExecutionResult
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
+from tests.support.execution import assert_digit_cap_independent
 from tests.support.prepared_support import check_image_reuse
 from tests.support.vm_support import assert_rejected_input_retry
 
@@ -83,11 +87,14 @@ def test_wiki_99_bottles_counts_from_98() -> None:
     assert lines[-2].startswith("Go to the store")
 
 
-def test_output_and_operator_runs_split_greedily() -> None:
+def test_output_and_operator_runs_split_greedily(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # ``!!!!!!!`` is ``!!!!`` then ``!!!``; ``?????`` is ``???`` then ``??``.
     assert _run('"x"!!!!!!!') == "\nx"
     assert _run("?????!!!!!!!", "ab\n7") == "\nab"
     assert _run("?????!! !!!", "ab\n7") == "7ab"
+    _check_output_retry(monkeypatch)
 
 
 def test_arithmetic_uses_the_slot_to_the_left_and_wraps() -> None:
@@ -226,3 +233,92 @@ def test_errors() -> None:
         assert result.completion.kind.value == "halted"
         assert result.steps == (None if bound is None else 2)
     assert sys.get_int_max_str_digits() == policy
+
+    _check_wide_source_literals()
+
+
+def _check_wide_source_literals() -> None:
+    api = Language("What!?")
+    zeros = "0" * 641
+    source = f"{zeros}65[{zeros}65:!]"
+    assert_digit_cap_independent("What!?", source, "", "A")
+    digits = "9" * 641
+    previous = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        assert api.run(source, limits=ExecutionLimits(max_steps=8)).output == "A"
+        for invalid, offset in ((digits, 0), (f"65[{digits}:!]", 3)):
+            for options in (
+                {},
+                {"limits": ExecutionLimits(max_steps=8)},
+                {"isolated": True},
+            ):
+                outcome = api.execute(invalid, **options)
+                assert outcome.status == "rejected"
+                assert type(outcome.error) is ProgramError
+                assert str(outcome.error) == (
+                    f"What!?: literal {digits} at offset {offset} exceeds 65535"
+                )
+    finally:
+        sys.set_int_max_str_digits(previous)
+
+
+def _check_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    api = Language("What!?")
+    limits = ExecutionLimits(max_steps=8)
+    write = ScriptedIO._write
+    attempts: list[object] = []
+    prefix = ""
+
+    def reject_first(port: ScriptedIO, value: object) -> None:
+        attempts.append(value)
+        if len(attempts) == 1:
+            write(port, prefix)
+            raise HaltError("temporary write refusal")
+        write(port, value)
+
+    for source, first, second in (
+        ("65!66!", "A", "B"),
+        ("123!!65!", 123, "A"),
+        ('"abc"!!!"d"!!!', "abc", "abcd"),
+    ):
+        clean = api.make_debugger(source)
+        assert clean.run(limits=limits) == "halted"
+        text = str(first)
+        assert clean.observation.output == text + second
+        for accepted in range(len(text) + 1):
+            attempts.clear()
+            prefix = text[:accepted]
+            replay = api.make_debugger(source)
+            replay.step()
+            before = replay.observation
+            boundary = replay.snapshot()
+            workspace = _capture_workspace(replay.vm)
+            with monkeypatch.context() as scoped:
+                scoped.setattr(ScriptedIO, "_write", reject_first)
+                with pytest.raises(HaltError, match="write refusal") as exc:
+                    replay.step()
+                partial = replace(before, output=prefix)
+                assert exc.value.observation == replay.observation == partial
+                if accepted:
+                    instruction, *components = workspace.parts
+                    assert replay.snapshot() == (*boundary, accepted)
+                    assert _capture_workspace(replay.vm).parts == (
+                        WorkspaceVariant("pending_output", (instruction, accepted)),
+                        *components,
+                    )
+                else:
+                    assert replay.snapshot() == boundary
+                    assert _capture_workspace(replay.vm) == workspace
+                assert replay.run(limits=limits) == "halted"
+            retry = (
+                []
+                if accepted == len(text)
+                else [text[accepted:] if accepted else first]
+            )
+            assert attempts == [first, *retry, second]
+            assert type(attempts[0]) is type(first)
+            assert replay.observation == clean.observation
+            assert replay.snapshot() == clean.snapshot()
+            assert _capture_workspace(replay.vm) == _capture_workspace(clean.vm)
+            assert exc.value.observation == partial

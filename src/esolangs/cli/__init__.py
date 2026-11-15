@@ -93,7 +93,7 @@ from esolangs.cli.io import (
     _write_output,
 )
 from esolangs.cli.run import _run
-from esolangs.compressed import CompressedText
+from esolangs.compressed import CompressedText, _check_plain
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
 from esolangs.operations.boolean_io import _answer_codec, _read_output_answer
 from esolangs.raster import png
@@ -325,12 +325,9 @@ def _emit(
 ) -> None:
     """Write native source using the artifact's declared file convention."""
     program = artifact.source
+    runtime = get_catalog(catalog).languages[artifact.language].runtime
     if isinstance(program, str):
-        ending = (
-            native_file_terminator(program)
-            if get_catalog(catalog).languages[artifact.language].runtime.file_newline
-            else ""
-        )
+        ending = native_file_terminator(program) if runtime.file_newline else ""
         if gzip:
             try:
                 compressed = CompressedText.from_chunks((program, ending))
@@ -342,11 +339,11 @@ def _emit(
         else:
             _write_output(program + ending)
     elif isinstance(program, CompressedText):
-        if plain:
-            for chunk in program.plain_chunks():
-                _write_output(chunk)
-        else:
-            _write_output(program.to_gzip())
+        _emit_compressed(
+            program,
+            plain=plain,
+            terminate=runtime.file_newline and not runtime.compressed_source,
+        )
     else:
         assert isinstance(artifact, ProgramArtifact)
         _write_output(
@@ -358,6 +355,31 @@ def _emit(
                 input_arity=artifact.input_arity,
             )
         )
+
+
+def _emit_compressed(program: CompressedText, *, plain: bool, terminate: bool) -> None:
+    """Export compressed text under the runtime's native newline policy."""
+    from esolangs.portable import _terminated_text
+
+    limits = program.limits
+    if plain:
+        chunks = program.plain_chunks()
+        if terminate:
+            if limits is not None and len(program) + 2 > limits.plain_chars:
+                _check_plain(limits, len(program) + 1)
+                # A final CR needs a two-character terminator. Check the
+                # exact size before writing if only one character will fit.
+                for _ in _terminated_text(program.chunks(), plain_limits=limits):
+                    pass
+            chunks = _terminated_text(chunks)
+        for chunk in chunks:
+            _write_output(chunk)
+    else:
+        if terminate:
+            program = CompressedText.from_chunks(
+                _terminated_text(program.chunks()), limits=limits
+            )
+        _write_output(program.to_gzip())
 
 
 def _generation_bits(

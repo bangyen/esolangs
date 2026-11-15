@@ -81,7 +81,33 @@ def test_artifact_persistence_executes_the_same_table(
         if isinstance(restored, ProgramArtifact) and language != REFERENCE:
             with pytest.raises(esolangs.ProgramError):
                 esolangs.run(REFERENCE, restored)
-        for program in (source, restored, pickle.loads(pickle.dumps(source))):
+        current = pickle.loads(pickle.dumps(source))
+        assert current == source
+        programs = [source, restored, current]
+        if isinstance(source, ProgramArtifact):
+
+            class PreArity:
+                def __reduce__(self):
+                    return (
+                        object.__new__,
+                        (ProgramArtifact,),
+                        [source.source, source.language, source.settings, source.scale],
+                    )
+
+            legacy = pickle.loads(pickle.dumps(PreArity()))
+            assert legacy == replace(source, input_arity=None)
+            assert pickle.loads(pickle.dumps(legacy)) == legacy
+            assert (
+                esolangs.from_json(language, esolangs.to_json(language, legacy))
+                == legacy
+            )
+            foreign = _EMBEDDING[0] if language == REFERENCE else REFERENCE
+            with pytest.raises(esolangs.ProgramError, match="generated for"):
+                esolangs.run(foreign, legacy)
+            with pytest.raises(FrozenInstanceError):
+                legacy.input_arity = inputs
+            programs.append(legacy)
+        for program in programs:
             assert _evaluate(language, program, inputs=inputs) == table
     path = tmp_path / ("program" + LANGUAGES[language].source_suffix)
     if isinstance(source, TemplateArtifact):

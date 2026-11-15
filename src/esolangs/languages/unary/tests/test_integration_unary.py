@@ -63,7 +63,11 @@ def test_cli_exports_gzip_by_default_and_plain_on_request(tmp_path) -> None:
     command = [sys.executable, "-m", "esolangs", "generate", "Unary", "01"]
     options = {"capture_output": True, "timeout": 10}
     packed = subprocess.run(command, check=True, **options)
+    explicit = subprocess.run([*command, "--gzip"], check=True, **options)
     plain = subprocess.run([*command, "--plain"], check=True, **options)
+    source = esolangs.generate("Unary", "01").source
+    assert isinstance(source, esolangs.CompressedText)
+    assert packed.stdout == explicit.stdout == source.to_gzip()
     assert str(esolangs.CompressedText(packed.stdout)) == "0" * 887
     assert plain.stdout == b"0" * 887
     path = tmp_path / "source.txt.gz"

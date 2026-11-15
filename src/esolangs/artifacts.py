@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from reprlib import recursive_repr
 
 import esolangs
@@ -135,6 +135,12 @@ class ProgramArtifact[Source: Program]:
                 object.__setattr__(self, "scale", check_scale(self.scale))
         elif self.scale is not None:
             raise ArgumentError("scale is only supported for raster programs")
+
+    def __setstate__(self, state: list[object]) -> None:
+        """Restore stored slots, defaulting arity for older pickles."""
+        object.__setattr__(self, "input_arity", None)
+        for item, value in zip(fields(self), state, strict=False):
+            object.__setattr__(self, item.name, value)
 
     @recursive_repr()
     def __repr__(self) -> str:

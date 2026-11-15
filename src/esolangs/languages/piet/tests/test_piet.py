@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import esolangs
 from esolangs import run as execute_program
 from esolangs.languages.piet.interpreter import _command, _Machine, run
 from esolangs.raster import Raster
@@ -38,11 +39,12 @@ def execute(program: Raster, stdin: str = "") -> str:
 def test_a_surrogate_is_popped_and_not_printed() -> None:
     """The spec drops a char outside Unicode; U+D800 was written as bytes."""
     io = ScriptedIO("")
-    assert _Machine.perform_io((0xD800,), ("write_char", 0xD800), io) == (0xD800,)
+    for value in (-1, 0xD800, 0x110000, 1 << 100):
+        assert _Machine.perform_io((7,), ("write_char", value), io) == (7,)
     assert io.getvalue() == ""
 
 
-def test_push_and_output_number() -> None:
+def test_push_and_output_number(monkeypatch) -> None:
     # Three light-red codels push 3; red -> dark magenta outputs it.
     program = raster(
         (LIGHT_RED, BLACK, BLACK, DARK_MAGENTA),
@@ -50,6 +52,50 @@ def test_push_and_output_number() -> None:
         (BLACK, BLACK, BLACK, DARK_MAGENTA),
     )
     assert execute(program) == "3"
+    _check_output_retries(monkeypatch)
+
+
+def _check_output_retries(monkeypatch) -> None:
+    api = esolangs.Language("Piet")
+    limits = esolangs.ExecutionLimits(max_steps=3)
+    write = ScriptedIO._write
+    for colour, expected in ((DARK_MAGENTA, "3"), (LIGHT_MAGENTA, "\x03")):
+        program = raster(
+            (LIGHT_RED, BLACK, BLACK, colour),
+            (LIGHT_RED, LIGHT_RED, RED, colour),
+            (BLACK, BLACK, BLACK, colour),
+        )
+        assert api.run(program, limits=limits).output == expected
+        for accepted in (False, True):
+            attempts = []
+            fault = esolangs.ProgramError("sink refused")
+
+            def refuse_once(
+                port, value, *, attempts=attempts, accepted=accepted, fault=fault
+            ):
+                attempts.append(value)
+                if len(attempts) == 1:
+                    if accepted:
+                        write(port, value)
+                    raise fault
+                write(port, value)
+
+            with monkeypatch.context() as patch:
+                patch.setattr(ScriptedIO, "_write", refuse_once)
+                debugger = api.make_debugger(program)
+                debugger.step()
+                initial = debugger.snapshot()
+                with pytest.raises(esolangs.ProgramError, match="sink refused") as err:
+                    debugger.step()
+                assert err.value is fault
+                assert fault.observation == esolangs.ExecutionResult(
+                    expected if accepted else "", 0, 0, 0, steps=1
+                )
+                assert (debugger.snapshot() == initial) is not accepted
+                assert debugger.run(limits=limits) == "halted"
+                assert debugger.output == expected
+                assert debugger.observation.steps == 3
+                assert len(attempts) == (1 if accepted else 2)
 
 
 def test_white_slide_executes_no_transition() -> None:

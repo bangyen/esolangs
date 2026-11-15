@@ -245,7 +245,7 @@ def _check_workspace_cases():
             _check_case(factory, case)
 
 
-def _check_history(case, rows, failed, error_type, decorate):
+def _check_history(case, rows, failed, error_type, decorate, *, accepted=0):
     port = ScriptedIO(case.stdin)
     machine = _Machine(case.source, port)
     restore = decorate(port)
@@ -266,10 +266,15 @@ def _check_history(case, rows, failed, error_type, decorate):
             port.position(),
             port.progress(),
         ) == row
-        assert _cycle(machine) == (*row[0][:4], row[-1])
-        witness.sample(machine.workspace_snapshot(), _parts(row))
+        cycle, parts = (*row[0][:4], row[-1]), _parts(row)
+        if index == failed and accepted:
+            cycle = (*cycle, accepted)
+            pending = workspace.WorkspaceVariant("pending_output", (parts[0], accepted))
+            parts = (pending, *parts[1:])
+        assert _cycle(machine) == cycle
         cycle = machine.snapshot()
         capture = machine.workspace_snapshot()
+        witness.sample(capture, parts)
         held.append((cycle, hash(cycle), capture, hash(capture)))
         assert all(hash(c) == ch and hash(w) == wh for c, ch, w, wh in held)
     witness.finish()
@@ -287,13 +292,8 @@ def _check_failure_history():
         assert error is None
         text = str(payload)
         for prefix in ("", text[:1]):
-            rows = []
-            for index, normal_row in enumerate(normal):
-                row = normal_row
-                if index >= 2:
-                    state = (*row[0][:9], False if index < 4 or not tail else row[0][9])
-                    row = state, row[1], prefix + row[2][len(text) :], row[3], row[4]
-                rows.append(row)
+            before = normal[1]
+            rows = [*normal[:2], (*before[:2], prefix, *before[3:]), *normal[2:]]
             refused = []
 
             def decorate(port, _prefix=prefix, _refused=refused, _payload=payload):
@@ -310,7 +310,7 @@ def _check_failure_history():
                 port._write = fail
                 return lambda: setattr(port, "_write", write)
 
-            _check_history(case, rows, 2, ValueError, decorate)
+            _check_history(case, rows, 2, ValueError, decorate, accepted=len(prefix))
             assert refused == [payload]
     case = _assemble((("num", 0), ("in", 1), ("out", 2)), "A")
     error, normal = _model(case)

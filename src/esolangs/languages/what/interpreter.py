@@ -63,9 +63,9 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
-from esolangs.runtime.memory import format_integer
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
+from esolangs.runtime.memory import format_integer, parse_integer
 
 _CELLS = 256
 _WORD = 1 << 16
@@ -110,9 +110,11 @@ def _number(code: str, i: int) -> tuple[int, int]:
     j = i
     while j < len(code) and code[j] in _DIGITS:
         j += 1
-    value = int(code[i:j])
+    value = parse_integer(code[i:j])
     if value >= _WORD:
-        raise ValueError(f"What!?: literal {value} at offset {i} exceeds 65535")
+        raise ValueError(
+            f"What!?: literal {format_integer(value)} at offset {i} exceeds 65535"
+        )
     return value, j
 
 
@@ -296,6 +298,7 @@ class _Machine:
         self.tokens = parse(code) if isinstance(code, str) else code
         self.io = io
         self._rejected_input = RejectedInput()
+        self._writer = _BufferedOutput()
         self.state: _State = (
             0,
             0,
@@ -320,8 +323,14 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        instruction = self.state[0]
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state[0],
+            instruction=(
+                WorkspaceVariant("pending_output", (instruction, accepted))
+                if accepted
+                else instruction
+            ),
             pointer=self.state[1],
             integers=persistent.flatten(self.state[2]),
             strings=persistent.flatten(self.state[3]),
@@ -330,7 +339,9 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self._rejected_input.snapshot((*self.state, self.io.progress()))
+        boundary = self._rejected_input.snapshot((*self.state, self.io.progress()))
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _read(self, size: int) -> int | str:
         """Take a ``?``-run's input; EOF gives 0 or the empty string."""
@@ -355,15 +366,26 @@ class _Machine:
         if token.kind == "in":
             value = self._rejected_input.read(self.io, lambda: self._read(token.arg))
         try:
-            self.state, out = _advance(self.state, self.tokens, value)
+            state, out = _advance(self.state, self.tokens, value)
         except HaltError as error:
             if value is not None:
                 self._rejected_input.remember(error)
             raise
+        if out is not None:
+            self._write(out)
+        self.state = state
+
+    def _write(self, out: int | str) -> None:
+        io = self.io
         if isinstance(out, int):
-            self.io.print_num(out)
-        elif out is not None:
-            self.io.print_str(out)
+            if isinstance(io, ScriptedIO):
+                self._writer.write(io, str(out), first=lambda: io.print_num(out))
+            else:
+                io.print_num(out)
+        elif isinstance(io, ScriptedIO):
+            self._writer.write(io, out)
+        else:
+            io.print_str(out)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

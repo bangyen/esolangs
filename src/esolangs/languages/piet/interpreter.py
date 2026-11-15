@@ -55,7 +55,6 @@ from __future__ import annotations
 import operator
 import re
 from collections.abc import Callable, Mapping
-from contextlib import suppress
 from functools import cache
 from typing import Any
 
@@ -67,7 +66,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import raster_source
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.codels import (
     BLACK,
     COLOURS,
@@ -76,8 +75,8 @@ from esolangs.runtime.codels import (
     find_block,
     slide,
 )
-from esolangs.runtime.io import IO
-from esolangs.runtime.memory import parse_integer
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
+from esolangs.runtime.memory import format_integer, parse_integer
 
 __all__ = ["run"]
 
@@ -265,6 +264,7 @@ class _Machine:
         effect: _Effect,
         io: IO,
         read_succeeded: Callable[[], None] | None = None,
+        writer: _BufferedOutput | None = None,
     ) -> tuple[int, ...]:
         """Perform a transition's I/O and return the resulting immutable stack."""
         if effect is None:
@@ -291,10 +291,18 @@ class _Machine:
                     read_succeeded()
                 return (*stack, value)
         elif action == "write_num":
-            io.print_num(value)
-        elif not 0xD800 <= value <= 0xDFFF:  # A surrogate is no character either.
-            with suppress(ValueError):
-                io.print_char(chr(value))
+            if writer is not None and isinstance(io, ScriptedIO):
+                writer.write(
+                    io, format_integer(value), first=lambda: io.print_num(value)
+                )
+            else:
+                io.print_num(value)
+        elif 0 <= value <= 0x10FFFF and not 0xD800 <= value <= 0xDFFF:
+            char = chr(value)
+            if writer is not None and isinstance(io, ScriptedIO):
+                writer.write(io, char, first=lambda: io.print_char(char))
+            else:
+                io.print_char(char)
         return stack
 
     def __init__(
@@ -305,6 +313,7 @@ class _Machine:
         )
         self.io = io
         self._input_reads = 0
+        self._writer = _BufferedOutput()
         black = _colour(self.rows[0][0]) == BLACK
         self.state: _State = ((0, 0), 0, -1, (), black)
 
@@ -338,8 +347,13 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            position=self.current,
+            position=(
+                WorkspaceVariant("pending_output", (*self.current, accepted))
+                if accepted
+                else self.current
+            ),
             direction=self.dp,
             chooser=self.cc,
             stack=self.stack,
@@ -349,7 +363,7 @@ class _Machine:
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        return (
+        boundary = (
             self.current,
             self.dp,
             self.cc,
@@ -359,6 +373,8 @@ class _Machine:
             self._program_key,
             self._input_reads,
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _read_succeeded(self) -> None:
         self._input_reads += 1
@@ -366,7 +382,9 @@ class _Machine:
     def step(self) -> None:
         state, effect = _advance(self.state, self.rows)
         current, dp, cc, stack, halted = state
-        stack = self.perform_io(stack, effect, self.io, self._read_succeeded)
+        stack = self.perform_io(
+            stack, effect, self.io, self._read_succeeded, self._writer
+        )
         self.state = (current, dp, cc, stack, halted)
 
 
