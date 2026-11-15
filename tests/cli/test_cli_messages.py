@@ -138,10 +138,12 @@ class TestRoundSixQol:
     def test_a_pipe_still_receives_exactly_nothing(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """The note is for a terminal; piped output stays byte-exact."""
+        """The empty-source note stays on stderr."""
         empty = tmp_path / "empty.txt"
         empty.write_text("")
-        assert call_main(["run", REFERENCE, str(empty)], capsys) == ""
+        output, error = call_both(["run", REFERENCE, str(empty)], capsys)
+        assert not output
+        assert "is empty, so there was no program to run" in error
 
 
 class TestTheLastResortPaths:

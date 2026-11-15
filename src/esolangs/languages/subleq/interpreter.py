@@ -31,7 +31,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime._validate import check_address
+from esolangs.runtime._validate import _argument_repr, check_address
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import parse_int_memory
 from esolangs.runtime.source_hints import syntax_error
@@ -84,7 +84,7 @@ class _Machine:
     def _read(self, address: int) -> int:
         if address < 0:
             raise syntax_error(
-                f"invalid Subleq data address {address}",
+                f"invalid Subleq data address {_argument_repr(address)}",
                 "use a nonnegative data address; -1 is reserved for I/O",
             )
         return self.cells[address] if address < len(self.cells) else 0

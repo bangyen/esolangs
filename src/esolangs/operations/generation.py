@@ -3,7 +3,6 @@
 from collections.abc import Callable
 from dataclasses import replace
 from functools import cache
-from math import isqrt
 from typing import cast
 
 from esolangs._bindings import check_setters, validate_spans
@@ -31,9 +30,9 @@ from esolangs.generation.requests import (
     call_backend,
 )
 from esolangs.generation.template import TemplateLayout, layout_fragments
-from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import (
     TokenWrapper,
+    _layout_compressed,
     balance_character_slots,
     balance_program,
     wrap_character_slots,
@@ -215,7 +214,9 @@ def generate(
         raise ProgramError(f"{resolved}'s template generator did not return slots")
     if isinstance(generated, CompressedText):
         return ProgramArtifact(
-            generated if laid_out or backend.wrap is None else generated.wrapped(width),
+            generated
+            if laid_out
+            else _layout_compressed(generated, lang.id, width, catalog=catalog),
             resolved,
             settings=settings,
             input_arity=inputs,
@@ -287,9 +288,9 @@ def _generate_balanced(
     if isinstance(source, CompressedText):
         assert isinstance(default, ProgramArtifact)
         if balancer is None:
-            if backend.wrap is None:
-                return default
-            balanced = source.wrapped(max(1, isqrt(CELL_ASPECT * len(source))))
+            balanced = _layout_compressed(
+                source, lang.id, balance=True, catalog=catalog
+            )
         else:
             result = call_backend(
                 balancer,
@@ -297,7 +298,7 @@ def _generate_balanced(
             )
             if not isinstance(result, CompressedText):
                 raise ProgramError(f"{name}'s balancer did not return CompressedText")
-            balanced = result
+            balanced = result._inherit_limits(source.limits)  # noqa: SLF001
         return replace(default, source=balanced)
     if isinstance(source, Raster):
         if balancer is None:

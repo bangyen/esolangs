@@ -1,9 +1,11 @@
 """Tests for the Subleq interpreter."""
 
 import random
+import sys
 
 import pytest
 
+from esolangs import ArgumentError, Language, ProgramError
 from esolangs.languages.subleq.interpreter import _Machine
 from esolangs.languages.subleq.interpreter import run as run_subleq
 from esolangs.registry._certification import load as load_certification
@@ -108,3 +110,22 @@ def test_subleq_rejects_negative_data_addresses(code: str) -> None:
 
 def test_subleq_zero_extended_memory() -> None:
     run_subleq("10 10 -1", ScriptedIO())
+
+
+def test_large_addresses_keep_their_diagnostic_types() -> None:
+    api = Language("Subleq")
+    digits = "9" * 700
+    cap = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(sys.int_info.str_digits_check_threshold)
+        debugger = api.make_debugger(f"0 0 {digits}")
+        debugger.step()
+        assert debugger.halted
+        with pytest.raises(ArgumentError, match=r"currently <integer with \d+ bits>"):
+            debugger.break_at((0, 0))
+        with pytest.raises(
+            ProgramError, match=r"invalid Subleq data address <negative integer"
+        ):
+            api.run(f"-{digits} 0 0")
+    finally:
+        sys.set_int_max_str_digits(cap)

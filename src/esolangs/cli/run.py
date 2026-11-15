@@ -202,7 +202,7 @@ def _run(rest: list[str]) -> None:
     # result with no trailing newline runs into the next shell prompt.
     if output and not output.endswith("\n") and sys.stdout.isatty():
         _write_output("\n")
-    empty = isinstance(program.source, str) and not program.source.strip()
+    empty = isinstance(program.source, str) and not program.source
     slot = template_char(declaration.id)
     if slot is not None and isinstance(program.source, str) and slot in program.source:
         _note(

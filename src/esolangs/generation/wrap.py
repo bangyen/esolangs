@@ -20,6 +20,7 @@ from math import isqrt
 from typing import TYPE_CHECKING
 
 from esolangs._bindings import TEMPLATE_CHAR
+from esolangs.compressed import CompressedText
 from esolangs.exceptions import ProgramError
 from esolangs.generation.requests import call_backend
 from esolangs.generation.template import (
@@ -328,6 +329,47 @@ def _wrapped_text(result: object, language_id: str) -> str:
     if not isinstance(result, str):
         raise ProgramError(f"{language_id}'s wrapper did not return text")
     return str.__str__(result)
+
+
+def _layout_compressed(
+    program: CompressedText,
+    language_id: str,
+    width: int | None = None,
+    *,
+    balance: bool = False,
+    catalog: "Catalog | None" = None,
+) -> CompressedText:
+    """Apply text reflow to gzip source while retaining its export budgets."""
+    if width is None and not balance:
+        return program
+    backend = _backend(language_id, catalog=catalog)
+    if backend is None:
+        return program
+    if balance:
+        if backend.wrap is None and backend.wrap_balance is None:
+            return program
+    elif backend.wrap is None:
+        return program
+    multiline = program._is_multiline()  # noqa: SLF001
+    if multiline and (not backend.wrap_multiline or backend.wrap is None):
+        return program
+    if (
+        not multiline
+        and backend.wrap is wrap_chars
+        and (not balance or backend.wrap_balance is None)
+    ):
+        # Unary's character layout streams without expanding the program.
+        chosen = max(1, isqrt(CELL_ASPECT * len(program))) if balance else width
+        return program.wrapped(chosen)
+    source = "".join(program.chunks())
+    result = (
+        balance_program(source, language_id, catalog=catalog)
+        if balance
+        else wrap_program(source, language_id, width, catalog=catalog)
+    )
+    if result == source:
+        return program
+    return CompressedText.from_chunks((result,), limits=program.limits)
 
 
 def balance_width(program: str) -> int:

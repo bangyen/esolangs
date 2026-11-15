@@ -9,6 +9,7 @@ import zlib
 from collections.abc import Iterable, Iterator
 from dataclasses import KW_ONLY, dataclass, field
 from os import PathLike
+from typing import ClassVar
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
 from esolangs.runtime._files import explicit_path, write_staged
@@ -84,6 +85,7 @@ class CompressedText:
     _: KW_ONLY
     limits: TextLimits | None = None
     _size: int = field(init=False, repr=False)
+    _has_newline: ClassVar[bool | None] = None
 
     def __post_init__(self) -> None:
         """Validate the stream and measure its expanded characters."""
@@ -91,15 +93,18 @@ class CompressedText:
             raise ProgramError("gzip source must be bytes")
         object.__setattr__(self, "data", bytes.__bytes__(self.data))
         _check_limits(self.limits)
-        if self.limits is None:
-            size = sum(len(chunk) for chunk in self.chunks())
-        else:
-            _check_gzip(self.limits, len(self.data))
-            size = 0
-            for chunk in self.chunks():
-                size += len(chunk)
-                _check_work(self.limits, size)
+        limits = self.limits
+        if limits is not None:
+            _check_gzip(limits, len(self.data))
+        size = 0
+        has_newline = False
+        for chunk in self.chunks():
+            size += len(chunk)
+            has_newline = has_newline or "\n" in chunk
+            if limits is not None:
+                _check_work(limits, size)
         object.__setattr__(self, "_size", size)
+        object.__setattr__(self, "_has_newline", has_newline)
 
     def chunks(self) -> Iterator[str]:
         """Yield decoded text in bounded chunks, validating gzip and UTF-8."""
@@ -124,6 +129,7 @@ class CompressedText:
             raise ArgumentError("chunks must be an iterable of strings")
         output = io.BytesIO()
         count = 0
+        has_newline = False
         with gzip.GzipFile(fileobj=output, mode="wb", filename="", mtime=0) as stream:
             for text in chunks:
                 if not isinstance(text, str):
@@ -133,6 +139,7 @@ class CompressedText:
                     )
                 chunk = str.__str__(text)
                 count += len(chunk)
+                has_newline = has_newline or "\n" in chunk
                 if limits is not None:
                     _check_work(limits, count)
                 try:
@@ -148,7 +155,7 @@ class CompressedText:
         data = output.getvalue()
         if limits is not None:
             _check_gzip(limits, len(data))
-        return cls._measured(data, count, limits)
+        return cls._measured(data, count, limits, has_newline=has_newline)
 
     @classmethod
     def _measured(
@@ -156,6 +163,8 @@ class CompressedText:
         data: bytes,
         size: int,
         limits: TextLimits | None,
+        *,
+        has_newline: bool | None,
     ) -> CompressedText:
         """Build from a stream already known valid and ``size`` characters long.
 
@@ -163,10 +172,40 @@ class CompressedText:
         Unary's generation time at nine inputs.
         """
         text = object.__new__(cls)
-        fields = {"data": data}
-        for name, value in {**fields, "limits": limits, "_size": size}.items():
-            object.__setattr__(text, name, value)
+        object.__setattr__(text, "data", data)
+        object.__setattr__(text, "limits", limits)
+        object.__setattr__(text, "_size", size)
+        object.__setattr__(text, "_has_newline", has_newline)
         return text
+
+    def _is_multiline(self) -> bool:
+        """Use the newline measured at creation, with a fallback for old pickles."""
+        known = self._has_newline
+        return any("\n" in chunk for chunk in self.chunks()) if known is None else known
+
+    def _inherit_limits(self, original: TextLimits | None) -> CompressedText:
+        """Apply both versions' caps to the stored stream and measured length."""
+        if original is None:
+            return self
+        limits = self.limits
+        combined = (
+            original
+            if limits is None
+            else TextLimits(
+                plain_chars=min(limits.plain_chars, original.plain_chars),
+                generation_chars=min(
+                    limits.generation_chars, original.generation_chars
+                ),
+                gzip_bytes=min(limits.gzip_bytes, original.gzip_bytes),
+            )
+        )
+        if combined == limits:
+            return self
+        _check_gzip(combined, len(self.data))
+        _check_work(combined, self._size)
+        return self._measured(
+            self.data, self._size, combined, has_newline=self._has_newline
+        )
 
     @classmethod
     def repeated(

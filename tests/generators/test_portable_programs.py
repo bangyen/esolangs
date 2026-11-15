@@ -1,5 +1,6 @@
 """Portable source survives disk with its dialect and template conventions."""
 
+import gzip
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -232,12 +233,19 @@ def test_portable_generation_preserves_backend_laid_out_compression(
 
 def test_portable_generation_honors_a_compressed_balancer() -> None:
     original = LANGUAGES[REFERENCE]
-    compressed = esolangs.CompressedText.from_chunks((",.",))
-    expected = esolangs.CompressedText.from_chunks((",.\n\n",))
+    original_limits = esolangs.TextLimits(
+        plain_chars=0, generation_chars=8, gzip_bytes=80
+    )
+    returned_limits = esolangs.TextLimits(
+        plain_chars=3, generation_chars=4, gzip_bytes=100
+    )
+    compressed = esolangs.CompressedText.from_chunks((",.",), limits=original_limits)
+    output = gzip.compress(b",.\n\n", mtime=1)
+    returned = esolangs.CompressedText(output, limits=returned_limits)
 
     def balance(request: BalanceRequest) -> esolangs.CompressedText:
         assert request.source == compressed
-        return expected
+        return returned
 
     backend = replace(
         original.backend, entrypoint=lambda _: compressed, balance=balance
@@ -246,9 +254,131 @@ def test_portable_generation_honors_a_compressed_balancer() -> None:
     record = api.generate("01", balance=True)
     restored = api.from_json(api.to_json(record))
     assert restored == record
-    assert restored.source == expected
+    assert isinstance(restored.source, esolangs.CompressedText)
+    assert restored.source.to_gzip() == output
+    assert restored.source.limits == esolangs.TextLimits(
+        plain_chars=0, generation_chars=4, gzip_bytes=80
+    )
+    with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
+        str(restored.source)
     for bit in (0, 1):
         assert api.evaluate(restored, [bit]).answer == str(bit)
+
+
+def test_unchanged_compressed_balance_reuses_limited_source(monkeypatch) -> None:
+    original = LANGUAGES[REFERENCE]
+    limits = esolangs.TextLimits(plain_chars=0, generation_chars=2, gzip_bytes=25)
+    source = esolangs.CompressedText.from_chunks((",.",), limits=limits)
+    backend = replace(
+        original.backend, entrypoint=lambda _: source, balance=lambda req: req.source
+    )
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+
+    def unexpected_decode(_self):
+        pytest.fail("an unchanged gzip source was revalidated")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(esolangs.CompressedText, "chunks", unexpected_decode)
+        balanced = api.generate("01", balance=True)
+    assert balanced.source is source
+    for bit in (0, 1):
+        assert api.evaluate(balanced, [bit]).answer == str(bit)
+
+
+@pytest.mark.parametrize("balance", [False, True])
+def test_compressed_reflow_uses_declared_text_hooks(*, balance: bool) -> None:
+    original = LANGUAGES[REFERENCE]
+    limits = esolangs.TextLimits(plain_chars=0, generation_chars=20, gzip_bytes=100)
+    compressed = esolangs.CompressedText.from_chunks((",.",), limits=limits)
+
+    def reflow(text: str, width: int | None = None) -> str:
+        assert text == ",."
+        return text + (" balance" if width is None else " width")
+
+    backend = replace(
+        original.backend,
+        wrap=None if balance else reflow,
+        wrap_balance=reflow if balance else None,
+    )
+    sources = []
+    for source in (",.", compressed):
+        local = replace(
+            original,
+            backend=replace(backend, entrypoint=lambda _, source=source: source),
+        )
+        api = esolangs.Catalog([local]).bind(REFERENCE)
+        record = api.generate("01", width=None if balance else 1, balance=balance)
+        restored = api.from_json(api.to_json(record))
+        assert restored == record
+        for bit in (0, 1):
+            assert api.evaluate(restored, [bit]).answer == str(bit)
+        sources.append(restored.source)
+    plain, packed = sources
+    assert isinstance(packed, esolangs.CompressedText)
+    assert (
+        "".join(packed.chunks()) == plain == (",. balance" if balance else ",. width")
+    )
+    assert packed.limits == limits
+
+
+@pytest.mark.parametrize("may_reflow", [False, True])
+def test_compressed_reflow_respects_the_multiline_policy(*, may_reflow: bool) -> None:
+    original = LANGUAGES[REFERENCE]
+    raw = "," + "x" * 12 + "\n."
+    limits = esolangs.TextLimits(
+        plain_chars=0, generation_chars=len(raw), gzip_bytes=100
+    )
+    source = esolangs.CompressedText(
+        gzip.compress(raw.encode(), mtime=1), limits=limits
+    )
+
+    def reflow(text: str, _width: int) -> str:
+        assert may_reflow
+        return text.replace("x", "").replace("\n", "")
+
+    backend = replace(
+        original.backend,
+        entrypoint=lambda _: source,
+        wrap=reflow,
+        wrap_multiline=may_reflow,
+    )
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    for options in ({"width": 1}, {"balance": True}):
+        record = api.generate("01", **options)
+        if not may_reflow:
+            assert record.source is source
+        restored = api.from_json(api.to_json(record))
+        assert isinstance(restored.source, esolangs.CompressedText)
+        assert "".join(restored.source.chunks()) == (",." if may_reflow else raw)
+        assert restored.source.limits == limits
+        for bit in (0, 1):
+            assert api.evaluate(restored, [bit]).answer == str(bit)
+
+
+@pytest.mark.parametrize("balance", [False, True])
+@pytest.mark.parametrize("cap", ["work", "gzip"])
+def test_compressed_reflow_enforces_original_generation_limits(
+    cap: str, *, balance: bool
+) -> None:
+    original = LANGUAGES[REFERENCE]
+    limits = esolangs.TextLimits(
+        plain_chars=0,
+        generation_chars=2 if cap == "work" else 100,
+        gzip_bytes=100 if cap == "work" else len(gzip.compress(b",.", mtime=0)),
+    )
+    source = esolangs.CompressedText.from_chunks((",.",), limits=limits)
+    expanded = ",.ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    returned = esolangs.CompressedText.from_chunks((expanded,))
+    backend = replace(
+        original.backend,
+        entrypoint=lambda _: source,
+        wrap=lambda _text, _width: expanded,
+        balance=(lambda _: returned) if balance else None,
+    )
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    match = "work cap" if cap == "work" else "file cap"
+    with pytest.raises(esolangs.GeneratorCapError, match=match):
+        api.generate("01", width=None if balance else 1, balance=balance)
 
 
 @pytest.mark.parametrize(

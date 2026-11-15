@@ -33,6 +33,43 @@ def test_an_active_vm_has_no_successful_result():
         _capture_result(make_vm(REFERENCE, "+."))
 
 
+@pytest.mark.parametrize(
+    ("steps", "expected"),
+    [
+        (0, esolangs.ExecutionResult("", 0, 0, 0, steps=0)),
+        (3, esolangs.ExecutionResult("A", 1, 1, 0, steps=3)),
+    ],
+)
+def test_vm_completion_cap_preserves_observed_io(steps, expected):
+    source = ",.[]"
+    vm = make_vm(REFERENCE, source, stdin="A")
+    with pytest.raises(esolangs.ExecutionCapError) as caught:
+        complete_vm(vm, max_steps=steps)
+    bounded = esolangs.execute(
+        REFERENCE, source, stdin="A", limits=esolangs.ExecutionLimits(max_steps=steps)
+    )
+    assert caught.value.bound == bounded.bound == "max_steps"
+    assert caught.value.observation == bounded.observation == expected
+    assert caught.value.partial_output == vm.output == expected.output
+    assert complete_vm(make_vm(REFERENCE, ",.", stdin="A"), max_steps=2) == "A"
+
+
+def test_vm_completion_cap_keeps_custom_input_counters_unknown():
+    class Custom:
+        halted = False
+        self_halts = True
+        output = ""
+
+        def step(self):
+            self.output += "A"
+
+    with pytest.raises(esolangs.ExecutionCapError) as caught:
+        complete_vm(Custom(), max_steps=1)
+    assert caught.value.observation == esolangs.ExecutionResult(
+        "A", None, None, None, steps=1
+    )
+
+
 def test_custom_vm_io_fields_stay_caller_owned():
     class Custom:
         halted = True

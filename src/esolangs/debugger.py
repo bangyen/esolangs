@@ -156,8 +156,8 @@ class Debugger(_ExecutionController):
             kind = "a coordinate tuple" if isinstance(here, tuple) else "an index"
             if isinstance(here, tuple) != isinstance(ip, tuple):
                 raise ArgumentError(
-                    f"this language's ip is {kind} (currently {here!r}), so a "
-                    f"breakpoint on {_argument_repr(ip)} could never fire"
+                    f"this language's ip is {kind} (currently {_argument_repr(here)}), "
+                    f"so a breakpoint on {_argument_repr(ip)} could never fire"
                 )
         self._breakpoints.append(lambda vm: vm.ip == ip)
 

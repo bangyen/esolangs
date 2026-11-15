@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from esolangs import ExecutionLimits
+from esolangs import ExecutionLimits, encode_inputs
 from esolangs.exceptions import (
     ArgumentError,
     HaltError,
@@ -179,6 +179,30 @@ def test_character_output_uses_the_code_point_range(tmp_path) -> None:
             run(push(65) + OUT_CHAR + push(value) + OUT_CHAR + END, io)
         assert io.getvalue() == "A"
     _check_lossless_containers(tmp_path)
+
+
+@pytest.mark.medium
+def test_cli_runs_generated_whitespace_without_an_empty_source_note(tmp_path) -> None:
+    command = [sys.executable, "-m", "esolangs"]
+    generated = subprocess.run(
+        [*command, "generate", "Whitespace", "01"],
+        capture_output=True,
+        timeout=15,
+        check=True,
+    )
+    assert generated.stdout
+    assert not generated.stdout.strip()
+    path = tmp_path / "program.ws"
+    path.write_bytes(generated.stdout)
+    for bit in (0, 1):
+        result = subprocess.run(
+            [*command, "run", "Whitespace", str(path)],
+            input=encode_inputs("Whitespace", [bit]).encode(),
+            capture_output=True,
+            timeout=15,
+            check=True,
+        )
+        assert (result.stdout, result.stderr) == (str(bit).encode(), b"")
 
 
 @pytest.mark.medium

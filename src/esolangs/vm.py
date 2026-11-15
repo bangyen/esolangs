@@ -21,6 +21,7 @@ sub-protocol.  :func:`run_until_halt` proves nothing.
 from __future__ import annotations
 
 from collections.abc import Callable, Hashable
+from dataclasses import replace
 from functools import cache
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
@@ -77,16 +78,20 @@ if TYPE_CHECKING:
 def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     """Return finalized raw output after a proved halt, including a final dump.
 
-    Raises on exhausted steps or an active machine that never self-halts. Repeated
-    completion is safe: the post-halt step is idempotent by the VM contract.
+    An exhausted step budget retains the unfinished IO observation. An active
+    machine must be able to self-halt. Repeated completion is safe: the
+    post-halt step is idempotent by the VM contract.
     """
     if max_steps is not None:
         max_steps = check_whole(max_steps, "max_steps")
     if not vm.self_halts and not vm.halted:
         raise ArgumentError("completion requires a machine that self-halts")
     if not run_until_halt(vm, max_steps):
-        # The class and bound ``run`` raises for the same cap.
-        raise steps_exhausted("VM completion exhausted max_steps")
+        error = steps_exhausted("VM completion exhausted max_steps")
+        # Without a stop predicate, an active return has used the full budget.
+        error.observation = replace(_capture_observation(vm), steps=max_steps)
+        error.partial_output = error.observation.output
+        raise error
     # Public VMs declare the boolean trait; other attributes are caller-owned.
     finalize(
         vm,
