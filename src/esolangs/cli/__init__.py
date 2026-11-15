@@ -69,6 +69,7 @@ from esolangs.cli.args import (
 )
 from esolangs.cli.help import COMMANDS, USAGE, help_text
 from esolangs.cli.hints import (
+    _TIMEOUT_EXIT,
     _as_argument,
     _cli_error_text,
     _did_you_mean,
@@ -77,6 +78,7 @@ from esolangs.cli.hints import (
     _input_sentence,
     _looks_like_a_table,
     _shell_hint,
+    _timeout_text,
 )
 from esolangs.cli.io import (
     _abandon_output,
@@ -93,7 +95,12 @@ from esolangs.cli.io import (
 )
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText, _check_plain
-from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
+from esolangs.exceptions import (
+    ArgumentError,
+    EsolangError,
+    ExecutionBudgetError,
+    ProgramError,
+)
 from esolangs.operations.boolean_io import _answer_codec, _read_output_answer
 from esolangs.raster import png
 from esolangs.registry import Catalog, LanguageDeclaration, SourceKind, get_catalog
@@ -502,6 +509,8 @@ def _generate(rest: list[str]) -> None:
         program = artifact.source
         if isinstance(program, CompressedText) and "--plain" in flags:
             program.plain_chunks()  # Check the export budget before writing anything.
+    except ExecutionBudgetError as exc:
+        _fail(_timeout_text(exc), _TIMEOUT_EXIT)
     except EsolangError as exc:
         _fail(_generate_hint(exc, language, table, repair_options, catalog=catalog))
     if (width is not None or bare or balance) and _layout_ignored(

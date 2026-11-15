@@ -389,9 +389,12 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     shadow.mkdir()
 
     checks = []
+    budget = None
 
     def validate(**choices):
         checks.append(choices)
+        if budget is not None and choices:
+            raise budget
         monkeypatch.chdir(shadow)
 
     schema = esolangs.DialectSchema(name, {"mode": (1,)}, {"mode": 1})
@@ -458,6 +461,30 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     assert call_both(
         ["run", "--max-output", "1", REFERENCE, str(path)], capsys, stdin="Q"
     ) == ("Q", "")
+
+    budget = esolangs.ExecutionTimeoutError("dialect validation exceeded its budget")
+    budget.bound = "preparation_timeout"
+    bound = scope.bind(name)
+    for flags, settings in (
+        ([], None),
+        (["--set", "mode=1"], esolangs.DialectSettings(schema, mode=1)),
+    ):
+        outcome = bound.execute(path, stdin="Q", settings=settings)
+        assert outcome.status == "limit"
+        assert outcome.bound == "preparation_timeout"
+        assert outcome.error is budget
+        assert not outcome.observation.output
+        with pytest.raises(esolangs.ExecutionTimeoutError) as refused:
+            bound.generate("01", settings=settings)
+        assert refused.value is budget
+        for command in (
+            ["run", *flags, name, str(path)],
+            ["generate", *flags, name, "01"],
+        ):
+            assert _failure(command, capsys, code=124, stdin="Q") == (
+                "",
+                _timeout_text(budget) + "\n",
+            )
 
     _check_described_input_samples(monkeypatch, capsys, tmp_path)
 

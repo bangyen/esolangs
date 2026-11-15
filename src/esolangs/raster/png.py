@@ -51,6 +51,7 @@ def _require_image() -> Any:
 _SIGNATURE = b"\x89PNG\r\n\x1a\n"
 _REEXPORT = "restore or re-export the complete PNG image"
 _IHDR = struct.Struct(">IIBBBBB")
+_INFLATE_BLOCK = 65_536
 
 # PNG colour type codes (IHDR byte 9).
 _GREY = 0
@@ -265,16 +266,43 @@ def _check_header_fields(
     return channels
 
 
+def _inflate_idat(idat: bytes, limit: int) -> tuple[bytes, bool]:
+    """Keep each bounded inflate call small, including on highly compressed input."""
+    decoder = zlib.decompressobj()
+    deadline = _STREAM_DEADLINE.get()
+    if deadline is None:
+        return decoder.decompress(idat, limit), decoder.eof
+
+    source = memoryview(idat)
+    pending: bytes | memoryview = b""
+    parts: list[bytes] = []
+    offset = size = 0
+    while size < limit and not decoder.eof:
+        _time_remaining(deadline)
+        if not pending:
+            pending = source[offset : offset + _INFLATE_BLOCK]
+            offset += len(pending)
+        block = decoder.decompress(pending, min(limit - size, _INFLATE_BLOCK))
+        pending = decoder.unconsumed_tail
+        if not block and not pending and offset == len(source):
+            break
+        parts.append(block)
+        size += len(block)
+    _time_remaining(deadline)
+    data = b"".join(parts)
+    _time_remaining(deadline)
+    return data, decoder.eof
+
+
 def _inflate_checked(
     idat: bytes, needed: int, width: int, height: int, depth: int
 ) -> bytes:
     """Inflate the stream, refusing any size but the header's own count."""
-    decoder = zlib.decompressobj()
     repair = "restore or re-export the complete PNG including its compressed checksum"
     # A 1x1 RGB header needs four bytes; a 39-byte IDAT expanded to 16,384
     # before its size was rejected. One surplus byte proves the mismatch.
     try:
-        data_stream = decoder.decompress(idat, min(needed + 1, sys.maxsize))
+        data_stream, complete = _inflate_idat(idat, min(needed + 1, sys.maxsize))
     except zlib.error as error:
         raise syntax_error(f"invalid PNG compressed stream: {error}", repair) from error
     if len(data_stream) != needed:
@@ -288,7 +316,7 @@ def _inflate_checked(
                 "declared dimensions"
             ),
         )
-    if not decoder.eof:
+    if not complete:
         raise syntax_error("truncated PNG compressed stream", repair)
     return data_stream
 

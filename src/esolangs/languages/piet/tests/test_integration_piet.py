@@ -153,7 +153,8 @@ def test_piet_explicit_scale_resolves_ambiguous_image(tmp_path, monkeypatch) -> 
 
 def _check_png_acquisition_timeout(path, monkeypatch) -> None:
     api = esolangs.Language("Piet")
-    program = api.generate("01", scale=2)
+    # The image has enough decoded bytes to need several inflate calls.
+    program = api.generate("01", scale=64)
     api.to_file(program, path)
     stdin = BytesIO(api.encode_inputs([1]).encode())
     paused, resume = Event(), Event()
@@ -203,6 +204,37 @@ def _check_png_acquisition_timeout(path, monkeypatch) -> None:
     restored = api.from_json(api.to_json(api.from_file(path)))
     assert restored == program
     assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+    _check_inflate_block_timeout(path, monkeypatch)
+
+
+def _check_inflate_block_timeout(path, monkeypatch) -> None:
+    from esolangs.runtime import _files
+
+    original = png.zlib.decompressobj
+    blocks = []
+
+    class TimedDecoder:
+        def __init__(self):
+            self.decoder = original()
+
+        def decompress(self, data, limit):
+            block = self.decoder.decompress(data, limit)
+            blocks.append((len(data), len(block)))
+            return block
+
+        def __getattr__(self, name):
+            return getattr(self.decoder, name)
+
+    with monkeypatch.context() as edit:
+        edit.setattr(png.zlib, "decompressobj", TimedDecoder)
+        edit.setattr(_files, "monotonic", lambda: 2.0 if blocks else 0.0)
+        with (
+            _files.stream_read_deadline(1),
+            pytest.raises(_files.StreamReadTimeoutError),
+        ):
+            Raster.from_png(path.read_bytes())
+    assert [decoded for _, decoded in blocks] == [65_536]
+    assert blocks[0][0] <= 65_536
 
 
 def _check_worker_proof_scale(image: Raster) -> None:

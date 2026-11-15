@@ -15,12 +15,14 @@ from esolangs._dialect import DialectSchema
 from esolangs._language import Language
 from esolangs.cli.help import command_synopsis
 from esolangs.cli.hints import (
+    _TIMEOUT_EXIT,
     _as_argument,
     _cli_error_text,
     _did_you_mean,
+    _timeout_text,
 )
 from esolangs.cli.io import _fail
-from esolangs.exceptions import EsolangError
+from esolangs.exceptions import EsolangError, ExecutionBudgetError
 from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._json import record_dumps, record_loads
 from esolangs.runtime._validate import check_scale, check_timeout
@@ -481,6 +483,8 @@ def _settings_of(
                 _fail(f"--set {key} needs an integer, got {raw!r}")
         choices = values | overrides
         return bound.settings(**choices)  # type: ignore[arg-type]
+    except ExecutionBudgetError as exc:
+        _fail(_timeout_text(exc), _TIMEOUT_EXIT)
     except EsolangError as exc:
         _fail(exc)
 

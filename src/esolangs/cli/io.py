@@ -179,9 +179,10 @@ def _read_program(
         if remaining <= 0:
             on_timeout()
         return _slurp_thread(decode, deadline, on_timeout=on_timeout)
+    except ExecutionBudgetError as exc:
+        _fail(_timeout_text(exc), _TIMEOUT_EXIT)
     except EsolangError as exc:
         _fail(exc)
-        raise  # pragma: no cover - _fail exits
 
 
 def _note(message: str) -> None:

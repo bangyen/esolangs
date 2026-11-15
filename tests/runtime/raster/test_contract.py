@@ -9,6 +9,7 @@ from array import array
 from dataclasses import replace
 from importlib.resources import files
 from pathlib import Path
+from random import Random
 
 import pytest
 
@@ -553,6 +554,31 @@ def test_plain_png_has_no_source_metadata() -> None:
             Raster.from_png(data)
         with pytest.raises(StreamReadTimeoutError):
             read_png_metadata(RASTER_LANGUAGES[0], data, catalog=CATALOG)
+
+    samples = Random(0).randbytes(257 * 512)
+    payload = zlib.compress(samples)
+    bad_adler = payload[:-1] + bytes([payload[-1] ^ 1])
+    bad_header = bytes([payload[0] ^ 1]) + payload[1:]
+    errors = []
+    for deadline in (None, float("inf")):
+        diagnostics = []
+        with stream_read_deadline(deadline):
+            shape = (256, 512, 8)
+            assert (
+                png._inflate_checked(payload + b"unused", len(samples), *shape)
+                == samples
+            )
+            for stream, needed, message in (
+                (payload[:-1], len(samples), "truncated PNG compressed stream"),
+                (bad_adler, len(samples), "invalid PNG compressed stream"),
+                (bad_header, len(samples), "invalid PNG compressed stream"),
+                (payload, 65_537, "IDAT holds 65538 bytes"),
+            ):
+                with pytest.raises(ValueError, match=message) as failure:
+                    png._inflate_checked(stream, needed, *shape)
+                diagnostics.append((str(failure.value), failure.value.__notes__))
+        errors.append(diagnostics)
+    assert errors[0] == errors[1]
 
 
 def test_png_metadata_integer_fallback_preserves_json_key_rules() -> None:
