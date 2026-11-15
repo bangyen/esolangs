@@ -356,6 +356,7 @@ def test_scoped_random_proofs_require_branch_enumeration(
             scoped.make_debugger(source, seed=seed),
             prepared.make_vm(seed=seed),
             prepared.make_debugger(seed=seed),
+            Debugger(Debugger(prepared.make_debugger(seed=seed))),
         ):
             initial = machine.snapshot()
             with pytest.raises(TypeError, match=message):
@@ -397,9 +398,11 @@ def test_caller_branch_protocol_precedes_private_machine_storage(monkeypatch) ->
         def branching_successors(self, state: int, _limit: int) -> tuple[int, ...]:
             return (1,) if state else (0, 1)
 
-    for wrapped in (False, True):
+    for layers in range(3):
         machine = BranchMachine()
-        live = Debugger(machine) if wrapped else machine
+        live = machine
+        for _ in range(layers):
+            live = Debugger(live)
         with pytest.raises(TypeError, match="some draws halt"):
             run_until_halt_or_cycle(live, limit=2)
         for detector in _PROOFS:
@@ -412,6 +415,22 @@ def test_caller_branch_protocol_precedes_private_machine_storage(monkeypatch) ->
         assert machine.commands == 2
         for detector in (run_until_halt_or_cycle, *_PROOFS):
             assert detector(live, limit=0) is True
+
+    class FixedBranchDebugger(Debugger):
+        def branching_snapshot(self):
+            return 0
+
+        def branching_halted(self, _state):
+            return False
+
+        def branching_successors(self, _state, _limit):
+            return (0,)
+
+    machine = BranchMachine()
+    live = Debugger(FixedBranchDebugger(machine))
+    assert run_until_halt_or_all_branches_cycle(live, limit=1) is False
+    assert run_until_halt_or_cycle(live, limit=1) is False
+    assert machine.commands == 0
 
     _check_malformed_branch_states(monkeypatch)
 

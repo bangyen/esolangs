@@ -18,7 +18,7 @@ from typing import NoReturn, TextIO
 
 from esolangs._dialect import DialectSchema
 from esolangs._language import Language
-from esolangs.cli.help import help_text
+from esolangs.cli.help import command_synopsis
 from esolangs.cli.hints import _as_argument, _cli_error_text, _did_you_mean, _is_option
 from esolangs.exceptions import EsolangError
 from esolangs.registry import Catalog, get_catalog
@@ -231,7 +231,7 @@ def _check_count(
         # The whole synopsis, not its first line: ``generate``'s wraps onto
         # a second, so a missing truth table was reported with a usage
         # string that did not mention the truth table.
-        synopsis = help_text(command, catalog=catalog).split("\n\n", 1)[0]
+        synopsis = command_synopsis(command)
         # And say which one is missing.  The synopsis alone left the reader
         # to diff what they typed against a usage line -- easy for two
         # arguments, and it is exactly the two-argument commands that get

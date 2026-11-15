@@ -394,7 +394,8 @@ def _capture_result(vm: VM) -> ExecutionResult:
     _raise_halt_fault(vm)
     if not vm.halted:
         raise ArgumentError("execution result requires a halted VM")
-    if isinstance(vm, _DelegatingVM) and vm._dump_pending:  # noqa: SLF001
+    owner = _controller_vm(vm)
+    if isinstance(owner, _DelegatingVM) and owner._dump_pending:  # noqa: SLF001
         raise ArgumentError("execution result requires a completed post-halt dump")
     report = CompletionReport(
         Completion.POST_HALT if vm.dumps_on_the_post_halt_step else Completion.HALTED
@@ -404,23 +405,26 @@ def _capture_result(vm: VM) -> ExecutionResult:
 
 def _halt_faulted(vm: VM) -> bool:
     """Whether a registered VM's halt position followed a failed command."""
-    return isinstance(vm, _DelegatingVM) and vm._halt_fault is not None  # noqa: SLF001
+    owner = _controller_vm(vm)
+    return isinstance(owner, _DelegatingVM) and owner._halt_fault is not None  # noqa: SLF001
 
 
 def _raise_halt_fault(vm: object) -> None:
     """Re-raise a prior fault that left a registered VM at its halt position."""
-    if isinstance(vm, _DelegatingVM) and vm._halt_fault is not None:  # noqa: SLF001
-        vm._replayed_halt_fault = True  # noqa: SLF001
-        raise vm._halt_fault  # noqa: SLF001
+    owner = _controller_vm(vm)
+    if isinstance(owner, _DelegatingVM) and owner._halt_fault is not None:  # noqa: SLF001
+        owner._replayed_halt_fault = True  # noqa: SLF001
+        raise owner._halt_fault  # noqa: SLF001
 
 
 def _post_halt_dumped(vm: VM) -> bool:
     """Whether the registered VM has recorded a successful finalization step."""
-    return isinstance(vm, _DelegatingVM) and vm._dump_pending is False  # noqa: SLF001
+    owner = _controller_vm(vm)
+    return isinstance(owner, _DelegatingVM) and owner._dump_pending is False  # noqa: SLF001
 
 
-def _controller_vm(vm: VM) -> VM:
-    """Find the VM whose I/O a library controller observes."""
+def _controller_vm[T](vm: T) -> T | VM:
+    """Find the VM whose state and I/O a library controller observes."""
     if isinstance(vm, _DelegatingVM):
         return vm
     from esolangs.runtime._controller import ExecutionController
@@ -441,6 +445,7 @@ def _capture_observation(
 
 def _record_vm_fault(vm: VM, error: EsolangError, observation: ExecutionResult) -> None:
     """Update a VM's own fault evidence while preserving a propagated error."""
+    vm = _controller_vm(vm)
     if isinstance(vm, _DelegatingVM):
         # Another driver replaying an error executed no additional command.
         if vm._replayed_halt_fault and error is vm._halt_fault:  # noqa: SLF001

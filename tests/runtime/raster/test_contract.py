@@ -244,23 +244,33 @@ def test_a_malformed_png_is_a_program_error(language: str, tmp_path: Path) -> No
 
     raster = Raster((((7, 31, 53),),))
     encoded = raster.to_png()
-    header = encoded[16:29]
-    for body in (header[:-1], header + b"\0"):
-        chunk = b"IHDR" + body
-        malformed = (
-            encoded[:8]
-            + len(body).to_bytes(4, "big")
-            + chunk
-            + zlib.crc32(chunk).to_bytes(4, "big")
-            + encoded[33:]
+    chunks = dict(png._chunks(encoded))
+    header, compressed = chunks[b"IHDR"], chunks[b"IDAT"]
+
+    def encode_chunk(kind: bytes, body: bytes) -> bytes:
+        chunk = kind + body
+        return (
+            len(body).to_bytes(4, "big") + chunk + zlib.crc32(chunk).to_bytes(4, "big")
+        )
+
+    invalid_checksum = compressed[:-1] + bytes([compressed[-1] ^ 1])
+    for invalid_kind, invalid_body, message in (
+        (b"IHDR", header[:-1], "IHDR must be 13 bytes"),
+        (b"IHDR", header + b"\0", "IHDR must be 13 bytes"),
+        (b"IDAT", invalid_checksum, "invalid PNG compressed stream"),
+    ):
+        malformed = encoded[:8] + b"".join(
+            encode_chunk(kind, invalid_body if kind == invalid_kind else body)
+            for kind, body in chunks.items()
         )
         for read in (png.read_rgb, png.read_grey, Raster.from_png):
-            with pytest.raises(ValueError, match="IHDR must be 13 bytes") as caught:
+            with pytest.raises(ValueError, match=message) as caught:
                 read(malformed)
             assert "re-export" in caught.value.__notes__[0]
         path.write_bytes(malformed)
-        with pytest.raises(esolangs.ProgramError, match="IHDR must be 13 bytes"):
+        with pytest.raises(esolangs.ProgramError, match=message) as caught:
             esolangs.from_file(language, path)
+        assert "re-export" in caught.value.__notes__[0]
     path.write_bytes(encoded)
     assert esolangs.from_file(language, path).source == raster
 

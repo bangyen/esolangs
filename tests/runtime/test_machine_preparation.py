@@ -461,8 +461,13 @@ def test_runtime_hooks_keep_nested_errors_and_record_their_own_output(
         check_original(caught.value)
         assert debugger.observation == result.observation
 
-        for make in (scoped.make_vm, scoped.make_debugger):
-            machine = make("+.", stdin="B")
+        from esolangs.debugger import Debugger
+
+        for machine in (
+            scoped.make_vm("+.", stdin="B"),
+            scoped.make_debugger("+.", stdin="B"),
+            Debugger(Debugger(scoped.make_debugger("+.", stdin="B"))),
+        ):
             with pytest.raises(error_type) as caught:
                 vm.complete_vm(machine)
             check_original(caught.value)

@@ -26,10 +26,11 @@ from tests.support.pick import first, one_where
 from tests.support.reference import REFERENCE
 
 
-def test_help_examples_follow_remaining_capabilities() -> None:
+def test_help_examples_follow_remaining_capabilities(monkeypatch, capsys) -> None:
     from esolangs.cli import help as help_module
     from esolangs.registry import LanguageDeclaration
     from esolangs.registry._backend import TemplateSpec
+    from esolangs.registry._language import DeferredBackend
 
     def build(table):
         return table
@@ -77,6 +78,44 @@ def test_help_examples_follow_remaining_capabilities() -> None:
     )
     assert ascii_dialect == commands[0]
     assert json.loads(shlex.split(ascii_dialect)[3]) == {"mode": "é with spaces"}
+
+    error = esolangs.ArgumentError("scoped generator backend is disabled")
+    error.add_note("hint: enable its provider")
+
+    def unavailable():
+        raise error
+
+    broken = replace(
+        languages["Template Choice"],
+        name="zzz Disabled",
+        id="zzz_disabled",
+        backend=DeferredBackend(unavailable),
+    )
+    with monkeypatch.context() as active:
+        active.setattr(
+            _table, "CATALOG", esolangs.Catalog([*languages.values(), broken])
+        )
+        for invocation in (["generate", "--help"], ["help", "generate"]):
+            with pytest.raises(SystemExit) as exited:
+                call_main(invocation, capsys)
+            assert exited.value.code == 0
+            output = capsys.readouterr()
+            assert not output.err
+            assert template in output.out
+            assert dialect in output.out
+        assert broken.name in json.loads(call_main(["list", "--json"], capsys))
+        expected = "", "\n".join((str(error), *error.__notes__, ""))
+        for flags in ([], ["--json"]):
+            assert _failure(["list", "--details", *flags], capsys) == expected
+
+        active.setattr(_table, "CATALOG", esolangs.Catalog([broken]))
+        for invocation in (["generate", "--help"], ["help", "generate"]):
+            assert _failure(invocation, capsys) == expected
+        output, diagnostic = _failure(["generate", broken.name], capsys)
+        assert not output
+        assert diagnostic.startswith("usage: esolangs generate ")
+        assert diagnostic.endswith("missing <truth-table>\n")
+
     del languages["Template Choice"]
     assert examples()[0] == ""
     # A cap below two inputs is not a runnable example.

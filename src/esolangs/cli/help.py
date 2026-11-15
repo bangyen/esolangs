@@ -23,15 +23,24 @@ def _capability_examples(
     dialects = ""
     catalog = get_catalog(catalog)
     for name, lang in sorted(catalog.languages.items()):
-        if lang.backend is None or lang.runtime.source_kind is not SourceKind.TEXT:
+        if templates and dialects:
+            break
+        schema = lang.runtime.dialect_schema
+        needs_dialect = not dialects and schema is not None
+        if lang.runtime.source_kind is not SourceKind.TEXT or (
+            templates and not needs_dialect
+        ):
             continue
-        if lang.backend.max_inputs is not None and lang.backend.max_inputs < 2:
+        backend = lang.backend
+        if backend is None or (
+            backend.max_inputs is not None and backend.max_inputs < 2
+        ):
             continue
         quoted = _as_argument(name, catalog=catalog, encoding=encoding)
-        if not templates and lang.parameterized:
+        if not templates and backend.template is not None:
             templates = f"  esolangs generate --bits 10 {quoted} 0110"
-        if not dialects and lang.runtime.dialect_schema:
-            for key, values in sorted(lang.runtime.dialect_schema.choices.items()):
+        if not dialects and schema is not None:
+            for key, values in sorted(schema.choices.items()):
                 value = values[-1]
                 settings = shlex.quote(record_dumps({key: value}))
                 operand = repr_value(value) if isinstance(value, int) else value
@@ -320,6 +329,11 @@ examples:
 
 
 COMMANDS = tuple(_HELP)
+
+
+def command_synopsis(command: str) -> str:
+    """Return the usage line or lines without resolving examples."""
+    return _HELP[command].split("\n\n", 1)[0]
 
 
 def help_text(

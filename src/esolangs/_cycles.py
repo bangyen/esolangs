@@ -110,18 +110,21 @@ def _check_driver_fields(
 
 def _checked_adapter(machine: object) -> object:
     """Find the live VM beneath an observer and check for a recorded halt fault."""
-    from esolangs.runtime._controller import ExecutionController
-    from esolangs.vm import _raise_halt_fault
+    from esolangs.vm import _controller_vm, _raise_halt_fault
 
-    adapter = machine.vm if isinstance(machine, ExecutionController) else machine
+    adapter = _controller_vm(machine)
     _raise_halt_fault(adapter)
     return adapter
 
 
 def _protocol_state(machine: object, adapter: object, protocol: type[Any]) -> object:
-    """Prefer a caller's own proof protocol to any wrapped state."""
+    """Prefer the first supplied proof protocol before wrapped interpreter state."""
+    from esolangs.runtime._controller import ExecutionController
+
     if isinstance(machine, protocol):
         state = machine
+    elif isinstance(machine, ExecutionController):
+        return _protocol_state(machine.vm, adapter, protocol)
     elif adapter is not machine and isinstance(adapter, protocol):
         state = adapter
     else:
@@ -275,6 +278,10 @@ def _proof_snapshot_reader(
         )
     if isinstance(machine, Debugger) and reader is Debugger.snapshot:
         wrapped = machine.vm
+        if isinstance(wrapped, Debugger) and (
+            getattr_static(wrapped, "snapshot", None) is Debugger.snapshot
+        ):
+            return _proof_snapshot_reader(wrapped)
         if isinstance(wrapped, _DelegatingVM) and (
             getattr_static(wrapped, "snapshot", None) is _DelegatingVM.snapshot
         ):

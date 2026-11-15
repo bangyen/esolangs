@@ -226,25 +226,33 @@ def test_a_failed_halt_cannot_be_completed_by_a_peer(monkeypatch):
     expected = esolangs.ExecutionResult("prefix", 0, 0, 0, steps=1)
     assert first.observation == failure.observation == expected
 
-    peer = Debugger(first.vm)
-    assert peer.observation == replace(expected, steps=0)
-    assert peer.halted
-    peer.step()
-    assert peer.observation == replace(expected, steps=0)
-    for resume in (
-        lambda: peer.run(limits=esolangs.ExecutionLimits(max_steps=0)),
-        lambda: complete_vm(peer.vm, max_steps=0),
-        lambda: run_until_halt(peer.vm, 1),
-        lambda: run_until_halt_or_cycle(peer, 1),
-    ):
-        with pytest.raises(esolangs.HaltError) as caught:
-            resume()
-        assert caught.value is failure
-        assert failure.observation == expected
+    limits = esolangs.ExecutionLimits(max_steps=0)
+    for peer in (Debugger(first.vm), Debugger(first), Debugger(Debugger(first))):
+        assert peer.observation == replace(expected, steps=0)
+        assert peer.halted
+        peer.step()
+        assert peer.observation == replace(expected, steps=0)
+        for resume in (
+            lambda vm: vm.run(limits=limits),
+            lambda vm: complete_vm(vm, max_steps=0),
+            lambda vm: run_until_halt(vm, limit=0),
+            lambda vm: run_until_halt_or_cycle(vm, limit=0),
+        ):
+            with pytest.raises(esolangs.HaltError) as caught:
+                resume(peer)
+            assert caught.value is failure
+            assert failure.observation == expected
+
+    control = Debugger(Debugger(api.make_debugger("+.")))
+    assert complete_vm(control, max_steps=2) == "\x01"
+    assert control.observation.completion.kind is Completion.HALTED
+    assert control.observation.steps == 2
+    assert run_until_halt(control, limit=0)
+    assert run_until_halt_or_cycle(control, limit=0)
 
 
 def test_post_halt_completion_stays_pending_until_dump():
-    from esolangs.debugger import make_debugger
+    from esolangs.debugger import Debugger, make_debugger
 
     name = next(
         name
@@ -259,11 +267,16 @@ def test_post_halt_completion_stays_pending_until_dump():
     while not debugger.halted:
         debugger.step()
     before = debugger.observation
+    nested = Debugger(Debugger(debugger))
+    assert nested.observation == replace(before, steps=0)
     assert before.completion is None
     debugger.step()
     assert debugger.observation.steps == before.steps
     assert debugger.observation.completion.kind is Completion.POST_HALT
     assert esolangs.read_answer(name, debugger.observation.output) == "1"
+    assert nested.observation == replace(debugger.observation, steps=0)
+    assert complete_vm(nested, max_steps=0) == debugger.output
+    assert nested.observation == replace(debugger.observation, steps=0)
 
 
 def test_caller_owned_vm_finalization_remains_local():

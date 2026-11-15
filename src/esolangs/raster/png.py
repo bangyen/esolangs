@@ -262,9 +262,13 @@ def _inflate_checked(
 ) -> bytes:
     """Inflate the stream, refusing any size but the header's own count."""
     decoder = zlib.decompressobj()
+    repair = "restore or re-export the complete PNG including its compressed checksum"
     # A 1x1 RGB header needs four bytes; a 39-byte IDAT expanded to 16,384
     # before its size was rejected. One surplus byte proves the mismatch.
-    data_stream = decoder.decompress(idat, min(needed + 1, sys.maxsize))
+    try:
+        data_stream = decoder.decompress(idat, min(needed + 1, sys.maxsize))
+    except zlib.error as error:
+        raise syntax_error(f"invalid PNG compressed stream: {error}", repair) from error
     if len(data_stream) != needed:
         # Reject before any allocation grows with the IHDR numbers.
         raise syntax_error(
@@ -277,10 +281,7 @@ def _inflate_checked(
             ),
         )
     if not decoder.eof:
-        raise syntax_error(
-            "truncated PNG compressed stream",
-            "restore or re-export the complete PNG including its compressed checksum",
-        )
+        raise syntax_error("truncated PNG compressed stream", repair)
     return data_stream
 
 

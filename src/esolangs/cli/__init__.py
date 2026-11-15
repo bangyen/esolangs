@@ -240,9 +240,10 @@ def _list(rest: list[str]) -> None:
             for name in names:
                 _display(name)
         return
-    records = [
-        _catalog_facts(catalog.languages[name], catalog=catalog) for name in names
-    ]
+    with _errors():
+        records = [
+            _catalog_facts(catalog.languages[name], catalog=catalog) for name in names
+        ]
     if as_json:
         _write_output(
             _metadata_json(
@@ -767,9 +768,9 @@ def _dispatch() -> None:
             # `help nope` printed the usage and exited 0.
             _fail(f"unknown command: {rest[0]}{_did_you_mean(rest[0], set(COMMANDS))}")
         encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
-        _write_output(
-            help_text(rest[0], encoding=encoding) if rest else USAGE, utf8=False
-        )
+        with _errors():
+            page = help_text(rest[0], encoding=encoding) if rest else USAGE
+        _write_output(page, utf8=False)
         sys.exit(0)
     if cmd not in COMMANDS:
         # Languages and options both suggest a near miss; the subcommands
@@ -778,7 +779,9 @@ def _dispatch() -> None:
         _fail(f"unknown command: {cmd}{_did_you_mean(cmd, set(COMMANDS))}\n\n{USAGE}")
     if {"--help", "-h"} & set(option_argv[1:]):
         encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
-        _write_output(help_text(cmd, encoding=encoding), utf8=False)
+        with _errors():
+            page = help_text(cmd, encoding=encoding)
+        _write_output(page, utf8=False)
         sys.exit(0)
 
     {
