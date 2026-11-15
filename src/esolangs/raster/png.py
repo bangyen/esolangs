@@ -921,7 +921,7 @@ def _source_claims(
     if settings is not None:
         if not _has_backing_type(settings, DialectSettings):
             raise ArgumentError("settings must be a DialectSettings or None")
-        owner = settings.language
+        owner = settings._schema.language  # noqa: SLF001
         spelling = owner if language is None else language
         if (
             catalog is not None

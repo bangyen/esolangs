@@ -1,11 +1,15 @@
 """Scaling survives PNG round trips, including ambiguous codel grids."""
 
+from dataclasses import replace
+
 import pytest
 
 import esolangs
+import esolangs.runtime._execution as _execution_runtime
 from esolangs.exceptions import ArgumentError, ProgramError
-from esolangs.raster import Raster
+from esolangs.raster import Raster, png
 from esolangs.raster.scale import detect_scale, normalize
+from esolangs.registry import LANGUAGES
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -127,3 +131,83 @@ def test_cli_rejects_invalid_scale(value, monkeypatch, capsys) -> None:
         main()
     assert exc.value.code == 2
     assert "--scale must be a positive integer" in capsys.readouterr().err
+
+
+def test_native_png_checks_explicit_settings_before_pillow(
+    tmp_path, monkeypatch
+) -> None:
+    name = RASTER[0]
+    original = LANGUAGES[name]
+    schema = esolangs.DialectSchema(
+        name,
+        {"level": (0, 1), "mode": ("x", "y")},
+        {"level": 0, "mode": "x"},
+    )
+    runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
+    api = esolangs.Catalog([replace(original, runtime=runtime)]).bind(name)
+    generated = esolangs.generate(name, "01", scale=2)
+    source = replace(generated, settings=api.settings(level=0))
+    path = tmp_path / "source.png"
+    destination = tmp_path / "destination.png"
+    api.to_file(source, path)
+    additions = api.settings(mode="y")
+    retained = api.from_file(path, settings=additions)
+    assert retained == replace(source, settings=api.settings(level=0, mode="y"))
+    assert api.from_json(api.to_json(path, settings=additions)) == retained
+    api.to_file(path, destination, settings=additions)
+    assert api.from_file(destination) == retained
+    copied = destination.read_bytes()
+
+    class AlternateSettings(esolangs.DialectSettings):
+        @property
+        def language(self) -> str:
+            return "Different Scope"
+
+        def options(self):
+            return {"level": 1, "mode": "x"}
+
+    alternate = AlternateSettings(schema, level=0, mode="y")
+    assert replace(generated, settings=alternate) == retained
+    assert api.from_json(api.to_json(generated, settings=alternate)) == retained
+    assert (
+        png.write_source(
+            generated.source.rows,
+            name,
+            alternate,
+            2,
+            input_arity=1,
+            catalog=api.catalog,
+        )
+        == copied
+    )
+
+    module = _execution_runtime.interpreter_module(name)
+    run = getattr(module, runtime.completion_entrypoint)
+
+    def scoped_run(program, io, *, level, mode, **options):
+        assert (level, mode) == (0, "y")
+        return run(program, io, **options)
+
+    monkeypatch.setattr(module, runtime.completion_entrypoint, scoped_run)
+    for bit in (0, 1):
+        stdin = api.encode_inputs([bit])
+        assert api.read_answer(
+            api.run(path, stdin=stdin, settings=additions).output
+        ) == str(bit)
+        assert api.read_answer(
+            api.run(generated, stdin=stdin, settings=alternate).output
+        ) == str(bit)
+
+    monkeypatch.setattr(png, "Image", None)
+    conflicting = api.settings(level=1)
+    for load in (
+        lambda: api.from_file(path, settings=conflicting),
+        lambda: api.prepare(path, settings=conflicting),
+        lambda: api.to_json(path, settings=conflicting),
+        lambda: api.to_file(path, destination, settings=conflicting),
+    ):
+        with pytest.raises(esolangs.ProgramError, match="written with level=0, not 1"):
+            load()
+    with pytest.raises(esolangs.MissingDependencyError):
+        api.from_file(path, settings=additions)
+    assert destination.read_bytes() == copied

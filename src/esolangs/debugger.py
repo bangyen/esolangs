@@ -29,7 +29,7 @@ from esolangs.runtime._validate import (
 )
 from esolangs.runtime._vm_protocol import VM
 from esolangs.settings import DialectSettings
-from esolangs.vm import _DelegatingVM, _raise_halt_fault, make_vm
+from esolangs.vm import _controller_vm, _DelegatingVM, _raise_halt_fault, make_vm
 
 __all__ = [
     "STOP_REASONS",
@@ -74,16 +74,31 @@ class Debugger(_ExecutionController):
         self._cell_history: dict[int, list[int | None]] = {}
         self._stack_history: dict[int, list[object]] = {}
         self._suppressed: set[int] = set()
+        self._suppressed_receiver: tuple[VM, VM] | None = None
+
+    def _same_receiver(self, receiver: tuple[VM, VM]) -> bool:
+        wrapped, owner = receiver
+        return self.vm is wrapped and _controller_vm(wrapped) is owner
 
     def step(self) -> None:
         """Execute a command and rearm breakpoints whose conditions clear."""
         super().step()
+        receiver = self._suppressed_receiver
+        if (
+            not self._suppressed
+            or receiver is None
+            or not self._same_receiver(receiver)
+        ):
+            return
         breakpoints = self._breakpoints
-        still_holding = {
-            index
-            for index in self._suppressed
-            if self._breakpoints is breakpoints and breakpoints[index](self.vm)
-        }
+        still_holding = set()
+        for index in self._suppressed:
+            if self._breakpoints is not breakpoints:
+                return
+            if breakpoints[index](receiver[0]):
+                still_holding.add(index)
+            if not self._same_receiver(receiver):
+                return
         if self._breakpoints is breakpoints:
             self._suppressed = still_holding
 
@@ -256,6 +271,7 @@ class Debugger(_ExecutionController):
         # Give an active callback scan a distinct list and suppression set.
         self._breakpoints = []
         self._suppressed = set()
+        self._suppressed_receiver = None
 
     def watch_cell(self, index: int) -> list[int | None]:
         """Record ``memory[index]`` each step, returning the history.
@@ -296,17 +312,39 @@ class Debugger(_ExecutionController):
         breakpoints = self._breakpoints
         if not breakpoints:
             return None
+        wrapped = self.vm
+        receiver = (wrapped, _controller_vm(wrapped))
+        previous = self._suppressed_receiver
         suppressed = self._suppressed
-        hits = {
-            i
-            for i, cond in enumerate(breakpoints[:])
-            if self._breakpoints is breakpoints and cond(self.vm)
-        }
-        if self._breakpoints is breakpoints:
+        if (
+            previous is None
+            or previous[0] is not wrapped
+            or previous[1] is not receiver[1]
+        ):
+            suppressed = set()
+
+        hits = set()
+        replacement_hit: bool | None = None
+        for index, predicate in enumerate(breakpoints[:]):
+            if self._breakpoints is not breakpoints:
+                break
+            hit = bool(predicate(wrapped))
+            if not self._same_receiver(receiver):
+                # Earlier hits describe the old VM. Only this predicate can
+                # explicitly stop at its replacement.
+                replacement_hit = hit and index not in suppressed
+                break
+            if hit:
+                hits.add(index)
+
+        if replacement_hit is None and self._breakpoints is breakpoints:
             self._suppressed = hits
+            self._suppressed_receiver = receiver if hits else None
         halted = self.halted
         if halted:
             _raise_halt_fault(self)
+        if replacement_hit is not None:
+            return "breakpoint" if replacement_hit else "replaced"
         if hits - suppressed:
             return "breakpoint"
         return "halted" if halted else "active"

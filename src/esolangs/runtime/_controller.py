@@ -25,7 +25,7 @@ from esolangs.vm import (
 )
 
 StopReason = Literal["halted", "breakpoint", "max_steps", "execution_timeout"]
-type _StopRequest = Literal["active", "halted", "breakpoint"] | None
+type _StopRequest = Literal["active", "halted", "breakpoint", "replaced"] | None
 
 _DRIVER_FIELDS = (
     "halted",
@@ -220,6 +220,8 @@ class ExecutionController:
                 if requested is not None:
                     if requested == "breakpoint":
                         return requested
+                    if requested == "replaced":
+                        continue
                     if requested == "halted":
                         break
                 if deadline is not None and monotonic() >= deadline:
@@ -232,7 +234,13 @@ class ExecutionController:
             requested = self._stop_requested()
             if requested == "breakpoint":
                 return requested
-            if requested == "active":
+            if requested in ("active", "replaced"):
+                if (
+                    requested == "replaced"
+                    and deadline is not None
+                    and monotonic() >= deadline
+                ):
+                    return "execution_timeout"
                 continue
             if self.dumps_on_the_post_halt_step and not self._has_dumped():
                 if deadline is not None and monotonic() >= deadline:
@@ -244,7 +252,7 @@ class ExecutionController:
                 if requested == "breakpoint":
                     return requested
                 if (
-                    requested == "active"
+                    requested in ("active", "replaced")
                     or self.vm is not receiver
                     or _controller_vm(receiver) is not owner
                 ):

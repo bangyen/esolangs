@@ -76,22 +76,28 @@ class BooleanEvaluation:
             raise ArgumentError("a Boolean evaluation requires completion evidence")
 
 
-def _origin(language: str, settings: DialectSettings | None) -> str:
-    """Validate explicit provenance without consulting the language catalog."""
+def _origin(
+    language: str, settings: DialectSettings | None
+) -> tuple[str, DialectSettings | None]:
+    """Validate provenance and retain the stored settings without subclass hooks."""
     if not _has_backing_type(language, str):
         raise ArgumentError("an artifact requires a language")
     language = str.__str__(language)
     if not language.strip():
         raise ArgumentError("an artifact requires a language")
     if settings is None:
-        return language
+        return language, None
     if not _has_backing_type(settings, DialectSettings):
         raise ArgumentError("settings must be a DialectSettings or None")
-    owner = settings.language
+    schema = settings._schema  # noqa: SLF001
+    owner = schema.language
     if owner != language and owner.strip().casefold() != language.strip().casefold():
         raise ArgumentError(f"dialect settings belong to {owner}, not {language}")
-    settings.options()
-    return owner
+    if type(settings) is DialectSettings:
+        settings.options()
+    else:
+        settings = DialectSettings(schema, **dict(settings._items))  # noqa: SLF001
+    return owner, settings
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,7 +121,10 @@ class ProgramArtifact[Source: Program]:
             object.__setattr__(self, "source", str.__str__(self.source))
         elif _has_backing_type(self.source, CompressedText):
             object.__setattr__(self, "source", _freeze_compressed(self.source))
-        object.__setattr__(self, "language", _origin(self.language, self.settings))
+        owner, settings = _origin(self.language, self.settings)
+        object.__setattr__(self, "language", owner)
+        if settings is not self.settings:
+            object.__setattr__(self, "settings", settings)
         if self.input_arity is not None and (
             type(self.input_arity) is not int or self.input_arity < 1
         ):
@@ -224,7 +233,10 @@ class TemplateArtifact:
         ):
             raise TemplateError("template needs text source and TemplateBindings")
         object.__setattr__(self, "source", str.__str__(self.source))
-        object.__setattr__(self, "language", _origin(self.language, self.settings))
+        owner, settings = _origin(self.language, self.settings)
+        object.__setattr__(self, "language", owner)
+        if settings is not self.settings:
+            object.__setattr__(self, "settings", settings)
         try:
             if self.spans is None:
                 spans = tuple(

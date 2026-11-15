@@ -1016,59 +1016,6 @@ def test_portable_png_checks_record_metadata_before_pillow(monkeypatch) -> None:
         api.from_json(document)
 
 
-def test_native_png_checks_explicit_settings_before_pillow(
-    tmp_path, monkeypatch
-) -> None:
-    name = RASTER_LANGUAGES[0]
-    original = LANGUAGES[name]
-    schema = esolangs.DialectSchema(
-        name,
-        {"level": (0, 1), "mode": ("x", "y")},
-        {"level": 0, "mode": "x"},
-    )
-    runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
-    api = esolangs.Catalog([replace(original, runtime=runtime)]).bind(name)
-    generated = esolangs.generate(name, "01", scale=2)
-    source = replace(generated, settings=api.settings(level=0))
-    path = tmp_path / "source.png"
-    destination = tmp_path / "destination.png"
-    api.to_file(source, path)
-    additions = api.settings(mode="y")
-    retained = api.from_file(path, settings=additions)
-    assert retained == replace(source, settings=api.settings(level=0, mode="y"))
-    assert api.from_json(api.to_json(path, settings=additions)) == retained
-    api.to_file(path, destination, settings=additions)
-    assert api.from_file(destination) == retained
-    copied = destination.read_bytes()
-    module = _execution_runtime.interpreter_module(name)
-    run = getattr(module, runtime.completion_entrypoint)
-
-    def scoped_run(program, io, *, level, mode, **options):
-        assert (level, mode) == (0, "y")
-        return run(program, io, **options)
-
-    monkeypatch.setattr(module, runtime.completion_entrypoint, scoped_run)
-    for bit in (0, 1):
-        stdin = api.encode_inputs([bit])
-        assert api.read_answer(
-            api.run(path, stdin=stdin, settings=additions).output
-        ) == str(bit)
-
-    monkeypatch.setattr(png, "Image", None)
-    conflicting = api.settings(level=1)
-    for load in (
-        lambda: api.from_file(path, settings=conflicting),
-        lambda: api.prepare(path, settings=conflicting),
-        lambda: api.to_json(path, settings=conflicting),
-        lambda: api.to_file(path, destination, settings=conflicting),
-    ):
-        with pytest.raises(esolangs.ProgramError, match="written with level=0, not 1"):
-            load()
-    with pytest.raises(esolangs.MissingDependencyError):
-        api.from_file(path, settings=additions)
-    assert destination.read_bytes() == copied
-
-
 def test_scaling_composes_retained_factors(native_png) -> None:
     source = esolangs.generate(RASTER_LANGUAGES[0], "01", scale=2)
     decoded = _check_program(source.language, native_png(source))

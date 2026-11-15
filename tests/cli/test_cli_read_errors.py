@@ -582,6 +582,77 @@ def _check_late_reader_does_not_probe(monkeypatch, capsys, path, target) -> None
     capsys.readouterr()
 
 
+@pytest.mark.parametrize("blocked", [False, True])
+def test_cli_completes_text_adapter_writes_or_reports_the_partial_failure(
+    tmp_path, monkeypatch, capsys, blocked
+):
+    class ShortText:
+        def __init__(self, codec, limit=None) -> None:
+            self.sink = io.StringIO()
+            self.codec = codec
+            self.limit = limit
+
+        def write(self, text: str) -> int:
+            size = 2
+            if self.limit is not None:
+                size = min(size, self.limit - self.sink.tell())
+            segment = text[:size]
+            segment.encode(self.codec)
+            return self.sink.write(segment)
+
+        def flush(self) -> None:
+            self.sink.flush()
+
+    class Unspecified(ShortText):
+        encoding = None
+
+    class Ascii(ShortText):
+        encoding = "ascii"
+
+    path = tmp_path / "echo.bf"
+    path.write_text(",.,.,.,.")
+    for adapter, codec in (
+        (ShortText, "ascii"),
+        (Unspecified, "ascii"),
+        (Ascii, "ascii"),
+        (ShortText, "utf-8"),
+    ):
+        stdout = adapter(codec, limit=3 if blocked else None)
+        with monkeypatch.context() as patch:
+            patch.setattr(sys, "stdout", stdout)
+            patch.setattr(sys, "stdin", io.StringIO("ABéC"))
+            patch.setattr(sys, "argv", ["esolangs", "run", REFERENCE, str(path)])
+            if blocked:
+                with pytest.raises(SystemExit) as exited:
+                    main()
+                assert exited.value.code == 120
+            else:
+                main()
+        expected = r"AB\xe9C" if codec == "ascii" else "ABéC"
+        assert stdout.sink.getvalue() == (expected[:3] if blocked else expected)
+        assert ("cannot write stdout" in capsys.readouterr().err) is blocked
+    if not blocked:
+        stdout = ShortText("latin-1")
+        stdout.encoding = "latin-1"
+        with monkeypatch.context() as patch:
+            patch.setattr(sys, "stdout", stdout)
+            _write_output("éλ", utf8=False)
+        assert stdout.sink.getvalue() == "é\\u03bb"
+
+        path.write_text(",.,.")
+        stdout = ShortText("ascii")
+        with monkeypatch.context() as patch:
+            patch.setattr(sys, "stdout", stdout)
+            patch.setattr(sys, "stdin", io.StringIO("Q"))
+            patch.setattr(sys, "argv", ["esolangs", "run", REFERENCE, str(path)])
+            with pytest.raises(SystemExit) as exited:
+                main()
+            assert exited.value.code == 1
+        assert stdout.sink.getvalue() == "Q"
+        diagnostic = capsys.readouterr().err
+        assert "no input" in diagnostic or "end of input" in diagnostic
+
+
 @pytest.mark.parametrize("gzip_export", [False, True], ids=["display", "gzip"])
 def test_cli_completes_short_raw_adapter_writes(tmp_path, monkeypatch, gzip_export):
     class ShortRaw(io.RawIOBase):

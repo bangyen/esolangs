@@ -53,14 +53,13 @@ def dialect_options(
         return {}
     schema = runtime.dialect_schema or DialectSchema(name, {}, {})
     if settings is not None and settings._schema != schema:  # noqa: SLF001
-        if settings.language == name:
+        owner = settings._schema.language  # noqa: SLF001
+        if owner == name:
             raise ArgumentError(
                 f"dialect settings for {name} use a different schema from this catalog"
             )
-        raise ArgumentError(
-            f"dialect settings belong to {settings.language}, not {name}"
-        )
-    values = {} if settings is None else settings.options()
+        raise ArgumentError(f"dialect settings belong to {owner}, not {name}")
+    values = {} if settings is None else DialectSettings.options(settings)
     if runtime.dialect is not None:
         checked = schema.defaults | values if validate_defaults else values
         try:

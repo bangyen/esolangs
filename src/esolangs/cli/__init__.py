@@ -87,6 +87,7 @@ from esolangs.cli.io import (
     _flush_stdout,
     _is_terminal,
     _read_stdin,
+    _stdout_encoding,
     _StdoutEncodingError,
     _StdoutError,
     _write_output,
@@ -622,9 +623,7 @@ def _describe(rest: list[str]) -> None:
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
     name = str(facts.name)
-    operand = _as_argument(
-        name, encoding=sys.stdout.encoding or "utf-8", catalog=catalog
-    )
+    operand = _as_argument(name, encoding=_stdout_encoding(), catalog=catalog)
     _display(name)
     if facts.parameterized:
         _display(
@@ -797,7 +796,7 @@ def _dispatch() -> None:
         if rest and rest[0] not in COMMANDS:
             # `help nope` printed the usage and exited 0.
             _fail(f"unknown command: {rest[0]}{_did_you_mean(rest[0], set(COMMANDS))}")
-        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        encoding = _stdout_encoding()
         with _errors():
             page = help_text(rest[0], encoding=encoding) if rest else USAGE
         _write_output(page, utf8=False)
@@ -808,7 +807,7 @@ def _dispatch() -> None:
         # usage block and no hint that `list` was one letter away.
         _fail(f"unknown command: {cmd}{_did_you_mean(cmd, set(COMMANDS))}\n\n{USAGE}")
     if {"--help", "-h"} & set(option_argv[1:]):
-        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        encoding = _stdout_encoding()
         with _errors():
             page = help_text(cmd, encoding=encoding)
         _write_output(page, utf8=False)

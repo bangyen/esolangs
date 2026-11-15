@@ -4,6 +4,7 @@ from functools import partial
 
 import pytest
 
+import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.languages.rotfuck.interpreter import _advance, _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -41,6 +42,24 @@ class TestRotation:
         """Forward, ``+`` turns into ``-``: a second raw ``,`` reads as ``.``."""
         assert run_program(",,", "A", rotation="forward") == "A"
         assert run_program(",,", "A") == ""
+
+        api = esolangs.Language("ROTfuck")
+        schema = api.catalog.languages[api.name].runtime.dialect_schema
+        backward = api.settings(rotation="backward")
+
+        class AlternateSettings(esolangs.DialectSettings):
+            def options(self):
+                return {"rotation": "forward"}
+
+        alternate = AlternateSettings(schema, rotation="backward")
+        retained = api.from_source(",,", settings=backward)
+        assert retained.settings is backward
+        assert api.run(",,", stdin="A", settings=alternate).output == ""
+        assert api.run(retained, stdin="A", settings=alternate).output == ""
+        assert api.prepare(",,", settings=alternate).run(stdin="A").output == ""
+        generated = api.generate("01", settings=alternate)
+        assert generated == api.generate("01", settings=backward)
+        assert "".join(api.evaluate(generated, [b]).answer for b in (0, 1)) == "01"
 
     def test_an_unknown_rotation_is_refused(self) -> None:
         with pytest.raises(ValueError, match="rotation"):

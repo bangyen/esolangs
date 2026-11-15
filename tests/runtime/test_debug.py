@@ -110,6 +110,15 @@ def test_manual_steps_rearm_a_breakpoint_after_leaving_it() -> None:
     assert dbg.ip == 2
     assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "breakpoint"
 
+    zero = esolangs.ExecutionLimits(max_steps=0)
+    dbg = debugger_api.make_debugger(REFERENCE, "+.")
+    dbg.break_when(lambda _vm: True)
+    assert dbg.run(limits=zero) == "breakpoint"
+    dbg.vm = debugger_api.make_vm(REFERENCE, "+.")
+    dbg.step()
+    assert dbg.ip == 1
+    assert dbg.run(limits=zero) == "breakpoint"
+
 
 @pytest.mark.parametrize("replace_breakpoint", [False, True])
 def test_breakpoint_callback_can_clear_the_breakpoint_it_hits(
@@ -149,6 +158,56 @@ def test_breakpoint_callback_can_clear_the_breakpoint_it_hits(
     assert checked == [(True, ""), (False, ""), (False, ""), (True, "\x01")]
     assert dbg.observation.steps == 2
     assert dbg.output == "\x01"
+    _check_breakpoint_receiver_replacements()
+
+
+def _check_breakpoint_receiver_replacements():
+    zero = esolangs.ExecutionLimits(max_steps=0)
+    one = esolangs.ExecutionLimits(max_steps=1)
+    for nested in (False, True):
+        receiver = debugger_api.make_debugger(REFERENCE, "+.")
+        live = debugger_api.Debugger(receiver) if nested else receiver
+        live.break_at(0)
+        assert live.run(limits=zero) == "breakpoint"
+        receiver.vm = debugger_api.make_vm(REFERENCE, "+.")
+        assert live.run(limits=one) == "breakpoint"
+        assert live.ip == 0
+        assert live.observation.steps == 0
+        assert live.run(limits=one) == "max_steps"
+        assert live.ip == 1
+
+        receiver = debugger_api.make_debugger(REFERENCE, "+.")
+        live = debugger_api.Debugger(receiver) if nested else receiver
+        replacement = debugger_api.make_vm(REFERENCE, "+.")
+        replacement.step()
+        live.break_at(0)
+
+        def replace_without_hit(_vm, receiver=receiver, replacement=replacement):
+            receiver.vm = replacement
+            return False
+
+        live.break_when(replace_without_hit)
+        assert live.run(limits=one) == "halted"
+        assert live.output == "\x01"
+        assert live.observation.steps == 1
+
+    for stop in (False, True):
+        live = debugger_api.make_debugger(REFERENCE, "+.")
+        replacement = debugger_api.make_vm(REFERENCE, "+.")
+
+        def replace_at_zero(
+            _vm, receiver=live, replacement=replacement, requested=stop
+        ):
+            if receiver.vm is replacement:
+                return False
+            receiver.vm = replacement
+            return requested
+
+        live.break_when(replace_at_zero)
+        live.break_at(0)
+        assert live.run(limits=zero) == "breakpoint"
+        assert live.ip == 0
+        assert live.run(limits=zero) == ("breakpoint" if stop else "max_steps")
 
 
 def test_manual_step_can_clear_a_suppressed_breakpoint() -> None:

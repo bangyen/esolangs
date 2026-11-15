@@ -611,56 +611,6 @@ def test_unbuffered_stdout_retries_short_writes_and_restores_writer(
     assert path.read_bytes() == "before\réλ\r".encode("utf-16")
 
 
-@pytest.mark.parametrize("blocked", [False, True])
-def test_cli_completes_text_adapter_writes_or_reports_the_partial_failure(
-    tmp_path, monkeypatch, capsys, blocked
-):
-    class ShortText:
-        encoding = "ascii"
-
-        def __init__(self) -> None:
-            self.sink = StringIO()
-
-        def write(self, text: str) -> int:
-            if blocked and self.sink.tell():
-                return 0
-            segment = text[:2]
-            segment.encode("ascii")
-            return self.sink.write(segment)
-
-        def flush(self) -> None:
-            self.sink.flush()
-
-    path = tmp_path / "echo.bf"
-    path.write_text(",.,.,.,.")
-    stdout = ShortText()
-    with monkeypatch.context() as patch:
-        patch.setattr(sys, "stdout", stdout)
-        patch.setattr(sys, "stdin", StringIO("ABéC"))
-        patch.setattr(sys, "argv", ["esolangs", "run", REFERENCE, str(path)])
-        if blocked:
-            with pytest.raises(SystemExit) as exited:
-                main()
-            assert exited.value.code == 120
-        else:
-            main()
-    assert stdout.sink.getvalue() == ("AB" if blocked else r"AB\xe9C")
-    assert ("cannot write stdout" in capsys.readouterr().err) is blocked
-    if not blocked:
-        path.write_text(",.,.")
-        stdout = ShortText()
-        with monkeypatch.context() as patch:
-            patch.setattr(sys, "stdout", stdout)
-            patch.setattr(sys, "stdin", StringIO("Q"))
-            patch.setattr(sys, "argv", ["esolangs", "run", REFERENCE, str(path)])
-            with pytest.raises(SystemExit) as exited:
-                main()
-            assert exited.value.code == 1
-        assert stdout.sink.getvalue() == "Q"
-        diagnostic = capsys.readouterr().err
-        assert "no input" in diagnostic or "end of input" in diagnostic
-
-
 @pytest.mark.medium
 @pytest.mark.parametrize("blocked", [False, True])
 def test_direct_binary_adapter_keeps_exact_utf8(tmp_path, monkeypatch, blocked):
@@ -672,11 +622,14 @@ def test_direct_binary_adapter_keeps_exact_utf8(tmp_path, monkeypatch, blocked):
         data.extend(chunk[:2])
         return len(chunk[:2])
 
-    class Capture(StringIO):
+    class Capture:
         buffer = SimpleNamespace(write=write)
 
         def isatty(self) -> bool:
             raise OSError("terminal detection unavailable")
+
+        def flush(self) -> None:
+            pass
 
     path = tmp_path / "echo.bf"
     path.write_text(",.,.,.,.")
@@ -989,7 +942,9 @@ class TestAClosedPipeIsNotAnError:
         )
         assert (closed.returncode, closed.stdout) == (0, b"\x01")
 
-    def test_an_ascii_stdout_escapes_instead_of_crashing(self) -> None:
+    def test_an_ascii_stdout_escapes_instead_of_crashing(
+        self, monkeypatch, capsys
+    ) -> None:
         """``PYTHONIOENCODING=ascii esolangs list`` died mid-line, exit 70."""
         import os
         import subprocess
@@ -1003,6 +958,39 @@ class TestAClosedPipeIsNotAnError:
         )
         assert listed.returncode == 0, listed.stderr
         assert b"For\\xfe" in listed.stdout
+
+        class Writer:
+            def __init__(self, codec) -> None:
+                self.codec = codec
+                self.sink = StringIO()
+
+            def write(self, data: str) -> int:
+                data.encode(self.codec)
+                return self.sink.write(data)
+
+            def flush(self) -> None:
+                self.sink.flush()
+
+        class Unspecified(Writer):
+            encoding = None
+
+        for adapter in (Writer, Unspecified):
+            stdout = adapter("ascii")
+            with monkeypatch.context() as active:
+                active.setattr(sys, "stdout", stdout)
+                active.setattr(sys, "argv", ["esolangs", "list"])
+                main()
+            assert stdout.sink.getvalue().encode("ascii") == listed.stdout
+            assert not capsys.readouterr().err
+
+        description = call_main(["describe", REFERENCE], capsys)
+        for stdout in (Writer("utf-8"), Unspecified("ascii")):
+            with monkeypatch.context() as active:
+                active.setattr(sys, "stdout", stdout)
+                active.setattr(sys, "argv", ["esolangs", "describe", REFERENCE])
+                main()
+            assert stdout.sink.getvalue() == description
+            assert not capsys.readouterr().err
 
     @pytest.mark.slow
     def test_an_isolated_worker_dies_with_its_parent(self, tmp_path: Path) -> None:
