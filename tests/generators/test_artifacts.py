@@ -12,7 +12,7 @@ from esolangs.artifacts import (
     TemplateArtifact,
     TemplateBindings,
 )
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, canonical_id
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages, one, one_where
 from tests.support.reference import REFERENCE
@@ -376,32 +376,43 @@ def test_public_records_canonicalize_and_validate_metadata():
 @pytest.mark.parametrize(
     "language",
     [
-        REFERENCE,
-        *one_where(
-            lambda info: info.name.lower() != info.name.upper(),
-            parameterized=True,
+        name
+        for parameterized in (False, True)
+        for name in one_where(
+            lambda info: (
+                " " in info.name and all(part.isalpha() for part in info.name.split())
+            ),
+            parameterized=parameterized,
             boolean_generator=True,
-        ),
+        )
     ],
 )
 def test_retained_settings_accept_lexical_owner_spelling(language: str) -> None:
     installed = esolangs.Language(language)
     declaration = installed.catalog.languages[language]
-    alias = "Scoped Artifact Selector"
-    api = esolangs.Catalog([replace(declaration, aliases=(alias,))]).bind(alias)
+    slug = canonical_id(language)
+    alias, foreign_symbols = "Scoped Artifact Selector", f"{slug}++"
+    scoped = replace(declaration, aliases=(alias, foreign_symbols))
+    api = esolangs.Catalog([scoped]).bind(alias)
     generated = api.generate("01")
     settings = api.settings()
-    spelling = f" \t{api.name.swapcase()} "
-    untagged = replace(generated, language=spelling, settings=None)
-    assert untagged.language == spelling
 
-    retained = replace(untagged, settings=settings)
-    assert retained.language == api.name
-    assert retained.settings is settings
-    restored = api.from_json(api.to_json(retained))
-    assert restored == api.from_json(api.to_json(untagged, settings=settings))
-    assert restored == retained
-    assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+    for spelling in (
+        f" \t{api.name.swapcase()} ",
+        slug,
+        api.name.replace(" ", "\N{NON-BREAKING HYPHEN}"),
+    ):
+        untagged = replace(generated, language=spelling, settings=None)
+        assert untagged.language == spelling
+        retained = replace(untagged, settings=settings)
+        assert retained.language == api.name
+        assert retained.settings is settings
+        restored = api.from_json(api.to_json(retained))
+        assert restored == api.from_json(api.to_json(untagged, settings=settings))
+        assert restored == retained
+        assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
 
-    with pytest.raises(esolangs.ArgumentError, match="settings belong to"):
-        replace(retained, language=alias)
+    for foreign in scoped.aliases:
+        assert api.catalog.resolve(foreign) == api.name
+        with pytest.raises(esolangs.ArgumentError, match="settings belong to"):
+            replace(generated, language=foreign, settings=settings)

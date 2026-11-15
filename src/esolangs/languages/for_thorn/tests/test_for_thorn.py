@@ -10,7 +10,7 @@ from esolangs.languages.for_thorn.interpreter import _Machine as Forth
 from esolangs.languages.for_thorn.tests.oracle_checks import check_raw_for_thorn
 from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import run_until_halt_or_ancestor, run_until_halt_or_cycle
+from esolangs.vm import make_vm, run_until_halt_or_ancestor, run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -176,12 +176,34 @@ def test_forth_replayed_scope_is_detected_as_an_ancestor() -> None:
     machine = Forth("1{1;}1;", ScriptedIO())
     assert run_until_halt_or_ancestor(machine) is False
 
+    # The outer scope was entered before the detector started.
+    resumed = make_vm("Forþ", "1{1;}1;")
+    for _ in range(4):
+        resumed.step()
+    assert run_until_halt_or_ancestor(resumed, limit=1) is False
+
+
+def test_forth_same_depth_replacement_counts_as_a_push() -> None:
+    machine = make_vm("Forþ", "1{}11;;")
+    for _ in range(5):
+        machine.step()
+    # The next command returns from an empty scope and then enters another.
+    with pytest.raises(TimeoutError, match="1 pushed frames"):
+        run_until_halt_or_ancestor(machine, limit=1)
+
 
 def test_forth_changing_stack_halts() -> None:
     # The scope decrements its shared counter before conditionally
     # calling itself, so every entered scope has a different binding.
     machine = Forth("1{1-(1;)}3v;", ScriptedIO())
     assert run_until_halt_or_ancestor(machine) is True
+
+    # The outer scope's live counter now matches the next call's counter.
+    # Their entry counters differ, and the recursion still terminates.
+    resumed = make_vm("Forþ", "1{1-(1;)}3v;")
+    for _ in range(9):
+        resumed.step()
+    assert run_until_halt_or_ancestor(resumed) is True
 
 
 def test_scope_transition_keeps_old_tables_immutable() -> None:

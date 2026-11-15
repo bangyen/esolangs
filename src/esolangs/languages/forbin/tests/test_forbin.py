@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from esolangs import Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.forbin.interpreter import _Machine as Forbin
 from esolangs.languages.forbin.interpreter import run
@@ -11,7 +12,7 @@ from esolangs.languages.forbin.interpreter._scope import _NeedByte
 from esolangs.languages.forbin.interpreter._step import _advance
 from esolangs.languages.forbin.tests.forbin_support import run_program
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import run_until_halt_or_cycle
+from esolangs.vm import run_until_halt_or_ancestor, run_until_halt_or_cycle
 from tests.interpreters.oracle_support import check_terminal
 from tests.support.event_io import EventIO
 
@@ -130,7 +131,19 @@ class TestForbinAncestorHangDetection:
 
     def test_an_unconditional_self_call_is_a_proven_hang(self) -> None:
         """``f`` calls itself with nothing changed, so it never returns."""
-        assert self._verdict("main {\n f {\n  f 0;\n }\n f 0;\n}\n") is False
+        code = "main {\n f {\n  f 0;\n }\n f 0;\n}\n"
+        assert self._verdict(code) is False
+        api = Language("Forbin")
+        prepared = api.prepare(code)
+        fresh = api.make_debugger(code)
+        assert run_until_halt_or_ancestor(fresh, limit=2) is False
+        assert fresh.observation.steps == 2
+        for create in (prepared.make_vm, prepared.make_debugger):
+            resumed = create()
+            resumed.step()
+            assert resumed.ip == (1, 0)
+            assert run_until_halt_or_ancestor(resumed, limit=1) is False
+            assert resumed.ip == fresh.ip == (1, 1, 0)
 
     def test_mutual_recursion_is_a_proven_hang(self) -> None:
         """The ancestor need not be the same function, only the same state."""
@@ -149,7 +162,12 @@ class TestForbinAncestorHangDetection:
 
     def test_the_same_helper_called_twice_is_not_recursion(self) -> None:
         """Two sequential calls share a key but neither is the other's ancestor."""
-        assert self._verdict("main {\n h x { out 0,1,0,0,0,0,0,x; }\n h 1;\n h 1;\n}\n")
+        code = "main {\n h x { out 0,1,0,0,0,0,0,x; }\n h 1;\n h 1;\n}\n"
+        assert self._verdict(code)
+        resumed = Language("Forbin").make_debugger(code)
+        resumed.step()
+        assert run_until_halt_or_ancestor(resumed, limit=2)
+        assert resumed.output == "AA"
 
     def test_recursion_waiting_on_input_is_not_a_hang(self) -> None:
         """The input cursor is in the key, and that is what keeps it sound."""
@@ -158,6 +176,12 @@ class TestForbinAncestorHangDetection:
             "main { f 0; }\n"
         )
         assert self._verdict(code, "@\nA") is True
+        live = Language("Forbin").make_debugger(code, stdin="@\nA")
+        for _ in range(4):
+            live.step()
+        assert live.observation.input_position == 1
+        assert run_until_halt_or_ancestor(live, limit=3) is True
+        assert live.observation.input_position == 3
 
     def test_an_undecided_walk_raises_rather_than_claiming_a_halt(self) -> None:
         """Exhausting the bound is not a verdict, and must not read as one."""

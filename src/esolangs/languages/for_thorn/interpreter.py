@@ -43,6 +43,7 @@ from typing import Any, NamedTuple, final
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.for_thorn.lifecycle import CAPABILITIES
+from esolangs.runtime._capabilities import _AncestorEntry
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
@@ -459,7 +460,9 @@ class _Machine:
     hang detector can prove.
     """
 
-    def __init__(self, code: str | _Frame, io: IO) -> None:
+    def __init__(
+        self, code: str | _Frame, io: IO, *, track_ancestors: bool = True
+    ) -> None:
         """Start with the top-level ``code`` as the only frame."""
         self.io = io
         self._writer = _BufferedOutput()
@@ -468,6 +471,9 @@ class _Machine:
         frame = _prepare_source(code) if isinstance(code, str) else code
         self.frames: tuple[_Frame, ...] = (frame,)
         self._input_reads = 0
+        self._ancestor_history: tuple[_AncestorEntry, ...] | None = (
+            () if track_ancestors else None
+        )
         self.error = False  # the top-level scope aborted (status 3)
         # Where the top-level frame ends, kept because ``ip`` still has to
         # report a position after that frame has been popped.
@@ -524,6 +530,11 @@ class _Machine:
         )
         accepted = self._writer.accepted
         return (*boundary, accepted) if accepted else boundary
+
+    @property
+    def _ancestor_entries(self) -> tuple[_AncestorEntry, ...] | None:
+        """Return the recursive frame activations from outermost to innermost."""
+        return self._ancestor_history
 
     def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
         """Return the state a called scope needs to replay an ancestor.
@@ -589,6 +600,12 @@ class _Machine:
                 self.io, output, first=partial(self.io.print_char, output)
             )
         self._restore(state._replace(frames=frames))
+        # Finalizing can pop a completed scope and the next command can
+        # immediately replace it. Trim before comparing the command's depths.
+        entries = self._ancestor_history
+        if entries and len(frames) <= len(entries):
+            entries = entries[: max(0, len(frames) - 1)]
+            self._ancestor_history = entries
 
         line = None
         if char == ",":
@@ -596,6 +613,15 @@ class _Machine:
             self._input_reads += 1
 
         self._restore(_advance(state, line))
+        if entries is not None:
+            depth = len(self.frames)
+            if depth > len(frames):
+                self._ancestor_history = (
+                    *entries,
+                    _AncestorEntry(self.frame_entry_key(self.frames[-1])),
+                )
+            elif depth <= len(entries):
+                self._ancestor_history = entries[: max(0, depth - 1)]
         # Raised here, not in ``run``, so a stepped VM fails as ``run`` does.
         if self.error:
             raise HaltError(
@@ -616,7 +642,9 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
 
 def _execute(code: str | _Frame, io: IO) -> CompletionReport:
     """Run a Forþ program."""
-    return drive(_Machine(code, io), policy=CAPABILITIES.completion)
+    return drive(
+        _Machine(code, io, track_ancestors=False), policy=CAPABILITIES.completion
+    )
 
 
 def run(code: str, io: IO) -> None:

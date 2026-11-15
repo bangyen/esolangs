@@ -261,7 +261,8 @@ class Observer:
         _, _, Variant, Snapshot, Model, _, Written, Oracle = self.context
         expected = row.machine
         assert expected is not None
-        assert set(vars(raw)) == {
+        assert len(raw._ancestor_entries) == max(0, len(expected.state.frames) - 1)
+        assert set(vars(raw)) - {"_ancestor_history"} == {  # Proof metadata.
             "io",
             "_length",
             "_serials",

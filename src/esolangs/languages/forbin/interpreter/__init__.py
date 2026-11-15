@@ -46,7 +46,8 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from functools import partial
+from dataclasses import dataclass
+from functools import cached_property, partial
 from types import MappingProxyType
 from typing import Any
 
@@ -62,11 +63,13 @@ from esolangs.languages.forbin.interpreter._scope import (
     _Frame,
     _NeedByte,
     _new_scope,
+    _Scope,
     _State,
 )
 from esolangs.languages.forbin.interpreter._step import _advance, _run_block
 from esolangs.languages.forbin.interpreter._workspace import _Scopes
 from esolangs.languages.forbin.lifecycle import CAPABILITIES
+from esolangs.runtime._capabilities import _AncestorEntry
 from esolangs.runtime._drive import drive
 from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
@@ -114,6 +117,50 @@ def _prepare_source(code: str) -> _Image:
     return len(code), MappingProxyType(functions), tuple(parser.initializers)
 
 
+@dataclass(frozen=True, eq=False)
+class _EntryEnvironment:
+    """Freeze the reachable nodes and canonicalize only during a proof."""
+
+    scopes: Mapping[int, _Scope]
+    global_scope: int
+    entry_scope: int
+
+    @classmethod
+    def capture(
+        cls, scopes: Mapping[int, _Scope], global_scope: int, entry_scope: int
+    ) -> _EntryEnvironment:
+        # A reference to the full store would retain a separate copy of every
+        # allocated scope at every active call.
+        reachable = {}
+        pending = [global_scope, entry_scope]
+        while pending:
+            scope = pending.pop()
+            if scope in reachable:
+                continue
+            node = reachable[scope] = scopes[scope]
+            if node.parent is not None:
+                pending.append(node.parent)
+            pending.extend(
+                value.scope
+                for value in node.locals.values()
+                if isinstance(value, _Closure)
+            )
+        return cls(MappingProxyType(reachable), global_scope, entry_scope)
+
+    @cached_property
+    def _key(self) -> tuple[WorkspaceVariant, tuple[WorkspaceVariant, ...]]:
+        graph = _Scopes(self.scopes, self.global_scope)
+        return graph.reference(self.entry_scope), graph.environments()
+
+    def __hash__(self) -> int:
+        return hash(self._key)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _EntryEnvironment):
+            return NotImplemented
+        return self._key == other._key
+
+
 class _Machine:
     """One Forbin run: an explicit stack of resumable call frames.
 
@@ -123,11 +170,16 @@ class _Machine:
     frame is ever touched per ``step()``.
     """
 
-    def __init__(self, code: str | _Image, io: IO) -> None:
+    def __init__(
+        self, code: str | _Image, io: IO, *, track_ancestors: bool = True
+    ) -> None:
         self.io = io
         self._writer = _BufferedOutput()
         self._statement_input: list[int] = []
         self._statement_output = 0
+        self._ancestor_history: tuple[_AncestorEntry, ...] | None = (
+            () if track_ancestors else None
+        )
         # Where the source ends, kept because ``ip`` still has to report a
         # position once every frame has been popped.
         image = _prepare_source(code) if isinstance(code, str) else code
@@ -237,6 +289,11 @@ class _Machine:
             return []
         scope = self.state.scopes[self.state.frames[-1].scope]
         return [v for v in scope.locals.values() if type(v) is int]
+
+    @property
+    def _ancestor_entries(self) -> tuple[_AncestorEntry, ...] | None:
+        """The live recursive calls, in outermost-first entry order."""
+        return self._ancestor_history
 
     def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
         """Return what ``frame`` is about to run, for the ancestor check.
@@ -420,6 +477,22 @@ class _Machine:
             break
         self._flush(out, self._statement_output, pending=True)
         self.state = state
+        if (entries := self._ancestor_history) is not None:
+            depth = len(state.frames) - 1
+            if depth > len(entries):
+                frame = state.frames[-1]
+                key = (
+                    frame.fn,
+                    self.io.progress(),
+                    state.bits,
+                    state.reads,
+                    _EntryEnvironment.capture(
+                        state.scopes, self._global_scope, frame.scope
+                    ),
+                )
+                self._ancestor_history = (*entries, _AncestorEntry(key))
+            elif depth < len(entries):
+                self._ancestor_history = entries[: max(depth, 0)]
         if inputs or self._statement_output:
             inputs.clear()
             self._statement_output = 0
@@ -433,12 +506,15 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
         raise TypeError("Forbin machines accept no runtime options")
 
     image = _prepare_source(source)
-    return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
+    return RuntimePlan(
+        lambda io: _Machine(image, io),
+        lambda io: _execute(image, io),
+    )
 
 
 def _execute(code: str | _Image, io: IO) -> CompletionReport:
     """Run a Forbin program, calling ``main`` with a dummy argument."""
-    machine = _Machine(code, io)
+    machine = _Machine(code, io, track_ancestors=False)
     return drive(machine, policy=CAPABILITIES.completion)
 
 

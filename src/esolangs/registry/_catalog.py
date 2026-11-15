@@ -163,6 +163,16 @@ def _symbols(*names: str) -> Counter[str]:
     return counts
 
 
+def _matches_origin_slug(origin: str, owner: str, *, slug: str | None = None) -> bool:
+    """Match an owner's canonical slug without accepting foreign punctuation."""
+    slug = canonical_id(origin) if slug is None else slug
+    return (
+        bool(slug)
+        and slug == canonical_id(owner)
+        and not (_symbols(origin) - _symbols(owner))
+    )
+
+
 def _separator(c: str) -> bool:
     # Whitespace and every dash: ``'\tfor_thorn\n'``, ``'Super\xa0SNUSP'`` and
     # ``'6\u20135'`` resolved before the symbol rule and must still.
@@ -192,10 +202,6 @@ def resolve_origin(origin: str, *, catalog: Catalog) -> str | None:
     slug = canonical_id(origin)
     owner = catalog._by_id.get(slug)  # noqa: SLF001 - catalog-owned index
     # A lookup alias or unrelated ID can name a different owner in another scope.
-    if (
-        owner is not None
-        and slug == canonical_id(owner)
-        and not (_symbols(origin) - _symbols(owner))
-    ):
+    if owner is not None and _matches_origin_slug(origin, owner, slug=slug):
         return owner
     return None

@@ -21,6 +21,7 @@ from esolangs.runtime._proof import (
     BranchProof,
     CycleDecision,
     _check_branch_halt,
+    _drive_ancestor,
     _proof_receiver_check,
     _read_branch_root,
     _step_proof_receiver,
@@ -716,10 +717,10 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     ``True`` on a halt, ``False`` once such a frame lands.  The input
     position carries the soundness (a base case one read away would
     otherwise be called a hang).  Misses bindings that differ every lap
-    (``f(x - 1)`` over unbounded ints); O(depth) per push.  ``limit`` bounds
-    pushes examined -- a repeat shows within a few frames (three across the
-    suite) -- and exhausting it raises :class:`TimeoutError`.  No call
-    stack, or a random machine, raises :class:`TypeError`.
+    (``f(x - 1)`` over unbounded ints); O(depth) per push. Installed framed
+    VMs retain entry state across calls to this detector. The limit bounds
+    new pushes examined. Exhausting it raises :class:`TimeoutError`.
+    No call stack, or a random machine, raises :class:`TypeError`.
     """
     limit = check_whole(limit, "limit")
     check_receiver = _proof_receiver_check(machine)
@@ -735,49 +736,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
         ),
     )
     runner = _proof_runner(machine, state)
-    if _checked_halted(runner.halted):
-        if check_receiver is not None:
-            check_receiver()
-        return True
-    ancestors: list[tuple[int, Hashable]] = []
-    pushes = 0
-    completed = 0
-    while True:
-        if pushes >= limit:
-            raise with_hint(
-                TimeoutError(
-                    f"undecided after {limit} pushed frames: neither halted nor "
-                    "repeated an ancestor's entry state"
-                ),
-                (
-                    "increase the pushed-frame limit; changing arguments "
-                    "may prevent an ancestor match"
-                ),
-            )
-        depth_before = len(state.frames)
-        if check_receiver is None:
-            runner.step()
-        else:
-            _step_proof_receiver(runner, check_receiver, completed)
-            completed += 1
-        if _checked_halted(runner.halted):
-            if check_receiver is not None:
-                check_receiver()
-            return True
-        if len(state.frames) <= depth_before:
-            continue
-        pushes += 1
-        depth = len(state.frames) - 1
-        # A frame at or above this depth belongs to a call that has since
-        # returned, so drop it rather than compare against a dead ancestor.
-        while ancestors and ancestors[-1][0] >= depth:
-            ancestors.pop()
-        key = state.frame_entry_key(state.frames[-1])
-        if any(key == ancestor for _, ancestor in ancestors):
-            if check_receiver is not None:
-                check_receiver()
-            return False
-        ancestors.append((depth, key))
+    return _drive_ancestor(state, runner, limit, check_receiver)
 
 
 @runtime_checkable

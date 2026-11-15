@@ -5,15 +5,22 @@ from __future__ import annotations
 from collections.abc import Callable, Hashable
 from dataclasses import dataclass
 from reprlib import recursive_repr
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 from esolangs.exceptions import EsolangError
 from esolangs.results import ExecutionResult
+from esolangs.runtime._capabilities import _AncestorEntry
+from esolangs.runtime._drive import _checked_halted
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._validate import _has_backing_type
+from esolangs.runtime.source_hints import with_hint
 
 if TYPE_CHECKING:
-    from esolangs._cycles import _BranchingStepMachine, _SteppableMachine
+    from esolangs._cycles import (
+        _BranchingStepMachine,
+        _FramedMachine,
+        _SteppableMachine,
+    )
     from esolangs.runtime._vm_protocol import VM
 
 
@@ -269,3 +276,74 @@ def _read_branch_root(machine: _BranchingStepMachine, adapter: object) -> Hashab
             ):
                 _record_vm_fault(adapter, error, _capture_observation(adapter))
         raise
+
+
+def _drive_ancestor(
+    state: _FramedMachine,
+    runner: _SteppableMachine,
+    limit: int,
+    check_receiver: Callable[[], None] | None,
+) -> bool:
+    """Compare real pushes against live entry history, when the owner supplies it."""
+    if _checked_halted(runner.halted):
+        if check_receiver is not None:
+            check_receiver()
+        return True
+    entries = cast(
+        "tuple[_AncestorEntry, ...] | None", getattr(state, "_ancestor_entries", None)
+    )
+    ancestors: list[tuple[int, Hashable]] = []
+    pushes = 0
+    completed = 0
+    while True:
+        if pushes >= limit:
+            raise with_hint(
+                TimeoutError(
+                    f"undecided after {limit} pushed frames: neither halted nor "
+                    "repeated an ancestor's entry state"
+                ),
+                (
+                    "increase the pushed-frame limit; changing arguments "
+                    "may prevent an ancestor match"
+                ),
+            )
+        depth_before = len(state.frames) if entries is None else len(entries)
+        if check_receiver is None:
+            runner.step()
+        else:
+            _step_proof_receiver(runner, check_receiver, completed)
+            completed += 1
+        if _checked_halted(runner.halted):
+            if check_receiver is not None:
+                check_receiver()
+            return True
+        if entries is not None:
+            current = cast(
+                "tuple[_AncestorEntry, ...]", getattr(state, "_ancestor_entries", ())
+            )
+            prior = entries
+            entries = current
+            depth = len(current)
+            # A return exposes a previous token; a same-depth push replaces it.
+            if not depth or (depth <= depth_before and prior[depth - 1] is current[-1]):
+                continue
+            pushes += 1
+            if any(current[-1].key == current[i].key for i in range(depth - 1)):
+                if check_receiver is not None:
+                    check_receiver()
+                return False
+            continue
+        if len(state.frames) <= depth_before:
+            continue
+        pushes += 1
+        depth = len(state.frames) - 1
+        # A frame at or above this depth belongs to a call that has since
+        # returned, so drop it rather than compare against a dead ancestor.
+        while ancestors and ancestors[-1][0] >= depth:
+            ancestors.pop()
+        key = state.frame_entry_key(state.frames[-1])
+        if any(key == ancestor for _, ancestor in ancestors):
+            if check_receiver is not None:
+                check_receiver()
+            return False
+        ancestors.append((depth, key))

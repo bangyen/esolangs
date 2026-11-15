@@ -1,11 +1,19 @@
 """Declared completion and debugger surfaces without loading an interpreter."""
 
+from collections.abc import Hashable
 from dataclasses import dataclass
 from typing import Literal
 
 from esolangs.runtime._lifecycle import Completion
 
 type IpShape = Literal["offset", "grid", "line", "opaque"]
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _AncestorEntry:
+    """A live activation's immutable entry state and unique identity."""
+
+    key: Hashable
 
 
 @dataclass(frozen=True)
