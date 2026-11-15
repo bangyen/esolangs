@@ -2,9 +2,11 @@
 
 import pytest
 
+from esolangs import ArgumentError, ExecutionCapError, ExecutionLimits, Language
 from esolangs.languages.blindfolded_arithmetic.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.memory import trunc_div
+from esolangs.vm import complete_vm
 
 
 @pytest.mark.parametrize(
@@ -35,20 +37,25 @@ def test_constructor_and_output_failures_preserve_native_phase(monkeypatch) -> N
     io = ScriptedIO("1 7")
     machine = _Machine("i=i/a", io)
     assert (io.position(), io.progress(), io.reads) == (1, 1, 1)
+    original_write = io.print_num
 
     def rejected(_value):
-        assert machine.halted
+        assert not machine.halted
         raise EOFError("output rejected")
 
     io.print_num = rejected
-    with pytest.raises(EOFError, match="output rejected"):
-        machine.step()
-    assert machine.halted
-    assert io.getvalue() == ""
     captured = machine.workspace_snapshot()
-    assert captured.parts == (((0, 0, 0, 0, 0, 1), 0), True, 1)
+    assert captured.parts == (((0, 0, 0, 0, 0, 1), 0), False, 1)
+    for _ in range(2):
+        with pytest.raises(EOFError, match="output rejected"):
+            machine.step()
+        assert machine.workspace_snapshot() == captured
+        assert io.getvalue() == ""
+    io.print_num = original_write
     machine.step()
-    assert machine.workspace_snapshot() == captured
+    assert machine.halted
+    machine.step()
+    assert io.getvalue() == "1"
     assert io.input_char() == ord(" ")
     assert io.input_num() == 7
 
@@ -63,6 +70,28 @@ def test_constructor_and_output_failures_preserve_native_phase(monkeypatch) -> N
         monkeypatch,
         cases=(("1", "1"), ("2", "2"), ("7", "7")),
     )
+
+
+@pytest.mark.medium
+def test_large_integer_output_matches_across_execution_routes() -> None:
+    api = Language("Blindfolded Arithmetic")
+    source = "i=i/a"
+    text = "1" + "0" * 5000
+    limits = ExecutionLimits(max_steps=1)
+    for options in ({}, {"limits": limits}, {"limits": limits, "isolated": True}):
+        result = api.run(source, stdin=text, **options)
+        assert (result.output, result.input_position, result.input_reads) == (
+            text,
+            len(text),
+            1,
+        )
+    assert complete_vm(api.make_vm(source, stdin=text), max_steps=1) == text
+    with pytest.raises(ExecutionCapError) as caught:
+        api.run(source, stdin=text, limits=ExecutionLimits(max_output=17))
+    assert caught.value.bound == "max_output"
+    assert caught.value.partial_output == text[:17]
+    with pytest.raises(ArgumentError, match="input must be positive"):
+        api.run(source, stdin="-" + text)
 
 
 def test_ip_is_the_next_instructions_source_offset() -> None:

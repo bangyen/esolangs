@@ -295,7 +295,8 @@ examples:
 """,
     "read-answer": f"""usage: esolangs read-answer <language>
 
-Read a program's output on stdin and print the answer bit it carries.
+Read a program's output on stdin through EOF and print the answer bit it
+carries. At a terminal, paste the output and send EOF when done.
 
 For most languages the answer is the last thing printed and this is barely
 more than `tail`.  For some it is not: several dump their entire final machine

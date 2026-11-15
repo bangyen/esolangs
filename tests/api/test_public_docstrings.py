@@ -153,6 +153,11 @@ def _png_file_without_pillow() -> object:
         return _without_pillow(lambda: esolangs.from_file(_first("raster"), path))
 
 
+def _save_missing_source() -> None:
+    with TemporaryDirectory() as folder:
+        esolangs.to_file(R, _MISSING, Path(folder) / "program.b")
+
+
 def _foreign_settings() -> esolangs.DialectSettings:
     return esolangs.Language(_first("raster")).settings()
 
@@ -266,12 +271,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         ),
         None,
     ),
-    (
-        "to_file",
-        x.ProgramNotFoundError,
-        lambda: esolangs.to_file("Brainfuck", _MISSING, _MISSING),
-        None,
-    ),
+    ("to_file", x.ProgramNotFoundError, _save_missing_source, None),
     (
         "to_file",
         x.ArgumentError,

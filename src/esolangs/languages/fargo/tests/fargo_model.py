@@ -399,6 +399,15 @@ def transition(state, definitions, calls):
     return State(state.number, output, line, freeze(frames)), effect
 
 
+def _decimal_output(number):
+    """Render the unsigned output register in nine-digit blocks."""
+    blocks = []
+    while number >= 1_000_000_000:
+        number, block = divmod(number, 1_000_000_000)
+        blocks.append(f"{block:09d}")
+    return str(number) + "".join(reversed(blocks))
+
+
 def model(source, stdin="", cap=64):
     """Include explicit failed boundaries and three posthalt observations."""
     try:
@@ -448,12 +457,7 @@ def model(source, stdin="", cap=64):
             break
         state = changed
         if printed is not None:
-            try:
-                text += str(printed)
-            except ValueError as failure:
-                assert str(failure).startswith("Exceeds the limit (")
-                rows.append(observation("limit", str(failure)))
-                break
+            text += _decimal_output(printed)
         rows.append(observation())
     else:
         if rows[-1].halted:

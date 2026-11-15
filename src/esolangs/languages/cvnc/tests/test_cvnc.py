@@ -1,10 +1,12 @@
 """Unit tests for the CV(N)(C) interpreter."""
 
+from functools import partial
 from itertools import product
 
 import pytest
 
-from esolangs.exceptions import HaltError
+from esolangs import ExecutionLimits, ExecutionResult, Language
+from esolangs.exceptions import HaltError, InputExhaustedError
 from esolangs.languages.cvnc.interpreter import (
     _applied,
     _Machine,
@@ -14,7 +16,7 @@ from esolangs.languages.cvnc.interpreter import (
 )
 from esolangs.languages.cvnc.tests.oracle_checks import check_raw_cvnc
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import run_until_halt_or_cycle
+from esolangs.vm import _capture_workspace, complete_vm, run_until_halt_or_cycle
 from tests.interpreters.runner import native_runner
 
 TRUTH_MACHINE = "soθɰ̊oθʋi"
@@ -28,6 +30,56 @@ HELLO = (
 
 
 run_program = native_runner(run)
+
+
+@pytest.mark.parametrize("debugger", [False, True])
+@pytest.mark.parametrize(
+    ("code", "stdin", "error", "message", "steps", "position", "reads"),
+    [
+        ("ʒif", "", InputExhaustedError, "past the end", 0, 0, 0),
+        ("sif", " ", InputExhaustedError, "past the end", 0, 1, 0),
+        ("siŋ", "0", HaltError, "empty deque", 2, 1, 1),
+        ("condoqoposuθi", "7\n", HaltError, "division by zero", 10, 1, 1),
+    ],
+)
+def test_failed_command_stays_pending_on_retry(
+    code, stdin, error, message, steps, position, reads, *, debugger: bool
+) -> None:
+    api = Language("CV(N)(C)")
+    if debugger:
+        debug = api.make_debugger(code, stdin=stdin)
+        vm = debug.vm
+        assert debug.run(limits=ExecutionLimits(max_steps=steps)) == "max_steps"
+        drive = partial(debug.run, limits=ExecutionLimits(max_steps=steps + 1))
+    else:
+        vm = api.make_vm(code, stdin=stdin)
+        for _ in range(steps):
+            vm.step()
+        drive = partial(complete_vm, vm, max_steps=steps + 1)
+    start = _capture_workspace(vm)
+    snapshots = []
+    for attempt in (1, 2):
+        with pytest.raises(error, match=message) as stopped:
+            drive()
+        assert not vm.halted
+        assert stopped.value.partial_output == vm.output == ""
+        assert stopped.value.observation == ExecutionResult(
+            "",
+            position,
+            reads,
+            attempt if error is InputExhaustedError else 0,
+            steps=steps if debugger else None,
+        )
+        workspace = _capture_workspace(vm)
+        assert workspace.parts == (*start.parts[:-1], position)
+        snapshots.append(vm.snapshot())
+    assert snapshots[0] == snapshots[1]
+
+
+def test_successful_input_finishes_at_the_exact_budget() -> None:
+    vm = Language("CV(N)(C)").make_vm("ʒif", stdin="@")
+    assert complete_vm(vm, max_steps=3) == "A"
+    assert vm.halted
 
 
 class TestWikiExamples:

@@ -7,6 +7,7 @@ commands. Published ambiguities retain the public contract's Decisions.
 
 import ast
 import math
+from decimal import Decimal
 from itertools import product
 
 from esolangs.languages.cvnc.interpreter import _Machine
@@ -154,10 +155,14 @@ def _model(syllables, stdin):
         if tick == 48:
             break
         token = tokens[pc]
-        pc += 1
+        next_pc = pc + 1
         try:
             if token in "θf":
-                output += str(accumulator) if token == "θ" else chr(accumulator % 256)
+                output += (
+                    format(Decimal(accumulator), "f")
+                    if token == "θ"
+                    else chr(accumulator % 256)
+                )
             elif token in "sʒ":
                 value, cursor, error = _read(token, stdin, cursor)
                 if error:
@@ -169,22 +174,23 @@ def _model(syllables, stdin):
                 accumulator = _nasal(token, accumulator, queue)
             elif token in "ɹj":
                 positions = offsets if token == "ɹ" else starts
-                pc = (
+                next_pc = (
                     positions[accumulator]
                     if accumulator < len(positions)
                     else len(tokens)
                 )
             elif token == "ʋ":
-                pc = pairs[pc - 1]
+                next_pc = pairs[pc]
             elif token in ("ɰ", "ɰ̊"):
                 if (accumulator == 0) == (token == "ɰ̊"):
-                    pc = pairs[pc - 1] + 1
+                    next_pc = pairs[pc] + 1
             else:
                 accumulator = _function(token, accumulator, queue, function)
         except (IndexError, ZeroDivisionError):
             return "halt", [*trace, row()]
         except ValueError:
             return "syntax", [*trace, row()]
+        pc = next_pc
     return None, trace
 
 

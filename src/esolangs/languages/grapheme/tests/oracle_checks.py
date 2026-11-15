@@ -219,10 +219,7 @@ def _model(source, stdin, dialect):
         _finish(calls, changed, dialect)
         stack, variables, frames = changed, memory, calls
         if text is not None:
-            try:
-                output += str(text)
-            except ValueError:
-                return "syntax", [*trace, row()]
+            output += format(Decimal(text), "f") if isinstance(text, int) else text
     return None, trace
 
 

@@ -123,7 +123,7 @@ def cases():
         Case(
             "$\n% 100111000100000 1\n% 100111000100000 $\n$",
             "0",
-            name="postcommit-decimal-limit",
+            name="large-decimal-output",
         )
     )
     result.append(Case("[?] [] 1 " + "1" * 20000, "0", name="pure-diagnostic-limit"))

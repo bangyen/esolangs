@@ -42,6 +42,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._validate import _argument_repr
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import trunc_div
 from esolangs.runtime.source_hints import syntax_error
@@ -119,7 +120,8 @@ class _Machine:
         value = io.input_num()
         if value <= 0:
             raise syntax_error(
-                f"Blindfolded Arithmetic input must be positive, got {value}",
+                "Blindfolded Arithmetic input must be positive, "
+                f"got {_argument_repr(value)}",
                 "supply a positive decimal integer, for example 1",
                 error_type=ArgumentError,
             )
@@ -152,8 +154,8 @@ class _Machine:
             return
         state = _advance(self.state, self.program[self.state[1]], len(self.program))
         if state is None:
-            self.halted = True
             self.io.print_num(self.state[0][-1])
+            self.halted = True
         else:
             self.state = state
 

@@ -13,6 +13,15 @@ def test_input_num_reads_past_the_int_str_digit_cap() -> None:
     assert ScriptedIO("1" + "0" * 5000).input_num() == 10**5000
 
 
+def test_print_num_writes_past_the_int_str_digit_cap(capsys) -> None:
+    text = "1" + "0" * 5000
+    IO().print_num(10**5000)
+    assert capsys.readouterr().out == text
+    scripted = ScriptedIO("")
+    scripted.print_num(-(10**5000))
+    assert scripted.getvalue() == "-" + text
+
+
 def test_interactive_character_reads_preserve_the_complete_line() -> None:
     for text, expected in [("", [10]), ("a", [97, 10]), ("xyz", [120, 121, 122, 10])]:
         source = IO()

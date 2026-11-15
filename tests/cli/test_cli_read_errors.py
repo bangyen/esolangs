@@ -5,9 +5,11 @@ from __future__ import annotations
 import io
 import os
 import select
+import signal
 import subprocess
 import sys
 import threading
+from collections.abc import Iterator
 from contextvars import ContextVar
 
 import pytest
@@ -18,6 +20,7 @@ from esolangs.cli.io import (
     _read_stdin,
     _write_output,
 )
+from tests.support.reference import REFERENCE
 
 
 @pytest.mark.parametrize("raw", [b"\xff", b"\x80"])
@@ -126,6 +129,85 @@ def test_terminal_stdin_returns_without_reading(monkeypatch) -> None:
     monkeypatch.setattr(sys, "stdin", stream)
     assert _read_stdin() == ""
     assert stream.tell() == 0
+
+
+@pytest.fixture
+def terminal_stdin() -> Iterator[tuple[int, int]]:
+    if not hasattr(os, "openpty"):
+        pytest.skip("requires a POSIX pseudo-terminal")
+    import termios
+
+    terminal, stdin = os.openpty()
+    try:
+        settings = termios.tcgetattr(stdin)
+        settings[3] |= termios.ICANON
+        settings[3] &= ~termios.ECHO
+        settings[6][termios.VEOF] = b"\x04"
+        termios.tcsetattr(stdin, termios.TCSANOW, settings)
+        yield terminal, stdin
+    finally:
+        os.close(stdin)
+        os.close(terminal)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("data", "code", "answer"),
+    [
+        pytest.param(b"0\n1\n\x04", 0, b"1\n", id="lines"),
+        pytest.param(b"1\x04\x04", 0, b"1\n", id="partial-line"),
+        pytest.param(b"\x04", 1, b"", id="empty"),
+    ],
+)
+def test_read_answer_accepts_terminal_eof(
+    terminal_stdin: tuple[int, int], data: bytes, code: int, answer: bytes
+) -> None:
+    terminal, stdin = terminal_stdin
+    os.write(terminal, data)
+    got = subprocess.run(
+        [sys.executable, "-m", "esolangs", "read-answer", REFERENCE],
+        stdin=stdin,
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
+    assert (got.returncode, got.stdout) == (code, answer)
+    assert b"send EOF with Ctrl-D" in got.stderr
+    assert (b"nothing on stdin" in got.stderr) == (code == 1)
+
+
+@pytest.mark.medium
+def test_read_answer_waits_for_terminal_eof_and_handles_interrupt(
+    terminal_stdin: tuple[int, int],
+) -> None:
+    terminal, stdin = terminal_stdin
+    os.write(terminal, b"1\n")
+    with subprocess.Popen(
+        [sys.executable, "-m", "esolangs", "read-answer", REFERENCE],
+        stdin=stdin,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as child:
+        try:
+            assert child.stderr is not None
+            assert child.stdout is not None
+            assert select.select([child.stderr], [], [], 10)[0]
+            assert b"send EOF with Ctrl-D" in child.stderr.readline()
+            assert not select.select([child.stdout], [], [], 0.1)[0]
+            child.send_signal(signal.SIGINT)
+            output, diagnostic = child.communicate(timeout=10)
+        finally:
+            if child.poll() is None:
+                child.kill()
+    assert (child.returncode, output, diagnostic) == (130, b"", b"interrupted\n")
+
+
+def test_closed_stdin_supplies_no_terminal_input(monkeypatch, capsys) -> None:
+    stream = io.StringIO("unused")
+    stream.close()
+    monkeypatch.setattr(sys, "stdin", stream)
+    assert _read_stdin(terminal_prompt="unused") == ""
+    assert capsys.readouterr().err == ""
 
 
 def test_stdin_reports_strict_decode_errors(monkeypatch, capsys) -> None:

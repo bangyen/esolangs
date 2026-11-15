@@ -3,6 +3,7 @@
 # ruff: noqa: PT017 -- Exact raw/wrapped failure phases share one direct observer.
 
 import sys
+from decimal import Decimal
 from unittest.mock import patch
 
 from esolangs import ExecutionLimits
@@ -19,22 +20,28 @@ def check_phases():
     try:
         # Explicit positive limit, independent of the caller's default policy.
         sys.set_int_max_str_digits(640)
-        for name in ("pure-diagnostic-limit", "postcommit-decimal-limit"):
-            case = next(case for case in cases() if case.name == name)
-            rows = model(case.source, case.stdin, case.cap)
-            at = next(i for i, row in enumerate(rows) if row.error)
-            assert rows[at].error == "limit"
-            assert at > 0
-            if name == "pure-diagnostic-limit":
-                assert rows[at].state == rows[at - 1].state
-                assert rows[at].output == rows[at - 1].output == ""
-            else:
-                assert rows[at].state != rows[at - 1].state
-                assert rows[at].state.output == 0
-                assert rows[at - 1].state.output != 0
-                assert rows[at].output == rows[at - 1].output == "0"
-            checker.check_case(case)
-            counts["format_phases"] += 1
+        case = next(case for case in cases() if case.name == "pure-diagnostic-limit")
+        rows = model(case.source, case.stdin, case.cap)
+        at = next(i for i, row in enumerate(rows) if row.error)
+        assert rows[at].error == "limit"
+        assert at > 0
+        assert rows[at].state == rows[at - 1].state
+        assert rows[at].output == rows[at - 1].output == ""
+        checker.check_case(case)
+        counts["format_phases"] += 1
+
+        case = next(case for case in cases() if case.name == "large-decimal-output")
+        rows = model(case.source, case.stdin, case.cap)
+        assert all(row.error is None for row in rows)
+        last = rows[-1]
+        assert last.halted
+        assert last.state.output == 0
+        assert last.output[0] == last.output[-1] == "0"
+        assert len(last.output) == 6023
+        assert int(Decimal(last.output[1:-1])) == 1 << 20000
+        checker.check_case(case)
+        counts["format_phases"] += 1
+
         case = Case("$", "9" * 5000 + " remainder")
         rows = model(case.source, case.stdin, case.cap)
         assert rows[0].state.number == 10**5000 - 1

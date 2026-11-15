@@ -181,14 +181,22 @@ def explicit_path(path: str | PathLike[str]) -> _ExplicitPath:
     return _ExplicitPath(spelling)
 
 
-def write_staged(target: _ExplicitPath, chunks: Iterable[bytes]) -> None:
-    """Replace the directory entry only after all source bytes are written."""
+def staging_parent(target: _ExplicitPath) -> str:
+    """Check the destination and return the parent directory for staging."""
     # The staged write's errors should name the destination, not a temporary file.
+    if "\0" in target.spelling:
+        raise ValueError("embedded null character in path")
     if os.path.isdir(target):
         raise IsADirectoryError("it is a directory")
     parent = os.path.dirname(target.spelling) or "."
     if not os.path.isdir(parent):
         raise FileNotFoundError("its directory does not exist")
+    return parent
+
+
+def write_staged(target: _ExplicitPath, chunks: Iterable[bytes]) -> None:
+    """Replace the directory entry only after all source bytes are written."""
+    parent = staging_parent(target)
     with TemporaryDirectory(dir=parent) as temporary:
         staged = Path(temporary) / "source"
         with staged.open("wb") as stream:

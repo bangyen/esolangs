@@ -15,8 +15,18 @@ from collections.abc import Callable
 
 from esolangs.exceptions import ArgumentError, InputExhaustedError
 from esolangs.runtime._input import CheckedInput, InputSource, read_input
-from esolangs.runtime.memory import parse_integer
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
+
+
+def _output_text(value: object) -> str:
+    """Render builtin integers in decimal even above Python's digit cap."""
+    try:
+        return str(value)
+    except ValueError:
+        if type(value) is int:
+            return format_integer(value)
+        raise
 
 
 class IO:
@@ -38,7 +48,7 @@ class IO:
         return input(prompt)
 
     def _write(self, value: object) -> None:
-        print(value, end="")
+        print(_output_text(value), end="")
 
     def print_str(self, text: str) -> None:
         r"""Write ``text`` as-is, adding no trailing newline of its own.
@@ -54,7 +64,7 @@ class IO:
             self._newline = not text.endswith("\n")
 
     def print_value(self, value: object) -> None:
-        """Write any value the way ``print(value, end="")`` would."""
+        """Write a value's text representation without adding a newline."""
         self._write(value)
         self._newline = True
 
@@ -289,7 +299,7 @@ class ScriptedIO(IO):
         return self._offset
 
     def _write(self, value: object) -> None:
-        self._buffer.write(str(value))
+        self._buffer.write(_output_text(value))
 
     def getvalue(self) -> str:
         """Return everything written so far."""

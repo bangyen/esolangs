@@ -610,7 +610,11 @@ def _read_answer(rest: list[str]) -> None:
             "<program-file> and observe whether it halts. "
             "A timeout leaves the answer undecided."
         )
-    output = _read_stdin(hint="; pipe a program's output in, or close stdin")
+    eof = "Ctrl-Z then Enter" if os.name == "nt" else "Ctrl-D (twice on a partial line)"
+    output = _read_stdin(
+        hint="; pipe a program's output in, or close stdin",
+        terminal_prompt=f"Paste the program's output, then send EOF with {eof}.",
+    )
     # NQ's false answer is a space; only absent output is empty stdin.
     try:
         answer = read_answer(language, output, catalog=catalog)

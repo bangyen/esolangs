@@ -545,7 +545,6 @@ class _Machine:
         if self.halted:
             return
         token = self.tokens[self.pointer]
-        self.pointer += 1
 
         line = None
         byte = None
@@ -555,7 +554,7 @@ class _Machine:
             byte = self.io.input_char()
 
         state, output = _advance(
-            (self.accumulator, self.deque, self.function, self.pointer),
+            (self.accumulator, self.deque, self.function, self.pointer + 1),
             token,
             self.starts,
             self.pairs,
@@ -564,12 +563,11 @@ class _Machine:
             line,
             byte,
         )
-        self.accumulator, self.deque, self.function, self.pointer = state
-
         if isinstance(output, int):
             self.io.print_num(output)
         elif output is not None:
             self.io.print_char(output)
+        self.accumulator, self.deque, self.function, self.pointer = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

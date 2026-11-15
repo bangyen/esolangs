@@ -317,18 +317,25 @@ def _read_buffered_stdin(stream: BufferedReader, deadline: float | None) -> byte
 
 
 def _read_stdin(
-    timeout: float | None = None, hint: str = "", *, timeout_flag: str = ""
+    timeout: float | None = None,
+    hint: str = "",
+    *,
+    timeout_flag: str = "",
+    terminal_prompt: str | None = None,
 ) -> str:
     """Return this command's stdin, or exit if it is not text or never comes.
 
-    ``sys.stdin.read()`` blocks until EOF, so an open, unwritten pipe hung
-    the command before ``--execution-timeout`` could apply.  The read runs on a
-    daemon thread to bound blocking reads and announce a long wait.
+    Piped reads run on a daemon thread to apply deadlines and announce
+    long waits. A terminal prompt opts into interactive input.
     """
-    # A missing descriptor or terminal supplies no piped input.
     stdin = sys.stdin
-    if stdin is None or stdin.isatty():
+    if stdin is None or getattr(stdin, "closed", False):
         return ""
+    terminal = stdin.isatty()
+    if terminal:
+        if terminal_prompt is None:
+            return ""
+        _note(terminal_prompt)
     deadline = None if timeout is None else monotonic() + timeout
 
     def _read_text() -> str:
@@ -354,9 +361,14 @@ def _read_stdin(
             _TIMEOUT_EXIT,
         )
 
-    result = _slurp_thread(
-        _read_text, timeout, notice=_waiting_notice(hint), on_timeout=_on_timeout
-    )
+    # An interactive read has no deadline. Keeping it on the main thread
+    # lets Ctrl-C interrupt it without leaving a reader holding stdin's lock.
+    if terminal and timeout is None:
+        result = _read_text()
+    else:
+        result = _slurp_thread(
+            _read_text, timeout, notice=_waiting_notice(hint), on_timeout=_on_timeout
+        )
     if (hidden := _smuggled_bytes(result)) is not None:
         _fail(f"cannot read stdin: not text ({_decode_note(hidden)})")
     return result

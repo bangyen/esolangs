@@ -1016,7 +1016,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
 
     catalog = get_catalog(catalog)
     import esolangs.operations.execution as _execution_operations
-    from esolangs.runtime.io import ScriptedIO
+    from esolangs.runtime.io import ScriptedIO, _output_text
 
     request = _read_request(sys.stdin)
     _exit_with_parent()
@@ -1030,7 +1030,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
             self.written = 0
 
         def _write(self, value: object) -> None:
-            text = str(value)
+            text = _output_text(value)
             limit = request["max_output"]
             accepted = text if limit is None else text[: max(0, limit - self.written)]
             super()._write(accepted)

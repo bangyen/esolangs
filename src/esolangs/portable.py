@@ -30,7 +30,7 @@ from esolangs.exceptions import (
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
-from esolangs.runtime._files import explicit_path, write_staged
+from esolangs.runtime._files import explicit_path, staging_parent, write_staged
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._source import (
     ProgramSource,
@@ -41,6 +41,7 @@ from esolangs.settings import (
     DialectSettings,
     _settings_for,
     dialect_options,
+    effective_settings,
 )
 
 _FORMAT = "esolangs.program"
@@ -113,6 +114,19 @@ def to_file(
     # The language decides the file terminator and PNG metadata; without it,
     # normalize appended "\n" even where a trailing newline is code.
     origin = catalog.resolve(language)
+    runtime = catalog.languages[origin].runtime
+    # Paths can open a FIFO, and a reader can consume bytes irreversibly.
+    if isinstance(program, PathLike) or not isinstance(
+        program, (str, bytes, Raster, CompressedText, ProgramArtifact, TemplateArtifact)
+    ):
+        if gzip and runtime.source_kind is SourceKind.RASTER:
+            effective_settings(origin, program, settings, catalog=catalog)
+            raise ProgramError("gzip export requires text; rasters use PNG")
+        try:
+            staging_parent(target)
+        except (OSError, ValueError) as error:
+            effective_settings(origin, program, settings, catalog=catalog)
+            raise ProgramError(f"cannot save program to {target}: {error}") from error
     record = read_artifact(
         origin, program, settings=settings, catalog=catalog, preserve_compression=True
     )
@@ -126,7 +140,7 @@ def to_file(
                 "fill it with instantiate() first, or keep the bindings with to_json()",
             )
         body = record.source
-        terminate = normalize and catalog.languages[origin].runtime.file_newline
+        terminate = normalize and runtime.file_newline
         encoded: Iterable[bytes]
         if isinstance(body, Raster):
             if gzip:

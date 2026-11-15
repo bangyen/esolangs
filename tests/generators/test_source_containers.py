@@ -420,6 +420,68 @@ def test_explicit_paths_are_validated_on_import_and_export(spelling) -> None:
             esolangs.to_file(REFERENCE, "+.", path)
 
 
+@pytest.mark.parametrize(
+    ("spelling", "message"),
+    [
+        (".", "it is a directory"),
+        ("missing/program", "directory does not exist"),
+        pytest.param("nul\0target", "embedded null", id="embedded-null"),
+    ],
+)
+def test_invalid_export_destination_does_not_consume_source(
+    spelling: str, message: str, tmp_path: Path
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    source = io.BytesIO(b"skip+.")
+    source.seek(4)
+    with pytest.raises(
+        esolangs.ArgumentError, match="settings must be a DialectSettings"
+    ):
+        api.to_file(source, tmp_path / spelling, settings=object())
+    with pytest.raises(esolangs.ProgramError, match=message):
+        api.to_file(source, tmp_path / spelling)
+    assert source.tell() == 4
+    destination = tmp_path / "program"
+    api.to_file(source, destination)
+    assert destination.read_bytes() == b"+."
+    assert api.run(destination).output == "\x01"
+
+
+def test_invalid_export_destination_does_not_open_source_path(tmp_path: Path) -> None:
+    original = tmp_path / "original"
+    original.write_bytes(b"+.")
+
+    class SourcePath:
+        calls = 0
+
+        def __fspath__(self) -> str:
+            self.calls += 1
+            return str(original)
+
+    api = esolangs.Language(REFERENCE)
+    source = SourcePath()
+    with pytest.raises(esolangs.ProgramError, match="it is a directory"):
+        api.to_file(source, tmp_path)
+    assert source.calls == 0
+    destination = tmp_path / "program"
+    api.to_file(source, destination)
+    assert source.calls == 1
+    assert destination.read_bytes() == b"+."
+
+
+def test_gzip_raster_export_refuses_before_consuming_source(tmp_path: Path) -> None:
+    api = esolangs.Language(_RASTERS[0])
+    pixels = esolangs.Raster((((1, 2, 3),),))
+    source = io.BytesIO(pixels.to_png())
+    destination = tmp_path / "source.png"
+    with pytest.raises(esolangs.ProgramError, match="rasters use PNG"):
+        api.to_file(source, destination, gzip=True)
+    assert source.tell() == 0
+    assert not destination.exists()
+    api.to_file(source, destination)
+    assert api.from_file(destination).source == pixels
+
+
 def test_file_diagnostics_use_the_validated_path_once(tmp_path: Path) -> None:
     class ProgramPath:
         def __init__(self, path: Path) -> None:
