@@ -125,11 +125,12 @@ def assert_rejected_output_retry(
     *,
     prefix: int,
     monkeypatch: pytest.MonkeyPatch,
+    stdin: str = "",
 ) -> None:
     """Resume a debugger after a sink accepts zero, some or all of a write."""
     language = esolangs.Language(name)
     limits = esolangs.ExecutionLimits(max_steps=32)
-    expected = language.run(source, limits=limits)
+    expected = language.run(source, stdin=stdin, limits=limits)
     assert expected.output == output
     write = ScriptedIO._write
     text = str(value)
@@ -146,15 +147,16 @@ def assert_rejected_output_retry(
 
         with monkeypatch.context() as port:
             port.setattr(ScriptedIO, "_write", refuse_first)
-            debugger = language.make_debugger(source)
+            debugger = language.make_debugger(source, stdin=stdin)
             for _ in range(prefix):
                 debugger.step()
             boundary = debugger.snapshot()
+            before = debugger.observation
             with pytest.raises(
                 esolangs.HaltError, match="temporary writer refusal"
             ) as fault:
                 debugger.run(limits=limits)
-            partial = esolangs.ExecutionResult(text[:accepted], 0, 0, 0, steps=prefix)
+            partial = replace(before, output=before.output + text[:accepted])
             assert fault.value.observation == debugger.observation == partial
             assert not debugger.halted
             assert debugger.snapshot() == (*boundary, accepted)

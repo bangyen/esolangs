@@ -690,7 +690,8 @@ class _Machine:
     # share one input cursor.
 
     def branching_snapshot(self) -> tuple[object, ...]:
-        """Return the state a search starts from, output deliberately absent."""
+        """Acquire a branch root or replay an already rejected read."""
+        self._rejected.raise_if_rejected()
         s = self.state
         return (s.lines, s.ip, s.acc, s.slot, s.frames)
 

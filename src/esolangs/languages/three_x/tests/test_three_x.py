@@ -24,6 +24,7 @@ from tests.support.raises import (
     assert_numeric_token_replayed,
     assert_rejected_with_hint,
 )
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
 
@@ -52,13 +53,27 @@ class Test3x:
     def test_output(self, code: str, expected: str) -> None:
         assert run_program(code) == expected
 
-    def test_x_operation(self) -> None:
+    def test_x_operation(self, monkeypatch) -> None:
         from esolangs.languages.three_x.tests.oracle_checks import check_raw_three_x
 
         check_raw_three_x()
         # (3-3)/3 = 0, (3-0)/3 = 1
         assert run_program("333x!") == "0"
         assert run_program("3333x3x!") == "1"
+        for source, stdin, value, prefix in (
+            ("?!", "12/5 trailing", "12/5", 1),
+            ("?!", "123 trailing", 123, 1),
+            ("[hello]", "", "hello", 0),
+        ):
+            assert_rejected_output_retry(
+                "3x",
+                source,
+                value,
+                str(value),
+                prefix=prefix,
+                stdin=stdin,
+                monkeypatch=monkeypatch,
+            )
 
     def test_swap(self) -> None:
         assert run_program("333x3!") == "3"

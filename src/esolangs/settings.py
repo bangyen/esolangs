@@ -30,9 +30,13 @@ def _settings_for(
 
 
 def dialect_options(
-    language: str, settings: DialectSettings | None, *, catalog: "Catalog | None" = None
+    language: str,
+    settings: DialectSettings | None,
+    *,
+    catalog: "Catalog | None" = None,
+    validate_defaults: bool = False,
 ) -> dict[str, Scalar]:
-    """Validate scope and choices before source or input acquisition."""
+    """Validate sparse choices and, for execution, their effective defaults."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
@@ -56,8 +60,9 @@ def dialect_options(
         )
     values = settings.options()
     if runtime.dialect is not None:
+        checked = schema.defaults | values if validate_defaults else values
         try:
-            runtime.dialect(**values)
+            runtime.dialect(**checked)
         except EsolangError as error:
             _remember_acquisition_failure(error)
             raise

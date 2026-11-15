@@ -28,8 +28,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO, _input_exhausted
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput, _input_exhausted
 from esolangs.runtime.source_hints import syntax_error
 
 #: How many parity bits make one printed byte.
@@ -147,6 +147,7 @@ class _Machine:
         """Pad ``code`` and read the input bits up front, like :func:`run`."""
         image = code if isinstance(code, _SourceImage) else _prepare_source(code)
         self.io = io
+        self._writer = _BufferedOutput()
         self.code = image.rows
 
         bits: list[str] = []
@@ -212,6 +213,8 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        cursor = self.io.progress()
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             row=self.state[0],
             column=self.state[1],
@@ -219,12 +222,18 @@ class _Machine:
             accumulator=self.state[3],
             output_bits=self.state[4],
             input_bits=self.state[5],
-            input_cursor=self.io.progress(),
+            input_cursor=(
+                cursor
+                if accepted is None
+                else WorkspaceVariant("pending_output", (cursor, accepted))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def step(self) -> None:
         """Move the pointer one cell and execute the instruction it left."""
@@ -239,9 +248,17 @@ class _Machine:
             if move(row, col, r, self.code, acc)[3] == ".":
                 # Report the failed bit request against the captured characters.
                 _input_exhausted(self.io, 0, self.io.position(), unit="character")
-        self.state, byte = _advance(self.state, self.code)
+        state, byte = _advance(self.state, self.code)
         if byte is not None:
-            self.io.print_char(chr(byte))
+            text = chr(byte)
+            io = self.io
+            if isinstance(io, ScriptedIO):
+                self._writer.write(io, text, first=lambda: io.print_char(text))
+            else:
+                self.state = state
+                io.print_char(text)
+                return
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

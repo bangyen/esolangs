@@ -1,12 +1,15 @@
 """SLOW ACV MAMMALIAN through the shared API, CLI and machinery."""
 
 import json
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
 import esolangs
 from esolangs import run
-from tests.support.cli_support import run_cli
+from esolangs.registry import _table
+from tests.support.cli_support import _failure, call_both, run_cli
 
 
 @pytest.mark.medium
@@ -20,7 +23,9 @@ def test_mammalian_rejects_unknown_words_before_output(word) -> None:
         )
 
 
-def test_partial_overrides_merge_and_validate() -> None:
+def test_partial_overrides_merge_and_validate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     language = esolangs.Language("SLOW ACV MAMMALIAN")
     settings = language.settings(cell_modulus=256)
     source = esolangs.ProgramArtifact(
@@ -42,6 +47,51 @@ def test_partial_overrides_merge_and_validate() -> None:
         )
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
         run("SLOW ACV MAMMALIAN", source, settings={})
+
+    declaration = language.catalog.languages[language.name]
+    runtime = declaration.runtime
+    error = esolangs.ArgumentError("local dialect forbids both moduli being 255")
+    error.add_note("hint: choose a modulus of 256")
+
+    def validate(**choices):
+        if choices.get("cell_modulus") == choices.get("io_modulus") == 255:
+            raise error
+        runtime.dialect(**choices)
+
+    scoped = replace(declaration, runtime=replace(runtime, dialect=validate))
+    scope = esolangs.Catalog([scoped]).bind(language.name)
+    partial = scope.settings(cell_modulus=255)
+    assert partial.options() == {"cell_modulus": 255}
+    row = "SEED ACCEPT DIGEST PRONOUNCE"
+
+    class Unread:
+        def read(self):
+            pytest.fail("invalid effective settings consumed input")
+
+    refused = scope.execute(row, stdin=Unread(), settings=partial)
+    assert refused.status == "rejected"
+    assert refused.error is error
+    with pytest.raises(esolangs.ArgumentError) as generated_error:
+        scope.generate("01", settings=partial)
+    assert generated_error.value is error
+
+    retained = scope.from_source(row, settings=scope.settings(io_modulus=256))
+    assert scope.prepare(retained, settings=partial).run(stdin="ÿ\n").output == "\x01"
+    full = scope.settings(cell_modulus=255, io_modulus=256)
+    artifact = scope.generate("01", settings=full)
+    assert scope.evaluate(artifact, [1]).answer == "1"
+
+    path = tmp_path / "program.txt"
+    path.write_text(row)
+    monkeypatch.setattr(_table, "CATALOG", scope.catalog)
+    command = ["run", "--set", "cell_modulus=255", language.name, str(path)]
+    output, diagnostic = _failure(command, capsys)
+    assert output == ""
+    assert diagnostic.splitlines() == [str(error), *error.__notes__]
+    assert call_both([*command, "--set", "io_modulus=256"], capsys, "ÿ\n") == (
+        "\x01",
+        "",
+    )
 
 
 def test_large_integer_setting_is_rejected() -> None:

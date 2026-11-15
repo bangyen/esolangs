@@ -7,7 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
-from threading import Event, Thread
+from threading import Event, Thread, current_thread
 from typing import Any
 
 import pytest
@@ -247,29 +247,50 @@ def test_managed_program_stream_preserves_a_deliberate_api_error(
         def _read(self):
             raise error
 
+    class RefusedDescriptor(io.BytesIO):
+        def fileno(self):
+            raise error
+
     api = esolangs.Language(REFERENCE)
+    prepared = api.prepare(",.")
     for limits in (
         None,
         esolangs.ExecutionLimits(max_steps=2),
         esolangs.ExecutionLimits(total_timeout=5),
     ):
-        stdin = io.StringIO("A")
-        outcome = api.execute(Stream(), stdin=stdin, limits=limits)
-        assert outcome.error is error
-        assert outcome.bound == bound
-        assert stdin.tell() == 0
+        for source in (Stream(), RefusedDescriptor(b",.")):
+            stdin = io.StringIO("A")
+            outcome = api.execute(source, stdin=stdin, limits=limits)
+            assert outcome.error is error
+            assert outcome.bound == bound
+            assert stdin.tell() == 0
+            if isinstance(source, RefusedDescriptor):
+                assert source.tell() == 0
+        native_stdin = RefusedDescriptor(b"A")
+        prepared_stdin = RefusedDescriptor(b"A")
+        for outcome in (
+            api.execute(",.", stdin=native_stdin, limits=limits),
+            prepared.execute(stdin=prepared_stdin, limits=limits),
+        ):
+            assert outcome.error is error
+            assert outcome.bound == bound
+        assert native_stdin.tell() == prepared_stdin.tell() == 0
     path = tmp_path / "source"
     path.write_bytes(b"existing source")
-    for acquire in (
-        lambda: api.prepare(Stream()),
-        lambda: api.make_debugger(Stream()),
-        lambda: api.to_json(Stream()),
-        lambda: api.to_file(Stream(), path),
-    ):
-        with pytest.raises(error_type) as raised:
-            acquire()
-        assert raised.value is error
+    for source in (Stream(), RefusedDescriptor(b",.")):
+        for acquire in (
+            api.prepare,
+            api.make_debugger,
+            api.to_json,
+            lambda source: api.to_file(source, path),
+        ):
+            with pytest.raises(error_type) as raised:
+                acquire(source)
+            assert raised.value is error
+        if isinstance(source, RefusedDescriptor):
+            assert source.tell() == 0
     assert path.read_bytes() == b"existing source"
+    assert api.run(io.BytesIO(b",."), stdin=io.BytesIO(b"A")).output == "A"
 
 
 @pytest.mark.parametrize(
@@ -1056,3 +1077,40 @@ def test_isolated_deadline_bounds_stream_acquisition(
     finally:
         release.set()
         assert finished.wait(1)
+    if blocked == "program":
+        _check_timed_source_binding_stops_before_descriptor_probe()
+
+
+def _check_timed_source_binding_stops_before_descriptor_probe() -> None:
+    release = Event()
+    threads: list[Thread] = []
+    probes: list[str] = []
+
+    class DeferredReader(io.BytesIO):
+        @property
+        def read(self):
+            threads.append(current_thread())
+            assert release.wait(5)
+            return super().read
+
+        def fileno(self):
+            probes.append("fileno")
+            return super().fileno()
+
+    source = DeferredReader(b"+.")
+    try:
+        outcome = esolangs.Language(REFERENCE).execute(
+            source,
+            limits=esolangs.ExecutionLimits(preparation_timeout=0.1, total_timeout=1),
+        )
+        assert outcome.status == "limit"
+        assert outcome.bound == "preparation_timeout"
+        assert len(threads) == 1
+        assert source.tell() == 0
+    finally:
+        release.set()
+        for thread in threads:
+            thread.join(1)
+            assert not thread.is_alive()
+    assert probes == []
+    assert source.tell() == 0

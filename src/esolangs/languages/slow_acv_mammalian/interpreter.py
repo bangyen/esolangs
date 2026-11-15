@@ -34,6 +34,7 @@ Decisions:
 """
 
 from collections.abc import Mapping
+from functools import partial
 from itertools import chain
 from typing import Any, NamedTuple
 
@@ -48,8 +49,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
 #: One instant of a run: ``(arrays, ptr, acc, ind, halted)`` -- the 23
@@ -264,6 +265,7 @@ class _Machine:
         self.lst: _Arrays = tuple((0,) for _ in range(_ARRAYS))
         self.ind = self.ptr = self.acc = 0
         self._halted_by_command = False
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -285,8 +287,13 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.ind,
+            instruction=(
+                self.ind
+                if accepted is None
+                else WorkspaceVariant("pending_output", (self.ind, accepted))
+            ),
             arrays=tuple(tuple(array) for array in self.lst),
             pointer=self.ptr,
             accumulator=self.acc,
@@ -296,7 +303,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        boundary = (
             self.ind,
             self.lst,
             self.ptr,
@@ -304,6 +311,8 @@ class _Machine:
             self.io.progress(),
             self._halted_by_command,
         )
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     @property
     def _state(self) -> _State:
@@ -330,7 +339,14 @@ class _Machine:
         if n == 8:
             byte = self.io.input_char()
         elif n == 9:
-            self.io.print_char(chr(self.acc % self.moduli.io_modulus))
+            io = self.io
+            character = chr(self.acc % self.moduli.io_modulus)
+            if isinstance(io, ScriptedIO):
+                self._writer.write(
+                    io, character, first=partial(io.print_char, character)
+                )
+            else:
+                io.print_char(character)
 
         self._restore(_advance(self._state, n, byte, moduli=self.moduli))
 

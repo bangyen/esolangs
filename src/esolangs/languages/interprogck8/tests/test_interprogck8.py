@@ -17,7 +17,12 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.interprogck8 import interpreter as native
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, Seeded
-from esolangs.vm import SnapshotVM, make_vm, run_until_halt_or_all_branches_cycle
+from esolangs.vm import (
+    SnapshotVM,
+    make_vm,
+    run_until_halt_or_all_branches_cycle,
+    run_until_halt_or_cycle,
+)
 
 # The wiki's Hello World, verbatim.
 HELLO = """nNnN
@@ -446,6 +451,41 @@ class TestBranchingSearch:
         machine = native._Machine("{values/=bad/=u/=}", port)
         assert machine.branching_successors(machine.branching_snapshot(), 1) is None
         assert (port.position(), port.reads, port.past_end) == (0, 0, 0)
+
+        api = esolangs.Language("Interprogck8")
+        source = "u\ndiv"
+        for make in (api.make_vm, api.make_debugger):
+            rejected = make(source, stdin="\nA\n", seed=4)
+            valid = make(source, stdin="A\n", seed=4)
+            before = valid.snapshot()
+            for prove in (
+                run_until_halt_or_cycle,
+                run_until_halt_or_all_branches_cycle,
+            ):
+                with pytest.raises(TimeoutError, match="needs input"):
+                    prove(valid, limit=8)
+                assert valid.snapshot() == before
+            with pytest.raises(
+                HaltError, match="EmptyInputError: empty input"
+            ) as first:
+                rejected.step()
+            boundary = rejected.snapshot()
+            for prove in (
+                run_until_halt_or_cycle,
+                run_until_halt_or_all_branches_cycle,
+            ):
+                with pytest.raises(
+                    HaltError, match="EmptyInputError: empty input"
+                ) as copy:
+                    prove(rejected, limit=8)
+                assert copy.value is not first.value
+                assert getattr(copy.value, "__notes__", ()) == getattr(
+                    first.value, "__notes__", ()
+                )
+                assert rejected.snapshot() == boundary
+            valid.step()
+            assert run_until_halt_or_cycle(valid, limit=8)
+            assert run_until_halt_or_all_branches_cycle(valid, limit=8)
 
     def test_an_unexecutable_line_fails_the_search(self) -> None:
         """A native error cannot become a divergence verdict."""

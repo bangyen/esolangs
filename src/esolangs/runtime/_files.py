@@ -44,6 +44,8 @@ def _nonblocking_fd(stream: IOBase) -> int | None:
         fd = stream.fileno()
         if not os.get_blocking(fd) and not stat.S_ISREG(os.fstat(fd).st_mode):
             return fd
+    except EsolangError:
+        raise
     except (AttributeError, OSError, TypeError, ValueError):
         # In-memory streams, closed descriptors and unsupported platforms
         # use the original read path, which reports its own failures.
@@ -130,8 +132,9 @@ def read_snapshot(
     reader: Callable[..., str | bytes | None] | None = None,
 ) -> str | bytes:
     """Read from the current position, reusing an already-bound reader if given."""
-    fd = _nonblocking_fd(stream) if _has_backing_type(stream, IOBase) else None
     deadline = _STREAM_DEADLINE.get()
+    _time_remaining(deadline)
+    fd = _nonblocking_fd(stream) if _has_backing_type(stream, IOBase) else None
     _time_remaining(deadline)
     if _has_backing_type(stream, BufferedRWPair):
         # The reader's fd is private. Sized reads distinguish None from EOF,
@@ -150,8 +153,10 @@ def read_snapshot(
             "cannot detect EOF on this nonblocking stream; "
             "pass a blocking stream or supply the complete contents"
         )
-    read = stream.read if reader is None else reader
-    value = read() if size is None else read(size)
+    if reader is None:
+        reader = stream.read
+        _time_remaining(deadline)
+    value = reader() if size is None else reader(size)
     if value is None:
         raise BlockingIOError(_WOULD_BLOCK)
     return value

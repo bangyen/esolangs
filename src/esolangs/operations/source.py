@@ -225,6 +225,8 @@ def _check_program(
         preserve_compression=preserve_compression,
     )
     assert isinstance(record, ProgramArtifact)
+    # Check the combined choices only after native metadata could add an override.
+    dialect_options(name, record.settings, catalog=catalog, validate_defaults=True)
     check_input(stdin)
     return record
 

@@ -5,13 +5,17 @@ import random
 import pytest
 
 import esolangs
-from esolangs.exceptions import HaltError
+from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.ascenic.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import Seeded
+from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import native_runner
 from tests.support.factories import reject_rng_options, rng_factory
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 
 def test_step_bound_does_not_seed_an_unseeded_run(monkeypatch) -> None:
@@ -112,13 +116,39 @@ def test_io_follows_the_argument_parity() -> None:
         _run(_program((5, 1), (1, 2)))
 
 
-def test_rejected_number_stays_with_the_input_instruction() -> None:
+def test_rejected_number_stays_with_the_input_instruction(monkeypatch) -> None:
     source = "AAs\nAsss"
     assert_rejected_input_retry(
         "Ascenic", source, "oops 7", "7", "7", position=4, reads=1
     )
     machine = _Machine(source, ScriptedIO("7"))
     assert machine.branching_successors(machine.branching_snapshot(), 2) is None
+
+    api = esolangs.Language("Ascenic")
+    for make in (api.make_vm, api.make_debugger):
+        rejected = make(source, stdin="oops 7")
+        valid = make(source, stdin="7")
+        before = valid.snapshot()
+        for prove in (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle):
+            with pytest.raises(TimeoutError, match="needs input"):
+                prove(valid, limit=8)
+            assert valid.snapshot() == before
+        with pytest.raises(ArgumentError, match="got 'oops'") as first:
+            rejected.step()
+        boundary = rejected.snapshot()
+        for prove in (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle):
+            with pytest.raises(ArgumentError, match="got 'oops'") as replayed:
+                prove(rejected, limit=8)
+            assert replayed.value is not first.value
+            assert replayed.value.__notes__ == first.value.__notes__
+            assert rejected.snapshot() == boundary
+        valid.step()
+        assert run_until_halt_or_cycle(valid, limit=8)
+        assert run_until_halt_or_all_branches_cycle(valid, limit=8)
+
+    assert_rejected_output_retry(
+        "Ascenic", source, "42", "42", prefix=1, stdin="42", monkeypatch=monkeypatch
+    )
 
 
 def test_rnd_draws_zero_and_one(monkeypatch) -> None:

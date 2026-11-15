@@ -59,8 +59,8 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.randomness import Randomness, draw
 
@@ -174,6 +174,7 @@ class _Machine:
         self.ops = image
         self.state: _State = (0, None)
         self._input_retry = RejectedInput()
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -198,18 +199,27 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        cursor = self._input_retry.cursor(self.io.progress())
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=self.state[0],
             stack=tuple(self.stack),
-            input_cursor=self._input_retry.cursor(self.io.progress()),
+            input_cursor=(
+                cursor
+                if accepted is None
+                else WorkspaceVariant("pending_output", (cursor, accepted))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self._input_retry.snapshot((*self.state, self.io.progress()))
+        boundary = self._input_retry.snapshot((*self.state, self.io.progress()))
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def branching_snapshot(self) -> tuple[object, ...]:
-        """Return the current state as a branching search's starting point."""
+        """Acquire a branch root or replay an already rejected read."""
+        self._input_retry.raise_if_rejected()
         return self.state
 
     def branching_halted(self, state: object) -> bool:
@@ -251,9 +261,15 @@ class _Machine:
             )
         elif opcode == _RND:
             value = draw(self._rng, 2)
-        self.state, out = _advance(self.state, self.ops, value)
+        state, out = _advance(self.state, self.ops, value)
         if out is not None:
-            self.io.print_str(out)
+            if isinstance(self.io, ScriptedIO):
+                self._writer.write(self.io, out)
+            else:
+                self.state = state
+                self.io.print_str(out)
+                return
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

@@ -5,6 +5,7 @@ from esolangs.runtime.io import IO, ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.interpreters.contract import SnapshotContract, StateViewContract
 from tests.interpreters.runner import run_program
+from tests.support.vm_support import assert_rejected_output_retry
 from tests.support.workspace_oracle import WorkspaceOracle
 
 #: The wiki's four-line "Hello, world!", whose lines run as one program.
@@ -25,7 +26,7 @@ class TestDeadfish:
         printed = [int(num) for num in run_program(run, _HELLO).split()]
         assert "".join(map(chr, printed)) == "Hello, world!"
 
-    def test_every_program_halts(self) -> None:
+    def test_every_program_halts(self, monkeypatch) -> None:
         """The position only ever advances, so there is no loop to detect."""
         from esolangs.languages.deadfish.tests.oracle_checks import check_raw_deadfish
 
@@ -51,6 +52,9 @@ class TestDeadfish:
             assert steps <= len(program), program
             if program in ("h", "iio", "iissso"):
                 assert measured.bits == {"h": 1, "iio": 4, "iissso": 8}[program]
+        assert_rejected_output_retry(
+            "Deadfish", "iiisiso", "100\n", "100\n", prefix=6, monkeypatch=monkeypatch
+        )
 
 
 def _machine(code: object) -> object:

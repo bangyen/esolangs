@@ -153,11 +153,15 @@ def _swapped_hint(
     """
     if not _looks_like_a_table(language):
         return ""
+    guidance = f"; {language!r} looks like a truth table -- the language comes first"
+    try:
+        catalog.resolve(table)
+    except UnknownLanguageError as exc:
+        return f"{guidance}. {exc}"
     flags = "".join(f"{shlex.quote(option)} " for option in options)
     separator = "-- " if table.startswith("-") else ""
     return (
-        f"; {language!r} looks like a truth table -- the language comes "
-        "first: esolangs generate "
+        f"{guidance}: esolangs generate "
         f"{flags}{separator}{_as_argument(table, catalog=catalog)} {language}"
     )
 

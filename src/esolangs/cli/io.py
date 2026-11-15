@@ -223,8 +223,11 @@ def _bounded_read(
     def _read_file() -> bytes:
         try:
             with open(path, "rb") as handle, stream_read_deadline(deadline):
+                _time_remaining(deadline)
                 if isinstance(handle, BufferedReader):
-                    opened = os.fstat(handle.fileno())
+                    fd = handle.fileno()
+                    _time_remaining(deadline)
+                    opened = os.fstat(fd)
                     # Pseudo-files can report a zero size and still yield data.
                     if stat.S_ISREG(opened.st_mode) and opened.st_size > 0:
                         _time_remaining(deadline)
@@ -309,10 +312,13 @@ def _read_pipe_without_poll(
 
 def _read_buffered_stdin(stream: BufferedReader, deadline: float | None) -> bytes:
     """Drain buffered bytes without holding the stdin lock across a pipe wait."""
+    _time_remaining(deadline)
     raw = stream.raw
     if not isinstance(raw, FileIO):
         return read_snapshot(stream)
+    _time_remaining(deadline)
     fd = raw.fileno()
+    _time_remaining(deadline)
     mode = os.fstat(fd).st_mode
     if stat.S_ISREG(mode):
         return read_snapshot(stream)
@@ -452,7 +458,9 @@ def _read_stdin(
 
     def _read_text() -> str:
         try:
+            _time_remaining(deadline)
             stream = cast("BinaryIO | None", getattr(stdin, "buffer", None))
+            _time_remaining(deadline)
             with stream_read_deadline(deadline):
                 if stream is None:
                     return read_input(stdin)

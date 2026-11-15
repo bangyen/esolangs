@@ -453,7 +453,9 @@ def test_stdin_reports_strict_decode_errors(monkeypatch, capsys) -> None:
 
 
 @pytest.mark.parametrize("reader", ["stdin", "file"])
-def test_blocked_readers_obey_their_deadline(monkeypatch, capsys, reader) -> None:
+def test_blocked_readers_obey_their_deadline(
+    monkeypatch, capsys, reader, tmp_path
+) -> None:
     released = threading.Event()
 
     class BlockedInput(io.StringIO):
@@ -461,21 +463,99 @@ def test_blocked_readers_obey_their_deadline(monkeypatch, capsys, reader) -> Non
             released.wait()
             return ""
 
-    stream = BlockedInput()
-    monkeypatch.setattr(sys, "stdin", stream)
-    monkeypatch.setattr("esolangs.cli.io.open", lambda *_a: stream, raising=False)
-    try:
-        call = (
-            (lambda: _read_stdin(0.01))
-            if reader == "stdin"
-            else (lambda: _bounded_read("blocked", 0.01))
-        )
-        with pytest.raises(SystemExit) as caught:
-            call()
-        assert caught.value.code == 124
-        assert ("stdin" if reader == "stdin" else "blocked") in capsys.readouterr().err
-    finally:
-        released.set()
+    with monkeypatch.context() as patch:
+        stream = BlockedInput()
+        patch.setattr(sys, "stdin", stream)
+        patch.setattr("esolangs.cli.io.open", lambda *_a: stream, raising=False)
+        try:
+            call = (
+                (lambda: _read_stdin(0.01))
+                if reader == "stdin"
+                else (lambda: _bounded_read("blocked", 0.01))
+            )
+            with pytest.raises(SystemExit) as caught:
+                call()
+            assert caught.value.code == 124
+            assert (
+                "stdin" if reader == "stdin" else "blocked"
+            ) in capsys.readouterr().err
+        finally:
+            released.set()
+
+    path = tmp_path / "program"
+    path.write_bytes(b"A")
+    assert _bounded_read(str(path), 1) == b"A"
+    for target in ("buffer", "read") if reader == "stdin" else ("open",):
+        _check_late_reader_does_not_probe(monkeypatch, capsys, path, target)
+
+
+def _check_late_reader_does_not_probe(monkeypatch, capsys, path, target) -> None:
+    released = threading.Event()
+    threads = []
+    probes = []
+
+    def delay():
+        threads.append(threading.current_thread())
+        assert released.wait(3)
+
+    class TrackedFile(io.FileIO):
+        def fileno(self):
+            probes.append("fileno")
+            return super().fileno()
+
+    class LateRead(io.BytesIO):
+        @property
+        def read(self):
+            delay()
+            return self._consume
+
+        def _consume(self):
+            probes.append("read")
+            return super().read()
+
+    with io.BufferedReader(TrackedFile(path)) as file, LateRead(b"A") as binary:
+        probes.clear()
+
+        class Input:
+            closed = False
+
+            def isatty(self):
+                return False
+
+            @property
+            def buffer(self):
+                if target == "buffer":
+                    delay()
+                    return file
+                return binary
+
+        def open_late(*_args):
+            delay()
+            return file
+
+        with monkeypatch.context() as patch:
+            patch.setattr(sys, "stdin", Input())
+            patch.setattr("esolangs.cli.io.open", open_late, raising=False)
+            call = (
+                (lambda: _bounded_read(str(path), 0.1))
+                if target == "open"
+                else (lambda: _read_stdin(0.1))
+            )
+            try:
+                with pytest.raises(SystemExit) as caught:
+                    call()
+                assert caught.value.code == 124
+                assert len(threads) == 1
+            finally:
+                released.set()
+                for thread in threads:
+                    thread.join(1)
+                    assert not thread.is_alive()
+        assert probes == []
+        assert binary.tell() == 0
+        if target != "open":
+            assert file.tell() == 0
+    capsys.readouterr()
 
 
 def test_output_escapes_unencodable_text_without_a_binary_buffer(monkeypatch) -> None:

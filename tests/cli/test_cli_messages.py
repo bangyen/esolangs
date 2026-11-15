@@ -467,25 +467,38 @@ def test_generate_quotes_a_multiword_language(
         output = call_main(["run", language, str(path)], capsys, stdin)
         assert esolangs.read_answer(language, output) == str(bit)
 
+    for table, unknown in (("01", "10"), ("10", "01"), ("01", "Brainfuk")):
+        _, error = _failure(["generate", table, unknown], capsys)
+        assert f"unknown language: {unknown}" in error
+        assert "the language comes first" in error
+        assert "first: esolangs generate" not in error
+
 
 @pytest.mark.parametrize("name", ["a; echo x", "--name; echo x"])
 def test_generate_swap_suggestion_quotes_metacharacters(
-    name: str, capsys: pytest.CaptureFixture[str]
+    name: str, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    declaration = replace(LANGUAGES[REFERENCE], name=name, id="scoped_source")
+    scope = esolangs.Catalog([declaration])
+    monkeypatch.setattr(_table, "CATALOG", scope)
     _, error = _failure(["generate", "--", "01", name], capsys)
     command = error.split("first: ", 1)[1]
     lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
     lexer.whitespace_split = True
     separator = ["--"] if name.startswith("-") else []
-    assert list(lexer) == ["esolangs", "generate", *separator, name, "01"]
+    operand = declaration.id if separator else name
+    assert list(lexer) == ["esolangs", "generate", *separator, operand, "01"]
 
     _, error = _failure(["generate", "--plain", "--balance", "--", "01", name], capsys)
-    assert shlex.split(error.split("first: ", 1)[1]) == [
+    repair = shlex.split(error.split("first: ", 1)[1])
+    assert repair == [
         "esolangs",
         "generate",
         "--balance",
         "--plain",
         *separator,
-        name,
+        operand,
         "01",
     ]
+    program = call_main(repair[1:], capsys)
+    assert scope.bind(name).run(program, stdin="1").output == "1"

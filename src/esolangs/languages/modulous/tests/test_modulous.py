@@ -35,6 +35,7 @@ from tests.support.raises import (
     assert_rejected_with_hint,
     raises_message,
 )
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = run_lines(run)
 
@@ -327,13 +328,23 @@ class TestStepMachine:
 
 class TestBranchingMachine:
     @pytest.mark.parametrize("command", ["PRT", "PRT INT"])
-    def test_branching_accepts_valid_output(self, command: str) -> None:
+    def test_branching_accepts_valid_output(self, command: str, monkeypatch) -> None:
         code = f"[PSH INT 65][{command}][END]"
         io = ScriptedIO("")
         assert run_until_halt(_Machine(code, io), limit=3)
         assert io.getvalue() == ("65" if command == "PRT INT" else "A")
         assert run_until_halt_or_all_branches_cycle(
             _Machine(code, ScriptedIO("")), limit=4
+        )
+        value = 65 if command == "PRT INT" else "A"
+        assert_rejected_output_retry(
+            "Modulous",
+            f"[INP INT][{command}][END]",
+            value,
+            str(value),
+            prefix=1,
+            stdin="65",
+            monkeypatch=monkeypatch,
         )
 
     @pytest.mark.parametrize(
@@ -465,6 +476,30 @@ def test_modulous_declines_input_and_caps_a_wide_draw() -> None:
         run_until_halt_or_all_branches_cycle(wide, limit=100000)
     assert "cap on a single transition" in str(caught.value)
     assert "limit does not raise this transition cap" in caught.value.__notes__[0]
+
+    api = Language("Modulous")
+    source = "[INP INT][PRT INT][END]"
+    for make in (api.make_vm, api.make_debugger):
+        rejected = make(source, stdin="oops 42")
+        valid = make(source, stdin="42")
+        before = valid.snapshot()
+        for prove in (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle):
+            with pytest.raises(TimeoutError, match="needs input"):
+                prove(valid, limit=8)
+            assert valid.snapshot() == before
+        with pytest.raises(ProgramError, match="invalid literal") as first:
+            rejected.step()
+        boundary = rejected.snapshot()
+        for prove in (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle):
+            with pytest.raises(ProgramError, match="invalid literal") as replayed:
+                prove(rejected, limit=8)
+            assert replayed.value is not first.value
+            assert str(replayed.value) == str(first.value)
+            assert replayed.value.__notes__ == first.value.__notes__
+            assert rejected.snapshot() == boundary
+        valid.step()
+        assert run_until_halt_or_cycle(valid, limit=8)
+        assert run_until_halt_or_all_branches_cycle(valid, limit=8)
 
 
 def test_branching_search_sees_a_cursor_past_the_last_token_as_halted() -> None:

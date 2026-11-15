@@ -38,8 +38,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 
 #: Reset from exactly these two; a range check is the C comment's bug.
@@ -83,6 +83,7 @@ class _Machine:
         self.code = code
         self.io = io
         self.state: _State = (0, 0, False)
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -106,14 +107,21 @@ class _Machine:
         return [self.state[1]]
 
     def snapshot(self) -> tuple[object, ...]:
-        return (self.code, *self.state, self.io.progress())
+        boundary = (self.code, *self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture named semantic fields independently of cycle grouping."""
         instruction, accumulator, stopped = self.state
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             source=self.code,
-            instruction=instruction,
+            instruction=(
+                instruction
+                if accepted is None
+                else WorkspaceVariant("pending_output", (instruction, accepted))
+            ),
             accumulator=accumulator,
             stopped=stopped,
             input_cursor=self.io.progress(),
@@ -122,9 +130,16 @@ class _Machine:
     def step(self) -> None:
         if self.halted:
             return
-        self.state, out = _advance(self.state, self.code)
+        state, out = _advance(self.state, self.code)
         if out is not None:
-            self.io.print_str(out)
+            io = self.io
+            if isinstance(io, ScriptedIO):
+                self._writer.write(io, out)
+            else:
+                self.state = state
+                io.print_str(out)
+                return
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

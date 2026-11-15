@@ -54,12 +54,13 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.modulous.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._execution import interpreter_errors
 from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import keyword_hint, syntax_error, with_hint
@@ -226,6 +227,7 @@ class _Machine:
         self.ind = 0
         self.io = io
         self._rejected = RejectedInput()
+        self._writer = _BufferedOutput()
         image = _parse_tokens(code) if isinstance(code, str) else code
         self.tokens = image
         self._halted = False
@@ -248,11 +250,17 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        cursor = self._rejected.cursor(self.io.progress())
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=self.ind,
             stack=self.stk,
             variables=frozenset(self.var.items()),
-            input_cursor=self._rejected.cursor(self.io.progress()),
+            input_cursor=(
+                cursor
+                if accepted is None
+                else WorkspaceVariant("pending_output", (cursor, accepted))
+            ),
             stopped=self._halted,
             input_reads=self._input_reads,
             draws=self._draws,
@@ -260,7 +268,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self._rejected.snapshot(
+        boundary = self._rejected.snapshot(
             (
                 self.ind,
                 self.stk,
@@ -272,6 +280,8 @@ class _Machine:
                 self._draws,
             )
         )
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     # The all-random-outcomes search.  ``_Core`` holds ``var`` as a dict,
     # which a search cannot key on, so the branching state carries it as
@@ -280,7 +290,14 @@ class _Machine:
     # rather than forking, and output cannot affect a later token.
 
     def branching_snapshot(self) -> _BranchState:
-        """Return the current state as the search's starting point."""
+        """Acquire a branch root or replay an already rejected read."""
+        if self._rejected.details is not None:
+            with interpreter_errors(
+                "the Modulous interpreter recursed deeper than CPython's stack "
+                "limit allows on this program",
+                language="modulous",
+            ):
+                self._rejected.raise_if_rejected()
         return _freeze(self._state)
 
     def branching_halted(self, state: object) -> bool:
@@ -388,10 +405,18 @@ class _Machine:
 
     def _print(self, mod: str, n: int) -> None:
         """Write a ``PRT`` value the pre-read validated."""
+        io = self.io
         if "INT" in mod:
-            self.io.print_num(n)
+            if isinstance(io, ScriptedIO):
+                self._writer.write(io, format_integer(n), first=lambda: io.print_num(n))
+            else:
+                io.print_num(n)
         else:
-            self.io.print_char(chr(n))
+            char = chr(n)
+            if isinstance(io, ScriptedIO):
+                self._writer.write(io, char, first=lambda: io.print_char(char))
+            else:
+                io.print_char(char)
 
 
 type _Handler = Callable[[_Core, str, list[str], str | int | None], _Core]

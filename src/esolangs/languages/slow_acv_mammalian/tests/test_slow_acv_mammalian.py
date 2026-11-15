@@ -20,6 +20,7 @@ from tests.interpreters.contract import SnapshotContract, machine_factory
 from tests.interpreters.runner import run_printing
 from tests.support.paths import ROOT
 from tests.support.raises import assert_rejected_with_hint, raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = partial(run_printing, run)
 
@@ -51,7 +52,7 @@ class TestMammalian:
         )
         assert run_and_capture(program.read_text()) == "Hello, world!\n"
 
-    def test_accept_appends_a_newline(self) -> None:
+    def test_accept_appends_a_newline(self, monkeypatch) -> None:
         """ACCEPT appends a newline byte, narrowed like other input."""
 
         def accepted(stdin: str) -> list[int]:
@@ -64,6 +65,15 @@ class TestMammalian:
         # A character past U+00FF is the only way the fold exceeds a byte,
         # so it is what pins the wrap: 321 % 256 is 65, where 257 gives 64.
         assert accepted("Ł\n") == [0, 65], "the fold wraps at 256"
+        assert_rejected_output_retry(
+            "SLOW ACV MAMMALIAN",
+            "ACCEPT PRONOUNCE",
+            "\x00",
+            "\x00",
+            prefix=1,
+            stdin="A",
+            monkeypatch=monkeypatch,
+        )
 
     @pytest.mark.parametrize(("io_modulus", "printed"), [(None, "\x01"), (256, "\x00")])
     def test_printed_values_wrap_at_the_io_modulus(

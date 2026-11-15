@@ -5,7 +5,10 @@ import pytest
 from esolangs import ArgumentError, HaltError, Language, ProgramError
 from esolangs.languages.carp.interpreter import run
 from tests.interpreters.runner import native_runner
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 ADD = """INC r3 2 # r3 is used for control flow
 INP r1 3
@@ -44,6 +47,15 @@ def test_inc_at_15_jumps_without_wrapping(monkeypatch) -> None:
     check_raw_carp()
     code = "INC r1 1\n" * 15 + "INC r1 18\nOUT r1 0\nOUT r1 0\nCLR r1 0\nOUT r1 0"
     assert _run(code) == "150"  # line 17 skipped, no wrap to 0
+    assert_rejected_output_retry(
+        "CARP",
+        "INP r1 0\nOUT r1 0",
+        "12",
+        "12",
+        prefix=1,
+        stdin="12",
+        monkeypatch=monkeypatch,
+    )
 
 
 def test_dec_at_zero_falls_through_and_nonzero_jumps() -> None:

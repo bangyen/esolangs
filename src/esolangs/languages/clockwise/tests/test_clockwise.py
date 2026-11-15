@@ -21,6 +21,7 @@ from tests.interpreters.contract import (
 from tests.interpreters.runner import run_lines
 from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = run_lines(run)
 
@@ -168,7 +169,7 @@ def test_reading_with_no_input_is_eof() -> None:
 
 
 @pytest.mark.medium
-def test_exhausted_rotating_input_counts_the_failed_read() -> None:
+def test_exhausted_rotating_input_counts_the_failed_read(monkeypatch) -> None:
     top = ".;" * 7 + "R"
     source = f"{top}\nR{' ' * (len(top) - 2)}R"
     api = Language("Clockwise")
@@ -195,6 +196,10 @@ def test_exhausted_rotating_input_counts_the_failed_read() -> None:
             debugger.step()
         assert caught.value.observation == ExecutionResult("", 0, 1, failures, steps=0)
         assert debugger.snapshot() == before
+
+    assert_rejected_output_retry(
+        "Clockwise", source, "A", "A", prefix=13, stdin="A", monkeypatch=monkeypatch
+    )
 
 
 def _machine(code: object) -> object:

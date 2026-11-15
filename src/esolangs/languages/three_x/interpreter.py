@@ -38,8 +38,8 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -157,6 +157,7 @@ class _Machine:
         """Store ``code`` and start with an empty stack and no variables."""
         self.io = io
         self._rejected = RejectedInput()
+        self._writer = _BufferedOutput()
         self.code, ends = (code, None) if isinstance(code, str) else code
         self.ends: Mapping[int, int] | None = ends
         # ``halted`` is read twice per command -- once by ``run``'s loop and
@@ -201,19 +202,27 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        cursor = self._rejected.cursor(self.io.progress())
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=self.state[0],
             operands=self.state[1],
             loop_returns=self.state[2],
             variables=frozenset(self.state[3]),
-            input_cursor=self._rejected.cursor(self.io.progress()),
+            input_cursor=(
+                cursor
+                if accepted is None
+                else WorkspaceVariant("pending_output", (cursor, accepted))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # ?(!?)! can revisit this state while consuming 1 1 0; the input
         # cursor separates the repeat from the later zero that ends the loop.
-        return self._rejected.snapshot((*self.state, self.io.progress()))
+        boundary = self._rejected.snapshot((*self.state, self.io.progress()))
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the cursor."""
@@ -264,19 +273,32 @@ class _Machine:
         elif char == "!":
             top = stack[-1]
             if top.denominator == 1:
-                self.io.print_num(top.numerator)
+                io = self.io
+                number = top.numerator
+                if isinstance(io, ScriptedIO):
+                    self._writer.write(
+                        io, format_integer(number), first=lambda: io.print_num(number)
+                    )
+                else:
+                    io.print_num(number)
             else:
                 numerator = format_integer(top.numerator)
                 denominator = format_integer(top.denominator)
-                self.io.print_str(f"{numerator}/{denominator}")
+                self._print_text(f"{numerator}/{denominator}")
         elif char == "[":
             if self.ends is None:
                 close = self.code.find("]", ind + 1)
                 target = None if close == -1 else close
             else:
                 target = self.ends.get(ind)
-            self.io.print_str("" if target is None else self.code[ind + 1 : target])
+            self._print_text("" if target is None else self.code[ind + 1 : target])
         self.state = _advance(self.state, self.code, value, target)
+
+    def _print_text(self, text: str) -> None:
+        if isinstance(self.io, ScriptedIO):
+            self._writer.write(self.io, text)
+        else:
+            self.io.print_str(text)
 
 
 # :func:`_advance` is a pure, total transition over an immutable ``_State``; ``_NEEDS``
