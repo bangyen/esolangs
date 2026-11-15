@@ -72,8 +72,7 @@ version = 1
 kind = "examples"
 contract = "interpreter.py"
 tests = [
-    "src/esolangs/languages/bracketonly/tests/test_bracketonly.py::test_raw_functions_and_io",
-    "src/esolangs/languages/bracketonly/tests/test_bracketonly.py::test_control_flow_and_rejected_calls",
+    "src/esolangs/languages/bracketonly/tests/test_bracketonly.py::test_bracketonly_execution",
 ]
 
 [generator_sizes]

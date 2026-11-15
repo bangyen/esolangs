@@ -72,7 +72,7 @@ version = 1
 kind = "examples"
 contract = "interpreter.py"
 tests = [
-    "src/esolangs/languages/bifunge/tests/test_bifunge.py::test_raw_playfields",
+    "src/esolangs/languages/bifunge/tests/test_bifunge.py::test_bifunge_execution",
 ]
 
 [generator_sizes]

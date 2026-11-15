@@ -70,7 +70,7 @@ version = 1
 kind = "examples"
 contract = "interpreter.py"
 tests = [
-    "src/esolangs/languages/help/tests/test_help.py::test_byte_instructions",
+    "src/esolangs/languages/help/tests/test_help.py::test_help_execution",
 ]
 
 [generator_sizes]

@@ -1,11 +1,13 @@
-"""BracketOnly raw groups, lazy control flow, and arithmetic."""
+"""BracketOnly raw groups, lazy control flow, and Boolean execution."""
 
 import pytest
 
+import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.languages.bracketonly.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
+from tests.support.witness_tables import SMALL_TABLES, row_bits, witnesses
 
 
 def _call(function: int, *arguments: str) -> str:
@@ -16,7 +18,7 @@ def _value(n: int) -> str:
     return _call(1, "()()" * n)
 
 
-def test_raw_functions_and_io() -> None:
+def _check_raw_functions_and_io() -> None:
     io = ScriptedIO("🦉")
     run(_call(9, _call(7)), io)
     assert io.getvalue() == "🦉"
@@ -53,7 +55,7 @@ def test_raw_functions_and_io() -> None:
     assert io.getvalue() == "11"
 
 
-def test_control_flow_and_rejected_calls() -> None:
+def _check_control_flow_and_rejected_calls() -> None:
     cell = _value(0)
     read = _call(13, cell)
     body = _call(14, cell, _call(3, read, "()()"))
@@ -76,3 +78,17 @@ def test_control_flow_and_rejected_calls() -> None:
     for function, args in ((25, ()), (17, ("()()",)), (4, ("()()", cell))):
         with pytest.raises(HaltError, match="BracketOnly"):
             run(_call(function, *args), ScriptedIO())
+
+
+def test_bracketonly_execution() -> None:
+    _check_raw_functions_and_io()
+    _check_control_flow_and_rejected_calls()
+    for table in (*SMALL_TABLES, *witnesses(3), *witnesses(4), *witnesses(5)):
+        n = len(table).bit_length() - 1
+        program = esolangs.prepare(
+            "BracketOnly", esolangs.generate("BracketOnly", table)
+        )
+        for row, answer in enumerate(table):
+            stdin = esolangs.encode_inputs("BracketOnly", row_bits(row, n))
+            got = program.run(stdin=stdin)
+            assert (got.output, got.input_reads) == (answer, n), (table, row)
