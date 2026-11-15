@@ -2,14 +2,22 @@
 
 import random
 import sys
+from functools import partial
 
 import pytest
 
-from esolangs import ArgumentError, Language, ProgramError
+from esolangs import (
+    ArgumentError,
+    ExecutionLimits,
+    InterpreterLimitError,
+    Language,
+    ProgramError,
+)
 from esolangs.languages.subleq.interpreter import _Machine
 from esolangs.languages.subleq.interpreter import run as run_subleq
 from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import complete_vm
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import subleq as oracle
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
@@ -110,6 +118,37 @@ def test_subleq_rejects_negative_data_addresses(code: str) -> None:
 
 def test_subleq_zero_extended_memory() -> None:
     run_subleq("10 10 -1", ScriptedIO())
+
+
+@pytest.mark.parametrize("debugger", [False, True])
+def test_failed_subtraction_write_does_not_halt_on_retry(*, debugger: bool) -> None:
+    api = Language("Subleq")
+    code = f"6 -1 0 6 {10**30} 7 65"
+    limits = ExecutionLimits(max_steps=2)
+    if debugger:
+        debug = api.make_debugger(code)
+        vm = debug.vm
+        drive = partial(debug.run, limits=limits)
+    else:
+        vm = api.make_vm(code)
+        drive = partial(complete_vm, vm, max_steps=2)
+    initial_memory = vm.memory
+    for _ in range(2):
+        with pytest.raises(InterpreterLimitError, match="grow its store") as stopped:
+            drive()
+        assert stopped.value.partial_output == vm.output == "A"
+        assert stopped.value.observation.completion is None
+        assert not vm.halted
+        assert vm.ip == 3
+        assert vm.memory == initial_memory
+
+
+def test_successful_subtraction_write_takes_the_halt_jump() -> None:
+    vm = Language("Subleq").make_vm("6 -1 0 6 6 7 65")
+    assert complete_vm(vm, max_steps=2) == "A"
+    assert vm.halted
+    assert vm.ip == 7
+    assert vm.memory[6] == 0
 
 
 def test_large_addresses_keep_their_diagnostic_types() -> None:

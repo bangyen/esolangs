@@ -68,6 +68,8 @@ def _check_gzip(limits: TextLimits, count: int) -> None:
 
 #: Characters per gzip read and per repeated-source chunk.
 _BLOCK = 65536
+# An empty member still needs a 10-byte header, deflate end marker and trailer.
+_MIN_GZIP_BYTES = 20
 
 
 def _normalize_limits(limits: object) -> TextLimits | None:
@@ -133,6 +135,8 @@ class CompressedText:
         limits = _normalize_limits(limits)
         if not isinstance(chunks, Iterable):
             raise ArgumentError("chunks must be an iterable of strings")
+        if limits is not None:
+            _check_gzip(limits, _MIN_GZIP_BYTES)
         output = io.BytesIO()
         count = 0
         has_newline = False

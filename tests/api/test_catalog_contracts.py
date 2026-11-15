@@ -8,9 +8,17 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs.registry import LANGUAGES
+from esolangs.registry import (
+    LANGUAGES,
+    example_stems,
+    render_template,
+    template_char,
+    template_setters,
+    wiki_url,
+)
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.memory import parse_integer
+from esolangs.vm import machine_traits
 from tests.support.cli_support import call_main
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
@@ -60,6 +68,51 @@ def test_catalog_freezes_declaration_spellings_before_indexing() -> None:
         assert scoped.bind("private-alias").run("+.").output == "\x01"
 
 
+def test_machine_traits_return_an_independent_snapshot() -> None:
+    catalog = esolangs.Catalog([LANGUAGES[REFERENCE]])
+    api = catalog.bind(REFERENCE)
+    vm = api.make_vm("+")
+    snapshot = machine_traits(api.name, catalog=catalog)
+    snapshot["self_halts"] = not vm.self_halts
+    assert machine_traits(api.name, catalog=catalog)["self_halts"] == vm.self_halts
+    assert api.describe().self_halts == vm.self_halts
+
+
+def test_metadata_validates_inputs_without_hashing_them() -> None:
+    class WrappedName(str):
+        __hash__ = None
+
+    class UnhashableCatalog(esolangs.Catalog):
+        __hash__ = None
+
+    catalog = UnhashableCatalog([LANGUAGES[REFERENCE]])
+    name = WrappedName(REFERENCE)
+    api = catalog.bind(name)
+    assert (
+        machine_traits(name, catalog=catalog)["self_halts"] == api.describe().self_halts
+    )
+    assert example_stems(catalog=catalog)[LANGUAGES[REFERENCE].id]
+    with pytest.raises(esolangs.ArgumentError, match="catalog must be a Catalog"):
+        example_stems(catalog=[])
+
+
+def test_template_metadata_uses_the_backing_identifier() -> None:
+    class WrappedIdentifier(str):
+        __hash__ = None
+
+        def __format__(self, _specifier):
+            raise AssertionError("formatted the identifier wrapper")
+
+    identifier = WrappedIdentifier(LANGUAGES[REFERENCE].id)
+    assert template_char(identifier) is None
+    with pytest.raises(esolangs.TemplateError, match="reads its inputs"):
+        render_template(identifier, "", 1)
+    with pytest.raises(esolangs.TemplateError, match="unknown language"):
+        template_setters(identifier, "", 1)
+    with pytest.raises(esolangs.ArgumentError, match="identifier must be a string"):
+        template_char([])
+
+
 def test_bad_declaration_name_is_a_public_argument_error() -> None:
     with pytest.raises(esolangs.ArgumentError, match="nonblank strings"):
         replace(LANGUAGES[REFERENCE], name=42, id="")
@@ -79,6 +132,16 @@ def test_unicode_catalog_name_round_trips_and_forms_a_wiki_url() -> None:
     restored = api.from_json(api.to_json(program))
     assert restored == program
     assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+
+
+def test_wiki_urls_use_utf8_backing_text() -> None:
+    class WrappedName(str):
+        def replace(self, *_args):
+            raise AssertionError("called the language name wrapper")
+
+    assert wiki_url(WrappedName("Private \N{SNAKE}")).endswith("/Private_%F0%9F%90%8D")
+    with pytest.raises(esolangs.ArgumentError, match="names must be valid UTF-8"):
+        wiki_url("Private\ud800")
 
 
 def test_boolean_text_arguments_use_string_storage() -> None:

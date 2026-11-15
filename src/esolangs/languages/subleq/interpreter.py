@@ -115,15 +115,17 @@ class _Machine:
                 )
             check_address(b, "Subleq")
             byte = self.io.input_char() % 256  # EOF raises with pc unmoved
-            self.pc += 3
             self._write(b, byte)
+            self.pc += 3
         elif b == -1:  # output the byte at a
             self.io.print_char(chr(self._read(a) % 256))
             self.pc += 3
         else:  # mem[b] -= mem[a]; jump to c if the result is not positive
             subtrahend = self._read(a)
-            self.pc, result = _advance(self.pc, c, self._read(b), subtrahend)
+            pc, result = _advance(self.pc, c, self._read(b), subtrahend)
+            # A refused write leaves the instruction pending, even on a halt jump.
             self._write(b, result)
+            self.pc = pc
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

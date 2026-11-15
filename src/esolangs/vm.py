@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Hashable
 from dataclasses import replace
-from functools import cache
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 import esolangs._cycles as _cycles
@@ -312,9 +311,8 @@ def _capture_workspace(vm: VM) -> WorkspaceSnapshot:
     return state
 
 
-@cache
 def machine_traits(language: str, *, catalog: Catalog | None = None) -> dict[str, bool]:
-    """Return the language's declared driving traits without loading execution."""
+    """Return a fresh dictionary of declared traits without loading execution."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)

@@ -1,5 +1,10 @@
 """Deadfish through the shared API, CLI and machinery."""
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 import esolangs
@@ -15,6 +20,31 @@ def test_generate_refuses_a_language_with_no_generator() -> None:
     assert "no boolean generator" in message
     assert "generator contracts" in message
     assert "'int'" in message
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "limits", [(), ("--max-steps", "5"), ("--isolated", "--execution-timeout", "2")]
+)
+def test_cli_leaves_unused_stdin_unread(
+    tmp_path: Path, limits: tuple[str, ...]
+) -> None:
+    path = tmp_path / "program"
+    path.write_text("io")
+    reader, writer = os.pipe()
+    with os.fdopen(reader, "rb") as source, os.fdopen(writer, "wb") as feed:
+        feed.write(b"\xff")
+        feed.flush()
+        result = subprocess.run(
+            [sys.executable, "-m", "esolangs", "run", *limits, "Deadfish", str(path)],
+            stdin=source,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+        feed.close()
+        assert source.read() == b"\xff"
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"1\n", b"")
 
 
 def test_supplied_program_never_generates(monkeypatch: pytest.MonkeyPatch) -> None:

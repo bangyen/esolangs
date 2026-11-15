@@ -26,7 +26,6 @@ from esolangs.cli.args import (
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _exit_code,
-    _stdin_hint,
     _template_hint,
     _timeout_text,
 )
@@ -158,11 +157,13 @@ def _run(rest: list[str]) -> None:
     try:
         if scale is None and program.scale is not None:
             check_scale_for(declaration.name, program.scale, catalog=catalog)
-        stdin = _read_stdin(
-            _remaining(acquisition, monotonic() - started, flag),
-            _stdin_hint(declaration),
-            timeout_flag=flag,
-        )
+        stdin = ""
+        if declaration.runtime.reads_stdin:
+            stdin = _read_stdin(
+                _remaining(acquisition, monotonic() - started, flag),
+                "; send the input this program needs, or close stdin",
+                timeout_flag=flag,
+            )
         _remaining(acquisition, monotonic() - started, flag)
         with (
             _unbounded_notice("run")

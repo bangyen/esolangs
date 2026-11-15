@@ -9,7 +9,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
-from tests.support.cli_support import call_main
+from tests.support.cli_support import call_main, run_cli
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import _STEP_BUDGET, _row
@@ -37,31 +37,32 @@ def test_bound_template_language_runs_each_input_row() -> None:
 class TestStdinCannotHangTheCommandForever:
     """`run` read stdin to EOF first, and --execution-timeout missed it."""
 
-    def _run_with_open_stdin(self, args: list[str], wait: float) -> tuple[int, str]:
+    def _run_with_open_stdin(
+        self, args: list[str], wait: float
+    ) -> tuple[int, str, str]:
         """Start the CLI with stdin held open and never written."""
-        proc = subprocess.Popen(
+        with subprocess.Popen(
             [sys.executable, "-m", "esolangs", *args],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-        )
-        try:
-            proc.wait(timeout=wait)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            return -1, ""
-        finally:
-            if proc.stdin:
-                proc.stdin.close()
-        return proc.returncode, proc.stderr.read() if proc.stderr else ""
+        ) as proc:
+            try:
+                code = proc.wait(timeout=wait)
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+            assert proc.stdout is not None
+            assert proc.stderr is not None
+            return code, proc.stdout.read(), proc.stderr.read()
 
     @pytest.mark.slow
     def test_a_timeout_bounds_the_read(self, tmp_path: Path) -> None:
         """It bounded execution only, and the block happens before that."""
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate(REFERENCE, "0110").source)
-        code, err = self._run_with_open_stdin(
+        code, _, err = self._run_with_open_stdin(
             ["run", "--execution-timeout", "2", REFERENCE, str(path)], 20
         )
         assert code == 124
@@ -74,26 +75,22 @@ class TestStdinCannotHangTheCommandForever:
         """It blocked forever before saying the one thing it already knew."""
         path = tmp_path / "p.txt"
         path.write_text("+.")
-        code, err = self._run_with_open_stdin(
+        code, _, err = self._run_with_open_stdin(
             ["run", "--execution-timeout", "30", "NotALang", str(path)], 20
         )
         assert code == 2
         assert "unknown language" in err
 
-    @pytest.mark.slow
-    def test_a_language_that_reads_no_stdin_is_told_so(self, tmp_path: Path) -> None:
-        """RAM0 embeds its inputs, so the wait was for input nobody wanted."""
+    def test_filled_program_runs_with_stdin_open(self, tmp_path: Path) -> None:
+        generated = run_cli("generate", "--bits", "01", "RAM0", "0110")
+        assert (generated.returncode, generated.stderr) == (0, "")
         path = tmp_path / "p.txt"
-        path.write_text(
-            esolangs.instantiate(
-                "RAM0", esolangs.generate("RAM0", "0110"), [0, 1]
-            ).source
-        )
-        code, err = self._run_with_open_stdin(
+        path.write_text(generated.stdout, encoding="utf-8")
+        code, output, err = self._run_with_open_stdin(
             ["run", "--execution-timeout", "2", "RAM0", str(path)], 20
         )
-        assert code == 124
-        assert "RAM0 reads no stdin" in err
+        assert (code, err) == (0, "")
+        assert esolangs.read_answer("RAM0", output) == "1"
 
 
 @pytest.mark.medium

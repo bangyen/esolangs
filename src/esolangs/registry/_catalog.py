@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import re
 import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Mapping
@@ -23,6 +24,7 @@ class Catalog:
     _by_id: Mapping[str, str]
     _by_folded: Mapping[str, str]
     _by_boolean: Mapping[str, LanguageDeclaration]
+    _example_stems: Mapping[str, str]
     _runners: Mapping[str, tuple[str, bool]]
     _interpreters: Mapping[str, str]
 
@@ -58,6 +60,18 @@ class Catalog:
             "_by_boolean",
             MappingProxyType({lang.id: lang for lang in records if lang.has_backend}),
         )
+        stems = {}
+        for lang in records:
+            if not lang.has_backend or lang.runtime.interpreter is None:
+                continue
+            # Windows rejects punctuation such as `?`; slash names also need IDs.
+            stem = lang.name.lower().replace(" ", "-")
+            stems[lang.id] = (
+                lang.id.replace("_", "-")
+                if re.search(r'[/*()+<>:"\\|?]', stem)
+                else stem
+            )
+        object.__setattr__(self, "_example_stems", MappingProxyType(stems))
         object.__setattr__(
             self,
             "_runners",

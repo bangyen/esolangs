@@ -106,6 +106,27 @@ def test_existing_gzip_counts_only_through_first_chunk_over_budget() -> None:
         Monitored(data, limits=limits)
 
 
+def test_gzip_cap_below_empty_member_refuses_before_acquiring_chunks() -> None:
+    class Unreadable:
+        def __iter__(self):
+            pytest.fail("an impossible gzip cap acquired the chunk provider")
+
+    limits = esolangs.TextLimits(plain_chars=0, generation_chars=0, gzip_bytes=19)
+    with pytest.raises(esolangs.ArgumentError, match="chunks must be an iterable"):
+        CompressedText.from_chunks(None, limits=limits)
+    with pytest.raises(esolangs.GeneratorCapError, match="19-byte file cap"):
+        CompressedText.from_chunks(Unreadable(), limits=limits)
+
+
+def test_empty_gzip_member_fits_exact_byte_cap() -> None:
+    limits = esolangs.TextLimits(plain_chars=0, generation_chars=0, gzip_bytes=20)
+    empty = CompressedText.from_chunks((), limits=limits)
+    assert len(empty.to_gzip()) == 20
+    assert CompressedText(empty.to_gzip(), limits=limits) == empty
+    api = esolangs.Language(REFERENCE)
+    assert api.from_json(api.to_json(empty)).source == empty
+
+
 def test_oversized_repeat_reports_the_work_cap_without_rendering() -> None:
     cap = 10**5000
     limits = esolangs.TextLimits(plain_chars=0, generation_chars=cap, gzip_bytes=100)

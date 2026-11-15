@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
-from functools import cache
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 from esolangs._bindings import Setters
-from esolangs.exceptions import TemplateError, UnknownLanguageError
+from esolangs.exceptions import ArgumentError, TemplateError, UnknownLanguageError
 from esolangs.registry._catalog import Catalog, get_catalog
 from esolangs.registry._language import LanguageDeclaration
 from esolangs.registry._slug import SUGGESTION_CUTOFF, canonical_id
@@ -73,22 +70,9 @@ def __dir__() -> list[str]:
     return sorted(__all__)
 
 
-@cache
 def example_stems(*, catalog: Catalog | None = None) -> Mapping[str, str]:
     """Return example stems from declarations without importing example builders."""
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    stems = {}
-    for lang in catalog.languages.values():
-        if not lang.has_backend or lang.runtime.interpreter is None:
-            continue
-        # Windows rejects punctuation such as `?`; slash names also need ids.
-        stem = lang.name.lower().replace(" ", "-")
-        stems[lang.id] = (
-            lang.id.replace("_", "-") if re.search(r'[/*()+<>:"\\|?]', stem) else stem
-        )
-    return MappingProxyType(stems)
+    return get_catalog(catalog)._example_stems  # noqa: SLF001 - catalog-owned index
 
 
 def _reads_inputs(language_id: str) -> TemplateError:
@@ -98,25 +82,25 @@ def _reads_inputs(language_id: str) -> TemplateError:
 
 def template_char(language_id: str, *, catalog: Catalog | None = None) -> str | None:
     """Return the character ``language_id``'s templates spell inputs with."""
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    template = _template(language_id, catalog=catalog)
+    _, template = _template(language_id, catalog=catalog)
     return None if template is None else template.char
 
 
 def _template(
     language_id: str, *, catalog: Catalog | None = None
-) -> TemplateSpec | None:
-    """Return a backend's input binding declaration using the existing id index."""
-    from esolangs.registry._catalog import get_catalog
-
+) -> tuple[str, TemplateSpec | None]:
+    """Normalize an identifier and look up its declared input bindings."""
     catalog = get_catalog(catalog)
-    name = catalog._by_id.get(language_id)  # noqa: SLF001
+    if not isinstance(language_id, str):
+        raise ArgumentError(
+            f"a language identifier must be a string, got {type(language_id).__name__}"
+        )
+    identifier = str.__str__(language_id)
+    name = catalog._by_id.get(identifier)  # noqa: SLF001
     if name is None:
-        return None
+        return identifier, None
     backend = catalog.languages[name].backend
-    return None if backend is None else backend.template
+    return identifier, None if backend is None else backend.template
 
 
 def template_setters(
@@ -128,12 +112,9 @@ def template_setters(
     or the rendered run form -- the setters read what they need from it,
     which for the two-route generators is the route's prefix.
     """
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    spec = _template(language_id, catalog=catalog)
+    identifier, spec = _template(language_id, catalog=catalog)
     if spec is None:
-        raise TemplateError(f"unknown language: {language_id}")
+        raise TemplateError(f"unknown language: {identifier}")
     return spec.bindings(template, n)
 
 
@@ -145,13 +126,10 @@ def render_template(
     catalog: Catalog | None = None,
 ) -> tuple[str, str, Setters]:
     """Return ``(text, char, setters)`` for a generator's laid-out slots."""
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    char = template_char(language_id, catalog=catalog)
-    if char is None:
-        raise _reads_inputs(language_id)
-    return slots, char, template_setters(language_id, slots, n, catalog=catalog)
+    identifier, spec = _template(language_id, catalog=catalog)
+    if spec is None:
+        raise _reads_inputs(identifier)
+    return slots, spec.char, spec.bindings(slots, n)
 
 
 def parameterized_ids(*, catalog: Catalog | None = None) -> frozenset[str]:
@@ -181,7 +159,14 @@ def wiki_url(name: str) -> str:
     again for the README -- so the same broken link shipped in both, and a
     fix to either would have left the other wrong.
     """
-    slug = quote(name.replace(" ", "_"), safe=_WIKI_SAFE)
+    if not isinstance(name, str):
+        raise ArgumentError(
+            f"a language name must be a string, got {type(name).__name__}"
+        )
+    try:
+        slug = quote(str.__str__(name).replace(" ", "_"), safe=_WIKI_SAFE)
+    except UnicodeEncodeError as error:
+        raise ArgumentError("language names must be valid UTF-8 text") from error
     return f"https://esolangs.org/wiki/{slug}"
 
 

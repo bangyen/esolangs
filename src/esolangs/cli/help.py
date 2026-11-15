@@ -220,8 +220,9 @@ examples:
 
 Run a program through its interpreter and print what it writes.
 
-The program is read from <program-file>. Piped stdin is decoded as UTF-8
-and consumed verbatim using the language's character, number, or string reads.
+The program is read from <program-file>. Interpreters with input support
+receive piped stdin as UTF-8, read through EOF. They consume it verbatim
+using the language's character, number, or string reads.
 For generated Boolean programs, `esolangs encode-inputs` spells the input
 characters, numeric tokens, or lines.
 
