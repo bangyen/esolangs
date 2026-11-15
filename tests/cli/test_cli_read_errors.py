@@ -13,6 +13,7 @@ from collections.abc import Buffer, Iterator
 from contextvars import ContextVar
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -128,13 +129,59 @@ def test_managed_stdin_uses_library_input_rules(
     assert budget.partial_output == "inner invocation"
 
 
-def test_stdin_reads_prefetched_file_bytes(tmp_path, monkeypatch) -> None:
+def test_stdin_reads_prefetched_file_bytes(tmp_path, monkeypatch, capsys) -> None:
     path = tmp_path / "stdin"
     path.write_bytes(b"12")
     with path.open() as stdin:
         assert stdin.buffer.peek(1).startswith(b"1")
         monkeypatch.setattr(sys, "stdin", stdin)
         assert _read_stdin(1) == "12"
+    _check_raw_decode_deadline(path, monkeypatch, capsys)
+
+
+def _check_raw_decode_deadline(path, monkeypatch, capsys) -> None:
+    from esolangs.runtime import _files, _source
+
+    timeline = [0.0]
+    monkeypatch.setattr(_files, "monotonic", lambda: timeline[0])
+    monkeypatch.setattr(cli_io, "monotonic", lambda: timeline[0])
+
+    class ExpiredBuffer(io.BytesIO):
+        def read(self, size=-1):
+            timeline[0] = 2.0
+            return super().read(size)
+
+    for raw in ("é".encode(), b"A\xff"):
+        timeline[0] = 0.0
+        stream = SimpleNamespace(buffer=ExpiredBuffer(raw))
+        with pytest.raises(_files.StreamReadTimeoutError):
+            cli_io._snapshot_stdin(stream, 1.0)
+
+    def unexpected_text_check(*_args):
+        pytest.fail("raw UTF-8 was checked again as managed text")
+
+    monkeypatch.setattr(cli_io, "_managed_stdin_text", unexpected_text_check)
+    timeline[0] = 0.0
+    stream = SimpleNamespace(buffer=io.BytesIO("é".encode()))
+    assert cli_io._snapshot_stdin(stream, 1.0) == "é"
+    stream = SimpleNamespace(buffer=io.BytesIO(b"A" * 65537 + b"\xff"))
+    with pytest.raises(UnicodeDecodeError) as malformed:
+        cli_io._snapshot_stdin(stream, 1.0)
+    assert malformed.value.start == 65537
+
+    assert cli_io._read_program(str(path), language=REFERENCE).source == "12"
+
+    def expire_decode(data):
+        timeline[0] = 2.0
+        return _files.decode_utf8(data)
+
+    monkeypatch.setattr(_source, "decode_utf8", expire_decode)
+    with pytest.raises(SystemExit) as expired:
+        cli_io._read_program(
+            str(path), 1.0, language=REFERENCE, timeout_flag="--preparation-timeout"
+        )
+    assert expired.value.code == 124
+    assert "gave up decoding" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("use_poll", [False, True])

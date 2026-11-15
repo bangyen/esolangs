@@ -13,7 +13,13 @@ from typing import ClassVar
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
 from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
-from esolangs.runtime._files import destination_path, write_staged
+from esolangs.runtime._files import (
+    _STREAM_DEADLINE,
+    StreamReadTimeoutError,
+    _time_remaining,
+    destination_path,
+    write_staged,
+)
 from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_width
 from esolangs.runtime.memory import repr_value
 from esolangs.runtime.source_hints import syntax_error
@@ -125,13 +131,21 @@ class CompressedText:
         if not self.data:
             raise ProgramError("gzip source contains no gzip member")
         expanded_bytes = 0
+        deadline = _STREAM_DEADLINE.get()
         try:
             decoder = codecs.getincrementaldecoder("utf-8")()
             with gzip.GzipFile(fileobj=io.BytesIO(self.data)) as stream:
-                while block := stream.read(_BLOCK):
+                while True:
+                    _time_remaining(deadline)
+                    block = stream.read(_BLOCK)
+                    _time_remaining(deadline)
+                    if not block:
+                        break
                     expanded_bytes += len(block)
                     yield decoder.decode(block)
                 yield decoder.decode(b"", final=True)
+        except StreamReadTimeoutError:
+            raise
         except UnicodeDecodeError as error:
             # The decoder's input includes any partial UTF-8 sequence from the
             # preceding block, so its byte offsets are relative to that suffix.

@@ -667,6 +667,59 @@ def test_prepared_input_binding_and_read_share_deadline(monkeypatch) -> None:
         )
         assert ready.output == "é"
 
+    monkeypatch.setattr(_input, "_decode_input", decode)
+    _check_utf8_chunk_cancellation(monkeypatch, prepared)
+
+
+def _check_utf8_chunk_cancellation(monkeypatch, prepared) -> None:
+    from esolangs.runtime import _acquire, _files, _isolated
+
+    timeline = [monotonic()]
+    chunks = []
+    readers = []
+    decode = _files.utf_8_decode
+
+    def clock():
+        return timeline[0]
+
+    def decode_first_block(value, *options):
+        chunks.append(value)
+        result = decode(value, *options)
+        timeline[0] += 2
+        return result
+
+    def record_thread(*args, **kwargs):
+        reader = Thread(*args, **kwargs)
+        readers.append(reader)
+        return reader
+
+    def refuse_launch(*_args, **_kwargs):
+        pytest.fail("expired stdin decoding launched a worker")
+
+    for module in (_acquire, _files, _isolated):
+        monkeypatch.setattr(module, "monotonic", clock)
+    monkeypatch.setattr(_files, "_BLOCK", 8)
+    monkeypatch.setattr(_files, "utf_8_decode", decode_first_block)
+    monkeypatch.setattr(_acquire, "Thread", record_thread)
+    monkeypatch.setattr(_isolated, "_launch", refuse_launch)
+
+    api = esolangs.Language(REFERENCE)
+    encoded = ("a" * 7 + "é😀" * 3).encode()
+    limits = esolangs.ExecutionLimits(preparation_timeout=1, max_steps=2)
+    for run in (prepared.execute, lambda **options: api.execute(",.", **options)):
+        for stdin in (encoded, BytesIO(encoded)):
+            try:
+                stopped = run(stdin=stdin, limits=limits)
+            finally:
+                for reader in readers:
+                    reader.join(2)
+                    assert not reader.is_alive()
+            assert stopped.bound == "preparation_timeout"
+            assert stopped.observation == esolangs.ExecutionResult("", None, None, None)
+            assert chunks == [encoded[:8]]
+            chunks.clear()
+            readers.clear()
+
 
 def _check_uniform_outcomes_and_phase_limits():
     api = esolangs.Language(REFERENCE)

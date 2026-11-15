@@ -130,6 +130,20 @@ def test_syntax_rejection_preserves_known_zero_input_counters(budgets) -> None:
     assert outcome.error.observation is None
     if not budgets:
         _check_vm_initialization_rejection()
+        _check_binary_source_boundary()
+
+
+def _check_binary_source_boundary() -> None:
+    from esolangs.runtime._files import _BLOCK
+
+    api = esolangs.Language(REFERENCE)
+    limits = esolangs.ExecutionLimits(total_timeout=5, max_steps=3)
+    prefix = b"[" + b" " * (_BLOCK - 2)
+    assert api.run(prefix + "é".encode() + b"]+.", limits=limits).output == "\x01"
+    with pytest.raises(
+        esolangs.ProgramError, match=f"invalid UTF-8 at byte {_BLOCK - 1}"
+    ):
+        api.run(prefix + b"\xc3(]+.", limits=limits)
 
 
 def _check_vm_initialization_rejection() -> None:

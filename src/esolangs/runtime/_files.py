@@ -3,6 +3,7 @@
 import os
 import select
 import stat
+from codecs import utf_8_decode
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
@@ -65,6 +66,42 @@ def _time_remaining(deadline: float | None) -> float | None:
             "stream did not finish before the acquisition deadline"
         )
     return remaining
+
+
+def decode_utf8(data: bytes) -> str:
+    """Decode UTF-8, checking the acquisition deadline between bounded chunks."""
+    deadline = _STREAM_DEADLINE.get()
+    if deadline is None:
+        return bytes.decode(data, "utf-8")
+    parts: list[str] = []
+    size = bytes.__len__(data)
+    offset = 0
+    while offset < size:
+        _time_remaining(deadline)
+        end = min(offset + _BLOCK, size)
+        block = bytes.__getitem__(data, slice(offset, end))
+        try:
+            text, consumed = utf_8_decode(block, "strict", end == size)
+        except UnicodeDecodeError as error:
+            _time_remaining(deadline)
+            error.object = bytes.__bytes__(data)
+            error.start += offset
+            error.end += offset
+            error.args = (
+                error.encoding,
+                error.object,
+                error.start,
+                error.end,
+                error.reason,
+            )
+            raise
+        parts.append(text)
+        # A nonfinal decode can leave an incomplete code point for the next block.
+        offset += consumed
+    _time_remaining(deadline)
+    text = "".join(parts)
+    _time_remaining(deadline)
+    return text
 
 
 def _binary_chunk(value: object) -> bytes:

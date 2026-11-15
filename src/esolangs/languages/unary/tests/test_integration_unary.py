@@ -1,9 +1,16 @@
 """Unary through the shared API and generator contract."""
 
+import gzip
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
+from threading import Event, current_thread
+from time import monotonic
+
 import pytest
 
 import esolangs
 from esolangs import run
+from esolangs.runtime._files import StreamReadTimeoutError, stream_read_deadline
 from tests.support.cli_support import call_main
 
 
@@ -22,7 +29,7 @@ def test_unary_generator_declares_byte_inputs_and_termination_answers() -> None:
     assert len(esolangs.generate("Unary", "01").source) == 887
 
 
-def test_compressed_and_plain_sources_share_execution(tmp_path) -> None:
+def test_compressed_and_plain_sources_share_execution(tmp_path, monkeypatch) -> None:
     program = esolangs.generate("Unary", "0001")
     assert isinstance(program.source, esolangs.CompressedText)
     assert len(program.source) == 27_452_351
@@ -53,10 +60,54 @@ def test_compressed_and_plain_sources_share_execution(tmp_path) -> None:
         ).output
         == ""
     )
+    _check_expired_gzip_acquisition(path, monkeypatch)
+
+
+def _check_expired_gzip_acquisition(path, monkeypatch) -> None:
+    api = esolangs.Language("Unary")
+    plain = str(api.generate("01").source).encode() + b" " * (3 * 65_536)
+    data = gzip.compress(plain, mtime=0)
+    path.write_bytes(data)
+
+    stdin = BytesIO(b"\0")
+    paused, resume = Event(), Event()
+    reads = []
+    original_read = gzip.GzipFile.read
+
+    def pause_first_read(stream, size=-1):
+        reads.append(current_thread())
+        if len(reads) == 1:
+            paused.set()
+            assert resume.wait(5)
+        return original_read(stream, size)
+
+    with monkeypatch.context() as edit, ThreadPoolExecutor() as callers:
+        edit.setattr(gzip.GzipFile, "read", pause_first_read)
+        pending = callers.submit(
+            api.execute,
+            path,
+            stdin=stdin,
+            isolated=True,
+            limits=esolangs.ExecutionLimits(preparation_timeout=0.5, total_timeout=5),
+        )
+        try:
+            assert paused.wait(2)
+            outcome = pending.result(timeout=3)
+            assert outcome.status == "limit"
+            assert outcome.bound == "preparation_timeout"
+            assert stdin.tell() == 0
+        finally:
+            resume.set()
+        reads[0].join(2)
+        assert not reads[0].is_alive()
+    assert len(reads) == 1
+    with stream_read_deadline(monotonic() - 1), pytest.raises(StreamReadTimeoutError):
+        esolangs.CompressedText(data)
+    retry = api.run(path, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=20))
+    assert (retry.output, retry.steps, stdin.tell()) == ("", 2, 1)
 
 
 def test_cli_exports_gzip_by_default_and_plain_on_request(tmp_path) -> None:
-    import gzip
     import subprocess
     import sys
 

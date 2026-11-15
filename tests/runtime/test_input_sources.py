@@ -5,6 +5,7 @@ import os
 import select
 from contextvars import ContextVar
 from threading import Event, Thread
+from time import monotonic
 
 import pytest
 
@@ -95,7 +96,7 @@ def test_invocation_rejects_options_before_accessing_streams(route, options, mes
             invoke(Untouched(), stdin=Untouched(), seed=1, **options)
 
 
-def test_managed_input_binding_and_binary_chunks() -> None:
+def test_managed_input_binding_and_binary_chunks(monkeypatch) -> None:
     class Input:
         calls = 0
 
@@ -114,6 +115,9 @@ def test_managed_input_binding_and_binary_chunks() -> None:
 
         def __bytes__(self) -> bytes:
             return b"not the backing"
+
+        def __getitem__(self, _key):
+            raise AssertionError("binary decoding dispatched to a subclass")
 
     class ChunkedPair(io.BufferedRWPair):
         def __init__(self, *chunks):
@@ -150,6 +154,29 @@ def test_managed_input_binding_and_binary_chunks() -> None:
             pytest.raises(esolangs.ArgumentError, match=message),
         ):
             api.run(",.", stdin=managed_input)
+
+    from esolangs.runtime import _files
+
+    monkeypatch.setattr(_files, "_BLOCK", 8)
+    text = "a" * 7 + "é😀bc\nZ"
+    with _files.stream_read_deadline(monotonic() + 2):
+        for packet in (bytes, FalseBytes):
+            encoded = packet(text.encode())
+            for source in (encoded, io.BytesIO(encoded)):
+                assert ScriptedIO(source).input_all() == text
+        for invalid in (b"\xe2\x82", b"\xe0\x80\x80", b"\xf0\x90\x80!", b"\xc0\xaf"):
+            encoded = b"a" * 15 + invalid
+            with pytest.raises(UnicodeDecodeError) as expected:
+                encoded.decode("utf-8")
+            for source in (encoded, io.BytesIO(encoded)):
+                with pytest.raises(
+                    esolangs.ArgumentError, match="invalid UTF-8 at byte 15"
+                ) as caught:
+                    ScriptedIO(source)
+                actual = caught.value.__cause__
+                assert isinstance(actual, UnicodeDecodeError)
+                assert actual.args == expected.value.args
+                assert str(actual) == str(expected.value)
 
 
 @pytest.fixture

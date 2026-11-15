@@ -21,6 +21,7 @@ from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._files import (
     _path_directory,
     _SourceDirectory,
+    decode_utf8,
     explicit_path,
     read_snapshot,
 )
@@ -208,7 +209,7 @@ def text_source(
                 error_type=ProgramError,
             )
         try:
-            value = value.decode("utf-8")
+            value = decode_utf8(value)
         except UnicodeDecodeError as exc:
             raise syntax_error(
                 f"cannot read {label or 'the program'}: not text "

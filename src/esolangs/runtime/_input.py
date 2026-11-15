@@ -21,7 +21,7 @@ from typing import IO, cast
 
 from esolangs.exceptions import ArgumentError, EsolangError
 from esolangs.outcomes import _remember_acquisition_failure
-from esolangs.runtime._files import read_snapshot
+from esolangs.runtime._files import decode_utf8, read_snapshot
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.source_hints import with_hint
 
@@ -110,7 +110,7 @@ def input_read_error(detail: Exception | str) -> ArgumentError:
 
 def _decode_input(value: bytes) -> str:
     try:
-        return bytes.decode(value, "utf-8")
+        return decode_utf8(value)
     except UnicodeDecodeError as exc:
         raise input_read_error(exc) from exc
 

@@ -51,6 +51,7 @@ from esolangs.runtime._files import (
     _binary_snapshot,
     _SourceDirectory,
     _time_remaining,
+    decode_utf8,
     explicit_path,
     read_snapshot,
     stream_read_deadline,
@@ -138,7 +139,7 @@ def _read_program(
     _settings_validated: bool = False,
 ) -> ProgramArtifact[Program]:
     """Read a native source snapshot under the acquisition deadline."""
-    started = monotonic()
+    deadline = None if timeout is None else monotonic() + timeout
     catalog = get_catalog(catalog)
     gzip_native = catalog.languages[language].runtime.compressed_source
     data = _bounded_read(
@@ -150,19 +151,20 @@ def _read_program(
     )
 
     def decode() -> ProgramArtifact[Program]:
-        return _check_program(
-            language,
-            _FileSource(path, data),
-            normalize=True,
-            settings=settings,
-            catalog=catalog,
-            _settings_validated=_settings_validated,
-        )
+        with nullcontext() if deadline is None else stream_read_deadline(deadline):
+            return _check_program(
+                language,
+                _FileSource(path, data),
+                normalize=True,
+                settings=settings,
+                catalog=catalog,
+                _settings_validated=_settings_validated,
+            )
 
     try:
-        if timeout is None:
+        if deadline is None:
             return decode()
-        remaining = timeout - (monotonic() - started)
+        remaining = deadline - monotonic()
         bound = f" ({timeout_flag})" if timeout_flag else ""
 
         def on_timeout() -> None:
@@ -285,30 +287,21 @@ def _bounded_read(
     return _slurp_thread(_read_file, waited, on_timeout=_on_timeout)
 
 
-def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:
-    """Return the decode error ``surrogateescape`` hid in *text*, if any.
-
-    Under UTF-8 mode (a ``C`` locale, as on CI) stdin decodes with
-    ``surrogateescape``, so binary arrives as lone surrogates.  Encoding
-    them back and decoding strictly gives the same message, exit code and
-    byte offset strict mode already had.
-    """
+def _managed_stdin_text(text: str, stdin: TextIO) -> str:
+    """Report raw bytes hidden by a managed text stream's surrogateescape."""
+    if text.isascii():
+        return text
     try:
         text.encode("utf-8")
     except UnicodeEncodeError:
         pass
     else:
-        return None
-    encoding = getattr(sys.stdin, "encoding", None) or "utf-8"
-    try:
+        return text
+    encoding = getattr(stdin, "encoding", None) or "utf-8"
+    # A surrogate outside the escape range can be explicit Python text.
+    with suppress(UnicodeEncodeError, LookupError):
         text.encode(encoding, "surrogateescape").decode(encoding)
-    except UnicodeDecodeError as exc:
-        return exc
-    except (UnicodeEncodeError, LookupError):
-        # A surrogate outside the escape range, so not a byte this stream
-        # smuggled in; leave it to the reader that asked for the text.
-        return None
-    return None
+    return text
 
 
 def _wait_for_pipe_data(deadline: float | None) -> None:
@@ -453,15 +446,15 @@ def _read_prefetched_stdin(stdin: TextIOWrapper, stream: BinaryIO, data: bytes) 
         "Callable[[str], IncrementalEncoder] | None", codec.incrementalencoder
     )
     if make_encoder is None:
-        return text
+        return _managed_stdin_text(text, stdin)
     encoder = make_encoder("surrogateescape")
     if encoder.getstate():
-        return text
+        return _managed_stdin_text(text, stdin)
     try:
         restored = encoder.encode(text, final=True)
     except UnicodeEncodeError:
-        return text + data[split:].decode("utf-8")
-    return (restored + data[split:]).decode("utf-8")
+        return _managed_stdin_text(text + decode_utf8(data[split:]), stdin)
+    return decode_utf8(restored + data[split:])
 
 
 def _read_wrapped_stdin(
@@ -476,7 +469,7 @@ def _read_wrapped_stdin(
         # suffix with its current state while no further I/O can block.
         data = _read_stdin_bytes(stream, deadline)
         return _read_prefetched_stdin(stdin, stream, data)
-    return _read_stdin_bytes(stream, deadline).decode("utf-8")
+    return decode_utf8(_read_stdin_bytes(stream, deadline))
 
 
 def _custom_text_reader(stdin: TextIOWrapper) -> bool:
@@ -493,14 +486,14 @@ def _snapshot_stdin(stdin: TextIO, deadline: float | None) -> str:
     with stream_read_deadline(deadline):
         if _has_backing_type(stdin, TextIOWrapper) and _custom_text_reader(stdin):
             # Bypassing this reader can lose text it already decoded.
-            return read_input(stdin)
+            return _managed_stdin_text(read_input(stdin), stdin)
         stream = cast("BinaryIO | None", getattr(stdin, "buffer", None))
         _time_remaining(deadline)
         if stream is None:
-            return read_input(stdin)
+            return _managed_stdin_text(read_input(stdin), stdin)
         if _has_backing_type(stdin, TextIOWrapper) and hasattr(stream, "__dict__"):
             return _read_wrapped_stdin(stdin, stream, deadline)
-        return _read_stdin_bytes(stream, deadline).decode("utf-8")
+        return decode_utf8(_read_stdin_bytes(stream, deadline))
 
 
 def _is_terminal(stream: object) -> bool:
@@ -589,8 +582,6 @@ def _read_stdin(
         result = _slurp_thread(
             read, timeout, notice=_waiting_notice(hint), on_timeout=_on_timeout
         )
-    if (hidden := _smuggled_bytes(result)) is not None:
-        _fail(input_read_error(hidden))
     return result
 
 
