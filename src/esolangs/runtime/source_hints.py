@@ -13,8 +13,8 @@ def is_option(value: str) -> bool:
 
 
 def can_render_argument(value: str, encoding: str) -> bool:
-    """Check that a displayed value can be passed verbatim as an argument."""
-    if "\0" in value:
+    """Check that an argument can be displayed without terminal controls."""
+    if value and not value.isprintable():
         return False
     try:
         value.encode(encoding)

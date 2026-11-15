@@ -1,7 +1,9 @@
 """Program wrapping and width handling."""
 
+import gzip
 from dataclasses import replace
 from functools import cache
+from pathlib import Path
 
 import pytest
 
@@ -22,6 +24,7 @@ from esolangs.registry._backend import BooleanBackend
 from tests.support.divergence import diverges, terminates
 from tests.support.execution import run_observed
 from tests.support.generator_support import CHECK
+from tests.support.reference import REFERENCE
 from tests.support.witness_tables import parity
 
 # Every boolean generator can build two-input XOR.
@@ -502,9 +505,60 @@ def test_wrap_grid_never_straddles_a_row_boundary() -> None:
     assert "1234567" in wrapped.split("\n")[1]
 
 
-def test_wrap_chars_breaks_anywhere() -> None:
+def test_wrap_chars_breaks_anywhere(tmp_path: Path) -> None:
     """The single-character families break at exactly the width."""
     assert wrap_chars("abcdef", 2) == "ab\ncd\nef"
+    original = LANGUAGES[REFERENCE]
+    backend = replace(
+        original.backend,
+        layout_width=False,
+        wrap=wrap_chars,
+        balance=None,
+        wrap_balance=None,
+    )
+
+    def scoped(source):
+        declared = replace(backend, entrypoint=lambda _: source)
+        return esolangs.Catalog([replace(original, backend=declared)]).bind(REFERENCE)
+
+    # Exact fit, an uneven balance, and an exact fold across gzip/UTF-8 blocks.
+    long = ",." + "é" * 65534
+    for text, width, expected in (
+        (",.", 2, ",."),
+        (",.", None, ",."),
+        (",.hello", None, ",.he\nllo"),
+        (long, 32768, long[:32768] + "\n" + long[32768:]),
+    ):
+        limits = esolangs.TextLimits(
+            plain_chars=0, generation_chars=len(expected), gzip_bytes=1024
+        )
+        compressed = esolangs.CompressedText(
+            gzip.compress(text.encode(), mtime=1), limits=limits
+        )
+        plain, packed = scoped(text), scoped(compressed)
+        balance = width is None
+        original_record = plain.generate("01", width=width, balance=balance)
+        record = packed.generate("01", width=width, balance=balance)
+        assert original_record.source == expected
+        assert isinstance(record.source, esolangs.CompressedText)
+        assert "".join(record.source.chunks()) == expected
+        assert record.source.limits is limits
+        if text == expected:
+            assert record.source is compressed
+        else:
+            tighter = esolangs.CompressedText(
+                compressed.to_gzip(),
+                limits=replace(limits, generation_chars=len(expected) - 1),
+            )
+            with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
+                scoped(tighter).generate("01", width=width, balance=balance)
+        restored = packed.from_json(packed.to_json(record))
+        assert restored == record
+        path = tmp_path / "reflow.txt.gz"
+        packed.to_file(restored, path, gzip=True)
+        assert path.read_bytes() == record.source.to_gzip()
+        for api, source in ((plain, original_record), (packed, packed.from_file(path))):
+            assert "".join(api.evaluate(source, [bit]).answer for bit in (0, 1)) == "01"
 
 
 def test_wrappers_refuse_input_they_do_not_recognize() -> None:

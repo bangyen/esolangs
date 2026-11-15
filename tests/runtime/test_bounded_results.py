@@ -264,7 +264,11 @@ def _check_halt_read_fault_evidence(api, monkeypatch):
 
     original = esolangs.HaltError("command failed")
     reads = []
+    terminal_checks = []
     mode = "typed"
+    foreign = esolangs.HaltError("foreign halt inspection failed")
+    foreign.observation = esolangs.ExecutionResult("inner", 2, 1, 0, steps=7)
+    foreign.partial_output = "inner"
 
     class Machine:
         finished = False
@@ -276,10 +280,18 @@ def _check_halt_read_fault_evidence(api, monkeypatch):
         @property
         def halted(self):
             self.checks += 1
+            if self.finished:
+                terminal_checks.append(self.checks)
+                if mode.startswith("final_"):
+                    if len(terminal_checks) != 2:
+                        return True
+                    if mode == "final_foreign":
+                        reads.append(foreign)
+                        raise foreign
             if (self.finished and mode != "valid") or (
                 mode == "before_step" and self.checks == 2
             ):
-                error_type = ValueError if mode == "bare" else esolangs.HaltError
+                error_type = ValueError if mode.endswith("bare") else esolangs.HaltError
                 error = error_type("halt inspection failed")
                 reads.append(error)
                 raise error
@@ -320,6 +332,32 @@ def _check_halt_read_fault_evidence(api, monkeypatch):
             assert caught.value.partial_output == "A"
             assert caught.value.observation == expected
 
+    plan = scoped.prepare("+.")
+    for mode in ("final_typed", "final_bare", "final_foreign"):
+        for execute in (
+            lambda: scoped.execute("+.", stdin="A", limits=limits),
+            lambda: plan.execute(stdin="A", limits=limits),
+        ):
+            reads.clear()
+            terminal_checks.clear()
+            outcome = execute()
+            assert outcome.observation == expected
+            assert len(terminal_checks) == 2
+            if mode == "final_bare":
+                assert outcome.status == "rejected"
+                assert isinstance(outcome.error, esolangs.ProgramError)
+                assert reads == [outcome.error.__cause__]
+            else:
+                assert outcome.status == "fault"
+                assert reads == [outcome.error]
+            if mode == "final_foreign":
+                assert outcome.error is foreign
+                assert foreign.observation.output == foreign.partial_output == "inner"
+                assert foreign.observation.steps == 7
+            else:
+                assert outcome.error.observation == expected
+                assert outcome.error.partial_output == "A"
+
     mode = "before_step"
     with pytest.raises(esolangs.HaltError, match="halt inspection") as caught:
         scoped.make_debugger("+.", stdin="A").run(limits=limits)
@@ -337,6 +375,7 @@ def _check_halt_read_fault_evidence(api, monkeypatch):
     completed = scoped.run("+.", stdin="A", limits=limits)
     assert completed == replace(expected, completion=completed.completion)
     assert completed.completion.kind is Completion.HALTED
+    assert plan.run(stdin="A", limits=limits) == completed
     debug = scoped.make_debugger("+.", stdin="A")
     assert debug.run(limits=limits) == "halted"
     assert debug.observation == completed

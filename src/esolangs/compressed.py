@@ -344,17 +344,21 @@ class CompressedText:
         Return the original archive if no line breaks are needed.
         """
         width = check_width(width)
-        if width is None:
-            return self
+        return self if width is None else self._wrap_characters(width, terminal=True)
+
+    def _wrap_characters(self, width: int, *, terminal: bool = False) -> CompressedText:
+        """Fold characters and retain the archive when no breaks are inserted."""
         size = self._size
-        if width > size:
+        breaks = (size if terminal else size - 1) // width
+        if breaks <= 0:
             return self
 
         if self.limits is not None:
-            _check_work(self.limits, size + size // width)
+            _check_work(self.limits, size + breaks)
 
         def chunks() -> Iterator[str]:
             column = 0
+            remaining = breaks
             # Each decoded chunk is at most one block, so it is wrapped whole.
             for chunk in CompressedText.chunks(self):
                 parts = []
@@ -365,7 +369,9 @@ class CompressedText:
                     offset += take
                     column += take
                     if column == width:
-                        parts.append("\n")
+                        if remaining:
+                            parts.append("\n")
+                            remaining -= 1
                         column = 0
                 yield "".join(parts)
 

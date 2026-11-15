@@ -388,14 +388,14 @@ class ExecutionController:
                 if completed is not None:
                     return completed
             reason = self._run(max_steps, None)
+            if reason == "halted":
+                return ExecutionOutcome(
+                    "completed", replace(_capture_result(self.vm), steps=self._steps)
+                )
         except EsolangError as fault:
             observation = replace(_capture_observation(self.vm), steps=self._steps)
             _record_vm_fault(self.vm, fault, observation)
             return _failed_outcome(fault, observation=observation)
-        if reason == "halted":
-            return ExecutionOutcome(
-                "completed", replace(_capture_result(self.vm), steps=self._steps)
-            )
         if reason == "breakpoint":
             raise ArgumentError("invocation execution cannot stop at a breakpoint")
         error = steps_exhausted(f"execution stopped at the {reason} bound")

@@ -77,6 +77,8 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
     lf_name, cr_name, unreachable = "Scoped\nCatalog", "Scoped\rCatalog", "No\r\nAlias"
     # This name is reachable and must not become the spelling of a different row.
     escaped_name = r"Scoped\nCatalog"
+    option_name, option_only = "--help", "--version"
+    terminal_name = "clear\x1b[2Jscreen"
     restrictions = "first line\nsecond line"
     scope = esolangs.Catalog(
         [
@@ -90,6 +92,9 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
             ),
             replace(original, name=escaped_name, id="escaped", aliases=()),
             replace(original, name=unreachable, id="unsafe\nid", aliases=()),
+            replace(original, name=option_name, id="--help_id", aliases=("help_name",)),
+            replace(original, name=option_only, id="--version_id", aliases=()),
+            replace(original, name=terminal_name, id="terminal_name", aliases=()),
         ]
     )
     monkeypatch.setattr(_table, "CATALOG", scope)
@@ -98,6 +103,9 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
         cr_name: "scoped_cr",
         escaped_name: escaped_name,
         unreachable: f"{unreachable!r} (see --json)",
+        option_name: "help_name",
+        option_only: f"{option_only!r} (see --json)",
+        terminal_name: "terminal_name",
     }
     canonical = esolangs.list_languages(catalog=scope)
     labels = [expected[name] for name in canonical]
@@ -119,10 +127,26 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
     assert records[canonical.index(cr_name)]["generator_restrictions"] == restrictions
 
     path = _program(tmp_path, "+.")
-    for name in (lf_name, cr_name, escaped_name):
+    for name in (lf_name, cr_name, escaped_name, option_name, terminal_name):
         spelling = expected[name]
         assert scope.resolve(spelling) == name
         assert call_both(["run", spelling, path], capsys) == ("\x01", "")
+
+    for name in (lf_name, cr_name, option_name, terminal_name):
+        spelling = expected[name]
+        details, error = call_both(["describe", spelling], capsys)
+        lines = details.splitlines()
+        assert not error
+        assert lines[0] == (name if name.isprintable() else repr(name)[1:-1])
+        spec = next(line for line in lines if line.startswith("spec: "))
+        tool, *command = shlex.split(spec.removeprefix("spec: "))
+        assert tool == "esolangs"
+        operands = ["--", "--help_id"] if name == option_name else [spelling]
+        assert command == ["describe", "--spec", *operands]
+        assert call_both(command, capsys) == (
+            scope.bind(name).describe().spec + "\n",
+            "",
+        )
 
 
 @pytest.mark.medium

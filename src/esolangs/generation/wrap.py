@@ -38,12 +38,10 @@ from esolangs.runtime._validate import _has_backing_type
 
 if TYPE_CHECKING:
     from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._catalog import Catalog
+    from esolangs.registry._language import LanguageDeclaration
 
 # 80: the conventional review/diff width, close to the repo's 88 for Python.
-if TYPE_CHECKING:
-    from esolangs.registry._catalog import Catalog
-
-
 DEFAULT_WIDTH = 80
 
 
@@ -284,18 +282,25 @@ _bracket_literal = TokenWrapper(_BRACKET_LITERAL)
 _quote_literal = TokenWrapper(_EVAL_UNIT)
 
 
-def _backend(
+def _language(
     language_id: str, *, catalog: "Catalog | None" = None
-) -> "BooleanBackend | None":
-    """Return the registered backend for ``language_id``, if any."""
+) -> "LanguageDeclaration | None":
+    """Look up the declared language for a wrapper's identifier."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
 
     return next(
-        (lang.backend for lang in catalog.languages.values() if lang.id == language_id),
-        None,
+        (lang for lang in catalog.languages.values() if lang.id == language_id), None
     )
+
+
+def _backend(
+    language_id: str, *, catalog: "Catalog | None" = None
+) -> "BooleanBackend | None":
+    """Return the registered backend for ``language_id``, if any."""
+    language = _language(language_id, catalog=catalog)
+    return None if language is None else language.backend
 
 
 def wrap_program(
@@ -344,8 +349,8 @@ def _layout_compressed(
     program = _freeze_compressed(program)
     if width is None and not balance:
         return program
-    backend = _backend(language_id, catalog=catalog)
-    if backend is None:
+    language = _language(language_id, catalog=catalog)
+    if language is None or (backend := language.backend) is None:
         return program
     if balance:
         if backend.wrap is None and backend.wrap_balance is None:
@@ -360,9 +365,14 @@ def _layout_compressed(
         and backend.wrap is wrap_chars
         and (not balance or backend.wrap_balance is None)
     ):
-        # Unary's character layout streams without expanding the program.
-        chosen = max(1, isqrt(CELL_ASPECT * len(program))) if balance else width
-        return program.wrapped(chosen)
+        size = len(program)
+        if language.runtime.compressed_source:
+            # Native compressed sources retain their terminal-width break.
+            chosen = max(1, isqrt(CELL_ASPECT * size)) if balance else width
+            return program.wrapped(chosen)
+        chosen = _balance_character_width(size) if balance else width
+        assert chosen is not None
+        return program._wrap_characters(chosen)  # noqa: SLF001
     source = "".join(program.chunks())
     result = (
         balance_program(source, language_id, catalog=catalog)
@@ -380,12 +390,35 @@ def balance_width(program: str) -> int:
     The least side S with CELL_ASPECT * ceil(area/S) <= S, then the fewest
     columns keeping its ceil(area/S) rows: exact for a pure character fold.
     """
-    rows = program.split("\n")
-    area = max(1, sum(map(len, rows)))
+    return _balance_area_width(sum(map(len, program.split("\n"))))
+
+
+def _balance_area_width(area: int) -> int:
+    area = max(1, area)
     side = isqrt(CELL_ASPECT * area - 1) + 1
     while CELL_ASPECT * -(-area // side) > side:
         side += 1
     return -(-area // -(-area // side))
+
+
+def _balance_candidates(width: int) -> range:
+    """Try the nearest widths in the same order for text and gzip."""
+    return range(max(1, width - 1), width + 2)
+
+
+def _balance_character_width(size: int) -> int:
+    """Score a single-line character fold without allocating any candidates."""
+
+    def score(width: int) -> tuple[int, int, int]:
+        height = max(1, -(-size // width))
+        columns = min(size, width)
+        return rendered_side(columns, height), size + height - 1, columns
+
+    widths: tuple[int, ...] = (
+        max(1, size),
+        *_balance_candidates(_balance_area_width(size)),
+    )
+    return min(widths, key=score)
 
 
 def _token_fit(program: str, tokens: list[str], separator: str = "") -> str:
@@ -410,8 +443,7 @@ def balance_program(
     width = balance_width(program)
     candidates = [
         wrap_program(program, language_id, candidate, catalog=catalog)
-        for candidate in (width - 1, width, width + 1)
-        if candidate > 0
+        for candidate in _balance_candidates(width)
     ]
     return min((program, *candidates), key=balance_score)
 

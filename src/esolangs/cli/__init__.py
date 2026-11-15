@@ -233,16 +233,14 @@ def _catalog_names(
 
 
 def _listed_name(name: str, *, catalog: Catalog, encoding: str) -> str:
-    """Represent the language with an encodable one-line spelling."""
-    if name.splitlines() == [name] and can_render_argument(name, encoding):
-        return name
+    """Represent the language with a printable positional operand."""
     declaration = catalog.languages[name]
     spellings = (
         spelling
-        for spelling in (declaration.id, *declaration.aliases)
-        if spelling.isprintable() and can_render_argument(spelling, encoding)
+        for spelling in (name, declaration.id, *declaration.aliases)
+        if not is_option(spelling) and can_render_argument(spelling, encoding)
     )
-    return min(spellings, key=is_option, default=f"{name!r} (see --json)")
+    return next(spellings, f"{name!r} (see --json)")
 
 
 def _list(rest: list[str]) -> None:
@@ -682,7 +680,7 @@ def _describe(rest: list[str]) -> None:
     operand = _as_argument(
         name, encoding=_display_encoding(sys.stdout), catalog=catalog
     )
-    _display(name)
+    _display(_printable(name))
     if facts.parameterized:
         fill = (
             "instantiate() in Python"
