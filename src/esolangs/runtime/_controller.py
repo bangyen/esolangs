@@ -49,7 +49,7 @@ class ExecutionController:
                 ):
                     raise ArgumentError(f"vm must be a VM with a {name} attribute")
         self.vm = vm
-        self._dumped = False
+        self._dumped: tuple[VM, VM] | None = None
         self._steps = 0
         self._faulted_owner: VM | None = None
         self._active_fault: tuple[VM, VM, EsolangError] | None = None
@@ -84,7 +84,7 @@ class ExecutionController:
                 _controller_vm(self.vm) is self._faulted_owner
             )
             if self.dumps_on_the_post_halt_step:
-                if _post_halt_dumped(self.vm) or (self._dumped and not faulted):
+                if self._has_dumped() and not faulted:
                     report = CompletionReport(Completion.POST_HALT)
             elif not faulted:
                 report = CompletionReport(Completion.HALTED)
@@ -155,10 +155,20 @@ class ExecutionController:
             self._faulted_owner = None
             self._active_fault = None
             self._steps += 1
-        elif self.dumps_on_the_post_halt_step:
+        elif wrapped.dumps_on_the_post_halt_step:
             self._faulted_owner = None
-            self._dumped = True
+            if not isinstance(owner, _DelegatingVM):
+                self._dumped = (wrapped, owner)
         self._record()
+
+    def _has_dumped(self) -> bool:
+        """Read registered finalization or a dump observed for the current raw VM."""
+        wrapped = self.vm
+        owner = _controller_vm(wrapped)
+        if isinstance(owner, _DelegatingVM):
+            return _post_halt_dumped(owner)
+        saved = self._dumped
+        return saved is not None and saved[0] is wrapped and saved[1] is owner
 
     def run(self, *, limits: ExecutionLimits | None = None) -> StopReason:
         """Execute until the machine halts, a breakpoint fires, or a bound ends it.
@@ -214,11 +224,7 @@ class ExecutionController:
         # The final command and the dump can each trigger a breakpoint.
         if self._stop_requested():
             return "breakpoint"
-        if (
-            self.dumps_on_the_post_halt_step
-            and not self._dumped
-            and not _post_halt_dumped(self.vm)
-        ):
+        if self.dumps_on_the_post_halt_step and not self._has_dumped():
             if deadline is not None and monotonic() >= deadline:
                 return "execution_timeout"
             self._take_step()

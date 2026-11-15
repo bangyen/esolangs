@@ -278,6 +278,20 @@ def test_post_halt_completion_stays_pending_until_dump():
     assert complete_vm(nested, max_steps=0) == debugger.output
     assert nested.observation == replace(debugger.observation, steps=0)
 
+    expected = debugger.observation
+    limits = esolangs.ExecutionLimits(max_steps=expected.steps)
+    for wrapped in (False, True):
+        receiver = make_debugger(name, source)
+        live = Debugger(receiver) if wrapped else receiver
+        assert live.run(limits=limits) == "halted"
+        assert live.observation == expected
+
+        receiver.vm = make_vm(name, source)
+        assert live.observation.completion is None
+        assert live.run(limits=limits) == "halted"
+        assert live.observation == replace(expected, steps=expected.steps * 2)
+        assert Debugger(receiver.vm).observation == replace(expected, steps=0)
+
 
 def test_caller_owned_vm_finalization_remains_local():
     from esolangs.debugger import Debugger
@@ -286,6 +300,7 @@ def test_caller_owned_vm_finalization_remains_local():
         halted = self_halts = steppable_to_answer = dumps_on_the_post_halt_step = True
         _dump_pending = False
         calls = 0
+        output = ""
 
         def step(self):
             self.output = "A"
@@ -305,6 +320,17 @@ def test_caller_owned_vm_finalization_remains_local():
     assert second.observation == first.observation
     assert vm.calls == 3
 
+    for wrapped in (False, True):
+        receiver = Debugger(Custom())
+        live = Debugger(receiver) if wrapped else receiver
+        assert live.run(limits=limits) == "halted"
+        before = live.observation
+        receiver.vm = Custom()
+        assert live.observation == replace(before, output="", completion=None)
+        assert live.run(limits=limits) == "halted"
+        assert live.observation == before
+        assert receiver.vm.calls == 1
+
     class RetryDump(Custom):
         output = ""
 
@@ -314,7 +340,9 @@ def test_caller_owned_vm_finalization_remains_local():
                 raise esolangs.HaltError("temporary dump failure")
             self.output += "done"
 
-    retry = Debugger(RetryDump())
+    retry = Debugger(Custom())
+    assert retry.run(limits=limits) == "halted"
+    retry.vm = RetryDump()
     with pytest.raises(esolangs.HaltError, match="temporary dump") as caught:
         retry.run(limits=limits)
     assert caught.value.observation == esolangs.ExecutionResult(

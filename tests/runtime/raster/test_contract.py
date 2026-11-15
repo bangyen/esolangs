@@ -151,6 +151,37 @@ def test_raster_png_uses_backing_bytearrays(tmp_path: Path) -> None:
     for row in (buffer, memoryview(buffer)):
         assert png.write_grey([row]) == png.write_grey([levels])
 
+    class Once:
+        def __init__(self, samples: memoryview) -> None:
+            self.samples = samples
+            self.acquired = self.released = 0
+
+        def __buffer__(self, _flags: int) -> memoryview:
+            self.acquired += 1
+            if self.acquired > 1:
+                raise BufferError("pixel buffer already acquired")
+            return self.samples
+
+        def __release_buffer__(self, _view: memoryview) -> None:
+            self.released += 1
+
+    shared = Once(memoryview(levels))
+    assert png.write_grey([shared, shared]) == png.write_grey([levels, levels])
+    assert shared.acquired == shared.released == 1
+    strided = memoryview(levels)[::2]
+    rejected = Once(strided)
+    with pytest.raises(TypeError, match="bytes-like"):
+        png.write_grey([rejected])
+    assert rejected.acquired == rejected.released == 1
+    assert strided.tobytes() == levels[::2]
+    first, short, unread = (
+        Once(memoryview(row)) for row in (levels, levels[:1], levels)
+    )
+    with pytest.raises(ValueError, match="equal-length rows"):
+        png.write_grey([first, short, unread])
+    assert first.acquired == first.released == short.acquired == short.released == 1
+    assert unread.acquired == unread.released == 0
+
     class ClaimedBytes:
         probes = 0
 

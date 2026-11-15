@@ -54,6 +54,7 @@ from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli.args import (
     _VALUE_OPTIONS,
     _check_count,
+    _copyable_generation_options,
     _decimal_integer,
     _errors,
     _normalize_options,
@@ -69,6 +70,7 @@ from esolangs.cli.args import (
 from esolangs.cli.help import COMMANDS, USAGE, help_text
 from esolangs.cli.hints import (
     _as_argument,
+    _can_render_argument,
     _cli_error_text,
     _did_you_mean,
     _generate_hint,
@@ -408,6 +410,20 @@ def _generate(rest: list[str]) -> None:
     catalog = get_catalog()
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten, catalog=catalog)
     language, table = rest
+    encoding = getattr(sys.stderr, "encoding", None) or "utf-8"
+
+    def repair_options(target: LanguageDeclaration) -> list[str] | str:
+        tokens = [
+            *sorted(flags),
+            *(f"{name}={value}" for name, value in options.items()),
+            *(f"--set={pair}" for pair in set_pairs),
+        ]
+        if width is not None:
+            tokens.append(f"--width={format_integer(width)}")
+        return _copyable_generation_options(
+            tokens, settings_arguments, target.runtime.dialect_schema, encoding
+        )
+
     try:
         declaration = catalog.languages[catalog.resolve(language)]
         settings = _settings_of(settings_arguments, language=language, catalog=catalog)
@@ -438,13 +454,6 @@ def _generate(rest: list[str]) -> None:
         if isinstance(program, CompressedText) and "--plain" in flags:
             program.plain_chunks()  # Check the export budget before writing anything.
     except EsolangError as exc:
-        repair_options = [
-            *sorted(flags),
-            *(f"{name}={value}" for name, value in options.items()),
-            *(f"--set={pair}" for pair in set_pairs),
-        ]
-        if width is not None:
-            repair_options.append(f"--width={format_integer(width)}")
         _fail(_generate_hint(exc, language, table, repair_options, catalog=catalog))
     if (width is not None or bare or balance) and _layout_ignored(
         declaration, balance=balance
@@ -476,11 +485,23 @@ def _generate(rest: list[str]) -> None:
     with _errors():  # A raster renders here, and may exceed the pixel limit.
         _emit(artifact, plain="--plain" in flags, gzip=gzip, catalog=catalog)
     if isinstance(artifact, TemplateArtifact):
-        # Keep the original options when suggesting how to obtain runnable source.
+        original = shlex.join(before)
+        if _can_render_argument(original, encoding):
+            advice = f"fill them with: esolangs generate --bits <bits> {original}"
+        else:
+            options_text = repair_options(declaration)
+            operand = _as_argument(language, catalog=catalog, encoding=encoding)
+            if isinstance(options_text, str):
+                advice = f"rerun generation with --bits. {options_text}"
+            elif not _can_render_argument(operand, encoding):
+                advice = f"rerun with --bits and the original language {language!a}"
+            else:
+                flags_text = shlex.join(options_text)
+                tail = " ".join(part for part in (flags_text, operand, table) if part)
+                advice = f"fill them with: esolangs generate --bits <bits> {tail}"
         _diagnostic(
             f"note: this is a template with unfilled {artifact.bindings.char!r} "
-            f"input slots; fill them with: esolangs generate "
-            f"--bits <bits> {shlex.join(before)}\n"
+            f"input slots; {advice}\n"
         )
 
 

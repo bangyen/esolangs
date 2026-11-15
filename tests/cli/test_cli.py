@@ -6,6 +6,7 @@ import os
 import shlex
 import subprocess
 import sys
+from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -14,7 +15,7 @@ import pytest
 
 import esolangs
 from esolangs.cli import _generate, main
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, _table
 from tests.support.cli_support import _failure, _program, _refused, call_main, run_cli
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
@@ -361,7 +362,7 @@ class TestOutputAndAbridging:
 
     @pytest.mark.medium
     def test_template_fill_hint_keeps_export_flags(
-        self, capsysbinary, tmp_path
+        self, capsysbinary, tmp_path, monkeypatch
     ) -> None:
         language = first(parameterized=True, answer_mode="output")
         original = ["--gzip", "--width=3", language, "01"]
@@ -389,6 +390,8 @@ class TestOutputAndAbridging:
             result = run_cli("run", language, str(path))
             assert result.returncode == 0, result.stderr
             assert esolangs.read_answer(language, result.stdout) == bit
+
+        _check_dialect_repair(language, capsysbinary, monkeypatch)
 
     def test_a_trailing_newline_is_added_only_for_a_terminal(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -420,6 +423,89 @@ class TestOutputAndAbridging:
                 assert output.err.rstrip().endswith(
                     f"redirect stdout to a file{alternative}"
                 )
+
+
+def _check_dialect_repair(language, capsysbinary, monkeypatch) -> None:
+    original = esolangs.Language(language)
+    declaration = original.catalog.languages[language]
+    schema = esolangs.DialectSchema(
+        language,
+        {"mode": ("plain", "é", "été"), "radix": (1, 2)},
+        {"mode": "plain", "radix": 1},
+    )
+    observed = []
+
+    def validate(**choices):
+        observed.append(choices)
+
+    runtime = replace(declaration.runtime, dialect_schema=schema, dialect=validate)
+    scope = esolangs.Catalog([replace(declaration, runtime=runtime)])
+    monkeypatch.setattr(_table, "CATALOG", scope)
+
+    class Diagnostic(StringIO):
+        def __init__(self, codec):
+            super().__init__()
+            self.codec = codec
+
+        @property
+        def encoding(self):
+            return self.codec
+
+        def write(self, data):
+            data.encode(self.codec)
+            return super().write(data)
+
+    for codec in ("ascii", "utf-8"):
+        for values, expected in (
+            (["--settings", '{"mode":"é"}'], {"mode": "é", "radix": 1}),
+            (
+                [
+                    "--settings",
+                    '{"mode":"plain"}',
+                    "--set",
+                    "mode=é",
+                    "--set",
+                    "radix=0x2",
+                    "--set",
+                    "mode=été",
+                ],
+                {"mode": "été", "radix": 2},
+            ),
+        ):
+            for swapped in (False, True):
+                stderr = Diagnostic(codec)
+                with monkeypatch.context() as active:
+                    active.setattr(sys, "stderr", stderr)
+                    if swapped:
+                        with pytest.raises(SystemExit) as exited:
+                            _generate(["--bits", "1", *values, "01", language])
+                        assert exited.value.code == 2
+                        prefix = "first: "
+                    else:
+                        _generate([*values, language, "01"])
+                        prefix = "fill them with: "
+                capsysbinary.readouterr()
+                advice = stderr.getvalue().split(prefix, 1)[1]
+                repaired = [
+                    "1" if arg == "<bits>" else arg for arg in shlex.split(advice)
+                ]
+                assert repaired[:2] == ["esolangs", "generate"]
+                if codec == "ascii":
+                    assert advice.isascii()
+                observed.clear()
+                _generate(repaired[2:])
+                assert observed[-1] == expected
+                source = capsysbinary.readouterr().out
+                assert original.read_answer(original.run(source).output) == "1"
+
+    with monkeypatch.context() as active:
+        stderr = Diagnostic("ascii")
+        active.setattr(sys, "stderr", stderr)
+        with pytest.raises(SystemExit) as exited:
+            _generate(["--scale", "\u0661", "01", language])
+        assert exited.value.code == 2
+        assert "first: esolangs generate" not in stderr.getvalue()
+        assert ascii("--scale=\u0661") in stderr.getvalue()
 
 
 class TestGenerateArgumentTypes:

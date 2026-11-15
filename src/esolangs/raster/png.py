@@ -8,6 +8,7 @@ import struct
 import sys
 import zlib
 from collections.abc import Buffer, Iterator, Sequence
+from contextlib import ExitStack
 from json import JSONDecoder
 from typing import TYPE_CHECKING, Any
 
@@ -427,37 +428,58 @@ def _write(image: Any, mode: str, width: int, height: int, raw: bytes) -> bytes:
     return output.getvalue()
 
 
-def _grey_width(row: Buffer) -> int:
-    """Measure the same backing bytes that the writer will encode."""
-    if _has_backing_type(row, bytearray):
-        return bytearray.__len__(row)
-    if _has_backing_type(row, bytes):
-        return bytes.__len__(row)
-    with memoryview(row) as buffer:
-        return buffer.nbytes
+def _grey_rows(
+    pixels: Sequence[Buffer], buffers: ExitStack
+) -> tuple[int, list[bytes | bytearray | memoryview]] | None:
+    """Bind rectangular rows, acquiring each generic buffer at most once."""
+    seen: dict[int, tuple[Buffer, memoryview]] = {}
+    rows: list[bytes | bytearray | memoryview] = []
+    width = 0
+    for row in pixels:
+        if _has_backing_type(row, bytearray):
+            samples: bytes | bytearray | memoryview = row
+            size = bytearray.__len__(row)
+        elif _has_backing_type(row, bytes):
+            samples = row
+            size = bytes.__len__(row)
+        else:
+            bound = seen.get(id(row))
+            if bound is None:
+                bound = row, buffers.enter_context(memoryview(row))
+                seen[id(row)] = bound
+            samples = bound[1]
+            size = samples.nbytes
+        if size == 0 or (width and size != width):
+            return None
+        width = size
+        rows.append(samples)
+    return (width, rows) if rows else None
 
 
 def write_grey(pixels: list[bytearray]) -> bytes:
     """Encode rectangular greyscale rows as PNG bytes."""
     if type(pixels) is not list and _has_backing_type(pixels, list):
         pixels = list(list.__iter__(pixels))
-    height = len(pixels)
-    width = _grey_width(pixels[0]) if height else 0
-    if not height or not width or any(_grey_width(row) != width for row in pixels):
-        raise syntax_error(
-            "expected a non-empty 2-D greyscale image with equal-length rows",
-            "provide nonempty, equal-width rows of greyscale pixels",
+    with ExitStack() as buffers:
+        bound = _grey_rows(pixels, buffers)
+        if bound is None:
+            raise syntax_error(
+                "expected a non-empty 2-D greyscale image with equal-length rows",
+                "provide nonempty, equal-width rows of greyscale pixels",
+            )
+        width, rows = bound
+        height = len(rows)
+        image = _require_image()
+        _check_pixel_limit(width, height, image.MAX_IMAGE_PIXELS)
+        parts = (
+            _backing_bytes(row)
+            if type(row) not in (bytes, bytearray)
+            and (_has_backing_type(row, bytes) or _has_backing_type(row, bytearray))
+            else row
+            for row in rows
         )
-    image = _require_image()
-    _check_pixel_limit(width, height, image.MAX_IMAGE_PIXELS)
-    parts = (
-        _backing_bytes(row)
-        if type(row) not in (bytes, bytearray)
-        and issubclass(type(row), (bytes, bytearray))
-        else row
-        for row in pixels
-    )
-    return _write(image, "L", width, height, b"".join(parts))
+        raw = b"".join(parts)
+    return _write(image, "L", width, height, raw)
 
 
 def write_grey_file(path: str, pixels: list[bytearray]) -> None:

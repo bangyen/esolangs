@@ -14,11 +14,17 @@ from contextlib import contextmanager
 from esolangs._dialect import DialectSchema
 from esolangs._language import Language
 from esolangs.cli.help import command_synopsis
-from esolangs.cli.hints import _as_argument, _cli_error_text, _did_you_mean, _is_option
+from esolangs.cli.hints import (
+    _as_argument,
+    _can_render_argument,
+    _cli_error_text,
+    _did_you_mean,
+    _is_option,
+)
 from esolangs.cli.io import _fail
 from esolangs.exceptions import EsolangError
 from esolangs.registry import Catalog, get_catalog
-from esolangs.runtime._json import record_loads
+from esolangs.runtime._json import record_dumps, record_loads
 from esolangs.runtime._validate import check_scale, check_timeout
 from esolangs.runtime.memory import _hit_digit_cap, format_integer, parse_integer
 from esolangs.settings import DialectSettings
@@ -405,10 +411,7 @@ def _set_value(key: str, raw: str, schema: DialectSchema | None) -> int | str:
         and key in schema.choices
         and type(schema.choices[key][0]) is int
     ):
-        try:
-            return _base_zero_integer(raw)
-        except ValueError:
-            _fail(f"--set {key} needs an integer, got {raw!r}")
+        return _base_zero_integer(raw)
     return raw
 
 
@@ -469,8 +472,45 @@ def _settings_of(
         catalog = get_catalog(catalog)
         bound = Language(language, catalog=catalog)
         schema = catalog.languages[bound.name].runtime.dialect_schema
-        overrides = {key: _set_value(key, raw, schema) for key, raw in pairs.items()}
+        overrides = {}
+        for key, raw in pairs.items():
+            try:
+                overrides[key] = _set_value(key, raw, schema)
+            except ValueError:
+                _fail(f"--set {key} needs an integer, got {raw!r}")
         choices = values | overrides
         return bound.settings(**choices)  # type: ignore[arg-type]
     except EsolangError as exc:
         _fail(exc)
+
+
+def _copyable_generation_options(
+    options: list[str],
+    settings: _SettingsArguments | None,
+    schema: DialectSchema | None,
+    encoding: str,
+) -> list[str] | str:
+    """Keep runnable flags or explain why the original option must be reused."""
+    hidden = [
+        argument for argument in options if not _can_render_argument(argument, encoding)
+    ]
+    if not hidden:
+        return options
+    guidance = f"Keep the original option {hidden[0]!a} when rerunning the command."
+    if settings is None or any(
+        not argument.startswith(("--settings=", "--set=")) for argument in hidden
+    ):
+        return guidance
+    values, overrides = settings
+    replaced: tuple[str, ...] = ("--settings=",)
+    try:
+        if any(argument.startswith("--set=") for argument in hidden):
+            # The parser has already applied last-wins to each key.
+            values = values | {
+                key: _set_value(key, raw, schema) for key, raw in overrides.items()
+            }
+            replaced = ("--settings=", "--set=")
+        encoded = f"--settings={record_dumps(values)}"
+    except (ValueError, RecursionError):
+        return guidance
+    return [*(arg for arg in options if not arg.startswith(replaced)), encoded]

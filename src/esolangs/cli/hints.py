@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shlex
 import sys
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from contextlib import suppress
 from difflib import get_close_matches
 
@@ -15,7 +15,12 @@ from esolangs.exceptions import (
     TemplateError,
     UnknownLanguageError,
 )
-from esolangs.registry import SUGGESTION_CUTOFF, Catalog, get_catalog
+from esolangs.registry import (
+    SUGGESTION_CUTOFF,
+    Catalog,
+    LanguageDeclaration,
+    get_catalog,
+)
 from esolangs.runtime.source_hints import error_text
 
 #: A run stopped by its ``--execution-timeout``, following timeout(1).  Distinct from
@@ -64,7 +69,7 @@ def _generate_hint(
     exc: EsolangError,
     language: str,
     table: str,
-    options: list[str],
+    options_for: Callable[[LanguageDeclaration], list[str] | str],
     *,
     catalog: Catalog,
 ) -> str:
@@ -79,7 +84,7 @@ def _generate_hint(
             f"when running {target}",
         )
     if isinstance(exc, UnknownLanguageError):
-        message += _swapped_hint(language, table, options, catalog=catalog)
+        message += _swapped_hint(language, table, options_for, catalog=catalog)
     return message + notes
 
 
@@ -145,7 +150,11 @@ def _looks_like_a_table(value: str) -> bool:
 
 
 def _swapped_hint(
-    language: str, table: str, options: list[str], *, catalog: Catalog
+    language: str,
+    table: str,
+    options_for: Callable[[LanguageDeclaration], list[str] | str],
+    *,
+    catalog: Catalog,
 ) -> str:
     """Return a hint when the language and truth-table arguments look swapped.
 
@@ -155,13 +164,19 @@ def _swapped_hint(
         return ""
     guidance = f"; {language!r} looks like a truth table -- the language comes first"
     try:
-        catalog.resolve(table)
+        declaration = catalog.languages[catalog.resolve(table)]
     except UnknownLanguageError as exc:
         return f"{guidance}. {exc}"
+    options = options_for(declaration)
+    if isinstance(options, str):
+        return f"{guidance}. {options}"
     flags = "".join(f"{shlex.quote(option)} " for option in options)
+    encoding = getattr(sys.stderr, "encoding", None) or "utf-8"
     operand = _as_argument(
-        table, catalog=catalog, force_separator=table.startswith("-")
+        table, catalog=catalog, encoding=encoding, force_separator=table.startswith("-")
     )
+    if not _can_render_argument(operand, encoding):
+        return f"{guidance}. Use the original language operand {table!a}."
     return f"{guidance}: esolangs generate {flags}{operand} {language}"
 
 
