@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from io import BufferedReader, BufferedRWPair, FileIO, IOBase
 from math import ceil
 from os import PathLike, fspath
-from pathlib import Path
+from pathlib import Path, PosixPath, WindowsPath
 from string import ascii_uppercase
 from tempfile import TemporaryDirectory
 from time import monotonic
@@ -176,12 +176,16 @@ class _ExplicitPath:
     def __str__(self) -> str:
         return self.spelling
 
-    def anchor_destination(self) -> "_ExplicitPath":
+    def anchor_destination(
+        self, directory: "_SourceDirectory | None"
+    ) -> "_ExplicitPath":
         """Freeze the destination spelling, leaving errors to staging."""
         if self._destination is not None:
             return self
         try:
-            return _ExplicitPath(self.spelling, _anchored_spelling(self.spelling))
+            return _ExplicitPath(
+                self.spelling, _anchored_spelling(self.spelling, directory)
+            )
         except OSError as error:
             return _ExplicitPath(self.spelling, error)
 
@@ -268,6 +272,24 @@ def _source_directory(spelling: str | None) -> _SourceDirectory | None:
     ):
         return None
     return _SourceDirectory(spelling)
+
+
+def _path_directory(path: str | PathLike[str]) -> _SourceDirectory | None:
+    """Capture path bases without calling an arbitrary path provider."""
+    spelling = None
+    if _has_backing_type(path, _ExplicitPath):
+        spelling = path.spelling
+    elif _has_backing_type(path, str):
+        spelling = str.__str__(path)
+    elif type(path) in (PosixPath, WindowsPath):
+        spelling = str(path)
+    return _source_directory(spelling)
+
+
+def destination_path(path: str | PathLike[str]) -> _ExplicitPath:
+    """Bind a destination relative to the caller's directory."""
+    directory = _path_directory(path)
+    return explicit_path(path).anchor_destination(directory)
 
 
 def _anchored_spelling(path: str, directory: _SourceDirectory | None = None) -> str:

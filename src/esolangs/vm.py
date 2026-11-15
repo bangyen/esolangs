@@ -20,9 +20,12 @@ sub-protocol.  :func:`run_until_halt` proves nothing.
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable, Hashable
 from dataclasses import replace
 from functools import partial
+from inspect import getattr_static
+from types import FunctionType, ModuleType
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 import esolangs._cycles as _cycles
@@ -56,6 +59,7 @@ from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as _IpShape
 from esolangs.runtime._drive import (
     PeriodicMachine,
+    _check_snapshot_hash,
     _SnapshotUnavailableError,
     drive_periodic,
     drive_until_repeat,
@@ -150,6 +154,7 @@ class _DelegatingVM:
         self.language = language
         self._io = _scripted_io(stdin, io_factory)
         runtime = catalog.languages[language].runtime
+        self._runtime = runtime
         self._capabilities = runtime.capabilities
         self._random = runtime.random
         # None denotes other completion policies.
@@ -259,11 +264,56 @@ class _DelegatingVM:
                 stride,
                 policy=Completion.PERIODIC,
                 step=step,
+                check_each_snapshot=not self._uses_installed_snapshots(),
             )
         return CompletionReport(Completion.PERIODIC, cycle)
 
+    def _uses_installed_snapshots(self) -> bool:
+        """Recognize shipped stepping and snapshot code for the proof fast path."""
+        from esolangs.registry._table import LANGUAGES
+
+        declaration = LANGUAGES.get(self.language)
+        if (
+            declaration is None
+            or declaration.runtime is not self._runtime
+            or self._runtime.interpreter is None
+        ):
+            return False
+        module = f"esolangs.languages.{self._runtime.interpreter}.interpreter"
+        machine_type = type(self._machine)
+        if type(machine_type) is not type:
+            return False
+        origin = machine_type.__module__
+        if type(origin) is not str or (
+            origin != module and not origin.startswith(f"{module}.")
+        ):
+            return False
+        loaded = sys.modules.get(origin)
+        if (
+            type(loaded) is not ModuleType
+            or vars(loaded).get(machine_type.__name__) is not machine_type
+        ):
+            return False
+        for name in ("step", "snapshot"):
+            hook = getattr_static(self._machine, name, None)
+            if type(hook) is not FunctionType:
+                return False
+            origin = hook.__module__
+            if type(origin) is not str or (
+                origin != module and not origin.startswith(f"{module}.")
+            ):
+                return False
+            loaded = sys.modules.get(origin)
+            if type(loaded) is not ModuleType or hook.__globals__ is not vars(loaded):
+                return False
+        return True
+
     def snapshot(self) -> Hashable:
-        """Return the underlying machine's complete state."""
+        """Return the underlying machine's complete hashable state."""
+        return _check_snapshot_hash(self._snapshot_value(), ArgumentError)
+
+    def _snapshot_value(self) -> Hashable:
+        """Read a state for a consumer that handles its own evidence validation."""
         snapshot: Callable[[], Hashable] | None
         try:
             snapshot = self._machine.snapshot

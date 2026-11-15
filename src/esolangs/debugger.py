@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Hashable, Sequence
 from inspect import signature
+from types import MethodType
 from typing import get_args
 
 from esolangs.exceptions import ArgumentError
@@ -17,13 +18,13 @@ from esolangs.registry._catalog import Catalog
 from esolangs.runtime._capabilities import IpShape
 from esolangs.runtime._controller import ExecutionController as _ExecutionController
 from esolangs.runtime._controller import StopReason as StopReason
-from esolangs.runtime._drive import _SnapshotUnavailableError
+from esolangs.runtime._drive import _check_snapshot_hash, _SnapshotUnavailableError
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_whole
 from esolangs.runtime._vm_protocol import VM
 from esolangs.settings import DialectSettings
-from esolangs.vm import make_vm
+from esolangs.vm import _DelegatingVM, make_vm
 
 __all__ = [
     "STOP_REASONS",
@@ -127,10 +128,19 @@ class Debugger(_ExecutionController):
         (Cyclic tag records the dump in its snapshot). The underlying
         machine must provide ``snapshot()``.
         """
+        return _check_snapshot_hash(self._snapshot_value(), ArgumentError)
+
+    def _snapshot_value(self) -> Hashable:
         vm = self.vm
         snapshot: Callable[[], Hashable] | None = getattr(vm, "snapshot", None)
         if not callable(snapshot):
             raise _SnapshotUnavailableError(vm)
+        if (
+            isinstance(vm, _DelegatingVM)
+            and type(snapshot) is MethodType
+            and snapshot.__func__ is _DelegatingVM.snapshot
+        ):
+            return vm._snapshot_value()  # noqa: SLF001 - delegate the state lookup
         return snapshot()
 
     def break_at(self, ip: int | tuple[int, ...]) -> None:

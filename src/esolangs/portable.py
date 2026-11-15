@@ -34,7 +34,7 @@ from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failur
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
-from esolangs.runtime._files import explicit_path, reserve_staged, write_staged
+from esolangs.runtime._files import destination_path, reserve_staged, write_staged
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._source import (
     ProgramSource,
@@ -158,7 +158,7 @@ def to_file(
     if type(normalize) is not bool:
         raise ArgumentError("normalize must be a boolean")
     try:
-        target = explicit_path(path).anchor_destination()
+        target = destination_path(path)
     except EsolangError:
         raise
     except OSError as error:

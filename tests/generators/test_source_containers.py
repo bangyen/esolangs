@@ -647,6 +647,33 @@ def test_export_anchors_relative_destination_before_callbacks(
     assert unrelated.read_bytes() == b"+++."
     assert api.run(destination).output == "\x01"
 
+    class Destination(os.PathLike[str]):
+        def __init__(self, path: str) -> None:
+            self.path = path
+            self.calls = 0
+
+        def __fspath__(self) -> str:
+            self.calls += 1
+            os.chdir(other)
+            return self.path
+
+    compressed = esolangs.CompressedText.from_chunks(["+."])
+    for name in (target, str(destination)):
+        for archive in (False, True):
+            monkeypatch.chdir(caller)
+            destination.write_bytes(b"++.")
+            provider = Destination(name)
+            if archive:
+                compressed.to_file(provider)
+                assert destination.read_bytes() == compressed.to_gzip()
+            else:
+                api.to_file("+.", provider)
+                assert destination.read_bytes() == b"+."
+            assert provider.calls == 1
+            assert Path.cwd().samefile(other)
+            assert unrelated.read_bytes() == b"+++."
+            assert api.run(destination).output == "\x01"
+
     declaration = LANGUAGES[REFERENCE]
     schema = esolangs.DialectSchema(
         REFERENCE, {"mode": ("hold", "move")}, {"mode": "hold"}

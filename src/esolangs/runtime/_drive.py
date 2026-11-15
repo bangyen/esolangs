@@ -41,6 +41,18 @@ class _SnapshotUnavailableError(ArgumentError):
         self.vm = vm
 
 
+_SNAPSHOT_HASH_ERROR = "snapshot() must return a hashable state"
+
+
+def _check_snapshot_hash(state: Hashable, error_type: type[Exception]) -> Hashable:
+    """Validate the returned state independently of the snapshot hook itself."""
+    try:
+        hash(state)
+    except TypeError as error:
+        raise error_type(_SNAPSHOT_HASH_ERROR) from error
+    return state
+
+
 def _repeat_hook(machine: object, name: str) -> Callable[[], Hashable]:
     hook: Callable[[], Hashable] | None = getattr(machine, name, None)
     if not callable(hook):
@@ -60,7 +72,10 @@ def finalize(
     if policy is Completion.PERIODIC:
         if cycle is None:
             raise ValueError("periodic completion needs boundary-cycle evidence")
-        if _repeat_hook(machine, "snapshot")() != cycle.state:
+        state = _repeat_hook(machine, "snapshot")()
+        if state is not cycle.state:
+            _check_snapshot_hash(state, InterpreterLimitError)
+        if state != cycle.state:
             raise ValueError("boundary-cycle evidence no longer matches the machine")
         _repeat_hook(machine, "interrupt")()
         machine.step()
@@ -83,6 +98,15 @@ def drive(machine: Machine, *, policy: Completion) -> CompletionReport:
     return POST_HALT_REPORT if policy is Completion.POST_HALT else HALTED_REPORT
 
 
+def _repeat_evidence(
+    state: Hashable, first_pass: int, repeat_pass: int, commands_per_pass: int
+) -> BoundaryCycle:
+    try:
+        return BoundaryCycle(state, first_pass, repeat_pass, commands_per_pass)
+    except TypeError as error:
+        raise InterpreterLimitError(_SNAPSHOT_HASH_ERROR) from error
+
+
 def drive_until_repeat(
     machine: SnapshotMachine, *, step: Callable[[], None] | None = None
 ) -> CompletionReport:
@@ -101,11 +125,16 @@ def drive_until_repeat(
                 "repeat execution requires a callable snapshot()"
             )
         state = snapshot()
-        if state in seen:
-            cycle = BoundaryCycle(state, history.index(state), len(history), 1)
+        try:
+            repeated = state in seen
+            if not repeated:
+                seen.add(state)
+        except TypeError:
+            _check_snapshot_hash(state, InterpreterLimitError)
+            raise
+        if repeated:
+            cycle = _repeat_evidence(state, history.index(state), len(history), 1)
             return CompletionReport(Completion.PERIODIC, cycle)
-        # Ordinary EOF runs keep set lookups; index only on an actual repeat.
-        seen.add(state)
         history.append(state)
         take_step()
     return HALTED_REPORT
@@ -117,13 +146,16 @@ def drive_periodic(
     *,
     policy: Completion,
     step: Callable[[], None] | None = None,
+    check_each_snapshot: bool = True,
 ) -> BoundaryCycle:
     """Detect a boundary cycle with Brent's rule; the stride is one whole pass."""
     commands_per_pass = check_whole(commands_per_pass, "commands_per_pass")
     if policy is not Completion.PERIODIC:
         raise ValueError("periodic driving requires periodic completion")
     take_step = machine.step if step is None else step
-    anchor = _repeat_hook(machine, "snapshot")()
+    anchor = _check_snapshot_hash(
+        _repeat_hook(machine, "snapshot")(), InterpreterLimitError
+    )
     first_pass = 0
     repeat_pass = 0
     power = 1
@@ -136,11 +168,13 @@ def drive_periodic(
         state = _repeat_hook(machine, "snapshot")()
         if state == anchor:
             break
+        if check_each_snapshot or passes == power:
+            _check_snapshot_hash(state, InterpreterLimitError)
         if passes == power:
             anchor = state
             first_pass = repeat_pass
             power *= 2
             passes = 0
-    cycle = BoundaryCycle(state, first_pass, repeat_pass, commands_per_pass)
+    cycle = _repeat_evidence(state, first_pass, repeat_pass, commands_per_pass)
     finalize(machine, cycle=cycle, policy=policy)
     return cycle

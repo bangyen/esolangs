@@ -163,7 +163,19 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
             assert diagnostic in str(outcome.error)
             assert outcome.observation == outcome.error.observation == expected
         hooks[name] = valid
+    for snapshot in (lambda: [0], lambda: ([0],)):
+        hooks["snapshot"] = snapshot
+        outcome = prepared.execute(stdin="A", limits=limits)
+        assert isinstance(outcome.error, esolangs.InterpreterLimitError)
+        assert "hashable state" in str(outcome.error)
+        assert (
+            outcome.observation
+            == outcome.error.observation
+            == esolangs.ExecutionResult("A", 1, 1, 0, steps=0)
+        )
+    hooks["snapshot"] = lambda: (0,)
     observed = prepared.run(stdin="A", limits=limits)
+    assert observed.completion.cycle.state == (0,)
     assert (observed.output, observed.steps, observed.completion.kind) == (
         "A",
         1,

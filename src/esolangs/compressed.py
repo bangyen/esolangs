@@ -13,7 +13,7 @@ from typing import ClassVar
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
 from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
-from esolangs.runtime._files import explicit_path, write_staged
+from esolangs.runtime._files import destination_path, write_staged
 from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_width
 from esolangs.runtime.memory import repr_value
 from esolangs.runtime.source_hints import syntax_error
@@ -289,7 +289,7 @@ class CompressedText:
         """
         with _track_acquisition_failures():
             try:
-                target = explicit_path(path)
+                target = destination_path(path)
             except (ArgumentError, OSError) as exc:
                 if _is_acquisition_failure(exc):
                     raise

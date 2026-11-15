@@ -9,7 +9,7 @@ from inspect import getattr_static, signature
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
-from esolangs.runtime._drive import _SnapshotUnavailableError
+from esolangs.runtime._drive import _check_snapshot_hash, _SnapshotUnavailableError
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchFailure, BranchProof, CycleDecision
 from esolangs.runtime._validate import _has_backing_type, check_whole
@@ -249,9 +249,39 @@ class _ProofSnapshotUnavailableError(TypeError):
     """The supplied VM cannot provide exact command-boundary state."""
 
 
-def _proof_snapshot(machine: _StepMachine, adapter: object) -> Hashable:
-    try:
+def _proof_snapshot_reader(
+    machine: _StepMachine,
+) -> tuple[Callable[[], Hashable], bool]:
+    """Choose a state reader and whether each returned snapshot needs checking."""
+    from esolangs.debugger import Debugger
+    from esolangs.vm import _DelegatingVM
+
+    reader = getattr_static(machine, "snapshot", None)
+    if isinstance(machine, _DelegatingVM) and reader is _DelegatingVM.snapshot:
+        return (
+            machine._snapshot_value,  # noqa: SLF001 - proof owns state validation
+            not machine._uses_installed_snapshots(),  # noqa: SLF001
+        )
+    if isinstance(machine, Debugger) and reader is Debugger.snapshot:
+        wrapped = machine.vm
+        if isinstance(wrapped, _DelegatingVM) and (
+            getattr_static(wrapped, "snapshot", None) is _DelegatingVM.snapshot
+        ):
+            return (
+                wrapped._snapshot_value,  # noqa: SLF001 - proof owns state validation
+                not wrapped._uses_installed_snapshots(),  # noqa: SLF001
+            )
+        return machine._snapshot_value, True  # noqa: SLF001 - proof checks the state
+
+    def read_live() -> Hashable:
         return machine.snapshot()
+
+    return read_live, True
+
+
+def _proof_snapshot(reader: Callable[[], Hashable], adapter: object) -> Hashable:
+    try:
+        state = reader()
     except _SnapshotUnavailableError as error:
         if error.vm is not adapter:
             raise
@@ -261,6 +291,7 @@ def _proof_snapshot(machine: _StepMachine, adapter: object) -> Hashable:
             ),
             "provide a machine with a snapshot of its complete state",
         ) from error
+    return state
 
 
 def _drive_halt_or_cycle(
@@ -327,7 +358,10 @@ def _drive_halt_or_cycle(
         record_commands(0)
     if halted_before:
         return CycleDecision(halts=True, commands=0) if evidence else True
-    tortoise = _proof_snapshot(machine, adapter)
+    reader, check_each_snapshot = _proof_snapshot_reader(machine)
+    tortoise = _check_snapshot_hash(
+        _proof_snapshot(reader, adapter), _ProofSnapshotUnavailableError
+    )
     first_step = 0
     power = 1
     length = 0
@@ -352,7 +386,12 @@ def _drive_halt_or_cycle(
         halted: bool = machine.halted
         if halted:
             return CycleDecision(halts=True, commands=steps) if evidence else True
-        if _proof_snapshot(machine, adapter) == tortoise:
+        state = _proof_snapshot(reader, adapter)
+        if check_each_snapshot:
+            _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
+        if state == tortoise:
+            if not check_each_snapshot and state is not tortoise:
+                _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
             return (
                 CycleDecision(
                     halts=False,
@@ -363,7 +402,9 @@ def _drive_halt_or_cycle(
                 else False
             )
         if length == power:
-            tortoise = _proof_snapshot(machine, adapter)
+            if not check_each_snapshot:
+                _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
+            tortoise = state
             first_step = steps
             power *= 2
             length = 0

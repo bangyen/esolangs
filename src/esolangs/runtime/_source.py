@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
-from pathlib import PosixPath, WindowsPath
 from typing import IO, TYPE_CHECKING, cast
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
@@ -19,8 +18,7 @@ from esolangs.outcomes import (
 from esolangs.raster import Raster
 from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._files import (
-    _ExplicitPath,
-    _source_directory,
+    _path_directory,
     _SourceDirectory,
     explicit_path,
     read_snapshot,
@@ -68,14 +66,7 @@ class _SourcePath:
     def capture(cls, path: str | os.PathLike[str]) -> _SourcePath:
         if _has_backing_type(path, cls):
             return path
-        spelling = None
-        if _has_backing_type(path, _ExplicitPath):
-            spelling = path.spelling
-        elif _has_backing_type(path, str):
-            spelling = str.__str__(path)
-        elif type(path) in (PosixPath, WindowsPath):
-            spelling = str(path)
-        return cls(path, _source_directory(spelling))
+        return cls(path, _path_directory(path))
 
     def bind(self) -> _SourcePath:
         """Validate the explicit file argument at the public loader's boundary."""

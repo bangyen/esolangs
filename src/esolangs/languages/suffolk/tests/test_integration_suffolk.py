@@ -217,14 +217,19 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     prepared = scoped.prepare("<")
     limits = esolangs.ExecutionLimits(max_steps=2)
     observed = esolangs.ExecutionResult("A", 1, 1, 0, steps=0)
-    for fields in ({}, {"snapshot": 0}):
+    for fields, diagnostic in (
+        ({}, "callable snapshot"),
+        ({"snapshot": 0}, "callable snapshot"),
+        ({"snapshot": lambda: [0]}, "hashable state"),
+        ({"snapshot": lambda: ([0],)}, "hashable state"),
+    ):
         custom = SimpleNamespace(step=lambda: None, halted=False, **fields)
         for outcome in (
             scoped.execute("<", stdin="A", limits=limits),
             prepared.execute(stdin="A", limits=limits),
         ):
             assert isinstance(outcome.error, esolangs.InterpreterLimitError)
-            assert "callable snapshot" in str(outcome.error)
+            assert diagnostic in str(outcome.error)
             assert outcome.observation == outcome.error.observation == observed
         custom.halted = True
         assert prepared.run(stdin="A", limits=limits) == replace(
@@ -241,12 +246,28 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
         @property
         def snapshot(self):
             index = self.index
-            return lambda: index % 2
+            return lambda: (index % 2,)
 
     custom = Alternating()
     stepped = prepared.run(stdin="A", limits=limits)
     assert stepped.output == "A"
     assert stepped.steps == stepped.completion.cycle.repeat_pass == 2
+
+    original = TypeError("snapshot comparison refused")
+
+    class RefusedComparison:
+        def __hash__(self):
+            return 0
+
+        def __eq__(self, _other):
+            raise original
+
+    custom = SimpleNamespace(
+        step=lambda: None, halted=False, snapshot=RefusedComparison
+    )
+    with pytest.raises(TypeError, match="snapshot comparison") as caught:
+        prepared.execute(stdin="A", limits=limits)
+    assert caught.value is original
 
     monkeypatch.setattr(
         vm,

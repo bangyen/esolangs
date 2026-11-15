@@ -15,7 +15,9 @@ from esolangs.runtime._json import record_dumps
 from esolangs.runtime.memory import repr_value
 
 
-def _capability_examples(catalog: Catalog | None = None) -> tuple[str, str]:
+def _capability_examples(
+    catalog: Catalog | None = None, *, encoding: str = "utf-8"
+) -> tuple[str, str]:
     """Return supported template and dialect commands, or empty examples."""
     templates = ""
     dialects = ""
@@ -25,7 +27,7 @@ def _capability_examples(catalog: Catalog | None = None) -> tuple[str, str]:
             continue
         if lang.backend.max_inputs is not None and lang.backend.max_inputs < 2:
             continue
-        quoted = _as_argument(name, catalog=catalog, encoding="utf-8")
+        quoted = _as_argument(name, catalog=catalog, encoding=encoding)
         if not templates and lang.parameterized:
             templates = f"  esolangs generate --bits 10 {quoted} 0110"
         if not dialects and lang.runtime.dialect_schema:
@@ -34,10 +36,13 @@ def _capability_examples(catalog: Catalog | None = None) -> tuple[str, str]:
                 settings = shlex.quote(record_dumps({key: value}))
                 operand = repr_value(value) if isinstance(value, int) else value
                 setting = shlex.quote(f"{key}={operand}")
-                dialects = (
-                    f"  esolangs generate --settings {settings} {quoted} 0110\n"
-                    f"  esolangs generate --set {setting} {quoted} 0110"
-                )
+                dialects = f"  esolangs generate --settings {settings} {quoted} 0110"
+                try:
+                    setting.encode(encoding)
+                except UnicodeEncodeError:
+                    pass  # The JSON example already escapes this choice.
+                else:
+                    dialects += f"\n  esolangs generate --set {setting} {quoted} 0110"
                 break
     return templates, dialects
 
@@ -317,13 +322,15 @@ examples:
 COMMANDS = tuple(_HELP)
 
 
-def help_text(command: str, *, catalog: Catalog | None = None) -> str:
+def help_text(
+    command: str, *, catalog: Catalog | None = None, encoding: str = "utf-8"
+) -> str:
     """Render one command's help, loading synthesis for generation help."""
     text = _HELP[command]
     if command == "generate":
         from esolangs.generation.wrap import DEFAULT_WIDTH
 
-        template, dialects = _capability_examples(catalog)
+        template, dialects = _capability_examples(catalog, encoding=encoding)
         text = (
             text.replace("{DEFAULT_WIDTH}", str(DEFAULT_WIDTH))
             .replace("{_TEMPLATE_EXAMPLE}", template)

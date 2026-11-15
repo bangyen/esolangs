@@ -292,20 +292,100 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
         [replace(declaration, runtime=runtime, contract=contract)]
     ).bind(api.name)
     artifact = termination.from_source(source)
-    for fields in ({}, {"snapshot": 0}):
+    for fields, diagnostic in (
+        ({}, "callable snapshot"),
+        ({"snapshot": 0}, "callable snapshot"),
+        ({"snapshot": lambda: [0]}, "hashable state"),
+        ({"snapshot": lambda: ([0],)}, "hashable state"),
+    ):
         machine = SimpleNamespace(halted=False, step=lambda: None, **fields)
-        with pytest.raises(
-            esolangs.InterpreterLimitError, match="callable snapshot"
-        ) as caught:
+        with pytest.raises(esolangs.InterpreterLimitError, match=diagnostic) as caught:
             termination.evaluate(artifact, [1], limits=active)
         assert caught.value.observation == esolangs.ExecutionResult(
             "1", 1, 1, 0, steps=0
         )
         assert caught.value.partial_output == "1"
-    machine.snapshot = lambda: 0
+        if diagnostic == "hashable state":
+            debug = prepared.make_debugger(stdin="A")
+            for live in (debug, debug.vm):
+                with pytest.raises(esolangs.ArgumentError, match=diagnostic):
+                    live.snapshot()
+                with pytest.raises(TypeError, match=diagnostic):
+                    vm.run_until_halt_or_cycle(live, limit=1)
+            assert debug.run(limits=active) == "max_steps"
+
+    machine.snapshot = lambda: (0,)
+    debug = prepared.make_debugger(stdin="A")
+    assert debug.snapshot() == debug.vm.snapshot() == (0,)
+    assert vm.run_until_halt_or_cycle(debug, limit=1) is False
     evaluation = termination.evaluate(artifact, [1], limits=active)
     assert evaluation.termination.halts is False
+    assert evaluation.termination.cycle.state == (0,)
     assert evaluation.observation == esolangs.ExecutionResult("1", 1, 1, 0, steps=1)
+
+    class Intermediate:
+        index = 0
+
+        def step(self):
+            self.index += 1
+
+        @property
+        def halted(self):
+            return self.index == 3
+
+        def snapshot(self):
+            return ([2],) if self.index == 2 else (self.index,)
+
+    machine = Intermediate()
+    debug = prepared.make_debugger(stdin="A")
+    with pytest.raises(TypeError, match="hashable state"):
+        vm.run_until_halt_or_cycle(debug, limit=3)
+    assert debug.observation == replace(expected, steps=2)
+    machine = Intermediate()
+    with pytest.raises(
+        esolangs.InterpreterLimitError, match="hashable state"
+    ) as caught:
+        termination.evaluate(
+            artifact, [1], limits=esolangs.ExecutionLimits(max_steps=3)
+        )
+    assert caught.value.observation == esolangs.ExecutionResult("1", 1, 1, 0, steps=2)
+
+    # Matching the installed declaration does not certify replacement hooks.
+    monkeypatch.setattr(interpreter, declaration.runtime.machine_preparation, prepare)
+    machine = Intermediate()
+    debug = api.make_debugger(source, stdin="A")
+    with pytest.raises(TypeError, match="hashable state"):
+        vm.run_until_halt_or_cycle(debug, limit=3)
+    assert debug.observation == replace(expected, steps=2)
+
+    _check_inherited_snapshot(
+        monkeypatch, api, interpreter, declaration.runtime.machine_preparation
+    )
+
+
+def _check_inherited_snapshot(monkeypatch, api, interpreter, hook):
+    class ExternalMachine(_Machine):
+        @property
+        def state(self):
+            index, pointer, tape = self._state
+            return (index, pointer, list(tape)) if index == 2 else self._state
+
+        @state.setter
+        def state(self, value):
+            index, pointer, tape = value
+            self._state = (index, pointer, tuple(tape))
+
+    def subclassed(source, _options):
+        def initialize(io):
+            return ExternalMachine(source, io)
+
+        return initialize
+
+    monkeypatch.setattr(interpreter, hook, subclassed)
+    debug = api.make_debugger(">>><")
+    with pytest.raises(TypeError, match="hashable state"):
+        vm.run_until_halt_or_cycle(debug, limit=4)
+    assert debug.observation.steps == 2
 
 
 @pytest.mark.parametrize("phase", ["native", "initialize", "step"])

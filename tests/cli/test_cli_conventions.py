@@ -57,7 +57,7 @@ def test_help_examples_follow_remaining_capabilities() -> None:
                 dialect=lambda mode="plain": mode,
                 dialect_schema=DialectSchema(
                     "Dialect Choice",
-                    {"mode": ("plain", "with spaces")},
+                    {"mode": ("plain", "é with spaces")},
                     {"mode": "plain"},
                 ),
             ),
@@ -71,7 +71,12 @@ def test_help_examples_follow_remaining_capabilities() -> None:
     template, dialect = examples()
     assert shlex.split(template)[-2:] == ["Template Choice", "0110"]
     commands = dialect.replace("\\\n", "").splitlines()  # Shell-joined.
-    assert shlex.split(commands[1])[3] == "mode=with spaces"
+    assert shlex.split(commands[1])[3] == "mode=é with spaces"
+    _, ascii_dialect = help_module._capability_examples(
+        esolangs.Catalog(languages.values()), encoding="ascii"
+    )
+    assert ascii_dialect == commands[0]
+    assert json.loads(shlex.split(ascii_dialect)[3]) == {"mode": "é with spaces"}
     del languages["Template Choice"]
     assert examples()[0] == ""
     # A cap below two inputs is not a runnable example.
@@ -409,6 +414,35 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
                     ascii_output.setattr(sys, "stdout", stdout)
                     call_main(["describe", name], capsys)
                 text = stdout.getvalue()
+
+                def copy_example(page):
+                    return shlex.split(
+                        next(
+                            line
+                            for line in page.splitlines()
+                            if line.startswith("  esolangs generate --bits ")
+                        )
+                    )
+
+                assert copy_example(help_text("generate", catalog=scope))[-2] == name
+                for invocation in (["generate", "--help"], ["help", "generate"]):
+                    with active.context() as ascii_output:
+                        stdout = AsciiStdout()
+                        ascii_output.setattr(sys, "stdout", stdout)
+                        with pytest.raises(SystemExit) as caught:
+                            call_main(invocation, capsys)
+                    assert caught.value.code == 0
+                    example = copy_example(stdout.getvalue())
+                    assert example == [
+                        "esolangs",
+                        "generate",
+                        "--bits",
+                        "10",
+                        id_,
+                        "0110",
+                    ]
+                    program = call_main(example[1:], capsys)
+                    assert bound.read_answer(bound.run(program).output) == "1"
             command = next(
                 line for line in text.splitlines() if line.startswith("spec: ")
             )
