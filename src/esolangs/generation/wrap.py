@@ -20,7 +20,7 @@ from math import isqrt
 from typing import TYPE_CHECKING
 
 from esolangs._bindings import TEMPLATE_CHAR
-from esolangs.compressed import CompressedText
+from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import ProgramError
 from esolangs.generation.requests import call_backend
 from esolangs.generation.template import (
@@ -341,6 +341,7 @@ def _layout_compressed(
     catalog: "Catalog | None" = None,
 ) -> CompressedText:
     """Apply text reflow to gzip source while retaining its export budgets."""
+    program = _freeze_compressed(program)
     if width is None and not balance:
         return program
     backend = _backend(language_id, catalog=catalog)

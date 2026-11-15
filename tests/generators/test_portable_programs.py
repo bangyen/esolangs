@@ -417,7 +417,12 @@ def test_portable_generation_honors_a_compressed_balancer() -> None:
     )
     compressed = esolangs.CompressedText.from_chunks((",.",), limits=original_limits)
     output = gzip.compress(b",.\n\n", mtime=1)
-    returned = esolangs.CompressedText(output, limits=returned_limits)
+
+    class AlternateBalance(esolangs.CompressedText):
+        def _inherit_limits(self, _original):
+            return self
+
+    returned = AlternateBalance(output, limits=returned_limits)
 
     def balance(request: BalanceRequest) -> esolangs.CompressedText:
         assert request.source == compressed
@@ -467,6 +472,10 @@ def test_compressed_reflow_uses_declared_text_hooks(*, balance: bool) -> None:
     limits = esolangs.TextLimits(plain_chars=0, generation_chars=20, gzip_bytes=100)
     compressed = esolangs.CompressedText.from_chunks((",.",), limits=limits)
 
+    class AlternateChunks(esolangs.CompressedText):
+        def chunks(self):
+            yield "-."
+
     def reflow(text: str, width: int | None = None) -> str:
         assert text == ",."
         return text + (" balance" if width is None else " width")
@@ -477,7 +486,11 @@ def test_compressed_reflow_uses_declared_text_hooks(*, balance: bool) -> None:
         wrap_balance=reflow if balance else None,
     )
     sources = []
-    for source in (",.", compressed):
+    for source in (
+        ",.",
+        compressed,
+        AlternateChunks(compressed.to_gzip(), limits=limits),
+    ):
         local = replace(
             original,
             backend=replace(backend, entrypoint=lambda _, source=source: source),
@@ -489,7 +502,8 @@ def test_compressed_reflow_uses_declared_text_hooks(*, balance: bool) -> None:
         for bit in (0, 1):
             assert api.evaluate(restored, [bit]).answer == str(bit)
         sources.append(restored.source)
-    plain, packed = sources
+    plain, packed, alternate = sources
+    assert alternate == packed
     assert isinstance(packed, esolangs.CompressedText)
     assert (
         "".join(packed.chunks()) == plain == (",. balance" if balance else ",. width")

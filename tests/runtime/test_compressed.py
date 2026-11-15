@@ -159,16 +159,21 @@ def test_invalid_utf8_offset_spans_gzip_decode_blocks(tail: bytes, monkeypatch) 
         CompressedText(invalid)
 
 
-def test_existing_gzip_counts_only_through_first_chunk_over_budget() -> None:
-    class Monitored(CompressedText):
-        def chunks(self):
-            yield "ab"
-            pytest.fail("source kept decoding after exceeding its generation-work cap")
-
+def test_existing_gzip_counts_only_through_first_chunk_over_budget(monkeypatch) -> None:
     data = gzip.compress(b"abcd", mtime=0)
+    read = gzip.GzipFile.read
+    sizes = []
+
+    def observed_read(stream, size=-1):
+        sizes.append(size)
+        return read(stream, size)
+
+    monkeypatch.setattr("esolangs.compressed._BLOCK", 2)
+    monkeypatch.setattr(gzip.GzipFile, "read", observed_read)
     limits = esolangs.TextLimits(plain_chars=0, generation_chars=1, gzip_bytes=100)
     with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
-        Monitored(data, limits=limits)
+        CompressedText(data, limits=limits)
+    assert sizes == [2]
 
 
 def test_gzip_cap_below_empty_member_refuses_before_acquiring_chunks() -> None:
@@ -298,7 +303,7 @@ def test_wrapping_counts_the_newline_at_an_exact_width() -> None:
         program.wrapped(1)
 
 
-def test_compressed_source_retains_language_origin() -> None:
+def test_compressed_source_retains_language_origin(tmp_path: Path) -> None:
     program = esolangs.ProgramArtifact(CompressedText.from_chunks((",.",)), REFERENCE)
     assert esolangs.run(REFERENCE, program, stdin="Z").output == "Z"
     other = next(n for n in esolangs.list_languages() if n != REFERENCE)
@@ -306,6 +311,33 @@ def test_compressed_source_retains_language_origin() -> None:
         esolangs.run(
             REFERENCE, esolangs.ProgramArtifact(program.source, other), stdin="Z"
         )
+
+    class AlternateChunks(CompressedText):
+        def chunks(self):
+            yield "+++."
+
+    api = esolangs.Language(REFERENCE)
+    archive = program.source.to_gzip()
+    limits = esolangs.TextLimits(plain_chars=3, generation_chars=3, gzip_bytes=100)
+    supplied = AlternateChunks(archive, limits=limits)
+    assert len(supplied) == 2
+    assert str(supplied) == ",."
+    assert str(supplied.wrapped(2)) == ",.\n"
+    assert api.run(supplied, stdin="Z").output == "Z"
+
+    artifact = api.from_source(supplied)
+    assert type(artifact.source) is CompressedText
+    assert artifact.source.limits is limits
+    portable = api.from_json(api.to_json(artifact))
+    assert portable == artifact
+    destination = tmp_path / "retained.gz"
+    api.to_file(supplied, destination, gzip=True)
+    assert destination.read_bytes() == archive
+    for restored in (artifact, portable, api.from_file(destination)):
+        assert api.run(restored, stdin="Z").output == "Z"
+
+    with pytest.raises(esolangs.ProgramError, match="invalid gzip source"):
+        AlternateChunks(b"not gzip")
 
 
 def test_format_budgets_are_independent_and_survive_wrapping() -> None:

@@ -112,9 +112,8 @@ def _checked_adapter(machine: object) -> object:
     """Find the live VM beneath an observer and check for a recorded halt fault."""
     from esolangs.vm import _controller_vm, _raise_halt_fault
 
-    adapter = _controller_vm(machine)
-    _raise_halt_fault(adapter)
-    return adapter
+    _raise_halt_fault(machine)
+    return _controller_vm(machine)
 
 
 def _protocol_state(machine: object, adapter: object, protocol: type[Any]) -> object:

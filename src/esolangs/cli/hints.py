@@ -204,6 +204,17 @@ def _is_option(value: str) -> bool:
     return len(value) > 1 and value[0] == "-" and not value[1].isdigit()
 
 
+def _can_render_argument(value: str, encoding: str) -> bool:
+    """Check that a displayed value can be passed verbatim as an argument."""
+    if "\0" in value:
+        return False
+    try:
+        value.encode(encoding)
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def _as_argument(
     language: str,
     *,
@@ -213,14 +224,20 @@ def _as_argument(
 ) -> str:
     """Quote a language ID or name and add an option separator when needed."""
     codec = encoding or getattr(sys.stderr, "encoding", None) or "utf-8"
-    try:
-        language.encode(codec)
-    except UnicodeEncodeError:
-        needs_id = True
-    else:
-        needs_id = _is_option(language)
-    if needs_id:
+    if _is_option(language) or not _can_render_argument(language, codec):
         with suppress(UnknownLanguageError):
-            language = catalog.languages[catalog.resolve(language)].id
+            declaration = catalog.languages[catalog.resolve(language)]
+            language = next(
+                (
+                    spelling
+                    for spelling in (
+                        declaration.id,
+                        *declaration.aliases,
+                        declaration.name,
+                    )
+                    if _can_render_argument(spelling, codec)
+                ),
+                language,
+            )
     separator = "-- " if force_separator or _is_option(language) else ""
     return separator + shlex.quote(language)

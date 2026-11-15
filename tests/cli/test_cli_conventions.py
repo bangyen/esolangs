@@ -79,6 +79,23 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch, capsys) -> Non
     assert ascii_dialect == commands[0]
     assert json.loads(shlex.split(ascii_dialect)[3]) == {"mode": "é with spaces"}
 
+    declaration = languages["Dialect Choice"]
+    nul_value = "raw\0value"
+    schema = DialectSchema(
+        declaration.name, {"mode": ("plain", nul_value)}, {"mode": "plain"}
+    )
+    runtime = replace(declaration.runtime, dialect_schema=schema)
+    nul_scope = esolangs.Catalog([replace(declaration, runtime=runtime)])
+    _, nul_example = help_module._capability_examples(nul_scope)
+    assert "\0" not in nul_example
+    assert len(nul_example.splitlines()) == 1
+    assert json.loads(shlex.split(nul_example)[3]) == {"mode": nul_value}
+
+    unreachable = replace(
+        languages["Template Choice"], name="Raw\0Template", id="raw\0template"
+    )
+    assert help_module._capability_examples(esolangs.Catalog([unreachable])) == ("", "")
+
     error = esolangs.ArgumentError("scoped generator backend is disabled")
     error.add_note("hint: enable its provider")
 
@@ -435,17 +452,22 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
     original = LANGUAGES[
         first(parameterized=True, source_kind="text", answer_mode="output")
     ]
-    for name, id_ in (
-        ("-Scoped name", "scoped_name"),
-        ("É Scoped name", "e_scoped_name"),
-        ("--Scoped name", "--scoped_name"),
+    for name, id_, aliases in (
+        ("-Scoped name", "scoped_name", ()),
+        ("É Scoped name", "e_scoped_name", ()),
+        ("--Scoped name", "--scoped_name", ()),
+        ("Raw\0Scoped name", "raw_scoped_name", ()),
+        ("Raw\0Scoped name", "raw\0id", ("raw_scoped_alias",)),
     ):
-        local = replace(original, name=name, id=id_)
+        local = replace(original, name=name, id=id_, aliases=aliases)
         scope = esolangs.Catalog([local])
         bound = scope.bind(name)
+        spelling = aliases[0] if aliases else id_
         with monkeypatch.context() as active:
             active.setattr(_table, "CATALOG", scope)
-            if name.isascii():
+            if "\0" in name:
+                text = call_main(["describe", spelling], capsys)
+            elif name.isascii():
                 text = call_main(["describe", "--", name], capsys)
             else:
                 with active.context() as ascii_output:
@@ -487,7 +509,7 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
             )
             tool, *args = shlex.split(command.removeprefix("spec: "))
             assert tool == "esolangs"
-            operand = ["--", id_] if id_.startswith("-") else [id_]
+            operand = ["--", spelling] if spelling.startswith("-") else [spelling]
             assert args == ["describe", "--spec", *operand]
             assert call_main(args, capsys).strip() == bound.describe().spec
 

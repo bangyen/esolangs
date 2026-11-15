@@ -108,7 +108,7 @@ class CompressedText:
             _check_gzip(limits, len(self.data))
         size = 0
         has_newline = False
-        for chunk in self.chunks():
+        for chunk in CompressedText.chunks(self):
             size += len(chunk)
             has_newline = has_newline or "\n" in chunk
             if limits is not None:
@@ -214,7 +214,11 @@ class CompressedText:
     def _is_multiline(self) -> bool:
         """Use the newline measured at creation, with a fallback for old pickles."""
         known = self._has_newline
-        return any("\n" in chunk for chunk in self.chunks()) if known is None else known
+        return (
+            any("\n" in chunk for chunk in CompressedText.chunks(self))
+            if known is None
+            else known
+        )
 
     def _inherit_limits(self, original: TextLimits | None) -> CompressedText:
         """Apply both versions' caps to the stored stream and measured length."""
@@ -269,13 +273,13 @@ class CompressedText:
 
     def __str__(self) -> str:
         """Export ordinary source text."""
-        return "".join(self.plain_chunks())
+        return "".join(CompressedText.plain_chunks(self))
 
     def plain_chunks(self) -> Iterator[str]:
         """Enforce the raw-export budget before yielding any text."""
         if self.limits is not None:
-            _check_plain(self.limits, len(self))
-        return self.chunks()
+            _check_plain(self.limits, self._size)
+        return CompressedText.chunks(self)
 
     def to_gzip(self) -> bytes:
         """Return the compressed file bytes."""
@@ -307,7 +311,7 @@ class CompressedText:
         width = check_width(width)
         if width is None:
             return self
-        size = len(self)
+        size = self._size
         if width > size:
             return self
 
@@ -317,7 +321,7 @@ class CompressedText:
         def chunks() -> Iterator[str]:
             column = 0
             # Each decoded chunk is at most one block, so it is wrapped whole.
-            for chunk in self.chunks():
+            for chunk in CompressedText.chunks(self):
                 parts = []
                 offset = 0
                 while offset < len(chunk):
@@ -331,3 +335,10 @@ class CompressedText:
                 yield "".join(parts)
 
         return self.from_chunks(chunks(), limits=self.limits)
+
+
+def _freeze_compressed(source: CompressedText) -> CompressedText:
+    """Use a validated archive without inheriting subclass dispatch."""
+    if type(source) is CompressedText:
+        return source
+    return CompressedText(source.data, limits=source.limits)

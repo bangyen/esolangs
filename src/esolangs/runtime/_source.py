@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import IO, TYPE_CHECKING, cast
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
-from esolangs.compressed import CompressedText
+from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
 from esolangs.outcomes import (
     _is_acquisition_failure,
@@ -197,7 +197,7 @@ def text_source(
     if _has_backing_type(value, CompressedText):
         # Construction already enforced the generation budget. plain_chars
         # limits raw export; loading an interpreter's source is not export.
-        value = "".join(value.chunks())
+        value = "".join(_freeze_compressed(value).chunks())
     if _has_backing_type(value, bytes):
         try:
             value = value.decode("utf-8")
@@ -256,7 +256,7 @@ def compressed_text_source(source: ProgramSource | _FileSource) -> str | Compres
     """Keep gzip source compressed; accept ordinary text containers too."""
     value, path = _read_container(source)
     if _has_backing_type(value, CompressedText):
-        return value
+        return _freeze_compressed(value)
     if _has_backing_type(value, bytes) and value.startswith(_GZIP_SIGNATURE):
         return _read_gzip(value, path)
     return text_source(value, label=path)

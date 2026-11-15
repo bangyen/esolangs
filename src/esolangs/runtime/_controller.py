@@ -16,6 +16,7 @@ from esolangs.runtime._vm_protocol import VM
 from esolangs.vm import (
     _capture_observation,
     _capture_result,
+    _controller_vm,
     _DelegatingVM,
     _halt_faulted,
     _post_halt_dumped,
@@ -50,7 +51,8 @@ class ExecutionController:
         self.vm = vm
         self._dumped = False
         self._steps = 0
-        self._faulted = False
+        self._faulted_owner: VM | None = None
+        self._active_fault: tuple[VM, VM, EsolangError] | None = None
 
     def _record(self) -> None:
         """Observe a completed step; debugger subclasses record watches."""
@@ -77,11 +79,14 @@ class ExecutionController:
         completion dump calls are excluded. Caller-owned IO counters stay None.
         """
         report = None
-        if self.halted and self.steppable_to_answer and not _halt_faulted(self.vm):
+        if self.halted and self.steppable_to_answer and not _halt_faulted(self):
+            faulted = self._faulted_owner is not None and (
+                _controller_vm(self.vm) is self._faulted_owner
+            )
             if self.dumps_on_the_post_halt_step:
-                if _post_halt_dumped(self.vm) or (self._dumped and not self._faulted):
+                if _post_halt_dumped(self.vm) or (self._dumped and not faulted):
                     report = CompletionReport(Completion.POST_HALT)
-            elif not self._faulted:
+            elif not faulted:
                 report = CompletionReport(Completion.HALTED)
         return replace(_capture_observation(self.vm, report), steps=self._steps)
 
@@ -130,19 +135,28 @@ class ExecutionController:
 
     def _take_step(self) -> None:
         """Drive a command or finalization step, accounting for its effects."""
-        active = not self.vm.halted
+        wrapped = self.vm
+        active = not wrapped.halted
+        owner = (
+            _controller_vm(wrapped)
+            if isinstance(wrapped, ExecutionController)
+            else wrapped
+        )
         try:
-            self.vm.step()
+            wrapped.step()
         except EsolangError as exc:
-            self._faulted = not isinstance(self.vm, _DelegatingVM)
-            observation = replace(_capture_observation(self.vm), steps=self._steps)
-            _record_vm_fault(self.vm, exc, observation)
+            self._faulted_owner = None if isinstance(owner, _DelegatingVM) else owner
+            if active and self._faulted_owner is not None:
+                self._active_fault = (wrapped, owner, exc)
+            observation = replace(_capture_observation(owner), steps=self._steps)
+            _record_vm_fault(owner, exc, observation)
             raise
         if active:
-            self._faulted = False
+            self._faulted_owner = None
+            self._active_fault = None
             self._steps += 1
         elif self.dumps_on_the_post_halt_step:
-            self._faulted = False
+            self._faulted_owner = None
             self._dumped = True
         self._record()
 
@@ -184,7 +198,7 @@ class ExecutionController:
 
     def _run(self, max_steps: int | None, timeout: float | None) -> StopReason:
         """Drive to a halt, breakpoint or bound; the limits are already checked."""
-        _raise_halt_fault(self.vm)
+        _raise_halt_fault(self)
         deadline = None if timeout is None else monotonic() + timeout
         start = self._steps
         while not self.halted:

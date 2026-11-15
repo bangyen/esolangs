@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import shlex
 
-from esolangs.cli.hints import _as_argument
+from esolangs.cli.hints import _as_argument, _can_render_argument
 from esolangs.registry import Catalog, SourceKind, get_catalog
 from esolangs.runtime._json import record_dumps
 from esolangs.runtime.memory import repr_value
@@ -31,12 +31,14 @@ def _capability_examples(
             templates and not needs_dialect
         ):
             continue
+        quoted = _as_argument(name, catalog=catalog, encoding=encoding)
+        if not _can_render_argument(quoted, encoding):
+            continue
         backend = lang.backend
         if backend is None or (
             backend.max_inputs is not None and backend.max_inputs < 2
         ):
             continue
-        quoted = _as_argument(name, catalog=catalog, encoding=encoding)
         if not templates and backend.template is not None:
             templates = f"  esolangs generate --bits 10 {quoted} 0110"
         if not dialects and schema is not None:
@@ -46,11 +48,7 @@ def _capability_examples(
                 operand = repr_value(value) if isinstance(value, int) else value
                 setting = shlex.quote(f"{key}={operand}")
                 dialects = f"  esolangs generate --settings {settings} {quoted} 0110"
-                try:
-                    setting.encode(encoding)
-                except UnicodeEncodeError:
-                    pass  # The JSON example already escapes this choice.
-                else:
+                if _can_render_argument(setting, encoding):
                     dialects += f"\n  esolangs generate --set {setting} {quoted} 0110"
                 break
     return templates, dialects

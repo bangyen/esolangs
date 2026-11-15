@@ -403,18 +403,37 @@ def _capture_result(vm: VM) -> ExecutionResult:
     return _capture_observation(vm, report)
 
 
-def _halt_faulted(vm: VM) -> bool:
-    """Whether a registered VM's halt position followed a failed command."""
-    owner = _controller_vm(vm)
-    return isinstance(owner, _DelegatingVM) and owner._halt_fault is not None  # noqa: SLF001
+def _recorded_halt_fault(vm: object, *, replay: bool = False) -> EsolangError | None:
+    """Find a registered or controller-observed fault at the live halt position."""
+    if isinstance(vm, _DelegatingVM):
+        fault = vm._halt_fault  # noqa: SLF001
+        if replay and fault is not None:
+            vm._replayed_halt_fault = True  # noqa: SLF001
+        return fault
+
+    from esolangs.runtime._controller import ExecutionController
+
+    if isinstance(vm, ExecutionController):
+        saved = vm._active_fault  # noqa: SLF001
+        if saved is not None:
+            wrapped, owner, error = saved
+            # A caller can replace its VM or move it off its failed halt.
+            if vm.vm is wrapped and _controller_vm(wrapped) is owner and vm.halted:
+                return error
+        return _recorded_halt_fault(vm.vm, replay=replay)
+    return None
+
+
+def _halt_faulted(vm: object) -> bool:
+    """Whether the observed VM halted during a failing command."""
+    return _recorded_halt_fault(vm) is not None
 
 
 def _raise_halt_fault(vm: object) -> None:
-    """Re-raise a prior fault that left a registered VM at its halt position."""
-    owner = _controller_vm(vm)
-    if isinstance(owner, _DelegatingVM) and owner._halt_fault is not None:  # noqa: SLF001
-        owner._replayed_halt_fault = True  # noqa: SLF001
-        raise owner._halt_fault  # noqa: SLF001
+    """Re-raise the original fault at a previously observed failed halt."""
+    fault = _recorded_halt_fault(vm, replay=True)
+    if fault is not None:
+        raise fault
 
 
 def _post_halt_dumped(vm: VM) -> bool:

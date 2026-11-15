@@ -15,7 +15,7 @@ from esolangs._bindings import (
     runs,
     validate_spans,
 )
-from esolangs.compressed import CompressedText
+from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError, TemplateError
 from esolangs.limits import ExecutionLimits
 from esolangs.raster import Raster
@@ -113,6 +113,8 @@ class ProgramArtifact[Source: Program]:
             raise ProgramError("a program needs text, compressed source, or a raster")
         if _has_backing_type(self.source, str):
             object.__setattr__(self, "source", str.__str__(self.source))
+        elif _has_backing_type(self.source, CompressedText):
+            object.__setattr__(self, "source", _freeze_compressed(self.source))
         object.__setattr__(self, "language", _origin(self.language, self.settings))
         if self.input_arity is not None and (
             type(self.input_arity) is not int or self.input_arity < 1

@@ -305,6 +305,115 @@ def test_caller_owned_vm_finalization_remains_local():
     assert second.observation == first.observation
     assert vm.calls == 3
 
+    class RetryDump(Custom):
+        output = ""
+
+        def step(self):
+            if not self.output:
+                self.output = "pre"
+                raise esolangs.HaltError("temporary dump failure")
+            self.output += "done"
+
+    retry = Debugger(RetryDump())
+    with pytest.raises(esolangs.HaltError, match="temporary dump") as caught:
+        retry.run(limits=limits)
+    assert caught.value.observation == esolangs.ExecutionResult(
+        "pre", None, None, None, steps=0
+    )
+    assert retry.observation.completion is None
+    assert retry.run(limits=limits) == "halted"
+    assert retry.output == "predone"
+    assert retry.observation.completion.kind is Completion.POST_HALT
+    assert retry.observation.steps == 0
+
+    _check_caller_owned_failed_halt()
+
+
+def _check_caller_owned_failed_halt():
+    from esolangs.debugger import Debugger
+    from esolangs.vm import run_until_halt, run_until_halt_or_cycle
+
+    class Custom:
+        halted = False
+        self_halts = steppable_to_answer = True
+        dumps_on_the_post_halt_step = False
+        output = ""
+
+        def __init__(self, error=None):
+            self.error = error
+
+        def step(self):
+            if self.halted:
+                return
+            self.halted = True
+            if self.error is not None:
+                self.output = "prefix"
+                raise self.error
+            self.output = "done"
+
+        def snapshot(self):
+            return self.halted
+
+    original = esolangs.HaltError("failed active command")
+    inner = Debugger(Custom(original))
+    outer = Debugger(inner)
+    with pytest.raises(esolangs.HaltError) as caught:
+        outer.step()
+    partial = esolangs.ExecutionResult("prefix", None, None, None, steps=0)
+    assert caught.value is original
+    assert original.observation == inner.observation == outer.observation == partial
+    limits = esolangs.ExecutionLimits(max_steps=0)
+    for live in (inner, outer, Debugger(outer)):
+        live.step()  # An idle step is still harmless.
+        for resume in (
+            lambda vm: vm.run(limits=limits),
+            lambda vm: complete_vm(vm, max_steps=0),
+            lambda vm: run_until_halt(vm, limit=0),
+            lambda vm: run_until_halt_or_cycle(vm, limit=0),
+        ):
+            with pytest.raises(esolangs.HaltError) as caught:
+                resume(live)
+            assert caught.value is original
+            assert original.observation == live.observation == partial
+
+    # An explicit replacement cannot inherit the previous VM's failure.
+    replacement = Custom()
+    replacement.step()
+    inner.vm = replacement
+    for live in (inner, outer):
+        assert live.run(limits=limits) == "halted"
+        assert complete_vm(live, max_steps=0) == "done"
+        assert live.observation.completion.kind is Completion.HALTED
+
+    class Replacing(Custom):
+        def step(self):
+            try:
+                super().step()
+            finally:
+                inner.vm = replacement
+
+    inner = Debugger(Replacing(original))
+    outer = Debugger(inner)
+    with pytest.raises(esolangs.HaltError) as caught:
+        outer.step()
+    assert caught.value is original
+    assert original.observation == partial
+    assert outer.run(limits=limits) == "halted"
+    assert complete_vm(outer, max_steps=0) == "done"
+    assert outer.observation.completion.kind is Completion.HALTED
+
+    # Repairing the same raw VM before retrying can take a new active step.
+    raw = Custom(original)
+    live = Debugger(raw)
+    with pytest.raises(esolangs.HaltError):
+        live.step()
+    raw.error = None
+    raw.halted = False
+    assert live.run(limits=esolangs.ExecutionLimits(max_steps=1)) == "halted"
+    assert live.output == "done"
+    assert live.observation.completion.kind is Completion.HALTED
+    assert live.observation.steps == 1
+
 
 def test_debugger_does_not_invent_periodic_completion():
     from esolangs.debugger import Debugger

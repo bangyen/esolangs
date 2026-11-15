@@ -13,7 +13,7 @@ from esolangs.artifacts import (
     TemplateArtifact,
     TemplateBindings,
 )
-from esolangs.compressed import CompressedText
+from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -213,7 +213,7 @@ def generate(
         )
     if backend.template is not None:
         raise ProgramError(f"{resolved}'s template generator did not return slots")
-    if isinstance(generated, CompressedText):
+    if _has_backing_type(generated, CompressedText):
         return ProgramArtifact(
             generated
             if laid_out
@@ -297,9 +297,9 @@ def _generate_balanced(
                 balancer,
                 BalanceRequest(truth_table, source, choices),
             )
-            if not isinstance(result, CompressedText):
+            if not _has_backing_type(result, CompressedText):
                 raise ProgramError(f"{name}'s balancer did not return CompressedText")
-            balanced = result._inherit_limits(source.limits)  # noqa: SLF001
+            balanced = _freeze_compressed(result)._inherit_limits(source.limits)  # noqa: SLF001
         return replace(default, source=balanced)
     if isinstance(source, Raster):
         if balancer is None:
