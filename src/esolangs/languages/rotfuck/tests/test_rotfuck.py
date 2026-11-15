@@ -1,5 +1,7 @@
 """Unit tests for the ROTfuck interpreter."""
 
+import pickle
+from base64 import b64decode
 from dataclasses import replace
 from functools import partial
 
@@ -89,6 +91,38 @@ def _check_portable_template_settings() -> None:
             assert api.run(filled).output == "0"
 
 
+def _check_legacy_pickle_settings(api) -> None:
+    # 4bbca32c3 pickled a program, a template, and their shared pre-schema settings.
+    wire = b64decode(
+        "gASV9gAAAAAAAACMEmVzb2xhbmdzLmFydGlmYWN0c5SMD1Byb2dyYW1BcnRpZmFjdJSTlCmBlF2U"
+        "KIwCLCyUjAdST1RmdWNrlIwRZXNvbGFuZ3Muc2V0dGluZ3OUjA9EaWFsZWN0U2V0dGluZ3OUk5Qp"
+        "gZR9lIwGX2l0ZW1zlIwIcm90YXRpb26UjAdmb3J3YXJklIaUhZRzYk5lYmgAjBBUZW1wbGF0ZUFydGlm"
+        "YWN0lJOUKYGUXZQojAIsQJRoBmgAjBBUZW1wbGF0ZUJpbmRpbmdzlJOUKYGUXZQojAFAlIwBLJSMASuU"
+        "hpSFlGViaApLAUsChpSFlGViaAqHlC4="
+    )
+    program, template, unbound = pickle.loads(wire)
+    forward = api.settings(rotation="forward")
+    assert program == api.from_source(",,", settings=forward)
+    assert program.input_arity is None
+    assert template.settings == forward
+    assert template.spans == ((1, 2),)
+    assert api.run(program, stdin="A").output == "A"
+    assert [api.run(template.fill([bit]), stdin="A").output for bit in (0, 1)] == [
+        "A",
+        "",
+    ]
+    for restored in (program, template):
+        assert pickle.loads(pickle.dumps(restored)) == restored
+    with pytest.raises(
+        esolangs.ArgumentError, match="require a saved artifact language"
+    ):
+        unbound.options()
+    with pytest.raises(
+        esolangs.ArgumentError, match="require a saved artifact language"
+    ):
+        api.run(program.source, settings=unbound, stdin="A")
+
+
 class TestRotation:
     def test_program_rotates_after_every_command(self) -> None:
         # The first ',' reads 'A'; the program then turns backward, so the
@@ -118,6 +152,7 @@ class TestRotation:
         assert generated == api.generate("01", settings=backward)
         assert "".join(api.evaluate(generated, [b]).answer for b in (0, 1)) == "01"
         _check_portable_template_settings()
+        _check_legacy_pickle_settings(api)
 
     def test_an_unknown_rotation_is_refused(self) -> None:
         with pytest.raises(ValueError, match="rotation"):

@@ -16,6 +16,7 @@ from esolangs._bindings import (
     runs,
     validate_spans,
 )
+from esolangs._dialect import DialectSchema
 from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError, TemplateError
 from esolangs.limits import ExecutionLimits
@@ -101,6 +102,26 @@ def _origin(
     return owner, settings
 
 
+def _restore_artifact_slots(artifact: Artifact, state: list[object]) -> None:
+    for item, value in zip(fields(artifact), state, strict=False):
+        object.__setattr__(artifact, item.name, value)
+    settings = artifact.settings
+    choices = None if settings is None else DialectSettings._legacy_choices(settings)  # noqa: SLF001
+    if choices is None:
+        return
+
+    from esolangs.registry._catalog import get_catalog, resolve_origin
+
+    catalog = get_catalog(None)
+    name = resolve_origin(artifact.language, catalog=catalog)
+    if name is None:
+        raise ArgumentError(f"cannot restore legacy settings for {artifact.language}")
+    schema = catalog.languages[name].runtime.dialect_schema or DialectSchema(
+        name, {}, {}
+    )
+    object.__setattr__(artifact, "settings", DialectSettings(schema, **choices))
+
+
 @dataclass(frozen=True, slots=True)
 class ProgramArtifact[Source: Program]:
     """Runnable source with its language and retained dialect choices."""
@@ -139,8 +160,7 @@ class ProgramArtifact[Source: Program]:
     def __setstate__(self, state: list[object]) -> None:
         """Restore stored slots, defaulting arity for older pickles."""
         object.__setattr__(self, "input_arity", None)
-        for item, value in zip(fields(self), state, strict=False):
-            object.__setattr__(self, item.name, value)
+        _restore_artifact_slots(self, state)
 
     @recursive_repr()
     def __repr__(self) -> str:
@@ -262,6 +282,10 @@ class TemplateArtifact:
             raise
         except (TypeError, ValueError) as error:
             raise TemplateError(str(error)) from error
+
+    def __setstate__(self, state: list[object]) -> None:
+        """Restore stored slots and bind pre-schema choices to the saved language."""
+        _restore_artifact_slots(self, state)
 
     def evaluate(
         self,

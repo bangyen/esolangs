@@ -47,6 +47,44 @@ def test_generator_and_runtime_hints_reach_cli(capsys, tmp_path, monkeypatch) ->
     path.write_text('"A",@')
     assert call_both(command, capsys) == ("A", "")
 
+    path.write_text("Ā", encoding="utf-8")
+    name = "É Befunge"
+
+    class AsciiDiagnostic(io.StringIO):
+        @property
+        def encoding(self):
+            return "ascii"
+
+        def write(self, value):
+            value.encode("ascii")
+            return super().write(value)
+
+    for identifier in ("scoped_befunge", "é_befunge"):
+        declaration = replace(
+            LANGUAGES["Befunge"], name=name, id=identifier, aliases=()
+        )
+        catalog = esolangs.Catalog([declaration])
+        api = catalog.bind(name)
+        outcome = api.execute(path)
+        assert outcome.error is not None
+        assert outcome.error.__notes__ == [
+            "hint: check the language syntax with esolangs describe --spec 'É Befunge'"
+        ]
+        diagnostic = AsciiDiagnostic()
+        with monkeypatch.context() as patch:
+            patch.setattr(_table, "CATALOG", catalog)
+            patch.setattr(sys, "stderr", diagnostic)
+            assert _failure(["run", identifier, str(path)], capsys) == ("", "")
+            if identifier.isascii():
+                hint = diagnostic.getvalue().splitlines()[-1]
+                copied = shlex.split(hint.split(" with ", 1)[1])
+                assert copied == ["esolangs", "describe", "--spec", identifier]
+                assert call_both(copied[1:], capsys) == (api.describe().spec + "\n", "")
+            else:
+                assert diagnostic.getvalue().splitlines()[-1] == (
+                    "hint: check the operands and input against the language's syntax"
+                )
+
 
 def test_generator_cap_hint() -> None:
     with pytest.raises(esolangs.GeneratorCapError) as caught:

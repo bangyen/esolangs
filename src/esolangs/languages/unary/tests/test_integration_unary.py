@@ -82,6 +82,36 @@ def test_cli_exports_gzip_by_default_and_plain_on_request(tmp_path) -> None:
         )
         assert native.stdout == b"Input: "
 
+    api = esolangs.Language("Unary")
+    wrapped = api.generate("01", width=887)
+    assert str(wrapped.source) == "0" * 887 + "\n"
+    limits = esolangs.ExecutionLimits(max_steps=20)
+    expected = api.run(wrapped, stdin="\0", limits=limits)
+    assert (expected.output, expected.steps) == ("", 2)
+    for flags in ([], ["--plain"]):
+        export = subprocess.run(
+            [*command, "--width=887", *flags], check=True, **options
+        )
+        data = export.stdout
+        assert (data if flags else gzip.decompress(data)) == b"0" * 887 + b"\n\n"
+        path.write_bytes(data)
+        assert str(api.from_file(path, normalize=True).source) == str(wrapped.source)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "esolangs",
+                "run",
+                "--max-steps=20",
+                "Unary",
+                str(path),
+            ],
+            input=b"\0",
+            check=True,
+            **options,
+        )
+        assert (result.stdout, result.stderr) == (expected.output.encode(), b"")
+
     note = f"note: {path} contains no source, so there was no program to run\n"
     for source, expected, diagnostic in (
         (b"", b"", note.encode()),

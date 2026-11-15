@@ -26,6 +26,7 @@ from esolangs.cli.args import (
 )
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
+    _cli_error_text,
     _exit_code,
     _template_hint,
     _timeout_text,
@@ -76,7 +77,7 @@ def _fail_run(error: EsolangError, language: str, catalog: Catalog) -> NoReturn:
         _fail(_template_hint(error, language, catalog=catalog))
     if isinstance(error, ExecutionBudgetError):
         _fail(_timeout_text(error), _TIMEOUT_EXIT)
-    _fail(error, _exit_code(error))
+    _fail(_cli_error_text(error, language=language, catalog=catalog), _exit_code(error))
 
 
 def _run(rest: list[str]) -> None:

@@ -238,8 +238,9 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
         ({"snapshot": 0}, "callable snapshot"),
         ({"snapshot": lambda: [0]}, "hashable state"),
         ({"snapshot": lambda: ([0],)}, "hashable state"),
+        ({"halted": "active", "snapshot": lambda: 0}, "halted must be a bool"),
     ):
-        custom = SimpleNamespace(step=lambda: None, halted=False, **fields)
+        custom = SimpleNamespace(step=lambda: None, **({"halted": False} | fields))
         for outcome in (
             scoped.execute("<", stdin="A", limits=limits),
             prepared.execute(stdin="A", limits=limits),

@@ -362,6 +362,65 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
         monkeypatch, api, interpreter, declaration.runtime.machine_preparation
     )
 
+    machine = SimpleNamespace(snapshot=lambda: 0)
+    _check_invalid_halted(scoped, prepared, source, active, expected, machine)
+
+
+def _check_invalid_halted(scoped, prepared, source, limits, expected, machine):
+    def refuse_step():
+        pytest.fail("an invalid halted value cannot decide whether to step")
+
+    machine.step = refuse_step
+    diagnostic = "machine halted must be a bool"
+    declaration = scoped.catalog.languages[scoped.name]
+    runtime = replace(
+        declaration.runtime,
+        capabilities=replace(
+            declaration.runtime.capabilities, completion=Completion.POST_HALT
+        ),
+    )
+    dumping = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(
+        scoped.name
+    )
+
+    for invalid in ("still active", 0, refuse_step):
+        machine.halted = invalid
+        direct = scoped.make_vm(source, stdin="A")
+        debug = prepared.make_debugger(stdin="A")
+        assert direct.output == debug.output == "A"
+        for inspect, receiver, steps in (
+            (lambda vm: vm.halted, direct, None),
+            (lambda vm: vm.halted, debug, 0),
+            (lambda debugger: debugger.run(limits=limits), debug, 0),
+            (lambda vm_: vm.run_until_halt_or_cycle(vm_, limit=1), direct, None),
+            (lambda vm_: vm.run_until_halt_or_cycle(vm_, limit=1), debug, 0),
+            (lambda vm_: vm.complete_vm(vm_, max_steps=1), direct, 0),
+        ):
+            with pytest.raises(
+                esolangs.InterpreterLimitError, match=diagnostic
+            ) as caught:
+                inspect(receiver)
+            assert caught.value.observation == replace(expected, steps=steps)
+            assert caught.value.partial_output == "A"
+
+        for outcome in (
+            scoped.execute(source, stdin="A", limits=limits),
+            prepared.execute(stdin="A", limits=limits),
+        ):
+            assert outcome.status == "limit"
+            assert isinstance(outcome.error, esolangs.InterpreterLimitError)
+            assert diagnostic in str(outcome.error)
+            assert (
+                outcome.observation
+                == outcome.error.observation
+                == replace(expected, steps=0)
+            )
+            assert outcome.error.partial_output == "A"
+
+        with pytest.raises(esolangs.InterpreterLimitError, match=diagnostic) as caught:
+            dumping.make_vm(source, stdin="A").step()
+        assert caught.value.observation == expected
+
 
 def _check_inherited_snapshot(monkeypatch, api, interpreter, hook):
     class ExternalMachine(_Machine):

@@ -1,7 +1,7 @@
 """Actionable notes on rejected source, without changing its diagnostic."""
 
 import shlex
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from difflib import get_close_matches
 
 from esolangs.exceptions import ProgramError, ProgramNotFoundError
@@ -31,6 +31,13 @@ def shell_argument(
         return None
     separator = "-- " if force_separator or is_option(value) else ""
     return separator + shlex.quote(value)
+
+
+def syntax_repair(argument: str | None) -> str:
+    """Point to the specification when its argument is safe to show."""
+    if argument is None:
+        return "check the operands and input against the language's syntax"
+    return f"check the language syntax with esolangs describe --spec {argument}"
 
 
 def syntax_error(
@@ -73,10 +80,14 @@ def keyword_hint(word: str, known: Iterable[str], fallback: str) -> str:
     return f"did you mean {close[0]!r}?" if len(close) == 1 else fallback
 
 
-def error_text(error: BaseException) -> str:
+def error_text(
+    error: BaseException, *, render_hint: Callable[[str], str] | None = None
+) -> str:
     """Render the diagnostic and its hints, leaving other exception notes alone."""
     hints = (
-        note for note in getattr(error, "__notes__", ()) if note.startswith("hint:")
+        note if render_hint is None else render_hint(note)
+        for note in getattr(error, "__notes__", ())
+        if note.startswith("hint:")
     )
     return "\n".join((str(error), *hints))
 

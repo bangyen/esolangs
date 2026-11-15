@@ -26,6 +26,7 @@ from esolangs.runtime.source_hints import (
     error_text,
     is_option,
     shell_argument,
+    syntax_repair,
 )
 
 #: A run stopped by its ``--execution-timeout``, following timeout(1).  Distinct from
@@ -47,10 +48,25 @@ def _exit_code(exc: EsolangError) -> int:
     return 2 if isinstance(exc, ValueError) else 1
 
 
-def _cli_error_text(exc: BaseException) -> str:
+def _cli_error_text(
+    exc: BaseException, *, language: str | None = None, catalog: Catalog | None = None
+) -> str:
     """Render notes using CLI flags, preserving the original diagnostic."""
     message = str(exc)
-    notes = error_text(exc)[len(message) :]
+    render: Callable[[str], str] | None = None
+    if language is not None and catalog is not None:
+        name = catalog.resolve(language)
+        argument = shell_argument(name)
+        if argument is not None and not can_render_argument(
+            name, _display_encoding(sys.stderr)
+        ):
+            original = f"hint: {syntax_repair(argument)}"
+            replacement = f"hint: {syntax_repair(_as_argument(name, catalog=catalog))}"
+
+            def render(note: str) -> str:
+                return replacement if note == original else note
+
+    notes = error_text(exc, render_hint=render)[len(message) :]
     for parameter, flag in (
         ("timeout=5.0", "--execution-timeout 5.0"),
         ("scale=1", "--scale 1"),

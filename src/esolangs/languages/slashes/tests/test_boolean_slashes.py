@@ -12,9 +12,11 @@ from esolangs.cli import main
 from esolangs.exceptions import TemplateError
 from esolangs.generation.wrap import balance_score, wrap_program
 from esolangs.languages.slashes import generator as boolean
+from esolangs.languages.slashes import interpreter
 from esolangs.languages.slashes.tests.template_shape import _is_unfilled_template
 from esolangs.registry import _table
 from esolangs.registry._backend import BooleanBackend
+from esolangs.runtime._definition import CompressedSourcePolicy
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, make_vm
 from scripts.benchmark import WrittenState
@@ -122,37 +124,63 @@ def test_cli_preserves_literal_source(tmp_path, capsysbinary, monkeypatch) -> No
 
     original = _table.CATALOG.languages[name]
     backend = BooleanBackend(entrypoint=lambda _request: payload)
-    scope = esolangs.Catalog([replace(original, backend=backend)])
-    monkeypatch.setattr(_table, "CATALOG", scope)
-    generate = ["esolangs", "generate", name, "11"]
-    for source, native in (("1\n", b"1\n\n"), ("1\r", b"1\r\r\n")):
-        limits = esolangs.TextLimits(
-            plain_chars=len(native), generation_chars=32, gzip_bytes=100
-        )
-        payload = esolangs.CompressedText.from_chunks((source,), limits=limits)
-        entry = scope.bind(name)
-        artifact = entry.from_json(entry.to_json(entry.generate("11")))
-        assert entry.run(artifact).output == source
-        for flags in ([], ["--gzip"], ["--plain"]):
-            monkeypatch.setattr(sys, "argv", [*generate, *flags])
-            main()
-            data, error = capsysbinary.readouterr()
-            assert not error
-            assert (data if flags == ["--plain"] else gzip.decompress(data)) == native
-            path.write_bytes(data)
-            monkeypatch.setattr(sys, "argv", run)
-            main()
-            assert capsysbinary.readouterr() == (b"1\n", b"")
+    execute = interpreter._execute
 
-    limits = replace(limits, plain_chars=3)
-    payload = esolangs.CompressedText.from_chunks(("1\r",), limits=limits)
-    monkeypatch.setattr(sys, "argv", [*generate, "--plain"])
-    with pytest.raises(SystemExit) as exited:
-        main()
-    assert exited.value.code == 2
-    out, err = capsysbinary.readouterr()
-    assert not out
-    assert b"raw text exceeds the 3-character cap" in err
+    def run_compressed(code, io):
+        if isinstance(code, esolangs.CompressedText):
+            code = "".join(code.chunks())
+        return execute(code, io)
+
+    monkeypatch.setattr(interpreter, "_execute", run_compressed)
+    generate = ["esolangs", "generate", name, "11"]
+    for policy in (original.runtime.source_policy, CompressedSourcePolicy()):
+        runtime = replace(original.runtime, source_policy=policy)
+        entry = replace(original, backend=backend, runtime=runtime)
+        scope = esolangs.Catalog([entry])
+        monkeypatch.setattr(_table, "CATALOG", scope)
+        api = scope.bind(name)
+        cases = [
+            ("1\n", b"1\n\n", b"1\n"),
+            ("1\r", b"1\r\r\n", b"1\n"),
+            ("1", b"1" if runtime.compressed_source else b"1\n", b"1"),
+        ]
+        for source, native, output in cases:
+            limits = esolangs.TextLimits(
+                plain_chars=len(native), generation_chars=32, gzip_bytes=100
+            )
+            payload = esolangs.CompressedText.from_chunks((source, ""), limits=limits)
+            artifact = api.from_json(api.to_json(api.generate("11")))
+            assert api.run(artifact).output == source
+            for flags in ([], ["--gzip"], ["--plain"]):
+                monkeypatch.setattr(sys, "argv", [*generate, *flags])
+                main()
+                data, error = capsysbinary.readouterr()
+                assert not error
+                assert (
+                    data if flags == ["--plain"] else gzip.decompress(data)
+                ) == native
+                if runtime.compressed_source and source == "1" and flags != ["--plain"]:
+                    assert data == payload.to_gzip()
+                path.write_bytes(data)
+                monkeypatch.setattr(sys, "argv", run)
+                main()
+                assert capsysbinary.readouterr() == (output, b"")
+
+        limits = esolangs.TextLimits(plain_chars=4, generation_chars=4, gzip_bytes=100)
+        original_size = len(esolangs.CompressedText.from_chunks(("1\r",)).to_gzip())
+        for flag, budget, diagnostic in (
+            ("--plain", replace(limits, plain_chars=3), b"3-character cap"),
+            ("--gzip", replace(limits, generation_chars=3), b"3-character work cap"),
+            ("--gzip", replace(limits, gzip_bytes=original_size), b"byte file cap"),
+        ):
+            payload = esolangs.CompressedText.from_chunks(("1\r",), limits=budget)
+            monkeypatch.setattr(sys, "argv", [*generate, flag])
+            with pytest.raises(SystemExit) as exited:
+                main()
+            assert exited.value.code == 2
+            out, err = capsysbinary.readouterr()
+            assert not out
+            assert diagnostic in err
 
 
 def test_unwrappable_source_is_untouched() -> None:

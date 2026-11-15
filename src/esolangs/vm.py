@@ -61,6 +61,7 @@ from esolangs.runtime._capabilities import IpShape as _IpShape
 from esolangs.runtime._drive import (
     PeriodicMachine,
     _check_snapshot_hash,
+    _invalid_halted,
     _SnapshotUnavailableError,
     drive_periodic,
     drive_until_repeat,
@@ -228,7 +229,10 @@ class _DelegatingVM:
     @property
     def halted(self) -> bool:
         try:
-            return self._machine.halted
+            halted = self._machine.halted
+            if halted is not False and halted is not True:
+                raise _invalid_halted()
+            return halted
         except Exception:
             with self._interpreter_errors():
                 raise
@@ -240,11 +244,8 @@ class _DelegatingVM:
         becomes :class:`~esolangs.exceptions.ProgramError`, a
         ``RecursionError`` :class:`~esolangs.exceptions.InterpreterLimitError`.
         """
-        dumping: bool | None = False
-        started = False
+        dumping = self._dump_pending and self.halted
         try:
-            dumping = self._dump_pending and self._machine.halted
-            started = True
             self._machine.step()
         except Exception:
             # Translation is needed only on failure; a context per instruction
@@ -256,13 +257,12 @@ class _DelegatingVM:
                 # A pending dump can be retried. A failed command that moved
                 # the machine to its halt position supplies no completion.
                 if (
-                    started
-                    and not dumping
+                    not dumping
                     and self._dump_pending is not False
                     and self._halt_fault is None
                 ):
                     try:
-                        if self._machine.halted:
+                        if self._machine.halted is True:
                             self._halt_fault = error
                     except Exception:
                         # A failed inspection cannot replace the command fault.

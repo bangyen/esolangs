@@ -96,6 +96,7 @@ class CompressedText:
     limits: TextLimits | None = None
     _size: int = field(init=False, repr=False)
     _has_newline: ClassVar[bool | None] = None
+    _tail: ClassVar[str | None] = None
 
     def __post_init__(self) -> None:
         """Validate the stream and measure its expanded characters."""
@@ -108,13 +109,16 @@ class CompressedText:
             _check_gzip(limits, len(self.data))
         size = 0
         has_newline = False
+        tail = ""
         for chunk in CompressedText.chunks(self):
             size += len(chunk)
             has_newline = has_newline or "\n" in chunk
+            tail = chunk[-1:] or tail
             if limits is not None:
                 _check_work(limits, size)
         object.__setattr__(self, "_size", size)
         object.__setattr__(self, "_has_newline", has_newline)
+        object.__setattr__(self, "_tail", tail)
 
     def chunks(self) -> Iterator[str]:
         """Yield decoded text in bounded chunks, validating gzip and UTF-8."""
@@ -163,6 +167,7 @@ class CompressedText:
         output = io.BytesIO()
         count = 0
         has_newline = False
+        tail = ""
         with gzip.GzipFile(fileobj=output, mode="wb", filename="", mtime=0) as stream:
             for text in chunks:
                 if not _has_backing_type(text, str):
@@ -173,6 +178,7 @@ class CompressedText:
                 chunk = str.__str__(text)
                 count += len(chunk)
                 has_newline = has_newline or "\n" in chunk
+                tail = chunk[-1:] or tail
                 if limits is not None:
                     _check_work(limits, count)
                 try:
@@ -188,7 +194,7 @@ class CompressedText:
         data = output.getvalue()
         if limits is not None:
             _check_gzip(limits, len(data))
-        return cls._measured(data, count, limits, has_newline=has_newline)
+        return cls._measured(data, count, limits, has_newline=has_newline, tail=tail)
 
     @classmethod
     def _measured(
@@ -198,6 +204,7 @@ class CompressedText:
         limits: TextLimits | None,
         *,
         has_newline: bool | None,
+        tail: str | None,
     ) -> CompressedText:
         """Build from a stream already known valid and ``size`` characters long.
 
@@ -209,6 +216,7 @@ class CompressedText:
         object.__setattr__(text, "limits", limits)
         object.__setattr__(text, "_size", size)
         object.__setattr__(text, "_has_newline", has_newline)
+        object.__setattr__(text, "_tail", tail)
         return text
 
     def _is_multiline(self) -> bool:
@@ -219,6 +227,15 @@ class CompressedText:
             if known is None
             else known
         )
+
+    def _last_character(self) -> str:
+        """Return the decoded tail, inspecting old records only if needed."""
+        tail = self._tail
+        if tail is None:
+            tail = ""
+            for chunk in CompressedText.chunks(self):
+                tail = chunk[-1:] or tail
+        return tail
 
     def _inherit_limits(self, original: TextLimits | None) -> CompressedText:
         """Apply both versions' caps to the stored stream and measured length."""
@@ -241,7 +258,11 @@ class CompressedText:
         _check_gzip(combined, len(self.data))
         _check_work(combined, self._size)
         return self._measured(
-            self.data, self._size, combined, has_newline=self._has_newline
+            self.data,
+            self._size,
+            combined,
+            has_newline=self._has_newline,
+            tail=self._tail,
         )
 
     @classmethod

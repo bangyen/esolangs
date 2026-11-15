@@ -40,7 +40,7 @@ import sys
 from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import asdict
-from itertools import pairwise
+from itertools import chain, pairwise
 from typing import cast, get_args
 
 from esolangs import (
@@ -339,11 +339,14 @@ def _emit(
         else:
             _write_output(program + ending)
     elif isinstance(program, CompressedText):
-        _emit_compressed(
-            program,
-            plain=plain,
-            terminate=runtime.file_newline and not runtime.compressed_source,
-        )
+        ending = ""
+        if runtime.file_newline:
+            tail = program._last_character()  # noqa: SLF001 - measured at compression
+            # Keep existing gzip bytes unless native loading would consume a
+            # source newline as the file terminator.
+            if not runtime.compressed_source or tail in ("\r", "\n"):
+                ending = native_file_terminator(tail)
+        _emit_compressed(program, plain=plain, ending=ending)
     else:
         assert isinstance(artifact, ProgramArtifact)
         _write_output(
@@ -357,27 +360,20 @@ def _emit(
         )
 
 
-def _emit_compressed(program: CompressedText, *, plain: bool, terminate: bool) -> None:
-    """Export compressed text under the runtime's native newline policy."""
-    from esolangs.portable import _terminated_text
-
+def _emit_compressed(program: CompressedText, *, plain: bool, ending: str) -> None:
+    """Export compressed text with its selected native terminator."""
     limits = program.limits
     if plain:
-        chunks = program.plain_chunks()
-        if terminate:
-            if limits is not None and len(program) + 2 > limits.plain_chars:
-                _check_plain(limits, len(program) + 1)
-                # A final CR needs a two-character terminator. Check the
-                # exact size before writing if only one character will fit.
-                for _ in _terminated_text(program.chunks(), plain_limits=limits):
-                    pass
-            chunks = _terminated_text(chunks)
-        for chunk in chunks:
+        if ending and limits is not None:
+            _check_plain(limits, len(program) + len(ending))
+        for chunk in program.plain_chunks():
             _write_output(chunk)
+        if ending:
+            _write_output(ending)
     else:
-        if terminate:
+        if ending:
             program = CompressedText.from_chunks(
-                _terminated_text(program.chunks()), limits=limits
+                chain(program.chunks(), (ending,)), limits=limits
             )
         _write_output(program.to_gzip())
 

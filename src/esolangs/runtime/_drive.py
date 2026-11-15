@@ -107,6 +107,10 @@ def _repeat_evidence(
         raise InterpreterLimitError(_SNAPSHOT_HASH_ERROR) from error
 
 
+def _invalid_halted() -> InterpreterLimitError:
+    return InterpreterLimitError("machine halted must be a bool")
+
+
 def drive_until_repeat(
     machine: SnapshotMachine, *, step: Callable[[], None] | None = None
 ) -> CompletionReport:
@@ -115,7 +119,12 @@ def drive_until_repeat(
     seen: set[Hashable] = set()
     history: list[Hashable] = []
     snapshot: Callable[[], Hashable] | None
-    while not machine.halted:
+    while True:
+        halted = machine.halted
+        if halted is not False:
+            if halted is True:
+                return HALTED_REPORT
+            raise _invalid_halted()
         try:
             snapshot = machine.snapshot
         except AttributeError:
@@ -137,7 +146,6 @@ def drive_until_repeat(
             return CompletionReport(Completion.PERIODIC, cycle)
         history.append(state)
         take_step()
-    return HALTED_REPORT
 
 
 def drive_periodic(
