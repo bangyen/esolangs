@@ -534,13 +534,19 @@ def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
         body = utf8
     if len(body) > _METADATA_LIMIT:
         raise SourceMetadataSizeError("oversized esolangs PNG metadata")
+    # A PNG datastream can end before the last byte of its enclosing file.
+    position = len(_SIGNATURE)
+    for kind, contents in _chunks(data):
+        if kind == b"IEND":
+            break
+        position += 12 + len(contents)
     chunk = _METADATA_CHUNK + body
     return (
-        data[:-12]
+        data[:position]
         + struct.pack(">I", len(body))
         + chunk
         + struct.pack(">I", zlib.crc32(chunk) & 0xFFFFFFFF)
-        + data[-12:]
+        + data[position:]
     )
 
 

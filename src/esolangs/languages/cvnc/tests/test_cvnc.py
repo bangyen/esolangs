@@ -68,7 +68,7 @@ def test_failed_command_stays_pending_on_retry(
             position,
             reads,
             attempt if error is InputExhaustedError else 0,
-            steps=steps if debugger else None,
+            steps=steps if debugger else 0,
         )
         workspace = _capture_workspace(vm)
         assert workspace.parts == (*start.parts[:-1], position)

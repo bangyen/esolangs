@@ -12,7 +12,7 @@ import stat
 import sys
 import threading
 from collections.abc import Buffer, Callable, Iterator
-from contextlib import AbstractContextManager, contextmanager
+from contextlib import AbstractContextManager, contextmanager, suppress
 from contextvars import copy_context
 from errno import EAGAIN
 from io import BufferedReader, FileIO
@@ -387,6 +387,12 @@ class _StdoutEncodingError(Exception):
     """Output text cannot be written as UTF-8."""
 
 
+def _abandon_stdout() -> None:
+    """Keep Python's shutdown flush from retrying the failed destination."""
+    with suppress(OSError, ValueError), open(os.devnull, "wb") as sink:
+        os.dup2(sink.fileno(), sys.stdout.fileno())
+
+
 @contextmanager
 def _complete_stdout_writes() -> Iterator[None]:
     """Check unbuffered stdout writes without changing the text encoder."""
@@ -452,6 +458,9 @@ def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
                 sys.stdout.write(
                     data.encode(encoding, "backslashreplace").decode(encoding)
                 )
+    except KeyboardInterrupt:
+        _abandon_stdout()
+        raise
     except OSError as exc:
         raise _StdoutError(exc) from exc
 
@@ -460,6 +469,9 @@ def _flush_stdout() -> None:
     """Flush buffered output while the CLI can report a destination error."""
     try:
         sys.stdout.flush()
+    except KeyboardInterrupt:
+        _abandon_stdout()
+        raise
     except OSError as exc:
         raise _StdoutError(exc) from exc
 

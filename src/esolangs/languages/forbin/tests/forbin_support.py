@@ -125,7 +125,11 @@ def check_constructor_error_observations() -> None:
                         ports[-1].past_end,
                     ) == (output, 0, 0, 1)
                 else:
-                    steps = 0 if name == "step-output-eof" and counted else None
+                    steps = (
+                        0
+                        if name == "step-output-eof" and (counted or route == "vm")
+                        else None
+                    )
                     assert caught.value.partial_output == output
                     assert caught.value.observation == ExecutionResult(
                         output, 0, 0, 1, completion=None, steps=steps

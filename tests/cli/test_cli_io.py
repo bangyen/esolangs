@@ -5,6 +5,7 @@ import json
 import os
 import select
 import shlex
+import signal
 import subprocess
 import sys
 from collections.abc import Buffer, Iterator
@@ -12,6 +13,7 @@ from contextlib import suppress
 from io import FileIO, TextIOWrapper
 from pathlib import Path
 from types import SimpleNamespace
+from typing import BinaryIO
 from unittest.mock import patch
 
 import pytest
@@ -498,12 +500,10 @@ def test_unbuffered_stdout_retries_short_writes_and_restores_writer(
     assert path.read_bytes() == "before\réλ\r".encode("utf-16")
 
 
-@pytest.mark.medium
-@pytest.mark.skipif(os.name != "posix", reason="requires a POSIX nonblocking pipe")
-@pytest.mark.parametrize(
-    "args", [("encode-inputs", REFERENCE, "01"), ("list",)], ids=["raw", "display"]
-)
-def test_unbuffered_stdout_refuses_a_full_pipe(args: tuple[str, ...]) -> None:
+@pytest.fixture
+def full_stdout_pipe() -> Iterator[tuple[BinaryIO, BinaryIO]]:
+    if os.name != "posix":
+        pytest.skip("requires a POSIX nonblocking pipe")
     read_fd, write_fd = os.pipe()
     with os.fdopen(read_fd, "rb") as reader, os.fdopen(write_fd, "wb") as writer:
         fd = writer.fileno()
@@ -512,18 +512,85 @@ def test_unbuffered_stdout_refuses_a_full_pipe(args: tuple[str, ...]) -> None:
             with suppress(BlockingIOError):
                 while True:
                     os.write(fd, block)
-        result = subprocess.run(
-            [sys.executable, "-u", "-m", "esolangs", *args],
-            stdout=writer,
-            stderr=subprocess.PIPE,
-            timeout=10,
-            check=False,
-        )
-        assert not os.get_blocking(fd)
-        writer.close()
-        assert set(reader.read()) == {ord("x")}
+        yield reader, writer
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "args", [("encode-inputs", REFERENCE, "01"), ("list",)], ids=["raw", "display"]
+)
+def test_unbuffered_stdout_refuses_a_full_pipe(
+    args: tuple[str, ...], full_stdout_pipe: tuple[BinaryIO, BinaryIO]
+) -> None:
+    reader, writer = full_stdout_pipe
+    result = subprocess.run(
+        [sys.executable, "-u", "-m", "esolangs", *args],
+        stdout=writer,
+        stderr=subprocess.PIPE,
+        timeout=10,
+        check=False,
+    )
+    assert not os.get_blocking(writer.fileno())
+    writer.close()
+    assert set(reader.read()) == {ord("x")}
     assert result.returncode == 120
     assert b"cannot write stdout:" in result.stderr
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("phase", "args"),
+    [
+        ("_flush_stdout", ("list",)),
+        ("_write_output", ("encode-inputs", REFERENCE, "01" * 8192)),
+    ],
+    ids=["flush", "write"],
+)
+def test_interrupting_stdout_exits_without_draining_the_pipe(
+    phase: str, args: tuple[str, ...], full_stdout_pipe: tuple[BinaryIO, BinaryIO]
+) -> None:
+    reader, writer = full_stdout_pipe
+    os.set_blocking(writer.fileno(), True)
+    # The raw hook signals readiness from inside the buffered I/O call.
+    code = r"""
+import os
+import sys
+from esolangs.cli import main
+
+sys.stdout = open(sys.stdout.fileno(), "w", 8192, encoding="utf-8", closefd=False)
+raw = sys.stdout.buffer.raw
+write = raw.write
+announce = True
+
+def signal_ready(data):
+    global announce
+    if announce:
+        announce = False
+        os.write(2, (sys._getframe(1).f_code.co_name + "\n").encode("ascii"))
+    return write(data)
+
+raw.write = signal_ready
+main()
+"""
+    with subprocess.Popen(
+        [sys.executable, "-c", code, *args],
+        stdin=subprocess.DEVNULL,
+        stdout=writer,
+        stderr=subprocess.PIPE,
+    ) as child:
+        try:
+            assert child.stderr is not None
+            assert select.select([child.stderr], [], [], 10)[0]
+            assert child.stderr.readline() == phase.encode("ascii") + b"\n"
+            child.send_signal(signal.SIGINT)
+            _, diagnostic = child.communicate(timeout=5)
+        finally:
+            if child.poll() is None:
+                child.kill()
+    assert (child.returncode, diagnostic) == (130, b"interrupted\n")
+    assert os.get_blocking(writer.fileno())
+    writer.close()
+    assert set(reader.read()) == {ord("x")}
 
 
 # 2.2s over 6 tests: drives the CLI as a subprocess.

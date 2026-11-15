@@ -67,6 +67,47 @@ def test_vm_completion_cap_keeps_custom_input_counters_unknown():
     )
 
 
+@pytest.mark.parametrize(("already_completed", "limit"), [(0, 3), (0, None), (2, 1)])
+def test_vm_completion_fault_counts_steps_completed_in_this_call(
+    already_completed, limit
+):
+    vm = make_vm(REFERENCE, ",.,", stdin="A")
+    for _ in range(already_completed):
+        vm.step()
+    with pytest.raises(esolangs.InputExhaustedError) as caught:
+        complete_vm(vm, max_steps=limit)
+    assert caught.value.partial_output == "A"
+    assert caught.value.observation == esolangs.ExecutionResult(
+        "A", 1, 1, 1, steps=2 - already_completed
+    )
+
+
+@pytest.mark.parametrize("observed", [False, True])
+def test_vm_completion_preserves_caller_owned_fault_evidence(*, observed: bool):
+    fault = esolangs.HaltError("caller fault")
+    if observed:
+        fault.observation = esolangs.ExecutionResult("A", None, None, None)
+        fault.partial_output = "A"
+
+    class Custom:
+        halted = False
+        self_halts = True
+        output = ""
+
+        def step(self):
+            if self.output:
+                raise fault
+            self.output = "A"
+
+    with pytest.raises(esolangs.HaltError) as caught:
+        complete_vm(Custom(), max_steps=None)
+    assert caught.value is fault
+    expected = (
+        esolangs.ExecutionResult("A", None, None, None, steps=1) if observed else None
+    )
+    assert fault.observation == expected
+
+
 def test_custom_vm_io_fields_stay_caller_owned():
     class Custom:
         halted = True

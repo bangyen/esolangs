@@ -252,7 +252,7 @@ def test_fault_preserves_operands_and_instruction_on_retry(
         assert not vm.halted
         assert stopped.value.partial_output == vm.output == ""
         assert stopped.value.observation == ExecutionResult(
-            "", len(stdin), 1, 0, steps=steps if debugger else None
+            "", len(stdin), 1, 0, steps=steps if debugger else 0
         )
         assert vm.snapshot() == state
         assert _capture_workspace(vm) == workspace

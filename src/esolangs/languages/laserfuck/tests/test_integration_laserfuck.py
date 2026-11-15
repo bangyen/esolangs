@@ -144,13 +144,13 @@ def test_a_failed_dump_does_not_repeat_its_output(*, debugger: bool) -> None:
         vm = language.make_vm(source, stdin="\U0010ffff", seed=0)
         drive = partial(complete_vm, vm, max_steps=5)
     saved = []
-    for _ in range(2):
+    for completed in (5, 0):
         with pytest.raises(esolangs.ProgramError, match=r"chr\(\) arg") as stopped:
             drive()
         assert vm.halted
         assert stopped.value.partial_output == vm.output == "\x01"
         assert stopped.value.observation == esolangs.ExecutionResult(
-            "\x01", 1, 1, 0, steps=5 if debugger else None
+            "\x01", 1, 1, 0, steps=5 if debugger else completed
         )
         saved.append((vm.snapshot(), _capture_workspace(vm)))
     assert saved[0] == saved[1]

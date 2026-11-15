@@ -554,6 +554,46 @@ def test_png_metadata_stops_at_iend(language: str, tmp_path: Path) -> None:
     assert esolangs.from_file(language, path) == expected
 
 
+@pytest.mark.parametrize(
+    "suffix",
+    [
+        b"",
+        b"tail",
+        b"foreign attached bytes",
+        b"foreign attached bytes" + _chunk(b"IEND", b""),
+    ],
+    ids=["ordinary", "short-tail", "long-tail", "trailing-iend"],
+)
+def test_png_metadata_writer_preserves_data_after_iend(
+    suffix: bytes, tmp_path: Path
+) -> None:
+    api = esolangs.Language(one(source_kind="raster")[0])
+    pixels = esolangs.Raster((((1, 2, 3),),))
+    raw = pixels.to_png()
+    metadata = {
+        "version": 1,
+        "language": api.name,
+        "settings": None,
+        "scale": None,
+        "input_arity": 1,
+    }
+    body = json.dumps(metadata, separators=(",", ":")).encode("ascii")
+    expected = raw[:-12] + _chunk(b"esOL", body) + raw[-12:] + suffix
+    path = tmp_path / "program.png"
+    path.write_bytes(raw + suffix)
+    assert api.from_file(path) == api.from_source(pixels)
+
+    for tagged in (
+        png.write_metadata(raw + suffix, metadata),
+        png.attach_source_metadata(raw + suffix, api.name, None, None, input_arity=1),
+    ):
+        assert tagged == expected
+        path.write_bytes(tagged)
+        assert api.from_file(path) == esolangs.ProgramArtifact(
+            pixels, api.name, input_arity=1
+        )
+
+
 @pytest.mark.parametrize("language", one(source_kind="raster"))
 def test_named_png_damage_and_portable_wrapper_keep_repair_notes(
     language: str, tmp_path: Path

@@ -25,6 +25,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 import esolangs._cycles as _cycles
+from esolangs._cycles import _drive_until_halt
 from esolangs._cycles import (
     run_until_halt as run_until_halt,
 )
@@ -43,7 +44,7 @@ from esolangs._cycles import (
 from esolangs._cycles import (
     run_until_halt_or_value_growth as run_until_halt_or_value_growth,
 )
-from esolangs.exceptions import ArgumentError, steps_exhausted
+from esolangs.exceptions import ArgumentError, EsolangError, steps_exhausted
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as _IpShape
@@ -77,7 +78,8 @@ if TYPE_CHECKING:
 def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     """Return finalized raw output after a proved halt, including a final dump.
 
-    An exhausted step budget retains the unfinished IO observation. An active
+    An exhausted step budget retains the unfinished IO observation. Fault
+    observations include the commands completed during this call. An active
     machine must be able to self-halt. Repeated completion is safe: the
     post-halt step is idempotent by the VM contract.
     """
@@ -85,18 +87,26 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
         max_steps = check_whole(max_steps, "max_steps")
     if not vm.self_halts and not vm.halted:
         raise ArgumentError("completion requires a machine that self-halts")
-    if not run_until_halt(vm, max_steps):
+    steps = _drive_until_halt(vm, max_steps, on_fault=_retain_fault_steps)
+    if steps is None:
         error = steps_exhausted("VM completion exhausted max_steps")
         # Without a stop predicate, an active return has used the full budget.
         error.observation = replace(_capture_observation(vm), steps=max_steps)
         error.partial_output = error.observation.output
         raise error
     dump_pending = vm.dumps_on_the_post_halt_step and not _post_halt_dumped(vm)
-    finalize(
-        vm,
-        policy=Completion.POST_HALT if dump_pending else Completion.HALTED,
-    )
+    try:
+        finalize(vm, policy=Completion.POST_HALT if dump_pending else Completion.HALTED)
+    except EsolangError as error:
+        _retain_fault_steps(error, steps)
+        raise
     return vm.output
+
+
+def _retain_fault_steps(error: EsolangError, steps: int) -> None:
+    """Add measured commands to an observation the VM already supplied."""
+    if error.observation is not None:
+        error.observation = replace(error.observation, steps=steps)
 
 
 @runtime_checkable

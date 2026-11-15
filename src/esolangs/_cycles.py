@@ -6,6 +6,7 @@ from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_checkable
 
+from esolangs.exceptions import EsolangError
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchProof, CycleDecision
 from esolangs.runtime._validate import check_whole
@@ -772,12 +773,28 @@ def run_until_halt(
     """
     if limit is not None:
         limit = check_whole(limit, "limit")
+    return _drive_until_halt(machine, limit, stop=stop) is not None
+
+
+def _drive_until_halt(
+    machine: _SteppableMachine | VM,
+    limit: int | None,
+    *,
+    stop: Callable[[], bool] | None = None,
+    on_fault: Callable[[EsolangError, int], None] | None = None,
+) -> int | None:
+    """Count completed commands on halt or fault, returning None on a stop."""
     steps = 0
-    while not machine.halted:
-        if stop is not None and stop():
-            return False
-        if limit is not None and steps >= limit:
-            return False
-        machine.step()
-        steps += 1
-    return True
+    try:
+        while not machine.halted:
+            if stop is not None and stop():
+                return None
+            if limit is not None and steps >= limit:
+                return None
+            machine.step()
+            steps += 1
+    except EsolangError as error:
+        if on_fault is not None:
+            on_fault(error, steps)
+        raise
+    return steps

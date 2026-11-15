@@ -118,13 +118,13 @@ def test_failed_run_boundary_can_be_retried(
         vm = api.make_vm(code)
         drive = partial(complete_vm, vm, max_steps=6)
     snapshots = []
-    for _ in range(2):
+    for completed in (steps, 0):
         with pytest.raises(HaltError, match=message) as stopped:
             drive()
         assert not vm.halted
         assert stopped.value.partial_output == vm.output == output
         assert stopped.value.observation == ExecutionResult(
-            output, 0, 0, 1, steps=steps if debugger else None
+            output, 0, 0, 1, steps=steps if debugger else completed
         )
         snapshots.append((vm.snapshot(), _capture_workspace(vm)))
     assert snapshots[0] == snapshots[1]

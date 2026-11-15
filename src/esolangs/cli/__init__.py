@@ -79,6 +79,7 @@ from esolangs.cli.hints import (
     _shell_hint,
 )
 from esolangs.cli.io import (
+    _abandon_stdout,
     _complete_stdout_writes,
     _flush_stdout,
     _read_stdin,
@@ -689,10 +690,7 @@ def main() -> None:
     except _StdoutEncodingError as exc:
         _fail(exc, 1)
     except _StdoutError as exc:
-        # Python flushes stdout at exit and would report the same error
-        # again from the interpreter's own teardown.
-        with suppress(OSError, ValueError), open(os.devnull, "wb") as sink:
-            os.dup2(sink.fileno(), sys.stdout.fileno())
+        _abandon_stdout()
         if not isinstance(exc.error, BrokenPipeError):
             _diagnostic(f"cannot write stdout: {exc}\n")
         sys.exit(120)
