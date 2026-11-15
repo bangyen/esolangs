@@ -140,6 +140,23 @@ def test_debugger_breakpoint_and_watch_counts_use_integer_storage() -> None:
     assert dbg.output == "\x01"
 
 
+def test_output_breakpoints_use_the_string_contents() -> None:
+    class Text(str):
+        def __bool__(self):
+            return not str.__len__(self)
+
+        def __str__(self):
+            raise AssertionError("subclass rendering must not affect a breakpoint")
+
+    dbg = debugger_api.make_debugger(REFERENCE, ",.", stdin="A")
+    with pytest.raises(esolangs.ArgumentError, match="non-empty string"):
+        dbg.break_on_output(Text(""))
+    dbg.break_on_output(Text("A"))
+    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "breakpoint"
+    assert dbg.observation.steps == 2
+    assert dbg.output == "A"
+
+
 #: Two of the nine dump-on-post-halt languages, one reader and one template:
 #: the dump step is the debugger's shared code, and test_vm_protocol already
 #: checks every language's flag against its behaviour.

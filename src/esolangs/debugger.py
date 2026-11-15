@@ -200,6 +200,7 @@ class Debugger(_ExecutionController):
         """
         if not isinstance(text, str):
             raise ArgumentError(f"text must be a string, got {type(text).__name__}")
+        text = str.__str__(text)
         if not text:
             raise ArgumentError("text must be a non-empty string")
         self._breakpoints.append(lambda vm: text in vm.output)

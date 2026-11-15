@@ -471,3 +471,40 @@ class TestOutputOrdering:
             ("out", chr(1)),
             ("out", chr(96)),
         ]
+
+    def test_a_statement_resumes_after_a_caller_owned_read_failure(self) -> None:
+        class InterruptedInput(ScriptedIO):
+            attempts = 0
+
+            def input_char(self, prompt="Input: "):
+                self.attempts += 1
+                if self.attempts == 2:
+                    raise OSError("input temporarily unavailable")
+                return super().input_char(prompt)
+
+        io = InterruptedInput("QB")
+        code = "we tt yeeeeey tt we et ry ee ry et we"
+        machine = _Machine(code, io)
+        with pytest.raises(OSError, match="input temporarily unavailable"):
+            machine.step()
+        assert (io.getvalue(), io.position(), io.reads) == ("A", 1, 1)
+        assert machine.snapshot() == (0, (), 1, ((ord("Q"),), 1))
+        pending = machine.workspace_snapshot().parts[0]
+        assert pending.kind == "pending_statement"
+        assert pending.values == (0, (ord("Q"),), 1)
+
+        machine.step()
+        assert machine.halted
+        assert machine.snapshot() == (1, ((0, 147),), 2)
+        assert machine.workspace_snapshot().parts[0] == 1
+        assert io.attempts == 3
+        control = esolangs.Language("Qoibl").prepare(code).run(stdin="QB")
+        assert (
+            (io.getvalue(), io.position(), io.reads)
+            == (
+                control.output,
+                control.input_position,
+                control.input_reads,
+            )
+            == ("A", 2, 2)
+        )

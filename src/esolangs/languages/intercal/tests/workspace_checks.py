@@ -4,7 +4,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.intercal.interpreter import _Machine, prepare_machine
-from esolangs.runtime._state import WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
@@ -85,14 +85,25 @@ def _view(machine):
 
 
 def observe_scalar(factory, source, stdin, view, expected):
-    predictions = iter(enumerate(expected[1]))
+    status, trace = expected
+    predictions = iter(enumerate(trace))
     witness = workspace.WorkspaceWitness(_WORKSPACE)
 
     def capture(machine):
         index, row = next(predictions)
         state = row[0]
+        instruction = state[0]
+        if status == "halt" and index == len(trace) - 1:
+            start = trace[index - 1][3]
+            if row[3] > start:
+                line = stdin[start : row[3]]
+                if line.endswith("\n"):
+                    line = line[:-1].removesuffix("\r")
+                instruction = WorkspaceVariant(
+                    "pending_statement", (instruction, (), (line,), 0)
+                )
         parts = (
-            state[0],
+            instruction,
             state[1],
             frozenset(state[2]),
             state[3],
@@ -105,7 +116,7 @@ def observe_scalar(factory, source, stdin, view, expected):
         reads = consumed.count("\n") + int(
             bool(consumed) and not consumed.endswith("\n")
         )
-        past_end = int(expected[0] == "input" and index == len(expected[1]) - 1)
+        past_end = int(status == "input" and index == len(trace) - 1)
         assert (machine.io.reads, machine.io.past_end) == (reads, past_end)
         return view(machine)
 

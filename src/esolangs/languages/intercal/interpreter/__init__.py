@@ -103,7 +103,7 @@ from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 
@@ -128,6 +128,12 @@ class _Image(NamedTuple):
     lines: tuple[str, ...]
     program: _Program
     abstained: tuple[int, ...]
+
+
+class _StatementProgress(NamedTuple):
+    draws: tuple[int, ...]
+    inputs: tuple[int | str | None, ...]
+    flushed: int
 
 
 def _prepare_source(code: str) -> _Image:
@@ -165,6 +171,9 @@ class _Machine:
     ) -> None:
         self.io = io
         self._rng = rng
+        self._draws: list[int] = []
+        self._inputs: list[int | str | None] = []
+        self._flushed = 0
         image = _prepare_source(code) if isinstance(code, str) else code
         self.lines, self._program, abstained = image
         self.state = _State(
@@ -198,6 +207,10 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
         s = self.state
+        progress = self._statement_progress()
+        instruction: int | WorkspaceVariant = s.ind
+        if progress is not None:
+            instruction = WorkspaceVariant("pending_statement", (s.ind, *progress))
 
         def array(value: int | tuple[tuple[int, ...], _PMap[int, int]]) -> Hashable:
             if isinstance(value, int):
@@ -206,7 +219,7 @@ class _Machine:
             return dimensions, frozenset(data.items())
 
         return _WORKSPACE_MODEL.capture(
-            instruction=s.ind,
+            instruction=instruction,
             scalars=frozenset(s.scalars.items()),
             arrays=frozenset(
                 (key, dimensions, frozenset(data.items()))
@@ -226,7 +239,16 @@ class _Machine:
 
     def snapshot(self) -> tuple[Any, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*_snapshot(self.state), self.io.progress())
+        boundary = (*_snapshot(self.state), self.io.progress())
+        progress = self._statement_progress()
+        return (*boundary, progress) if progress is not None else boundary
+
+    def _statement_progress(self) -> _StatementProgress | None:
+        if self._draws or self._inputs or self._flushed:
+            return _StatementProgress(
+                tuple(self._draws), tuple(self._inputs), self._flushed
+            )
+        return None
 
     def branching_snapshot(self) -> tuple[Any, ...]:
         """Return immutable state for exhaustive ``%`` branch search."""
@@ -287,19 +309,26 @@ class _Machine:
         if self.branching_halted(current):
             return (current,)
         ind: int = current[0]
-        if self._program.statements[ind].command.tag == "write" and not current[5][ind]:
+        cursor = current[9]
+        progress: _StatementProgress | None = current[10] if len(current) > 10 else None
+        if (
+            progress is None
+            and self._program.statements[ind].command.tag == "write"
+            and not current[5][ind]
+        ):
             return None
         successors: list[tuple[Any, ...]] = []
-        pending: list[tuple[int, ...]] = [()]
+        pending = [progress.draws if progress is not None else ()]
+        inputs = progress.inputs if progress is not None else ()
+        branch = self._restore(current)
         while pending:
             prefix = pending.pop()
             base = len(prefix)
             draws = list(prefix)
-            branch = self._restore(current)
             while True:
                 try:
                     new_state, _effects, _used = _advance(
-                        branch, self._program, tuple(draws), ()
+                        branch, self._program, draws, inputs
                     )
                 except _NeedDraw:
                     # Each new draw needs the current path and one flipped prefix.
@@ -314,7 +343,7 @@ class _Machine:
                 break
             filled = tuple(draws)
             pending.extend((*filled[:at], 99) for at in range(base, len(filled)))
-            successors.append((*_snapshot(new_state), current[-1]))
+            successors.append((*_snapshot(new_state), cursor))
         return tuple(successors)
 
     def step(self) -> None:
@@ -322,44 +351,46 @@ class _Machine:
 
         The shell performs the draws and reads the pure transition asks for
         and writes what it returns.  Each request flushes the output computed
-        before it, and a fault flushes the same prefix before it is re-raised,
-        so output written before a later draw, read, or halt is not lost.
+        before it. Keep accepted effects until the transition commits so a
+        fault leaves the same statement resumable.
         """
         if self.halted:
             return
-        draws: list[int] = []
-        inputs: list[int | str | None] = []
-        flushed = 0
         while True:
             try:
                 self.state, effects, _used = _advance(
-                    self.state, self._program, tuple(draws), tuple(inputs)
+                    self.state, self._program, self._draws, self._inputs
                 )
             except _NeedDraw as need:
-                flushed = self._flush(need.effects, flushed)
-                draws.append(draw(self._rng, 100))
+                self._flush_pending(need.effects)
+                self._draws.append(draw(self._rng, 100))
                 continue
             except _NeedInput as need:
-                flushed = self._flush(need.effects, flushed)
+                self._flush_pending(need.effects)
                 if need.kind == "char":
                     try:
-                        inputs.append(self.io.input_char())
+                        self._inputs.append(self.io.input_char())
                     except EOFError:
-                        inputs.append(None)
+                        self._inputs.append(None)
                 else:
-                    inputs.append(self.io.input_str())
+                    self._inputs.append(self.io.input_str())
                 continue
             except _Fault as fault:
-                self._flush(fault.effects, flushed)
+                self._flush_pending(fault.effects)
                 raise fault.error from None
             break
-        self._flush(effects, flushed)
-
-    def _flush(self, effects: Sequence[str], flushed: int) -> int:
-        """Print ``effects`` past ``flushed``; return the new flush count."""
-        for text in effects[flushed:]:
+        remaining = effects[self._flushed :]
+        self._draws.clear()
+        self._inputs.clear()
+        self._flushed = 0
+        for text in remaining:
             self.io.print_str(text)
-        return len(effects)
+
+    def _flush_pending(self, effects: Sequence[str]) -> None:
+        """Count each accepted write to an uncommitted statement."""
+        for text in effects[self._flushed :]:
+            self.io.print_str(text)
+            self._flushed += 1
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

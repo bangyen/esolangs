@@ -41,7 +41,7 @@ from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -509,6 +509,8 @@ class _Machine:
         self.io = io
         self.code = code if isinstance(code, tuple) else _prepare_source(code)
         self.ind = 0
+        self._statement_input: list[int] = []
+        self._statement_output = 0
 
     @property
     def halted(self) -> bool:
@@ -526,15 +528,28 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        pending = self._pending_statement()
         return _WORKSPACE_MODEL.capture(
-            instruction=self.ind,
+            instruction=(
+                self.ind
+                if pending is None
+                else WorkspaceVariant("pending_statement", (self.ind, *pending))
+            ),
             variables=frozenset(self.var.items()),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.ind, tuple(sorted(self.var.items())), self.io.progress())
+        state = (self.ind, tuple(sorted(self.var.items())), self.io.progress())
+        pending = self._pending_statement()
+        return state if pending is None else (*state, pending)
+
+    def _pending_statement(self) -> tuple[tuple[int, ...], int] | None:
+        """Expose effects already performed by an incomplete statement."""
+        if self._statement_input or self._statement_output:
+            return tuple(self._statement_input), self._statement_output
+        return None
 
     @property
     def _state(self) -> _State:
@@ -545,11 +560,12 @@ class _Machine:
         """Write a statement transition's result back onto the shell."""
         self.var, self.ind = state
 
-    def _flush(self, effects: _Effects, flushed: int) -> int:
-        """Print ``effects`` past ``flushed``; return the new flush count."""
+    def _flush(self, effects: _Effects, flushed: int, *, pending: bool = False) -> None:
+        """Write effects beyond the accepted prefix, tracking incomplete steps."""
         for char in effects[flushed:]:
             self.io.print_char(char)
-        return len(effects)
+            if pending:
+                self._statement_output += 1
 
     def step(self) -> None:
         """Execute one statement, advancing the cursor.
@@ -563,20 +579,23 @@ class _Machine:
         """
         if self.halted:
             return
-        inputs: list[int] = []
-        flushed = 0
+        inputs = self._statement_input
         while True:
             try:
                 state, effects = _advance(self._state, self.code, tuple(inputs))
             except _NeedInput as need:
-                flushed = self._flush(need.effects, flushed)
+                self._flush(need.effects, self._statement_output, pending=True)
                 inputs.append(self.io.input_char())
                 continue
             except _Fault as fault:
-                self._flush(fault.effects, flushed)
+                self._flush(fault.effects, self._statement_output, pending=True)
                 raise fault.error from None
             break
         self._restore(state)
+        flushed = self._statement_output
+        if inputs or flushed:
+            inputs.clear()
+            self._statement_output = 0
         self._flush(effects, flushed)
 
 

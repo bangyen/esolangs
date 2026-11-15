@@ -182,6 +182,42 @@ def test_ordered_template_setters_round_trip(language: str) -> None:
 
 
 @pytest.mark.parametrize("language", one(parameterized=True))
+@pytest.mark.parametrize("sequence_type", [tuple, list])
+@pytest.mark.parametrize("level", ["inputs", "pair"])
+def test_portable_template_setters_follow_stored_order(
+    language: str, sequence_type: type, level: str
+) -> None:
+    class Reversed(sequence_type):
+        def __iter__(self):
+            return iter(self[::-1])
+
+    api = esolangs.Language(language)
+    generated = api.generate("0100")
+    assert isinstance(generated, esolangs.TemplateArtifact)
+    first, second = generated.bindings.setters
+    setters = (first, second[::-1])
+    control = replace(generated, bindings=replace(generated.bindings, setters=setters))
+    supplied = (
+        Reversed(setters)
+        if level == "inputs"
+        else tuple(Reversed(pair) for pair in setters)
+    )
+    bindings = replace(generated.bindings, setters=supplied)
+    artifact = replace(generated, bindings=bindings)
+    document = api.to_json(artifact)
+    assert document == api.to_json(control)
+    restored = api.from_json(document)
+    assert restored == control
+    for row, answer in enumerate("1000"):
+        bits = [row >> 1, row & 1]
+        assert (
+            api.evaluate(restored, bits).answer
+            == api.evaluate(control, bits).answer
+            == answer
+        )
+
+
+@pytest.mark.parametrize("language", one(parameterized=True))
 def test_template_owner_cannot_be_reassigned_by_an_alias(language: str) -> None:
     owner = esolangs.Language(language)
     declaration = owner.catalog.languages[language]

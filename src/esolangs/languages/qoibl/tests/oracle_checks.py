@@ -27,20 +27,11 @@ def _source(tree):
         return "et"
     if kind in ("emit", "at"):
         marker = "tt" if kind == "emit" else "qe"
-        return marker + " " + _source(args[0]) + " " + marker
+        return f"{marker} {_source(args[0])} {marker}"
+    left, right = map(_source, args)
     if kind in ("store", "loop"):
         marker = "we" if kind == "store" else "rr"
-        return (
-            marker
-            + " "
-            + _source(args[0])
-            + " "
-            + marker
-            + " "
-            + _source(args[1])
-            + " "
-            + marker
-        )
+        return f"{marker} {left} {marker} {right} {marker}"
     marker = "ry" if kind in _ARITH else "yr"
     operator = dict(
         zip(
@@ -49,17 +40,7 @@ def _source(tree):
             strict=True,
         )
     )[kind]
-    return (
-        _source(args[0])
-        + " "
-        + marker
-        + " "
-        + operator
-        + " "
-        + marker
-        + " "
-        + _source(args[1])
-    )
+    return f"{left} {marker} {operator} {marker} {right}"
 
 
 class _Port:
@@ -110,9 +91,10 @@ def _eval(tree, variables, port):
 def _model(statements, stdin):
     variables, pc, trace, port = {}, 0, [], _Port(stdin)
 
-    def row():
+    def row(pending=None):
+        state = pc, tuple(sorted(variables.items()))
         return (
-            (pc, tuple(sorted(variables.items()))),
+            state if pending is None else (*state, pending),
             pc == len(statements),
             port.output,
             port.cursor,
@@ -122,20 +104,40 @@ def _model(statements, stdin):
     for statement in statements:
         trace.append(row())
         changed = dict(variables)
+        cursor, printed = port.cursor, len(port.output)
         try:
             _eval(statement, changed, port)
-        except EOFError:
-            return "input", [*trace, row()]
-        except ArithmeticError:
-            return "halt", [*trace, row()]
-        except ValueError:
-            return "syntax", [*trace, row()]
+        except (EOFError, ArithmeticError, ValueError) as error:
+            reason = (
+                "input"
+                if isinstance(error, EOFError)
+                else "halt"
+                if isinstance(error, ArithmeticError)
+                else "syntax"
+            )
+            replay = tuple(map(ord, stdin[cursor : port.cursor]))
+            flushed = len(port.output) - printed
+            pending = (replay, flushed) if replay or flushed else None
+            return reason, [*trace, row(pending)]
         variables, pc = changed, pc + 1
     return None, trace + [row()] * 4
 
 
 def _view(machine):
-    return machine.ind, tuple(sorted(machine.var.items()))
+    state = machine.ind, tuple(sorted(machine.var.items()))
+    if machine._statement_input or machine._statement_output:
+        return (*state, (tuple(machine._statement_input), machine._statement_output))
+    return state
+
+
+def _workspace_parts(row):
+    pc, variables, *pending = row[0]
+    instruction = (
+        workspace.WorkspaceVariant("pending_statement", (pc, *pending[0]))
+        if pending
+        else pc
+    )
+    return instruction, frozenset(variables), row[-1]
 
 
 def _check(factory, statements, stdin="unused"):
@@ -144,7 +146,7 @@ def _check(factory, statements, stdin="unused"):
     workspace.agrees(
         _model(statements, stdin),
         (factory, code, stdin),
-        (_WORKSPACE, lambda r: (r[0][0], frozenset(r[0][1]), r[-1])),
+        (_WORKSPACE, _workspace_parts),
         _view,
         cap=32,
     )
@@ -169,6 +171,7 @@ def check_raw_qoibl():
             (("store", 0, ("read",)), ("emit", ("at", 0))),
             (("emit", 65), ("read",)),
             (("store", ("emit", 65), ("read",)),),
+            (("store", ("emit", 65), ("/", ("read",), 0)),),
         ):
             _check(_Machine, statements, stdin)
     for op in _ARITH:

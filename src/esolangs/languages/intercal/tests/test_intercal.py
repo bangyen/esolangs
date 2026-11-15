@@ -5,6 +5,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import ExecutionResult, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.intercal.interpreter import _Machine, prepare_machine, run
 from esolangs.languages.intercal.interpreter._expr import _expression
@@ -13,6 +14,7 @@ from esolangs.languages.intercal.interpreter._semantics import (
     _NeedDraw,
     _NeedInput,
 )
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import run_until_halt_or_all_branches_cycle
@@ -541,6 +543,45 @@ def test_write_in_reads_one_line_per_item() -> None:
     assert out == "II\n"
 
 
+@pytest.mark.parametrize(
+    ("source", "stdin", "error", "output", "reads", "control"),
+    [
+        ("WRITE IN .1 + .2", "ONE\nTEN\n", "E579", "", 2, "I\n"),
+        ("READ OUT #1 + ,1", "", "E241", "I\n", 0, "I\nII\n"),
+        ("%50 READ OUT #1 + ,1", "", "E241", "I\n", 0, "I\nII\n"),
+    ],
+)
+def test_retries_keep_the_original_intercal_fault(
+    source: str, stdin: str, error: str, output: str, reads: int, control: str
+) -> None:
+    api = Language("INTERCAL")
+    program = f"PLEASE {source}\nDO {'READ OUT .1' if reads else 'GIVE UP'}\nDO GIVE UP"
+    valid = program.replace(",1", "#2")
+    result = api.run(valid, stdin=stdin.replace("TEN", "TWO"), seed=1)
+    assert (result.output, result.input_position, result.input_reads) == (
+        control,
+        len(stdin),
+        reads,
+    )
+
+    debugger = api.make_debugger(program, stdin=stdin, seed=1)
+    initial = debugger.snapshot()
+    observed = ExecutionResult(output, len(stdin), reads, 0, steps=0)
+    with pytest.raises(HaltError, match=error) as first:
+        debugger.step()
+    faulted = debugger.snapshot()
+    assert initial != faulted
+    with pytest.raises(HaltError, match=error) as retry:
+        debugger.run()
+    assert debugger.snapshot() == faulted
+    assert debugger.ip == 0
+    assert first.value.observation == retry.value.observation == observed
+    assert debugger.output == output
+    with pytest.raises(HaltError, match=error):
+        run_until_halt_or_all_branches_cycle(debugger.vm)
+    assert debugger.snapshot() == faulted
+
+
 def test_only_a_tail_array_element_overflows_at_sixteen_bits() -> None:
     """Manual s4.3: tail elements are 16-bit (E275), hybrid elements 32-bit."""
     with pytest.raises(HaltError, match="E275"):
@@ -835,3 +876,96 @@ def test_output_before_a_draw_is_flushed(monkeypatch) -> None:
     check_random_plan_reuse(
         "INTERCAL", source, interpreter, "_prepare_source", monkeypatch
     )
+
+
+def test_suspended_statement_forks_only_its_remaining_draws() -> None:
+    source = "(1) PLEASE %50 READ OUT #1\nDO GIVE UP\nDO %50 COME FROM (1)\nDO GIVE UP"
+    provided = iter((0, None, 99))
+    seen = []
+
+    class Draws:
+        def randbelow(self, upper: int) -> int:
+            assert upper == 100
+            seen.append(io.getvalue())
+            value = next(provided)
+            if value is None:
+                raise _StopRun
+            return value
+
+    io = ScriptedIO("")
+    machine = _Machine(source, io, Draws())
+    boundary = machine.branching_snapshot()
+    assert machine.branching_successors(boundary, 2) is None
+    with pytest.raises(_StopRun):
+        machine.step()
+    suspended = machine.branching_snapshot()
+    workspace = machine.workspace_snapshot()
+    assert workspace.parts[0] == WorkspaceVariant("pending_statement", (0, (0,), (), 1))
+    assert machine.branching_successors(suspended, 1) is None
+    successors = machine.branching_successors(suspended, 2)
+    assert successors is not None
+    assert {state[0] for state in successors} == {1, 2}
+    assert all(len(state) == len(boundary) and state[-1] == 0 for state in successors)
+    assert machine.branching_snapshot() == suspended
+    assert seen == ["", "I\n"]
+
+    machine.step()
+    assert machine.ip == 1
+    assert machine.snapshot() in successors
+    assert machine.workspace_snapshot().parts[0] == 1
+    assert workspace.parts[0] == WorkspaceVariant("pending_statement", (0, (0,), (), 1))
+    assert io.getvalue() == "I\n"
+    assert seen == ["", "I\n", "I\n"]
+
+
+def test_a_partial_fault_flush_resumes_at_the_unaccepted_output() -> None:
+    class InterruptOutput(ScriptedIO):
+        def print_str(self, text: str) -> None:
+            if self.getvalue() == "I\n" and not failed:
+                failed.append(text)
+                raise _StopRun
+            super().print_str(text)
+
+    failed: list[str] = []
+    io = InterruptOutput()
+    machine = _Machine("PLEASE READ OUT #1 + #2 + ,1\nDO GIVE UP\nDO GIVE UP", io)
+    with pytest.raises(_StopRun):
+        machine.step()
+    assert io.getvalue() == "I\n"
+    assert failed == ["II\n"]
+    for _ in range(2):
+        with pytest.raises(HaltError, match="E241"):
+            machine.step()
+        assert io.getvalue() == "I\nII\n"
+        assert machine.ip == 0
+
+
+def test_a_failed_read_retries_only_the_missing_input() -> None:
+    class InterruptInput(ScriptedIO):
+        def _read(self, prompt: str) -> str:
+            if self.reads == 1 and not interrupted:
+                interrupted.append(self.position())
+                raise _StopRun
+            return super()._read(prompt)
+
+    interrupted: list[int] = []
+    io = InterruptInput("ONE\nTWO\n")
+    source = "PLEASE WRITE IN .1 + .2\nDO READ OUT .1 + .2\nDO GIVE UP"
+    machine = _Machine(source, io)
+    with pytest.raises(_StopRun):
+        machine.step()
+    assert machine.ip == 0
+    assert interrupted == [4]
+    assert machine.branching_successors(machine.branching_snapshot(), 2) is None
+    assert (io.reads, io.past_end, io.position()) == (1, 0, 4)
+
+    assert machine.workspace_snapshot().parts[0] == WorkspaceVariant(
+        "pending_statement", (0, (), ("ONE",), 0)
+    )
+    machine.step()
+    assert machine.workspace_snapshot().parts[0] == 1
+    machine.step()
+    machine.step()
+    assert machine.halted
+    assert io.getvalue() == "I\nII\n"
+    assert (io.reads, io.past_end, io.position()) == (2, 0, 8)

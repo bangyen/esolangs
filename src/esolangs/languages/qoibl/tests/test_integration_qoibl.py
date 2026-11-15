@@ -9,6 +9,54 @@ from tests.support.generator_support import verify_generated
 from tests.support.reference import REFERENCE
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("value", "stdin", "error_type", "message", "past_end", "replay"),
+    [
+        ("et", "", esolangs.InputExhaustedError, "past the end", 1, ()),
+        (
+            "et ry yy ry e",
+            "Q",
+            esolangs.HaltError,
+            "81 divided by 0",
+            0,
+            (ord("Q"),),
+        ),
+    ],
+)
+def test_failed_statements_preserve_evidence_on_retry(
+    value, stdin, error_type, message, past_end, replay
+) -> None:
+    api = esolangs.Language("Qoibl")
+    source = f"we tt yeeeeey tt we {value} we"
+    consumed = len(stdin)
+    for outcome in (
+        api.execute(source, stdin=stdin),
+        api.prepare(source).execute(stdin=stdin),
+        api.execute(source, stdin=stdin, isolated=True),
+    ):
+        assert type(outcome.error) is error_type
+        assert message in str(outcome.error)
+        assert outcome.observation == esolangs.ExecutionResult(
+            "A", consumed, consumed, past_end
+        )
+
+    debugger = api.make_debugger(source, stdin=stdin)
+    fault_state = None
+    for attempt in (1, 2):
+        with pytest.raises(error_type, match=message) as caught:
+            debugger.step()
+        assert debugger.ip == 0
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "A", consumed, consumed, attempt * past_end, steps=0
+        )
+        snapshot = debugger.snapshot()
+        assert snapshot[-1] == (replay, 1)
+        if fault_state is not None:
+            assert snapshot == fault_state
+        fault_state = snapshot
+
+
 class TestAnInterpreterLimitIsStillAnEsolangError:
     """Qoibl's interpreter recurses, and Python's stack is finite."""
 

@@ -11,15 +11,24 @@ Setters = tuple[tuple[str, str], ...]
 _UNORDERED_OR_SCALAR = (Mapping, Set, str, bytes, bytearray, memoryview)
 
 
+def _stored_items[T](values: Iterable[T]) -> Iterable[T]:
+    """Iterate tuple and list storage in order, including for subclasses."""
+    if isinstance(values, tuple):
+        return tuple.__iter__(values)
+    if isinstance(values, list):
+        return list.__iter__(values)
+    return values
+
+
 def check_setters(setters: Iterable[Iterable[str]]) -> Setters:
     """Freeze ordered pairs of equally wide source strings."""
     if isinstance(setters, _UNORDERED_OR_SCALAR):
         raise ValueError("setters must be pairs of strings")
     checked = []
-    for i, pair in enumerate(setters):
+    for i, pair in enumerate(_stored_items(setters)):
         if isinstance(pair, _UNORDERED_OR_SCALAR):
             raise ValueError("setters must be pairs of strings")
-        raw_zero, raw_one = pair
+        raw_zero, raw_one = _stored_items(pair)
         if not isinstance(raw_zero, str) or not isinstance(raw_one, str):
             raise ValueError("setters must be pairs of strings")
         zero, one = str.__str__(raw_zero), str.__str__(raw_one)
