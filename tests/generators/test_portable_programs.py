@@ -3,6 +3,7 @@
 import gzip
 import io
 import json
+import zlib
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -630,6 +631,33 @@ def test_portable_compression_respects_raw_export_budget() -> None:
         assert restored == expected
         with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
             str(restored.source)
+
+
+def test_no_op_compressed_wrap_retains_the_archive_and_caps(tmp_path: Path) -> None:
+    source = "+" * 1000 + "."
+    size = len(source)
+    # This encoding can fit the program in fewer bytes than the default gzip.
+    encoder = zlib.compressobj(level=9, wbits=31, strategy=zlib.Z_RLE)
+    data = encoder.compress(source.encode()) + encoder.flush()
+    limits = esolangs.TextLimits(
+        plain_chars=size, generation_chars=size, gzip_bytes=len(data)
+    )
+    compressed = esolangs.CompressedText(data, limits=limits)
+    wrapped = compressed.wrapped(size + 1)
+    assert wrapped is compressed
+    assert wrapped.limits is limits
+    with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
+        compressed.wrapped(size)
+    assert str(esolangs.CompressedText(data).wrapped(size)) == source + "\n"
+
+    api = esolangs.Language(REFERENCE)
+    restored = api.from_json(api.to_json(wrapped))
+    assert restored == api.from_source(compressed)
+    assert api.run(restored).output == chr(1000 % 256)
+    path = tmp_path / "program.gz"
+    api.to_file(restored, path, gzip=True)
+    assert path.read_bytes() == data
+    assert api.run(api.from_file(path)).output == chr(1000 % 256)
 
 
 def test_portable_compression_retains_only_the_declared_budget_fields() -> None:

@@ -35,7 +35,7 @@ from esolangs.runtime._proof import (
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options
-from esolangs.vm import _capture_observation, _make_vm
+from esolangs.vm import _capture_observation, _make_vm, _record_vm_fault
 
 
 def _observe_branch_path(machine: VM, proof: BranchProof) -> None:
@@ -141,11 +141,8 @@ def _termination_result(
                 _observe_branch_path(machine, decision.branches)
             return TerminationResult(observe(), decision)
         except EsolangError as error:
-            if error.observation is None:
-                error.observation = observe()
-            elif steps is not None:
-                error.observation = replace(error.observation, steps=steps)
-            error.partial_output = error.observation.output
+            if error.observation is None or steps is not None:
+                _record_vm_fault(machine, error, observe())
             raise
 
     argument = (

@@ -16,6 +16,7 @@ from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry._catalog import Catalog, get_catalog, resolve_origin
 from esolangs.results import ExecutionResult
+from esolangs.runtime._acquire import PendingInput
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
     execute_prepared,
@@ -189,7 +190,7 @@ class PreparedProgram:
 
     def _execute_native(
         self,
-        stdin: CheckedInput,
+        stdin: CheckedInput | PendingInput,
         *,
         seed: int | None,
         io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
@@ -220,6 +221,8 @@ class PreparedProgram:
             if isinstance(plan, RandomRuntimePlan):
                 plan = plan.bind(self._options(seed=seed).get("rng"))
             runner = partial(_run_plan, plan)
+        if isinstance(stdin, PendingInput):
+            stdin = stdin.snapshot()
         return execute_prepared(
             self.language,
             runner,

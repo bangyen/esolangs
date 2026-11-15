@@ -457,7 +457,7 @@ def _set_value(key: str, raw: str, language: str) -> int | str:
     return raw
 
 
-type _SettingsArguments = tuple[dict[str, object], list[tuple[str, str]]]
+type _SettingsArguments = tuple[dict[str, object], dict[str, str]]
 
 
 def _settings_arguments(
@@ -476,12 +476,12 @@ def _settings_arguments(
         if not isinstance(parsed, dict):
             _fail("--settings must be a JSON object")
         values.update(parsed)
-    pairs: list[tuple[str, str]] = []
+    pairs: dict[str, str] = {}
     for pair in set_pairs:
         key, sep, raw = pair.partition("=")
         if not sep or not key:
             _fail(f"--set needs KEY=VALUE, got {pair!r}")
-        pairs.append((key, raw))
+        pairs[key] = raw
     return values, pairs
 
 
@@ -493,7 +493,7 @@ def _settings_of(
         return None
     values, pairs = arguments
     try:
-        overrides = {key: _set_value(key, raw, language) for key, raw in pairs}
+        overrides = {key: _set_value(key, raw, language) for key, raw in pairs.items()}
         choices = values | overrides
         return Language(language).settings(**choices)  # type: ignore[arg-type]
     except EsolangError as exc:

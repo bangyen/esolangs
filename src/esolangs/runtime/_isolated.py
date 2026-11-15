@@ -6,9 +6,9 @@ import base64
 import os
 import subprocess  # fixed Python worker; source travels over stdin.
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager, suppress
-from contextvars import ContextVar, copy_context
+from contextvars import ContextVar
 from functools import lru_cache
 from itertools import chain, groupby, repeat
 from queue import Empty, Full, Queue
@@ -23,6 +23,7 @@ from esolangs.outcomes import ExecutionOutcome, _capture_outcome, _failed_outcom
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
+from esolangs.runtime._acquire import acquire, preparation_expired
 from esolangs.runtime._execution import check_worker_runtime, interpreter_errors
 from esolangs.runtime._files import stream_read_deadline
 from esolangs.runtime._input import InputSource, check_input, read_input
@@ -432,85 +433,52 @@ def _invoke_worker(
     acquisition_deadline = min(
         d for d in (deadline, preparation_deadline, execution_deadline) if d is not None
     )
-    box: list[str | BaseException] = []
-    cancelled = Event()
 
-    def acquisition_stopped() -> bool:
-        return cancelled.is_set() or monotonic() >= acquisition_deadline
-
-    def prepare() -> None:
-        try:
-            with stream_read_deadline(acquisition_deadline):
-                if acquisition_stopped():
-                    return
-                checked_input = check_input(stdin)
-                if acquisition_stopped():
-                    return
-                artifact = _check_program(
-                    name, program, settings=settings, catalog=catalog
-                )
-                if acquisition_stopped():
-                    return
-                source = artifact.source
-                retained = artifact.settings
-                retained_scale = effective_scale(name, artifact, scale, catalog=catalog)
-                check_scale_for(name, retained_scale, catalog=catalog)
-                if acquisition_stopped():
-                    return
-                captured_input = read_input(checked_input)
-            if acquisition_stopped():
-                return
-            box.append(
-                worker_dumps(
-                    _request_wire(
-                        name,
-                        source,
-                        captured_input,
-                        settings=retained,
-                        seed=seed,
-                        scale=retained_scale,
-                        max_memory=max_memory,
-                        max_output=max_output,
-                        max_steps=max_steps,
-                        report_prepared=(
-                            preparation_deadline is not None
-                            or execution_timeout is not None
-                        ),
-                        termination=termination,
-                        catalog=catalog,
-                    )
-                )
+    def capture(stopped: Callable[[], bool]) -> str | None:
+        with stream_read_deadline(acquisition_deadline):
+            checked_input = check_input(stdin)
+            if stopped():
+                return None
+            artifact = _check_program(name, program, settings=settings, catalog=catalog)
+            if stopped():
+                return None
+            retained_scale = effective_scale(name, artifact, scale, catalog=catalog)
+            check_scale_for(name, retained_scale, catalog=catalog)
+            if stopped():
+                return None
+            captured_input = read_input(checked_input)
+        if stopped():
+            return None
+        return worker_dumps(
+            _request_wire(
+                name,
+                artifact.source,
+                captured_input,
+                settings=artifact.settings,
+                seed=seed,
+                scale=retained_scale,
+                max_memory=max_memory,
+                max_output=max_output,
+                max_steps=max_steps,
+                report_prepared=(
+                    preparation_deadline is not None or execution_timeout is not None
+                ),
+                termination=termination,
+                catalog=catalog,
             )
-        except BaseException as exc:
-            box.append(exc)
+        )
 
-    # Caller-owned streams need not be picklable or interruptible. A daemon
-    # bounds acquisition without transferring or closing their handles.
-    # Keep the caller's context for reads even though they happen off-thread.
-    reader = Thread(target=copy_context().run, args=(prepare,), daemon=True)
-    try:
-        reader.start()
-        while reader.is_alive():
-            waited = wait_slice(acquisition_deadline, monotonic())
-            if not waited:
-                break
-            reader.join(waited)
-    finally:
-        # An outstanding read may finish, but the cancelled call owns no later reads.
-        cancelled.set()
-    now = monotonic()
-    if reader.is_alive() or now >= acquisition_deadline:
+    def expired() -> exceptions.ExecutionTimeoutError:
         if preparation_deadline == acquisition_deadline < deadline:
-            raise _preparation_expired()
+            return preparation_expired()
         error = exceptions.ExecutionTimeoutError(
             "execution timed out while loading input"
         )
         if execution_deadline == acquisition_deadline < deadline:
             error.bound = "execution_timeout"
-        raise error
-    request = box[0]
-    if isinstance(request, BaseException):
-        raise request
+        return error
+
+    request = acquire(capture, acquisition_deadline, expired, clock=monotonic)
     with _timeout_named(timeout):
         if preparation_deadline is None and execution_timeout is None:
             result = _launch(request, deadline, max_output=max_output)
@@ -542,15 +510,6 @@ def _timeout_named(timeout: float) -> Iterator[None]:
         if error.bound == "total_timeout":
             error.args = (f"execution exceeded the {timeout}-second timeout",)
         raise
-
-
-def _preparation_expired(
-    *, partial_output: str = ""
-) -> exceptions.ExecutionTimeoutError:
-    error = exceptions.ExecutionTimeoutError("execution timed out during preparation")
-    error.bound = "preparation_timeout"
-    error.partial_output = partial_output
-    return error
 
 
 def _launch(
@@ -591,7 +550,7 @@ def _launch(
                 output, _stderr = child.communicate()
                 result = _decode_outcome(output, expired=True)
                 if preparation_deadline is not None and preparation_deadline < deadline:
-                    raise _preparation_expired(partial_output=result.observation.output)
+                    raise preparation_expired(partial_output=result.observation.output)
                 return result
             if report_prepared:
                 return _bounded_output(
@@ -753,7 +712,7 @@ def _read_worker_output(
             break
     result = _decode_outcome("".join(output), expired=expired)
     if expired and preparation_deadline is not None and preparation_deadline < deadline:
-        raise _preparation_expired(partial_output=result.observation.output)
+        raise preparation_expired(partial_output=result.observation.output)
     if (
         expired
         and execution_deadline is not None

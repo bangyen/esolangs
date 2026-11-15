@@ -67,10 +67,23 @@ def test_missing_runtime_hooks_are_public_program_errors() -> None:
         scoped.run("+.", limits=esolangs.ExecutionLimits(max_steps=2)).output == "\x01"
     )
     prepared = scoped.prepare("+.")
-    stdin = StringIO("unread")
-    with pytest.raises(esolangs.ProgramError, match="absent_completion"):
-        prepared.run(stdin=stdin)
-    assert stdin.tell() == 0
+
+    class ManagedInput(StringIO):
+        bindings = 0
+
+        @property
+        def read(self):
+            self.bindings += 1
+            return super().read
+
+    for limits in (None, esolangs.ExecutionLimits(preparation_timeout=2)):
+        stdin = ManagedInput("unread")
+        with pytest.raises(esolangs.ProgramError, match="absent_completion"):
+            prepared.run(stdin=stdin, limits=limits)
+        assert stdin.bindings == 1
+        assert stdin.tell() == 0
+        with pytest.raises(esolangs.ArgumentError, match="stdin must"):
+            prepared.run(stdin=object(), limits=limits)
     assert prepared.run(limits=esolangs.ExecutionLimits(max_steps=2)).output == "\x01"
 
 
@@ -129,6 +142,98 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
     for operation in (api.prepare, api.make_vm):
         with pytest.raises(esolangs.InterpreterLimitError, match="no machine factory"):
             operation("+.")
+
+
+@pytest.mark.parametrize("phase", ["native", "initialize", "step"])
+@pytest.mark.parametrize("completed", [False, True])
+def test_runtime_hooks_keep_nested_errors_and_record_their_own_output(
+    monkeypatch, phase, completed
+) -> None:
+    from esolangs.runtime._execution import interpreter_module
+
+    api = esolangs.Language(REFERENCE)
+    declaration = api.catalog.languages[api.name]
+    interpreter = interpreter_module(api.name)
+    failures = []
+
+    def invoke_nested(io):
+        io.print_str("outer:" + chr(io.input_char()))
+        try:
+            if completed:
+                api.evaluate(api.from_source(",+."), [1])
+            else:
+                api.run(",.,", stdin="A", limits=esolangs.ExecutionLimits(max_steps=3))
+        except esolangs.EsolangError as error:
+            failures.append(error)
+            raise
+
+    def native(_source, io):
+        invoke_nested(io)
+
+    def prepare(_source, _options):
+        def machine(io):
+            if phase == "initialize":
+                invoke_nested(io)
+            return SimpleNamespace(
+                halted=False, step=lambda: invoke_nested(io), snapshot=lambda: 0
+            )
+
+        return machine
+
+    monkeypatch.setattr(interpreter, "nested_native", native, raising=False)
+    monkeypatch.setattr(interpreter, "nested_prepare", prepare, raising=False)
+    runtime = replace(
+        declaration.runtime,
+        completion_entrypoint="nested_native",
+        machine_preparation="nested_prepare",
+    )
+    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    limits = None if phase == "native" else esolangs.ExecutionLimits(max_steps=4)
+    result = scoped.execute("+.", stdin="B", limits=limits)
+    assert result.status == ("rejected" if completed else "input_exhausted")
+    assert failures == [result.error]
+    assert result.observation == esolangs.ExecutionResult(
+        "outer:B", 1, 1, 0, steps=0 if phase == "step" else None
+    )
+    expected = (
+        api.run(",+.", stdin="1")
+        if completed
+        else esolangs.ExecutionResult("A", 1, 1, 1, steps=2)
+    )
+    error_type = esolangs.ProgramError if completed else esolangs.InputExhaustedError
+
+    def check_original(error):
+        assert error is failures[-1]
+        assert error.partial_output == expected.output
+        assert error.observation == expected
+
+    with pytest.raises(error_type) as caught:
+        result.unwrap()
+    check_original(caught.value)
+    if phase == "step":
+        debugger = scoped.make_debugger("+.", stdin="B")
+        with pytest.raises(error_type) as caught:
+            debugger.step()
+        check_original(caught.value)
+        assert debugger.observation == result.observation
+
+        machine = scoped.make_vm("+.", stdin="B")
+        with pytest.raises(error_type) as caught:
+            vm.complete_vm(machine)
+        check_original(caught.value)
+        assert machine.output == result.observation.output
+
+        contract = replace(
+            declaration.contract,
+            answer_mode="termination",
+            answer_values=("halts", "diverges"),
+        )
+        termination = esolangs.Catalog(
+            [replace(declaration, runtime=runtime, contract=contract)]
+        ).bind(api.name)
+        with pytest.raises(error_type) as caught:
+            termination.evaluate(termination.from_source("+."), [0], limits=limits)
+        check_original(caught.value)
 
 
 def test_worker_runtime_guard_uses_the_shipped_catalog(monkeypatch) -> None:

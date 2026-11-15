@@ -362,7 +362,7 @@ from io import StringIO
 from time import monotonic
 
 from esolangs import ExecutionLimits, Language
-from esolangs.runtime import _isolated
+from esolangs.runtime import _acquire, _isolated
 
 phase, language = sys.argv[1:]
 started = []
@@ -394,7 +394,7 @@ parked = threading.Thread(target=release.wait, daemon=True)
 parked.start()
 BaseChild = subprocess.Popen
 BaseQueue = _isolated.Queue
-BaseThread = _isolated.Thread
+BaseThread = _acquire.Thread
 
 class AcquiringThread(BaseThread):
     def run(self):
@@ -424,7 +424,7 @@ class ObservedQueue(BaseQueue):
 _isolated.subprocess.Popen = QuietChild
 _isolated.Queue = ObservedQueue
 if phase == "source":
-    _isolated.Thread = AcquiringThread
+    _acquire.Thread = AcquiringThread
 program = BlockedRead(",.") if phase == "source" else ",."
 stdin = BlockedRead("A") if phase == "stdin" else StringIO("A")
 limits = ExecutionLimits(
@@ -457,7 +457,7 @@ finally:
 if phase == "source":
     _isolated.subprocess.Popen = BaseChild
     _isolated.Queue = BaseQueue
-    _isolated.Thread = BaseThread
+    _acquire.Thread = BaseThread
     assert api.run(StringIO(",."), stdin=stdin, limits=limits).output == "A"
     assert stdin.tell() == 1
 """

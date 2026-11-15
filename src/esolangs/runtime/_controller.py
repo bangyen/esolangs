@@ -18,6 +18,7 @@ from esolangs.vm import (
     _capture_result,
     _DelegatingVM,
     _post_halt_dumped,
+    _record_vm_fault,
 )
 
 StopReason = Literal["halted", "breakpoint", "max_steps", "execution_timeout"]
@@ -132,8 +133,8 @@ class ExecutionController:
             self.vm.step()
         except EsolangError as exc:
             self._faulted = True
-            exc.partial_output = self.output
-            exc.observation = replace(self.observation, completion=None)
+            observation = replace(_capture_observation(self.vm), steps=self._steps)
+            _record_vm_fault(self.vm, exc, observation)
             raise
         if active:
             self._faulted = False
@@ -231,10 +232,9 @@ class ExecutionController:
                     return completed
             reason = self._run(max_steps, None)
         except EsolangError as fault:
-            fault.partial_output = self.output
-            observation = fault.observation or _capture_observation(self.vm)
-            fault.observation = replace(observation, steps=self._steps)
-            return _failed_outcome(fault)
+            observation = replace(_capture_observation(self.vm), steps=self._steps)
+            _record_vm_fault(self.vm, fault, observation)
+            return _failed_outcome(fault, observation=observation)
         if reason == "halted":
             return ExecutionOutcome(
                 "completed", replace(_capture_result(self.vm), steps=self._steps)

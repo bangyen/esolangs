@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Hashable
 from dataclasses import replace
+from functools import partial
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 import esolangs._cycles as _cycles
@@ -78,16 +79,16 @@ if TYPE_CHECKING:
 def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     """Return finalized raw output after a proved halt, including a final dump.
 
-    An exhausted step budget retains the unfinished IO observation. Fault
-    observations include the commands completed during this call. An active
-    machine must be able to self-halt. Repeated completion is safe: the
-    post-halt step is idempotent by the VM contract.
+    An exhausted step budget retains the unfinished IO observation. Faults
+    observed by this VM include the commands completed during this call.
+    An active machine must be able to self-halt. Repeated completion is safe:
+    the post-halt step is idempotent by the VM contract.
     """
     if max_steps is not None:
         max_steps = check_whole(max_steps, "max_steps")
     if not vm.self_halts and not vm.halted:
         raise ArgumentError("completion requires a machine that self-halts")
-    steps = _drive_until_halt(vm, max_steps, on_fault=_retain_fault_steps)
+    steps = _drive_until_halt(vm, max_steps, on_fault=partial(_retain_fault_steps, vm))
     if steps is None:
         error = steps_exhausted("VM completion exhausted max_steps")
         # Without a stop predicate, an active return has used the full budget.
@@ -98,15 +99,19 @@ def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
     try:
         finalize(vm, policy=Completion.POST_HALT if dump_pending else Completion.HALTED)
     except EsolangError as error:
-        _retain_fault_steps(error, steps)
+        _retain_fault_steps(vm, error, steps)
         raise
     return vm.output
 
 
-def _retain_fault_steps(error: EsolangError, steps: int) -> None:
-    """Add measured commands to an observation the VM already supplied."""
+def _retain_fault_steps(vm: VM, error: EsolangError, steps: int) -> None:
+    """Add measured commands to a fault observed by this VM."""
     if error.observation is not None:
-        error.observation = replace(error.observation, steps=steps)
+        observation = replace(error.observation, steps=steps)
+        if isinstance(vm, _DelegatingVM):
+            _record_vm_fault(vm, error, observation)
+        else:
+            error.observation = observation
 
 
 @runtime_checkable
@@ -121,6 +126,7 @@ class _DelegatingVM:
     """Wrap a registered interpreter, copying its exposed memory and stack."""
 
     _machine: _cycles._StepMachine
+    _fault_observation: ExecutionResult | None = None
 
     def __init__(
         self,
@@ -170,6 +176,9 @@ class _DelegatingVM:
             completion=report,
         )
 
+    def _remember_fault(self, observation: ExecutionResult) -> None:
+        self._fault_observation = observation
+
     @property
     def halted(self) -> bool:
         return self._machine.halted
@@ -192,6 +201,7 @@ class _DelegatingVM:
                 "CPython's stack limit allows on this program",
                 self._io,
                 language=self.language,
+                on_observation=self._remember_fault,
             ):
                 raise
         if dumping:
@@ -208,6 +218,7 @@ class _DelegatingVM:
             "CPython's stack limit allows on this program",
             self._io,
             language=self.language,
+            on_observation=self._remember_fault,
         ):
             if exact_repeat:
                 return drive_until_repeat(machine, step=step)
@@ -317,6 +328,17 @@ def _capture_observation(
         # Use owned code; unrelated instance attributes remain caller-owned.
         return _DelegatingVM._result(vm, report)  # noqa: SLF001
     return ExecutionResult(vm.output, None, None, None, completion=report)
+
+
+def _record_vm_fault(vm: VM, error: EsolangError, observation: ExecutionResult) -> None:
+    """Update a VM's own fault evidence while preserving a propagated error."""
+    if isinstance(vm, _DelegatingVM):
+        previous = error.observation
+        if previous is not None and previous is not vm._fault_observation:  # noqa: SLF001
+            return
+        vm._remember_fault(observation)  # noqa: SLF001 - owned adapter
+    error.observation = observation
+    error.partial_output = observation.output
 
 
 def _capture_workspace(vm: VM) -> WorkspaceSnapshot:

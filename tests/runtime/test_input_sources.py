@@ -379,7 +379,7 @@ def test_nonblocking_stdin_prefix_does_not_complete_acquisition(
 
 @pytest.mark.parametrize("block", ["program", "stdin"])
 def test_expired_acquisition_does_not_start_another_read(monkeypatch, block):
-    from esolangs.runtime import _isolated
+    from esolangs.runtime import _acquire
 
     started, release = Event(), Event()
     threads, input_reads = [], []
@@ -412,7 +412,7 @@ def test_expired_acquisition_does_not_start_another_read(monkeypatch, block):
             input_reads.append(True)
             return "A"
 
-    monkeypatch.setattr(_isolated, "Thread", capture_thread)
+    monkeypatch.setattr(_acquire, "Thread", capture_thread)
     program = Program(",.")
     token = read_context.set(True)
     try:

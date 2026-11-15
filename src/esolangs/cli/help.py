@@ -184,7 +184,7 @@ options:
                dialect overrides; describe lists supported settings.
   --set KEY=VALUE
                one dialect override without JSON, repeatable and applied
-               after --settings.
+               after --settings. The last value for each key wins.
   --plain      export compressed text as ordinary source text.  Without it,
                compressed text is written as gzip.  A raster is always PNG
                -- binary bytes, so redirect it to a file.
@@ -255,7 +255,7 @@ options:
   --scale N          override detected raster scale; 1 preserves native pixels.
   -s, --settings JSON    dialect overrides; describe lists supported settings.
   --set KEY=VALUE    one dialect override without JSON, repeatable and applied
-                     after --settings.
+                     after --settings. The last value for each key wins.
   --seed N           fix the random draws so the run repeats.  `esolangs
                      describe --json <language>` reports `random` for the
                      languages that draw.  A seed for a language that draws

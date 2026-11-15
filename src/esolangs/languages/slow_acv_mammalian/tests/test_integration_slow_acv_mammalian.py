@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import run
+from tests.support.cli_support import run_cli
 
 
 @pytest.mark.medium
@@ -48,3 +49,26 @@ def test_large_integer_setting_is_rejected() -> None:
     document["settings"] = {"cell_modulus": {"integer": hex(1 << 20_000)}}
     with pytest.raises(esolangs.ProgramError):
         esolangs.from_json("SLOW ACV MAMMALIAN", json.dumps(document))
+
+
+@pytest.mark.medium
+def test_cli_repeated_set_uses_last_value(tmp_path) -> None:
+    language = esolangs.Language("SLOW ACV MAMMALIAN")
+    settings = language.settings(io_modulus=256)
+    artifact = language.generate("01", settings=settings)
+    path = tmp_path / "program.txt"
+    language.to_file(artifact, path, normalize=True)
+    overrides = ["--set", "io_modulus=bogus", "--set", "io_modulus=0x100"]
+
+    generated = run_cli("generate", *overrides, language.name, "01")
+    assert generated.returncode == 0, generated.stderr
+    assert generated.stdout.encode("utf-8") == path.read_bytes()
+    stdin = language.encode_inputs([1])
+    executed = run_cli("run", *overrides, language.name, str(path), stdin=stdin)
+    assert executed.returncode == 0, executed.stderr
+    assert executed.stdout == language.run(artifact, stdin=stdin).output == "1"
+
+    refused = run_cli("generate", *overrides[2:], *overrides[:2], language.name, "01")
+    assert refused.returncode == 2
+    assert not refused.stdout
+    assert "--set io_modulus needs an integer" in refused.stderr

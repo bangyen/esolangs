@@ -1,8 +1,11 @@
 """Reusable preparation must isolate source acquisition, state and randomness."""
 
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import ContextVar
 from dataclasses import replace
 from io import BytesIO, StringIO
+from threading import Event, Thread
+from time import monotonic
 from types import ModuleType
 from unittest.mock import patch
 
@@ -310,6 +313,98 @@ def test_prepared_invocations_own_source_state_and_randomness(monkeypatch):
     _check_prepared_isolation_preserves_the_same_observation()
     _check_prepared_failures_retain_partial_observations()
     _check_preparation_resets_seeded_randomness_for_each_invocation()
+
+
+@pytest.mark.parametrize("max_steps", [None, 2])
+@pytest.mark.parametrize("block", ["binding", "read"])
+def test_prepared_stdin_acquisition_respects_preparation_deadline(
+    monkeypatch, max_steps, block
+) -> None:
+    from esolangs.runtime import _acquire, _isolated
+
+    declaration = LANGUAGES[REFERENCE]
+    runtime = replace(
+        declaration.runtime, reproducible_seed=declaration.runtime.reproducible_seed + 1
+    )
+    api = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
+    prepared = api.prepare(",.")
+    started, release = Event(), Event()
+    threads, bindings, reads = [], [], []
+    reader_binding: ContextVar[str] = ContextVar("reader_binding")
+
+    def capture_thread(*args, **kwargs):
+        thread = Thread(*args, **kwargs)
+        threads.append(thread)
+        return thread
+
+    def wait():
+        started.set()
+        assert release.wait(3)
+
+    def launch(*_args, **_kwargs):
+        pytest.fail("prepared stdin acquisition launched a worker")
+
+    class Input:
+        @property
+        def read(self):
+            value = "ABC"[len(bindings)]
+            bindings.append(value)
+            reader_binding.set(value)
+            if value == "A" and block == "binding":
+                wait()
+
+            def consume():
+                assert reader_binding.get() == value
+                reads.append(value)
+                if value == "A" and block == "read":
+                    wait()
+                return value
+
+            return consume
+
+    monkeypatch.setattr(_acquire, "Thread", capture_thread)
+    monkeypatch.setattr(_isolated, "_launch", launch)
+    stdin = Input()
+    limits = esolangs.ExecutionLimits(preparation_timeout=0.2, max_steps=max_steps)
+    try:
+        outcome = prepared.execute(stdin=stdin, limits=limits)
+        assert started.is_set()
+        assert not release.is_set()
+        assert outcome.bound == "preparation_timeout"
+        assert outcome.observation == esolangs.ExecutionResult("", None, None, None)
+    finally:
+        release.set()
+        for thread in threads:
+            thread.join(4)
+    assert all(not thread.is_alive() for thread in threads)
+    assert reads == (["A"] if block == "read" else [])
+
+    result = prepared.run(stdin=stdin, limits=replace(limits, preparation_timeout=2))
+    assert result.output == "B"
+    assert result.input_reads == 1
+    assert bindings == ["A", "B"]
+    assert reads == (["A", "B"] if block == "read" else ["B"])
+
+
+def test_prepared_input_binding_and_read_share_deadline(monkeypatch) -> None:
+    from esolangs.runtime import _acquire, _prepared
+
+    prepared = esolangs.Language(REFERENCE).prepare(",.")
+    stdin = StringIO("A")
+    timeline = [monotonic()]
+    resolve = _prepared.runtime_hook
+
+    def delayed_runner(*args):
+        timeline[0] += 2
+        return resolve(*args)
+
+    monkeypatch.setattr(_acquire, "monotonic", lambda: timeline[0])
+    monkeypatch.setattr(_prepared, "runtime_hook", delayed_runner)
+    outcome = prepared.execute(
+        stdin=stdin, limits=esolangs.ExecutionLimits(preparation_timeout=1)
+    )
+    assert outcome.bound == "preparation_timeout"
+    assert stdin.tell() == 0
 
 
 def _check_uniform_outcomes_and_phase_limits():

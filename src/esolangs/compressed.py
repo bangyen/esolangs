@@ -296,13 +296,19 @@ class CompressedText:
             raise ProgramError(f"cannot save program to {target}: {exc}") from exc
 
     def wrapped(self, width: int | None) -> CompressedText:
-        """Insert line breaks at width without collecting expanded source."""
+        """Insert line breaks at width without collecting expanded source.
+
+        Return the original archive if no line breaks are needed.
+        """
         width = check_width(width)
         if width is None:
             return self
+        size = len(self)
+        if width > size:
+            return self
 
         if self.limits is not None:
-            _check_work(self.limits, len(self) + len(self) // width)
+            _check_work(self.limits, size + size // width)
 
         def chunks() -> Iterator[str]:
             column = 0

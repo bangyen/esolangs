@@ -7,6 +7,7 @@ from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome, _capture_outcome
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
+from esolangs.runtime._acquire import PendingInput, bind_prepared_input
 from esolangs.runtime._controller import ExecutionController
 from esolangs.runtime._execution import (
     check_seed_for,
@@ -173,12 +174,16 @@ def _execute_invocation(
             preparation_timeout=preparation_timeout,
             catalog=catalog,
         )
-    checked = check_input(stdin)
+    checked = (
+        check_input(stdin)
+        if preparation_timeout is None or prepared is None
+        else bind_prepared_input(stdin, preparation_timeout)
+    )
     if max_steps is not None:
         machine = _make_checked_vm(
             name,
             program,
-            stdin=checked,
+            stdin=checked.snapshot() if isinstance(checked, PendingInput) else checked,
             scale=scale,
             settings=settings,
             seed=seed,
@@ -206,7 +211,7 @@ def _execute_invocation(
 def _execution_route(
     limits: ExecutionLimits, *, isolated: bool, prepared: bool
 ) -> tuple[bool, float | None]:
-    """Select a worker and preserve preparation limits only when needed."""
+    """Select a worker unless only fresh stdin needs a preparation budget."""
     use_worker = isolated or any(
         value is not None
         for value in (
@@ -217,9 +222,10 @@ def _execution_route(
         )
     )
     preparation_timeout = limits.preparation_timeout
-    if prepared and not use_worker:
-        preparation_timeout = None
-    return use_worker or preparation_timeout is not None, preparation_timeout
+    return (
+        use_worker or (not prepared and preparation_timeout is not None),
+        preparation_timeout,
+    )
 
 
 @_capture_outcome
