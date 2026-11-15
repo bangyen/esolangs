@@ -334,6 +334,24 @@ class TestOutputAndAbridging:
         assert gzip.decompress(data).decode() == expected
 
     @pytest.mark.medium
+    def test_raster_bits_refusal_points_to_a_working_input_pipeline(
+        self, capsysbinary, tmp_path: Path
+    ) -> None:
+        refused = run_cli("generate", "--bits", "1", _RASTER, "01")
+        assert (refused.returncode, refused.stdout) == (2, "")
+        hint = f"hint: pipe input from esolangs encode-inputs {shlex.quote(_RASTER)}"
+        assert hint in refused.stderr
+
+        _generate([_RASTER, "01"])
+        path = tmp_path / "program.png"
+        path.write_bytes(capsysbinary.readouterr().out)
+        encoded = run_cli("encode-inputs", _RASTER, "1")
+        assert encoded.returncode == 0, encoded.stderr
+        execution = run_cli("run", _RASTER, str(path), stdin=encoded.stdout)
+        assert execution.returncode == 0, execution.stderr
+        assert esolangs.read_answer(_RASTER, execution.stdout) == "1"
+
+    @pytest.mark.medium
     def test_template_fill_hint_keeps_export_flags(
         self, capsysbinary, tmp_path
     ) -> None:

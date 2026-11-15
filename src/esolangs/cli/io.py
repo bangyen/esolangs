@@ -34,6 +34,7 @@ from esolangs.runtime._files import (
     read_snapshot,
     stream_read_deadline,
 )
+from esolangs.runtime._input import input_read_error
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
 from esolangs.runtime._wait import wait_slice
@@ -358,9 +359,9 @@ def _read_stdin(
         except StreamReadTimeoutError:
             raise
         except UnicodeDecodeError as exc:
-            _fail(f"cannot read stdin: not text ({_decode_note(exc)})")
+            _fail(input_read_error(f"not text ({_decode_note(exc)})"))
         except OSError as exc:
-            _fail(f"cannot read stdin: {exc}")
+            _fail(input_read_error(exc))
 
     def _on_timeout() -> None:
         bound = f" ({timeout_flag})" if timeout_flag else ""
@@ -378,7 +379,7 @@ def _read_stdin(
             _read_text, timeout, notice=_waiting_notice(hint), on_timeout=_on_timeout
         )
     if (hidden := _smuggled_bytes(result)) is not None:
-        _fail(f"cannot read stdin: not text ({_decode_note(hidden)})")
+        _fail(input_read_error(f"not text ({_decode_note(hidden)})"))
     return result
 
 

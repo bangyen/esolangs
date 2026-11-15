@@ -359,6 +359,17 @@ def _can_wrap_template(
     )
 
 
+def _can_balance_template(
+    layout: TemplateLayout, wrapper: Callable[[str, int], str] | None
+) -> bool:
+    """Whether default balancing can reflow a single line with input slots."""
+    return (
+        bool(layout.spans)
+        and "\n" not in layout.source
+        and _can_wrap_template(layout, wrapper)
+    )
+
+
 def _balance_template(
     template: TemplateArtifact,
     name: str,
@@ -366,17 +377,16 @@ def _balance_template(
     wrapper: Callable[[str, int], str] | None,
 ) -> TemplateArtifact:
     """Balance source by moving positional slots with a slot-aware wrapper."""
-    if template.spans and "\n" not in template.source:
-        layout = TemplateLayout(template.source, template.spans)
-        if wrapper is wrap_chars and _character_slots(layout):
-            balanced = balance_character_slots(layout)
-            return replace(template, source=balanced.source, spans=balanced.spans)
-        if isinstance(wrapper, TokenWrapper):
-            balanced = call_backend(
-                wrapper.balance_template, layout, char=template.bindings.char
-            )
-            return replace(template, source=balanced.source, spans=balanced.spans)
-    raise ProgramError(f"{name} requires a slot-aware balancer")
+    layout = TemplateLayout(template.source, template.spans or ())
+    if not _can_balance_template(layout, wrapper):
+        raise ProgramError(f"{name} requires a slot-aware balancer")
+    if isinstance(wrapper, TokenWrapper):
+        balanced = call_backend(
+            wrapper.balance_template, layout, char=template.bindings.char
+        )
+    else:
+        balanced = balance_character_slots(layout)
+    return replace(template, source=balanced.source, spans=balanced.spans)
 
 
 def _is_template_for(
@@ -433,8 +443,9 @@ def _is_template_for(
     backend = catalog.languages[name].backend
     assert backend is not None  # generate above refuses absent backends
     assert canonical.spans is not None
+    canonical_layout = TemplateLayout(plain, canonical.spans)
     width_aware = backend.layout_width or _can_wrap_template(
-        TemplateLayout(plain, canonical.spans), backend.wrap
+        canonical_layout, backend.wrap
     )
 
     @cache
@@ -463,6 +474,11 @@ def _is_template_for(
             raise ProgramError(f"{name}'s layout matcher did not return a boolean")
         if matches:
             return True
+    if backend.balance is None and (
+        backend.wrap_balance is not None
+        or not _can_balance_template(canonical_layout, backend.wrap)
+    ):
+        return False
     try:
         balanced = generate(
             name, truth_table, balance=True, settings=settings, catalog=catalog
@@ -485,6 +501,14 @@ def _stdin_template_error(name: str) -> TemplateError:
             "so there is nothing to instantiate"
         ),
         "run the generated program with stdin=encode_inputs(language, bits)",
+    )
+
+
+def _raster_template_error(message: str) -> TemplateError:
+    """Explain how to supply bits after refusing raster instantiation."""
+    return with_hint(
+        TemplateError(message),
+        "run the raster with stdin=encode_inputs(language, bits)",
     )
 
 
@@ -548,12 +572,9 @@ def instantiate(
         else template
     )
     if isinstance(body, Raster):
-        raise with_hint(
-            TemplateError(
-                f"{name} source is a Raster, and raster programs read their "
-                "inputs rather than embedding them, so there is nothing to instantiate"
-            ),
-            "run the raster with stdin=encode_inputs(language, bits)",
+        raise _raster_template_error(
+            f"{name} source is a Raster, and raster programs read their "
+            "inputs rather than embedding them, so there is nothing to instantiate"
         )
     if not catalog.languages[name].parameterized:
         raise _stdin_template_error(name)

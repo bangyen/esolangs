@@ -104,6 +104,9 @@ def expected_parts(parts, variant):
                     None if loop is None else node(loop),
                 ),
             )
+        if kind == "pending_statement":
+            frame, replay, flushed = payload
+            return variant(kind, (node(frame), replay, flushed))
         if kind == "environment":
             function, parent, bindings = payload
             return variant(

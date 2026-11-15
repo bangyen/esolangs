@@ -71,7 +71,7 @@ from esolangs.runtime._fault import _Fault
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
@@ -124,6 +124,8 @@ class _Machine:
 
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
+        self._statement_input: list[int] = []
+        self._statement_output = 0
         # Where the source ends, kept because ``ip`` still has to report a
         # position once every frame has been popped.
         image = _prepare_source(code) if isinstance(code, str) else code
@@ -188,10 +190,14 @@ class _Machine:
         self._flush(out, flushed)
         self.state = _State((), ctx.scopes, ctx.bits, ctx.reads)
 
-    def _flush(self, effects: Sequence[str], flushed: int) -> int:
+    def _flush(
+        self, effects: Sequence[str], flushed: int, *, pending: bool = False
+    ) -> int:
         """Print ``effects`` past ``flushed``; return the new flush count."""
         for char in effects[flushed:]:
             self.io.print_char(char)
+            if pending:
+                self._statement_output += 1
         return len(effects)
 
     @property
@@ -257,6 +263,12 @@ class _Machine:
         for frame in self.state.frames:
             graph.reference(frame.scope)
         frames = tuple(graph.frame(frame) for frame in self.state.frames)
+        pending = self._pending_statement()
+        if pending is not None:
+            frames = (
+                *frames[:-1],
+                WorkspaceVariant("pending_statement", (frames[-1], *pending)),
+            )
         return _WORKSPACE_MODEL.capture(
             frames=frames,
             scopes=graph.environments(),
@@ -276,7 +288,7 @@ class _Machine:
         popped, so unbounded recursion is never mistaken for a repeat: the
         frame tuple's length strictly grows.
         """
-        return (
+        snapshot = (
             tuple(
                 (
                     f.fn.name,
@@ -310,6 +322,14 @@ class _Machine:
             ),
             self._scopes(),
         )
+        pending = self._pending_statement()
+        return snapshot if pending is None else (*snapshot, pending)
+
+    def _pending_statement(self) -> tuple[tuple[int, ...], int] | None:
+        """Expose effects already performed by an incomplete statement."""
+        if self._statement_input or self._statement_output:
+            return tuple(self._statement_input), self._statement_output
+        return None
 
     def _scopes(self) -> tuple[object, ...]:
         """Render every scope a live frame or a closure can reach.
@@ -376,17 +396,18 @@ class _Machine:
         """
         if self.halted:
             return
-        inputs: list[int] = []
-        flushed = 0
+        # Replaying an expression needs the input and output boundary of this
+        # statement even when its previous attempt failed.
+        inputs = self._statement_input
         while True:
             try:
                 self.state, out = _advance(self.state, self.globals, tuple(inputs))
             except _NeedByte as need:
-                flushed = self._flush(need.effects, flushed)
+                self._flush(need.effects, self._statement_output, pending=True)
                 inputs.append(self.io.input_char())
                 continue
             except _Fault as fault:
-                self._flush(fault.effects, flushed)
+                self._flush(fault.effects, self._statement_output, pending=True)
                 if isinstance(fault.error, RecursionError):
                     raise HaltError(
                         "expression-position recursion exceeded the host's depth limit",
@@ -394,6 +415,10 @@ class _Machine:
                     ) from None
                 raise fault.error from None
             break
+        flushed = self._statement_output
+        if inputs or flushed:
+            inputs.clear()
+            self._statement_output = 0
         self._flush(out, flushed)
 
 

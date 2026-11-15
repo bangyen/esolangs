@@ -118,7 +118,7 @@ class Schedule:
             )
         globals_ = self.bindings(machine.state.environments[0].values)
         scopes = self.scopes(machine)
-        return (
+        state = (
             tuple(frames),
             machine.port.position,
             machine.state.bits,
@@ -126,6 +126,8 @@ class Schedule:
             globals_,
             scopes,
         )
+        pending = machine.pending_statement
+        return state if pending is None else (*state, pending)
 
 
 class Bijection:
@@ -264,10 +266,15 @@ class Observer:
             "_length",
             "_serials",
             "_next_serial",
+            "_statement_input",
+            "_statement_output",
             "globals",
             "_global_scope",
             "state",
         }
+        replay, flushed = expected.pending_statement or ((), 0)
+        core.exact(raw._statement_input, list(replay))
+        core.exact(raw._statement_output, flushed)
         core.exact(raw._length, len(self.program.source))
         assert type(raw.globals) is MappingProxyType
         core.exact(list(raw.globals), [fn.name for fn in self.program.functions])

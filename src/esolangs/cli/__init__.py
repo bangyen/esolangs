@@ -345,13 +345,16 @@ def _generation_bits(
     inputs = _validate_truth_table(table)
     if bits is None:
         _fail("gzip export requires text; rasters use PNG")
-    if raster:
-        _fail("raster programs read bits from stdin and cannot be instantiated")
     from esolangs.operations.generation import (
         _check_template_bits,
+        _raster_template_error,
         _stdin_template_error,
     )
 
+    if raster:
+        raise _raster_template_error(
+            "raster programs read bits from stdin and cannot be instantiated"
+        )
     if not declaration.parameterized:
         raise _stdin_template_error(declaration.name)
     return _check_template_bits(declaration.name, [int(bit) for bit in bits], inputs)

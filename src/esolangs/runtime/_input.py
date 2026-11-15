@@ -37,7 +37,7 @@ def check_input(source: InputSource) -> CheckedInput:
         _remember_acquisition_failure(error)
         raise
     except (OSError, TypeError, ValueError) as exc:
-        raise _read_failed(exc) from exc
+        raise input_read_error(exc) from exc
     if not callable(reader):
         raise with_hint(
             ArgumentError(
@@ -49,9 +49,10 @@ def check_input(source: InputSource) -> CheckedInput:
     return _BoundReader(source, reader)
 
 
-def _read_failed(error: Exception) -> ArgumentError:
+def input_read_error(detail: Exception | str) -> ArgumentError:
+    """Build a stdin error with the repair shared by Python and the CLI."""
     return with_hint(
-        ArgumentError(f"cannot read stdin: {error}"),
+        ArgumentError(f"cannot read stdin: {detail}"),
         ("open the input stream for reading and encode binary input as UTF-8"),
     )
 
@@ -73,7 +74,7 @@ def read_input(source: InputSource | CheckedInput) -> str:
         _remember_acquisition_failure(error)
         raise
     except (OSError, TypeError, ValueError) as exc:
-        raise _read_failed(exc) from exc
+        raise input_read_error(exc) from exc
     raise with_hint(
         ArgumentError("stdin stream must return a string or bytes"),
         (

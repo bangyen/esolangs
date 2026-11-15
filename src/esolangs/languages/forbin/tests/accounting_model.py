@@ -300,6 +300,7 @@ class Machine:
         self.port = port
         self.functions = {function.name: function for function in program.functions}
         self.state = State([], [Environment(None, None, {})])
+        self.pending_statement = None
         # Initializers use a synthetic body but retain global lexical bindings.
         for initializer in program.initializers:
             self.attempt(initializer)
@@ -314,8 +315,8 @@ class Machine:
         return not self.state.frames
 
     def attempt(self, initializer=None):
-        supplied = []
-        flushed = 0
+        replay, flushed = self.pending_statement or ((), 0)
+        supplied = list(replay)
         while True:
             attempt = Attempt(self.state, self.functions, tuple(supplied))
             try:
@@ -345,8 +346,22 @@ class Machine:
             return
 
     def step(self):
-        if not self.halted:
+        if self.halted:
+            return
+        before, event_start = self.state, len(self.port.events)
+        try:
             self.attempt()
+        finally:
+            if self.state is before:
+                replay, flushed = self.pending_statement or ((), 0)
+                accepted = self.port.events[event_start:]
+                replay += tuple(event[1] for event in accepted if event[0] == "read")
+                flushed += sum(event[0] == "write" for event in accepted)
+                self.pending_statement = (
+                    (replay, flushed) if replay or flushed else None
+                )
+            else:
+                self.pending_statement = None
 
     def parts(self):
         order = [0]
@@ -400,6 +415,8 @@ class Machine:
                     ),
                 )
             )
+        if self.pending_statement is not None:
+            frames[-1] = ("pending_statement", (frames[-1], *self.pending_statement))
         environments = []
         cursor = 0
         while cursor < len(order):

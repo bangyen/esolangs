@@ -553,3 +553,57 @@ class TestOutputOrdering:
         with pytest.raises(HaltError, match="undeclared"):
             run(program, io)
         assert io.events == [("out", "A")]
+
+    def test_an_expression_resumes_after_a_caller_owned_read_failure(self) -> None:
+        class InterruptedInput(ScriptedIO):
+            attempts = 0
+
+            def input_char(self, prompt="Input: "):
+                self.attempts += 1
+                if self.attempts == 2:
+                    raise OSError("input temporarily unavailable")
+                return super().input_char(prompt)
+
+        io = InterruptedInput("AB")
+        transfer = "a,b,c,d,e,f,g,h = (in 0); out a,b,c,d,e,f,g,h;"
+        machine = Forbin(f"pr {{ {transfer} {transfer} }} main {{ x = (pr 0); }}", io)
+        ordinary_snapshot_length = len(machine.snapshot())
+        with pytest.raises(OSError, match="input temporarily unavailable"):
+            machine.step()
+        assert (io.getvalue(), io.position(), io.reads) == ("A", 1, 1)
+        assert machine.snapshot()[-1] == ((ord("A"),), 1)
+        (frame,) = machine.workspace_snapshot().parts[0]
+        assert frame.kind == "pending_statement"
+        assert frame.values[1:] == ((ord("A"),), 1)
+
+        machine.step()
+        assert (io.getvalue(), io.position(), io.reads, io.attempts) == ("AB", 2, 2, 3)
+        assert len(machine.snapshot()) == ordinary_snapshot_length
+        (frame,) = machine.workspace_snapshot().parts[0]
+        assert frame.kind == "frame"
+
+    @pytest.mark.parametrize("pending", [False, True])
+    def test_a_partial_flush_tracks_the_accepted_characters(self, *, pending: bool):
+        class InterruptedOutput(ScriptedIO):
+            attempts = 0
+
+            def _write(self, value):
+                self.attempts += 1
+                if self.attempts == 2:
+                    raise OSError("output temporarily unavailable")
+                super()._write(value)
+
+        io = InterruptedOutput("Q")
+        tail = "return (in 0);" if pending else "return 0;"
+        source = (
+            f"pr {{ out 0,1,0,0,0,0,0,1; out 0,1,0,0,0,0,1,0; {tail} }}"
+            " main { x = (pr 0); }"
+        )
+        machine = Forbin(source, io)
+        with pytest.raises(OSError, match="output temporarily unavailable"):
+            machine.step()
+        assert io.getvalue() == "A"
+        assert machine.ip == ((0,) if pending else (1,))
+        machine.step()
+        assert io.getvalue() == ("AB" if pending else "A")
+        assert io.attempts == (3 if pending else 2)

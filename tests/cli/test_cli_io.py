@@ -144,6 +144,52 @@ class TestNonTextInputIsRefusedNotCrashed:
         assert b"not text" in result.stderr
         assert b"Traceback" not in result.stderr
 
+    @pytest.mark.parametrize("isolated", [False, True], ids=["native", "isolated"])
+    def test_run_stdin_failures_keep_python_repair_hint(
+        self, tmp_path: Path, *, isolated: bool
+    ) -> None:
+        program = tmp_path / "echo.bf"
+        program.write_text(",.")
+        route = ["--isolated"] if isolated else []
+        argv = [
+            sys.executable,
+            "-m",
+            "esolangs",
+            "run",
+            *route,
+            REFERENCE,
+            str(program),
+        ]
+
+        with (tmp_path / "writeonly.txt").open("wb") as source:
+            unreadable = subprocess.run(
+                argv, stdin=source, capture_output=True, timeout=10, check=False
+            )
+            with os.fdopen(os.dup(source.fileno()), "rb") as python_stdin:
+                bad_fd = esolangs.execute(
+                    REFERENCE, program, stdin=python_stdin, isolated=isolated
+                ).error
+        assert isinstance(bad_fd, esolangs.ArgumentError)
+        assert (unreadable.returncode, unreadable.stdout) == (2, b"")
+        assert unreadable.stderr.decode().splitlines() == [
+            str(bad_fd),
+            *bad_fd.__notes__,
+        ]
+
+        invalid = b"Q\xff"
+        undecodable = subprocess.run(
+            argv, input=invalid, capture_output=True, timeout=10, check=False
+        )
+        bad_text = esolangs.execute(
+            REFERENCE, program, stdin=invalid, isolated=isolated
+        ).error
+        assert isinstance(bad_text, esolangs.ArgumentError)
+        assert (undecodable.returncode, undecodable.stdout) == (2, b"")
+        assert undecodable.stderr.decode().splitlines() == [
+            "cannot read stdin: not text (invalid UTF-8 at byte 1)",
+            *bad_text.__notes__,
+        ]
+
     def test_the_library_names_it_as_a_program_error(self, tmp_path: Path) -> None:
         """``check_program`` decodes a Path and had the same gap."""
         path = tmp_path / "binary.txt"

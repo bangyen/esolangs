@@ -3,7 +3,8 @@
 import pytest
 
 import esolangs.debugger as debugger_api
-from esolangs.exceptions import InputExhaustedError
+from esolangs import ExecutionResult, Language
+from esolangs.exceptions import HaltError, InputExhaustedError
 from esolangs.vm import run_until_halt, run_until_halt_or_ancestor
 from tests.support.vm_support import assert_proof_fault
 
@@ -43,6 +44,47 @@ def test_ancestor_detector_examines_the_last_allowed_push() -> None:
         run_until_halt_or_ancestor(machine, limit=1)
     machine = debugger_api.make_vm("Forbin", source)
     assert run_until_halt_or_ancestor(machine, limit=2) is False
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("expression", "stdin", "error_type", "first_past_end", "replay"),
+    [
+        ("return (in 0);", "", InputExhaustedError, 1, ()),
+        ("b = (in 0); return missing;", "Q", HaltError, 0, (ord("Q"),)),
+    ],
+)
+def test_failed_expression_retries_keep_input_and_output_evidence(
+    expression, stdin, error_type, first_past_end, replay
+) -> None:
+    api = Language("Forbin")
+    source = f"f {{ out 0,1,0,0,0,0,0,1; {expression} }}\nmain {{ x = (f 0); }}"
+    consumed = len(stdin)
+    for outcome in (
+        api.execute(source, stdin=stdin),
+        api.prepare(source).execute(stdin=stdin),
+        api.execute(source, stdin=stdin, isolated=True),
+    ):
+        assert type(outcome.error) is error_type
+        assert outcome.observation == ExecutionResult(
+            "A", consumed, consumed, first_past_end
+        )
+
+    debugger = api.make_debugger(source, stdin=stdin)
+    position = debugger.ip
+    fault_state = None
+    for attempt in (1, 2):
+        with pytest.raises(error_type) as stopped:
+            debugger.step()
+        assert debugger.ip == position
+        assert stopped.value.observation == ExecutionResult(
+            "A", consumed, consumed, attempt * first_past_end, steps=0
+        )
+        snapshot = debugger.snapshot()
+        assert snapshot[-1] == (replay, 1)
+        if fault_state is not None:
+            assert snapshot == fault_state
+        fault_state = snapshot
 
 
 class TestForbin:

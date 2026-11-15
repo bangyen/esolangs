@@ -582,6 +582,50 @@ def test_checked_portable_instantiation_accepts_balanced_eof_slot() -> None:
         api.instantiate(changed, [0], truth_table="00")
 
 
+def test_checked_portable_instantiation_refuses_unbalanced_mismatch() -> None:
+    original = LANGUAGES[REFERENCE]
+    plain = layout_tokens(["+" * 48, InputSlot(1), "."], separator="")
+    backend = replace(
+        original.backend,
+        entrypoint=lambda _: plain,
+        template=TemplateSpec(pair=("x", "+")),
+        layout_width=False,
+        wrap=None,
+        balance=None,
+    )
+    declaration = replace(original, backend=backend)
+    api = esolangs.Catalog([declaration]).bind(REFERENCE)
+    record = api.generate("01")
+    restored = api.from_json(api.to_json(record))
+    assert isinstance(restored, esolangs.TemplateArtifact)
+    assert restored == record
+    assert [
+        api.run(api.instantiate(restored, [bit], truth_table="01")).output
+        for bit in (0, 1)
+    ] == ["0", "1"]
+
+    changed = replace(restored, source="+" + restored.source, spans=((49, 50),))
+    edited = api.from_json(api.to_json(changed))
+    assert isinstance(edited, esolangs.TemplateArtifact)
+    assert edited == changed
+    assert [api.run(edited.fill([bit])).output for bit in (0, 1)] == ["1", "2"]
+    with pytest.raises(esolangs.ProgramError, match="requires a slot-aware balancer"):
+        api.generate("01", balance=True)
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        api.instantiate(edited, [1], truth_table="01")
+
+    fault = esolangs.ProgramError("declared balancer failed")
+
+    def fail(_request: BalanceRequest) -> TemplateLayout:
+        raise fault
+
+    declared = replace(declaration, backend=replace(backend, balance=fail))
+    configured = esolangs.Catalog([declared]).bind(REFERENCE)
+    with pytest.raises(esolangs.ProgramError) as refused:
+        configured.instantiate(edited, [1], truth_table="01")
+    assert refused.value is fault
+
+
 @pytest.mark.parametrize("source", ["", "+\n"])
 def test_template_layout_keeps_eof_slots_on_an_empty_line(source: str) -> None:
     layout = layout_tokens([source, InputSlot(0)], separator="")

@@ -63,11 +63,14 @@ def _notes(exc: BaseException) -> str:
 def _generate_hint(exc: EsolangError, language: str, table: str) -> str:
     """Keep generator notes and point template input advice at the CLI."""
     message = str(exc)
-    notes = _notes(exc).replace(
-        "run the generated program with stdin=encode_inputs(language, bits)",
-        f"pipe input from esolangs encode-inputs {_as_argument(language)} <bits> "
-        "when running the generated program",
-    )
+    notes = _notes(exc)
+    operand = _as_argument(language)
+    for target in ("the generated program", "the raster"):
+        notes = notes.replace(
+            f"run {target} with stdin=encode_inputs(language, bits)",
+            f"pipe input from esolangs encode-inputs {operand} <bits> "
+            f"when running {target}",
+        )
     return message + _swapped_hint(language, table) + notes
 
 
