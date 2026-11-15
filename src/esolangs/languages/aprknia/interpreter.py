@@ -46,8 +46,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 #: How many values each command needs before it can run.
@@ -137,6 +137,7 @@ class _Machine:
     def __init__(self, code: str | _SourceImage, io: IO) -> None:
         self.code, self.jumps = _prepare_source(code) if isinstance(code, str) else code
         self.io = io
+        self._writer = _BufferedOutput()
         self.state = _State(0, ())
 
     @property
@@ -154,15 +155,22 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state.ind,
+            instruction=(
+                WorkspaceVariant("pending_output", (self.state.ind, accepted))
+                if accepted
+                else self.state.ind
+            ),
             stack=self.state.stk,
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.progress())
+        boundary = (*self.state, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Run one command; the reads, writes and errors happen here."""
@@ -188,9 +196,10 @@ class _Machine:
         byte = None
         if char == "," and stk[-1] % 3 == 0:
             byte = self.io.input_char()
-        self.state, out = _advance(self.state, self.code, self.jumps, byte)
+        state, out = _advance(self.state, self.code, self.jumps, byte)
         if out is not None:
-            self.io.print_str(out)
+            self._writer.write(self.io, out)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

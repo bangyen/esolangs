@@ -7,6 +7,7 @@ from esolangs.languages.blindfolded_arithmetic.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.memory import trunc_div
 from esolangs.vm import complete_vm
+from tests.support.vm_support import assert_rejected_output_retry
 
 
 @pytest.mark.parametrize(
@@ -58,6 +59,17 @@ def test_constructor_and_output_failures_preserve_native_phase(monkeypatch) -> N
     assert io.getvalue() == "1"
     assert io.input_char() == ord(" ")
     assert io.input_num() == 7
+    assert_rejected_output_retry(
+        "Blindfolded Arithmetic",
+        "i=i/a",
+        123,
+        "123",
+        prefix=0,
+        stdin="123 9",
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
     from esolangs.languages.blindfolded_arithmetic import interpreter
     from tests.support.prepared_support import check_image_reuse

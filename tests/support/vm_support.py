@@ -119,7 +119,7 @@ def assert_rejected_input_retry(
 
 def assert_rejected_output_retry(
     name: str,
-    source: str,
+    source: ProgramSource,
     value: int | str,
     output: str,
     *,
@@ -128,6 +128,7 @@ def assert_rejected_output_retry(
     stdin: str = "",
     unchanged_if_unwritten: bool = False,
     following_writes: tuple[int | str, ...] | None = None,
+    pending_snapshot: Callable[[int], object] = int,
 ) -> None:
     """Resume a debugger after a sink accepts zero, some or all of a write."""
     language = esolangs.Language(name)
@@ -165,7 +166,7 @@ def assert_rejected_output_retry(
             if unchanged_if_unwritten and not accepted:
                 assert debugger.snapshot() == boundary
             else:
-                assert debugger.snapshot() == (*boundary, accepted)
+                assert debugger.snapshot() == (*boundary, pending_snapshot(accepted))
             assert debugger.run(limits=limits) == "halted"
             assert debugger.observation == expected
             assert fault.value.observation == partial

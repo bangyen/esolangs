@@ -53,8 +53,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 
 _COMMANDS = frozenset(
     [
@@ -304,6 +304,7 @@ class _Machine:
 
     def __init__(self, code: str | tuple[str, ...], io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         words = _prepare_source(code) if isinstance(code, str) else code
         self.state: _State = (None, ((words, 0, 1), None) if words else None)
         self.globals: dict[str, frozenset[object]] = {_ERROR: frozenset()}
@@ -347,9 +348,13 @@ class _Machine:
             frame, pending = pending
             words, pc, depth = frame
             frames.append((tuple(words), pc, depth))
+        accepted = self._writer.accepted
+        control = tuple(frames)
         return _WORKSPACE_MODEL.capture(
             stack=tuple(stack),
-            frames=tuple(frames),
+            frames=WorkspaceVariant("pending_output", (control, accepted))
+            if accepted
+            else control,
             globals=frozenset(self.globals.items()),
             locals=frozenset(
                 (d, frozenset(v.items())) for d, v in self.locals.items() if v
@@ -364,12 +369,14 @@ class _Machine:
             for depth, names in sorted(self.locals.items())
             if names
         )
-        return (
+        boundary = (
             *self.state,
             frozenset(self.globals.items()),
             scopes,
             self.io.progress(),
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _lookup(self, name: str, depth: int) -> frozenset[object] | None:
         scope = _scope(name, depth)
@@ -393,7 +400,10 @@ class _Machine:
             and isinstance(stack[0], str)
         ):
             got = self._lookup(stack[0], depth)
-        self.state, effects, out = _advance(self.state, got)
+        state, effects, out = _advance(self.state, got)
+        if out is not None:
+            self._writer.write(self.io, out)
+        self.state = state
         for effect in effects:
             if effect[0] == "clear":
                 depth_cleared = effect[1]
@@ -410,8 +420,6 @@ class _Machine:
                     names[name] = effect[3]  # type: ignore[assignment]
                 else:
                     del names[name]
-        if out is not None:
-            self.io.print_str(out)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

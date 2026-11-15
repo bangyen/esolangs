@@ -16,6 +16,7 @@ from tests.interpreters.contract import (
     machine_factory,
 )
 from tests.interpreters.oisc import memory, run_program
+from tests.support.vm_support import assert_rejected_output_retry
 
 _run = partial(run_program, run)
 
@@ -43,10 +44,20 @@ class TestCountdown:
 
 
 class TestIO:
-    def test_output(self) -> None:
+    def test_output(self, monkeypatch) -> None:
         # -2 10 0 outputs memory[10] and falls through to the halt.
         code = memory([[-2, 10, 0], [0, 0, 999]], {10: 65})
         assert _run(code) == "A"
+        assert_rejected_output_retry(
+            "Decleq",
+            "-2 6 0 0 0 999 65",
+            "A",
+            "A",
+            prefix=0,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     def test_input(self, monkeypatch) -> None:
         # -1 10 0 reads a byte into memory[10]; -2 10 0 prints it.

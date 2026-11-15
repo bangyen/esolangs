@@ -46,6 +46,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from functools import partial
 from types import MappingProxyType
 from typing import Any
 
@@ -72,7 +73,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 # ``_Machine`` runs on an explicit stack of :class:`_Frame` values (one per
@@ -124,6 +125,7 @@ class _Machine:
 
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self._statement_input: list[int] = []
         self._statement_output = 0
         # Where the source ends, kept because ``ip`` still has to report a
@@ -195,7 +197,7 @@ class _Machine:
     ) -> int:
         """Print ``effects`` past ``flushed``; return the new flush count."""
         for char in effects[flushed:]:
-            self.io.print_char(char)
+            self._writer.write(self.io, char, first=partial(self.io.print_char, char))
             if pending:
                 self._statement_output += 1
         return len(effects)
@@ -327,8 +329,9 @@ class _Machine:
 
     def _pending_statement(self) -> tuple[tuple[int, ...], int] | None:
         """Expose effects already performed by an incomplete statement."""
-        if self._statement_input or self._statement_output:
-            return tuple(self._statement_input), self._statement_output
+        printed = self._statement_output + (self._writer.accepted or 0)
+        if self._statement_input or printed:
+            return tuple(self._statement_input), printed
         return None
 
     def _scopes(self) -> tuple[object, ...]:
@@ -401,7 +404,7 @@ class _Machine:
         inputs = self._statement_input
         while True:
             try:
-                self.state, out = _advance(self.state, self.globals, tuple(inputs))
+                state, out = _advance(self.state, self.globals, tuple(inputs))
             except _NeedByte as need:
                 self._flush(need.effects, self._statement_output, pending=True)
                 inputs.append(self.io.input_char())
@@ -415,11 +418,11 @@ class _Machine:
                     ) from None
                 raise fault.error from None
             break
-        flushed = self._statement_output
-        if inputs or flushed:
+        self._flush(out, self._statement_output, pending=True)
+        self.state = state
+        if inputs or self._statement_output:
             inputs.clear()
             self._statement_output = 0
-        self._flush(out, flushed)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

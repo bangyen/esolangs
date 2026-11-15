@@ -111,8 +111,9 @@ def _actual(machine, case):
         machine.state.outgoing,
         machine.state.used,
     )
-    if machine._tick_input or machine._tick_output:
-        parts += ((tuple(machine._tick_input), machine._tick_output),)
+    delivered = machine._tick_output + (machine._writer.accepted or 0)
+    if machine._tick_input or delivered:
+        parts += ((tuple(machine._tick_input), delivered),)
     return parts
 
 

@@ -60,8 +60,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -731,6 +731,7 @@ class _Machine:
 
     def __init__(self, code: str | _Funcs, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self.funcs = _prepare_source(code) if isinstance(code, str) else code
         self.state = tuple.__new__(_State, (_Try("main", (), 0), None, 0))
         self.heap: dict[int, _Cell] = {}
@@ -756,8 +757,13 @@ class _Machine:
         while rest is not None:
             frame, rest = rest
             continuation.append(frame)
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            control=self.state.control,
+            control=(
+                WorkspaceVariant("pending_output", (self.state.control, accepted))
+                if accepted
+                else self.state.control
+            ),
             continuation=tuple(continuation),
             fresh=self.state.fresh,
             heap=frozenset(self.heap.items()),
@@ -767,12 +773,14 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        boundary = (
             *self.state,
             frozenset(self.heap.items()),
             self.ahead,
             self.io.progress(),
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _read_char(self) -> str:
         """Return the next input character, or ``""`` at EOF."""
@@ -790,11 +798,12 @@ class _Machine:
             try:
                 if len(bits) % 8:
                     raise ValueError(len(bits))
-                self.io.print_str(data.decode())
+                text = data.decode()
             except ValueError as exc:
                 raise HaltError(f"Bleh io::print got non-UTF-8 bits {bits}") from exc
+            self._writer.write(self.io, text)
         elif name == "debug":
-            self.io.print_str(bits or "[]")
+            self._writer.write(self.io, bits or "[]")
         else:
             if self.ahead is None:
                 self.ahead = self._read_char()

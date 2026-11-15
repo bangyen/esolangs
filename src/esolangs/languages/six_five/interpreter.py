@@ -29,6 +29,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from functools import partial
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -38,8 +39,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 
 #: The largest value ``A`` can print.  Outputting a cell outside the valid
 #: character range is an invalid operation, not a wrap or a truncation.
@@ -175,6 +176,7 @@ class _Machine:
     def __init__(self, code: str | _Image, io: IO) -> None:
         """Tokenize ``code`` and reset the cell, tape, and cursor."""
         self.io = io
+        self._writer = _BufferedOutput()
         self.toks, self.markers = (
             _prepare_source(code) if isinstance(code, str) else code
         )
@@ -238,10 +240,14 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
+        instruction: int | WorkspaceVariant = self.ind
+        accepted = self._writer.accepted
+        if accepted:
+            instruction = WorkspaceVariant("pending_output", (instruction, accepted))
         return _WORKSPACE_MODEL.capture(
             accumulator=self.cell,
             tape=self.tape,
-            instruction=self.ind,
+            instruction=instruction,
             input_cursor=self.io.progress(),
         )
 
@@ -249,7 +255,9 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # Not the state's order: reordering would change every stored hash.
         ind, cell, tape = self.state
-        return (cell, tape, ind, self.io.progress())
+        boundary = (cell, tape, ind, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one token, advancing the cursor.
@@ -269,7 +277,10 @@ class _Machine:
                     f"{tape[cell]}, outside 0..{_MAX_CHAR}",
                     hint="keep the output cell between 0 and 1114111",
                 )
-            self.io.print_char(chr(tape[cell]))
+            output = chr(tape[cell])
+            self._writer.write(
+                self.io, output, first=partial(self.io.print_char, output)
+            )
         elif tok == "B":
             byte = self.io.input_char()
         self.state = _advance(self.state, self.toks, byte, self.markers)

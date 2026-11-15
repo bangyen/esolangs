@@ -22,6 +22,7 @@ from tests.interpreters.contract import (
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.support.prepared_support import check_image_reuse
 from tests.support.raises import raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
 
@@ -62,7 +63,7 @@ class TestUnsquare:
         """A space is a character, not a request to skip a line."""
         assert run_program("io", "   \n7\n") == " "
 
-    def test_printing_at_the_code_point_boundaries(self) -> None:
+    def test_printing_at_the_code_point_boundaries(self, monkeypatch) -> None:
         """``o`` prints a character, or a decimal when the value is not one."""
         # the surrogate block is rejected at both ends, and its neighbours
         # are not
@@ -73,6 +74,17 @@ class TestUnsquare:
         # the top of the range is a character; one past it is not
         assert run_program("io", chr(0x10FFFF)) == "\U0010ffff"
         assert run_program("+xxxx+xxxxxxxxxxxxxxxPo") == "1114112"
+        for source, payload, steps in (("Io", "\x01", 1), ("-Po", -2, 2)):
+            assert_rejected_output_retry(
+                "Unsquare",
+                source,
+                payload,
+                str(payload),
+                prefix=steps,
+                monkeypatch=monkeypatch,
+                unchanged_if_unwritten=True,
+                following_writes=(),
+            )
 
     def test_a_negative_is_masked_before_it_is_judged(self) -> None:
         """``o`` tests the low 32 bits, but falls back to the whole value."""

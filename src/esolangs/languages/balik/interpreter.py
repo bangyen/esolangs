@@ -38,6 +38,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Any
 
 from esolangs.exceptions import ArgumentError, HaltError
@@ -48,7 +49,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 _COMMANDS = frozenset("+<>*@., ")
@@ -113,6 +114,7 @@ class _Machine:
     def __init__(self, code: str | tuple[str, ...], io: IO) -> None:
         self.grid = _prepare_grid(code) if isinstance(code, str) else code
         self.io = io
+        self._writer = _BufferedOutput()
         self.state: _State = (0, 0, 0, 0)
         self._rejected_input: str | None = None
         # Mutable and shell-owned: the tape grows one cell per ``>``.
@@ -136,9 +138,14 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
         cursor = self.io.progress()
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             row=self.state[0],
-            column=self.state[1],
+            column=(
+                WorkspaceVariant("pending_output", (self.state[1], accepted))
+                if accepted
+                else self.state[1]
+            ),
             heading=self.state[2],
             pointer=self.state[3],
             tape=tuple(self.tape),
@@ -152,7 +159,10 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         state = (*self.state, tuple(self.tape), self.io.progress())
-        return state if self._rejected_input is None else (*state, self._rejected_input)
+        if self._rejected_input is not None:
+            return (*state, self._rejected_input)
+        accepted = self._writer.accepted
+        return (*state, accepted) if accepted else state
 
     def _read_ternary(self) -> int:
         digit = self._rejected_input
@@ -181,12 +191,13 @@ class _Machine:
                 hint="the tape is right-infinite; move right before moving left",
             )
         read = self._read_ternary() if c == "," else None
-        self.state, value, out = _advance(self.state, c, self.tape[pointer], read)
+        state, value, out = _advance(self.state, c, self.tape[pointer], read)
+        if out is not None:
+            self._writer.write(self.io, str(out), first=partial(self.io.print_num, out))
+        self.state = state
         self.tape[pointer] = value
         if self.state[3] == len(self.tape):
             self.tape.append(0)
-        if out is not None:
-            self.io.print_num(out)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

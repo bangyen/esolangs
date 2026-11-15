@@ -11,6 +11,7 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract, machine_factory
 from tests.interpreters.runner import run_lines
+from tests.support.vm_support import assert_rejected_output_retry
 
 sixfive = importlib.import_module("esolangs.languages.six_five.interpreter")
 
@@ -19,11 +20,22 @@ run_and_capture = run_lines(sixfive.run)
 
 
 class TestSixFive:
-    def test_input_echo(self) -> None:
+    def test_input_echo(self, monkeypatch) -> None:
         from esolangs.languages.six_five.tests.oracle_checks import check_raw_six_five
 
         check_raw_six_five()
         assert run_and_capture("BA0", inputs=["X"]) == "X"
+        assert_rejected_output_retry(
+            "6-5",
+            "BA0",
+            "X",
+            "X",
+            prefix=1,
+            monkeypatch=monkeypatch,
+            stdin="X",
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     def test_right_move_reuses_an_already_allocated_tape(self) -> None:
         """Moving right need not grow a tape that a prior state already grew."""

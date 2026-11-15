@@ -8,7 +8,10 @@ from esolangs.languages.lol_waht_i_cant_edit_talk_pages import interpreter as na
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 TRUTH = """user:i
 im awesome tottaly but no i
@@ -89,9 +92,19 @@ def test_output_a(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def test_hello_world_signature() -> None:
+def test_hello_world_signature(monkeypatch: pytest.MonkeyPatch) -> None:
     code = "Hello, world! --tommyaweosme 14:39, 7 January 2024\nwaht i got banned"
     assert _out(code) == "Hello, world!"
+    assert_rejected_output_retry(
+        "lol waht i cant edit talk pages",
+        "ab --tommyaweosme",
+        "ab",
+        "ab",
+        prefix=0,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
 
 def test_empty_program_and_no() -> None:

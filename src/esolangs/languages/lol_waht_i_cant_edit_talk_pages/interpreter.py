@@ -57,8 +57,8 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -197,6 +197,7 @@ class _Machine:
     def __init__(self, code: str | tuple[_Op, ...], io: IO) -> None:
         self.ops = _parse(code) if isinstance(code, str) else code
         self.io = io
+        self._writer = _BufferedOutput()
         self.state = _State(0, ())
         self._rejected = RejectedInput()
 
@@ -210,15 +211,20 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state.pc,
+            instruction=WorkspaceVariant("pending_output", (self.state.pc, accepted))
+            if accepted
+            else self.state.pc,
             variables=frozenset(self.state.env),
             input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return self._rejected.snapshot((*self.state, self.io.progress()))
+        boundary = self._rejected.snapshot((*self.state, self.io.progress()))
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Run one statement; the read and the print happen here."""
@@ -229,13 +235,14 @@ class _Machine:
             self._rejected.read(self.io, self.io.input_num) if kind == "read" else None
         )
         try:
-            self.state, out = _advance(self.state, self.ops, number)
+            state, out = _advance(self.state, self.ops, number)
         except HaltError as error:
             if number is not None:
                 self._rejected.remember(error)
             raise
         if out is not None:
-            self.io.print_str(out)
+            self._writer.write(self.io, out)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

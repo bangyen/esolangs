@@ -32,6 +32,7 @@ Decisions:
 
 import re
 from collections.abc import Mapping
+from functools import partial
 from typing import Any
 
 from esolangs.exceptions import ArgumentError
@@ -41,10 +42,10 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._validate import _argument_repr
-from esolangs.runtime.io import IO
-from esolangs.runtime.memory import trunc_div
+from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer, trunc_div
 from esolangs.runtime.source_hints import syntax_error
 
 #: The register names, in the order of :attr:`_Machine.memory`.
@@ -116,6 +117,7 @@ class _Machine:
         self, code: str | tuple[tuple[_Instruction, ...], tuple[int, ...]], io: IO
     ) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self.program, self.offsets = _parse(code) if isinstance(code, str) else code
         value = io.input_num()
         if value <= 0:
@@ -140,21 +142,33 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            configuration=(self.state[0], self.state[1]),
+            configuration=(
+                WorkspaceVariant(
+                    "pending_output", ((self.state[0], self.state[1]), accepted)
+                )
+                if accepted
+                else (self.state[0], self.state[1])
+            ),
             stopped=self.halted,
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        return (self.state, self.halted, self.io.progress())
+        boundary = (self.state, self.halted, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         if self.halted:
             return
         state = _advance(self.state, self.program[self.state[1]], len(self.program))
         if state is None:
-            self.io.print_num(self.state[0][-1])
+            value = self.state[0][-1]
+            self._writer.write(
+                self.io, format_integer(value), first=partial(self.io.print_num, value)
+            )
             self.halted = True
         else:
             self.state = state

@@ -209,8 +209,6 @@ def model(frames, stdin, cap=1000):
             )
             return "argument", [*rows, row]
         state, emitted = transition(state, frames, number)
-        # A real physical output refusal belongs AFTER this state assignment.
-        # The later fault-history driver must capture it here, never roll back.
         if emitted is not None:
             text = str(emitted)  # Admitted operands0..5 keep output small.
             output += text
@@ -219,7 +217,7 @@ def model(frames, stdin, cap=1000):
 
 
 def writer_refusal_history(frames, stdin):
-    """Predict a first physical numeric-write refusal after its state commit."""
+    """Insert a refusal at the first write, then retry the pending output."""
     error, ordinary = model(frames, stdin)
     assert error is None
     at = next(
@@ -229,29 +227,22 @@ def writer_refusal_history(frames, stdin):
     )
     text = ordinary[at]["output"][len(ordinary[at - 1]["output"]) :]
     assert text
+    before = ordinary[at - 1]
     histories = []
-    for prefix in ("", text[:1]):
-        rows = []
-        output = ""
-        newline = False
-        for index, original in enumerate(ordinary):
-            row = dict(original)
-            if index < at:
-                output, newline = row["output"], row["newline"]
-            elif index == at:
-                output += prefix
-                row["raised"] = "physical ValueError after state commit"
-            else:
-                previous = ordinary[index - 1]
-                if row["reads"] > previous["reads"]:
-                    newline = False
-                appended = original["output"][len(previous["output"]) :]
-                if appended:
-                    output += appended
-                    newline = True
-            row["output"], row["newline"] = output, newline
-            rows.append(row)
-        histories.append(tuple(rows))
+    for prefix in ("", text[:1], text):
+        failed = {
+            **before,
+            "output": before["output"] + prefix,
+            "raised": "write refused",
+        }
+        if prefix:
+            parts = before["workspace"]
+            pending = WorkspaceVariant("pending_output", (parts[1], len(prefix)))
+            failed.update(
+                cycle=(*before["cycle"], len(prefix)),
+                workspace=(parts[0], pending, *parts[2:]),
+            )
+        histories.append((*ordinary[:at], failed, *ordinary[at:]))
     return tuple(histories)
 
 

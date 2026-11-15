@@ -26,7 +26,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import cache, lru_cache
+from functools import cache, lru_cache, partial
 from typing import TYPE_CHECKING, Any, cast
 
 from esolangs.raster import Pixel, Raster, Rows
@@ -34,8 +34,9 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer
 
 from .extract import extract_mask
 from .mask import from_grey
@@ -143,6 +144,7 @@ class _Machine:
         )
         self.state: _State = (0, 0, 0, ())
         self.io = io
+        self._writer = _BufferedOutput()
         self._rejected_input = RejectedInput()
 
     @property
@@ -168,9 +170,12 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
         node, instruction, pointer, tape = self.state
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             node=node,
-            instruction=instruction,
+            instruction=WorkspaceVariant("pending_output", (instruction, accepted))
+            if accepted
+            else instruction,
             pointer=pointer,
             cells=frozenset((cell, value) for cell, value in tape if value),
             input_cursor=self._rejected_input.cursor(self.io.progress()),
@@ -179,9 +184,11 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         node, at, pointer, tape = self.state
         cells = tuple((cell, value) for cell, value in tape if value)
-        return self._rejected_input.snapshot(
+        boundary = self._rejected_input.snapshot(
             (node, at, pointer, cells, self.io.progress())
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         if self.halted:
@@ -191,9 +198,14 @@ class _Machine:
             if _needs_input(self.program, self.state)
             else None
         )
-        self.state, output = _advance(self.state, self.program, value)
+        state, output = _advance(self.state, self.program, value)
         if output is not None:
-            self.io.print_num(output)
+            self._writer.write(
+                self.io,
+                format_integer(output),
+                first=partial(self.io.print_num, output),
+            )
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

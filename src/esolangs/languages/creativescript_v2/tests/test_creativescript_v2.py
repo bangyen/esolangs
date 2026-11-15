@@ -5,7 +5,10 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.creativescript_v2.interpreter import run
 from tests.interpreters.runner import native_runner
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 #: The page's equality program, as a function of two inputs.
 EQUALS = """in! a
@@ -42,6 +45,21 @@ def test_say_prints_the_rest_of_the_line_and_a_plus_b_adds(monkeypatch) -> None:
     check_raw_creativescript_v2()
     assert output("say! Hello world!") == "Hello world!"
     assert output("in! a\nin! b\nadd! a b c\nout! c", "2\n40\n") == "42"
+    for source, value, stdin, prefix in (
+        ("say! ab", "ab", "", 0),
+        ("in! a\nout! a", "123", "123", 1),
+    ):
+        assert_rejected_output_retry(
+            "CreativeScript v2",
+            source,
+            value,
+            value,
+            prefix=prefix,
+            stdin=stdin,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
     from esolangs.languages.creativescript_v2 import interpreter
     from tests.support.prepared_support import check_image_reuse
 

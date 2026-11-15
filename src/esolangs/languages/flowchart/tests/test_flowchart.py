@@ -16,6 +16,7 @@ from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import run_program as _run_program
 from tests.support.fixtures import grid
 from tests.support.paths import ROOT
+from tests.support.vm_support import assert_rejected_output_retry
 
 # The wiki's truth machine: read a bit, and on 0 print it once and halt, on
 # 1 print it forever.  The switch is entered travelling downward, so its
@@ -582,7 +583,19 @@ def test_a_byte_finished_before_a_faulting_read_is_not_swallowed() -> None:
     assert io.getvalue() == "\xff"
 
 
-def test_a_failed_tick_does_not_repeat_accepted_io() -> None:
+def test_a_failed_tick_does_not_repeat_accepted_io(monkeypatch) -> None:
+    assert_rejected_output_retry(
+        "Flowchart",
+        "\n".join(TRUTH_MACHINE),
+        "\0",
+        "\0",
+        prefix=3,
+        stdin="0\n",
+        unchanged_if_unwritten=True,
+        following_writes=(),
+        monkeypatch=monkeypatch,
+        pending_snapshot=lambda accepted: ((), accepted),
+    )
     lines = _two_pointer_program()
     complete = "\n".join(lines)
     lines[-1] = lines[-1].removesuffix("─(( ))")

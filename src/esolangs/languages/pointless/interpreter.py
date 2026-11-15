@@ -47,8 +47,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 
 _COMMANDS = frozenset('<>:!=+-[].,"{}')
 
@@ -194,6 +194,7 @@ class _Machine:
 
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         image = _parse(code) if isinstance(code, str) else code
         self.end, self.bodies, self.names = image
         self.frames: _Frames = ((0, 0), None) if self.bodies[0][0] else None
@@ -225,8 +226,13 @@ class _Machine:
         while rest is not None:
             frame, rest = rest
             frames.append(frame)
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            frames=tuple(frames),
+            frames=(
+                WorkspaceVariant("pending_output", (tuple(frames), accepted))
+                if accepted
+                else tuple(frames)
+            ),
             pointer=self.pointer,
             tape=bytes(self.tape).rstrip(b"\0"),
             banged=self.banged,
@@ -235,13 +241,15 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        boundary = (
             self.frames,
             self.pointer,
             bytes(self.tape).rstrip(b"\0"),
             self.banged,
             self.io.progress(),
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _cell(self, address: int) -> int:
         return self.tape[address] if address < len(self.tape) else 0
@@ -254,7 +262,7 @@ class _Machine:
         op = self.bodies[body][0][pc][1]
         byte = self.io.input_char() if op == "," else None
         cell = self._cell(self.pointer)
-        self.frames, pointer, write, out, self.banged = _advance(
+        frames, pointer, write, out, banged = _advance(
             self.frames,
             self.bodies,
             self.names,
@@ -264,13 +272,14 @@ class _Machine:
             banged=self.banged,
             byte=byte,
         )
+        if out is not None:
+            self._writer.write(self.io, out)
+        self.frames, self.banged = frames, banged
         if write is not None:
             if self.pointer >= len(self.tape):
                 self.tape.extend(bytes(self.pointer + 1 - len(self.tape)))
             self.tape[self.pointer] = write
         self.pointer = pointer
-        if out is not None:
-            self.io.print_str(out)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

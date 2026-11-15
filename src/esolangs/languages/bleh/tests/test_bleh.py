@@ -8,8 +8,10 @@ import pytest
 from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.languages.bleh.interpreter import _Machine, run
+from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_output_retry
 
 #: The page's pattern table: pattern, arguments, ``1`` if they match.
 TABLE = [
@@ -48,6 +50,33 @@ def test_the_page_pattern_table(pattern: str, args: str, expected: str) -> None:
 def test_a_forced_argument_is_read_once(monkeypatch) -> None:
     """Call by need: ``x`` is forced by the literal and reused, not reread."""
     code = '^:std::io; main := f(io::next()); f : "a" = 1 : x = io::print(x, x);'
+
+    # Retry does not rerun a committed write prefix or reclassify sink faults.
+    source = '^:std::io; main := io::print("ab");'
+    assert_rejected_output_retry(
+        "Bleh",
+        source,
+        "ab",
+        "ab",
+        prefix=4,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
+    debugger = Language("Bleh").make_debugger(source)
+    fault = ProgramError("writer refused")
+
+    def fail(_io, _text):
+        raise fault
+
+    with monkeypatch.context() as port:
+        port.setattr(ScriptedIO, "_write", fail)
+        with pytest.raises(ProgramError) as rejected:
+            debugger.run(limits=ExecutionLimits(max_steps=16))
+    assert rejected.value is fault
+    assert fault.observation == ExecutionResult("", 0, 0, 0, steps=4)
+    assert debugger.run(limits=ExecutionLimits(max_steps=16)) == "halted"
+    assert debugger.observation.output == "ab"
 
     def check(program, expected, stdin="", consumed=0):
         check_terminal(

@@ -21,6 +21,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from types import MappingProxyType
 from typing import Any
 
@@ -30,9 +31,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.brackets import unmatched
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 
 #: ``(ind, ptr, grid)``: code cursor, pointer, 25 cells; an immutable value
 #: (grid a ``tuple``) that is exactly what ``snapshot`` returns.  Code and loop
@@ -120,6 +121,7 @@ class _Machine:
     def __init__(self, code: str | _SourceImage, io: IO) -> None:
         """Match ``code``'s loop pairs and start the grid at all zeros."""
         self.io = io
+        self._writer = _BufferedOutput()
         self.code, self.match = _prepare_source(code) if isinstance(code, str) else code
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
@@ -164,12 +166,17 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # The state as it stands: it is already the (ind, ptr, grid) triple
         # this returned before the split, and it is already hashable.
-        return self.state
+        accepted = self._writer.accepted
+        return (*self.state, accepted) if accepted else self.state
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
+        instruction: int | WorkspaceVariant = self.ind
+        accepted = self._writer.accepted
+        if accepted:
+            instruction = WorkspaceVariant("pending_output", (instruction, accepted))
         return _WORKSPACE_MODEL.capture(
-            instruction=self.ind, pointer=self.ptr, grid=self.grid
+            instruction=instruction, pointer=self.ptr, grid=self.grid
         )
 
     def step(self) -> None:
@@ -181,7 +188,10 @@ class _Machine:
             return
         ind, ptr, grid = self.state
         if self.code[ind] == "k":
-            self.io.print_char(chr(grid[ptr] & 0xFF))
+            output = chr(grid[ptr] & 0xFF)
+            self._writer.write(
+                self.io, output, first=partial(self.io.print_char, output)
+            )
         self.state = _advance(self.state, self.code, self.match)
 
 

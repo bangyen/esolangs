@@ -6,7 +6,7 @@ import esolangs.debugger as debugger_api
 from esolangs import ExecutionResult, Language
 from esolangs.exceptions import HaltError, InputExhaustedError
 from esolangs.vm import run_until_halt, run_until_halt_or_ancestor
-from tests.support.vm_support import assert_proof_fault
+from tests.support.vm_support import assert_proof_fault, assert_rejected_output_retry
 
 
 @pytest.mark.parametrize("debugged", [False, True])
@@ -37,7 +37,18 @@ def test_ancestor_detector_recognizes_a_known_halt_at_zero_budget(
     assert machine.snapshot() == snapshot
 
 
-def test_ancestor_detector_examines_the_last_allowed_push() -> None:
+def test_ancestor_detector_examines_the_last_allowed_push(monkeypatch) -> None:
+    assert_rejected_output_retry(
+        "Forbin",
+        "f { out 0,1,0,0,0,0,0,1; }\nmain { f 0; }",
+        "A",
+        "A",
+        prefix=1,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+        monkeypatch=monkeypatch,
+        pending_snapshot=lambda accepted: ((), accepted),
+    )
     source = "main { f 0; }\nf x { f 0; }"
     machine = debugger_api.make_vm("Forbin", source)
     with pytest.raises(TimeoutError, match="after 1 pushed frames"):

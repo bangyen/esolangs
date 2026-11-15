@@ -18,7 +18,10 @@ from scripts.benchmark import WrittenState
 from tests.interpreters.runner import native_runner
 from tests.support.certification_barrier import guarded_worker
 from tests.support.execution import termination_observed
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 TRUTH = "[$$[(:p)i?]i?][$$p]C:)ii*+?"
 
@@ -115,8 +118,18 @@ def test_rolls_swap_and_comparisons() -> None:
         _run("iic+i>")
 
 
-def test_printing() -> None:
+def test_printing(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _run("ii+p") == "2i"
+    assert_rejected_output_retry(
+        "1 + i",
+        "ii+p",
+        "2i",
+        "2i",
+        prefix=3,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
     assert _run("icp") == "-i"
     assert _run("ici*:+/p") == "0.5"
     assert _run("ici*ic+p") == "1 - i"

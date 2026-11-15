@@ -52,6 +52,7 @@ Decisions:
 
 from collections import deque
 from collections.abc import Mapping
+from functools import partial
 from typing import Any, NamedTuple
 
 from esolangs.languages.abcdirection.lifecycle import CAPABILITIES
@@ -60,9 +61,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.bits import put_bit, take_bit
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 # Clockwise from right: turning right is +1, turning left -1.
@@ -200,6 +201,7 @@ class _Machine:
     def __init__(self, code: str | tuple[str, ...], io: IO) -> None:
         """Parse ``code`` and start at the top-left cell, headed down."""
         self.io = io
+        self._writer = _BufferedOutput()
         self.grid = _parse(code) if isinstance(code, str) else code
         self.state = _State(0, 0, DOWN, 0)
         self.ones: set[int] = set()
@@ -255,12 +257,17 @@ class _Machine:
         s = self.state
         anchor, epoch = self.tortoise
         # Only equality with the anchor's write epoch affects later cycle detection.
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             control=(s.x, s.y, s.heading, s.cell),
             tape=self._tape(),
             queue=tuple(self.queue),
             incoming=self.incoming,
-            outgoing=self.outgoing,
+            outgoing=(
+                WorkspaceVariant("pending_output", (self.outgoing, accepted))
+                if accepted
+                else self.outgoing
+            ),
             input_cursor=self.io.progress(),
             cycle_anchor=(
                 (anchor.x, anchor.y, anchor.heading, anchor.cell),
@@ -273,7 +280,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        boundary = (
             self.state,
             self._tape(),
             tuple(self.queue),
@@ -285,6 +292,8 @@ class _Machine:
             self.length,
             self._halted,
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _read(self) -> int:
         """Return the next input bit; EOF supplies zeros without state."""
@@ -301,6 +310,15 @@ class _Machine:
 
     def _apply(self, effect: _Effect) -> None:
         """Perform a command's effects, counting each real change."""
+        if effect.emit is not None:
+            outgoing, full = put_bit(self.outgoing, effect.emit)
+            if full is not None:
+                char = chr(full)
+                self._writer.write(
+                    self.io, char, first=partial(self.io.print_char, char)
+                )
+            self.outgoing = outgoing
+            self.writes += 1
         if effect.write is not None:
             cell, bit = effect.write
             if bit != (cell in self.ones):
@@ -313,11 +331,6 @@ class _Machine:
         if effect.push is not None:
             self.writes += 1
             self.queue.append(effect.push)
-        if effect.emit is not None:
-            self.writes += 1
-            self.outgoing, full = put_bit(self.outgoing, effect.emit)
-            if full is not None:
-                self.io.print_char(chr(full))
 
     def step(self) -> None:
         """Execute the current cell's command, then step one cell."""
@@ -330,8 +343,9 @@ class _Machine:
         here = int(cell in self.ones)
         right = int(cell + 1 in self.ones)
         writes = self.writes
-        self.state, effect = _advance(self.state, self.grid, here, right, queue, read)
+        state, effect = _advance(self.state, self.grid, here, right, queue, read)
         self._apply(effect)
+        self.state = state
         # Brent's, restarted at every write: only a write-free stretch repeats.
         if self.writes != writes:
             self.tortoise, self.power, self.length = self.key, 1, 1

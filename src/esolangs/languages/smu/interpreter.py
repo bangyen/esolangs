@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from functools import partial
 from types import MappingProxyType
 from typing import Any
 
@@ -58,10 +59,10 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.bits import flush_byte, put_bit, take_bit
 from esolangs.runtime.brackets import unmatched
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 
 #: New program counter, strings popped, strings pushed, and an assignment.
 type _Effect = tuple[int, int, tuple[str, ...], tuple[str, str] | None]
@@ -186,6 +187,8 @@ class _Machine:
         self._stack: list[str] = []
         self.values: dict[str, str] = {}
         self.incoming = self.remaining = self.outgoing = self.used = 0
+        self._write_offset = 0
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -201,6 +204,7 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        pending = self._pending_output()
         return _WORKSPACE_MODEL.capture(
             code=self.code,
             instruction=self.pc,
@@ -211,12 +215,16 @@ class _Machine:
             incoming=self.incoming,
             remaining=self.remaining,
             outgoing=self.outgoing,
-            used=self.used,
+            used=(
+                self.used
+                if pending is None
+                else WorkspaceVariant("pending_output", (self.used, *pending))
+            ),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        return (
+        boundary = (
             self.code,
             self.pc,
             self.fresh,
@@ -229,6 +237,14 @@ class _Machine:
             self.used,
             self.io.progress(),
         )
+        pending = self._pending_output()
+        return boundary if pending is None else (*boundary, pending)
+
+    def _pending_output(self) -> tuple[int, int] | None:
+        accepted = self._writer.accepted or 0
+        if self._write_offset or accepted:
+            return self._write_offset, accepted
+        return None
 
     def _read_bit(self) -> str:
         if not self.remaining:
@@ -246,13 +262,19 @@ class _Machine:
                 f"Smu cannot output {text!r}",
                 hint="output strings may hold only | (0), + (1) and =",
             )
-        for char in text:
+        for index, char in enumerate(text[self._write_offset :], self._write_offset):
             if char in _BITS:
-                (self.outgoing, self.used), full = put_bit(
-                    (self.outgoing, self.used), _BITS[char]
-                )
+                buffered, full = put_bit((self.outgoing, self.used), _BITS[char])
                 if full is not None:
-                    self.io.print_char(chr(full))
+                    # Resume at the bit that filled the unwritten byte.
+                    self._write_offset = index
+                    self._print_byte(full)
+                self.outgoing, self.used = buffered
+        self._write_offset = 0
+
+    def _print_byte(self, byte: int) -> None:
+        output = chr(byte)
+        self._writer.write(self.io, output, first=partial(self.io.print_char, output))
 
     def _end_run(self) -> None:
         """Output the top string and load the next one, or halt."""
@@ -263,7 +285,7 @@ class _Machine:
         if not self._stack:
             full = flush_byte((self.outgoing, self.used))
             if full is not None:
-                self.io.print_char(chr(full))
+                self._print_byte(full)
                 self.outgoing = self.used = 0
             self.fresh = False
             self.done = True

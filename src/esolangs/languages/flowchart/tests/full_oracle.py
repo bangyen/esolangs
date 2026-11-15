@@ -125,6 +125,7 @@ class _Port:
         self.read_attempts = self.write_attempts = 0
         self.refuse_read = self.refuse_write = None
         self.prefix = 0
+        self.accepted_byte = None
 
     def read(self):
         self.read_attempts += 1
@@ -144,9 +145,16 @@ class _Port:
         return value
 
     def write(self, value):
+        if self.accepted_byte is not None:
+            assert value == self.accepted_byte
+            self.accepted_byte = None
+            self.newline = value != 10
+            return
         self.write_attempts += 1
         if self.write_attempts == self.refuse_write:
-            self.output += chr(value)[: self.prefix]
+            if self.prefix:
+                self.output += chr(value)
+                self.accepted_byte = value
             self.events.append(("refuse_write", value, self.prefix))
             raise _RefusalError("write")
         self.output += chr(value)
@@ -281,8 +289,9 @@ class _Model:
             self.run.outgoing,
             self.run.used,
         )
-        if self.replayed or self.flushed:
-            parts += ((self.replayed, self.flushed),)
+        delivered = self.flushed + int(self.port.accepted_byte is not None)
+        if self.replayed or delivered:
+            parts += ((self.replayed, delivered),)
         return parts, self.halted, self.port.output, self.port.cursor, self.port.cursor
 
     def io(self):
@@ -331,6 +340,11 @@ class _Model:
         self.remaining -= 1
         return result
 
+    def flush(self, pending):
+        for value in pending[self.flushed :]:
+            self.port.write(value)
+            self.flushed += 1
+
     def step(self):
         if self.halted:
             return
@@ -343,9 +357,7 @@ class _Model:
             saved = next(replay, ...)
             if saved is not ...:
                 return saved
-            for value in pending[self.flushed :]:
-                self.port.write(value)
-                self.flushed += 1
+            self.flush(pending)
             bit = self.next_bit()
             self.replayed += (bit,)
             return bit
@@ -416,16 +428,14 @@ class _Model:
         if used and all(p.done for p in pointers):
             pending.append(outgoing)
             outgoing = used = 0
+        self.flush(pending)
         self.run = _Run(
             tuple(pointers),
             frozenset((k, tuple(v)) for k, v in deques.items() if v),
             outgoing,
             used,
         )
-        remaining = pending[self.flushed :]
         self.replayed, self.flushed = (), 0
-        for value in remaining:
-            self.port.write(value)
 
 
 def _model(case, cap=64):

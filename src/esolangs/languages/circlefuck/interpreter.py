@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
+from functools import partial
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -32,8 +33,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 #: One instant of a run: ``(ind, ptr, cells, done)`` -- the code cursor, the
@@ -251,6 +252,7 @@ class _Machine:
     def __init__(self, code: str | tuple[int, ...], io: IO) -> None:
         """Parse ``code``; an empty program is malformed."""
         self.io = io
+        self._writer = _BufferedOutput()
         # The shell owns the tape as a mutable list: a write is one
         # assignment rather than a rebuilt tuple.  Every observer below
         # copies it, so nothing outside this class can reach the list.
@@ -302,9 +304,13 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        instruction: int | WorkspaceVariant = self._ind
+        accepted = self._writer.accepted
+        if accepted:
+            instruction = WorkspaceVariant("pending_output", (instruction, accepted))
         return _WORKSPACE_MODEL.capture(
             cells=tuple(self._cells),
-            instruction=self._ind,
+            instruction=instruction,
             pointer=self._ptr,
             input_cursor=self.io.progress(),
             stopped=self._done,
@@ -314,13 +320,15 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # Copy the tape so later self-modification cannot rewrite history.
         # The halt flag distinguishes the two states on the same ``@`` cell.
-        return (
+        boundary = (
             tuple(self._cells),
             self._ind,
             self._ptr,
             self.io.progress(),
             self._done,
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one cell, advancing the pointers."""
@@ -340,7 +348,10 @@ class _Machine:
             with suppress(EOFError):
                 byte = self.io.input_char()
         elif char == ".":
-            self.io.print_char(chr(cells[self._ptr]))
+            output = chr(cells[self._ptr])
+            self._writer.write(
+                self.io, output, first=partial(self.io.print_char, output)
+            )
         self._ind, self._ptr, self._done, edit = _advance(
             cells, self._ind, self._ptr, byte
         )

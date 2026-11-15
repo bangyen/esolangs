@@ -8,6 +8,8 @@ from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.smu.generator import smu
 from esolangs.languages.smu.interpreter import preprocess, run
+from esolangs.runtime._state import WorkspaceVariant
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm
 from tests.interpreters.runner import native_runner
 from tests.support.witness_tables import witnesses
@@ -135,10 +137,72 @@ def test_failed_run_boundary_can_be_retried(
     assert parts["stack"] == stack
 
 
-def test_valid_run_boundary_halts_at_the_exact_budget() -> None:
+def test_valid_run_boundary_halts_at_the_exact_budget(monkeypatch) -> None:
     vm = Language("Smu").make_vm("(+)")
     assert complete_vm(vm, max_steps=6) == "\x01"
     assert vm.halted
+    _check_output_retry(monkeypatch)
+
+
+def _check_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    language = Language("Smu")
+    write = ScriptedIO._write
+    for source, output, refused, steps, eof, offset, buffered in (
+        ("(+)", "\x01", 0, 5, 2, 0, (1, 1)),
+        ("(++++++++||||||||+)", "ÿ\0\x01", 1, 2, 1, 15, (0, 7)),
+        ("((++++++++))(+)", "ÿ\x01", 0, 6, 2, 6, (127, 7)),
+    ):
+        limits = ExecutionLimits(max_steps=10)
+        expected = language.run(source, limits=limits)
+        assert expected.output == output
+        for accepted in (0, 1):
+            calls = []
+
+            def refuse(io, value, *, log=calls, at=refused, count=accepted):
+                log.append(value)
+                if len(log) == at + 1:
+                    write(io, value[:count])
+                    raise HaltError("temporary writer refusal")
+                write(io, value)
+
+            with monkeypatch.context() as port:
+                port.setattr(ScriptedIO, "_write", refuse)
+                dbg = language.make_debugger(source)
+                with pytest.raises(
+                    HaltError, match="temporary writer refusal"
+                ) as fault:
+                    dbg.run(limits=limits)
+                partial_result = ExecutionResult(
+                    output[: refused + accepted],
+                    0,
+                    0,
+                    eof,
+                    steps=steps,
+                )
+                assert fault.value.observation == dbg.observation == partial_result
+                workspace = _capture_workspace(dbg.vm)
+                parts = dict(
+                    zip(workspace.model.components, workspace.parts, strict=True)
+                )
+                outgoing, used = buffered
+                assert parts["outgoing"] == outgoing
+                if offset or accepted:
+                    assert parts["used"] == WorkspaceVariant(
+                        "pending_output", (used, offset, accepted)
+                    )
+                    assert dbg.snapshot()[-1] == (offset, accepted)
+                else:
+                    assert parts["used"] == used
+                assert not dbg.halted
+                assert dbg.run(limits=limits) == "halted"
+                assert dbg.observation == expected
+                assert fault.value.observation == partial_result
+            attempt = (
+                output
+                if accepted
+                else output[:refused] + output[refused] + output[refused:]
+            )
+            assert calls == list(attempt)
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])

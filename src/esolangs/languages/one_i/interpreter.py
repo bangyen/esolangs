@@ -68,7 +68,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 
 #: An exact Gaussian rational ``(re, im)``, or a float once inexact.
 type _Num = tuple[Fraction, Fraction] | complex
@@ -397,6 +397,7 @@ class _Machine:
 
     def __init__(self, code: str | _Image, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self.end, program = _prepare_source(code) if isinstance(code, str) else code
         self.frames: _Frames = ((program, 0, 0), None) if program.end else None
         #: The stack, top at the right.
@@ -427,8 +428,13 @@ class _Machine:
         while rest is not None:
             (function, _, cursor), rest = rest
             frames.append((function.offset, cursor))
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            frames=tuple(frames),
+            frames=(
+                WorkspaceVariant("pending_output", (tuple(frames), accepted))
+                if accepted
+                else tuple(frames)
+            ),
             values=tuple(
                 ("fn", value.offset)
                 if isinstance(value, _Fn)
@@ -458,7 +464,9 @@ class _Machine:
             else v
             for v in self.values
         )
-        return self._rejected.snapshot((tuple(frames), values, self.io.progress()))
+        boundary = self._rejected.snapshot((tuple(frames), values, self.io.progress()))
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def _read(self, command: str) -> _Value:
         if command == "A":
@@ -481,7 +489,10 @@ class _Machine:
         fn, pc, _ = self.frames[0]
         command = fn.code.text[pc]
         got = self._read(command) if command in ("A", "B", "C", "D") else None
-        self.frames, edit, out = _advance(self.frames, self.values, got)
+        frames, edit, out = _advance(self.frames, self.values, got)
+        if out is not None:
+            self._writer.write(self.io, out)
+        self.frames = frames
         popped, pushed, turn = edit
         for _ in range(popped):
             self.values.pop()
@@ -491,8 +502,6 @@ class _Machine:
                 self.values[0], self.values[-1] = self.values[-1], self.values[0]
         elif turn:
             self.values.rotate(turn)
-        if out is not None:
-            self.io.print_str(out)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

@@ -603,7 +603,7 @@ class TestOutputOrdering:
         with pytest.raises(OSError, match="output temporarily unavailable"):
             machine.step()
         assert io.getvalue() == "A"
-        assert machine.ip == ((0,) if pending else (1,))
+        assert machine.ip == (0,)
         machine.step()
-        assert io.getvalue() == ("AB" if pending else "A")
-        assert io.attempts == (3 if pending else 2)
+        assert io.getvalue() == "AB"
+        assert io.attempts == 3

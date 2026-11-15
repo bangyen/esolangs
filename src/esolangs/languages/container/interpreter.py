@@ -29,8 +29,8 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -168,6 +168,8 @@ class _Machine:
     def __init__(self, code: list[str] | _Image, io: IO) -> None:
         """Parse ``code`` into containers and start every value at rest."""
         self.io = io
+        self._writer = _BufferedOutput()
+        self._printed_tick = False
         if isinstance(code, list):
             self.obj, start = _parse(code)
         else:
@@ -218,9 +220,13 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        accepted = 1 if self._printed_tick else self._writer.accepted
+        exit_code = self.state[1]
         return _WORKSPACE_MODEL.capture(
             variables=frozenset(self.state[0]),
-            exit_code=self.state[1],
+            exit_code=WorkspaceVariant("pending_output", (exit_code, accepted))
+            if accepted
+            else exit_code,
             input_cursor=self.io.progress(),
             input_reads=self.state[3],
         )
@@ -230,7 +236,9 @@ class _Machine:
         variables, exit_code, _tick_count, reads = self.state
         # Successful reads distinguish unread input even when IO has no cursor.
         # EOF supplies zero without advancing it, so real EOF cycles stay detectable.
-        return (variables, exit_code, self.io.progress(), reads)
+        boundary = (variables, exit_code, self.io.progress(), reads)
+        accepted = 1 if self._printed_tick else self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one full tick, updating every container's value.
@@ -243,8 +251,10 @@ class _Machine:
         new = _tick(self.obj, self.state[0])
         output, reads = _ports(self.state[0], new)
 
-        if output is not None:
-            self.io.print_char(chr(output))
+        if output is not None and not self._printed_tick:
+            char = chr(output)
+            self._writer.write(self.io, char, first=lambda: self.io.print_char(char))
+            self._printed_tick = True  # A subsequent read can fail in this tick.
 
         byte = None
         read_success = False
@@ -258,6 +268,8 @@ class _Machine:
                 read_success = True
 
         self.state = _advance(self.state, new, byte, read_success=read_success)
+        if self._printed_tick:
+            self._printed_tick = False
 
 
 def _rises(variables: _Vars, new: _Vars, name: str) -> bool:

@@ -1,7 +1,10 @@
 """Execution tests for the interpreter-only Malbolge classic."""
 
+from dataclasses import replace
+
 import pytest
 
+from esolangs import ExecutionLimits, HaltError, Language
 from esolangs.languages.malbolge import interpreter as native
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
@@ -43,13 +46,69 @@ def test_each_machine_receives_fresh_memory() -> None:
     assert native._Machine("Q", ScriptedIO("")).memory[0] == ord("Q")
 
 
-def test_a_known_program_prints_its_greeting() -> None:
+def test_a_known_program_prints_its_greeting(monkeypatch: pytest.MonkeyPatch) -> None:
     """The reference Hello World is the end-to-end check."""
     assert run_program(native.run, HELLO) == "Hello, world."
 
     from .oracle_checks import check_raw_malbolge
 
     check_raw_malbolge(HELLO, CAT)
+    _check_output_retry(monkeypatch)
+
+
+def _check_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    greeting = "Hello, world."
+    api = Language("Malbolge")
+    limits = ExecutionLimits(max_steps=2500)
+    clean = api.make_debugger(HELLO)
+    boundaries = []
+    for _ in range(2500):
+        before, observation = clean.snapshot(), clean.observation
+        clean.step()
+        if observation.output != clean.observation.output:
+            boundaries.append((before, observation))
+            if len(boundaries) == 8:
+                break
+    assert len(boundaries) == 8
+    assert clean.run(limits=limits) == "halted"
+    complete, final = clean.observation, clean.snapshot()
+    assert complete == api.run(HELLO, limits=limits)
+    assert complete.output == greeting
+    write = ScriptedIO._write
+
+    def check(index: int, accepted: int) -> None:
+        attempts: list[object] = []
+        refusal = HaltError("transient output refusal")
+        char = greeting[index]
+
+        def refuse(io: ScriptedIO, value: object) -> None:
+            attempts.append(value)
+            if len(attempts) == index + 1:
+                write(io, char[:accepted])
+                raise refusal
+            write(io, value)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(ScriptedIO, "_write", refuse)
+            debug = api.make_debugger(HELLO)
+            with pytest.raises(HaltError, match="output refusal") as caught:
+                debug.run(limits=limits)
+            assert caught.value is refusal
+            before, observation = boundaries[index]
+            partial = replace(observation, output=observation.output + char[:accepted])
+            assert refusal.observation == debug.observation == partial
+            assert not debug.halted
+            assert debug.snapshot() == ((*before, accepted) if accepted else before)
+            assert debug.run(limits=limits) == "halted"
+            assert debug.observation == complete
+            assert debug.snapshot() == final
+            assert refusal.observation == partial
+        raw = greeting if accepted else greeting[:index] + char + greeting[index:]
+        assert attempts == list(raw)
+
+    for index in range(len(boundaries)):
+        for accepted in (0, 1):
+            check(index, accepted)
 
 
 def test_the_snapshot_memory_follows_every_write() -> None:

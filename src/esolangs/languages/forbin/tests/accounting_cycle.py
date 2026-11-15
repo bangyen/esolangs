@@ -268,6 +268,7 @@ class Observer:
             "_next_serial",
             "_statement_input",
             "_statement_output",
+            "_writer",
             "globals",
             "_global_scope",
             "state",
@@ -275,6 +276,7 @@ class Observer:
         replay, flushed = expected.pending_statement or ((), 0)
         core.exact(raw._statement_input, list(replay))
         core.exact(raw._statement_output, flushed)
+        assert raw._writer.accepted is None
         core.exact(raw._length, len(self.program.source))
         assert type(raw.globals) is MappingProxyType
         core.exact(list(raw.globals), [fn.name for fn in self.program.functions])

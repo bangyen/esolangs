@@ -7,7 +7,10 @@ from esolangs.languages.balik.interpreter import run
 from esolangs.languages.balik.tests.source_fixtures import _page_loop
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_rejected_input_retry,
+    assert_rejected_output_retry,
+)
 
 
 @pytest.mark.medium
@@ -29,8 +32,19 @@ def test_increment_wraps_at_three() -> None:
     assert _out("+.+.+.") == "120"
 
 
-def test_tape_moves_and_input_adds() -> None:
+def test_tape_moves_and_input_adds(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _out(",>,.<.", "2\n1\n") == "12"
+    assert_rejected_output_retry(
+        "Balik",
+        ",.",
+        2,
+        "2",
+        prefix=1,
+        stdin="2x",
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
 
 def test_page_loop_enters_its_body_on_zero() -> None:

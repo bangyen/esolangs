@@ -35,8 +35,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.persistent import CHUNK, Chunked, chunked
 from esolangs.runtime.source_hints import syntax_error
 
@@ -205,6 +205,7 @@ class _Machine:
         memory, chunks = _prepare_source(code) if isinstance(code, str) else code
         self.memory = list(memory)
         self.io = io
+        self._writer = _BufferedOutput()
         self.state: _State = (0, 0, 0, False)
         # ``snapshot``'s memory as fixed chunks, rebuilt only where a step
         # wrote: an untouched chunk stays the same object between snapshots,
@@ -240,9 +241,12 @@ class _Machine:
             )
         self._workspace_dirty.clear()
         a, c, d, halted = self.state
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             accumulator=a,
-            instruction=c,
+            instruction=WorkspaceVariant("pending_output", (c, accepted))
+            if accepted
+            else c,
             data=d,
             stopped=halted,
             memory=tuple(self._workspace_pages),
@@ -253,7 +257,9 @@ class _Machine:
         for at in self._dirty:
             self._chunks[at] = tuple(self.memory[at * CHUNK : (at + 1) * CHUNK])
         self._dirty.clear()
-        return (*self.state, tuple(self._chunks), self.io.progress())
+        boundary = (*self.state, tuple(self._chunks), self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         if self.halted:
@@ -265,14 +271,16 @@ class _Machine:
                 char_input = self.io.input_char()
             except EOFError:
                 char_input = _EOF
-        self.state, writes, effect = _advance(self.state, self.memory, char_input)
+        state, writes, effect = _advance(self.state, self.memory, char_input)
+        if effect is not None:
+            char = chr(effect)
+            self._writer.write(self.io, char, first=lambda: self.io.print_char(char))
+        self.state = state
         for address, value in writes:
             self.memory[address] = value
             self._dirty.add(address // CHUNK)
             if self._workspace_pages is not None:
                 self._workspace_dirty.add(address // _WORKSPACE_PAGE)
-        if effect is not None:
-            self.io.print_char(chr(effect))
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

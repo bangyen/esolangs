@@ -109,6 +109,7 @@ Decisions:
 from bisect import bisect_left
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from functools import partial
 from types import MappingProxyType
 from typing import Any, Literal, assert_never
 
@@ -120,7 +121,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 # Headings, as (d_row, d_col) with rows growing downward.
@@ -520,6 +521,7 @@ class _Machine:
     def __init__(self, code: list[str] | _Image, io: IO) -> None:
         """Parse ``code``'s nodes and start on the first ``( )``."""
         self.io = io
+        self._writer = _BufferedOutput()
         self._input_reads = 0
         # The input byte's unread bits and how many remain.  The machine
         # owns these because reading is the shell's job; the output byte a
@@ -630,8 +632,9 @@ class _Machine:
 
     def _pending_tick(self) -> tuple[tuple[int | None, ...], int] | None:
         """Retain effects that a retry must replay without repeating IO."""
-        if self._tick_input or self._tick_output:
-            return tuple(self._tick_input), self._tick_output
+        printed = self._tick_output + (self._writer.accepted or 0)
+        if self._tick_input or printed:
+            return tuple(self._tick_input), printed
         return None
 
     def step(self) -> None:
@@ -659,32 +662,27 @@ class _Machine:
             except _NeedBitError as request:
                 # Flush what earlier pointers wrote before this read, so the
                 # event order matches the pointer order that produced it.
-                self._flush(request.printed, self._tick_output, pending=True)
+                self._flush(request.printed)
                 bits.append(self._read_bit())
                 continue
             except BaseException as fault:
                 # A later pointer's fault must not swallow a byte an earlier
                 # one already finished.
-                self._flush(
-                    getattr(fault, "printed", ()), self._tick_output, pending=True
-                )
+                self._flush(getattr(fault, "printed", ()))
                 raise
             break
+        self._flush(printed)
         self.state = run
-        flushed = self._tick_output
-        if bits or flushed:
+        if bits or self._tick_output:
             bits.clear()
             self._tick_output = 0
-        self._flush(printed, flushed)
 
-    def _flush(
-        self, printed: tuple[int, ...], flushed: int, *, pending: bool = False
-    ) -> None:
+    def _flush(self, printed: tuple[int, ...]) -> None:
         """Write beyond the accepted output prefix of this tick."""
-        for code in printed[flushed:]:
-            self.io.print_char(chr(code))
-            if pending:
-                self._tick_output += 1
+        for code in printed[self._tick_output :]:
+            char = chr(code)
+            self._writer.write(self.io, char, first=partial(self.io.print_char, char))
+            self._tick_output += 1
 
     def _read_bit(self) -> int | None:
         """Read the next input bit, low bit first, or ``None`` at EOF."""

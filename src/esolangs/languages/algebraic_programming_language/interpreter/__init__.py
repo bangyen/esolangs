@@ -105,7 +105,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -197,6 +197,7 @@ class _Machine:
 
     def __init__(self, code: str | tuple[str, ...], io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self.lines = tuple(_blocks(code)) if isinstance(code, str) else code
         self.state = _State(MappingProxyType({}), MappingProxyType({}), (), 0)
         self._line_inputs: list[_Number] = []
@@ -267,8 +268,11 @@ class _Machine:
                 "pending_line",
                 (line, tuple(map(_value, self._line_inputs)), self._pending_token),
             )
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            line=line,
+            line=WorkspaceVariant("pending_output", (line, accepted))
+            if accepted
+            else line,
             globals=frozenset(
                 (key, _value(value)) for key, value in self.state.globals.items()
             ),
@@ -291,7 +295,7 @@ class _Machine:
         never rewritten, reported as first-seen serials rather than raw
         ``id``s so a snapshot is small and the same on every run.
         """
-        state = (
+        state: tuple[object, ...] = (
             self.line,
             tuple(sorted((k, self._key(v)) for k, v in self.state.globals.items())),
             tuple(
@@ -311,11 +315,12 @@ class _Machine:
             self.io.progress(),
         )
         if self._line_inputs or self._pending_token is not None:
-            return (
+            state = (
                 *state,
                 (tuple(map(self._key, self._line_inputs)), self._pending_token),
             )
-        return state
+        accepted = self._writer.accepted
+        return (*state, accepted) if accepted else state
 
     def frame_entry_key(self, frame: object) -> tuple[object, ...]:
         """Return what ``frame`` is about to run, for the ancestor check.
@@ -374,10 +379,10 @@ class _Machine:
                 self._pending_token = None
                 continue
             break
+        if out is not None:
+            self._writer.write(self.io, out)
         self.state = state
         inputs.clear()
-        if out is not None:
-            self.io.print_str(out)
 
     def _read_number(self) -> _Number:
         """Parse the next token, retaining it if conversion fails."""

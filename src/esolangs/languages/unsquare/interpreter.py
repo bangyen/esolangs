@@ -28,6 +28,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from types import MappingProxyType
 from typing import Any
 
@@ -38,8 +39,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer
 
 #: The largest value ``o`` can print as a character, and the surrogate range
 #: it must not hand to ``chr``.  Anything else prints as a decimal instead.
@@ -146,6 +148,7 @@ class _Machine:
     def __init__(self, code: str | _SourceImage, io: IO) -> None:
         """Start with empty stacks, a zero accumulator, at the first token."""
         self.io = io
+        self._writer = _BufferedOutput()
         self.code, self._partners = (
             _prepare_source(code) if isinstance(code, str) else code
         )
@@ -203,8 +206,12 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        instruction: int | WorkspaceVariant = self.state[0]
+        accepted = self._writer.accepted
+        if accepted:
+            instruction = WorkspaceVariant("pending_output", (instruction, accepted))
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state[0],
+            instruction=instruction,
             accumulator=self.state[1],
             stack=self.state[2],
             jumps=self.state[3],
@@ -217,7 +224,7 @@ class _Machine:
         # Both stacks are already tuples, so they go in as they stand, in
         # the order this returned before the fields moved into a state.
         ind, acc, stack, jumps = self.state
-        return (
+        boundary = (
             ind,
             acc,
             stack,
@@ -226,6 +233,8 @@ class _Machine:
             self.code,
             self._input_reads,
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.
@@ -262,9 +271,16 @@ class _Machine:
             value = stack[-1]
             codepoint = value & 0xFFFFFFFF
             if codepoint <= _MAX_CHAR and codepoint not in _SURROGATES:
-                self.io.print_char(chr(codepoint))
+                output = chr(codepoint)
+                self._writer.write(
+                    self.io, output, first=partial(self.io.print_char, output)
+                )
             else:
-                self.io.print_num(value)
+                self._writer.write(
+                    self.io,
+                    format_integer(value),
+                    first=partial(self.io.print_num, value),
+                )
         elif char == "i":
             byte = self.io.input_char()
             self._input_reads += 1

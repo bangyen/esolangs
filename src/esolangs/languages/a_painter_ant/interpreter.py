@@ -28,8 +28,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 # ``(dx, dy)``; named so a heading stays distinct from its character.
@@ -135,7 +135,8 @@ class _Machine:
         machine without one.
         """
         self.io = io if io is not None else IO()
-        # Not in ``snapshot``: the dump is bookkeeping, not machine state.
+        # Only an unfinished write affects replay of the completed pass.
+        self._writer = _BufferedOutput()
         self._interrupted = False
         self._dumped = False
         image = code if isinstance(code, _SourceImage) else _prepare_source(code)
@@ -176,16 +177,27 @@ class _Machine:
             visited = frozenset(self.visited)
             xs, ys = zip(*visited, strict=True)
             self._extent = visited, (min(xs), max(xs), min(ys), max(ys))
+        accepted = self._writer.accepted
         return WorkspaceSnapshot(
             _WORKSPACE_MODEL,
-            (frozenset(self.grid.items()), self.x, self.y, self.ip, self._extent[1]),
+            (
+                frozenset(self.grid.items()),
+                self.x,
+                self.y,
+                WorkspaceVariant("pending_output", (self.ip, accepted))
+                if accepted
+                else self.ip,
+                self._extent[1],
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         if self._frozen is None:
             self._frozen = frozenset(self.grid.items())
-        return (self._frozen, self.x, self.y, self.ip)
+        state = (self._frozen, self.x, self.y, self.ip)
+        accepted = self._writer.accepted
+        return (*state, accepted) if accepted else state
 
     @property
     def _state(self) -> _State:
@@ -226,7 +238,7 @@ class _Machine:
         """
         if self._interrupted:
             if not self._dumped:
-                self.io.print_str(self.render())
+                self._writer.write(self.io, self.render())
                 self._dumped = True
             return
         # ``run`` never steps an empty program; this guards direct callers.

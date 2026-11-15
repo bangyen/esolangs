@@ -138,23 +138,20 @@ def _check(factory, example, stdin):
 
 
 def _refusals(example):
-    stdin = "3\n2 99"
+    stdin = "5\n5 99"
     for rows in writer_refusal_history(GRAPHS[example], stdin):
         failed = next(i for i, row in enumerate(rows) if "raised" in row)
         ordinary = model(GRAPHS[example], stdin)[1]
         payload = int(ordinary[failed]["output"][len(ordinary[failed - 1]["output"]) :])
-        prefix = rows[failed]["output"]
+        prefix = rows[failed]["output"][len(ordinary[failed - 1]["output"]) :]
+        writes = []
 
         class Refusal(_Machine):
-            def __init__(
-                self, source, io, *, expected_payload=payload, expected_prefix=prefix
-            ):
+            def __init__(self, source, io, *, expected_prefix=prefix, calls=writes):
                 super().__init__(source, io)
-                original, calls = io._write, []
+                original = io._write
 
                 def write(value):
-                    assert type(value) is int
-                    assert value == expected_payload
                     calls.append(value)
                     if len(calls) == 1:
                         io._buffer.write(expected_prefix)
@@ -164,6 +161,9 @@ def _refusals(example):
                 io._write = write
 
         _drive(Refusal, example, stdin, rows, None)
+        text = str(payload)
+        retry = [text[len(prefix) :] if prefix else payload] if prefix != text else []
+        assert _typed(tuple(writes)) == _typed((payload, *retry))
     _, rows = provider_refusal_history(GRAPHS[example], stdin)
 
     class Provider(_Machine):

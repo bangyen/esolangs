@@ -15,6 +15,7 @@ from tests.interpreters.contract import (
     machine_factory,
 )
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
 
@@ -101,7 +102,7 @@ class TestLongProgram:
 
 
 class TestStepMachine:
-    def test_snapshot_changes_after_a_step(self) -> None:
+    def test_snapshot_changes_after_a_step(self, monkeypatch) -> None:
         machine = _Machine("a", ScriptedIO())
         before = machine.snapshot()
         saved = machine.workspace_snapshot()
@@ -110,6 +111,16 @@ class TestStepMachine:
         assert machine.workspace_snapshot().parts == machine.state
         assert saved.parts == before
         assert saved.parts != machine.workspace_snapshot().parts
+        assert_rejected_output_retry(
+            "Home Row",
+            "ak;",
+            "\x01",
+            "\x01",
+            prefix=1,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
         assert machine.grid[0] == 1
 
 

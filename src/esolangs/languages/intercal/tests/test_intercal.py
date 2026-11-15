@@ -21,6 +21,7 @@ from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_
 from tests.interpreters.runner import run_program
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.paths import ROOT
+from tests.support.vm_support import assert_rejected_output_retry
 
 _run = partial(run_program, run, suppress_eof=False)
 
@@ -918,11 +919,24 @@ def test_suspended_statement_forks_only_its_remaining_draws() -> None:
     assert seen == ["", "I\n", "I\n"]
 
 
-def test_a_partial_fault_flush_resumes_at_the_unaccepted_output() -> None:
+def test_a_partial_fault_flush_resumes_at_the_unaccepted_output(monkeypatch) -> None:
+    assert_rejected_output_retry(
+        "INTERCAL",
+        "PLEASE .1 <- #4\nDO READ OUT .1\nDO GIVE UP",
+        "IV\n",
+        "IV\n",
+        prefix=1,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+        monkeypatch=monkeypatch,
+        pending_snapshot=lambda accepted: ((), (), (0, accepted)),
+    )
+
     class InterruptOutput(ScriptedIO):
         def print_str(self, text: str) -> None:
             if self.getvalue() == "I\n" and not failed:
                 failed.append(text)
+                super().print_str(text[:1])
                 raise _StopRun
             super().print_str(text)
 
@@ -931,8 +945,9 @@ def test_a_partial_fault_flush_resumes_at_the_unaccepted_output() -> None:
     machine = _Machine("PLEASE READ OUT #1 + #2 + ,1\nDO GIVE UP\nDO GIVE UP", io)
     with pytest.raises(_StopRun):
         machine.step()
-    assert io.getvalue() == "I\n"
+    assert io.getvalue() == "I\nI"
     assert failed == ["II\n"]
+    assert machine.snapshot()[-1] == ((), (), (1, 1))
     for _ in range(2):
         with pytest.raises(HaltError, match="E241"):
             machine.step()

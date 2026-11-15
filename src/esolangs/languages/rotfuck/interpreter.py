@@ -31,6 +31,7 @@ Decisions:
 """
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -41,8 +42,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 
 _COMMANDS = frozenset(ROTFUCK_CYCLES["forward"])
 
@@ -204,6 +205,7 @@ class _Machine:
     ) -> None:
         """Start with an empty tape at the origin and a fresh program."""
         self.io = io
+        self._writer = _BufferedOutput()
         chars, cycle = (
             _prepare_source(code, rotation) if isinstance(code, str) else code
         )
@@ -228,13 +230,15 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
+        boundary = (
             self.prog.rotation(),
             self.tape,
             self.ptr,
             self.ind,
             self.io.progress(),
         )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     @property
     def _state(self) -> _State:
@@ -251,11 +255,15 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
+        instruction: int | WorkspaceVariant = self.ind
+        accepted = self._writer.accepted
+        if accepted:
+            instruction = WorkspaceVariant("pending_output", (instruction, accepted))
         return _WORKSPACE_MODEL.capture(
             rotation=self.prog.rotation(),
             tape=self.tape,
             pointer=self.ptr,
-            instruction=self.ind,
+            instruction=instruction,
             input_cursor=self.io.progress(),
         )
 
@@ -270,7 +278,10 @@ class _Machine:
 
         byte = None
         if char == ".":
-            self.io.print_char(chr(self.tape[self.ptr]))
+            output = chr(self.tape[self.ptr])
+            self._writer.write(
+                self.io, output, first=partial(self.io.print_char, output)
+            )
         elif char == ",":
             byte = self.io.input_char()
 

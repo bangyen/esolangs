@@ -6,6 +6,7 @@ from esolangs.languages.aprknia import interpreter as native
 from esolangs.languages.aprknia.interpreter import run
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
+from tests.support.vm_support import assert_rejected_output_retry
 
 #: Pushes 7 then 3, b and a for the page's snippets.
 _SEVEN_THREE = "11*!!!!" + "1*!!!!" * 5 + "11*!!!!1*!!!!"
@@ -41,9 +42,20 @@ def test_division_truncates_and_zero_divides_to_zero() -> None:
     assert _out("111*!!!~!*~!~!~!~!" + _PRINT) == "0"
 
 
-def test_reads_and_prints_a_byte() -> None:
+def test_reads_and_prints_a_byte(monkeypatch: pytest.MonkeyPatch) -> None:
     # Selector 0 reads, selector 1 prints the byte back.
     assert _out("11*!!!~!,1,", "A") == "A"
+    assert_rejected_output_retry(
+        "Aprknia",
+        "11*!!!~!,1,",
+        "A",
+        "A",
+        prefix=10,
+        stdin="Aq",
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
 
 
 def test_loop_runs_while_positive(monkeypatch: pytest.MonkeyPatch) -> None:

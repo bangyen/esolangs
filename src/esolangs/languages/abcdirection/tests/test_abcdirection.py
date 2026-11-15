@@ -15,6 +15,7 @@ from esolangs.languages.abcdirection.interpreter import (
 )
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_output_retry
 
 output = native_runner(run)
 
@@ -82,6 +83,16 @@ def test_lines_after_the_terminator_are_a_comment() -> None:
 
 def test_a_column_of_outputs_prints_a_byte_then_halts_in_silence(monkeypatch) -> None:
     assert output(ZERO_BYTE) == "\x00"
+    assert_rejected_output_retry(
+        "ABCDirection",
+        ZERO_BYTE,
+        "\0",
+        "\0",
+        prefix=7,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
     assert output("\n".join(["CBBBBB"] * 16 + ["DDDDDD"])) == "\x00\x00"
 
     from esolangs.languages.abcdirection import interpreter

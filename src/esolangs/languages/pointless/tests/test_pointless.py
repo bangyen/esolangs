@@ -4,10 +4,12 @@ import random
 
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.pointless.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_output_retry
 
 #: The wiki's Hello world, comments included.
 HELLO = (
@@ -31,9 +33,36 @@ def _finish(code: str, stdin: str = "") -> _Machine:
     return machine
 
 
-def test_wiki_hello_world() -> None:
+def test_wiki_hello_world(monkeypatch: pytest.MonkeyPatch) -> None:
     # The heading says "Hello, World!", but no cell the program builds is 44.
     assert _run(HELLO) == "Hello World!"
+    assert_rejected_output_retry(
+        "Pointless",
+        ".",
+        "\0",
+        "\0",
+        prefix=0,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
+
+    debugger = Language("Pointless").make_debugger(HELLO)
+    limits = ExecutionLimits(max_steps=2500)
+
+    def reject(_io, _value):
+        raise HaltError("writer refused")
+
+    with monkeypatch.context() as port:
+        port.setattr(ScriptedIO, "_write", reject)
+        with pytest.raises(HaltError, match="writer refused") as fault:
+            debugger.run(limits=limits)
+    assert fault.value.observation is not None
+    assert fault.value.observation.steps == 1459
+    assert fault.value.observation.output == ""
+    assert debugger.run(limits=limits) == "halted"
+    assert debugger.observation.output == "Hello World!"
+    assert debugger.observation.steps == 1562
 
 
 def test_wiki_hello_world_cells_after_its_loop() -> None:

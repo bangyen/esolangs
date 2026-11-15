@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, HaltError, Language
 from esolangs import run as execute
 from esolangs.languages.container.interpreter import Con, _Machine, run
 from esolangs.runtime.io import IO, ScriptedIO
@@ -14,6 +15,7 @@ from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract, StateViewContract
 from tests.support.fixtures import grid
 from tests.support.raises import raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 HELLO_WORLD = grid("container", "hello_world.txt")
 
@@ -54,7 +56,9 @@ class TestContainer:
         with raises_message(ValueError, "rule line before any container declaration"):
             run(["+1 A>=0"], IO())
 
-    def test_output_is_masked_to_seven_bits(self) -> None:
+    def test_output_is_masked_to_seven_bits(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """OUT is printed modulo 128, so 200 comes out as 72."""
         code = [
             "PRINT:",
@@ -71,6 +75,52 @@ class TestContainer:
             exit_code = run(code, io=IO())
         assert exit_code == 0
         assert buffer.getvalue() == "H"
+        same_tick_source = "\n".join([*code, "", ":", "+1 PRINT<=0"])
+        for source, stdin in (("\n".join(code), ""), (same_tick_source, "A")):
+            assert_rejected_output_retry(
+                "Container",
+                source,
+                "H",
+                "H",
+                prefix=0,
+                stdin=stdin,
+                monkeypatch=monkeypatch,
+                unchanged_if_unwritten=True,
+                following_writes=(),
+            )
+        self._check_interrupted_read(same_tick_source, monkeypatch)
+
+    def _check_interrupted_read(
+        self, source: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        api = Language("Container")
+        limits = ExecutionLimits(max_steps=2)
+        complete = api.run(source, stdin="A", limits=limits)
+        assert (complete.output, complete.input_position, complete.input_reads) == (
+            "H",
+            1,
+            1,
+        )
+        debug = api.make_debugger(source, stdin="A")
+        boundary = debug.snapshot()
+        read = ScriptedIO.input_char
+        attempts = 0
+
+        def refuse_first(io: ScriptedIO, prompt: str = "Input: ") -> int:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise HaltError("transient input refusal")
+            return read(io, prompt)
+
+        monkeypatch.setattr(ScriptedIO, "input_char", refuse_first)
+        with pytest.raises(HaltError, match="input refusal") as stopped:
+            debug.run(limits=limits)
+        assert stopped.value.observation == ExecutionResult("H", 0, 0, 0, steps=0)
+        assert debug.snapshot() == (*boundary, 1)
+        assert debug.run(limits=limits) == "halted"
+        assert debug.observation == complete
+        assert attempts == 2
 
 
 class TestPublicAPI:

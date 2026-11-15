@@ -53,8 +53,8 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
@@ -174,6 +174,7 @@ class _Machine:
 
     def __init__(self, code: str | _Program, io: IO) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self.program, self.offsets, count = (
             _parse(code) if isinstance(code, str) else code
         )
@@ -197,15 +198,22 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             variables=tuple(self.state),
-            instruction=self.cursor,
+            instruction=WorkspaceVariant("pending_output", (self.cursor, accepted))
+            if accepted
+            else self.cursor,
             input_cursor=self._input_retry.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         # The names are fixed by the program, so slots carry the run state.
-        return self._input_retry.snapshot((self.state, self.cursor, self.io.progress()))
+        boundary = self._input_retry.snapshot(
+            (self.state, self.cursor, self.io.progress())
+        )
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         if self.halted:
@@ -216,9 +224,10 @@ class _Machine:
             if command[0] == "in!"
             else None
         )
-        self.state, out = _advance(self.state, command, byte)
+        state, out = _advance(self.state, command, byte)
         if out is not None:
-            self.io.print_str(out)
+            self._writer.write(self.io, out)
+        self.state = state
         self.cursor += 1
 
 

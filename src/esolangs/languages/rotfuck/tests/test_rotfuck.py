@@ -15,6 +15,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
     machine_factory,
 )
+from tests.support.vm_support import assert_rejected_output_retry
 
 #: The default (backward) direction's cycle, each character turning into the next.
 _CHAIN = "+][.,<>-"
@@ -180,7 +181,7 @@ class TestBrackets:
 
 
 class TestStepMachine:
-    def test_step_tracks_tape_cursor_and_rotation(self) -> None:
+    def test_step_tracks_tape_cursor_and_rotation(self, monkeypatch) -> None:
         machine = _Machine(build("+."), ScriptedIO())
         assert (machine.ind, machine.ptr, list(machine.tape)) == (0, 0, [0])
         machine.step()  # + increments the cell and rotates the program
@@ -191,6 +192,16 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
+        assert_rejected_output_retry(
+            "ROTfuck",
+            build("+."),
+            "\x01",
+            "\x01",
+            prefix=1,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     def test_pure_transition_moves_left_and_checks_backward_partners(self) -> None:
         chars = tuple("<[]")

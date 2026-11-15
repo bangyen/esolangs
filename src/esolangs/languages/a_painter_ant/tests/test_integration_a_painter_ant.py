@@ -103,6 +103,27 @@ def test_periodic_completion_renders_at_the_repeated_pass_boundary(source, expec
     assert io.getvalue() == expected
     assert not machine.halted
     machine.step()
+
+    class InterruptedDump(ScriptedIO):
+        first = True
+
+        def _write(self, value: object) -> None:
+            if self.first:
+                self.first = False
+                assert value == expected
+                super()._write(expected[:1])
+                raise esolangs.HaltError("writer temporarily unavailable")
+            super()._write(value)
+
+    port = InterruptedDump()
+    replay = _Machine(source, port)
+    with pytest.raises(esolangs.HaltError, match="writer temporarily unavailable"):
+        drive_periodic(replay, len(replay.prog), policy=Completion.PERIODIC)
+    assert replay.snapshot() == (*cycle.state, 1)
+    replay.step()
+    replay.step()
+    assert replay.snapshot() == cycle.state
+    assert port.getvalue() == expected
     assert io.getvalue() == expected
 
 

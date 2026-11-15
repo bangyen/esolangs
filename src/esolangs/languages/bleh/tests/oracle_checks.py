@@ -6,7 +6,7 @@ from itertools import product
 import pytest
 
 from esolangs.languages.bleh import interpreter as native
-from esolangs.runtime._state import WorkspaceModel
+from esolangs.runtime._state import WorkspaceModel, WorkspaceVariant
 from scripts.benchmark import WrittenState
 from tests.interpreters.oracle_support import observed, overread, stalled
 from tests.support.workspace_oracle import (
@@ -857,7 +857,7 @@ def _focus_faults(engine):
 
 
 def _focus_writer(engine):
-    """Refusal precedes control commit; retry duplicates only a physical prefix."""
+    """Refusal precedes control commit; retry resumes the physical prefix."""
     case = (
         engine.program(engine.call("io.print", engine.b(engine.bits("ab")))),
         "",
@@ -885,16 +885,20 @@ def _focus__writer_profile(engine, case, trace, boundary, partial):
     held = []
     meter = oracle = None
 
-    def capture(row, output):
+    def capture(row, output, accepted=0):
         nonlocal meter, oracle
+        state, parts = row[0][0], row[1]
+        if accepted:
+            state = (*state, accepted)
+            parts = (
+                WorkspaceVariant("pending_output", (parts[0], accepted)),
+                *parts[1:],
+            )
         expected = engine._WORKSPACE.capture(
-            **dict(zip(engine._WORKSPACE.components, row[1], strict=True))
+            **dict(zip(engine._WORKSPACE.components, parts, strict=True))
         )
         actual = machine.workspace_snapshot()
-        _focus_check(
-            actual == expected and machine.snapshot() == row[0][0],
-            "writer native state",
-        )
+        _focus_check(actual == expected and machine.snapshot() == state, "writer state")
         _focus_check(
             io.getvalue() == output and (io.reads, io.past_end) == (0, 0), "writer IO"
         )
@@ -932,12 +936,12 @@ def _focus__writer_profile(engine, case, trace, boundary, partial):
     else:
         raise AssertionError("writer refusal swallowed")
     prefix = "a" if partial else ""
-    capture(trace[boundary], prefix)
+    capture(trace[boundary], prefix, len(prefix))
     _focus_check(calls == 1, "one refused attempt")
     io.print_str = original
     for index in range(boundary + 1, len(trace)):
         machine.step()
-        capture(trace[index], prefix + "ab")
+        capture(trace[index], "ab")
     _focus_check(machine.halted and calls == 1, "retry and idle")
     _focus_check(
         all(

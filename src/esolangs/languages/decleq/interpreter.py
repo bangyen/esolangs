@@ -31,6 +31,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Any
 
 from esolangs.exceptions import HaltError
@@ -40,9 +41,9 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._validate import check_address
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.memory import parse_int_memory as _parse
 
@@ -122,6 +123,7 @@ class _Machine:
     def __init__(self, code: str | tuple[int, ...], io: IO) -> None:
         """Parse ``code`` into memory and reset the pointer."""
         self.io = io
+        self._writer = _BufferedOutput()
         self.state: _State = (0, tuple(_parse(code)) if isinstance(code, str) else code)
 
     # Views on the state.
@@ -156,9 +158,13 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
+        instruction: int | WorkspaceVariant = self.state[0]
+        accepted = self._writer.accepted
+        if accepted:
+            instruction = WorkspaceVariant("pending_output", (instruction, accepted))
         return _WORKSPACE_MODEL.capture(
             memory=self.state[1],
-            instruction=self.state[0],
+            instruction=instruction,
             input_cursor=self.io.progress(),
         )
 
@@ -166,7 +172,9 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # Plus the input cursor: a repeat ignoring consumed input is not a cycle.
         pc, memory = self.state
-        return (memory, pc, self.io.progress())
+        boundary = (memory, pc, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one instruction, advancing the pointer.
@@ -178,7 +186,10 @@ class _Machine:
         a, b, _c = _operands(self.state)
         byte = None
         if a == _OUT:
-            self.io.print_char(chr(_read(self.state[1], b) & 0xFF))
+            output = chr(_read(self.state[1], b) & 0xFF)
+            self._writer.write(
+                self.io, output, first=partial(self.io.print_char, output)
+            )
         elif a == _IN:
             byte = self.io.input_char()
         self.state = _advance(self.state, byte)

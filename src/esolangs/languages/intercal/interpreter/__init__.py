@@ -105,7 +105,7 @@ from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._proof import BranchFailure, branch_outcomes
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.randomness import Randomness, draw
 
 _WORKSPACE_MODEL = WorkspaceModel(
@@ -134,7 +134,7 @@ class _Image(NamedTuple):
 class _StatementProgress(NamedTuple):
     draws: tuple[int, ...]
     inputs: tuple[int | str | None, ...]
-    flushed: int
+    flushed: int | tuple[int, int]
 
 
 def _prepare_source(code: str) -> _Image:
@@ -171,6 +171,7 @@ class _Machine:
         self, code: str | _Image, io: IO, rng: Randomness | None = None
     ) -> None:
         self.io = io
+        self._writer = _BufferedOutput()
         self._rng = rng
         self._draws: list[int] = []
         self._inputs: list[int | str | None] = []
@@ -245,10 +246,10 @@ class _Machine:
         return (*boundary, progress) if progress is not None else boundary
 
     def _statement_progress(self) -> _StatementProgress | None:
-        if self._draws or self._inputs or self._flushed:
-            return _StatementProgress(
-                tuple(self._draws), tuple(self._inputs), self._flushed
-            )
+        accepted = self._writer.accepted
+        flushed = (self._flushed, accepted) if accepted else self._flushed
+        if self._draws or self._inputs or flushed:
+            return _StatementProgress(tuple(self._draws), tuple(self._inputs), flushed)
         return None
 
     def branching_snapshot(self) -> tuple[Any, ...]:
@@ -355,7 +356,7 @@ class _Machine:
             return
         while True:
             try:
-                self.state, effects, _used = _advance(
+                state, effects, _used = _advance(
                     self.state, self._program, self._draws, self._inputs
                 )
             except _NeedDraw as need:
@@ -376,17 +377,16 @@ class _Machine:
                 self._flush_pending(fault.effects)
                 raise fault.error from None
             break
-        remaining = effects[self._flushed :]
+        self._flush_pending(effects)
+        self.state = state
         self._draws.clear()
         self._inputs.clear()
         self._flushed = 0
-        for text in remaining:
-            self.io.print_str(text)
 
     def _flush_pending(self, effects: Sequence[str]) -> None:
         """Count each accepted write to an uncommitted statement."""
         for text in effects[self._flushed :]:
-            self.io.print_str(text)
+            self._writer.write(self.io, text)
             self._flushed += 1
 
 

@@ -69,8 +69,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 
 #: A persistent stack: ``(top, rest)`` cells, ``None`` for empty.
 type _Stack = tuple[int, _Stack] | None
@@ -289,6 +289,7 @@ class _Machine:
         image = _prepare_source(code) if isinstance(code, str) else code
         size, self.ops = image
         self.io = io
+        self._writer = _BufferedOutput()
         self.state = _State(0, (0,) * size, (None,) * size, (), flag=False)
 
     @property
@@ -309,8 +310,11 @@ class _Machine:
                 value, rest = rest
                 values.append(value)
             stacks.append(tuple(reversed(values)))
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.state.pc,
+            instruction=WorkspaceVariant("pending_output", (self.state.pc, accepted))
+            if accepted
+            else self.state.pc,
             values=self.state.values,
             stacks=tuple(stacks),
             stage=self.state.stage,
@@ -320,7 +324,9 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         s = self.state
-        return (s.pc, s.values, s.stacks, s.stage, s.flag, self.io.progress())
+        boundary = (s.pc, s.values, s.stacks, s.stage, s.flag, self.io.progress())
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         if self.halted:
@@ -331,9 +337,10 @@ class _Machine:
             _listener(self.state, op.speaker)
             read = self.io.input_num if op.kind == "num_in" else self.io.input_char
             value = read()
-        self.state, out = _advance(self.state, op, value)
+        state, out = _advance(self.state, op, value)
         if out is not None:
-            self.io.print_str(out)
+            self._writer.write(self.io, out)
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

@@ -34,8 +34,8 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 #: ``(ind, ptr, acc, tape)``: an immutable value, rebound per step.  No
@@ -97,6 +97,7 @@ class _Machine:
                 ),
             )
         self.io = io
+        self._writer = _BufferedOutput()
         self.code = code
         self.state: _State = (0, 0, 0, (0,))
         self._exhausted = False
@@ -171,8 +172,11 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
         instruction, pointer, accumulator, tape = self.state
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=instruction,
+            instruction=WorkspaceVariant("pending_output", (instruction, accepted))
+            if accepted
+            else instruction,
             pointer=pointer,
             accumulator=accumulator,
             tape=tape,
@@ -188,7 +192,9 @@ class _Machine:
         programs that read once more and hit EOF were called periodic.
         """
         ind, ptr, acc, tape = self.state
-        return (ind, ptr, acc, tape, self.io.progress(), self._exhausted)
+        boundary = (ind, ptr, acc, tape, self.io.progress(), self._exhausted)
+        accepted = self._writer.accepted
+        return (*boundary, accepted) if accepted else boundary
 
     def step(self) -> None:
         """Execute one command, wrapping to the start at the end of the code.
@@ -208,7 +214,8 @@ class _Machine:
                 byte = 0
                 self._exhausted = True
         elif sym == "." and acc:
-            self.io.print_char(chr(acc - 1))
+            char = chr(acc - 1)
+            self._writer.write(self.io, char, first=partial(self.io.print_char, char))
         self.state = _advance(self.state, self.code, byte)
 
 

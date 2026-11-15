@@ -7,6 +7,7 @@ import esolangs.debugger as debugger_api
 from esolangs import run
 from esolangs.vm import make_vm, run_until_halt_or_ancestor
 from tests.support.reference import REFERENCE
+from tests.support.vm_support import assert_rejected_output_retry
 
 
 @pytest.mark.medium
@@ -26,7 +27,7 @@ from tests.support.reference import REFERENCE
     ],
 )
 def test_retried_line_bindings_keep_the_original_input(
-    stdin, error_type, message, position, reads, past_end, pending
+    stdin, error_type, message, position, reads, past_end, pending, monkeypatch
 ) -> None:
     api = esolangs.Language("Algebraic Programming Language")
     source = "a + b"
@@ -53,6 +54,17 @@ def test_retried_line_bindings_keep_the_original_input(
         assert dbg.ip == (0,)
         assert dbg.memory == []
         assert dbg.snapshot()[-1] == ((("integer", 2),), pending)
+    assert_rejected_output_retry(
+        "Algebraic Programming Language",
+        "a + 1",
+        "42\n",
+        "42\n",
+        prefix=6,
+        stdin="41\n",
+        unchanged_if_unwritten=True,
+        following_writes=(),
+        monkeypatch=monkeypatch,
+    )
 
 
 class TestTheVmPathRefusesLikeRunDoes:

@@ -11,6 +11,7 @@ from esolangs.languages.shakespeare.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import check_terminal
 from tests.support.execution import run_observed as execute
+from tests.support.vm_support import assert_rejected_output_retry
 
 FIXTURES = Path(__file__).parent / "fixtures"
 HEAD = (
@@ -160,6 +161,17 @@ def test_stacks_remember_onto_the_listener_and_recall_into_it() -> None:
 def test_character_input_stores_the_code_and_number_input_a_token(monkeypatch) -> None:
     assert _run("Open your mind. Open your heart. Speak your mind.", "A") == "65A"
     assert _run("Listen to your heart. Open your heart.", "  -7 8") == "-7"
+    assert_rejected_output_retry(
+        "Shakespeare",
+        _play("Listen to your heart. Open your heart."),
+        "123",
+        "123",
+        prefix=2,
+        stdin="123",
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
     from esolangs.languages.shakespeare import interpreter
     from tests.support.prepared_support import check_image_reuse
 

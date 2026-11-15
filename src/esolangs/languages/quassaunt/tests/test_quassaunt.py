@@ -11,6 +11,7 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import run_program
+from tests.support.vm_support import assert_rejected_output_retry
 
 HELLO = " @@Hello_world! %%Printtoconsole"
 HELLO_SPACE = """ @@Hello       @@[Whitespace] %%Obtain      %%Head
@@ -134,11 +135,30 @@ def test_set_operations_and_their_error_messages() -> None:
     assert _run(f"{duplicate} @@##Errormessage %%Delete{check}") == "empty"
 
 
-def test_locals_belong_to_one_evaluation_and_globals_to_all() -> None:
+def test_locals_belong_to_one_evaluation_and_globals_to_all(monkeypatch) -> None:
     store = "@@{0}?%%Empty?%%Store"
     assert _run(f"@@{store.format('[g]')} %%Evaluate @@[g] %%Obtain") == ""
     with pytest.raises(HaltError, match="no variable 'v'"):
         _run(f"@@{store.format('v')} %%Evaluate @@v %%Obtain")
+    for source, prefix, following in (
+        ("@@ab %%Printtoconsole", 1, ()),
+        (
+            "@@@@x?%%Empty?%%Store?@@ab?%%Printtoconsole %%Evaluate "
+            "@@end %%Printtoconsole",
+            6,
+            ("end",),
+        ),
+    ):
+        assert_rejected_output_retry(
+            "Quassaunt",
+            source,
+            "ab",
+            "ab" + "".join(following),
+            prefix=prefix,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=following,
+        )
 
 
 @pytest.mark.parametrize("name", ["vv", "]", "a]", "[a"])

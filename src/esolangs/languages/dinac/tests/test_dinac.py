@@ -10,6 +10,7 @@ from esolangs.languages.dinac.tests.oracle_checks import check_raw_dinac
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.runner import native_runner
+from tests.support.vm_support import assert_rejected_output_retry
 
 # Two lines carry a trailing space: ``OUT ' `` is the space of the greeting,
 # ``OUT 'r `` has a stray one the parser must tolerate.
@@ -140,6 +141,16 @@ def test_cat_as_written_drops_its_first_character_and_ends_on_nul() -> None:
 
 
 def test_repaired_cat_echoes_its_input(monkeypatch) -> None:
+    assert_rejected_output_retry(
+        "DINAC",
+        "OUT 42",
+        "42",
+        "42",
+        prefix=0,
+        monkeypatch=monkeypatch,
+        unchanged_if_unwritten=True,
+        following_writes=(),
+    )
     assert out(CAT_REPAIRED, "Hi!\nok") == "Hi!\nok"
     from esolangs.languages.dinac import interpreter
     from tests.support.prepared_support import check_image_reuse

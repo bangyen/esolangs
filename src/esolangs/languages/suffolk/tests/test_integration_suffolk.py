@@ -22,7 +22,12 @@ from tests.support.certification_barrier import guarded_worker
 from tests.support.cli_support import run_cli
 from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated
-from tests.support.vm_support import _STEP_BUDGET, _row, assert_proof_fault
+from tests.support.vm_support import (
+    _STEP_BUDGET,
+    _row,
+    assert_proof_fault,
+    assert_rejected_output_retry,
+)
 
 
 @pytest.mark.parametrize("debugged", [False, True])
@@ -107,8 +112,19 @@ def test_the_value_growth_detector_proves_a_climb_and_declines_a_repeat() -> Non
         run_until_halt_or_value_growth(make_vm("Suffolk", "<"), 5_000)
 
 
-def test_documented_eof_halts_with_the_answer() -> None:
+def test_documented_eof_halts_with_the_answer(monkeypatch) -> None:
     """Suffolk's programs end *by* running out of input."""
+    assert_rejected_output_retry(
+        "Suffolk",
+        ",.",
+        "A",
+        "A",
+        prefix=1,
+        stdin="B",
+        unchanged_if_unwritten=True,
+        following_writes=(),
+        monkeypatch=monkeypatch,
+    )
 
     program = esolangs.generate("Suffolk", "0110")
     stdin = esolangs.encode_inputs("Suffolk", [1, 0], truth_table="0110")

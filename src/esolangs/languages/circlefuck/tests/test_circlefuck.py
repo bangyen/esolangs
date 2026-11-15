@@ -8,15 +8,26 @@ from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, SnapshotContract, machine_factory
 from tests.interpreters.runner import run_lines
 from tests.support.raises import assert_rejected_with_hint, raises_message
+from tests.support.vm_support import assert_rejected_output_retry
 
 run_and_capture = run_lines(run)
 
 
 class TestCirclefuck:
-    def test_truth_machine_zero(self) -> None:
+    def test_truth_machine_zero(self, monkeypatch) -> None:
         """A 0 input prints 0 and halts."""
         program = "," + "-" * 48 + "[[-]" + "+" * 49 + ".]" + "+" * 48 + ".@"
         assert run_and_capture(program, inputs=["0"]) == "0"
+        assert_rejected_output_retry(
+            "Circlefuck",
+            r"\065.@",
+            "A",
+            "A",
+            prefix=1,
+            monkeypatch=monkeypatch,
+            unchanged_if_unwritten=True,
+            following_writes=(),
+        )
 
     @pytest.mark.parametrize(
         ("code", "expected"),

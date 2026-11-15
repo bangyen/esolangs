@@ -269,9 +269,10 @@ def _output_failure():
         machine.step()
     assert type(caught.value) is HaltError
     assert caught.value.args == ("witness output failure",)
-    # The shell commits the transition before flushing its output effect.
-    witness.sample(machine.workspace_snapshot(), _parts(expected[9]))
-    assert _view(machine) == expected[9][0]
+    before = _parts(expected[8])
+    pending = WorkspaceVariant("pending_statement", (before[0], (), (), (0, 1)))
+    witness.sample(machine.workspace_snapshot(), (pending, *before[1:]))
+    assert _view(machine) == expected[8][0]
     assert (machine.io.getvalue(), machine.io.position(), machine.io.progress()) == (
         expected[9][2][:1],
         2,
