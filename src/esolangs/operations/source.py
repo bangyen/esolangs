@@ -22,7 +22,12 @@ from esolangs.runtime._source import (
     source_for,
 )
 from esolangs.runtime._validate import check_flag, check_scale
-from esolangs.settings import DialectSettings, dialect_options, effective_settings
+from esolangs.settings import (
+    DialectSettings,
+    _merge_settings,
+    dialect_options,
+    effective_settings,
+)
 
 
 def check_origin(
@@ -45,15 +50,20 @@ def check_origin(
 
 
 def read_png_artifact(
-    language: str, data: bytes, *, catalog: "Catalog | None" = None
+    language: str,
+    data: bytes,
+    *,
+    settings: DialectSettings | None = None,
+    catalog: "Catalog | None" = None,
 ) -> ProgramArtifact[Raster]:
     """Decode native metadata into its owning artifact, leaving pixels untagged."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    _, settings, scale = read_png_metadata(name, data, catalog=catalog)
-    return ProgramArtifact(Raster.from_png(data), name, settings=settings, scale=scale)
+    _, retained, scale = read_png_metadata(name, data, catalog=catalog)
+    merged = _merge_settings(name, retained, settings, catalog=catalog)
+    return ProgramArtifact(Raster.from_png(data), name, settings=merged, scale=scale)
 
 
 def read_png_metadata(
@@ -78,32 +88,40 @@ def read_png_metadata(
     except (ProgramError, MissingDependencyError):
         raise
     except Exception as error:
-        raise ProgramError(f"not a readable PNG: {error}") from error
+        failure = ProgramError(f"not a readable PNG: {error}")
+        for note in getattr(error, "__notes__", ()):
+            failure.add_note(note)
+        raise failure from error
 
 
 def read_artifact(
     language: str,
     program: ProgramSource | _FileSource,
     *,
+    settings: DialectSettings | None = None,
     catalog: "Catalog | None" = None,
     normalize: bool = False,
     preserve_compression: bool = False,
 ) -> Artifact:
-    """Acquire source once, retaining native metadata only in an explicit record."""
+    """Acquire source once, merging explicit choices with the retained settings."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
+    settings = effective_settings(name, program, settings, catalog=catalog)
     if isinstance(program, (ProgramArtifact, TemplateArtifact)):
         check_origin(name, program.language, catalog=catalog)
-        dialect_options(name, program.settings, catalog=catalog)
         source = source_for(
             name,
             program.source,
             catalog=catalog,
             preserve_compression=preserve_compression,
         )
-        if source is program.source and program.language == name:
+        if (
+            source is program.source
+            and program.language == name
+            and settings is program.settings
+        ):
             return program
         if isinstance(program, TemplateArtifact):
             if not isinstance(source, str):
@@ -112,19 +130,22 @@ def read_artifact(
                 source,
                 name,
                 program.bindings,
-                settings=program.settings,
+                settings=settings,
                 spans=program.spans,
             )
         return ProgramArtifact(
             source,
             name,
-            settings=program.settings,
+            settings=settings,
             scale=program.scale,
             input_arity=program.input_arity,
         )
     value, path = _read_container(program)
-    if isinstance(value, bytes) and value.startswith(b"\x89PNG\r\n\x1a\n"):
-        return read_png_artifact(name, value, catalog=catalog)
+    if isinstance(value, bytes) and (
+        value.startswith(b"\x89PNG\r\n\x1a\n")
+        or catalog.languages[name].runtime.source_kind is SourceKind.RASTER
+    ):
+        return read_png_artifact(name, value, settings=settings, catalog=catalog)
     # Re-wrap file bytes so a decoding error names the file, not its bytes.
     named = (
         _FileSource(path, value)
@@ -138,7 +159,7 @@ def read_artifact(
         native=path is not None and normalize,
         preserve_compression=preserve_compression,
     )
-    return ProgramArtifact(source, name)
+    return ProgramArtifact(source, name, settings=settings)
 
 
 def _check_program(
@@ -146,6 +167,7 @@ def _check_program(
     program: ProgramSource | _FileSource,
     stdin: InputSource = "",
     *,
+    settings: DialectSettings | None = None,
     catalog: "Catalog | None" = None,
     normalize: bool = False,
 ) -> ProgramArtifact[Program]:
@@ -156,7 +178,9 @@ def _check_program(
     name = catalog.resolve(language)
     if isinstance(program, TemplateArtifact):
         raise TemplateError("fill the template before execution")
-    record = read_artifact(name, program, catalog=catalog, normalize=normalize)
+    record = read_artifact(
+        name, program, settings=settings, catalog=catalog, normalize=normalize
+    )
     assert isinstance(record, ProgramArtifact)
     check_input(stdin)
     return record
@@ -222,10 +246,11 @@ def from_file(
     check_flag(normalize, "normalize")
     dialect_options(name, settings, catalog=catalog)
     artifact = read_artifact(
-        name, explicit_path(path), catalog=catalog, normalize=normalize
+        name,
+        explicit_path(path),
+        settings=settings,
+        catalog=catalog,
+        normalize=normalize,
     )
-    retained = effective_settings(name, artifact, settings, catalog=catalog)
     assert isinstance(artifact, ProgramArtifact)
-    return ProgramArtifact(
-        artifact.source, name, settings=retained, scale=artifact.scale
-    )
+    return artifact

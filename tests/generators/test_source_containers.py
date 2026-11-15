@@ -197,22 +197,46 @@ def test_closed_and_would_block_streams_report_read_errors() -> None:
 @pytest.mark.parametrize(
     "error_type", [esolangs.ExecutionTimeoutError, esolangs.ArgumentError]
 )
+@pytest.mark.parametrize("lookup", [False, True])
 def test_managed_program_stream_preserves_a_deliberate_api_error(
-    error_type: type[esolangs.EsolangError], tmp_path: Path
+    error_type: type[esolangs.EsolangError], tmp_path: Path, *, lookup: bool
 ) -> None:
     error = error_type("managed read failed")
+    bound = None
+    if isinstance(error, esolangs.ExecutionTimeoutError):
+        error.bound = bound = "preparation_timeout"
 
     class Stream:
+        @property
         def read(self):
+            if lookup:
+                raise error
+            return self._read
+
+        def _read(self):
             raise error
 
     api = esolangs.Language(REFERENCE)
-    assert api.execute(Stream()).error is error
+    for limits in (
+        None,
+        esolangs.ExecutionLimits(max_steps=2),
+        esolangs.ExecutionLimits(total_timeout=5),
+    ):
+        stdin = io.StringIO("A")
+        outcome = api.execute(Stream(), stdin=stdin, limits=limits)
+        assert outcome.error is error
+        assert outcome.bound == bound
+        assert stdin.tell() == 0
     path = tmp_path / "source"
     path.write_bytes(b"existing source")
-    for export in (lambda: api.to_json(Stream()), lambda: api.to_file(Stream(), path)):
+    for acquire in (
+        lambda: api.prepare(Stream()),
+        lambda: api.make_debugger(Stream()),
+        lambda: api.to_json(Stream()),
+        lambda: api.to_file(Stream(), path),
+    ):
         with pytest.raises(error_type) as raised:
-            export()
+            acquire()
         assert raised.value is error
     assert path.read_bytes() == b"existing source"
 

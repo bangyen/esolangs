@@ -3,6 +3,7 @@
 import io
 import os
 import select
+from contextvars import ContextVar
 from threading import Event, Thread
 
 import pytest
@@ -118,6 +119,34 @@ def test_stdin_read_access_and_managed_errors_preserve_the_boundary(budget):
     assert result.bound == "preparation_timeout"
 
 
+@pytest.mark.parametrize("budget", [{}, {"max_steps": 2}, {"total_timeout": 5}])
+def test_source_and_stdin_providers_see_caller_context(budget):
+    source_text = ContextVar("source_text", default="+.")
+    input_text = ContextVar("input_text", default="B")
+
+    class Stream:
+        def __init__(self, value):
+            self.value = value
+
+        def read(self):
+            return self.value.get()
+
+    source_token = source_text.set(",.")
+    input_token = input_text.set("A")
+    try:
+        result = esolangs.run(
+            REFERENCE,
+            Stream(source_text),
+            stdin=Stream(input_text),
+            limits=esolangs.ExecutionLimits(**budget),
+        )
+    finally:
+        input_text.reset(input_token)
+        source_text.reset(source_token)
+    assert result.output == "A"
+    assert result.input_position == result.input_reads == 1
+
+
 @pytest.mark.parametrize(
     "bound", ["execution_timeout", "preparation_timeout", "total_timeout"]
 )
@@ -143,6 +172,7 @@ def test_expired_acquisition_does_not_start_another_read(monkeypatch, block):
 
     started, release = Event(), Event()
     threads, input_reads = [], []
+    read_context = ContextVar("read_context", default=False)
 
     def capture_thread(*args, **kwargs):
         thread = Thread(*args, **kwargs)
@@ -156,6 +186,7 @@ def test_expired_acquisition_does_not_start_another_read(monkeypatch, block):
             return super().read(*args)
 
     def wait():
+        assert read_context.get()
         started.set()
         release.wait(3)
 
@@ -172,6 +203,7 @@ def test_expired_acquisition_does_not_start_another_read(monkeypatch, block):
 
     monkeypatch.setattr(_isolated, "Thread", capture_thread)
     program = Program(",.")
+    token = read_context.set(True)
     try:
         outcome = esolangs.execute(
             REFERENCE,
@@ -182,6 +214,7 @@ def test_expired_acquisition_does_not_start_another_read(monkeypatch, block):
         assert started.is_set()
         assert outcome.bound == "total_timeout"
     finally:
+        read_context.reset(token)
         release.set()
         for thread in threads:
             thread.join(4)

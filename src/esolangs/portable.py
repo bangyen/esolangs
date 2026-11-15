@@ -36,7 +36,6 @@ from esolangs.settings import (
     DialectSettings,
     _settings_for,
     dialect_options,
-    effective_settings,
 )
 
 _FORMAT = "esolangs.program"
@@ -109,9 +108,10 @@ def to_file(
     # The language decides the file terminator and PNG metadata; without it,
     # normalize appended "\n" even where a trailing newline is code.
     origin = catalog.resolve(language)
-    settings = effective_settings(origin, program, settings, catalog=catalog)
-    record = read_artifact(origin, program, catalog=catalog, preserve_compression=True)
-    settings = effective_settings(origin, record, settings, catalog=catalog)
+    record = read_artifact(
+        origin, program, settings=settings, catalog=catalog, preserve_compression=True
+    )
+    settings = record.settings
     try:
         if isinstance(record, TemplateArtifact):
             raise with_hint(
@@ -179,9 +179,10 @@ def to_json(
     from esolangs.operations.source import read_artifact
 
     name = catalog.resolve(language)
-    settings = effective_settings(name, program, settings, catalog=catalog)
-    artifact = read_artifact(name, program, catalog=catalog, preserve_compression=True)
-    settings = effective_settings(name, artifact, settings, catalog=catalog)
+    artifact = read_artifact(
+        name, program, settings=settings, catalog=catalog, preserve_compression=True
+    )
+    settings = artifact.settings
     values = dialect_options(name, settings, catalog=catalog)
     encoded = (
         None

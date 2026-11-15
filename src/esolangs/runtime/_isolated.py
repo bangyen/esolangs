@@ -8,7 +8,7 @@ import subprocess  # fixed Python worker; source travels over stdin.
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
-from contextvars import ContextVar
+from contextvars import ContextVar, copy_context
 from functools import lru_cache
 from itertools import chain, groupby, repeat
 from queue import Empty, Full, Queue
@@ -456,11 +456,13 @@ def _invoke_worker(
                 check_input(stdin)
                 if monotonic() >= acquisition_deadline:
                     return
-                artifact = _check_program(name, program, catalog=catalog)
+                artifact = _check_program(
+                    name, program, settings=settings, catalog=catalog
+                )
                 if monotonic() >= acquisition_deadline:
                     return
                 source = artifact.source
-                retained = effective_settings(name, artifact, settings, catalog=catalog)
+                retained = artifact.settings
                 retained_scale = effective_scale(name, artifact, scale, catalog=catalog)
                 check_scale_for(name, retained_scale, catalog=catalog)
                 if monotonic() >= acquisition_deadline:
@@ -494,7 +496,8 @@ def _invoke_worker(
 
     # Caller-owned streams need not be picklable or interruptible. A daemon
     # bounds acquisition without transferring or closing their handles.
-    reader = Thread(target=prepare, daemon=True)
+    # Keep the caller's context for reads even though they happen off-thread.
+    reader = Thread(target=copy_context().run, args=(prepare,), daemon=True)
     reader.start()
     reader.join(max(0.0, acquisition_deadline - monotonic()))
     now = monotonic()

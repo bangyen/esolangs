@@ -288,6 +288,59 @@ def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) ->
     assert call_both(["read-answer", REFERENCE], capsys) == ("0\n", "")
 
 
+@pytest.mark.parametrize("language", one(source_kind="raster"))
+def test_run_checks_saved_metadata_before_stdin(
+    language, tmp_path, monkeypatch, capsys
+) -> None:
+    original = LANGUAGES[language]
+    schema = esolangs.DialectSchema(language, {"mode": (1, 2)}, {"mode": 1})
+    runtime = replace(
+        original.runtime, dialect=lambda mode=1: mode, dialect_schema=schema
+    )
+    declaration = replace(original, runtime=runtime)
+    scope = esolangs.Catalog([declaration])
+    bound = scope.bind(language)
+    source = esolangs.ProgramArtifact(
+        esolangs.Raster((((0, 0, 0),),)),
+        language,
+        settings=bound.settings(mode=1),
+        scale=2,
+    )
+    path = tmp_path / "source.png"
+    bound.to_file(source, path)
+
+    def unexpected_read(*_args, **_kwargs):
+        pytest.fail("run waited for input despite invalid source metadata")
+
+    monkeypatch.setattr("esolangs.cli.run._read_stdin", unexpected_read)
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    with monkeypatch.context() as no_image:
+        no_image.setattr("esolangs.raster.png._require_image", unexpected_read)
+        out, error = _failure(["run", "--set", "mode=2", language, str(path)], capsys)
+        assert not out
+        assert "mode=1, not 2" in error
+
+    capabilities = replace(runtime.capabilities, supports_scale=False)
+    no_scale = replace(declaration, runtime=replace(runtime, capabilities=capabilities))
+    monkeypatch.setattr(_table, "CATALOG", esolangs.Catalog([no_scale]))
+    out, error = _failure(["run", language, str(path)], capsys)
+    assert not out
+    assert "scale is only supported" in error
+
+
+def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsys):
+    original = LANGUAGES[REFERENCE]
+    declaration = replace(original, name="Scoped runtime", id="scoped_runtime")
+    scope = esolangs.Catalog([declaration])
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    path = tmp_path / "source"
+    path.write_text(",.")
+    assert call_both(["run", declaration.name, str(path)], capsys, stdin="Q") == (
+        "Q",
+        "",
+    )
+
+
 def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys) -> None:
     path = tmp_path / "program.bf"
     path.write_text("+.")

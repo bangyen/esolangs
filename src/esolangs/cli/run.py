@@ -25,7 +25,6 @@ from esolangs.cli.args import (
 )
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
-    _as_argument,
     _exit_code,
     _stdin_hint,
     _template_hint,
@@ -46,7 +45,7 @@ from esolangs.exceptions import (
     TemplateError,
 )
 from esolangs.operations.execution import default_total
-from esolangs.registry import LANGUAGES, resolve, template_char
+from esolangs.registry import get_catalog
 from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
 from esolangs.runtime._source import check_scale_for
@@ -134,16 +133,17 @@ def _run(rest: list[str]) -> None:
     _check_count("run", rest, 2)
     language, path = rest
     settings = _settings_of(options, set_pairs, language=language)
+    catalog = get_catalog()
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
     with _errors():
-        dialect_options(language, settings)
-        declaration = LANGUAGES[resolve(language)]
+        dialect_options(language, settings, catalog=catalog)
+        declaration = catalog.languages[catalog.resolve(language)]
         # Before stdin too: held open, `run --seed 1 brainfuck` hung here.
-        check_seed_for(declaration.name, seed)
-        check_scale_for(declaration.name, scale)
+        check_seed_for(declaration.name, seed, catalog=catalog)
+        check_scale_for(declaration.name, scale, catalog=catalog)
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
@@ -152,14 +152,18 @@ def _run(rest: list[str]) -> None:
         _remaining(acquisition, monotonic() - started, flag),
         language=declaration.name,
         timeout_flag=flag,
+        settings=settings,
+        catalog=catalog,
     )
-    stdin = _read_stdin(
-        _remaining(acquisition, monotonic() - started, flag),
-        _stdin_hint(declaration),
-        timeout_flag=flag,
-    )
-    _remaining(acquisition, monotonic() - started, flag)
     try:
+        if scale is None and program.scale is not None:
+            check_scale_for(declaration.name, program.scale, catalog=catalog)
+        stdin = _read_stdin(
+            _remaining(acquisition, monotonic() - started, flag),
+            _stdin_hint(declaration),
+            timeout_flag=flag,
+        )
+        _remaining(acquisition, monotonic() - started, flag)
         with (
             _unbounded_notice("run")
             if acquisition is None and max_steps is None
@@ -182,6 +186,7 @@ def _run(rest: list[str]) -> None:
                 scale=scale,
                 isolated=isolated,
                 settings=settings,
+                catalog=catalog,
             ).output
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
@@ -203,13 +208,6 @@ def _run(rest: list[str]) -> None:
     if output and not output.endswith("\n") and sys.stdout.isatty():
         _write_output("\n")
     empty = isinstance(program.source, str) and not program.source
-    slot = template_char(declaration.id)
-    if slot is not None and isinstance(program.source, str) and slot in program.source:
-        _note(
-            f"note: {path} contains {slot!r}, which marks an unfilled input slot "
-            "in generated templates. To fill one, use: esolangs generate --bits "
-            f"<bits> {_as_argument(language)} <table>"
-        )
     if empty:
         # Legal, and almost never what was meant: an empty file is what you
         # get from a redirect that failed or a generate that was never run.

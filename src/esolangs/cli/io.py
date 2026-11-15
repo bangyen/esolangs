@@ -10,6 +10,7 @@ import sys
 import threading
 from collections.abc import Callable
 from contextlib import AbstractContextManager
+from contextvars import copy_context
 from io import BufferedReader, FileIO
 from time import monotonic
 from typing import BinaryIO, cast
@@ -19,7 +20,7 @@ from esolangs.cli.args import _diagnostic, _fail
 from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
 from esolangs.exceptions import EsolangError
 from esolangs.operations.source import _check_program
-from esolangs.registry import LANGUAGES
+from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._files import (
     StreamReadTimeoutError,
     read_snapshot,
@@ -27,6 +28,7 @@ from esolangs.runtime._files import (
 )
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
+from esolangs.settings import DialectSettings
 
 #: How long a blocking stdin read waits before it says that it is waiting.
 #: Shorter than the run notice: a read that has not finished is far more
@@ -90,11 +92,18 @@ def _waiting_notice(hint: str = "") -> _DelayedNotice:
 
 
 def _read_program(
-    path: str, timeout: float | None = None, *, language: str, timeout_flag: str = ""
+    path: str,
+    timeout: float | None = None,
+    *,
+    language: str,
+    timeout_flag: str = "",
+    settings: DialectSettings | None = None,
+    catalog: Catalog | None = None,
 ) -> ProgramArtifact[Program]:
     """Read bounded source, refusing a non-text or oversized file."""
     started = monotonic()
-    gzip_native = LANGUAGES[language].runtime.compressed_source
+    catalog = get_catalog(catalog)
+    gzip_native = catalog.languages[language].runtime.compressed_source
     data = _bounded_read(
         path,
         timeout,
@@ -103,7 +112,13 @@ def _read_program(
     )
 
     def decode() -> ProgramArtifact[Program]:
-        return _check_program(language, _FileSource(path, data), normalize=True)
+        return _check_program(
+            language,
+            _FileSource(path, data),
+            normalize=True,
+            settings=settings,
+            catalog=catalog,
+        )
 
     try:
         if timeout is None:
@@ -148,7 +163,7 @@ def _slurp_thread[SlurpT](
         except BaseException as exc:
             box.append(exc)
 
-    reader = threading.Thread(target=_slurp, daemon=True)
+    reader = threading.Thread(target=copy_context().run, args=(_slurp,), daemon=True)
     reader.start()
     if notice is None:
         reader.join(timeout)

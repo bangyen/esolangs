@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import base64
+import gzip
+import io
 import json
 import random
 import struct
@@ -556,8 +558,6 @@ def test_png_metadata_stops_at_iend(language: str, tmp_path: Path) -> None:
 def test_png_source_kind_checked_before_dependency(
     language, tmp_path, monkeypatch
 ) -> None:
-    import json
-
     image = png.write_grey([bytearray([0])])
     path = tmp_path / "program"
     path.write_bytes(image)
@@ -573,6 +573,18 @@ def test_png_source_kind_checked_before_dependency(
         lambda: esolangs.from_json(REFERENCE, json.dumps(portable)),
     ):
         with pytest.raises(esolangs.ProgramError, match="requires text source"):
+            load()
+    compressed = gzip.compress(b"+.", mtime=0)
+    path.write_bytes(compressed)
+    api = esolangs.Language(language)
+    for load in (
+        lambda: api.prepare(compressed),
+        lambda: api.to_json(io.BytesIO(compressed)),
+        lambda: api.from_file(path),
+    ):
+        with pytest.raises(
+            esolangs.ProgramError, match=r"not a PNG file.*bad signature"
+        ):
             load()
 
 

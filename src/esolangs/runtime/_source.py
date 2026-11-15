@@ -62,12 +62,11 @@ def _read_container(
         if isinstance(source, (Raster, CompressedText)):
             return source, None
         value = source
-        if not isinstance(source, (str, bytes)) and callable(
-            getattr(source, "read", None)
-        ):
+        if not isinstance(source, (str, bytes)):
             label = "the program stream"
             reading_stream = True
-            value = read_snapshot(source)
+            if callable(getattr(source, "read", None)):
+                value = read_snapshot(source)
         if isinstance(value, str):
             return str.__str__(value), None
         if isinstance(value, bytes):

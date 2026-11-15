@@ -90,6 +90,17 @@ def effective_settings(
         return settings
     retained = program.settings
     dialect_options(language, retained, catalog=catalog)
+    return _merge_settings(language, retained, settings, catalog=catalog)
+
+
+def _merge_settings(
+    language: str,
+    retained: DialectSettings | None,
+    settings: DialectSettings | None,
+    *,
+    catalog: "Catalog",
+) -> DialectSettings | None:
+    """Combine validated choices that apply to the same language."""
     if retained is None:
         return settings
     if settings is None:

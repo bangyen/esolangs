@@ -287,8 +287,8 @@ def prepare_program(
     dialect_options(name, settings, catalog=catalog)
     scale = effective_scale(name, program, scale, catalog=catalog)
     check_scale_for(name, scale, catalog=catalog)
-    artifact = _check_program(name, program, catalog=catalog)
-    settings = effective_settings(name, artifact, settings, catalog=catalog)
+    artifact = _check_program(name, program, settings=settings, catalog=catalog)
+    settings = artifact.settings
     scale = effective_scale(name, artifact, scale, catalog=catalog)
     check_scale_for(name, scale, catalog=catalog)
     prepared = PreparedProgram(

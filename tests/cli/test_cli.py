@@ -264,16 +264,16 @@ class TestProgramFailuresAreReported:
         assert result.returncode == 0
         assert result.stdout == "\x01"
         assert result.stderr == ""
-        # A template language's unfilled slot still runs, as the API's
-        # literal source would, but both commands say so on stderr.
+        # Generation knows the bindings. Running the file sees literal source.
         template = run_cli("generate", TEMPLATED, "0110")
+        assert template.returncode == 0
         assert (
             "input slots; fill them with: esolangs generate --bits" in template.stderr
         )
         path = _program(tmp_path, template.stdout)
         result = run_cli("run", TEMPLATED, str(path), stdin="")
         assert result.returncode == 0
-        assert "unfilled input slot" in result.stderr
+        assert result.stderr == ""
 
 
 class TestOutputAndAbridging:

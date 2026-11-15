@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import sys
 import threading
+from contextvars import ContextVar
 
 import pytest
 
@@ -29,6 +30,21 @@ def test_stdin_rejects_surrogateescaped_binary(monkeypatch, capsys, raw) -> None
 def test_stdin_preserves_surrogates_that_are_not_escaped_bytes(monkeypatch) -> None:
     monkeypatch.setattr(sys, "stdin", io.StringIO("\ud800"))
     assert _read_stdin() == "\ud800"
+
+
+def test_reader_thread_inherits_the_callers_context(monkeypatch) -> None:
+    supplied = ContextVar("supplied", default="default")
+
+    class ContextInput(io.StringIO):
+        def read(self, *_args, **_kwargs):
+            return supplied.get()
+
+    monkeypatch.setattr(sys, "stdin", ContextInput())
+    token = supplied.set("caller")
+    try:
+        assert _read_stdin(1) == "caller"
+    finally:
+        supplied.reset(token)
 
 
 def test_reader_threads_propagate_unexpected_errors(monkeypatch) -> None:
