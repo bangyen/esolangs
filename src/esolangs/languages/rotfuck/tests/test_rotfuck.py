@@ -1,6 +1,7 @@
 """Unit tests for the ROTfuck interpreter."""
 
 import pickle
+import sys
 from base64 import b64decode
 from dataclasses import replace
 from functools import partial
@@ -138,13 +139,48 @@ def _check_legacy_pickle_settings(api) -> None:
         api.run(program.source, settings=unbound, stdin="A")
 
 
+def _check_cli_generation_settings(capsys, monkeypatch) -> None:
+    from esolangs.cli import main
+    from esolangs.registry import _table
+
+    original = LANGUAGES["ROTfuck"]
+    calls = []
+
+    def validate(**choices):
+        if choices in calls:
+            raise esolangs.ArgumentError("duplicate rotation validation")
+        calls.append(choices)
+        return original.runtime.dialect(**choices)
+
+    scope = esolangs.Catalog(
+        [replace(original, runtime=replace(original.runtime, dialect=validate))]
+    )
+    api = scope.bind(original.name)
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    for flag, rotation, expected in (
+        ("--set=rotation=forward", "forward", [{"rotation": "forward"}]),
+        ("--settings={}", "backward", [{}, {"rotation": "backward"}]),
+    ):
+        calls.clear()
+        monkeypatch.setattr(sys, "argv", ["esolangs", "generate", api.name, "01", flag])
+        main()
+        source, diagnostics = capsys.readouterr()
+        assert not diagnostics
+        assert calls == expected
+        calls.clear()
+        selected = api.settings(rotation=rotation)
+        for bit in "01":
+            calls.clear()
+            assert api.run(source, stdin=bit, settings=selected).output == bit
+
+
 class TestRotation:
     def test_program_rotates_after_every_command(self) -> None:
         # The first ',' reads 'A'; the program then turns backward, so the
         # raw '[' is now '.', which prints the cell.
         assert run_program(",[", "A") == "A"
 
-    def test_forward_rotation_follows_the_prose(self) -> None:
+    def test_forward_rotation_follows_the_prose(self, capsys, monkeypatch) -> None:
         """Forward, ``+`` turns into ``-``: a second raw ``,`` reads as ``.``."""
         assert run_program(",,", "A", rotation="forward") == "A"
         assert run_program(",,", "A") == ""
@@ -168,6 +204,7 @@ class TestRotation:
         assert "".join(api.evaluate(generated, [b]).answer for b in (0, 1)) == "01"
         _check_portable_template_settings()
         _check_legacy_pickle_settings(api)
+        _check_cli_generation_settings(capsys, monkeypatch)
 
     def test_an_unknown_rotation_is_refused(self) -> None:
         with pytest.raises(ValueError, match="rotation"):

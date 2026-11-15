@@ -113,7 +113,47 @@ def test_partly_filled_constant_still_requires_its_remaining_input() -> None:
     assert esolangs.run("///", "$0").output == "$0"
 
 
+def _check_cli_fill_dialect(capsysbinary, monkeypatch) -> None:
+    name = "///"
+    original = _table.CATALOG.languages[name]
+    execute = interpreter._execute
+    calls = []
+
+    def validate(**choices):
+        if choices in calls:
+            raise esolangs.ArgumentError("duplicate mode validation")
+        calls.append(choices)
+
+    def run(source, io, *, mode="fast"):
+        assert mode in ("fast", "slow")
+        return execute(source, io)
+
+    schema = esolangs.DialectSchema(name, {"mode": ("fast", "slow")}, {"mode": "fast"})
+    runtime = replace(original.runtime, dialect=validate, dialect_schema=schema)
+    scope = esolangs.Catalog([replace(original, runtime=runtime)])
+    api = scope.bind(name)
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    monkeypatch.setattr(interpreter, "_execute", run)
+    for flags, mode in (([], "fast"), (["--set=mode=slow"], "slow")):
+        calls.clear()
+        monkeypatch.setattr(
+            sys, "argv", ["esolangs", "generate", name, "01", "--bits=1", *flags]
+        )
+        main()
+        source, diagnostics = capsysbinary.readouterr()
+        assert not diagnostics
+        assert calls == [{"mode": mode}]
+        calls.clear()
+        settings = api.settings(mode=mode)
+        calls.clear()
+        assert (
+            api.run(source.decode().removesuffix("\n"), settings=settings).output == "1"
+        )
+
+
 def test_cli_preserves_literal_source(tmp_path, capsysbinary, monkeypatch) -> None:
+    with monkeypatch.context() as patch:
+        _check_cli_fill_dialect(capsysbinary, patch)
     path = tmp_path / "literal.txt"
     name = "///"
     run = ["esolangs", "run", name, str(path)]

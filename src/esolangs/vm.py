@@ -85,7 +85,6 @@ from esolangs.settings import DialectSettings
 
 if TYPE_CHECKING:
     # A runtime import would close the cycle PreparedProgram.make_debugger opens.
-    from esolangs.runtime._controller import ExecutionController
     from esolangs.runtime._prepared import PreparedProgram
 
 
@@ -127,26 +126,25 @@ def _finalize_halted_vm(vm: VM, steps: int) -> bool:
     """Finalize the halted VM and report whether its receiver stayed fixed."""
     _check_driver_fields(vm, "vm", "dumps_on_the_post_halt_step")
     dump_pending = vm.dumps_on_the_post_halt_step and not _post_halt_dumped(vm)
-    receivers = _completion_receivers(vm) if dump_pending else ()
+    receiver = None
+    if dump_pending:
+        from esolangs.runtime._controller import (
+            ExecutionController,
+            _receiver_matches,
+            _receiver_tail,
+        )
+
+        if isinstance(vm, ExecutionController):
+            wrapped = vm.vm
+            receiver = (vm, wrapped, _receiver_tail(wrapped))
     try:
         finalize(vm, policy=Completion.POST_HALT if dump_pending else Completion.HALTED)
     except EsolangError as error:
         _retain_fault_steps(vm, error, steps)
         raise
-    if not dump_pending:
-        return True
-    _raise_halt_fault(vm)
-    return all(controller.vm is wrapped for controller, wrapped in receivers)
-
-
-def _completion_receivers(vm: VM) -> tuple[tuple[ExecutionController, VM], ...]:
-    """Retain the controller links that determine the pending dump's receiver."""
-    from esolangs.runtime._controller import ExecutionController
-
-    if isinstance(vm, ExecutionController):
-        wrapped = vm.vm
-        return ((vm, wrapped), *_completion_receivers(wrapped))
-    return ()
+    if dump_pending:
+        _raise_halt_fault(vm)
+    return receiver is None or _receiver_matches(*receiver)
 
 
 def _retain_observer_steps(vm: object, error: EsolangError, steps: int) -> bool:
@@ -478,9 +476,9 @@ def _recorded_halt_fault(vm: object, *, replay: bool = False) -> EsolangError | 
     if isinstance(vm, ExecutionController):
         saved = vm._active_fault  # noqa: SLF001
         if saved is not None:
-            wrapped, owner, error = saved
-            # A caller can replace its VM or move it off its failed halt.
-            if vm.vm is wrapped and _controller_vm(wrapped) is owner and vm.halted:
+            owner, error = saved
+            # Rewrapping the leaf preserves evidence from its failed halt.
+            if _controller_vm(vm.vm) is owner and vm.halted:
                 return error
         return _recorded_halt_fault(vm.vm, replay=replay)
     return None

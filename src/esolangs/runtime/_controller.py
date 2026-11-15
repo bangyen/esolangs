@@ -51,10 +51,10 @@ class ExecutionController:
                 ):
                     raise ArgumentError(f"vm must be a VM with a {name} attribute")
         self.vm = vm
-        self._dumped: tuple[VM, VM] | None = None
+        self._dumped: VM | None = None
         self._steps = 0
         self._faulted_owner: VM | None = None
-        self._active_fault: tuple[VM, VM, EsolangError] | None = None
+        self._active_fault: tuple[VM, EsolangError] | None = None
         self._observer_fault: tuple[EsolangError, bool] | None = None
 
     def _record(self) -> None:
@@ -186,17 +186,19 @@ class ExecutionController:
                     None if isinstance(owner, _DelegatingVM) else owner
                 )
                 if active and self._faulted_owner is not None:
-                    self._active_fault = (wrapped, owner, exc)
+                    self._active_fault = (owner, exc)
                 self._observe_fault(owner, exc)
                 raise
         if active:
             self._faulted_owner = None
             self._active_fault = None
+            if self._dumped is owner:
+                self._dumped = None
             self._steps += 1
-        elif wrapped.dumps_on_the_post_halt_step:
+        elif owner.dumps_on_the_post_halt_step:
             self._faulted_owner = None
             if not isinstance(owner, _DelegatingVM):
-                self._dumped = (wrapped, owner)
+                self._dumped = owner
         try:
             if observer_fault is not None:
                 raise observer_fault
@@ -214,10 +216,7 @@ class ExecutionController:
             return _post_halt_dumped(owner)
         if self._faulted_owner is owner:
             return False
-        saved = self._dumped
-        return (
-            saved is not None and saved[0] is wrapped and saved[1] is owner
-        ) or _post_halt_dumped(wrapped)
+        return self._dumped is owner or _post_halt_dumped(wrapped)
 
     def run(self, *, limits: ExecutionLimits | None = None) -> StopReason:
         """Execute until the machine halts, a breakpoint fires, or a bound ends it.
@@ -295,15 +294,13 @@ class ExecutionController:
                 if deadline is not None and monotonic() >= deadline:
                     return "execution_timeout"
                 receiver = self.vm
-                owner = _controller_vm(receiver)
+                tail = _receiver_tail(receiver)
                 self._take_step()
                 requested = self._stop_requested()
                 if requested == "breakpoint":
                     return requested
-                if (
-                    requested in ("active", "replaced")
-                    or self.vm is not receiver
-                    or _controller_vm(receiver) is not owner
+                if requested in ("active", "replaced") or not _receiver_matches(
+                    self, receiver, tail
                 ):
                     # A new receiver gets its own command and dump boundaries.
                     _raise_halt_fault(self)
@@ -346,3 +343,34 @@ class ExecutionController:
         error.partial_output = self.output
         error.observation = replace(_capture_observation(self.vm), steps=self._steps)
         return _failed_outcome(error)
+
+
+def _receiver_tail(first: VM) -> tuple[VM, ...] | None:
+    """Capture nested links without allocating for a direct receiver."""
+    if not isinstance(first, ExecutionController):
+        return None
+    tail: list[VM] = []
+    seen = {id(first)}
+    current = first.vm
+    while isinstance(current, ExecutionController):
+        if id(current) in seen:
+            raise TypeError("debugger VM chain contains a cycle")
+        seen.add(id(current))
+        tail.append(current)
+        current = current.vm
+    tail.append(current)
+    return tuple(tail)
+
+
+def _receiver_matches(
+    controller: ExecutionController, first: VM, tail: tuple[VM, ...] | None
+) -> bool:
+    """Keep each dispatch link pinned by identity."""
+    if controller.vm is not first:
+        return False
+    if tail is not None:
+        for receiver in tail:
+            if not isinstance(first, ExecutionController) or first.vm is not receiver:
+                return False
+            first = receiver
+    return True

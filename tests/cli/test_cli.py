@@ -787,10 +787,12 @@ def test_bare_width_does_not_consume_a_table_past_another_option(
 def test_incompatible_generation_options_fail_before_building(
     capsys, monkeypatch, args, message
 ) -> None:
+    from esolangs.operations import generation
+
     def unused(*_args, **_kwargs):
         pytest.fail("incompatible generation options started synthesis")
 
-    monkeypatch.setattr(esolangs, "generate", unused)
+    monkeypatch.setattr(generation, "_generate_checked", unused)
     output, error = _failure(["generate", *args], capsys)
     assert not output
     assert message in error

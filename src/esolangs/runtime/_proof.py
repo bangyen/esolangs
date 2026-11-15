@@ -21,7 +21,6 @@ if TYPE_CHECKING:
         _FramedMachine,
         _SteppableMachine,
     )
-    from esolangs.runtime._vm_protocol import VM
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,38 +202,30 @@ def _proof_receiver_check(
     machine: object, *, owner: object = _UNCHECKED_OWNER
 ) -> Callable[[], None] | None:
     """Keep each live controller link fixed while reusing its proof state."""
-    from esolangs.runtime._controller import ExecutionController
+    from esolangs.runtime._controller import (
+        ExecutionController,
+        _receiver_matches,
+        _receiver_tail,
+    )
 
     if not isinstance(machine, ExecutionController):
         return None
-    controller = machine
-    wrapped = controller.vm
-    if not isinstance(wrapped, ExecutionController):
-        if owner is not _UNCHECKED_OWNER and wrapped is not owner:
-            raise TypeError("debugger VM changed during proof")
+    wrapped = machine.vm
+    tail = _receiver_tail(wrapped)
+    leaf = wrapped if tail is None else tail[-1]
+    if owner is not _UNCHECKED_OWNER and leaf is not owner:
+        raise TypeError("debugger VM changed during proof")
+    if tail is None:
 
         def check_one() -> None:
-            if controller.vm is not wrapped:
+            if machine.vm is not wrapped:
                 raise TypeError("debugger VM changed during proof")
 
         return check_one
 
-    links: list[tuple[ExecutionController, VM]] = [(controller, wrapped)]
-    seen = {id(controller)}
-    while isinstance(wrapped, ExecutionController):
-        if id(wrapped) in seen:
-            raise TypeError("debugger VM chain contains a cycle")
-        seen.add(id(wrapped))
-        controller = wrapped
-        wrapped = controller.vm
-        links.append((controller, wrapped))
-    if owner is not _UNCHECKED_OWNER and wrapped is not owner:
-        raise TypeError("debugger VM changed during proof")
-
     def check_chain() -> None:
-        for controller, receiver in links:
-            if controller.vm is not receiver:
-                raise TypeError("debugger VM changed during proof")
+        if not _receiver_matches(machine, wrapped, tail):
+            raise TypeError("debugger VM changed during proof")
 
     return check_chain
 

@@ -114,6 +114,30 @@ def generate(
     catalog = get_catalog(catalog)
     options = dialect_options(language, settings, catalog=catalog)
     resolved = catalog.resolve(language)
+    return _generate_checked(
+        resolved,
+        truth_table,
+        options,
+        settings,
+        width=width,
+        balance=balance,
+        scale=scale,
+        catalog=catalog,
+    )
+
+
+def _generate_checked(
+    resolved: str,
+    truth_table: str,
+    options: dict[str, Scalar],
+    settings: DialectSettings | None,
+    *,
+    width: int | None,
+    balance: bool,
+    scale: int | None,
+    catalog: Catalog,
+) -> Artifact:
+    """Generate after explicit choices have been validated once."""
     settings = _generation_settings(resolved, options, settings, catalog=catalog)
     return _generate(
         resolved,
@@ -669,6 +693,21 @@ def instantiate(
             validate_defaults=True,
             _sparse_validated=True,
         )
+    return _fill_checked_template(
+        name, template, bits, width=width, settings=settings, catalog=catalog
+    )
+
+
+def _fill_checked_template(
+    name: str,
+    template: TemplateArtifact,
+    bits: list[int],
+    *,
+    width: int | None,
+    settings: DialectSettings | None,
+    catalog: Catalog,
+) -> ProgramArtifact[str]:
+    """Fill and wrap a template after its owner, dialect and row are checked."""
     filled = template.fill(bits)
     program = wrap_program(
         filled.source, catalog.languages[name].id, width, catalog=catalog

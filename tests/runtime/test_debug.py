@@ -210,6 +210,44 @@ def _check_breakpoint_receiver_replacements():
         assert live.run(limits=zero) == ("breakpoint" if stop else "max_steps")
 
 
+def test_breakpoint_hits_do_not_survive_rewrapping() -> None:
+    owner = esolangs.Language(REFERENCE).prepare("+.").make_vm()
+    old, new = debugger_api.Debugger(owner), debugger_api.Debugger(owner)
+    middle = debugger_api.Debugger(old)
+    outer = debugger_api.Debugger(middle)
+
+    def replace_without_hit(vm):
+        vm.vm = new
+        return False
+
+    outer.break_when(lambda vm: vm.vm is old)
+    outer.break_when(replace_without_hit)
+    assert outer.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "max_steps"
+    assert middle.vm is new
+    assert outer.observation.steps == 0
+
+
+def test_manual_step_does_not_recheck_a_suppressed_breakpoint_after_rewrapping():
+    owner = esolangs.Language(REFERENCE).prepare("++.").make_vm()
+    old, new = debugger_api.Debugger(owner), debugger_api.Debugger(owner)
+    middle = debugger_api.Debugger(old)
+    outer = debugger_api.Debugger(middle)
+    checks = []
+
+    def stop(vm):
+        checks.append((vm.vm, vm.ip))
+        return True
+
+    outer.break_when(stop)
+    zero = esolangs.ExecutionLimits(max_steps=0)
+    assert outer.run(limits=zero) == "breakpoint"
+    middle.vm = new
+    outer.step()
+    assert checks == [(old, 0)]
+    assert outer.run(limits=zero) == "breakpoint"
+    assert checks == [(old, 0), (new, 1)]
+
+
 def test_manual_step_can_clear_a_suppressed_breakpoint() -> None:
     dbg = debugger_api.make_debugger(REFERENCE, "+.")
     limits = esolangs.ExecutionLimits(max_steps=2)

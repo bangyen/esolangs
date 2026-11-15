@@ -200,6 +200,28 @@ def _check_callback_replacement_boundaries(monkeypatch):
     assert debug.observation.steps == 0
 
 
+def test_dump_breakpoint_hits_do_not_survive_rewrapping() -> None:
+    owner = esolangs.Language("Cyclic tag").prepare(",1").make_vm()
+    owner.step()
+    assert owner.halted
+    assert not owner.output
+    old, new = Debugger(owner), Debugger(owner)
+    middle = Debugger(old)
+    outer = Debugger(middle)
+
+    def replace_without_hit(vm):
+        if vm.output:
+            vm.vm = new
+        return False
+
+    outer.break_when(lambda vm: bool(vm.output) and vm.vm is old)
+    outer.break_when(replace_without_hit)
+    assert outer.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
+    assert middle.vm is new
+    assert outer.observation.steps == 0
+    assert outer.output == "1"
+
+
 def _check_callback_halt_boundaries(monkeypatch):
     limits = esolangs.ExecutionLimits(max_steps=1)
     machine = vm.make_vm("Cyclic tag", ",1")

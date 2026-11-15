@@ -426,7 +426,8 @@ def _generation_bits(
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
-    from esolangs import generate, instantiate
+    from esolangs.operations.generation import _fill_checked_template, _generate_checked
+    from esolangs.settings import DialectSettings
 
     value_options = _VALUE_OPTIONS["generate"] - {"--set"}
     flag_options = {"--balance", "--plain", "--gzip"}
@@ -477,22 +478,25 @@ def _generate(rest: list[str]) -> None:
         # wraps the template (or hands the width to a *layout* language,
         # which lays it out), and ``instantiate`` wraps a program
         # filled from an unwrapped template; a wrapped one fills in place.
-        artifact = generate(
-            language,
+        choices = {} if settings is None else DialectSettings.options(settings)
+        artifact = _generate_checked(
+            declaration.name,
             table,
+            choices,
+            settings,
             width=width,
             balance=balance,
             scale=scale or 1,
-            settings=settings,
             catalog=catalog,
         )
         if row is not None:
-            artifact = instantiate(
-                language,
+            assert isinstance(artifact, TemplateArtifact)
+            artifact = _fill_checked_template(
+                declaration.name,
                 artifact,
                 row,
                 width=width,
-                settings=settings,
+                settings=artifact.settings,
                 catalog=catalog,
             )
         program = artifact.source

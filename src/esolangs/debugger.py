@@ -17,7 +17,7 @@ from esolangs.registry._catalog import Catalog
 from esolangs.runtime._capabilities import IpShape
 from esolangs.runtime._controller import ExecutionController as _ExecutionController
 from esolangs.runtime._controller import StopReason as StopReason
-from esolangs.runtime._controller import _StopRequest
+from esolangs.runtime._controller import _receiver_matches, _receiver_tail, _StopRequest
 from esolangs.runtime._drive import _check_snapshot_hash, _SnapshotUnavailableError
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._source import ProgramSource
@@ -29,7 +29,7 @@ from esolangs.runtime._validate import (
 )
 from esolangs.runtime._vm_protocol import VM
 from esolangs.settings import DialectSettings
-from esolangs.vm import _controller_vm, _DelegatingVM, _raise_halt_fault, make_vm
+from esolangs.vm import _DelegatingVM, _raise_halt_fault, make_vm
 
 __all__ = [
     "STOP_REASONS",
@@ -74,11 +74,7 @@ class Debugger(_ExecutionController):
         self._cell_history: dict[int, list[int | None]] = {}
         self._stack_history: dict[int, list[object]] = {}
         self._suppressed: set[int] = set()
-        self._suppressed_receiver: tuple[VM, VM] | None = None
-
-    def _same_receiver(self, receiver: tuple[VM, VM]) -> bool:
-        wrapped, owner = receiver
-        return self.vm is wrapped and _controller_vm(wrapped) is owner
+        self._suppressed_receiver: tuple[VM, tuple[VM, ...] | None] | None = None
 
     def step(self) -> None:
         """Execute a command and rearm breakpoints whose conditions clear."""
@@ -87,7 +83,7 @@ class Debugger(_ExecutionController):
         if (
             not self._suppressed
             or receiver is None
-            or not self._same_receiver(receiver)
+            or not _receiver_matches(self, *receiver)
         ):
             return
         breakpoints = self._breakpoints
@@ -97,7 +93,7 @@ class Debugger(_ExecutionController):
                 return
             if breakpoints[index](receiver[0]):
                 still_holding.add(index)
-            if not self._same_receiver(receiver):
+            if not _receiver_matches(self, *receiver):
                 return
         if self._breakpoints is breakpoints:
             self._suppressed = still_holding
@@ -313,14 +309,10 @@ class Debugger(_ExecutionController):
         if not breakpoints:
             return None
         wrapped = self.vm
-        receiver = (wrapped, _controller_vm(wrapped))
+        tail = _receiver_tail(wrapped)
         previous = self._suppressed_receiver
         suppressed = self._suppressed
-        if (
-            previous is None
-            or previous[0] is not wrapped
-            or previous[1] is not receiver[1]
-        ):
+        if previous is None or not _receiver_matches(self, *previous):
             suppressed = set()
 
         hits = set()
@@ -329,7 +321,7 @@ class Debugger(_ExecutionController):
             if self._breakpoints is not breakpoints:
                 break
             hit = bool(predicate(wrapped))
-            if not self._same_receiver(receiver):
+            if not _receiver_matches(self, wrapped, tail):
                 # Earlier hits describe the old VM. Only this predicate can
                 # explicitly stop at its replacement.
                 replacement_hit = hit and index not in suppressed
@@ -337,14 +329,16 @@ class Debugger(_ExecutionController):
             if hit:
                 hits.add(index)
 
-        if replacement_hit is None and self._breakpoints is breakpoints:
-            self._suppressed = hits
-            self._suppressed_receiver = receiver if hits else None
         halted = self.halted
         if halted:
             _raise_halt_fault(self)
         if replacement_hit is not None:
             return "breakpoint" if replacement_hit else "replaced"
+        if not _receiver_matches(self, wrapped, tail):
+            return "replaced"
+        if self._breakpoints is breakpoints:
+            self._suppressed = hits
+            self._suppressed_receiver = (wrapped, tail) if hits else None
         if hits - suppressed:
             return "breakpoint"
         return "halted" if halted else "active"

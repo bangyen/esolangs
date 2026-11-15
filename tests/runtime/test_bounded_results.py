@@ -671,15 +671,56 @@ def test_caller_owned_vm_finalization_remains_local():
     assert vm.calls == 3
 
     for wrapped in (False, True):
-        receiver = Debugger(Custom())
+        raw = Custom()
+        receiver = Debugger(raw)
         live = Debugger(receiver) if wrapped else receiver
         assert live.run(limits=limits) == "halted"
         before = live.observation
+        receiver.vm = Debugger(Debugger(raw))
+        assert live.observation == before
+        assert complete_vm(live, max_steps=0) == "A"
+        assert live.run(limits=limits) == "halted"
+        assert raw.calls == 1
+
         receiver.vm = Custom()
         assert live.observation == replace(before, output="", completion=None)
         assert live.run(limits=limits) == "halted"
         assert live.observation == before
         assert receiver.vm.calls == 1
+
+    class RewrapAfterDump(Debugger):
+        def __init__(self, raw):
+            super().__init__(raw)
+            self.raw = raw
+
+        def step(self):
+            super().step()
+            if self.vm is self.raw:
+                self.vm = Debugger(self.raw)
+
+    raw = Custom()
+    rewrapped = Debugger(RewrapAfterDump(raw))
+    assert complete_vm(rewrapped, max_steps=0) == "A"
+    assert rewrapped.observation.completion.kind is Completion.POST_HALT
+    assert raw.calls == 1
+
+    class RestartableDump(Custom):
+        def step(self):
+            if self.halted:
+                super().step()
+            else:
+                self.halted = True
+
+    raw = RestartableDump()
+    restarted = Debugger(raw)
+    assert restarted.run(limits=limits) == "halted"
+    assert raw.calls == 1
+    raw.halted = False
+    assert complete_vm(restarted, max_steps=1) == "A"
+    assert restarted.observation.steps == 1
+    assert restarted.observation.completion.kind is Completion.POST_HALT
+    assert restarted.run(limits=limits) == "halted"
+    assert raw.calls == 2
 
     class RetryDump(Custom):
         output = ""
@@ -743,18 +784,24 @@ def _check_caller_owned_failed_halt():
     assert caught.value is original
     assert original.observation == inner.observation == outer.observation == partial
     limits = esolangs.ExecutionLimits(max_steps=0)
-    for live in (inner, outer, Debugger(outer)):
-        live.step()  # An idle step is still harmless.
-        for resume in (
-            lambda vm: vm.run(limits=limits),
-            lambda vm: complete_vm(vm, max_steps=0),
-            lambda vm: run_until_halt(vm, limit=0),
-            lambda vm: run_until_halt_or_cycle(vm, limit=0),
-        ):
-            with pytest.raises(esolangs.HaltError) as caught:
-                resume(live)
-            assert caught.value is original
-            assert original.observation == live.observation == partial
+    resumes = (
+        lambda vm: vm.run(limits=limits),
+        lambda vm: complete_vm(vm, max_steps=0),
+        lambda vm: run_until_halt(vm, limit=0),
+        lambda vm: run_until_halt_or_cycle(vm, limit=0),
+    )
+    observation = original.observation
+    for rewrap in (False, True):
+        if rewrap:
+            inner.vm = Debugger(Debugger(inner.vm))
+        for live in (inner, outer, Debugger(outer)):
+            live.step()  # An idle step is still harmless.
+            for resume in resumes:
+                with pytest.raises(esolangs.HaltError) as caught:
+                    resume(live)
+                assert caught.value is original
+                assert original.observation is observation
+                assert live.observation == partial
 
     _check_switched_terminal_halt(Custom, outer, original)
 

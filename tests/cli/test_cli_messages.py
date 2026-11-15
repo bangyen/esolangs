@@ -222,10 +222,12 @@ def test_encode_template_refusal_points_to_cli_generation(capsys, language) -> N
     ],
 )
 def test_bad_bits_are_refused_before_synthesis(capsys, monkeypatch, args) -> None:
+    from esolangs.operations import generation
+
     def unused(*_args, **_kwargs):
         pytest.fail("invalid --bits launched generation")
 
-    monkeypatch.setattr(esolangs, "generate", unused)
+    monkeypatch.setattr(generation, "_generate_checked", unused)
     out, err = _failure(["generate", "--bits", *args], capsys)
     assert out == ""
     assert "--bits must be a string of 0s and 1s" in err
