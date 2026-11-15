@@ -189,6 +189,23 @@ def _check_scoped_portable_bindings(monkeypatch) -> None:
         assert repaired.settings.options() == {"left": 2, "right": 2}
         assert scope.run(repaired).output == "1"
 
+    defaults = esolangs.DialectSchema(
+        language.name, schema.choices, {"left": 2, "right": 1}
+    )
+    bad_runtime = replace(runtime, dialect_schema=defaults)
+    scope = esolangs.Catalog([replace(declaration, runtime=bad_runtime)]).bind(
+        language.name
+    )
+    no_choices = replace(template, settings=None)
+    for table in (None, "01"):
+        with pytest.raises(esolangs.ArgumentError, match="left=2 requires right=2"):
+            scope.instantiate(no_choices, [1], truth_table=table)
+        filled = scope.instantiate(
+            no_choices, [1], truth_table=table, settings=scope.settings(right=2)
+        )
+        assert filled.settings.options() == {"right": 2}
+        assert scope.run(filled).output == "1"
+
 
 def test_short_selector_floor_and_actual_narrow_corpus() -> None:
     template = underload("0110", 1)

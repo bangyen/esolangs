@@ -388,13 +388,17 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
     class AsciiStdout(StringIO):
         encoding = "ascii"
 
-    original = LANGUAGES[REFERENCE]
+    original = LANGUAGES[
+        first(parameterized=True, source_kind="text", answer_mode="output")
+    ]
     for name, id_ in (
         ("-Scoped name", "scoped_name"),
         ("É Scoped name", "e_scoped_name"),
+        ("--Scoped name", "--scoped_name"),
     ):
         local = replace(original, name=name, id=id_)
         scope = esolangs.Catalog([local])
+        bound = scope.bind(name)
         with monkeypatch.context() as active:
             active.setattr(_table, "CATALOG", scope)
             if name.isascii():
@@ -410,8 +414,31 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
             )
             tool, *args = shlex.split(command.removeprefix("spec: "))
             assert tool == "esolangs"
-            assert args == ["describe", "--spec", id_]
-            assert call_main(args, capsys).strip() == scope.bind(name).describe().spec
+            operand = ["--", id_] if id_.startswith("-") else [id_]
+            assert args == ["describe", "--spec", *operand]
+            assert call_main(args, capsys).strip() == bound.describe().spec
+
+            advice = next(
+                line for line in text.splitlines() if line.startswith("input: ")
+            )
+            fill = advice[advice.index("esolangs generate ") :]
+            tool, *args = shlex.split(
+                fill.replace("<bits>", "1").replace("<table>", "01")
+            )
+            assert tool == "esolangs"
+            assert args == ["generate", "--bits", "1", *operand, "01"]
+            program = call_main(args, capsys)
+            assert bound.read_answer(bound.run(program).output) == "1"
+
+            if id_.startswith("-"):
+                _, error = _failure(
+                    ["generate", "--bits", "1", "--", "01", name], capsys
+                )
+                repair = shlex.split(error.split("first: ", 1)[1])
+                assert repair == [tool, "generate", "--bits=1", *operand, "01"]
+                assert call_main(repair[1:], capsys) == program
+                _, split = _failure(["generate", "--", *name.split(), "01"], capsys)
+                assert shlex.split(split.split("pass it as ", 1)[1]) == operand
 
 
 class TestVersion:

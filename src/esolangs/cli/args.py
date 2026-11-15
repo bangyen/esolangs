@@ -246,10 +246,9 @@ def _check_count(
             except EsolangError:
                 pass
             else:
-                _fail(
-                    "language name was split across arguments; "
-                    f"quote it as {_as_argument(resolved, catalog=catalog)}"
-                )
+                operand = _as_argument(resolved, catalog=catalog)
+                action = "pass it as" if operand.startswith("-- ") else "quote it as"
+                _fail(f"language name was split across arguments; {action} {operand}")
         hint = (
             f"; --width took no value here (only an integer counts as one), so "
             f"it used the default width and {args[0]!r} was read as the language"
@@ -527,4 +526,4 @@ def _settings_of(
         choices = values | overrides
         return bound.settings(**choices)  # type: ignore[arg-type]
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)

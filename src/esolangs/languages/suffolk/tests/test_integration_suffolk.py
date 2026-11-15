@@ -194,6 +194,60 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     with guarded_worker(expected=2):
         assert esolangs.run("Suffolk", "<", isolated=True) == result
         assert esolangs.run("Suffolk", ",", isolated=True) == ended
+
+    api = esolangs.Language("Suffolk")
+    record = api.catalog.languages[api.name]
+
+    def prepare(_source, _options):
+        def initialize(io):
+            io.print_char(chr(io.input_char()))
+            return custom
+
+        return initialize
+
+    monkeypatch.setattr(interpreter, "custom_prepare", prepare, raising=False)
+    scoped = esolangs.Catalog(
+        [
+            replace(
+                record,
+                runtime=replace(record.runtime, machine_preparation="custom_prepare"),
+            )
+        ]
+    ).bind(api.name)
+    prepared = scoped.prepare("<")
+    limits = esolangs.ExecutionLimits(max_steps=2)
+    observed = esolangs.ExecutionResult("A", 1, 1, 0, steps=0)
+    for fields in ({}, {"snapshot": 0}):
+        custom = SimpleNamespace(step=lambda: None, halted=False, **fields)
+        for outcome in (
+            scoped.execute("<", stdin="A", limits=limits),
+            prepared.execute(stdin="A", limits=limits),
+        ):
+            assert isinstance(outcome.error, esolangs.InterpreterLimitError)
+            assert "callable snapshot" in str(outcome.error)
+            assert outcome.observation == outcome.error.observation == observed
+        custom.halted = True
+        assert prepared.run(stdin="A", limits=limits) == replace(
+            observed, completion=ended.completion
+        )
+
+    class Alternating:
+        halted = False
+        index = 0
+
+        def step(self):
+            self.index += 1
+
+        @property
+        def snapshot(self):
+            index = self.index
+            return lambda: index % 2
+
+    custom = Alternating()
+    stepped = prepared.run(stdin="A", limits=limits)
+    assert stepped.output == "A"
+    assert stepped.steps == stepped.completion.cycle.repeat_pass == 2
+
     monkeypatch.setattr(
         vm,
         "interpreter_module",

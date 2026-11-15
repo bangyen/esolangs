@@ -12,6 +12,7 @@ from esolangs._cycles import (
     _DrawDependentHaltError,
     _halt_or_cycle_result,
     _ProofBudgetExhaustedError,
+    _ProofSnapshotUnavailableError,
     _unwrap,
 )
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
@@ -122,6 +123,7 @@ def _termination_result(
             except (
                 _BranchingUnavailableError,
                 _DrawDependentHaltError,
+                _ProofSnapshotUnavailableError,
                 TimeoutError,
             ) as error:
                 if (

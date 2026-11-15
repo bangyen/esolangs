@@ -698,6 +698,7 @@ def test_stream_export_retains_relative_symlink_traversal(
     assert (actual / "program").read_bytes() == b"+."
     assert set(actual.iterdir()) == {child, actual / "program"}
     assert api.run(actual / "program").output == "\x01"
+    assert api.from_file("link/../program").source == "+."
 
 
 @pytest.mark.skipif(os.name != "posix", reason="requires POSIX directory modes")

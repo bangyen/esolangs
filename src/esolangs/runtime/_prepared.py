@@ -38,6 +38,7 @@ from esolangs.runtime._machine import (
 from esolangs.runtime._program import Program, RunnerProgram
 from esolangs.runtime._source import (
     ProgramSource,
+    anchor_program_source,
     check_scale_for,
     effective_scale,
     source_for,
@@ -369,6 +370,7 @@ def prepare_program(
     bind_machine: bool = False,
 ) -> PreparedProgram:
     """Load source once, resolving provenance and explicit execution choices."""
+    program = anchor_program_source(program)
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
     settings, scale = _check_source_options(

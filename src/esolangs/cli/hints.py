@@ -159,11 +159,10 @@ def _swapped_hint(
     except UnknownLanguageError as exc:
         return f"{guidance}. {exc}"
     flags = "".join(f"{shlex.quote(option)} " for option in options)
-    separator = "-- " if table.startswith("-") else ""
-    return (
-        f"{guidance}: esolangs generate "
-        f"{flags}{separator}{_as_argument(table, catalog=catalog)} {language}"
+    operand = _as_argument(
+        table, catalog=catalog, force_separator=table.startswith("-")
     )
+    return f"{guidance}: esolangs generate {flags}{operand} {language}"
 
 
 def _did_you_mean(word: str, known: Iterable[str]) -> str:
@@ -206,9 +205,13 @@ def _is_option(value: str) -> bool:
 
 
 def _as_argument(
-    language: str, *, catalog: Catalog, encoding: str | None = None
+    language: str,
+    *,
+    catalog: Catalog,
+    encoding: str | None = None,
+    force_separator: bool = False,
 ) -> str:
-    """Quote a language, using its ID for an option-shaped or unencodable name."""
+    """Quote a language ID or name and add an option separator when needed."""
     codec = encoding or getattr(sys.stderr, "encoding", None) or "utf-8"
     try:
         language.encode(codec)
@@ -219,4 +222,5 @@ def _as_argument(
     if needs_id:
         with suppress(UnknownLanguageError):
             language = catalog.languages[catalog.resolve(language)].id
-    return shlex.quote(language)
+    separator = "-- " if force_separator or _is_option(language) else ""
+    return separator + shlex.quote(language)

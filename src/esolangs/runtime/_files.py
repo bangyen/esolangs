@@ -11,6 +11,7 @@ from io import BufferedReader, BufferedRWPair, FileIO, IOBase
 from math import ceil
 from os import PathLike, fspath
 from pathlib import Path
+from string import ascii_uppercase
 from tempfile import TemporaryDirectory
 from time import monotonic
 from typing import IO, cast, overload
@@ -212,13 +213,70 @@ def explicit_path(path: str | PathLike[str]) -> _ExplicitPath:
     return _ExplicitPath(spelling)
 
 
-def _anchored_spelling(path: str) -> str:
+class _SourceDirectory:
+    """Capture the lexical bases a late path provider may select."""
+
+    def __init__(self, spelling: str | None) -> None:
+        self.current = self._capture()
+        self.drives: dict[str, str | OSError] = {}
+        if os.name != "nt":
+            return
+        if spelling is None:
+            # A managed provider may return a drive-relative operand later.
+            drives = tuple(f"{letter}:" for letter in ascii_uppercase)
+        else:
+            drive = os.path.splitdrive(spelling)[0]
+            drives = (drive.upper(),) if drive else ()
+        active = (
+            os.path.splitdrive(self.current)[0].upper()
+            if isinstance(self.current, str)
+            else None
+        )
+        self.drives.update(
+            (drive, self.current if drive == active else self._capture(drive))
+            for drive in drives
+        )
+
+    @staticmethod
+    def _capture(drive: str = "") -> str | OSError:
+        try:
+            return _working_directory(drive)
+        except OSError as error:
+            return error
+
+    def resolve(self, spelling: str) -> str:
+        return _anchored_spelling(spelling, self)
+
+    def base(self, drive: str) -> str:
+        result = self.drives.get(drive.upper()) if drive else self.current
+        if isinstance(result, OSError):
+            raise result
+        return _working_directory(drive) if result is None else result
+
+
+def _working_directory(drive: str) -> str:
+    return os.path.abspath(f"{drive}.") if drive else os.getcwd()
+
+
+def _absolute_spelling(path: str, drive: str) -> bool:
+    return os.path.isabs(path) and (os.name != "nt" or bool(drive))
+
+
+def _source_directory(spelling: str | None) -> _SourceDirectory | None:
+    if spelling is not None and _absolute_spelling(
+        spelling, os.path.splitdrive(spelling)[0]
+    ):
+        return None
+    return _SourceDirectory(spelling)
+
+
+def _anchored_spelling(path: str, directory: _SourceDirectory | None = None) -> str:
     """Freeze the current directory without normalizing the target spelling."""
     drive, tail = os.path.splitdrive(path)
-    if os.path.isabs(path) and (os.name != "nt" or drive):
+    if _absolute_spelling(path, drive):
         return path
     # Windows has both rooted paths on the current drive and drive-local CWDs.
-    base = os.path.abspath(f"{drive}.") if drive else os.getcwd()
+    base = _working_directory(drive) if directory is None else directory.base(drive)
     return os.path.join(base, tail)
 
 

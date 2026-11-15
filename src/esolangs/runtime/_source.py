@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
+from pathlib import PosixPath, WindowsPath
 from typing import IO, TYPE_CHECKING, cast
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
@@ -17,7 +18,13 @@ from esolangs.outcomes import (
 )
 from esolangs.raster import Raster
 from esolangs.runtime._definition import SourceLoader
-from esolangs.runtime._files import explicit_path, read_snapshot
+from esolangs.runtime._files import (
+    _ExplicitPath,
+    _source_directory,
+    _SourceDirectory,
+    explicit_path,
+    read_snapshot,
+)
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import _has_backing_type, check_scale
 from esolangs.runtime.source_hints import (
@@ -50,6 +57,60 @@ class _FileSource:
         return self.path
 
 
+@dataclass(frozen=True, slots=True)
+class _SourcePath:
+    """Keep the caller's directory without binding their path provider yet."""
+
+    argument: str | os.PathLike[str]
+    directory: _SourceDirectory | None
+
+    @classmethod
+    def capture(cls, path: str | os.PathLike[str]) -> _SourcePath:
+        if _has_backing_type(path, cls):
+            return path
+        spelling = None
+        if _has_backing_type(path, _ExplicitPath):
+            spelling = path.spelling
+        elif _has_backing_type(path, str):
+            spelling = str.__str__(path)
+        elif type(path) in (PosixPath, WindowsPath):
+            spelling = str(path)
+        return cls(path, _source_directory(spelling))
+
+    def bind(self) -> _SourcePath:
+        """Validate the explicit file argument at the public loader's boundary."""
+        return _SourcePath(explicit_path(self.argument), self.directory)
+
+    def resolve(self, spelling: str) -> str:
+        return spelling if self.directory is None else self.directory.resolve(spelling)
+
+    def __fspath__(self) -> str:
+        return self.resolve(explicit_path(self.argument).spelling)
+
+
+def anchor_program_source[T](source: T) -> T | _SourcePath:
+    """Capture the base of path operands once, leaving other inputs untouched."""
+    if issubclass(type(source), os.PathLike) and not _has_backing_type(
+        source, _SourcePath
+    ):
+        return _SourcePath.capture(cast("os.PathLike[str]", source))
+    return source
+
+
+def _open_program_path(filename: str, label: str) -> IO[bytes]:
+    try:
+        return open(filename, "rb")
+    except OSError as error:
+        if (
+            filename != label
+            and type(error).__module__ == "builtins"
+            and error.filename == filename
+        ):
+            # The OS names the anchored spelling. Report the caller's operand.
+            error.filename = label
+        raise
+
+
 @_track_acquisition_failures()
 def _read_container(
     source: ProgramSource | _FileSource,
@@ -65,9 +126,15 @@ def _read_container(
         if _has_backing_type(source, _FileSource):
             return source.read(), source.path
         if issubclass(type(source), os.PathLike):
-            path = explicit_path(cast("os.PathLike[str]", source))
-            label = str(path)
-            with open(path, "rb") as file:
+            located = source if _has_backing_type(source, _SourcePath) else None
+            argument = (
+                cast("os.PathLike[str]", source)
+                if located is None
+                else located.argument
+            )
+            label = explicit_path(argument).spelling
+            filename = label if located is None else located.resolve(label)
+            with _open_program_path(filename, label) as file:
                 return read_snapshot(file), label
         if _has_backing_type(source, Raster) or _has_backing_type(
             source, CompressedText

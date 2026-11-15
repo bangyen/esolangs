@@ -10,19 +10,20 @@ from __future__ import annotations
 
 from collections.abc import Callable, Hashable, Sequence
 from inspect import signature
-from typing import cast, get_args
+from typing import get_args
 
 from esolangs.exceptions import ArgumentError
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._capabilities import IpShape
 from esolangs.runtime._controller import ExecutionController as _ExecutionController
 from esolangs.runtime._controller import StopReason as StopReason
+from esolangs.runtime._drive import _SnapshotUnavailableError
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_whole
 from esolangs.runtime._vm_protocol import VM
 from esolangs.settings import DialectSettings
-from esolangs.vm import SnapshotVM, make_vm
+from esolangs.vm import make_vm
 
 __all__ = [
     "STOP_REASONS",
@@ -123,13 +124,14 @@ class Debugger(_ExecutionController):
         random-machine cycle proofs require the branching protocol.
 
         The post-halt dump writes output without changing most snapshots
-        (Cyclic tag records the dump in its snapshot).  Every ``make_vm``
-        machine has one; a hand-written VM needs ``snapshot()`` for this.
+        (Cyclic tag records the dump in its snapshot). The underlying
+        machine must provide ``snapshot()``.
         """
-        snapshot = getattr(self.vm, "snapshot", None)
+        vm = self.vm
+        snapshot: Callable[[], Hashable] | None = getattr(vm, "snapshot", None)
         if not callable(snapshot):
-            raise ArgumentError("vm must provide snapshot() to inspect internal state")
-        return cast(SnapshotVM, self.vm).snapshot()
+            raise _SnapshotUnavailableError(vm)
+        return snapshot()
 
     def break_at(self, ip: int | tuple[int, ...]) -> None:
         """Stop when the program counter reaches ``ip``.

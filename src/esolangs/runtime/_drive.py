@@ -3,6 +3,7 @@
 from collections.abc import Callable, Hashable
 from typing import Protocol, runtime_checkable
 
+from esolangs.exceptions import ArgumentError, InterpreterLimitError
 from esolangs.runtime._lifecycle import (
     HALTED_REPORT,
     POST_HALT_REPORT,
@@ -32,6 +33,21 @@ class PeriodicMachine(SnapshotMachine, Protocol):
     def interrupt(self) -> None: ...
 
 
+class _SnapshotUnavailableError(ArgumentError):
+    """An inspection requires a snapshot the underlying VM does not provide."""
+
+    def __init__(self, vm: object) -> None:
+        super().__init__("vm must provide snapshot() to inspect internal state")
+        self.vm = vm
+
+
+def _repeat_hook(machine: object, name: str) -> Callable[[], Hashable]:
+    hook: Callable[[], Hashable] | None = getattr(machine, name, None)
+    if not callable(hook):
+        raise InterpreterLimitError(f"repeat execution requires a callable {name}()")
+    return hook
+
+
 def finalize(
     machine: Machine,
     *,
@@ -44,11 +60,9 @@ def finalize(
     if policy is Completion.PERIODIC:
         if cycle is None:
             raise ValueError("periodic completion needs boundary-cycle evidence")
-        if not isinstance(machine, PeriodicMachine):
-            raise TypeError("periodic completion needs snapshot and interrupt")
-        if machine.snapshot() != cycle.state:
+        if _repeat_hook(machine, "snapshot")() != cycle.state:
             raise ValueError("boundary-cycle evidence no longer matches the machine")
-        machine.interrupt()
+        _repeat_hook(machine, "interrupt")()
         machine.step()
     else:
         if cycle is not None:
@@ -76,8 +90,17 @@ def drive_until_repeat(
     take_step = machine.step if step is None else step
     seen: set[Hashable] = set()
     history: list[Hashable] = []
+    snapshot: Callable[[], Hashable] | None
     while not machine.halted:
-        state = machine.snapshot()
+        try:
+            snapshot = machine.snapshot
+        except AttributeError:
+            snapshot = None
+        if not callable(snapshot):
+            raise InterpreterLimitError(
+                "repeat execution requires a callable snapshot()"
+            )
+        state = snapshot()
         if state in seen:
             cycle = BoundaryCycle(state, history.index(state), len(history), 1)
             return CompletionReport(Completion.PERIODIC, cycle)
@@ -100,7 +123,7 @@ def drive_periodic(
     if policy is not Completion.PERIODIC:
         raise ValueError("periodic driving requires periodic completion")
     take_step = machine.step if step is None else step
-    anchor = machine.snapshot()
+    anchor = _repeat_hook(machine, "snapshot")()
     first_pass = 0
     repeat_pass = 0
     power = 1
@@ -110,7 +133,7 @@ def drive_periodic(
             take_step()
         passes += 1
         repeat_pass += 1
-        state = machine.snapshot()
+        state = _repeat_hook(machine, "snapshot")()
         if state == anchor:
             break
         if passes == power:

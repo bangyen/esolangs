@@ -14,13 +14,14 @@ from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failur
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
-from esolangs.runtime._files import explicit_path
 from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import (
     ProgramSource,
     _FileSource,
     _read_container,
+    _SourcePath,
+    anchor_program_source,
     check_raster_gzip,
     source_for,
 )
@@ -127,6 +128,7 @@ def read_artifact(
     """Acquire source once, merging explicit choices with the retained settings."""
     from esolangs.registry._catalog import get_catalog
 
+    program = anchor_program_source(program)
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
     settings = effective_settings(name, program, settings, catalog=catalog)
@@ -288,12 +290,13 @@ def from_file(
     """
     from esolangs.registry._catalog import get_catalog
 
+    captured = _SourcePath.capture(path)
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
     check_flag(normalize, "normalize")
     dialect_options(name, settings, catalog=catalog)
     try:
-        source = explicit_path(path)
+        source = captured.bind()
     except EsolangError:
         raise
     except OSError as error:

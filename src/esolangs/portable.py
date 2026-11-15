@@ -38,6 +38,7 @@ from esolangs.runtime._files import explicit_path, reserve_staged, write_staged
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._source import (
     ProgramSource,
+    anchor_program_source,
     native_file_terminator,
 )
 from esolangs.runtime._validate import _has_backing_type
@@ -150,6 +151,7 @@ def to_file(
     """
     from esolangs.registry._catalog import get_catalog
 
+    program = anchor_program_source(program)
     catalog = get_catalog(catalog)
     if type(gzip) is not bool:
         raise ArgumentError("gzip must be a boolean")
@@ -227,6 +229,7 @@ def to_json(
     """
     from esolangs.registry._catalog import get_catalog
 
+    program = anchor_program_source(program)
     catalog = get_catalog(catalog)
     from esolangs.operations.source import read_artifact
 

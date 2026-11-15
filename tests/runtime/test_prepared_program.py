@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from dataclasses import replace
 from io import BytesIO, StringIO
+from pathlib import Path
 from threading import Event, Thread
 from time import monotonic
 from types import ModuleType
@@ -164,7 +165,7 @@ def test_prepared_termination_uses_its_retained_preparation():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("options", [{}, {"max_steps": 3}, {"total_timeout": 5}])
-def test_invalid_stdin_container_leaves_source_unread(options):
+def test_invalid_stdin_container_leaves_source_unread(options, tmp_path, monkeypatch):
     source = BytesIO(b",+.")
     limits = esolangs.ExecutionLimits(**options)
     api = esolangs.Language(REFERENCE)
@@ -174,6 +175,39 @@ def test_invalid_stdin_container_leaves_source_unread(options):
     assert source.tell() == 0
     assert api.run(source, stdin="A", limits=limits).output == "B"
     assert source.tell() == 3
+
+    caller, other = tmp_path / "caller", tmp_path / "other"
+    caller.mkdir()
+    other.mkdir()
+    (caller / "program").write_text(",+.")
+    (other / "program").write_text("++.")
+    monkeypatch.chdir(caller)
+
+    class Source:
+        calls = 0
+
+        def __fspath__(self) -> str:
+            self.calls += 1
+            return f"{caller.drive}program"
+
+    class Stdin(StringIO):
+        @property
+        def read(self):
+            monkeypatch.chdir(other)
+            return super().read
+
+    provider = Source()
+    rejected = api.execute(provider, stdin=object(), limits=limits)
+    assert isinstance(rejected.error, esolangs.ArgumentError)
+    assert provider.calls == 0
+    assert api.run(provider, stdin=Stdin("A"), limits=limits).output == "B"
+    assert provider.calls == 1
+    monkeypatch.chdir(caller)
+    assert api.run(Path("program"), stdin=Stdin("A"), limits=limits).output == "B"
+    monkeypatch.chdir(caller)
+    assert api.run(caller / "program", stdin=Stdin("A"), limits=limits).output == "B"
+    monkeypatch.chdir(caller)
+    assert complete_vm(api.make_vm(Path("program"), stdin=Stdin("A"))) == "B"
 
 
 def _check_preparation_consumes_source_once_and_keeps_fresh_invocations():
@@ -317,8 +351,86 @@ def _check_prepared_source_options_and_lines_are_reused():
     assert validated == []
 
 
+def _check_relative_source_precedes_dialect_callbacks(tmp_path, monkeypatch):
+    caller, other = tmp_path / "caller", tmp_path / "other"
+    caller.mkdir()
+    other.mkdir()
+    (caller / "program").write_text("+.")
+    (other / "program").write_text("++.")
+    (other / "absent").write_text("++.")
+    declaration = LANGUAGES[REFERENCE]
+    schema = esolangs.DialectSchema(REFERENCE, {"mode": ("move",)}, {"mode": "move"})
+    armed = False
+
+    def validate(mode="move"):
+        if armed and mode == "move":
+            monkeypatch.chdir(other)
+
+    runtime = replace(declaration.runtime, dialect=validate, dialect_schema=schema)
+    api = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
+    settings = api.settings()
+    armed = True
+
+    class Source:
+        calls = 0
+
+        def __fspath__(self) -> str:
+            assert Path.cwd().samefile(other)  # Validation precedes path binding.
+            self.calls += 1
+            return "program"
+
+    def exported(source):
+        path = caller / "export"
+        api.to_file(source, path, settings=settings)
+        return path.read_text()
+
+    for route, expected in (
+        (lambda source: api.from_file(source, settings=settings).source, "+."),
+        (lambda source: api.run(source, settings=settings).output, "\x01"),
+        (lambda source: api.prepare(source, settings=settings).run().output, "\x01"),
+        (
+            lambda source: api.from_json(api.to_json(source, settings=settings)).source,
+            "+.",
+        ),
+        (exported, "+."),
+    ):
+        monkeypatch.chdir(caller)
+        provider = Source()
+        assert route(provider) == expected
+        assert provider.calls == 1
+        monkeypatch.chdir(caller)
+        assert route(caller / "program") == expected
+
+    monkeypatch.chdir(caller)
+    assert api.from_file("program", settings=settings).source == "+."
+    monkeypatch.chdir(caller)
+    with pytest.raises(
+        esolangs.ProgramNotFoundError, match=r"cannot read absent:"
+    ) as missing:
+        api.from_file("absent", settings=settings)
+    assert missing.value.__cause__.filename == "absent"
+
+    class RedirectingSource(Source):
+        def __fspath__(self) -> str:
+            monkeypatch.chdir(other)
+            return super().__fspath__()
+
+    armed = False
+    for route in (api.from_file, api.prepare):
+        monkeypatch.chdir(caller)
+        provider = RedirectingSource()
+        record = route(provider)
+        result = (
+            api.run(record)
+            if isinstance(record, esolangs.ProgramArtifact)
+            else record.run()
+        )
+        assert result.output == "\x01"
+        assert provider.calls == 1
+
+
 @pytest.mark.medium
-def test_prepared_invocations_own_source_state_and_randomness(monkeypatch):
+def test_prepared_invocations_own_source_state_and_randomness(monkeypatch, tmp_path):
     _check_uniform_outcomes_and_phase_limits()
     with monkeypatch.context() as patch:
         _check_preparation_timeout(patch)
@@ -329,6 +441,8 @@ def test_prepared_invocations_own_source_state_and_randomness(monkeypatch):
     _check_prepared_isolation_preserves_the_same_observation()
     _check_prepared_failures_retain_partial_observations()
     _check_preparation_resets_seeded_randomness_for_each_invocation()
+    with monkeypatch.context() as paths:
+        _check_relative_source_precedes_dialect_callbacks(tmp_path, paths)
 
 
 @pytest.mark.parametrize("max_steps", [None, 2])

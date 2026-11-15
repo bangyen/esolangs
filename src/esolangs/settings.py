@@ -36,21 +36,23 @@ def dialect_options(
     catalog: "Catalog | None" = None,
     validate_defaults: bool = False,
 ) -> dict[str, Scalar]:
-    """Validate sparse choices and, for execution, their effective defaults."""
+    """Validate sparse choices and, when requested, their effective defaults."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
 
-    if settings is None:
+    if settings is None and not validate_defaults:
         return {}
-    if not _has_backing_type(settings, DialectSettings):
+    if settings is not None and not _has_backing_type(settings, DialectSettings):
         raise ArgumentError(
             f"settings must be a DialectSettings object, got {type(settings).__name__}"
         )
     name = catalog.resolve(language)
     runtime = catalog.languages[name].runtime
+    if settings is None and runtime.dialect_schema is None:
+        return {}
     schema = runtime.dialect_schema or DialectSchema(name, {}, {})
-    if settings._schema != schema:  # noqa: SLF001 - verify the declared domain schema
+    if settings is not None and settings._schema != schema:  # noqa: SLF001
         if settings.language == name:
             raise ArgumentError(
                 f"dialect settings for {name} use a different schema from this catalog"
@@ -58,7 +60,7 @@ def dialect_options(
         raise ArgumentError(
             f"dialect settings belong to {settings.language}, not {name}"
         )
-    values = settings.options()
+    values = {} if settings is None else settings.options()
     if runtime.dialect is not None:
         checked = schema.defaults | values if validate_defaults else values
         try:

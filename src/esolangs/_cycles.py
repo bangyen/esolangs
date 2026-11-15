@@ -9,6 +9,7 @@ from inspect import getattr_static, signature
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
+from esolangs.runtime._drive import _SnapshotUnavailableError
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchFailure, BranchProof, CycleDecision
 from esolangs.runtime._validate import _has_backing_type, check_whole
@@ -244,6 +245,24 @@ class _ProofBudgetExhaustedError(TimeoutError):
     """The detector reached its command or branching state limit."""
 
 
+class _ProofSnapshotUnavailableError(TypeError):
+    """The supplied VM cannot provide exact command-boundary state."""
+
+
+def _proof_snapshot(machine: _StepMachine, adapter: object) -> Hashable:
+    try:
+        return machine.snapshot()
+    except _SnapshotUnavailableError as error:
+        if error.vm is not adapter:
+            raise
+        raise with_hint(
+            _ProofSnapshotUnavailableError(
+                "exact-cycle proof requires a callable snapshot()"
+            ),
+            "provide a machine with a snapshot of its complete state",
+        ) from error
+
+
 def _drive_halt_or_cycle(
     machine: _StepMachine | VM,
     limit: int | None,
@@ -306,7 +325,9 @@ def _drive_halt_or_cycle(
         )
     if record_commands is not None:
         record_commands(0)
-    tortoise = machine.snapshot()
+    if halted_before:
+        return CycleDecision(halts=True, commands=0) if evidence else True
+    tortoise = _proof_snapshot(machine, adapter)
     first_step = 0
     power = 1
     length = 0
@@ -331,7 +352,7 @@ def _drive_halt_or_cycle(
         halted: bool = machine.halted
         if halted:
             return CycleDecision(halts=True, commands=steps) if evidence else True
-        if machine.snapshot() == tortoise:
+        if _proof_snapshot(machine, adapter) == tortoise:
             return (
                 CycleDecision(
                     halts=False,
@@ -342,7 +363,7 @@ def _drive_halt_or_cycle(
                 else False
             )
         if length == power:
-            tortoise = machine.snapshot()
+            tortoise = _proof_snapshot(machine, adapter)
             first_step = steps
             power *= 2
             length = 0

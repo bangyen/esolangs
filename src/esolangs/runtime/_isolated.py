@@ -393,7 +393,9 @@ def _invoke_worker(
     from esolangs.operations.source import _check_program
     from esolangs.registry._catalog import get_catalog
     from esolangs.runtime._prepared import _check_source_options
+    from esolangs.runtime._source import anchor_program_source
 
+    program = anchor_program_source(program)
     catalog = get_catalog(catalog)
 
     max_output, max_memory = check_limits(max_output, max_memory, isolated=True)

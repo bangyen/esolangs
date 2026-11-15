@@ -385,14 +385,16 @@ def test_scoped_runtime_defaults_reach_native_and_prepared_execution() -> None:
         artifact = scope.from_source(source, settings=settings)
         portable = scope.from_json(scope.to_json(artifact))
         assert portable.settings == settings
+        if settings is None:
+            assert not calls
         assert scope.run(source, settings=settings).output == output
         assert scope.run(portable).output == output
         assert complete_vm(scope.make_vm(portable)) == output
         prepared = scope.prepare(portable)
         assert prepared.artifact.settings == settings
         assert prepared.run().output == complete_vm(prepared.make_vm()) == output
-        if settings is None:
-            assert not calls
+        assert calls
+        assert set(calls) == {"forward" if output else "backward"}
 
     generated = scope.generate("01")
     assert generated.settings.options() == {"rotation": "forward"}

@@ -56,6 +56,7 @@ from esolangs.results import ExecutionResult
 from esolangs.runtime._capabilities import IpShape as _IpShape
 from esolangs.runtime._drive import (
     PeriodicMachine,
+    _SnapshotUnavailableError,
     drive_periodic,
     drive_until_repeat,
     finalize,
@@ -121,14 +122,6 @@ def _retain_fault_steps(vm: VM, error: EsolangError, steps: int) -> None:
             _record_vm_fault(vm, error, observation)
         else:
             error.observation = observation
-
-
-@runtime_checkable
-class _PassMachine(PeriodicMachine, Protocol):
-    """A machine that declares its cycle-checkpoint stride."""
-
-    @property
-    def commands_per_pass(self) -> int: ...
 
 
 class _DelegatingVM:
@@ -254,13 +247,16 @@ class _DelegatingVM:
         ):
             if exact_repeat:
                 return drive_until_repeat(machine, step=step)
-            if not isinstance(machine, _PassMachine):
-                raise ArgumentError(
-                    "periodic execution requires a declared pass stride"
-                )
+            stride = getattr(machine, "commands_per_pass", None)
+            try:
+                stride = check_whole(stride, "commands_per_pass")
+            except ArgumentError as error:
+                raise InterpreterLimitError(
+                    "periodic execution requires a nonnegative integer pass stride"
+                ) from error
             cycle = drive_periodic(
-                machine,
-                machine.commands_per_pass,
+                cast(PeriodicMachine, machine),
+                stride,
                 policy=Completion.PERIODIC,
                 step=step,
             )
@@ -268,7 +264,14 @@ class _DelegatingVM:
 
     def snapshot(self) -> Hashable:
         """Return the underlying machine's complete state."""
-        return self._machine.snapshot()
+        snapshot: Callable[[], Hashable] | None
+        try:
+            snapshot = self._machine.snapshot
+        except AttributeError:
+            snapshot = None
+        if not callable(snapshot):
+            raise _SnapshotUnavailableError(self)
+        return snapshot()
 
     # The views come off the machine by ``getattr`` too, so a language
     # with no stack or no addressable cells says nothing, and one whose
@@ -449,7 +452,9 @@ def _make_vm(
     """Prepare a scoped VM with an invocation-owned input/output factory."""
     from esolangs.registry._catalog import get_catalog
     from esolangs.runtime._prepared import _check_source_options
+    from esolangs.runtime._source import anchor_program_source
 
+    program = anchor_program_source(program)
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
     if prepared is None:

@@ -47,6 +47,7 @@ from esolangs.exceptions import (
 from esolangs.operations.execution import default_total
 from esolangs.registry import get_catalog
 from esolangs.runtime._execution import check_seed_for
+from esolangs.runtime._files import _source_directory
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
 from esolangs.runtime._source import check_scale_for
 from esolangs.runtime.memory import format_integer
@@ -136,6 +137,7 @@ def _run(rest: list[str]) -> None:
     catalog = get_catalog()
     _check_count("run", rest, 2, catalog=catalog)
     language, path = rest
+    directory = _source_directory(path) if path else None
     settings = _settings_of(settings_arguments, language=language, catalog=catalog)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
@@ -155,6 +157,7 @@ def _run(rest: list[str]) -> None:
         _remaining(acquisition, monotonic() - started, flag),
         language=declaration.name,
         timeout_flag=flag,
+        directory=directory,
         settings=settings,
         catalog=catalog,
     )

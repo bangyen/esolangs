@@ -253,6 +253,60 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
     assert caught.value is original
     assert original.observation == expected
 
+    active = esolangs.ExecutionLimits(max_steps=1)
+    for fields in ({}, {"snapshot": 0}):
+        machine = SimpleNamespace(halted=False, step=lambda: None, **fields)
+        debug = prepared.make_debugger(stdin="A")
+        assert debug.run(limits=active) == "max_steps"
+        outcome = prepared.execute(stdin="A", limits=active)
+        assert outcome.bound == "max_steps"
+        assert outcome.observation == debug.observation == replace(expected, steps=1)
+        with pytest.raises(esolangs.ArgumentError, match="must provide snapshot"):
+            debug.snapshot()
+        for live in (debug, debug.vm):
+            with pytest.raises(TypeError, match=r"callable snapshot"):
+                vm.run_until_halt_or_cycle(live, limit=1)
+        assert debug.observation.steps == 1
+
+    machine.halted = True
+    assert vm.run_until_halt_or_cycle(debug, limit=0)
+    machine.halted = False
+
+    refused = esolangs.ArgumentError("snapshot callback refused")
+
+    def snapshot():
+        raise refused
+
+    machine.snapshot = snapshot
+    with pytest.raises(esolangs.ArgumentError, match="snapshot callback") as caught:
+        vm.run_until_halt_or_cycle(debug, limit=1)
+    assert caught.value is refused
+    assert debug.observation.steps == 1
+
+    contract = replace(
+        declaration.contract,
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+    )
+    termination = esolangs.Catalog(
+        [replace(declaration, runtime=runtime, contract=contract)]
+    ).bind(api.name)
+    artifact = termination.from_source(source)
+    for fields in ({}, {"snapshot": 0}):
+        machine = SimpleNamespace(halted=False, step=lambda: None, **fields)
+        with pytest.raises(
+            esolangs.InterpreterLimitError, match="callable snapshot"
+        ) as caught:
+            termination.evaluate(artifact, [1], limits=active)
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "1", 1, 1, 0, steps=0
+        )
+        assert caught.value.partial_output == "1"
+    machine.snapshot = lambda: 0
+    evaluation = termination.evaluate(artifact, [1], limits=active)
+    assert evaluation.termination.halts is False
+    assert evaluation.observation == esolangs.ExecutionResult("1", 1, 1, 0, steps=1)
+
 
 @pytest.mark.parametrize("phase", ["native", "initialize", "step"])
 @pytest.mark.parametrize("completed", [False, True])

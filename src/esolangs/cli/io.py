@@ -41,13 +41,14 @@ from esolangs.runtime._files import (
     _BLOCK,
     StreamReadTimeoutError,
     _binary_snapshot,
+    _SourceDirectory,
     _time_remaining,
     read_snapshot,
     stream_read_deadline,
 )
 from esolangs.runtime._input import input_read_error, read_input
 from esolangs.runtime._program import Program
-from esolangs.runtime._source import _FileSource
+from esolangs.runtime._source import _FileSource, _open_program_path
 from esolangs.runtime._wait import wait_slice
 from esolangs.runtime.source_hints import source_read_error
 from esolangs.settings import DialectSettings
@@ -121,6 +122,7 @@ def _read_program(
     *,
     language: str,
     timeout_flag: str = "",
+    directory: _SourceDirectory | None = None,
     settings: DialectSettings | None = None,
     catalog: Catalog | None = None,
 ) -> ProgramArtifact[Program]:
@@ -132,6 +134,7 @@ def _read_program(
         path,
         timeout,
         timeout_flag=timeout_flag,
+        directory=directory,
         max_bytes=_MAX_GZIP_NATIVE_PROGRAM_BYTES if gzip_native else _MAX_PROGRAM_BYTES,
     )
 
@@ -214,6 +217,7 @@ def _bounded_read(
     timeout: float | None,
     *,
     timeout_flag: str = "",
+    directory: _SourceDirectory | None = None,
     max_bytes: int = _MAX_PROGRAM_BYTES,
 ) -> bytes:
     """Read up to the opening file size or the stream cap, under a deadline."""
@@ -222,7 +226,14 @@ def _bounded_read(
 
     def _read_file() -> bytes:
         try:
-            with open(path, "rb") as handle, stream_read_deadline(deadline):
+            with (
+                (
+                    open(path, "rb")
+                    if directory is None
+                    else _open_program_path(directory.resolve(path), path)
+                ) as handle,
+                stream_read_deadline(deadline),
+            ):
                 _time_remaining(deadline)
                 if isinstance(handle, BufferedReader):
                     fd = handle.fileno()

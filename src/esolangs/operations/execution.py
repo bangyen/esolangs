@@ -22,7 +22,7 @@ from esolangs.runtime._prepared import (
     _prepare_checked_program,
     prepare_program,
 )
-from esolangs.runtime._source import ProgramSource
+from esolangs.runtime._source import ProgramSource, anchor_program_source
 from esolangs.runtime._validate import (
     _ISOLATED_TIMEOUT,
     _has_backing_type,
@@ -141,6 +141,7 @@ def _execute_invocation(
     """Execute through one route, retaining its result metadata."""
     from esolangs.registry._catalog import get_catalog
 
+    program = anchor_program_source(program)
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
     if not isolated and prepared is None:

@@ -93,6 +93,65 @@ def test_partial_overrides_merge_and_validate(
         "",
     )
 
+    rejected = json.dumps({"cell_modulus": 255, "io_modulus": 255})
+    for options in (
+        ["--set", "cell_modulus=255", "--set", "io_modulus=255"],
+        ["--settings", rejected],
+        ["-s", rejected],
+    ):
+        for cmd, operand in (("run", str(path)), ("generate", "01")):
+            output, diagnostic = _failure(
+                [cmd, *options, language.name, operand], capsys
+            )
+            assert output == ""
+            assert diagnostic.splitlines() == [str(error), *error.__notes__]
+
+    generated, diagnostic = call_both(
+        ["generate", "-s", json.dumps(full.options()), language.name, "01"], capsys
+    )
+    assert diagnostic == ""
+    assert (
+        scope.run(generated, stdin=scope.encode_inputs([1]), settings=full).output
+        == "1"
+    )
+
+    schema = runtime.dialect_schema
+    assert schema is not None
+    bad_defaults = esolangs.DialectSchema(
+        language.name, schema.choices, schema.defaults | {"cell_modulus": 255}
+    )
+    default_runtime = replace(scoped.runtime, dialect_schema=bad_defaults)
+    default_scope = esolangs.Catalog([replace(scoped, runtime=default_runtime)]).bind(
+        language.name
+    )
+    stored = default_scope.from_json(
+        default_scope.to_json(default_scope.from_file(path))
+    )
+    assert stored.settings is None
+    for limits in (None, esolangs.ExecutionLimits(max_steps=10)):
+        outcome = default_scope.execute(stored, stdin=Unread(), limits=limits)
+        assert outcome.status == "rejected"
+        assert outcome.error is error
+    for use in (
+        lambda: default_scope.generate("01"),
+        lambda: default_scope.prepare(stored),
+        lambda: esolangs.PreparedProgram(stored, default_scope.catalog),
+        lambda: default_scope.make_vm(stored, stdin=Unread()),
+    ):
+        with pytest.raises(esolangs.ArgumentError) as caught:
+            use()
+        assert caught.value is error
+
+    override = default_scope.settings(io_modulus=256)
+    assert (
+        default_scope.prepare(stored, settings=override).run(stdin="ÿ\n").output
+        == "\x01"
+    )
+    monkeypatch.setattr(_table, "CATALOG", default_scope.catalog)
+    output, diagnostic = _failure(["run", language.name, str(path)], capsys)
+    assert output == ""
+    assert diagnostic.splitlines() == [str(error), *error.__notes__]
+
 
 def test_large_integer_setting_is_rejected() -> None:
     document = json.loads(esolangs.to_json("SLOW ACV MAMMALIAN", "SEED"))

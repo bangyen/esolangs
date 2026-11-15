@@ -1,5 +1,6 @@
 """A Painter Ant through the shared API, CLI and machinery."""
 
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -125,6 +126,64 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
     assert native.completion == report
     monkeypatch.setattr(interpreter._Machine, "completion", Completion.HALTED)
     assert esolangs.run("A Painter Ant", "P") == native
+
+    api = esolangs.Language("A Painter Ant")
+    record = api.catalog.languages[api.name]
+    hooks = {"commands_per_pass": 1, "snapshot": lambda: 0, "interrupt": lambda: None}
+
+    def prepare(_source, _options):
+        def initialize(io):
+            io.print_char(chr(io.input_char()))
+            return SimpleNamespace(step=lambda: None, halted=False, **hooks)
+
+        return initialize
+
+    monkeypatch.setattr(interpreter, "custom_prepare", prepare, raising=False)
+    scoped = esolangs.Catalog(
+        [
+            replace(
+                record,
+                runtime=replace(record.runtime, machine_preparation="custom_prepare"),
+            )
+        ]
+    ).bind(api.name)
+    prepared = scoped.prepare("P")
+    limits = esolangs.ExecutionLimits(max_steps=1)
+    for name, steps, diagnostic in (
+        ("snapshot", 0, "callable snapshot"),
+        ("interrupt", 1, "callable interrupt"),
+        ("commands_per_pass", 0, "pass stride"),
+    ):
+        valid = hooks.pop(name)
+        expected = esolangs.ExecutionResult("A", 1, 1, 0, steps=steps)
+        for failure in ({}, {name: object()}):
+            hooks.update(failure)
+            outcome = prepared.execute(stdin="A", limits=limits)
+            assert isinstance(outcome.error, esolangs.InterpreterLimitError)
+            assert diagnostic in str(outcome.error)
+            assert outcome.observation == outcome.error.observation == expected
+        hooks[name] = valid
+    observed = prepared.run(stdin="A", limits=limits)
+    assert (observed.output, observed.steps, observed.completion.kind) == (
+        "A",
+        1,
+        Completion.PERIODIC,
+    )
+
+    original = esolangs.InputExhaustedError(0, 0, unit="character")
+
+    def refuse():
+        raise original
+
+    hooks["snapshot"] = refuse
+    outcome = scoped.execute("P", stdin="A", limits=limits)
+    assert outcome.error is original
+    assert (
+        outcome.observation
+        == original.observation
+        == esolangs.ExecutionResult("A", 1, 1, 0, steps=0)
+    )
+
     monkeypatch.setattr(
         vm,
         "interpreter_module",

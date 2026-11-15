@@ -351,15 +351,38 @@ def test_run_checks_saved_metadata_before_stdin(
 
 def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsys):
     original = LANGUAGES[REFERENCE]
-    declaration = replace(original, name="Scoped runtime", id="scoped_runtime")
+    name = "Scoped runtime"
+    shadow = tmp_path / "shadow"
+    shadow.mkdir()
+
+    def validate(**_choices):
+        monkeypatch.chdir(shadow)
+
+    schema = esolangs.DialectSchema(name, {"mode": (1,)}, {"mode": 1})
+    runtime = replace(original.runtime, dialect=validate, dialect_schema=schema)
+    declaration = replace(original, name=name, id="scoped_runtime", runtime=runtime)
     scope = esolangs.Catalog([declaration])
     monkeypatch.setattr(_table, "CATALOG", scope)
     path = tmp_path / "source"
     path.write_text(",.")
-    assert call_both(["run", declaration.name, str(path)], capsys, stdin="Q") == (
-        "Q",
-        "",
-    )
+    (shadow / path.name).write_text("+.")
+    command = ["run", "-s", "{}", name]
+    for spelling in (str(path), path.name):
+        monkeypatch.chdir(tmp_path)
+        assert call_both([*command, spelling], capsys, stdin="Q") == ("Q", "")
+        assert Path.cwd() == shadow
+
+    monkeypatch.chdir(tmp_path)
+    output, diagnostic = _failure([*command, "missing"], capsys)
+    assert not output
+    assert diagnostic.splitlines()[0].startswith("cannot read missing:")
+    assert diagnostic.splitlines()[0].endswith("'missing'")
+    assert str(tmp_path) not in diagnostic
+
+    output, diagnostic = _failure(["run", "--set", "mode=2", name, "missing"], capsys)
+    assert not output
+    assert "mode" in diagnostic
+    assert "cannot read" not in diagnostic
 
 
 def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys) -> None:
