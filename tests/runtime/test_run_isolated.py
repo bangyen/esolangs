@@ -351,13 +351,14 @@ def test_bulk_transport_error_kills_and_reaps_child(monkeypatch) -> None:
 @pytest.mark.skipif(
     not hasattr(signal, "pthread_kill"), reason="requires POSIX thread signals"
 )
-@pytest.mark.parametrize("phase", ["acquisition", "bulk", "streaming"])
+@pytest.mark.parametrize("phase", ["source", "stdin", "bulk", "streaming"])
 def test_worker_wait_handles_sigint_sent_to_another_thread(phase) -> None:
     code = r"""
 import signal
 import subprocess
 import sys
 import threading
+from io import StringIO
 from time import monotonic
 
 from esolangs import ExecutionLimits, Language
@@ -367,6 +368,7 @@ phase, language = sys.argv[1:]
 started = []
 children = []
 release = threading.Event()
+acquisition_finished = threading.Event()
 
 def interrupt(target):
     assert target is not None and target != threading.main_thread().ident
@@ -379,16 +381,27 @@ def interrupt(target):
     sender.daemon = True
     sender.start()
 
-class BlockedInput:
+class BlockedRead:
+    def __init__(self, text):
+        self.text = text
+
     def read(self):
         interrupt(threading.get_ident())
         release.wait()
-        return "A"
+        return self.text
 
 parked = threading.Thread(target=release.wait, daemon=True)
 parked.start()
 BaseChild = subprocess.Popen
 BaseQueue = _isolated.Queue
+BaseThread = _isolated.Thread
+
+class AcquiringThread(BaseThread):
+    def run(self):
+        try:
+            super().run()
+        finally:
+            acquisition_finished.set()
 
 class QuietChild(BaseChild):
     def __init__(self, argv, **kwargs):
@@ -410,16 +423,25 @@ class ObservedQueue(BaseQueue):
 
 _isolated.subprocess.Popen = QuietChild
 _isolated.Queue = ObservedQueue
+if phase == "source":
+    _isolated.Thread = AcquiringThread
+program = BlockedRead(",.") if phase == "source" else ",."
+stdin = BlockedRead("A") if phase == "stdin" else StringIO("A")
+limits = ExecutionLimits(
+    total_timeout=3, max_output=1 if phase == "streaming" else None
+)
+api = Language(language)
 try:
-    source = BlockedInput() if phase == "acquisition" else "A"
-    limits = ExecutionLimits(
-        total_timeout=3, max_output=1 if phase == "streaming" else None
-    )
-    Language(language).execute(",.", stdin=source, limits=limits)
+    api.execute(program, stdin=stdin, limits=limits)
 except KeyboardInterrupt:
     assert len(started) == 1
     assert monotonic() - started[0] < 1.5, "SIGINT waited for the worker deadline"
-    if phase == "acquisition":
+    if phase == "source":
+        assert stdin.tell() == 0
+        release.set()
+        assert acquisition_finished.wait(1.5), "source acquisition did not finish"
+        assert stdin.tell() == 0, "cancelled source acquisition consumed stdin"
+    if phase in {"source", "stdin"}:
         assert not children
     else:
         child, = children
@@ -432,6 +454,12 @@ finally:
         if child.poll() is None:
             child.kill()
             child.wait()
+if phase == "source":
+    _isolated.subprocess.Popen = BaseChild
+    _isolated.Queue = BaseQueue
+    _isolated.Thread = BaseThread
+    assert api.run(StringIO(",."), stdin=stdin, limits=limits).output == "A"
+    assert stdin.tell() == 1
 """
     result = subprocess.run(
         [sys.executable, "-c", code, phase, REFERENCE],

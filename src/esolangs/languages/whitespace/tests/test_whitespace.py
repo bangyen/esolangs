@@ -266,7 +266,9 @@ def test_cli_rejects_surrogate_output_on_a_pipe(tmp_path, options, code) -> None
 
 
 def _check_lossless_containers(tmp_path):
+    import gzip
     import io
+    import json
 
     import esolangs
 
@@ -295,13 +297,26 @@ def _check_lossless_containers(tmp_path):
         == "A"
     )
     assert api.execute(path).unwrap().output == "A"
-    api.to_file(artifact, path, gzip=True)
+    archive = io.BytesIO()
+    with gzip.GzipFile("original.ws", "wb", fileobj=archive, mtime=123) as member:
+        member.write(source.encode())
+    data = archive.getvalue()
+    path.write_bytes(data)
     compressed = api.from_file(path)
     assert isinstance(compressed.source, esolangs.CompressedText)
-    assert compressed.source.to_gzip() == path.read_bytes()
+    assert compressed.source.to_gzip() == data
     assert str(compressed.source) == source
-    assert api.from_file(path, normalize=True).source == source
+    normalized = api.from_file(path, normalize=True)
+    assert normalized == compressed
+    document = api.to_json(normalized)
+    assert document == api.to_json(path)
+    assert json.loads(document)["kind"] == "gzip"
+    restored = api.from_json(document)
+    assert restored == compressed
+    api.to_file(restored, path, gzip=True, normalize=True)
+    assert path.read_bytes() == data
     assert api.run(compressed).output == "A"
+    assert api.run(restored).output == "A"
     assert api.run(path).output == "A"
     # Raw text names no language; normalize appended "\n", which is code here.
     esolangs.to_file("Whitespace", source, path, normalize=True)

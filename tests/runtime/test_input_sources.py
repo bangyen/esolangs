@@ -241,6 +241,40 @@ def test_stdin_read_access_and_managed_errors_preserve_the_boundary(budget):
 
 
 @pytest.mark.parametrize("budget", [{}, {"max_steps": 2}, {"total_timeout": 5}])
+@pytest.mark.parametrize("channel", ["source", "stdin"])
+def test_acquisition_failure_keeps_the_nested_error_and_its_completed_result(
+    budget, channel
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    inner = api.from_source(",+.")
+    expected = api.run(inner, stdin="1")
+    assert expected.output == "2"
+    assert expected.completion is not None
+    failures = []
+
+    class Reader:
+        def read(self):
+            try:
+                return api.evaluate(inner, [1]).answer
+            except esolangs.ProgramError as failure:
+                failures.append(failure)
+                raise
+
+    reader = Reader()
+    source, stdin = (reader, "A") if channel == "source" else (",.", reader)
+    result = api.execute(source, stdin=stdin, limits=esolangs.ExecutionLimits(**budget))
+    assert len(failures) == 1
+    assert result.status == "rejected"
+    assert result.error is failures[0]
+    assert result.observation == esolangs.ExecutionResult("", None, None, None)
+    with pytest.raises(esolangs.ProgramError, match="no answer") as caught:
+        result.unwrap()
+    assert caught.value is failures[0]
+    assert caught.value.observation == expected
+    assert caught.value.partial_output == expected.output
+
+
+@pytest.mark.parametrize("budget", [{}, {"max_steps": 2}, {"total_timeout": 5}])
 def test_source_and_stdin_providers_see_caller_context(budget):
     source_text = ContextVar("source_text", default="+.")
     input_text = ContextVar("input_text", default="B")

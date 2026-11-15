@@ -433,28 +433,32 @@ def _invoke_worker(
         d for d in (deadline, preparation_deadline, execution_deadline) if d is not None
     )
     box: list[str | BaseException] = []
+    cancelled = Event()
+
+    def acquisition_stopped() -> bool:
+        return cancelled.is_set() or monotonic() >= acquisition_deadline
 
     def prepare() -> None:
         try:
             with stream_read_deadline(acquisition_deadline):
-                if monotonic() >= acquisition_deadline:
+                if acquisition_stopped():
                     return
                 checked_input = check_input(stdin)
-                if monotonic() >= acquisition_deadline:
+                if acquisition_stopped():
                     return
                 artifact = _check_program(
                     name, program, settings=settings, catalog=catalog
                 )
-                if monotonic() >= acquisition_deadline:
+                if acquisition_stopped():
                     return
                 source = artifact.source
                 retained = artifact.settings
                 retained_scale = effective_scale(name, artifact, scale, catalog=catalog)
                 check_scale_for(name, retained_scale, catalog=catalog)
-                if monotonic() >= acquisition_deadline:
+                if acquisition_stopped():
                     return
                 captured_input = read_input(checked_input)
-            if monotonic() >= acquisition_deadline:
+            if acquisition_stopped():
                 return
             box.append(
                 worker_dumps(
@@ -484,12 +488,16 @@ def _invoke_worker(
     # bounds acquisition without transferring or closing their handles.
     # Keep the caller's context for reads even though they happen off-thread.
     reader = Thread(target=copy_context().run, args=(prepare,), daemon=True)
-    reader.start()
-    while reader.is_alive():
-        waited = wait_slice(acquisition_deadline, monotonic())
-        if not waited:
-            break
-        reader.join(waited)
+    try:
+        reader.start()
+        while reader.is_alive():
+            waited = wait_slice(acquisition_deadline, monotonic())
+            if not waited:
+                break
+            reader.join(waited)
+    finally:
+        # An outstanding read may finish, but the cancelled call owns no later reads.
+        cancelled.set()
     now = monotonic()
     if reader.is_alive() or now >= acquisition_deadline:
         if preparation_deadline == acquisition_deadline < deadline:

@@ -99,6 +99,12 @@ def _failed_outcome(error: EsolangError) -> ExecutionOutcome:
     observation = error.observation
     if observation is None:
         observation = ExecutionResult(error.partial_output, None, None, None)
+    elif (
+        isinstance(observation, ExecutionResult) and observation.completion is not None
+    ):
+        # A nested evaluation can fail while decoding completed output. Its
+        # evidence belongs to the original error, outside this invocation.
+        observation = ExecutionResult("", None, None, None)
     return ExecutionOutcome(_failure_status(error), observation, error=error)
 
 
