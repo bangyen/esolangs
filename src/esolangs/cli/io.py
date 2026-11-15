@@ -51,6 +51,7 @@ from esolangs.runtime._files import (
     _binary_snapshot,
     _SourceDirectory,
     _time_remaining,
+    explicit_path,
     read_snapshot,
     stream_read_deadline,
 )
@@ -232,6 +233,10 @@ def _bounded_read(
     max_bytes: int = _MAX_PROGRAM_BYTES,
 ) -> bytes:
     """Read up to the opening file size or the stream cap, under a deadline."""
+    try:
+        path = explicit_path(path).spelling
+    except ArgumentError as error:
+        _fail(error)
     waited = timeout if timeout is not None else _READ_DEADLINE
     deadline = monotonic() + waited
 
@@ -266,7 +271,7 @@ def _bounded_read(
                 return result
         except StreamReadTimeoutError:
             raise
-        except (OSError, TypeError) as exc:
+        except (OSError, TypeError, ValueError) as exc:
             _fail(source_read_error(path, exc))
 
     def _on_timeout() -> None:

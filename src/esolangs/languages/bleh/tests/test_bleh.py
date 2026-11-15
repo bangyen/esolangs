@@ -9,6 +9,7 @@ from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.languages.bleh.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import native_runner
 from tests.support.vm_support import assert_rejected_output_retry
@@ -169,19 +170,52 @@ def test_nested_source_respects_the_parent_recursion_limit() -> None:
         operand = "{" * depth + '"A"' + "}" * depth
         return f"^:std::io; main := io::print({operand});"
 
+    def split(depth: int) -> str:
+        pattern = "[" * depth + "_" + "]" * depth
+        return f'^:std::io; f: {pattern} = "A"; main := io::print(f(1));'
+
+    def check_routes(program: str, steps: int) -> None:
+        local = language.run(program, limits=ExecutionLimits(max_steps=600))
+        assert (local.output, local.steps) == ("A", steps)
+        for deadline in ({"total_timeout": 3}, {"execution_timeout": 3}):
+            assert (
+                language.run(program, limits=ExecutionLimits(max_steps=600, **deadline))
+                == local
+            )
+        debugger = language.make_debugger(program)
+        debugger.step()
+        hash(debugger.snapshot())
+        assert _capture_workspace(debugger.vm).model.name == "bleh-v1"
+        assert debugger.run(limits=ExecutionLimits(max_steps=600)) == "halted"
+        assert debugger.observation == local
+
     try:
         sys.setrecursionlimit(160)
+        check_routes(source(79), 84)
+        check_routes(split(80), 7)
+        forwards = "".join(f"f{i}: x.. = f{i + 1}(x);" for i in range(100))
+        check_routes(
+            f'^:std::io; {forwards} f100: 1 = "A"; main := io::print(f0(1));', 207
+        )
+        message = None
         for options in (
             {},
             {"limits": ExecutionLimits(max_steps=500)},
             {"isolated": True},
+            {"limits": ExecutionLimits(execution_timeout=3)},
         ):
             assert language.execute(source(1), **options).unwrap().output == "A"
-            limited = language.execute(source(85), **options)
-            assert limited.status == "limit"
-            assert isinstance(limited.error, InterpreterLimitError)
-            assert "recursed deeper" in str(limited.error)
+            for program in (source(80), source(85), split(81)):
+                limited = language.execute(program, **options)
+                assert limited.status == "limit"
+                assert isinstance(limited.error, InterpreterLimitError)
+                assert limited.observation == ExecutionResult("", 0, 0, 0)
+                message = message or str(limited.error)
+                assert "recursed deeper" in message
+                assert str(limited.error) == message
         sys.setrecursionlimit(400)
         assert language.run(source(85), isolated=True).output == "A"
+        sys.setrecursionlimit(1000)
+        check_routes(source(499), 504)
     finally:
         sys.setrecursionlimit(original)

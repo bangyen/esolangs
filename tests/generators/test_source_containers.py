@@ -590,7 +590,7 @@ def test_invalid_export_destination_does_not_consume_source(
 
 
 @pytest.mark.skipif(os.name != "posix", reason="requires POSIX filename limits")
-def test_overlong_export_destination_does_not_consume_source(
+def test_export_preserves_destination_errors_without_consuming_source(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     limit = os.pathconf(tmp_path, "PC_NAME_MAX")
@@ -601,12 +601,23 @@ def test_overlong_export_destination_does_not_consume_source(
     source.seek(4)
     api = esolangs.Language(REFERENCE)
 
-    with pytest.raises(esolangs.ProgramError, match="cannot save") as caught:
-        api.to_file(source, "x" * (limit + 1))
-    cause = caught.value.__cause__
-    assert isinstance(cause, OSError)
-    assert cause.errno == errno.ENAMETOOLONG
-    assert source.tell() == 4
+    Path("file").touch()
+    Path("loop").symlink_to("loop")
+    overlong = "x" * (limit + 1)
+    compressed = esolangs.CompressedText.from_chunks(("+.",))
+    for path, problem in (
+        (overlong, errno.ENAMETOOLONG),
+        (f"{overlong}/program", errno.ENAMETOOLONG),
+        ("file/program", errno.ENOTDIR),
+        ("loop/program", errno.ELOOP),
+    ):
+        for save in (lambda path: api.to_file(source, path), compressed.to_file):
+            with pytest.raises(esolangs.ProgramError, match="cannot save") as caught:
+                save(path)
+            cause = caught.value.__cause__
+            assert isinstance(cause, OSError)
+            assert cause.errno == problem
+        assert source.tell() == 4
 
     destination = "x" * limit
     api.to_file(source, destination)
@@ -736,14 +747,15 @@ def test_unwritable_export_directory_does_not_consume_source(tmp_path: Path) -> 
     destination = parent / "program"
     source = io.BytesIO(b"skip+.")
     source.seek(4)
-    parent.chmod(0o555)
     try:
-        if os.access(parent, os.W_OK):
-            pytest.skip("filesystem or current user can write read-only directories")
-        with pytest.raises(esolangs.ProgramError, match="cannot save") as caught:
-            api.to_file(source, destination)
-        assert isinstance(caught.value.__cause__, PermissionError)
-        assert source.tell() == 4
+        for mode, denied in ((0o555, destination), (0, parent / "nested" / "program")):
+            parent.chmod(mode)
+            if os.access(parent, os.W_OK if mode else os.X_OK):
+                pytest.skip("filesystem does not enforce the test directory modes")
+            with pytest.raises(esolangs.ProgramError, match="cannot save") as caught:
+                api.to_file(source, denied)
+            assert isinstance(caught.value.__cause__, PermissionError)
+            assert source.tell() == 4
     finally:
         parent.chmod(0o755)
     assert list(parent.iterdir()) == []

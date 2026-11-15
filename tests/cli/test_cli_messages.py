@@ -3,6 +3,7 @@
 import io
 import shlex
 import sys
+from ast import literal_eval
 from dataclasses import replace
 from io import StringIO
 from pathlib import Path
@@ -16,7 +17,14 @@ from esolangs.cli.help import help_text
 from esolangs.cli.hints import _timeout_text
 from esolangs.cli.io import _StdoutEncodingError, _write_output
 from esolangs.registry import LANGUAGES, _table
-from tests.support.cli_support import _failure, _refused, call_both, call_main, run_cli
+from tests.support.cli_support import (
+    _failure,
+    _program,
+    _refused,
+    call_both,
+    call_main,
+    run_cli,
+)
 from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
 
@@ -385,6 +393,18 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     assert diagnostic.splitlines()[0].startswith("cannot read missing:")
     assert diagnostic.splitlines()[0].endswith("'missing'")
     assert str(tmp_path) not in diagnostic
+    with pytest.raises(esolangs.ArgumentError) as empty:
+        scope.bind(name).from_file("")
+    assert _failure([*command, ""], capsys) == ("", f"{empty.value}\n")
+    invalid_path = "invalid\0path"
+    with pytest.raises(esolangs.ProgramError) as invalid:
+        scope.bind(name).from_file(invalid_path)
+    output, diagnostic = _failure([*command, invalid_path], capsys)
+    assert not output
+    assert diagnostic.splitlines() == [
+        str(invalid.value).replace("\0", r"\x00"),
+        *invalid.value.__notes__,
+    ]
 
     output, diagnostic = _failure(["run", "--set", "mode=2", name, "missing"], capsys)
     assert not output
@@ -415,6 +435,33 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     assert call_both(
         ["run", "--max-output", "1", REFERENCE, str(path)], capsys, stdin="Q"
     ) == ("Q", "")
+
+    _check_described_input_samples(monkeypatch, capsys, tmp_path)
+
+
+def _check_described_input_samples(monkeypatch, capsys, tmp_path) -> None:
+    name = "Forþ"
+    declaration = LANGUAGES[name]
+    for shape, alphabet, source, answer in (
+        ("line_per_bit", ("", "1"), ",,.", "1"),
+        ("row_index", (), ",.", "2"),
+    ):
+        contract = replace(declaration.contract, input_shape=shape, alphabet=alphabet)
+        catalog = esolangs.Catalog([replace(declaration, contract=contract)])
+        bound = catalog.bind(name)
+        monkeypatch.setattr(_table, "CATALOG", catalog)
+        description, notices = call_both(["describe", name], capsys)
+        assert not notices
+        line = next(
+            row for row in description.splitlines() if row.startswith("input: ")
+        )
+        shown = literal_eval(line.split("e.g. ", 1)[1].removesuffix(" for the bits 10"))
+        encoded, notices = call_both(["encode-inputs", name, "10"], capsys)
+        assert (encoded, notices) == (bound.encode_inputs([1, 0]), "")
+        assert shown == (encoded if shape == "line_per_bit" else "2")
+        assert bound.run(source, stdin=shown).output == answer
+        path = _program(tmp_path, source)
+        assert call_both(["run", name, path], capsys, stdin=shown) == (answer, "")
 
 
 def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys) -> None:

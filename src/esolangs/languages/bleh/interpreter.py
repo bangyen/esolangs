@@ -48,12 +48,14 @@ Decisions:
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping
+import sys
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
+from itertools import chain
 from types import MappingProxyType
 from typing import Any, NamedTuple
 
-from esolangs.exceptions import HaltError
+from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.bleh.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -148,6 +150,7 @@ _TOKEN = re.compile(
     r"""\s+|//[^\n]*|/\*.*?\*/|(::|\.\.|[:=;,()\[\]{}^])|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(\w+)|(.)""",
     re.DOTALL | re.ASCII,
 )
+_NAME = re.compile(r"\w+", re.ASCII)
 
 
 def _utf8_bits(text: str) -> str:
@@ -191,16 +194,26 @@ def _is_bits(token: str) -> bool:
 
 
 def _is_name(token: str) -> bool:
-    return bool(re.fullmatch(r"\w+", token, re.ASCII)) and not _is_bits(token)
+    return bool(_NAME.fullmatch(token)) and not _is_bits(token)
 
 
 class _Parser:
-    """Recursive descent: Bleh source nests only as deep as it is written."""
+    """Parse source within a nesting budget independent of the caller stack."""
 
     def __init__(self, code: str) -> None:
         self.tokens = _tokens(code)
         self.pos = 0
         self.aliases: dict[str, str] = {}
+        # Descending through one group formerly used a parser and an item frame.
+        self.depth_limit = sys.getrecursionlimit() // 2
+
+    @staticmethod
+    def _nesting_error() -> InterpreterLimitError:
+        return InterpreterLimitError(
+            "the Bleh interpreter recursed deeper than CPython's stack "
+            "limit allows while loading this program",
+            hint="reduce expression nesting or recursion depth",
+        )
 
     def peek(self, ahead: int = 0) -> str | None:
         at = self.pos + ahead
@@ -273,26 +286,41 @@ class _Parser:
         return patterns, self.expr()
 
     def patterns(self, end: str) -> tuple[_Pattern, ...]:
+        pending: list[tuple[str | None, list[_Pattern], str]] = []
         out: list[_Pattern] = []
-        while self.peek() != end:
-            out.append(self.pattern())
+        while True:
+            if self.peek() == end:
+                if sum(isinstance(p, _PRest) for p in out) > 1:
+                    raise syntax_error(
+                        "two .. patterns at one Bleh pattern level are ambiguous",
+                        "keep at most one .. a level",
+                    )
+                result = tuple(out)
+                if not pending:
+                    return result
+                self.pos += 1
+                name, out, end = pending.pop()
+                out.append(_PSplit(name, result))
+            else:
+                pattern = self.pattern()
+                if pattern is None or isinstance(pattern, str):
+                    if len(pending) == self.depth_limit:
+                        raise self._nesting_error()
+                    pending.append((pattern, out, end))
+                    out = []
+                    end = "]"
+                    continue
+                out.append(pattern)
             if self.peek() != end:
                 self.take(",")
-        if sum(isinstance(p, _PRest) for p in out) > 1:
-            raise syntax_error(
-                "two .. patterns at one Bleh pattern level are ambiguous",
-                "keep at most one .. a level",
-            )
-        return tuple(out)
 
-    def pattern(self) -> _Pattern:
+    def pattern(self) -> _Pattern | str | None:
+        """Read a leaf or the optional name on an open split pattern."""
         token = self.take()
         if token == "..":
             return _PRest(None)
         if token == "[":
-            subs = self.patterns("]")
-            self.take("]")
-            return _PSplit(None, subs)
+            return None
         if token[0] in "\"'":
             return _PLit(_string(token))
         if _is_bits(token):
@@ -306,26 +334,69 @@ class _Parser:
             return _PRest(name)
         if self.peek() == "[":
             self.take()
-            subs = self.patterns("]")
-            self.take("]")
-            return _PSplit(name, subs)
+            return name
         return _PVar(name)
 
     def _starts_expr(self) -> bool:
         token = self.peek()
         return token is not None and (
-            token in "[{" or token[0] in "\"'" or bool(re.match(r"\w", token, re.ASCII))
+            token[0] in "[{\"'" or _NAME.match(token, 0, 1) is not None
         )
 
     def expr(self) -> _Expr:
+        head = self._expr_head()
+        if not isinstance(head, tuple):
+            return head
+        pending: list[tuple[str | None, str, list[_Expr]]] = [(*head, [])]
+        value: _Expr | None = None
+        while True:
+            if value is None:
+                closing, func, children = pending[-1]
+                if closing is not None and self.peek() == closing:
+                    pending.pop()
+                    self.pos += 1
+                    value = self._group(closing, func, tuple(children))
+                else:
+                    head = self._expr_head()
+                    if isinstance(head, tuple):
+                        if len(pending) == self.depth_limit:
+                            raise self._nesting_error()
+                        pending.append((*head, []))
+                        continue
+                    value = head
+            if not pending:
+                return value
+            close, func, children = pending[-1]
+            if close is None:
+                pending.pop()
+                value = _Call(func, (value,))
+            else:
+                children.append(value)
+                if self.peek() == close:
+                    pending.pop()
+                    self.pos += 1
+                    value = self._group(close, func, tuple(children))
+                else:
+                    self.take(";" if close == "}" else ",")
+                    value = None
+
+    @staticmethod
+    def _group(close: str, func: str, children: tuple[_Expr, ...]) -> _Expr:
+        if close == "]":
+            return _Join(children)
+        if close == "}":
+            if not children:
+                raise syntax_error("Bleh {} needs an expression", "write {a; b}")
+            return _Seq(children)
+        return _Call(func, children)
+
+    def _expr_head(self) -> _Expr | tuple[str | None, str]:
+        """Read a leaf or return the closer and function for an open group."""
         token = self.take()
         if token == "[":
-            return _Join(self.items("]", ","))
+            return "]", ""
         if token == "{":
-            parts = self.items("}", ";")
-            if not parts:
-                raise syntax_error("Bleh {} needs an expression", "write {a; b}")
-            return _Seq(parts)
+            return "}", ""
         if token[0] in "\"'":
             return _Bits(_string(token))
         if _is_bits(token):
@@ -338,32 +409,25 @@ class _Parser:
             func = f"{func}::{self.name()}"
         if self.peek() == "(":
             self.take()
-            return _Call(func, self.items(")", ","))
+            return ")", func
         if self._starts_expr():
-            return _Call(func, (self.expr(),))
+            return None, func
         if qualified:
             raise syntax_error(
                 f"Bleh {func} is a function, not a variable", f"call it: {func}()"
             )
         return _Ref(func)
 
-    def items(self, end: str, sep: str) -> tuple[_Expr, ...]:
-        out = []
-        while self.peek() != end:
-            out.append(self.expr())
-            if self.peek() != end:
-                self.take(sep)
-        self.take(end)
-        return tuple(out)
-
 
 def _pattern_names(patterns: tuple[_Pattern, ...]) -> set[str]:
     names: set[str] = set()
-    for p in patterns:
+    pending = list(patterns)
+    while pending:
+        p = pending.pop()
         if isinstance(p, (_PVar, _PRest, _PSplit)) and p.name:
             names.add(p.name)
         if isinstance(p, _PSplit):
-            names |= _pattern_names(p.subs)
+            pending.extend(p.subs)
     return names
 
 
@@ -371,16 +435,45 @@ def _resolve(
     expr: _Expr, bound: set[str], funcs: Mapping[str, object], aliases: dict[str, str]
 ) -> _Expr:
     """Return ``expr`` with builtins resolved; check names and variables."""
-    if isinstance(expr, _Ref):
-        if expr.name not in bound:
-            raise syntax_error(
-                f"Bleh variable {expr.name!r} is not bound by its branch",
-                "bind it in a pattern, or call a function with ()",
-            )
-        return expr
-    if isinstance(expr, (_Bits, _Slot)):
-        return expr
-    parts = tuple(_resolve(p, bound, funcs, aliases) for p in _children(expr))
+    pending: list[tuple[_Join | _Seq | _Call, Iterator[_Expr], list[_Expr]]] = []
+    node = expr
+    while True:
+        if isinstance(node, _Ref):
+            if node.name not in bound:
+                raise syntax_error(
+                    f"Bleh variable {node.name!r} is not bound by its branch",
+                    "bind it in a pattern, or call a function with ()",
+                )
+            value: _Expr = node
+        elif isinstance(node, (_Bits, _Slot)):
+            value = node
+        else:
+            children = _children(node)
+            if children:
+                siblings = iter(children)
+                pending.append((node, siblings, []))
+                node = next(siblings)
+                continue
+            value = _resolve_group(node, (), funcs, aliases)
+        while pending:
+            parent, siblings, parts = pending[-1]
+            parts.append(value)
+            child = next(siblings, None)
+            if child is not None:
+                node = child
+                break
+            pending.pop()
+            value = _resolve_group(parent, tuple(parts), funcs, aliases)
+        else:
+            return value
+
+
+def _resolve_group(
+    expr: _Join | _Seq | _Call,
+    parts: tuple[_Expr, ...],
+    funcs: Mapping[str, object],
+    aliases: dict[str, str],
+) -> _Expr:
     if isinstance(expr, _Join):
         return _Join(parts)
     if isinstance(expr, _Seq):
@@ -443,7 +536,15 @@ def _value(val: _Val, heap: _Heap) -> str:
     if isinstance(val, str):
         return val
     if isinstance(val, _Lazy):
-        return "".join(_value(part, heap) for part in val.parts)
+        pending = list(reversed(val.parts))
+        bits = []
+        while pending:
+            part = pending.pop()
+            if isinstance(part, _Lazy):
+                pending.extend(reversed(part.parts))
+            else:
+                bits.append(_value(part, heap))
+        return "".join(bits)
     cell = heap[val]
     if isinstance(cell, str):
         return cell
@@ -478,6 +579,26 @@ def _align[T](
     )
 
 
+def _match_items[T: _Val](
+    patterns: tuple[_Pattern, ...],
+    items: tuple[T, ...],
+    run: Callable[[tuple[T, ...]], _Val],
+) -> Iterator[tuple[_Pattern, _Val]] | None:
+    aligned = _align(patterns, items)
+    if aligned is None:
+        return None
+    head, rest, span, tail = aligned
+    if rest is None:
+        return iter(head)
+    if rest.name is None:
+        return chain(head, tail)
+
+    def bind(name: str) -> Iterator[tuple[_Pattern, _Val]]:
+        yield _PVar(name), run(span)
+
+    return chain(head, bind(rest.name), tail)
+
+
 class _Matcher:
     """One branch's match, left to right, forcing values only on demand."""
 
@@ -491,42 +612,45 @@ class _Matcher:
             return True
         return _value(self.bound[name], self.heap) == _value(val, self.heap)
 
-    def level[T: _Val](
-        self,
-        patterns: tuple[_Pattern, ...],
-        items: tuple[T, ...],
-        run: Callable[[tuple[T, ...]], _Val],
-    ) -> bool:
-        aligned = _align(patterns, items)
-        if aligned is None:
+    def matches(self, patterns: tuple[_Pattern, ...], items: tuple[_Val, ...]) -> bool:
+        root = _match_items(patterns, items, _Lazy)
+        if root is None:
             return False
-        head, rest, span, tail = aligned
-        if not all(self.one(p, item) for p, item in head):
-            return False
-        if rest is not None and rest.name and not self.bind(rest.name, run(span)):
-            return False
-        return all(self.one(p, item) for p, item in tail)
-
-    def one(self, pattern: _Pattern, val: _Val) -> bool:
-        if isinstance(pattern, _PAny):
-            return True
-        if isinstance(pattern, _PVar):
-            return self.bind(pattern.name, val)
-        bits = _value(val, self.heap)
-        if isinstance(pattern, _PLit):
-            return bits == pattern.value
-        assert isinstance(pattern, _PSplit)
-        if pattern.name and not self.bind(pattern.name, bits):
-            return False
-        return self.level(pattern.subs, tuple(bits), "".join)
+        levels = [root]
+        while levels:
+            for pattern, val in levels[-1]:
+                if isinstance(pattern, _PAny):
+                    continue
+                if isinstance(pattern, _PVar):
+                    if not self.bind(pattern.name, val):
+                        return False
+                    continue
+                bits = _value(val, self.heap)
+                if isinstance(pattern, _PLit):
+                    if bits != pattern.value:
+                        return False
+                    continue
+                assert isinstance(pattern, _PSplit)
+                if pattern.name and not self.bind(pattern.name, bits):
+                    return False
+                sub = _match_items(pattern.subs, tuple(bits), "".join)
+                if sub is None:
+                    return False
+                levels.append(sub)
+                break
+            else:
+                levels.pop()
+        return True
 
 
 def _match(
     patterns: tuple[_Pattern, ...], args: tuple[_Val, ...], heap: _Heap
 ) -> _Env | None:
     """Return the branch's bindings, None on a mismatch; may raise _Need."""
+    if not patterns:
+        return None if args else ()
     matcher = _Matcher(heap)
-    if not matcher.level(patterns, args, _Lazy):
+    if not matcher.matches(patterns, args):
         return None
     return tuple(matcher.bound.items())
 

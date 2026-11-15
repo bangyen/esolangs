@@ -7,6 +7,7 @@ from collections.abc import Callable, Iterable, Iterator
 from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
+from errno import ENOTDIR
 from io import BufferedReader, BufferedRWPair, FileIO, IOBase
 from math import ceil
 from os import PathLike, fspath
@@ -332,8 +333,12 @@ def reserve_staged(
         raise ValueError("embedded null character in path")
     destination = target.destination()
     parent = os.path.dirname(destination)
-    if not os.path.isdir(parent):
-        raise FileNotFoundError("its directory does not exist")
+    try:
+        parent_mode = os.stat(parent).st_mode
+    except FileNotFoundError as error:
+        raise FileNotFoundError("its directory does not exist") from error
+    if not stat.S_ISDIR(parent_mode):
+        raise NotADirectoryError(ENOTDIR, os.strerror(ENOTDIR), parent)
     _destination_mode(destination)
     if os.name == "posix" and ".." in parent.split(os.sep):
         # tempfile normalizes its result. Resolve symlinks before their '..'.

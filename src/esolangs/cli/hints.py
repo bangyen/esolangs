@@ -15,12 +15,14 @@ from esolangs.exceptions import (
     TemplateError,
     UnknownLanguageError,
 )
+from esolangs.operations.boolean_io import encode_inputs
 from esolangs.registry import (
     SUGGESTION_CUTOFF,
     Catalog,
     LanguageDeclaration,
     get_catalog,
 )
+from esolangs.registry._contracts import CHAR_STREAMS
 from esolangs.runtime.source_hints import (
     can_render_argument,
     error_text,
@@ -217,22 +219,24 @@ def _did_you_mean(word: str, known: Iterable[str]) -> str:
     return f"; did you mean {' or '.join(close)}?"
 
 
-def _input_sentence(facts: LanguageInfo) -> str:
-    """Describe this language's stdin in one line, with an example."""
-    if facts.input_encoding is None:
-        return "none"
-    # Escaped: Unary's zero is NUL, written raw into the terminal.
-    zero, one = (c if c.isprintable() else repr(c)[1:-1] for c in facts.input_encoding)
-    shape = str(facts.input_shape)
-    example = f"{one}{zero}"
+def _input_sentence(facts: LanguageInfo, *, catalog: Catalog) -> str:
+    """Describe this language's stdin with a sample from its own encoder."""
+    shape = facts.input_shape
+    example = encode_inputs(facts.name, [1, 0], catalog=catalog)
+    # Keep the newline that represents a final empty line or normalizes CRLF.
+    if shape not in CHAR_STREAMS and not example.endswith(("\n\n", "\r\n")):
+        example = example.removesuffix("\n")
+    literal = repr(example)
+    if literal.startswith("'"):
+        quoted = literal[1:-1].replace('"', r"\"")
+        literal = f'"{quoted}"'
     if shape == "row_index":
-        return 'one decimal row index, e.g. "2" for the bits 10'
+        return f"one decimal row index, e.g. {literal} for the bits 10"
     if shape == "row_number":
-        return 'one decimal row index plus one, e.g. "3" for the bits 10'
-    if shape in {"char_stream", "char_stream_cyclic"}:
-        return f'adjacent bit characters, e.g. "{example}"'
-    lines = f"{one}\\n{zero}"
-    return f'one line per bit, e.g. "{lines}"'
+        return f"one decimal row index plus one, e.g. {literal} for the bits 10"
+    if shape in CHAR_STREAMS:
+        return f"adjacent bit characters, e.g. {literal}"
+    return f"one line per bit, e.g. {literal}"
 
 
 def _display_encoding(stream: object) -> str:

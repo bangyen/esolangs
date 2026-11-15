@@ -660,6 +660,10 @@ def _describe(rest: list[str]) -> None:
         # it is empty is the thing that makes a schema unusable.
         _write_output(_metadata_json(asdict(facts)) + "\n")
         return
+    with _errors():
+        input_sentence = (
+            _input_sentence(facts, catalog=catalog) if facts.reads_input else ""
+        )
     # The contract first: how bits go in, where the answer comes out, and
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
@@ -680,7 +684,7 @@ def _describe(rest: list[str]) -> None:
     elif not facts.reads_input:
         _display("input: none -- this language reads no stdin")
     else:
-        _display(f"input: {_input_sentence(facts)}")
+        _display(f"input: {input_sentence}")
     _display(f"answer: {_answer_sentence(facts)}")
     _display(f"generator: {_generator_sentence(facts)}")
     _display(f"settings: {_settings_sentence(facts)}")
