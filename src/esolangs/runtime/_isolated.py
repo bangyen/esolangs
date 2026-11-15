@@ -45,6 +45,8 @@ from esolangs.runtime._validate import (
     check_timeout,
     check_whole,
 )
+from esolangs.runtime._wait import wait_slice
+from esolangs.runtime._worker_pipe import communicate
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import (
     DialectSettings,
@@ -483,7 +485,11 @@ def _invoke_worker(
     # Keep the caller's context for reads even though they happen off-thread.
     reader = Thread(target=copy_context().run, args=(prepare,), daemon=True)
     reader.start()
-    reader.join(max(0.0, acquisition_deadline - monotonic()))
+    while reader.is_alive():
+        waited = wait_slice(acquisition_deadline, monotonic())
+        if not waited:
+            break
+        reader.join(waited)
     now = monotonic()
     if reader.is_alive() or now >= acquisition_deadline:
         if preparation_deadline == acquisition_deadline < deadline:
@@ -568,36 +574,32 @@ def _launch(
         encoding="utf-8",
         env=env,
     ) as child:
-        now = monotonic()
-        if now >= deadline or (
-            preparation_deadline is not None and now >= preparation_deadline
-        ):
-            child.kill()
-            output, _stderr = child.communicate()
-            result = _decode_outcome(output, expired=True)
-            if preparation_deadline is not None and preparation_deadline < deadline:
-                raise _preparation_expired(partial_output=result.observation.output)
-            return result
-        if report_prepared:
-            return _bounded_output(
-                child,
-                request,
-                deadline,
-                preparation_deadline=preparation_deadline,
-                execution_timeout=execution_timeout,
-            )
-        if streaming:
-            return _bounded_output(child, request, deadline)
-        expired = False
         try:
-            output, _stderr = child.communicate(request, timeout=deadline - now)
-        except subprocess.TimeoutExpired:
-            expired = True
-            child.kill()
-            output, _stderr = child.communicate()
-        except BaseException:
-            child.kill()
-            child.communicate()
+            now = monotonic()
+            if now >= deadline or (
+                preparation_deadline is not None and now >= preparation_deadline
+            ):
+                child.kill()
+                output, _stderr = child.communicate()
+                result = _decode_outcome(output, expired=True)
+                if preparation_deadline is not None and preparation_deadline < deadline:
+                    raise _preparation_expired(partial_output=result.observation.output)
+                return result
+            if report_prepared:
+                return _bounded_output(
+                    child,
+                    request,
+                    deadline,
+                    preparation_deadline=preparation_deadline,
+                    execution_timeout=execution_timeout,
+                )
+            if streaming:
+                return _bounded_output(child, request, deadline)
+            output, expired = communicate(child, request, deadline, clock=monotonic)
+        except KeyboardInterrupt:
+            if child.poll() is None:
+                child.kill()
+                child.wait()
             raise
     return _decode_outcome(output, expired=expired)
 
@@ -640,8 +642,8 @@ def _bounded_output(
             publish(None)
 
     reader = Thread(target=transfer, daemon=True)
-    reader.start()
     try:
+        reader.start()
         return _read_worker_output(
             child, records, deadline, preparation_deadline, execution_timeout
         )
@@ -649,7 +651,8 @@ def _bounded_output(
         stopped.set()
         child.kill()
         child.wait()
-        reader.join()
+        if reader.ident is not None:
+            reader.join()
 
 
 def _prepared_record(message: object) -> bool:
@@ -703,15 +706,15 @@ def _read_worker_output(
             for phase in (deadline, preparation_deadline, execution_deadline)
             if phase is not None
         )
-        try:
-            now = monotonic()
-            if now >= active_deadline:
-                raise Empty
-            record = records.get(timeout=active_deadline - now)
-        except Empty:
+        waited = wait_slice(active_deadline, monotonic())
+        if not waited:
             expired = True
             output.extend(_queued_output(records, awaiting_prepared=awaiting_prepared))
             break
+        try:
+            record = records.get(timeout=waited)
+        except Empty:
+            continue
         if record is None:
             break
         if isinstance(record, BaseException):
@@ -732,11 +735,14 @@ def _read_worker_output(
         if limited:
             break
     # A complete verdict must still leave the worker within its deadline.
-    if not expired and not limited:
+    while not expired and not limited:
+        waited = wait_slice(active_deadline, monotonic())
         try:
-            child.wait(timeout=max(0.0, active_deadline - monotonic()))
+            child.wait(timeout=waited)
         except subprocess.TimeoutExpired:
-            expired = True
+            expired = not waited
+        else:
+            break
     result = _decode_outcome("".join(output), expired=expired)
     if expired and preparation_deadline is not None and preparation_deadline < deadline:
         raise _preparation_expired(partial_output=result.observation.output)

@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 type ProgramSource = Program | Artifact | bytes | os.PathLike[str] | IO[str] | IO[bytes]
 
+_GZIP_SIGNATURE = b"\x1f\x8b"
+
 
 @dataclass(frozen=True, slots=True)
 class _FileSource:
@@ -94,6 +96,19 @@ def _read_gzip(data: bytes, label: str | None) -> CompressedText:
         raise program_error_context(f"cannot read {label}: {error}", error) from error
 
 
+def check_raster_gzip(language: str, source: object) -> None:
+    """Report gzip text presented to a raster language before decoding it."""
+    if isinstance(source, CompressedText) or (
+        isinstance(source, bytes) and bytes.startswith(source, _GZIP_SIGNATURE)
+    ):
+        raise with_hint(
+            ProgramError(
+                f"{language} requires raster source, but the program is gzip text"
+            ),
+            "use a PNG program or select the language that reads this gzip source",
+        )
+
+
 def text_source(
     source: ProgramSource | _FileSource, *, label: str | None = None
 ) -> str:
@@ -101,7 +116,7 @@ def text_source(
     value, path = _read_container(source)
     if label is None:
         label = path
-    if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
+    if isinstance(value, bytes) and value.startswith(_GZIP_SIGNATURE):
         value = _read_gzip(value, label)
     if isinstance(value, CompressedText):
         # Construction already enforced the generation budget. plain_chars
@@ -166,7 +181,7 @@ def compressed_text_source(source: ProgramSource | _FileSource) -> str | Compres
     value, path = _read_container(source)
     if isinstance(value, CompressedText):
         return value
-    if isinstance(value, bytes) and value.startswith(b"\x1f\x8b"):
+    if isinstance(value, bytes) and value.startswith(_GZIP_SIGNATURE):
         return _read_gzip(value, path)
     return text_source(value, label=path)
 
@@ -208,7 +223,10 @@ def source_for(
 
     catalog = get_catalog(catalog)
 
-    loader = catalog.languages[catalog.resolve(language)].runtime.source_loader
+    name = catalog.resolve(language)
+    loader = catalog.languages[name].runtime.source_loader
+    if loader is SourceLoader.RASTER:
+        check_raster_gzip(name, source)
     if native and loader is SourceLoader.TEXT:
         return native_text_source(source)
     if native and loader is SourceLoader.COMPRESSED:

@@ -644,18 +644,44 @@ def test_png_source_kind_checked_before_dependency(
     ):
         with pytest.raises(esolangs.ProgramError, match="requires text source"):
             load()
-    compressed = gzip.compress(b"+.", mtime=0)
-    path.write_bytes(compressed)
+
+
+@pytest.mark.parametrize("language", one(source_kind="raster"))
+def test_raster_language_names_gzip_before_decoding(
+    language: str, tmp_path: Path, monkeypatch
+) -> None:
     api = esolangs.Language(language)
+    gzip_bytes = gzip.compress(b"+.", mtime=0)
+    compressed = esolangs.CompressedText(gzip_bytes)
+    text = esolangs.Language(REFERENCE)
+    assert text.run(compressed).output == "\x01"
+    document = json.loads(text.to_json(compressed))
+    document["language"] = language
+    path = tmp_path / "program.gz"
+    path.write_bytes(gzip_bytes)
+    message = "requires raster source, but the program is gzip text"
+
+    def unexpected_decode(*_args):
+        pytest.fail("the wrong source kind reached decoding")
+
+    monkeypatch.setattr(esolangs.CompressedText, "chunks", unexpected_decode)
+    monkeypatch.setattr(png, "read_metadata", unexpected_decode)
     for load in (
+        lambda: api.prepare(gzip_bytes),
+        lambda: api.to_json(io.BytesIO(gzip_bytes)),
         lambda: api.prepare(compressed),
-        lambda: api.to_json(io.BytesIO(compressed)),
-        lambda: api.from_file(path),
+        lambda: api.from_source(compressed),
+        lambda: api.run(esolangs.ProgramArtifact(compressed, language)),
     ):
-        with pytest.raises(
-            esolangs.ProgramError, match=r"not a PNG file.*bad signature"
-        ):
+        with pytest.raises(esolangs.ProgramError, match=message) as refused:
             load()
+        assert any("use a PNG" in note for note in refused.value.__notes__)
+    with pytest.raises(esolangs.ProgramError, match=message) as native:
+        api.from_file(path)
+    assert str(path) in str(native.value)
+    assert any("use a PNG" in note for note in native.value.__notes__)
+    with pytest.raises(esolangs.ProgramError, match=message):
+        api.from_json(json.dumps(document))
 
 
 def test_png_rejects_dimensions_beyond_platform_size(

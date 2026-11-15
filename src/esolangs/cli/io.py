@@ -36,6 +36,7 @@ from esolangs.runtime._files import (
 )
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
+from esolangs.runtime._wait import wait_slice
 from esolangs.runtime.source_hints import source_read_error
 from esolangs.settings import DialectSettings
 
@@ -181,7 +182,7 @@ def _slurp_thread[SlurpT](
         # A signal delivered to the reader may leave the main thread's join
         # asleep even though Python must handle that signal on the main thread.
         while reader.is_alive():
-            waited = 0.1 if deadline is None else min(0.1, deadline - monotonic())
+            waited = wait_slice(deadline, monotonic())
             if waited <= 0:
                 break
             reader.join(waited)

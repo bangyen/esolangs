@@ -19,6 +19,7 @@ from esolangs.runtime._source import (
     ProgramSource,
     _FileSource,
     _read_container,
+    check_raster_gzip,
     source_for,
 )
 from esolangs.runtime._validate import check_flag, check_scale
@@ -87,6 +88,7 @@ def read_png_metadata(
 
     if catalog.languages[name].runtime.source_kind is not SourceKind.RASTER:
         raise ProgramError(f"{name} requires text source, but the program is a PNG")
+    check_raster_gzip(name, data)
     try:
         metadata = png.read_metadata(data)
         if metadata is None:

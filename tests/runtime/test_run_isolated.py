@@ -2,11 +2,12 @@
 
 import json
 import os
+import signal
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
-from threading import Event
+from threading import Event, Thread
 from time import monotonic
 
 import pytest
@@ -37,16 +38,18 @@ def test_generated_xor_runs_every_row_in_a_worker(language) -> None:
 
 
 @pytest.mark.medium
-def test_timeout_retains_streamed_output() -> None:
+@pytest.mark.parametrize("bound", ["execution_timeout", "total_timeout"])
+def test_timeout_retains_streamed_output(bound) -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         esolangs.run(
             REFERENCE,
             "+.[]",
-            limits=esolangs.ExecutionLimits(execution_timeout=1),
+            limits=esolangs.ExecutionLimits(**{bound: 1}),
             isolated=True,
         )
     assert caught.value.partial_output == "\x01"
     assert esolangs.run(REFERENCE, "++.", isolated=True).output == "\x02"
+    assert caught.value.bound == bound
     assert caught.value.observation is None
 
 
@@ -308,12 +311,14 @@ def test_decode_truncated_write_on_timeout() -> None:
     assert caught.value.observation is None
 
 
-def test_cancellation_kills_and_reaps_child(monkeypatch) -> None:
+def test_bulk_transport_error_kills_and_reaps_child(monkeypatch) -> None:
     from esolangs.runtime import _isolated
 
     calls = []
 
     class Child:
+        returncode = None
+
         def __enter__(self):
             return self
 
@@ -322,19 +327,146 @@ def test_cancellation_kills_and_reaps_child(monkeypatch) -> None:
 
         def communicate(self, *_args, **_kwargs):
             calls.append("communicate")
-            if len(calls) == 1:
-                raise KeyboardInterrupt
-            return "", ""
+            raise KeyboardInterrupt
 
         def kill(self):
             calls.append("kill")
+
+        def wait(self):
+            calls.append("wait")
+            self.returncode = -1
+
+        def poll(self):
+            return self.returncode
 
     monkeypatch.setattr(
         _isolated.subprocess, "Popen", lambda *_args, **_kwargs: Child()
     )
     with pytest.raises(KeyboardInterrupt):
         _isolated.execute_isolated(REFERENCE, "").unwrap()
-    assert calls == ["communicate", "kill", "communicate"]
+    assert calls == ["communicate", "kill", "wait"]
+
+
+@pytest.mark.medium
+@pytest.mark.skipif(
+    not hasattr(signal, "pthread_kill"), reason="requires POSIX thread signals"
+)
+@pytest.mark.parametrize("phase", ["acquisition", "bulk", "streaming"])
+def test_worker_wait_handles_sigint_sent_to_another_thread(phase) -> None:
+    code = r"""
+import signal
+import subprocess
+import sys
+import threading
+from time import monotonic
+
+from esolangs import ExecutionLimits, Language
+from esolangs.runtime import _isolated
+
+phase, language = sys.argv[1:]
+started = []
+children = []
+release = threading.Event()
+
+def interrupt(target):
+    assert target is not None and target != threading.main_thread().ident
+
+    def send():
+        started.append(monotonic())
+        signal.pthread_kill(target, signal.SIGINT)
+
+    sender = threading.Timer(0.05, send)
+    sender.daemon = True
+    sender.start()
+
+class BlockedInput:
+    def read(self):
+        interrupt(threading.get_ident())
+        release.wait()
+        return "A"
+
+parked = threading.Thread(target=release.wait, daemon=True)
+parked.start()
+BaseChild = subprocess.Popen
+BaseQueue = _isolated.Queue
+
+class QuietChild(BaseChild):
+    def __init__(self, argv, **kwargs):
+        probe = "import sys, time; sys.stdin.readline(); time.sleep(4)"
+        super().__init__([sys.executable, "-c", probe], **kwargs)
+        children.append(self)
+
+    def communicate(self, *args, **kwargs):
+        if phase == "bulk" and (args or kwargs.get("input")):
+            interrupt(parked.ident)
+        return super().communicate(*args, **kwargs)
+
+class ObservedQueue(BaseQueue):
+    def get(self, *args, **kwargs):
+        if not started and not hasattr(self, "signal_armed"):
+            self.signal_armed = True
+            interrupt(parked.ident)
+        return super().get(*args, **kwargs)
+
+_isolated.subprocess.Popen = QuietChild
+_isolated.Queue = ObservedQueue
+try:
+    source = BlockedInput() if phase == "acquisition" else "A"
+    limits = ExecutionLimits(
+        total_timeout=3, max_output=1 if phase == "streaming" else None
+    )
+    Language(language).execute(",.", stdin=source, limits=limits)
+except KeyboardInterrupt:
+    assert len(started) == 1
+    assert monotonic() - started[0] < 1.5, "SIGINT waited for the worker deadline"
+    if phase == "acquisition":
+        assert not children
+    else:
+        child, = children
+        assert child.poll() == -signal.SIGKILL, "worker was not killed and reaped"
+else:
+    raise AssertionError("SIGINT did not interrupt execute")
+finally:
+    release.set()
+    for child in children:
+        if child.poll() is None:
+            child.kill()
+            child.wait()
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code, phase, REFERENCE],
+        capture_output=True,
+        timeout=8,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr.decode()
+
+
+@pytest.mark.medium
+def test_bulk_worker_receives_a_request_larger_than_a_pipe_buffer(spawned) -> None:
+    source = "_ignored_" * 20_000 + ",."
+    assert esolangs.run(REFERENCE, source, stdin="A", isolated=True).output == "A"
+    (child,) = spawned
+    assert child.poll() == 0
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+def test_worker_reaps_if_transport_thread_start_is_interrupted(
+    monkeypatch, spawned, streaming
+) -> None:
+    from esolangs.runtime import _isolated, _worker_pipe
+
+    class InterruptedThread(Thread):
+        def start(self):
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(
+        _isolated if streaming else _worker_pipe, "Thread", InterruptedThread
+    )
+    with pytest.raises(KeyboardInterrupt):
+        _isolated._launch("{}", monotonic() + 4, max_output=1 if streaming else None)
+    (child,) = spawned
+    assert child.poll() is not None
 
 
 def test_unknown_error_reconstructs_suggestions() -> None:
@@ -573,7 +705,7 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch) -> None:
 def test_process_creation_consumes_the_worker_deadline(
     monkeypatch, max_output, startup
 ) -> None:
-    from esolangs.runtime import _isolated
+    from esolangs.runtime import _isolated, _worker_pipe
     from esolangs.runtime._isolated import _launch
 
     clock = [0.0]
@@ -589,8 +721,9 @@ def test_process_creation_consumes_the_worker_deadline(
         def kill(self):
             calls.append("kill")
 
-        def communicate(self, *_args, **kwargs):
-            calls.append(kwargs.get("timeout"))
+        def communicate(self, request=None):
+            if request is None:
+                calls.append(None)
             return json.dumps(
                 {
                     "result": "",
@@ -610,9 +743,16 @@ def test_process_creation_consumes_the_worker_deadline(
             "completed", ExecutionResult("", 0, 0, 0, completion=HALTED_REPORT)
         )
 
+    wait_for_event = _worker_pipe.wait_for_event
+
+    def record_wait(event, deadline, *, clock):
+        calls.append(deadline - clock())
+        return wait_for_event(event, deadline, clock=clock)
+
     monkeypatch.setattr(_isolated, "monotonic", lambda: clock[0])
     monkeypatch.setattr(_isolated.subprocess, "Popen", spawn)
     monkeypatch.setattr(_isolated, "_bounded_output", bounded)
+    monkeypatch.setattr(_worker_pipe, "wait_for_event", record_wait)
     if startup > 1:
         with pytest.raises(esolangs.ExecutionTimeoutError):
             _launch("{}", 1, max_output=max_output).unwrap()
@@ -620,6 +760,33 @@ def test_process_creation_consumes_the_worker_deadline(
     else:
         assert _launch("{}", 1, max_output=max_output).unwrap().output == ""
         assert calls == [pytest.approx(0.6)]
+
+
+@pytest.mark.parametrize("completed_at", [2, 4, 5])
+def test_bulk_deadline_uses_the_transports_completion_time(
+    monkeypatch, completed_at
+) -> None:
+    from esolangs.runtime import _worker_pipe
+
+    clock = [0.0]
+
+    class Child:
+        def communicate(self, request):
+            assert request == "{}"
+            clock[0] = completed_at
+            return "output", ""
+
+    def wait_for_event(event, deadline, *, clock):
+        # Give the coordinator the result after transfer, even if it was late.
+        assert event.wait(timeout=1)
+        assert (deadline, clock()) == (4, completed_at)
+        return True
+
+    monkeypatch.setattr(_worker_pipe, "wait_for_event", wait_for_event)
+    assert _worker_pipe.communicate(Child(), "{}", 4, clock=lambda: clock[0]) == (
+        "output",
+        completed_at >= 4,
+    )
 
 
 @pytest.mark.parametrize(
