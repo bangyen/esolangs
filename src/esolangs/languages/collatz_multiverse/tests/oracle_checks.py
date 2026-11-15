@@ -6,7 +6,6 @@ from itertools import product
 import pytest
 
 from esolangs.languages.collatz_multiverse.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceVariant
 from tests.interpreters.oracle_support import observed
 from tests.support import workspace_oracle as workspace
 from tests.support.model_input import decimal_value
@@ -116,9 +115,7 @@ def _check(factory, program, stdin):
             frozenset(
                 ((name, frozenset(cells.items())) for name, cells in row[0][2].items())
             ),
-            row[0][0]
-            if row[0][-1] is None
-            else WorkspaceVariant("pending_input", (row[0][0], *row[0][-1])),
+            workspace.pending_input(row[0][0], *(row[0][-1] or ())),
             row[-1],
         ),
         lambda m: (m.ip, m.registers, m.arrays, m._pending_input()),

@@ -51,7 +51,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import syntax_error
@@ -217,9 +217,13 @@ class _Text:
         """Return the first occurrence as ``(rule, offset)``, or ``None``."""
         if not any(self.totals):
             return None
-        rule, block, _nth = self.select(0)
+        return self.position(self.select(0))
+
+    def position(self, slot: _Slot) -> _Match:
+        """Return the rule and its offset in the entire state."""
+        rule, block, nth = slot
         before = sum(map(len, self.blocks[:block]))
-        return rule, before + self.occ[rule][block][0]
+        return rule, before + self.occ[rule][block][nth]
 
     def replace(self, slot: _Slot, replacement: str) -> None:
         """Rewrite the occurrence ``slot`` names to ``replacement``."""
@@ -355,6 +359,7 @@ class _Machine:
         self._text = _Text(state, [lhs for lhs, _rhs in self.rules])
         self.io = io
         self._rng = rng
+        self._pending_input: _Slot | None = None
 
     @property
     def state(self) -> _State:
@@ -384,12 +389,19 @@ class _Machine:
         """Capture logical workspace independently of cycle keys and backing storage."""
         return _WORKSPACE_MODEL.capture(
             text=self.state,
-            input_cursor=self.io.progress(),
+            input_cursor=self._input_cursor(),
         )
 
+    def _input_cursor(self) -> int | WorkspaceVariant:
+        cursor = self.io.progress()
+        if self._pending_input is not None:
+            match = self._text.position(self._pending_input)
+            return WorkspaceVariant("pending_input", (cursor, *match))
+        return cursor
+
     def snapshot(self) -> tuple[object, ...]:
-        """Return rewrite-relation state and input progress; draws remain external."""
-        return (self.state, self.io.progress())
+        """Return rewrite state and input progress, including a suspended read."""
+        return (self.state, self._input_cursor())
 
     # The all-draws search, over the string alone: a ``:::`` rule declines to
     # fork, and a ``~`` rule's output cannot change what matches later.
@@ -422,13 +434,20 @@ class _Machine:
 
     def step(self) -> None:
         """Perform one rewrite, drawing which one among those available."""
-        count = sum(self._text.totals)
-        if not count:
-            return
-        match = self._text.select(draw(self._rng, count))
+        match = self._pending_input
+        if match is None:
+            count = sum(self._text.totals)
+            if not count:
+                return
+            match = self._text.select(draw(self._rng, count))
         rhs = self.rules[match.rule][1]
-        replacement, out = _rewrite(rhs, self.io.input_str() if rhs == _INPUT else None)
+        line = None
+        if rhs == _INPUT:
+            self._pending_input = match
+            line = self.io.input_str()
+        replacement, out = _rewrite(rhs, line)
         self._text.replace(match, replacement)
+        self._pending_input = None
         if out is not None:
             self.io.print_str(out)
 

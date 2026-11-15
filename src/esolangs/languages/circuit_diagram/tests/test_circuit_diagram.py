@@ -9,6 +9,7 @@ from functools import _lru_cache_wrapper, lru_cache, partial
 
 import pytest
 
+import esolangs
 from esolangs.languages.circuit_diagram import interpreter
 from esolangs.languages.circuit_diagram.interpreter import (
     _compile,
@@ -795,3 +796,24 @@ class TestPureTransition:
         while not machine.halted:
             machine.step()
         assert machine.io.getvalue() == "1"
+
+
+def test_circuit_retry_keeps_emitted_output_and_clock_samples(monkeypatch):
+    values = iter((5, None, 6))
+
+    def clock():
+        value = next(values)
+        if value is None:
+            raise esolangs.HaltError("clock temporarily unavailable")
+        return value
+
+    monkeypatch.setattr(interpreter, "_seconds_since_2000", clock)
+    api = esolangs.Language("Circuit Diagram")
+    source = "{stamp\n-.~.-:\nt-32-:\n}\n-:\n-stamp-:\n-stamp-:"
+    dbg = api.make_debugger(source, stdin="1\n1\n1\n")
+    with pytest.raises(esolangs.HaltError, match="clock temporarily unavailable"):
+        dbg.step()
+    assert dbg.output == "1"
+    assert dbg.observation.steps == 0
+    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=8)) == "halted"
+    assert dbg.output == f"1{5:032b}0{6:032b}0"

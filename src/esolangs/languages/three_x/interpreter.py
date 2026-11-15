@@ -34,6 +34,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.three_x.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -155,6 +156,7 @@ class _Machine:
     def __init__(self, code: str | _Image, io: IO) -> None:
         """Store ``code`` and start with an empty stack and no variables."""
         self.io = io
+        self._rejected = RejectedInput()
         self.code, ends = (code, None) if isinstance(code, str) else code
         self.ends: Mapping[int, int] | None = ends
         # ``halted`` is read twice per command -- once by ``run``'s loop and
@@ -204,14 +206,14 @@ class _Machine:
             operands=self.state[1],
             loop_returns=self.state[2],
             variables=frozenset(self.state[3]),
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # ?(!?)! can revisit this state while consuming 1 1 0; the input
         # cursor separates the repeat from the later zero that ends the loop.
-        return (*self.state, self.io.progress())
+        return self._rejected.snapshot((*self.state, self.io.progress()))
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the cursor."""
@@ -256,7 +258,9 @@ class _Machine:
             if stack[-1] == 0:
                 target = match
         elif char == "?":
-            value = _rational(self.io.input_token().strip())
+            value = self._rejected.read(
+                self.io, lambda: _rational(self.io.input_token().strip())
+            )
         elif char == "!":
             top = stack[-1]
             if top.denominator == 1:

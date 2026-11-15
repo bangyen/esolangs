@@ -26,10 +26,11 @@ from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_lines
 from tests.support.certification_barrier import guarded_worker
-from tests.support.execution import termination_observed
+from tests.support.execution import assert_digit_cap_independent, termination_observed
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import (
     assert_halts_with_hint,
+    assert_numeric_token_replayed,
     assert_rejected_with_hint,
     raises_message,
 )
@@ -55,7 +56,7 @@ def test_advance_is_pure_and_repeatable() -> None:
 
 def test_advance_takes_input_and_draws_as_arguments() -> None:
     """``INP``/``RND`` push what the shell supplies, not a port read."""
-    inp = _advance(_modulous_state(), "INP INT", "42")
+    inp = _advance(_modulous_state(), "INP INT", 42)
     assert inp[0][0] == (42,)
     rnd = _advance(_modulous_state(), "RND 5", 3)
     assert rnd[0][0] == (3,)
@@ -576,3 +577,16 @@ def test_fallback_chunks_hold_width_minus_three_characters() -> None:
     from esolangs.languages.modulous.generator import modulous
 
     assert '"01010"' in modulous("01010001", 8)
+
+
+def test_retry_replays_a_rejected_numeric_token():
+    assert_numeric_token_replayed("Modulous", "[INP INT][PRT INT][END]", "٣", "3")
+
+
+def test_wide_decimal_operands_ignore_the_host_digit_cap():
+    wide = "9" * 641
+    source = (
+        f"[INP INT][VAR1+ {wide}][ADD {wide}][SUB {wide}]"
+        f"[JMP F 1 NIF {wide}][PRT INT][PRT VAR1 INT][END]"
+    )
+    assert_digit_cap_independent("Modulous", source, wide, wide * 2)

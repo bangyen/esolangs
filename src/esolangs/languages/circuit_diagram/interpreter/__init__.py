@@ -114,7 +114,7 @@ from esolangs.runtime._drive import drive
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 
 # ``tests/test_circuit_diagram.py`` carries ``PRIME_TESTER`` (repaired, replayed over
@@ -436,6 +436,8 @@ class _Machine:
         self.latches: tuple[tuple[tuple[int, ...] | None, ...], ...] = tuple(
             (None,) * len(gate.inputs) for gate in self.gates
         )
+        self._emitted_count = 0
+        self._clock_samples: list[int] = []
         self._load_inputs()
         self._load_sources()
 
@@ -564,15 +566,26 @@ class _Machine:
         gate order.  The clock is read here, one value per read the
         transition asks for; the transition itself never touches wall time.
         """
-        for text in _emitted(self.values, self.topology):
-            self.io.print_str(text)
-        sampled: list[int] = []
+        emitted = _emitted(self.values, self.topology)
+        for index in range(self._emitted_count, len(emitted)):
+            self.io.print_str(emitted[index])
+            self._emitted_count += 1
         while True:
             try:
-                self._generate(_BufferedClock(tuple(sampled)))
+                self._generate(_BufferedClock(tuple(self._clock_samples)))
                 break
             except _ClockNeededError:
-                sampled.append(self.clock.read())
+                self._clock_samples.append(self.clock.read())
+        self._emitted_count = 0
+        self._clock_samples.clear()
+
+    def _clock_cursor(self) -> int | WorkspaceVariant:
+        if self._emitted_count or self._clock_samples:
+            return WorkspaceVariant(
+                "pending_generation",
+                (self.clock.position, self._emitted_count, *self._clock_samples),
+            )
+        return self.clock.position
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
@@ -580,14 +593,14 @@ class _Machine:
             signals=self.values,
             latches=self.latches,
             stopped=self.halted,
-            clock_cursor=self.clock.position,
+            clock_cursor=self._clock_cursor(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return events, latches, halt and the runtime clock-read cursor."""
         # The two halves of the state are already the tuples this wants,
         # which is what freezing them bought: no per-call rebuild.
-        return (self.values, self.latches, self.halted, self.clock.position)
+        return (self.values, self.latches, self.halted, self._clock_cursor())
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

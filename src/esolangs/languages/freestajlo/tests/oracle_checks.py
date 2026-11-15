@@ -147,10 +147,13 @@ def _model(source, stdin):
                 effect = _local(token, stack)
             except (ZeroDivisionError, IndexError):
                 return "halt", [*trace, trace[-1]]
+        if effect is not None:
+            operation, value = effect
+            if operation == "." and 0xD800 <= value % 0x10FFFF <= 0xDFFF:
+                return "halt", [*trace, trace[-1]]
         stacks[index] = stack
         at += 1
         if effect is not None:
-            operation, value = effect
             if operation == ")":
                 transfer.append(value)
             elif operation == "!":
@@ -159,10 +162,7 @@ def _model(source, stdin):
             elif operation == ":":
                 output += str(value)
             else:
-                point = value % 0x10FFFF
-                if 0xD800 <= point <= 0xDFFF:
-                    return "halt", [*trace, row()]
-                output += chr(point)
+                output += chr(value % 0x10FFFF)
 
 
 def _workspace_parts(row):

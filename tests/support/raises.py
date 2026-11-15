@@ -56,3 +56,23 @@ def assert_halts_with_hint(
     assert_rejected_with_hint(
         language, source, hint, message=message, error=HaltError, stdin=stdin
     )
+
+
+def assert_numeric_token_replayed(name, source, valid, output):
+    """Retry the same numeric instruction and compare its error evidence."""
+    api = esolangs.Language(name)
+    dbg = api.make_debugger(source, stdin="oops " + valid)
+    limit = esolangs.ExecutionLimits(max_steps=16)
+    with pytest.raises(esolangs.ProgramError) as first:
+        dbg.run(limits=limit)
+    boundary = dbg.snapshot()
+    assert first.value.observation.input_position == 4
+    assert first.value.observation.input_reads == 1
+    with pytest.raises(esolangs.ProgramError) as again:
+        dbg.run(limits=limit)
+    assert again.value is not first.value
+    assert str(again.value) == str(first.value)
+    assert again.value.observation == first.value.observation
+    assert again.value.__notes__ == first.value.__notes__
+    assert dbg.snapshot() == boundary
+    assert api.run(source, stdin=valid, limits=limit).output == output

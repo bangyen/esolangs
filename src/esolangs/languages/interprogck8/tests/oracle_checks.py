@@ -11,6 +11,7 @@ from itertools import product
 from esolangs.languages.interprogck8.interpreter import _Machine
 from tests.interpreters.oracle_support import reject_faults
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import line_span
 
 _WORKSPACE = workspace.workspace_model(
     "interprogck8-v1",
@@ -20,34 +21,32 @@ _WORKSPACE = workspace.workspace_model(
 
 class _Port:
     def __init__(self, stdin):
-        self.stdin, self.cursor = stdin, 0
+        self.stdin, self.cursor, self.prefix = stdin, 0, []
 
     def line(self):
         if self.cursor == len(self.stdin):
             raise EOFError
-        end = self.stdin.find("\n", self.cursor)
-        stop = len(self.stdin) if end < 0 else end + 1
-        text = self.stdin[self.cursor : stop].removesuffix("\r\n").removesuffix("\n")
-        self.cursor = stop
+        text, self.cursor = line_span(self.stdin, self.cursor)
         if not text:
-            raise ArithmeticError("empty input")
+            raise ArithmeticError("EmptyInputError: empty input")
         return text
 
 
 def _pips(text):
     if not text or any(c not in ":." for c in text):
-        raise ArithmeticError("dice literal")
+        raise ArithmeticError(f"not a dice literal: {text!r}")
     return sum(1 if c == "." else 2 for c in text)
 
 
 def _argument(text, acc, port):
     if not text:
         return acc
-    if text == "u":
-        return ord(port.line()[0])
-    if text == "$py":
-        return _pips(port.line())
-    return _pips(text)
+    if text not in ("u", "$py"):
+        return _pips(text)
+    line = port.line()
+    value = ord(line[0]) if text == "u" else _pips(line)
+    port.prefix.append(value)
+    return value
 
 
 def _basic(command, acc, port):
@@ -134,10 +133,11 @@ def _model(source, stdin):
     for tick in range(49):
         trace.append(row())
         if not frames and ip >= len(lines):
-            return None, trace + [row()] * 3
+            return (None, trace + [row()] * 3), port.cursor
         if tick == 48:
             break
         command = frames[-1][0][frames[-1][1]] if frames else lines[ip]
+        port.prefix.clear()
         try:
             if command in ("<", "EXE", "IFT", "IFQ", "z", "DownAccLines"):
                 lines, ip, acc, slot, frames = _control(
@@ -147,11 +147,9 @@ def _model(source, stdin):
                 acc, text = _basic(command, acc, port)
                 output += text
                 ip, frames = _after(ip, frames)
-        except EOFError:
-            return "input", [*trace, row()]
-        except ArithmeticError:
-            return "halt", [*trace, row()]
-    return None, trace
+        except (EOFError, ArithmeticError) as error:
+            return workspace.input_fault(error, trace, row(), port.prefix)
+    return (None, trace), port.cursor
 
 
 def _view(machine):
@@ -160,12 +158,14 @@ def _view(machine):
 
 
 def _check(factory, source, stdin="unused"):
+    expected, cursor = _model(source, stdin)
     workspace.agrees(
-        _model(source, stdin),
+        expected,
         (factory, list(source), stdin),
         (_WORKSPACE, lambda row: (*row[0], row[-1])),
         _view,
         cap=48,
+        fault_cursor=cursor,
         context=(source, stdin),
     )
 

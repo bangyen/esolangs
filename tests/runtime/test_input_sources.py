@@ -432,3 +432,29 @@ def test_expired_acquisition_does_not_start_another_read(monkeypatch, block):
     assert all(not thread.is_alive() for thread in threads)
     assert not input_reads
     assert program.tell() == (2 if block == "program" else 0)
+
+
+@pytest.mark.parametrize("route", ["native", "bounded", "isolated", "vm", "debugger"])
+def test_invalid_literal_utf8_leaves_program_stream_at_its_original_offset(route):
+    api = esolangs.Language(REFERENCE)
+    source = io.BytesIO(b"skip,.")
+    source.seek(4)
+    if route in ("vm", "debugger"):
+        invoke = api.make_vm if route == "vm" else api.make_debugger
+        options = {}
+    else:
+        invoke = api.run
+        options = {"isolated": route == "isolated"}
+        if route == "bounded":
+            options["limits"] = esolangs.ExecutionLimits(max_steps=2)
+
+    with pytest.raises(esolangs.ArgumentError, match="cannot read stdin") as caught:
+        invoke(source, stdin=b"\xff", **options)
+    assert isinstance(caught.value.__cause__, UnicodeDecodeError)
+    assert source.tell() == 4
+    result = invoke(source, stdin="é".encode(), **options)
+    if route == "vm":
+        assert complete_vm(result, max_steps=2) == "é"
+    elif route == "debugger":
+        assert result.run() == "halted"
+    assert result.output == "é"

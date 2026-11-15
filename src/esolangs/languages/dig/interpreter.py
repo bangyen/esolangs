@@ -41,6 +41,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.dig.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
@@ -345,6 +346,7 @@ class _Machine:
     ) -> None:
         """Pad ``code`` to a rectangular grid, like :func:`run`."""
         self.io = io
+        self._rejected = RejectedInput()
         self.code, self.size = (
             code if isinstance(code, _GridImage) else _prepare_grid(code)
         )
@@ -388,7 +390,7 @@ class _Machine:
             mole=self.mole,
             number=self.num,
             grid=tuple(tuple(row) for row in self.code),
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
             input_reads=self._input_reads,
             stopped=self._done,
         )
@@ -398,15 +400,17 @@ class _Machine:
 
         The grid is included because ``;`` writes the mole back into it.
         """
-        return (
-            self.row,
-            self.col,
-            self.move,
-            self.mole,
-            self.num,
-            self.code,
-            self.io.progress(),
-            self._input_reads,  # IO providers may expose no cursor.
+        return self._rejected.snapshot(
+            (
+                self.row,
+                self.col,
+                self.move,
+                self.mole,
+                self.num,
+                self.code,
+                self.io.progress(),
+                self._input_reads,  # IO providers may expose no cursor.
+            )
         )
 
     @property
@@ -439,6 +443,15 @@ class _Machine:
             self._done,
         ) = state
 
+    def _read_integer(self) -> int:
+        token = self.io.input_token()
+        self._input_reads += 1
+        try:
+            return parse_integer(token)
+        except ValueError as error:
+            self._rejected.remember(error)
+            raise
+
     def step(self) -> None:
         """Execute the cell under the mole, then move it one cell.
 
@@ -467,9 +480,7 @@ class _Machine:
                 value = self.io.input_char()
                 self._input_reads += 1
             elif char == "~":
-                temp = self.io.input_token()
-                self._input_reads += 1
-                value = parse_integer(temp)
+                value = self._rejected.read(self.io, self._read_integer)
             elif char == ":":
                 if self.mole < 10:
                     self.io.print_str(format_integer(self.mole))

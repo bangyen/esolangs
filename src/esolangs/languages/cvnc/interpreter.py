@@ -66,6 +66,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 __all__ = ["run"]
@@ -136,7 +137,7 @@ _LOOP_END = "ʋ"
 def _as_int(line: str) -> int:
     """Parse an input line as an integer, taking anything else as zero."""
     try:
-        return int(line)
+        return parse_integer(line)
     except ValueError:
         return 0
 

@@ -12,6 +12,7 @@ import pytest
 from esolangs.languages.thue.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, stalled
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import line_span
 
 _WORKSPACE = workspace.workspace_model("thue-v1", "text input_cursor")
 
@@ -48,17 +49,18 @@ def _model(rules, text, stdin, choices):
         )
         trace.append(row)
         if not matches:
-            return None, trace + [row] * 3
+            return (None, trace + [row] * 3), None
         if tick == 12:
             break
         rule, at = matches[next(selected) % len(matches)]
         left, right = rules[rule]
         if right == ":::":
             if cursor == len(stdin):
-                return "input", [*trace, row]
-            end = stdin.find("\n", cursor)
-            end = len(stdin) if end < 0 else end + 1
-            replacement = stdin[cursor:end].removesuffix("\r\n").removesuffix("\n")
+                fault = (row[0], False, output, cursor, progress)
+                return ("input", [*trace, fault]), workspace.pending_input(
+                    progress, rule, at
+                )
+            replacement, end = line_span(stdin, cursor)
             progress += max(1, end - cursor)
             cursor = end
         elif right.startswith("~"):
@@ -67,7 +69,7 @@ def _model(rules, text, stdin, choices):
         else:
             replacement = right
         text = text[:at] + replacement + text[at + len(left) :]
-    return None, trace
+    return (None, trace), None
 
 
 def _check(factory, rules, text, stdin, choices=(0,)):
@@ -76,11 +78,13 @@ def _check(factory, rules, text, stdin, choices=(0,)):
     def build(code, io):
         return factory(code, io, _Choices(choices))
 
+    expected, cursor = _model(rules, text, stdin, choices)
     workspace.agrees(
-        _model(rules, text, stdin, choices),
+        expected,
         (build, source, stdin),
         (_WORKSPACE, lambda row: (row[0][0], row[-1])),
         lambda machine: (machine.state, machine.ip),
+        fault_cursor=cursor,
         context=(rules, text, stdin, choices),
         cap=12,
     )

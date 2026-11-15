@@ -13,7 +13,7 @@ import pytest
 from esolangs.languages.modulous.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, reject_faults
 from tests.support import workspace_oracle as workspace
-from tests.support.model_input import token_span
+from tests.support.model_input import line_span, rejected_decimal_syntax, token_span
 
 _WORKSPACE = workspace.workspace_model(
     "modulous-v1", "instruction stack variables input_cursor stopped input_reads draws"
@@ -35,11 +35,8 @@ def _read(mode, stdin, cursor):
     if mode == "INT":
         start, cursor = token_span(stdin, cursor)
         return stdin[start:cursor], cursor, start == cursor
-    if cursor == len(stdin):
-        return "", cursor, True
-    end = stdin.find("\n", cursor)
-    stop = len(stdin) if end < 0 else end + 1
-    return stdin[cursor:stop].removesuffix("\r\n").removesuffix("\n"), stop, False
+    text, stop = line_span(stdin, cursor)
+    return text, stop, stop == cursor
 
 
 def _push(args, stack, variables):
@@ -162,6 +159,8 @@ def _check(factory, modules, stdin="unused", *, curly=False):
         _view,
         cap=48,
         context=(modules, stdin),
+        rejected_syntax=rejected_decimal_syntax,
+        rejected_component=3,
     )
 
 

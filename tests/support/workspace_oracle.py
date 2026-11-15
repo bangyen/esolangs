@@ -145,13 +145,39 @@ def workspace_model(name, components):
     return WorkspaceModel(name, tuple(components.split()))
 
 
-def _rejected_parts(parts, fault, details):
+def pending_input(cursor, *prefix):
+    """Predict the workspace charge for a suspended input operation."""
+    return WorkspaceVariant("pending_input", (cursor, *prefix)) if prefix else cursor
+
+
+def input_fault(error, trace, stopped, prefix):
+    """Keep accepted operands and the diagnostic when supplied input failed."""
+    cursor = stopped[-1]
+    status = "input" if isinstance(error, EOFError) else "halt"
+    if status == "halt" and cursor != trace[-1][-1]:
+        cursor = WorkspaceVariant(
+            "rejected_input", (cursor, "HaltError", str(error), ())
+        )
+    return (status, [*trace, stopped]), pending_input(cursor, *prefix)
+
+
+def _rejected_parts(parts, fault, details, *, component=-1):
+    return _fault_parts(
+        parts,
+        fault,
+        lambda cursor: WorkspaceVariant("rejected_input", (cursor, *details)),
+        component=component,
+    )
+
+
+def _fault_parts(parts, fault, replace, *, component):
     def capture(row):
         fields = parts(row)
-        if row is fault:
-            cursor = WorkspaceVariant("rejected_input", (fields[-1], *details))
-            return (*fields[:-1], cursor)
-        return fields
+        if row is not fault:
+            return fields
+        fields = list(fields)
+        fields[component] = replace(fields[component])
+        return tuple(fields)
 
     return capture
 
@@ -165,18 +191,25 @@ def agrees(
     context=None,
     rejected_input=None,
     rejected_halt=None,
+    rejected_syntax=None,
+    rejected_component=-1,
+    fault_cursor=None,
     **options,
 ):
     factory, code, stdin = execution
     model, parts = workspace
     status, trace = expected
-    rejected = (
-        rejected_input
-        if status == "argument"
-        else (rejected_halt if status == "halt" else None)
-    )
+    rejected = {
+        "argument": rejected_input,
+        "halt": rejected_halt,
+        "syntax": rejected_syntax,
+    }.get(status)
     if rejected is not None and (details := rejected(trace, stdin)) is not None:
-        parts = _rejected_parts(parts, trace[-1], details)
+        parts = _rejected_parts(parts, trace[-1], details, component=rejected_component)
+    if status is not None and fault_cursor is not None:
+        parts = _fault_parts(
+            parts, trace[-1], lambda _cursor: fault_cursor, component=-1
+        )
     checked = workspace_view(trace, model, parts, state)
     assert observed(factory, code, stdin, checked, **options) == expected, (
         (code, stdin) if context is None else context

@@ -22,10 +22,11 @@ class _ClockStream:
         self.position = 0
 
     def read(self) -> int:
-        self.position += 1
         from esolangs.languages.circuit_diagram.interpreter import _seconds_since_2000
 
-        return _seconds_since_2000()
+        value = _seconds_since_2000()
+        self.position += 1
+        return value
 
 
 type _WidthKey = tuple[

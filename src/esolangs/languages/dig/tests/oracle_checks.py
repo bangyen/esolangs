@@ -14,9 +14,9 @@ import pytest
 import esolangs
 from esolangs.languages.dig.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
-from tests.interpreters.oracle_support import observed, reject_faults
+from tests.interpreters.oracle_support import reject_faults
 from tests.support import workspace_oracle as workspace
-from tests.support.model_input import token_span
+from tests.support.model_input import decimal_value, rejected_decimal_syntax, token_span
 
 _WORKSPACE = workspace.workspace_model(
     "dig-v2", "row column direction mole number grid input_cursor input_reads stopped"
@@ -44,10 +44,7 @@ def _read(command, stdin, cursor):
     text = stdin[start:cursor]
     if re.fullmatch(r"[+-]?\d(?:_?\d)*", text) is None:
         return None, cursor, "syntax"
-    value = 0
-    for digit in text.lstrip("+-").replace("_", ""):
-        value = 10 * value + int(digit)
-    return value * (-1 if text.startswith("-") else 1), cursor, None
+    return decimal_value(text), cursor, None
 
 
 def _work(command, value, cells, point):
@@ -166,9 +163,15 @@ def _parts(row):
 
 
 def _check(factory, lines, stdin="unused"):
-    expected = _model(lines, stdin)
-    checked = workspace.workspace_view(expected[1], _WORKSPACE, _parts, _view)
-    assert observed(factory, lines, stdin, checked, cap=48) == expected, (lines, stdin)
+    workspace.agrees(
+        _model(lines, stdin),
+        (factory, lines, stdin),
+        (_WORKSPACE, _parts),
+        _view,
+        rejected_syntax=rejected_decimal_syntax,
+        rejected_component=6,
+        cap=48,
+    )
 
 
 def check_raw_dig():

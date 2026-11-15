@@ -20,7 +20,10 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
-from tests.support.raises import assert_rejected_with_hint
+from tests.support.raises import (
+    assert_numeric_token_replayed,
+    assert_rejected_with_hint,
+)
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
 
@@ -291,3 +294,7 @@ class TestThreeXUnmatchedOpen:
         """``(`` over a zero jumps to its ``)``, or advances when there is none."""
         with pytest.raises(HaltError, match="empty stack"):
             run_program("1(", "")
+
+
+def test_retry_replays_a_rejected_numeric_token():
+    assert_numeric_token_replayed("3x", "?!", "7/2", "7/2")

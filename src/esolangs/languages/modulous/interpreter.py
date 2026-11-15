@@ -54,11 +54,13 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.modulous.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.randomness import Randomness, draw
 from esolangs.runtime.source_hints import keyword_hint, syntax_error, with_hint
 
@@ -181,7 +183,7 @@ def _pre_read(
             chr(n)  # Reject the same out-of-range characters the I/O shell would.
         return (ind, mod, command, n)
     if command == "RND":
-        bound = int(_operand(arg, 1))
+        bound = parse_integer(_operand(arg, 1))
         return (ind, mod, command, bound if bound >= 1 else None)
     return (ind, mod, command, None)
 
@@ -223,6 +225,7 @@ class _Machine:
         )
         self.ind = 0
         self.io = io
+        self._rejected = RejectedInput()
         image = _parse_tokens(code) if isinstance(code, str) else code
         self.tokens = image
         self._halted = False
@@ -249,7 +252,7 @@ class _Machine:
             instruction=self.ind,
             stack=self.stk,
             variables=frozenset(self.var.items()),
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
             stopped=self._halted,
             input_reads=self._input_reads,
             draws=self._draws,
@@ -257,15 +260,17 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
-            self.ind,
-            self.stk,
-            tuple(sorted(self.var.items())),
-            self.io.progress(),
-            self._halted,
-            self.tokens,
-            self._input_reads,
-            self._draws,
+        return self._rejected.snapshot(
+            (
+                self.ind,
+                self.stk,
+                tuple(sorted(self.var.items())),
+                self.io.progress(),
+                self._halted,
+                self.tokens,
+                self._input_reads,
+                self._draws,
+            )
         )
 
     # The all-random-outcomes search.  ``_Core`` holds ``var`` as a dict,
@@ -317,7 +322,7 @@ class _Machine:
             if datum > _RND_FANOUT:
                 raise with_hint(
                     TimeoutError(
-                        f"undecided: one 'RND {datum}' exceeds "
+                        f"undecided: one 'RND {format_integer(datum)}' exceeds "
                         f"the {_RND_FANOUT}-outcome "
                         "cap on a single transition"
                     ),
@@ -362,12 +367,24 @@ class _Machine:
             # The pre-read validates every PRT value, so the datum is set.
             self._print(mod, cast(int, datum))
         elif command == "INP":
-            value = self.io.input_token() if "INT" in mod else self.io.input_str()
-            self._input_reads += 1
+            if "INT" in mod:
+                value = self._rejected.read(self.io, self._read_integer)
+            else:
+                value = self.io.input_str()
+                self._input_reads += 1
         elif command == "RND" and datum is not None:
             value = draw(self.rng, datum)
             self._draws += 1
         self._restore(_advance(((stk, var, ind), halted), mod, value))
+
+    def _read_integer(self) -> int:
+        token = self.io.input_token()
+        self._input_reads += 1
+        try:
+            return parse_integer(token)
+        except ValueError as error:
+            self._rejected.remember(error)
+            raise
 
     def _print(self, mod: str, n: int) -> None:
         """Write a ``PRT`` value the pre-read validated."""
@@ -472,29 +489,29 @@ def _jmp(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
     val = _top(stk) if stk else 0
 
     if "NIF" in mod:
-        cond = val != int(_operand(arg, -1))
+        cond = val != parse_integer(_operand(arg, -1))
     elif "IF" in mod:
-        cond = val == int(_operand(arg, -1))
+        cond = val == parse_integer(_operand(arg, -1))
 
     if cond:
         if _operand(arg, 1) == "F":
-            ind += int(_operand(arg, 2)) - 1
+            ind += parse_integer(_operand(arg, 2)) - 1
         else:
-            ind -= int(_operand(arg, 2)) + 1
+            ind -= parse_integer(_operand(arg, 2)) + 1
     return (stk, var, ind)
 
 
 def _add(core: _Core, _mod: str, arg: list[str], _value: str | int | None) -> _Core:
     """Add an operand to the top of the stack."""
     stk, var, ind = core
-    n = int(_operand(arg, 1))
+    n = parse_integer(_operand(arg, 1))
     return ((*stk[:-1], _top(stk) + n), var, ind)
 
 
 def _sub(core: _Core, _mod: str, arg: list[str], _value: str | int | None) -> _Core:
     """Subtract an operand from the top of the stack."""
     stk, var, ind = core
-    n = int(_operand(arg, 1))
+    n = parse_integer(_operand(arg, 1))
     return ((*stk[:-1], _top(stk) - n), var, ind)
 
 
@@ -509,7 +526,7 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
     stk, var, ind = core
     kind = _operand(arg, 1)
     if kind == "INT":
-        return ((*stk, int(_operand(arg, 2))), var, ind)
+        return ((*stk, parse_integer(_operand(arg, 2))), var, ind)
     if kind == "STR":
         quoted = re.search(_QUOTED, mod)
         if quoted is None:
@@ -570,10 +587,9 @@ def _inp(core: _Core, mod: str, _arg: list[str], value: str | int | None) -> _Co
     way; numeric EOF is raised before this transition.
     """
     stk, var, ind = core
-    text = "" if value is None else str(value)
     if "INT" in mod:
-        # input_token returns a nonempty token or raises at EOF.
-        return ((*stk, int(text)), var, ind)
+        return ((*stk, cast(int, value)), var, ind)
+    text = cast(str, value)
     return ((*stk, *map(ord, reversed(text))), var, ind)
 
 
@@ -591,10 +607,10 @@ def _dup(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _
 def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Core:
     """Push the draw the shell made, rejecting a bound below one."""
     stk, var, ind = core
-    n = int(_operand(arg, 1))
+    n = parse_integer(_operand(arg, 1))
     if n < 1:
         raise HaltError(
-            f"RND needs an upper bound of at least 1, got {n}",
+            f"RND needs an upper bound of at least 1, got {format_integer(n)}",
             hint="give RND an upper bound of at least 1",
         )
     return ((*stk, int(value) if value is not None else 0), var, ind)
@@ -609,7 +625,7 @@ def _var_arith(
     # so the one that is not a ``+`` is a ``-``.
     plus = "+" in mod and ("-" not in mod or mod.index("+") < mod.index("-"))
     lhs, rhs = mod.split("+" if plus else "-", 1)
-    delta = int(rhs) if plus else -int(rhs)
+    delta = parse_integer(rhs) if plus else -parse_integer(rhs)
     return (stk, MappingProxyType({**var, lhs: _named(var, lhs) + delta}), ind)
 
 

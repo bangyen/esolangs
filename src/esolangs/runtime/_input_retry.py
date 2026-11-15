@@ -47,10 +47,15 @@ class RejectedInput:
         details = kind.__name__, str(error), tuple(getattr(error, "__notes__", ()))
         self._fault = _Diagnostic(kind, error.args, details, error.__cause__)
 
+    def raise_if_rejected(self) -> None:
+        """Raise a fresh copy of an earlier rejection."""
+        if self._fault is not None:
+            raise self._fault.fresh() from self._fault.cause
+
     def read[T](self, io: IO, acquire: Callable[[], T]) -> T:
         """Retry reads that failed before any input became available."""
         if self._fault is not None:
-            raise self._fault.fresh() from self._fault.cause
+            self.raise_if_rejected()
         before = io.progress()
         try:
             return acquire()

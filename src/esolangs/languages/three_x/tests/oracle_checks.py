@@ -9,7 +9,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.three_x.interpreter import _Machine
-from tests.support.model_input import token_span
+from tests.support.model_input import rejected_fraction_syntax, token_span
 from tests.support.workspace_oracle import check_erasures, workspace_model
 from tests.support.workspace_oracle import checker as workspace_checker
 
@@ -139,6 +139,7 @@ _agrees = workspace_checker(
     _model,
     (_WORKSPACE, lambda row: (*row[0][:3], frozenset(row[0][3]), row[-1])),
     lambda m: (*m.state, tuple(sorted(m.variables.items())), m.ip),
+    rejected_syntax=rejected_fraction_syntax,
 )
 
 

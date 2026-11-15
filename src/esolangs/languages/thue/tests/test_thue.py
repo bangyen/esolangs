@@ -4,6 +4,7 @@ import re
 
 import pytest
 
+import esolangs
 from esolangs.languages.thue import interpreter as thue
 from esolangs.languages.thue.interpreter import (
     _Machine,
@@ -216,3 +217,18 @@ def test_the_block_index_steps_as_the_whole_string_would(
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Thue", "a::=b", "line containing only ::=")
+
+
+def test_thue_keeps_the_selected_input_rule_after_eof():
+    api = esolangs.Language("Thue")
+    source = "a::=:::\na::=~A\n::=\na"
+    dbg = api.make_debugger(source, seed=4)
+    for count in (1, 2):
+        with pytest.raises(esolangs.InputExhaustedError) as caught:
+            dbg.step()
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "", 0, 0, count, steps=0
+        )
+        assert not dbg.halted
+    assert api.run(source, seed=4, stdin="z\n").input_reads == 1
+    assert api.run(source, seed=0).output == "A"

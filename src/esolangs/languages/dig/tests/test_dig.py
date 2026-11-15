@@ -11,7 +11,7 @@ from esolangs.languages.dig.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract, InputCursorContract
 from tests.interpreters.runner import run_lines
-from tests.support.raises import raises_message
+from tests.support.raises import assert_numeric_token_replayed, raises_message
 from tests.support.vm_support import assert_starts_downward
 
 run_and_capture = run_lines(run)
@@ -305,3 +305,7 @@ class TestContract(CycleContract, InputCursorContract):
 def test_the_first_move_is_down_the_rows() -> None:
     """It begins vertically, so ``VM.ip``'s first component moves first."""
     assert_starts_downward("Dig")
+
+
+def test_retry_replays_a_rejected_numeric_token():
+    assert_numeric_token_replayed("Dig", ">$~:\n 2 ", "7", "7")

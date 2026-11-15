@@ -88,12 +88,10 @@ class PendingInput:
         )
 
 
-def bind_prepared_input(
-    stdin: InputSource, timeout: float
-) -> str | bytes | PendingInput:
+def bind_prepared_input(stdin: InputSource, timeout: float) -> str | PendingInput:
     """Bind fresh stdin under a deadline without consuming the reader yet."""
     if isinstance(stdin, (str, bytes)):
-        return stdin
+        return read_input(stdin)
     deadline = monotonic() + timeout
     context = copy_context()
 

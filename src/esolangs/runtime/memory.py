@@ -16,10 +16,13 @@ def parse_integer(source: str) -> int:
     """Parse integer operands without CPython's decimal conversion cap."""
     try:
         return int(source)
-    except ValueError:
-        if not re.fullmatch(r"[+-]?\d(?:_?\d)*", source):
+    except ValueError as error:
+        if not _hit_digit_cap(error):
             raise
-        return int(Decimal(source.replace("_", "")))
+        digits = source.strip()
+        if not re.fullmatch(r"[+-]?\d(?:_?\d)*", digits):
+            raise
+        return int(Decimal(digits.replace("_", "")))
 
 
 def format_integer(value: int) -> str:

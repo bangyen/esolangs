@@ -69,10 +69,11 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.interprogck8.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Randomness, draw
 
@@ -628,6 +629,8 @@ class _Machine:
             _prepare_source(code) if isinstance(code, (str, list)) else code
         )
         self.state = _State(self._loaded)
+        self._reads: list[int] = []
+        self._rejected = RejectedInput()
 
     def _load(self, lines: tuple[str, ...]) -> None:
         """Compile the program once, before running: the load phase.
@@ -667,13 +670,19 @@ class _Machine:
             accumulator=self.state.acc,
             captured_body=self.state.slot,
             call_frames=self.state.frames,
-            input_cursor=self.io.progress(),
+            input_cursor=self._input_cursor(),
         )
+
+    def _input_cursor(self) -> int | WorkspaceVariant:
+        cursor = self._rejected.cursor(self.io.progress())
+        if self._reads:
+            return WorkspaceVariant("pending_input", (cursor, *self._reads))
+        return cursor
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete state, hashable, with the input cursor."""
         s = self.state
-        return (s.lines, s.ip, s.acc, s.slot, s.frames, self.io.progress())
+        return (s.lines, s.ip, s.acc, s.slot, s.frames, self._input_cursor())
 
     # The branching-search protocol.  ``[a b]``, ``~`` and range arguments
     # in ``{values}`` draw, so a hang proof must cover *every* draw.  A line
@@ -725,18 +734,38 @@ class _Machine:
             instr = _compile(body[index])
         else:
             instr = self._program[state.ip]
-        reads = []
-        for kind in instr.reads:
-            # ``u``'s EmptyInputError is the spec's, so an empty line is an
-            # error here rather than the repo's usual read-as-0; running out
-            # of input is the different case and still raises EOFError.
-            val = self.io.input_str()
-            if not val:
-                raise HaltError("EmptyInputError: empty input")
-            reads.append(_pips(val) if kind == "pips" else ord(val[0]))
-        self.state, out = _advance(state, self.rng, tuple(reads), instr)
+        if instr.reads:
+            self.state, out = self._advance_with_input(state, instr)
+        else:
+            self.state, out = _advance(state, self.rng, instr=instr)
         if out:
             self.io.print_str(out)
+
+    def _advance_with_input(
+        self, state: _State, instr: _Instr
+    ) -> tuple[_State, str | None]:
+        self._rejected.raise_if_rejected()
+        self._read_operands(instr.reads)
+        try:
+            result = _advance(state, self.rng, tuple(self._reads), instr)
+        except HaltError as error:
+            self._rejected.remember(error)
+            raise
+        self._reads.clear()
+        return result
+
+    def _read_operands(self, kinds: tuple[str, ...]) -> None:
+        for kind in kinds[len(self._reads) :]:
+            val = self._rejected.read(self.io, self.io.input_str)
+            try:
+                # A supplied empty line is distinct from exhausted input.
+                if not val:
+                    raise HaltError("EmptyInputError: empty input")
+                value = _pips(val) if kind == "pips" else ord(val[0])
+            except HaltError as error:
+                self._rejected.remember(error)
+                raise
+            self._reads.append(value)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

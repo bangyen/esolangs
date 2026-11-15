@@ -1,10 +1,12 @@
 """Observe outcomes through a raising adapter with caller-supplied test IO."""
 
 import signal
+import sys
 import time
 from collections.abc import Callable
 from typing import Any, cast
 
+from esolangs import Language
 from esolangs.exceptions import ArgumentError, ExecutionTimeoutError
 from esolangs.operations.execution import _execute_invocation
 from esolangs.results import ExecutionResult
@@ -139,3 +141,18 @@ def termination_observed(
         ScriptedIO(""),
         timeout,
     )
+
+
+def assert_digit_cap_independent(
+    name: str, source: ProgramSource, stdin: str, output: str
+) -> None:
+    """Run a wide decimal witness locally and in an isolated worker."""
+    api = Language(name)
+    previous = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        native = api.run(source, stdin=stdin)
+        assert native.output == output
+        assert api.run(source, stdin=stdin, isolated=True) == native
+    finally:
+        sys.set_int_max_str_digits(previous)

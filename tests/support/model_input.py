@@ -13,6 +13,13 @@ def token_span(text, cursor):
     return start, cursor
 
 
+def line_span(text, cursor):
+    """Return a line without its terminator and the next offset."""
+    end = text.find("\n", cursor)
+    stop = len(text) if end < 0 else end + 1
+    return text[cursor:stop].removesuffix("\r\n").removesuffix("\n"), stop
+
+
 def decimal_value(text):
     """Fold validated signed decimal digits and separators without a host cap."""
     value = 0
@@ -34,6 +41,29 @@ def integer_rejection(token):
 def rejected_integer(rows, stdin):
     start, end = token_span(stdin, rows[-2][-1])
     return integer_rejection(stdin[start:end])
+
+
+def rejected_decimal_syntax(rows, stdin):
+    """Predict the ordinary ValueError from a rejected decimal token."""
+    if len(rows) < 2 or rows[-2][-1] == rows[-1][-1]:
+        return None
+    start, end = token_span(stdin, rows[-2][-1])
+    return (
+        "ValueError",
+        "invalid literal for int() with base 10: " + repr(stdin[start:end])[:200],
+        (),
+    )
+
+
+def rejected_fraction_syntax(_rows, _stdin):
+    return (
+        "ValueError",
+        "input must be an integer or a fraction",
+        (
+            "hint: supply a decimal integer or a fraction with nonzero denominator, "
+            "for example 3/2",
+        ),
+    )
 
 
 def matching_delimiter(tokens, opening, closing):

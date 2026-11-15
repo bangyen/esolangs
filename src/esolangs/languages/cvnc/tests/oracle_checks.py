@@ -7,13 +7,14 @@ commands. Published ambiguities retain the public contract's Decisions.
 
 import ast
 import math
+import re
 from decimal import Decimal
 from itertools import product
 
 from esolangs.languages.cvnc.interpreter import _Machine
 from tests.interpreters.oracle_support import observed, reject_faults
 from tests.support import workspace_oracle as workspace
-from tests.support.model_input import token_span
+from tests.support.model_input import decimal_value, token_span
 
 _WORKSPACE = workspace.workspace_model(
     "cvnc-v1", "instruction accumulator deque function input_cursor"
@@ -80,11 +81,9 @@ def _read(kind, stdin, cursor):
     start, cursor = token_span(stdin, cursor)
     if start == cursor:
         return None, cursor, "input"
-    try:
-        value = max(0, int(stdin[start:cursor]))
-    except ValueError:
-        value = 0
-    return value, cursor, None
+    text = stdin[start:cursor]
+    value = decimal_value(text) if re.fullmatch(r"[+-]?\d(?:_?\d)*", text) else 0
+    return max(0, value), cursor, None
 
 
 def _vowel(token, accumulator, function):

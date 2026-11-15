@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
+import esolangs
 from esolangs import ProgramArtifact
 from esolangs.exceptions import HaltError
 from esolangs.languages.interprogck8 import interpreter as native
@@ -540,3 +541,47 @@ class TestMachine:
         io = ScriptedIO("")
         native.run(["nNnN", "div"], io)
         assert io.getvalue() == "A"
+
+
+@pytest.mark.parametrize(
+    ("stdin", "error", "position", "reads"),
+    [
+        (".\nbad\n:\n:\n", esolangs.HaltError, 6, 2),
+        (".\n", esolangs.InputExhaustedError, 2, 1),
+    ],
+)
+def test_dice_retry_keeps_the_accepted_operand(stdin, error, position, reads):
+    api = esolangs.Language("Interprogck8")
+    source = "{values/=$py/=$py/=:}\ndiv"
+    dbg = api.make_debugger(source, stdin=stdin, seed=4)
+    for past_end in (1, 2):
+        with pytest.raises(error) as caught:
+            dbg.step()
+        assert dbg.ip == (0,)
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "", position, reads, past_end if reads == 1 else 0, steps=0
+        )
+    assert api.run(source, stdin=".\n:\n", seed=4).output == "T"
+    assert api.run(source, stdin=":\n:\n", seed=4).output == "Q"
+
+
+def test_dice_retry_resumes_after_a_transient_second_read_failure(monkeypatch):
+    acquire = ScriptedIO.input_str
+    failed = False
+
+    def fail_once(io, prompt="Input: "):
+        nonlocal failed
+        if io.position() == 2 and not failed:
+            failed = True
+            raise esolangs.HaltError("input temporarily unavailable")
+        return acquire(io, prompt)
+
+    monkeypatch.setattr(ScriptedIO, "input_str", fail_once)
+    source = "{values/=$py/=$py/=:}\ndiv"
+    dbg = esolangs.Language("Interprogck8").make_debugger(source, stdin=".\n:\n")
+    with pytest.raises(esolangs.HaltError, match="input temporarily unavailable"):
+        dbg.step()
+    assert dbg.observation == esolangs.ExecutionResult("", 2, 1, 0, steps=0)
+    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "halted"
+    assert dbg.observation.input_reads == 2
+    assert dbg.output == "T"

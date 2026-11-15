@@ -24,13 +24,15 @@ class _BoundReader:
     read: Callable[..., str | bytes | None]
 
 
-type CheckedInput = str | bytes | _BoundReader
+type CheckedInput = str | _BoundReader
 
 
 def check_input(source: InputSource) -> CheckedInput:
-    """Bind the input reader without consuming a stream."""
-    if isinstance(source, (str, bytes)):
-        return source
+    """Validate literal stdin or bind a reader without consuming its stream."""
+    if isinstance(source, str):
+        return str.__str__(source)
+    if isinstance(source, bytes):
+        return _decode_input(source)
     try:
         reader = getattr(source, "read", None)
     except EsolangError as error:
@@ -57,24 +59,29 @@ def input_read_error(detail: Exception | str) -> ArgumentError:
     )
 
 
+def _decode_input(value: bytes) -> str:
+    try:
+        return bytes.decode(value, "utf-8")
+    except UnicodeDecodeError as exc:
+        raise input_read_error(exc) from exc
+
+
 def read_input(source: InputSource | CheckedInput) -> str:
     """Snapshot remaining input; binary input is UTF-8 text."""
     bound = source if isinstance(source, _BoundReader) else check_input(source)
+    if isinstance(bound, str):
+        return bound
     try:
-        value = (
-            read_snapshot(bound.stream, reader=bound.read)
-            if isinstance(bound, _BoundReader)
-            else bound
-        )
-        if isinstance(value, bytes):
-            return bytes.decode(value, "utf-8")
-        if isinstance(value, str):
-            return str.__str__(value)
+        value = read_snapshot(bound.stream, reader=bound.read)
     except EsolangError as error:
         _remember_acquisition_failure(error)
         raise
     except (OSError, TypeError, ValueError) as exc:
         raise input_read_error(exc) from exc
+    if isinstance(value, bytes):
+        return _decode_input(value)
+    if isinstance(value, str):
+        return str.__str__(value)
     raise with_hint(
         ArgumentError("stdin stream must return a string or bytes"),
         (

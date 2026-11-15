@@ -2,8 +2,10 @@
 
 import pytest
 
+import esolangs
 from esolangs.languages.freestajlo.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.execution import assert_digit_cap_independent
 
 _out = native_runner(run)
 
@@ -42,3 +44,27 @@ def test_signed_quotient_and_remainder(monkeypatch) -> None:
                 quotient = -quotient
             assert _out(f"{left} {right}/:") == str(quotient)
             assert _out(f"{left} {right}%:") == str(dividend % divisor)
+
+
+def test_rejected_freestajlo_character_preserves_its_stack_and_position():
+    api = esolangs.Language("Freestajlo")
+    dbg = api.make_debugger(",.,.", stdin="\ud800A")
+    dbg.step()
+    boundary = dbg.snapshot()
+    for _ in range(2):
+        with pytest.raises(
+            esolangs.HaltError, match="cannot print surrogate"
+        ) as caught:
+            dbg.step()
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "", 1, 1, 0, steps=1
+        )
+        assert dbg.snapshot() == boundary
+    assert api.run(",.,.", stdin="BA").output == "BA"
+
+
+def test_wide_decimal_operands_ignore_the_host_digit_cap():
+    wide = "9" * 641
+    assert_digit_cap_independent(
+        "Freestajlo", f";:{wide}:", f"-{wide} ", f"-{wide}{wide}"
+    )

@@ -317,7 +317,7 @@ def _scripted_io(
     stdin: CheckedInput, factory: Callable[[InputSource], ScriptedIO]
 ) -> ScriptedIO:
     """Use the bound reader for standard I/O and the stream for custom factories."""
-    if isinstance(stdin, (str, bytes)):
+    if isinstance(stdin, str):
         return factory(stdin)
     if factory is ScriptedIO:
         return ScriptedIO(read_input(stdin))

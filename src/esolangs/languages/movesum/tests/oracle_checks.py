@@ -6,7 +6,6 @@ import random
 import pytest
 
 from esolangs.languages.movesum.interpreter import _Machine
-from esolangs.runtime._state import WorkspaceVariant
 from tests.support import workspace_oracle as workspace
 from tests.support.model_input import token_span
 
@@ -18,9 +17,13 @@ _WORKSPACE = workspace.workspace_model(
 def _parts(row):
     state, _, _, pending = row[0]
     pc, cells, quiet, printed = (-1, (), 0, False) if state is None else state
-    if pending is not None:
-        pc = WorkspaceVariant("pending_input", (pc, *pending))
-    return pc, frozenset(cells), quiet, printed, row[-1]
+    return (
+        workspace.pending_input(pc, *(pending or ())),
+        frozenset(cells),
+        quiet,
+        printed,
+        row[-1],
+    )
 
 
 def _parse(source):

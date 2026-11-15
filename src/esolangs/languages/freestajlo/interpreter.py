@@ -71,7 +71,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
-from esolangs.runtime.memory import trunc_div
+from esolangs.runtime.memory import parse_integer, trunc_div
 from esolangs.runtime.source_hints import syntax_error
 
 #: Stack cells, top first: ``(top, rest)``, or ``None`` when empty.
@@ -205,7 +205,7 @@ class _Parser:
             end = at
             while end < len(code) and code[end] in _DIGITS:
                 end += 1
-            self._emit("push", int(code[at:end]), at)
+            self._emit("push", parse_integer(code[at:end]), at)
             self.pos = end
         elif char == "'":
             if self.pos == len(code):
@@ -351,6 +351,10 @@ def _advance(
         stack = _push(stack, read)
     elif kind in ":.!":
         value, stack = _pop(stack)
+        if kind == ".":
+            value %= _CHAR_MOD
+            if 0xD800 <= value <= 0xDFFF:
+                raise HaltError(f"Freestajlo '.' cannot print surrogate {value:#x}")
         effect = (kind, value)
     elif kind == "(":
         value, transfer = _pop(transfer)
@@ -498,7 +502,7 @@ class _Machine:
                 negative = char == "-"
         if not digits:
             return 0
-        return -int(digits) if negative else int(digits)
+        return parse_integer("-" + digits if negative else digits)
 
     def step(self) -> None:
         if self.halted:
@@ -512,10 +516,7 @@ class _Machine:
         if command == ":":
             self.io.print_num(value)
         elif command == ".":
-            point = value % _CHAR_MOD
-            if 0xD800 <= point <= 0xDFFF:
-                raise HaltError(f"Freestajlo '.' cannot print surrogate {point:#x}")
-            self.io.print_char(chr(point))
+            self.io.print_char(chr(value))
         elif value != self.index:
             self.others[self.index] = self.state.stack
             self.state = self.state._replace(stack=self.others.pop(value, _EMPTY))

@@ -18,6 +18,7 @@ from esolangs.languages.cvnc.tests.oracle_checks import check_raw_cvnc
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm, run_until_halt_or_cycle
 from tests.interpreters.runner import native_runner
+from tests.support.execution import assert_digit_cap_independent
 
 TRUTH_MACHINE = "soθɰ̊oθʋi"
 CAT = "ʒuɰ̊fuʒʋu"
@@ -411,3 +412,7 @@ def test_an_invalid_function_is_inert_even_after_a_division_by_zero() -> None:
     assert _applied(5, ("a", "/", "0", "+")) == 5
     with pytest.raises(HaltError, match="division by zero"):
         _applied(5, ("a", "/", "0"))
+
+
+def test_wide_decimal_input_ignores_the_host_digit_cap():
+    assert_digit_cap_independent("CV(N)(C)", "suθi", "0" * 641 + "7", "7")
