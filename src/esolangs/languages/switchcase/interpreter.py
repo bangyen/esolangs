@@ -58,6 +58,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _NAME_PATTERN = re.compile("[A-Za-z_][A-Za-z0-9_]*")
@@ -93,11 +94,11 @@ def _commands(text: str, line: str) -> tuple[_Command, ...]:
             )
         sign, amount, io_op, target, name = match.groups()
         if sign:
-            out.append((sign, int(amount)))
+            out.append((sign, parse_integer(amount)))
         elif io_op:
             out.append((io_op, 0))
         elif target:
-            out.append(("'", int(target)))
+            out.append(("'", parse_integer(target)))
         else:
             out.append(("=", name))
         at = match.end()
@@ -137,10 +138,10 @@ def _parse(code: str) -> tuple[_Case, ...]:
             raise syntax_error(
                 f"not a SwitchCase arm: {line!r}", "write integer?commands"
             )
-        key = int(match.group(1))
+        key = parse_integer(match.group(1))
         if key in arms:
             raise syntax_error(
-                f"SwitchCase integer {key} is repeated in one case",
+                f"SwitchCase integer {format_integer(key)} is repeated in one case",
                 "give each arm of a case its own integer",
             )
         arms[key] = _commands(match.group(2), line)
@@ -195,15 +196,19 @@ def _advance(
         assert value is not None
         env = _set(env, case.variable, value)
     elif op == "@":
-        out = str(current)
+        out = format_integer(current)
     elif op == ".":
         if not 0 <= current <= 0x10FFFF:
-            raise HaltError(f"SwitchCase cannot print {current} as a character")
+            raise HaltError(
+                f"SwitchCase cannot print {format_integer(current)} as a character"
+            )
         out = chr(current)
     elif op == "'":
         target = int(argument)
         if not 1 <= target <= len(cases):
-            raise HaltError(f"SwitchCase has no case {target} to jump to")
+            raise HaltError(
+                f"SwitchCase has no case {format_integer(target)} to jump to"
+            )
         return (target - 1, None, 0, env), None
     else:
         env = _set(env, str(argument), 0)

@@ -49,7 +49,6 @@ from esolangs import (
     __version__,
     encode_inputs,
     list_languages,
-    read_answer,
 )
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli.args import (
@@ -91,9 +90,9 @@ from esolangs.cli.io import (
 from esolangs.cli.run import _run
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import EsolangError, ProgramError
-from esolangs.operations.boolean_io import _answer_codec
+from esolangs.operations.boolean_io import _answer_codec, _read_output_answer
 from esolangs.raster import png
-from esolangs.registry import LANGUAGES, LanguageDeclaration, SourceKind, get_catalog
+from esolangs.registry import Catalog, LanguageDeclaration, SourceKind, get_catalog
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
 from esolangs.registry._describe import _catalog_facts, _spec, _width_effect
 from esolangs.runtime._json import record_dumps
@@ -102,24 +101,27 @@ from esolangs.runtime._source import native_file_terminator
 from esolangs.runtime._validate import _argument_repr
 
 
-def describe(language: str) -> LanguageInfo:
+def describe(language: str, *, catalog: Catalog | None = None) -> LanguageInfo:
     """Load full catalog descriptions for commands that display them."""
     from esolangs import describe as describe_language
 
-    return describe_language(language)
+    return describe_language(language, catalog=catalog)
 
 
 def _encode(rest: list[str]) -> None:
     """Print the stdin that feeds a language its input bits."""
     rest = _split_positional(rest, set())
-    _check_count("encode-inputs", rest, 2)
+    catalog = get_catalog()
+    _check_count("encode-inputs", rest, 2, catalog=catalog)
     language, bits = rest[0], rest[1]
     if set(bits) - {"0", "1"} or not bits:
         _fail(f"bits must be a string of 0s and 1s, got {bits!r}")
     try:
-        _write_output(encode_inputs(language, [int(bit) for bit in bits]))
+        _write_output(
+            encode_inputs(language, [int(bit) for bit in bits], catalog=catalog)
+        )
     except EsolangError as exc:
-        _fail(_shell_hint(_cli_error_text(exc), language))
+        _fail(_shell_hint(_cli_error_text(exc), language, catalog=catalog))
 
 
 #: ``list``'s filters; every other fact is in ``list --json --details``.
@@ -156,9 +158,10 @@ def _metadata_json(record: object) -> str:
         return record_dumps(record)
 
 
-def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> bool:
+def _catalog_matches(
+    declaration: LanguageDeclaration, options: dict[str, str], inputs: int | None
+) -> bool:
     """Match declared interfaces and arity caps."""
-    declaration = LANGUAGES[name]
     if "--source-kind" in options and options["--source-kind"] != (
         declaration.runtime.source_kind.value
     ):
@@ -181,7 +184,9 @@ def _catalog_matches(name: str, options: dict[str, str], inputs: int | None) -> 
     return True
 
 
-def _catalog_names(options: dict[str, str], flags: set[str]) -> list[str]:
+def _catalog_names(
+    options: dict[str, str], flags: set[str], *, catalog: Catalog
+) -> list[str]:
     """Return candidates by declared capabilities, without generating a table."""
     if "--generator" in flags and "--interpreter-only" in flags:
         _fail("--generator and --interpreter-only cannot be combined")
@@ -204,12 +209,13 @@ def _catalog_names(options: dict[str, str], flags: set[str]) -> list[str]:
             _fail(f"--grep is not a valid regular expression: {exc}")
     wanted = [_FLAG_FILTERS[flag] for flag in flags if flag in _FLAG_FILTERS]
     # Only candidates that pass the capability filters need interpreter specs.
+    declarations = (catalog.languages[name] for name in list_languages(catalog=catalog))
     return [
-        name
-        for name in list_languages()
-        if all(test(LANGUAGES[name]) for test in wanted)
-        and (not options or _catalog_matches(name, options, inputs))
-        and (pattern is None or pattern.search(_spec(name)))
+        lang.name
+        for lang in declarations
+        if all(test(lang) for test in wanted)
+        and _catalog_matches(lang, options, inputs)
+        and (pattern is None or pattern.search(_spec(lang.name, catalog=catalog)))
     ]
 
 
@@ -222,9 +228,10 @@ def _list(rest: list[str]) -> None:
     rest = _split_positional(rest, set(), value_options | flag_options)
     details = "--details" in flags
     as_json = "--json" in flags
-    _check_count("list", rest, 0)
+    catalog = get_catalog()
+    _check_count("list", rest, 0, catalog=catalog)
     with _errors():
-        names = _catalog_names(options, flags)
+        names = _catalog_names(options, flags, catalog=catalog)
     if not details:
         if as_json:
             _write_output(json.dumps(names, indent=2) + "\n")
@@ -232,8 +239,9 @@ def _list(rest: list[str]) -> None:
             for name in names:
                 _display(name)
         return
-    catalog = get_catalog()
-    records = [_catalog_facts(LANGUAGES[name], catalog=catalog) for name in names]
+    records = [
+        _catalog_facts(catalog.languages[name], catalog=catalog) for name in names
+    ]
     if as_json:
         _write_output(
             _metadata_json(
@@ -251,7 +259,7 @@ def _list(rest: list[str]) -> None:
             + "\n"
         )
         return
-    width = max((len(name) for name in LANGUAGES), default=0)
+    width = max(map(len, catalog.languages), default=0)
     # The legend lived in `list --help` only, so the marker columns arrived
     # unexplained for anyone who ran the thing before reading about it.
     _display(
@@ -301,13 +309,19 @@ def _layout_ignored(declaration: LanguageDeclaration, *, balance: bool) -> bool:
     )
 
 
-def _emit(artifact: Artifact, *, plain: bool, gzip: bool = False) -> None:
+def _emit(
+    artifact: Artifact,
+    *,
+    plain: bool,
+    gzip: bool = False,
+    catalog: Catalog | None = None,
+) -> None:
     """Write native source using the artifact's declared file convention."""
     program = artifact.source
     if isinstance(program, str):
         ending = (
             native_file_terminator(program)
-            if LANGUAGES[artifact.language].runtime.file_newline
+            if get_catalog(catalog).languages[artifact.language].runtime.file_newline
             else ""
         )
         if gzip:
@@ -388,10 +402,10 @@ def _generate(rest: list[str]) -> None:
     )
     eaten = _eaten_width_note(before) if width is not None and not bare else ""
     settings_arguments = _settings_arguments(options, set_pairs)
-    _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
-    language, table = rest
-    settings = _settings_of(settings_arguments, language=language)
     catalog = get_catalog()
+    _check_count("generate", rest, 2, bare_width=bare, eaten=eaten, catalog=catalog)
+    language, table = rest
+    settings = _settings_of(settings_arguments, language=language, catalog=catalog)
     try:
         declaration = catalog.languages[catalog.resolve(language)]
         row = _generation_bits(declaration, table, bits, gzip=gzip)
@@ -421,7 +435,7 @@ def _generate(rest: list[str]) -> None:
         if isinstance(program, CompressedText) and "--plain" in flags:
             program.plain_chunks()  # Check the export budget before writing anything.
     except EsolangError as exc:
-        _fail(_generate_hint(exc, language, table))
+        _fail(_generate_hint(exc, language, table, catalog=catalog))
     if (width is not None or bare or balance) and _layout_ignored(
         declaration, balance=balance
     ):
@@ -450,7 +464,7 @@ def _generate(rest: list[str]) -> None:
             f"redirect stdout to a file{alternative}"
         )
     with _errors():  # A raster renders here, and may exceed the pixel limit.
-        _emit(artifact, plain="--plain" in flags, gzip=gzip)
+        _emit(artifact, plain="--plain" in flags, gzip=gzip, catalog=catalog)
     if isinstance(artifact, TemplateArtifact):
         # Keep the original options when suggesting how to obtain runnable source.
         _diagnostic(
@@ -548,17 +562,18 @@ def _describe(rest: list[str]) -> None:
     rest = _split_positional(rest, set(), {"--json", "--spec"})
     as_json = "--json" in flags
     as_spec = "--spec" in flags
-    _check_count("describe", rest, 1)
+    catalog = get_catalog()
+    _check_count("describe", rest, 1, catalog=catalog)
     if as_spec:
         with _errors():
-            spec = _spec(rest[0])
+            spec = _spec(rest[0], catalog=catalog)
         if as_json:
             _write_output(json.dumps(spec) + "\n")
         else:
             _display(spec)
         return
     with _errors():
-        facts = describe(rest[0])
+        facts = describe(rest[0], catalog=catalog)
     if as_json:
         # Verbatim, including the keys the reading layout hides: a caller
         # asking for JSON is not reading it, and a field that vanishes when
@@ -569,7 +584,9 @@ def _describe(rest: list[str]) -> None:
     # whether a generator exists.  The field list below keeps the facts
     # that decide how to drive a program; ``--json`` keeps every key.
     name = str(facts.name)
-    operand = _as_argument(name, encoding=sys.stdout.encoding or "utf-8")
+    operand = _as_argument(
+        name, encoding=sys.stdout.encoding or "utf-8", catalog=catalog
+    )
     _display(name)
     if facts.parameterized:
         _display(
@@ -606,17 +623,19 @@ def _describe(rest: list[str]) -> None:
 def _read_answer(rest: list[str]) -> None:
     """Read a program's output on stdin and print the answer bit in it."""
     rest = _split_positional(rest, set())
-    _check_count("read-answer", rest, 1)
     catalog = get_catalog()
+    _check_count("read-answer", rest, 1, catalog=catalog)
     with _errors():
         language = catalog.resolve(rest[0])
         contract = catalog.languages[language].contract
-        (zero, one), _ = _answer_codec(language, contract)
+        values, pattern = _answer_codec(language, contract)
     if contract.answer_mode == "termination":
+        zero, one = values
+        language_arg = _as_argument(language, catalog=catalog)
         _fail(
             f"{language} answers 0 if it {zero} and 1 if it {one}. "
             "Program output carries no answer. Use esolangs run "
-            f"--execution-timeout <seconds> {_as_argument(language)} "
+            f"--execution-timeout <seconds> {language_arg} "
             "<program-file> and observe whether it halts. "
             "A timeout leaves the answer undecided."
         )
@@ -627,11 +646,11 @@ def _read_answer(rest: list[str]) -> None:
     )
     # NQ's false answer is a space; only absent output is empty stdin.
     try:
-        answer = read_answer(language, output, catalog=catalog)
+        answer = _read_output_answer(language, output, values, pattern, contract.note)
     except ProgramError as exc:
         # Output with no readable answer is the program's failure, as in run.
         if not output:
-            language_arg = _as_argument(language)
+            language_arg = _as_argument(language, catalog=catalog)
             _fail(
                 "nothing on stdin to read an answer out of; pipe a program's "
                 f"output in: esolangs run {language_arg} prog.txt | esolangs "

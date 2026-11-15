@@ -16,15 +16,16 @@ from collections.abc import Collection, Iterator
 from contextlib import contextmanager, suppress
 from typing import NoReturn, TextIO
 
+from esolangs._dialect import DialectSchema
 from esolangs._language import Language
 from esolangs.cli.help import help_text
-from esolangs.cli.hints import _as_argument, _cli_error_text, _did_you_mean
+from esolangs.cli.hints import _as_argument, _cli_error_text, _did_you_mean, _is_option
 from esolangs.exceptions import EsolangError
-from esolangs.registry import resolve
+from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._json import record_loads
 from esolangs.runtime._validate import check_scale, check_timeout
 from esolangs.runtime.memory import _hit_digit_cap, format_integer, parse_integer
-from esolangs.settings import DialectSettings, dialect_choices
+from esolangs.settings import DialectSettings
 
 #: Flags every subcommand accepts, so a near miss on one of them is
 #: suggested by whichever subcommand it was typed after.
@@ -200,8 +201,7 @@ def _split_positional(
         # ``-w`` used to be kept as one, so the error named whichever word
         # then landed in the wrong slot.  A leading digit is exempt so a
         # negative number can still be an argument.
-        looks_like_option = len(arg) > 1 and arg[0] == "-" and not arg[1].isdigit()
-        if looks_like_option and arg.partition("=")[0] not in known:
+        if _is_option(arg) and arg.partition("=")[0] not in known:
             name = arg.partition("=")[0]
             suggest = set(known) | set(vocabulary) | _GLOBAL_FLAGS
             _fail(f"unknown option: {arg}{_did_you_mean(name, suggest)}")
@@ -216,6 +216,7 @@ def _check_count(
     *,
     bare_width: bool = False,
     eaten: str = "",
+    catalog: Catalog,
 ) -> None:
     """Refuse a call with the wrong number of positional arguments.
 
@@ -228,7 +229,7 @@ def _check_count(
         # The whole synopsis, not its first line: ``generate``'s wraps onto
         # a second, so a missing truth table was reported with a usage
         # string that did not mention the truth table.
-        synopsis = help_text(command).split("\n\n", 1)[0]
+        synopsis = help_text(command, catalog=catalog).split("\n\n", 1)[0]
         # And say which one is missing.  The synopsis alone left the reader
         # to diff what they typed against a usage line -- easy for two
         # arguments, and it is exactly the two-argument commands that get
@@ -241,13 +242,13 @@ def _check_count(
             # The language comes first. Keep later operands out of its name.
             joined = " ".join(args[: len(args) - wanted + 1])
             try:
-                resolved = resolve(joined)
+                resolved = catalog.resolve(joined)
             except EsolangError:
                 pass
             else:
                 _fail(
                     "language name was split across arguments; "
-                    f"quote it as {_as_argument(resolved)}"
+                    f"quote it as {_as_argument(resolved, catalog=catalog)}"
                 )
         hint = (
             f"; --width took no value here (only an integer counts as one), so "
@@ -451,10 +452,13 @@ def _scale_of(options: dict[str, str]) -> int | None:
         _fail(f"--scale must be a positive integer, got {options['--scale']!r}")
 
 
-def _set_value(key: str, raw: str, language: str) -> int | str:
+def _set_value(key: str, raw: str, schema: DialectSchema | None) -> int | str:
     """Read one ``--set`` value using its declared scalar type."""
-    schema = dialect_choices(language)
-    if key in schema and type(schema[key]["choices"][0]) is int:
+    if (
+        schema is not None
+        and key in schema.choices
+        and type(schema.choices[key][0]) is int
+    ):
         try:
             return _base_zero_integer(raw)
         except ValueError:
@@ -506,15 +510,21 @@ def _settings_arguments(
 
 
 def _settings_of(
-    arguments: _SettingsArguments | None, *, language: str
+    arguments: _SettingsArguments | None,
+    *,
+    language: str,
+    catalog: Catalog | None = None,
 ) -> DialectSettings | None:
     """Validate choices against the selected language's schema."""
     if arguments is None:
         return None
     values, pairs = arguments
     try:
-        overrides = {key: _set_value(key, raw, language) for key, raw in pairs.items()}
+        catalog = get_catalog(catalog)
+        bound = Language(language, catalog=catalog)
+        schema = catalog.languages[bound.name].runtime.dialect_schema
+        overrides = {key: _set_value(key, raw, schema) for key, raw in pairs.items()}
         choices = values | overrides
-        return Language(language).settings(**choices)  # type: ignore[arg-type]
+        return bound.settings(**choices)  # type: ignore[arg-type]
     except EsolangError as exc:
         _fail(str(exc))

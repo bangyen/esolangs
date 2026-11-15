@@ -1,6 +1,7 @@
 """Fresh workers reject certification imports before operational loading."""
 
 from contextlib import contextmanager
+from sys import getrecursionlimit
 from unittest.mock import patch
 
 from esolangs.runtime import _isolated
@@ -47,7 +48,8 @@ def guarded_worker(*, expected=1):
     def guarded(command, **kwargs):
         assert command[1:3] == ["-P", "-c"], command
         assert command[-1].endswith(
-            "from esolangs.runtime._isolated import _worker; _worker()"
+            "from esolangs.runtime._isolated import _worker; "
+            f"sys.setrecursionlimit({getrecursionlimit()}); _worker()"
         )
         launched.append(command)
         return original([*command[:-1], WORKER_GUARD + command[-1]], **kwargs)

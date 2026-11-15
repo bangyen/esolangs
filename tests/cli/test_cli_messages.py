@@ -12,6 +12,7 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
+from esolangs.cli.help import help_text
 from esolangs.cli.hints import _timeout_text
 from esolangs.cli.io import _StdoutEncodingError, _write_output
 from esolangs.registry import LANGUAGES, _table
@@ -279,16 +280,24 @@ def test_read_answer_checks_the_catalog_before_stdin(
 ) -> None:
     original = LANGUAGES[REFERENCE]
     contract = replace(original.contract, **changes)
-    scope = esolangs.Catalog([replace(original, contract=contract)])
+    name = "-Scoped answer"
+    scope = esolangs.Catalog(
+        [replace(original, name=name, id="scoped_answer", contract=contract)]
+    )
     monkeypatch.setattr(_table, "CATALOG", scope)
 
     def unexpected_read(*_args, **_kwargs):
         pytest.fail("read-answer waited for input despite its catalog refusal")
 
     monkeypatch.setattr("esolangs.cli._read_stdin", unexpected_read)
-    out, error = _failure(["read-answer", REFERENCE], capsys)
+    out, error = _failure(["read-answer", "--", name], capsys)
     assert not out
     assert message in error
+    if contract.answer_values == ("diverges", "halts"):
+        assert "--execution-timeout <seconds> scoped_answer <program-file>" in error
+        help_page = help_text("read-answer")
+        assert f"languages that answer by terminating are {name}." in help_page
+        assert "reports what its termination means" in help_page
 
 
 def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) -> None:

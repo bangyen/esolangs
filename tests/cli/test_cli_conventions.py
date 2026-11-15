@@ -7,6 +7,7 @@ import shlex
 import sys
 from dataclasses import replace
 from importlib.resources import files
+from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -18,14 +19,14 @@ from esolangs.cli.help import COMMANDS, USAGE, help_text
 from esolangs.registry import LANGUAGES, _table, wiki_url
 from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
-from esolangs.runtime._definition import RuntimeSpec
+from esolangs.runtime._definition import RuntimeSpec, VerbatimSourcePolicy
 from esolangs.runtime.memory import format_integer, parse_integer
 from tests.support.cli_support import _failure, call_main
 from tests.support.pick import first, one_where
 from tests.support.reference import REFERENCE
 
 
-def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
+def test_help_examples_follow_remaining_capabilities() -> None:
     from esolangs.cli import help as help_module
     from esolangs.registry import LanguageDeclaration
     from esolangs.registry._backend import TemplateSpec
@@ -63,13 +64,16 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
             backend=BooleanBackend(entrypoint=build),
         ),
     }
-    monkeypatch.setattr(help_module, "LANGUAGES", languages)
-    template, dialect = help_module._capability_examples()
+
+    def examples() -> tuple[str, str]:
+        return help_module._capability_examples(esolangs.Catalog(languages.values()))
+
+    template, dialect = examples()
     assert shlex.split(template)[-2:] == ["Template Choice", "0110"]
     commands = dialect.replace("\\\n", "").splitlines()  # Shell-joined.
     assert shlex.split(commands[1])[3] == "mode=with spaces"
     del languages["Template Choice"]
-    assert help_module._capability_examples()[0] == ""
+    assert examples()[0] == ""
     # A cap below two inputs is not a runnable example.
     languages.clear()
     languages["Capped"] = LanguageDeclaration(
@@ -82,10 +86,9 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch) -> None:
         ),
         backend=BooleanBackend(entrypoint=build, max_inputs=1),
     )
-    assert help_module._capability_examples() == ("", "")
+    assert examples() == ("", "")
     languages.clear()
-    languages.clear()
-    assert help_module._capability_examples() == ("", "")
+    assert examples() == ("", "")
 
 
 def test_catalog_displays_and_help_keep_large_integer_settings(
@@ -116,8 +119,6 @@ def test_catalog_displays_and_help_keep_large_integer_settings(
             ]
         )
         monkeypatch.setattr(_table, "CATALOG", scope)
-        monkeypatch.setattr(cli, "LANGUAGES", scope.languages)
-        monkeypatch.setattr(help_module, "LANGUAGES", scope.languages)
 
         description = call_main(["describe", REFERENCE], capsys)
         summary = f"<integer with {large.bit_length()} bits>"
@@ -163,7 +164,9 @@ def test_catalog_displays_and_help_keep_large_integer_settings(
         sys.set_int_max_str_digits(previous_limit)
 
 
-def test_set_accepts_null_as_a_declared_string_choice(monkeypatch, capsys) -> None:
+def test_set_accepts_null_as_a_declared_string_choice(
+    monkeypatch, capsys, tmp_path: Path
+) -> None:
     native = esolangs.generate(REFERENCE, "01").source
     original = LANGUAGES[REFERENCE]
     observed = []
@@ -174,6 +177,7 @@ def test_set_accepts_null_as_a_declared_string_choice(monkeypatch, capsys) -> No
 
     runtime = replace(
         original.runtime,
+        source_policy=VerbatimSourcePolicy(),
         dialect=lambda mode="plain": mode,
         dialect_schema=DialectSchema(
             REFERENCE, {"mode": ("plain", "null")}, {"mode": "plain"}
@@ -183,11 +187,13 @@ def test_set_accepts_null_as_a_declared_string_choice(monkeypatch, capsys) -> No
         [replace(original, runtime=runtime, backend=BooleanBackend(entrypoint=build))]
     )
     monkeypatch.setattr(_table, "CATALOG", scope)
-    monkeypatch.setattr(cli, "LANGUAGES", scope.languages)
     command = ["generate", REFERENCE, "01"]
     set_source = call_main([*command, "--set", "mode=null"], capsys)
     json_source = call_main([*command, "--settings", '{"mode":"null"}'], capsys)
-    assert set_source == json_source
+    assert set_source == json_source == native
+    path = tmp_path / "program"
+    esolangs.to_file(REFERENCE, set_source, path, normalize=True, catalog=scope)
+    assert path.read_bytes() == set_source.encode()
     assert observed == ["null", "null"]
     _, error = _failure([*command, "--settings", '{"mode":null}'], capsys)
     assert "invalid value for dialect setting mode: None" in error
@@ -349,7 +355,7 @@ class TestDescribeHidesInputFieldsWithNoInput:
     "language", one_where(lambda facts: bool(re.search(r"[*()]", facts.name)))
 )
 def test_describe_quotes_shell_metacharacters_in_its_spec_command(
-    capsys, language: str
+    capsys, monkeypatch, language: str
 ) -> None:
     report = call_main(["describe", language], capsys)
     command = next(
@@ -363,6 +369,34 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
     assert tool == "esolangs"
     assert args == ["describe", "--spec", language]
     assert call_main(args, capsys).strip() == esolangs.describe(language).spec.strip()
+
+    class AsciiStdout(StringIO):
+        encoding = "ascii"
+
+    original = LANGUAGES[REFERENCE]
+    for name, id_ in (
+        ("-Scoped name", "scoped_name"),
+        ("É Scoped name", "e_scoped_name"),
+    ):
+        local = replace(original, name=name, id=id_)
+        scope = esolangs.Catalog([local])
+        with monkeypatch.context() as active:
+            active.setattr(_table, "CATALOG", scope)
+            if name.isascii():
+                text = call_main(["describe", "--", name], capsys)
+            else:
+                with active.context() as ascii_output:
+                    stdout = AsciiStdout()
+                    ascii_output.setattr(sys, "stdout", stdout)
+                    call_main(["describe", name], capsys)
+                text = stdout.getvalue()
+            command = next(
+                line for line in text.splitlines() if line.startswith("spec: ")
+            )
+            tool, *args = shlex.split(command.removeprefix("spec: "))
+            assert tool == "esolangs"
+            assert args == ["describe", "--spec", id_]
+            assert call_main(args, capsys).strip() == scope.bind(name).describe().spec
 
 
 class TestVersion:

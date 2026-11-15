@@ -8,6 +8,7 @@ from itertools import product
 
 import pytest
 
+from esolangs import ExecutionLimits, InterpreterLimitError, Language
 from esolangs.languages.fractran.interpreter import _choose, _Machine, _parse, run
 from esolangs.languages.fractran.interpreter import index as fractran_index
 from esolangs.runtime.io import ScriptedIO
@@ -41,6 +42,31 @@ def test_decimal_exponent_preserves_int_conversion_limit() -> None:
     if limit:
         with pytest.raises(ValueError, match="limit"):
             fractran_index.compile_index(f"2 3/2^{'1' * (limit + 1)}")
+
+    language = Language("FRACTRAN")
+    # Pad exponent one so this reaches the parser limit without huge arithmetic.
+    source = "2 3/2^" + "0" * 640 + "1"
+    try:
+        sys.set_int_max_str_digits(640)
+        native = language.execute(source)
+        assert isinstance(native.error, InterpreterLimitError)
+        assert "640 digits" in str(native.error)
+        for options in (
+            {},
+            {"limits": ExecutionLimits(max_steps=5)},
+            {"isolated": True},
+            {"limits": ExecutionLimits(max_output=1)},
+        ):
+            failed = language.execute(source, **options)
+            assert failed.status == native.status == "limit"
+            assert isinstance(failed.error, InterpreterLimitError)
+            assert str(failed.error) == str(native.error)
+            assert failed.observation == native.observation
+            assert language.execute("2 3/2^1", **options).unwrap().output == "3"
+        sys.set_int_max_str_digits(0)
+        assert language.execute(source, isolated=True).unwrap().output == "3"
+    finally:
+        sys.set_int_max_str_digits(limit)
 
 
 def test_monotone_empty_or_singleton_suffix_skips_bisection(monkeypatch) -> None:

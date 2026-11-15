@@ -1,6 +1,7 @@
 """Structured cases rendered to source for differential execution."""
 
 import re
+from decimal import Decimal
 from itertools import product
 
 import pytest
@@ -18,22 +19,24 @@ def _source(cases):
     for name, arms in cases:
         lines.append("$" + name)
         for key, commands in arms.items():
-            prefix = "!" if key == "!" else f"{key}?"
-            lines.append(prefix + "".join(op + str(arg) for op, arg in commands))
+            prefix = "!" if key == "!" else f"{Decimal(key):f}?"
+            lines.append(
+                prefix
+                + "".join(
+                    op + (f"{Decimal(arg):f}" if type(arg) is int else arg)
+                    for op, arg in commands
+                )
+            )
     return "\n".join(lines)
 
 
 def _output(op, value):
     """Render output or the range diagnostic before committing the activation."""
-    try:
-        if op == "@":
-            return str(value), None
-        if not 0 <= value < 0x110000:
-            str(value)
-            return "", "halt"
-        return chr(value), None
-    except ValueError:
-        return "", "syntax"
+    if op == "@":
+        return f"{Decimal(value):f}", None
+    if not 0 <= value < 0x110000:
+        return "", "halt"
+    return chr(value), None
 
 
 def _model(cases, stdin):
@@ -171,15 +174,7 @@ def check_raw_switchcase():
             "syntax",
             [(None, False, "", 0, 0)],
         )
-    literal = "1" * 5000
-    try:
-        target = int(literal)
-    except ValueError:
-        assert observed(
-            _Machine, "$_\n0?'" + literal, "", lambda m: m.state, cap=24
-        ) == ("syntax", [(None, False, "", 0, 0)])
-    else:
-        _check(_Machine, [("_", {0: (("'", target),)})], "")
+    _check(_Machine, [("_", {0: (("'", decimal_value("1" * 5000)),)})], "")
 
     class LostSelection(_Machine):
         def step(self):

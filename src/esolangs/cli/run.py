@@ -133,10 +133,10 @@ def _run(rest: list[str]) -> None:
     seed = _seed_of(options)
     scale = _scale_of(options)
     settings_arguments = _settings_arguments(options, set_pairs)
-    _check_count("run", rest, 2)
-    language, path = rest
-    settings = _settings_of(settings_arguments, language=language)
     catalog = get_catalog()
+    _check_count("run", rest, 2, catalog=catalog)
+    language, path = rest
+    settings = _settings_of(settings_arguments, language=language, catalog=catalog)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
@@ -194,7 +194,7 @@ def _run(rest: list[str]) -> None:
                 catalog=catalog,
             ).output
     except TemplateError as exc:
-        _fail(_template_hint(exc, language))
+        _fail(_template_hint(exc, language, catalog=catalog))
     except ExecutionBudgetError as exc:
         # Distinct from a program error's 1, following timeout(1), so a
         # script can tell "ran out of time" from "the program broke".  Those

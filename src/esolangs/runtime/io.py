@@ -306,6 +306,24 @@ class ScriptedIO(IO):
         return self._buffer.getvalue()
 
 
+class _BufferedOutput:
+    """Retry a ScriptedIO write from the first character still unwritten."""
+
+    accepted: int | None = None
+
+    def write(self, io: ScriptedIO, text: str) -> None:
+        """Write the pending suffix and keep its progress if the port fails."""
+        sent = self.accepted or 0
+        if not sent or sent < len(text):
+            before = io._buffer.tell()  # noqa: SLF001 - this module owns the buffer
+            try:
+                io.print_str(text[sent:])
+            except BaseException:
+                self.accepted = sent + io._buffer.tell() - before  # noqa: SLF001
+                raise
+        self.accepted = None
+
+
 def _input_exhausted(io: IO, reads: int, supplied: int, *, unit: str) -> Never:
     """Count and raise a failed request without consuming more input."""
     if isinstance(io, ScriptedIO):

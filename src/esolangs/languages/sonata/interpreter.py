@@ -47,8 +47,12 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+)
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
 #: ``(kind, text)``: kind ``"="`` a literal character, ``"^"``/``"_"`` a
@@ -152,6 +156,7 @@ class _Machine:
         self.text = text.removesuffix("\n")
         self.halted = False
         self.rendered = False
+        self._writer = _BufferedOutput()
 
     @property
     def ip(self) -> tuple[int, ...]:
@@ -160,25 +165,38 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            text=self.text, stopped=self.halted, rendered=self.rendered
+            text=self.text,
+            stopped=self.halted,
+            rendered=(
+                self.rendered
+                if accepted is None
+                else WorkspaceVariant("pending_output", (accepted,))
+            ),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.text, self.halted, self.rendered)
+        boundary = (self.text, self.halted, self.rendered)
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def step(self) -> None:
-        """Rewrite once; the step that finds no rule halts and prints."""
-        if not self.halted:
+        """Rewrite once; the step that finds no rule prints and halts."""
+        if self.rendered:
+            return
+        if not self.halted and self._writer.accepted is None:
             text = _advance(self.rules, self.text)
-            if text is None:
-                self.halted = True
-            else:
+            if text is not None:
                 self.text = text
-        if self.halted and not self.rendered:
+                return
+        if isinstance(self.io, ScriptedIO):
+            self._writer.write(self.io, self.text)
+        else:
+            self.halted = True
             self.io.print_str(self.text)
-            self.rendered = True
+        self.halted = self.rendered = True
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

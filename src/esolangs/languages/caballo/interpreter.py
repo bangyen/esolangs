@@ -53,7 +53,7 @@ from esolangs.runtime._state import (
     WorkspaceSnapshot,
     WorkspaceVariant,
 )
-from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.randomness import Randomness, draw
 
@@ -259,7 +259,8 @@ class _Machine:
         self._rng = rng
         self.program = parse(code) if isinstance(code, str) else code
         self.done = False
-        self._pending_output: tuple[_Stack, int] | None = None
+        self._pending_output: _Stack | None = None
+        self._writer = _BufferedOutput()
         # The input is the initial state, not a command's read, so it is
         # taken here and every step after is a pure transition.
         stack = _read_stack(io.input_all())
@@ -279,8 +280,13 @@ class _Machine:
         """The pending frames' kinds, innermost last."""
         return [frame[0] for frame in self.state.frames]
 
+    def _output_boundary(self) -> tuple[_Stack, int] | None:
+        stack = self._pending_output
+        return None if stack is None else (stack, self._writer.accepted or 0)
+
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
+        pending = self._output_boundary()
         return _WORKSPACE_MODEL.capture(
             frames=tuple(tuple(frame) for frame in self.state.frames),
             distribution=tuple(
@@ -288,8 +294,8 @@ class _Machine:
             ),
             stopped=(
                 self.done
-                if self._pending_output is None
-                else WorkspaceVariant("pending_output", self._pending_output)
+                if pending is None
+                else WorkspaceVariant("pending_output", pending)
             ),
             input_cursor=self.io.progress(),
         )
@@ -297,9 +303,8 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         boundary = (*self.state, self.done, self.io.progress())
-        if self._pending_output is None:
-            return boundary
-        return (*boundary, self._pending_output)
+        pending = self._output_boundary()
+        return boundary if pending is None else (*boundary, pending)
 
     def branching_snapshot(self) -> tuple[object, ...]:
         """Return the control state, since the selected output cannot change it."""
@@ -339,34 +344,21 @@ class _Machine:
             self.state = moved
             return
         if self._pending_output is None:
-            stack = self._output_stack(moved.mapping)
-            if stack is not None:
-                self._pending_output = stack, 0
+            self._pending_output = self._output_stack(moved.mapping)
         if self._pending_output is not None:
-            stack, sent = self._pending_output
-            text = _render(stack)[sent:]
-            if text:
-                self._write_output(moved, stack, sent, text)
+            text = _render(self._pending_output)
+            if isinstance(self.io, ScriptedIO):
+                self._writer.write(self.io, text)
+            else:
+                # A bare sink gives no way to tell what it accepted on refusal.
+                self.state = moved
+                self.done = True
+                self._pending_output = None
+                self.io.print_str(text)
+                return
         self.state = moved
         self.done = True
         self._pending_output = None
-
-    def _write_output(self, moved: _State, stack: _Stack, sent: int, text: str) -> None:
-        io = self.io
-        if not isinstance(io, ScriptedIO):
-            # A bare sink gives no way to tell what it accepted on refusal.
-            self.state = moved
-            self.done = True
-            self._pending_output = None
-            io.print_str(text)
-            return
-        before = len(io.getvalue())
-        try:
-            io.print_str(text)
-        except BaseException:
-            accepted = len(io.getvalue()) - before
-            self._pending_output = stack, sent + accepted
-            raise
 
     def _output_stack(self, mapping: _Mapping) -> _Stack | None:
         """Drop negative weights, then choose one stack by weight."""

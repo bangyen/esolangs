@@ -2,8 +2,11 @@
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, Language
+from esolangs.exceptions import HaltError
 from esolangs.languages.codesick.interpreter import _Machine, run
-from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
 
 TRUTH = "codesick in a 0 1;\n0 codesick out 0 * halt;\n1 codesick out 1 * 1;"
@@ -57,10 +60,69 @@ def test_a_hit_deletes_the_first_occurrence_and_jumps_to_d() -> None:
     assert _run(code.replace("b n;", "q n;", 1)) == "no"
 
 
-def test_the_dereference_argument() -> None:
+def test_the_dereference_argument(monkeypatch: pytest.MonkeyPatch) -> None:
     # *j = "jm", *jm = "jmv"; then C = j sets *j to **j = "jmv".
     code = 'codesick j m "" z w;\nw codesick jm v "" z u;\nu codesick c "" j z t;'
     assert _steps(code, "", 3)[0].memory["j"] == "jmv"
+
+    source = (
+        "codesick x a never one;\n"
+        "one codesick xa b never two;\n"
+        "two codesick xab c never show;\n"
+        "show codesick out OK x never test;\n"
+        'test codesick x "" xabc no;\n'
+        "xabc codesick out Y never stop;\n"
+        "no codesick out N never stop;"
+    )
+    language = Language("Codesick")
+    expected = language.run(source, limits=ExecutionLimits(max_steps=6))
+    assert (expected.output, expected.steps) == ("OKN", 6)
+    write = ScriptedIO.print_str
+    for accepted in range(3):
+        attempts = []
+
+        def interrupt(io, text, _attempts=attempts, _accepted=accepted):
+            _attempts.append(text)
+            if len(_attempts) == 1:
+                write(io, text[:_accepted])
+                raise HaltError("temporary writer refusal")
+            write(io, text)
+
+        with monkeypatch.context() as port:
+            port.setattr(ScriptedIO, "print_str", interrupt)
+            debugger = language.make_debugger(source)
+            limits = ExecutionLimits(max_steps=3)
+            assert debugger.run(limits=limits) == "max_steps"
+            snapshot = debugger.snapshot()
+            with pytest.raises(HaltError, match="temporary writer refusal") as failure:
+                debugger.step()
+            partial = ExecutionResult("OK"[:accepted], 0, 0, 0, steps=3)
+            assert failure.value.observation == debugger.observation == partial
+            assert debugger.snapshot() == (*snapshot, accepted)
+            state = _capture_workspace(debugger.vm)
+            assert state.parts[0].kind == "pending_output"
+            assert state.parts[0].values == (snapshot[0], accepted)
+            assert debugger.run(limits=limits) == "halted"
+            assert debugger.observation == expected
+            assert failure.value.observation == partial
+            assert attempts == (
+                ["OK", "OK"[accepted:], "N"] if accepted < 2 else ["OK", "N"]
+            )
+
+    bare = IO()
+
+    def refuse(_text):
+        raise HaltError("temporary writer refusal")
+
+    with monkeypatch.context() as port:
+        port.setattr(bare, "print_str", refuse)
+        machine = _Machine(source, bare)
+        for _ in range(3):
+            machine.step()
+        with pytest.raises(HaltError, match="temporary writer refusal"):
+            machine.step()
+        assert machine.memory["x"] == "xab"
+        assert machine.pc == 3
 
 
 def test_quoted_strings_are_not_keywords() -> None:

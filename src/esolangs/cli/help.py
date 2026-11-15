@@ -9,21 +9,23 @@ from __future__ import annotations
 
 import shlex
 
-from esolangs.registry import LANGUAGES, SourceKind
+from esolangs.cli.hints import _as_argument
+from esolangs.registry import Catalog, SourceKind, get_catalog
 from esolangs.runtime._json import record_dumps
 from esolangs.runtime.memory import repr_value
 
 
-def _capability_examples() -> tuple[str, str]:
+def _capability_examples(catalog: Catalog | None = None) -> tuple[str, str]:
     """Return supported template and dialect commands, or empty examples."""
     templates = ""
     dialects = ""
-    for name, lang in sorted(LANGUAGES.items()):
+    catalog = get_catalog(catalog)
+    for name, lang in sorted(catalog.languages.items()):
         if lang.backend is None or lang.runtime.source_kind is not SourceKind.TEXT:
             continue
         if lang.backend.max_inputs is not None and lang.backend.max_inputs < 2:
             continue
-        quoted = shlex.quote(name)
+        quoted = _as_argument(name, catalog=catalog, encoding="utf-8")
         if not templates and lang.parameterized:
             templates = f"  esolangs generate --bits 10 {quoted} 0110"
         if not dialects and lang.runtime.dialect_schema:
@@ -40,11 +42,10 @@ def _capability_examples() -> tuple[str, str]:
     return templates, dialects
 
 
-_TERMINATION_NAMES = ", ".join(
-    name
-    for name, lang in sorted(LANGUAGES.items())
-    if lang.contract.answer_mode == "termination"
-)
+_TERMINATION_HELP = """The languages that answer by terminating are {names}.
+{meaning}
+Program output carries no answer. Use `esolangs run --execution-timeout S`
+and observe whether it halts. A timeout leaves the answer undecided."""
 
 USAGE = """usage: esolangs <command> [...]
 
@@ -293,7 +294,7 @@ examples:
   esolangs describe --json brainfuck
   esolangs describe --spec brainfuck
 """,
-    "read-answer": f"""usage: esolangs read-answer <language>
+    "read-answer": """usage: esolangs read-answer <language>
 
 Read a program's output on stdin through EOF and print the answer bit it
 carries. At a terminal, paste the output and send EOF when done.
@@ -303,10 +304,7 @@ more than `tail`.  For some it is not: several dump their entire final machine
 state, and the answer sits in a tagged memory value or the current marked
 cell. `esolangs describe <language>` reports the answer convention.
 
-The languages that answer by terminating are {_TERMINATION_NAMES}.
-For their generated programs, halting means 0 and divergence means 1.
-Program output carries no answer. Use `esolangs run --execution-timeout S`
-and observe whether it halts. A timeout leaves the answer undecided.
+{_TERMINATION_HELP}
 
 examples:
   esolangs generate brainfuck 0110 > p.txt
@@ -319,16 +317,33 @@ examples:
 COMMANDS = tuple(_HELP)
 
 
-def help_text(command: str) -> str:
+def help_text(command: str, *, catalog: Catalog | None = None) -> str:
     """Render one command's help, loading synthesis for generation help."""
     text = _HELP[command]
     if command == "generate":
         from esolangs.generation.wrap import DEFAULT_WIDTH
 
-        template, dialects = _capability_examples()
+        template, dialects = _capability_examples(catalog)
         text = (
             text.replace("{DEFAULT_WIDTH}", str(DEFAULT_WIDTH))
             .replace("{_TEMPLATE_EXAMPLE}", template)
             .replace("{_DIALECT_EXAMPLES}", dialects)
+        )
+    elif command == "read-answer":
+        terminating = {
+            name: lang.contract.answer_values
+            for name, lang in sorted(get_catalog(catalog).languages.items())
+            if lang.contract.answer_mode == "termination"
+        }
+        if not terminating:
+            return text.replace("{_TERMINATION_HELP}\n\n", "")
+        meaning = (
+            "For their generated programs, halting means 0 and divergence means 1."
+            if all(bits == ("halts", "diverges") for bits in terminating.values())
+            else "`esolangs describe <language>` reports what its termination means."
+        )
+        text = text.replace(
+            "{_TERMINATION_HELP}",
+            _TERMINATION_HELP.format(names=", ".join(terminating), meaning=meaning),
         )
     return text

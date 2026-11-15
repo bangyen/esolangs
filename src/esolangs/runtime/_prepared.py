@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import cache, partial
-from types import ModuleType
-from typing import Any, cast
+from types import FunctionType, ModuleType
+from typing import TYPE_CHECKING, Any, cast
 
+from esolangs._dialect import Scalar
 from esolangs.artifacts import BooleanEvaluation, ProgramArtifact
 from esolangs.compressed import CompressedText
 from esolangs.debugger import Debugger
@@ -45,24 +46,60 @@ from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO, _scripted_io
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
+if TYPE_CHECKING:
+    from esolangs.runtime._definition import RuntimeSpec
+
+
+type _RuntimeHooks = tuple[str | None, str, str]
+
+
+def _plan_hooks(runtime: RuntimeSpec) -> _RuntimeHooks:
+    return (
+        runtime.interpreter,
+        runtime.machine_preparation,
+        runtime.completion_entrypoint,
+    )
+
 
 @cache
-def _installed_plan_hooks() -> frozenset[tuple[str, str, str]]:
+def _installed_plan_hooks() -> dict[_RuntimeHooks, RuntimeSpec]:
     """Recognize the installed hook pairs whose native paths share a plan."""
     from esolangs.registry._table import LANGUAGES
 
-    hooks = set()
-    for declaration in LANGUAGES.values():
-        runtime = declaration.runtime
-        if runtime.interpreter is not None:
-            hooks.add(
-                (
-                    runtime.interpreter,
-                    runtime.machine_preparation,
-                    runtime.completion_entrypoint,
-                )
-            )
-    return frozenset(hooks)
+    return {
+        _plan_hooks(runtime): runtime
+        for declaration in LANGUAGES.values()
+        if (runtime := declaration.runtime).interpreter is not None
+    }
+
+
+def _scoped_dialect_defaults(
+    runtime: RuntimeSpec, module: ModuleType
+) -> dict[str, Scalar]:
+    schema = runtime.dialect_schema
+    if schema is None:
+        return {}
+    installed = _installed_plan_hooks().get(_plan_hooks(runtime))
+    if installed is None:
+        runner = vars(module).get(str.__str__(runtime.completion_entrypoint))
+        if type(runner) is not FunctionType:
+            return {}
+        code = runner.__code__
+        end = code.co_argcount
+        start = max(min(2, end), code.co_posonlyargcount)
+        # A native runner receives source and IO positionally.
+        names = code.co_varnames[start : end + code.co_kwonlyargcount]
+        return {key: value for key, value in schema.defaults.items() if key in names}
+    original = installed.dialect_schema
+    if original is None or original is schema:
+        return {}
+    # Only keys already consumed by this interpreter belong in its options.
+    built_in = original.defaults
+    return {
+        key: value
+        for key, value in schema.defaults.items()
+        if key in built_in and value != built_in[key]
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +120,9 @@ class PreparedProgram:
         init=False, repr=False, compare=False
     )
     _code: Program | tuple[str, ...] = field(init=False, repr=False, compare=False)
+    _dialect_defaults: tuple[tuple[str, Scalar], ...] = field(
+        init=False, repr=False, compare=False
+    )
     _source_options: tuple[tuple[str, Any], ...] = field(
         init=False, repr=False, compare=False
     )
@@ -127,7 +167,7 @@ class PreparedProgram:
             language=self.language,
         ):
             module = interpreter_module(self.language, catalog=self.catalog)
-        object.__setattr__(self, "_module", module)
+        self._bind_module(module)
         code, options = prepare_call(
             self.language,
             runnable.source,
@@ -141,6 +181,12 @@ class PreparedProgram:
         )
         object.__setattr__(self, "_source_options", tuple(options.items()))
 
+    def _bind_module(self, module: ModuleType) -> None:
+        runtime = self.catalog.languages[self.language].runtime
+        defaults = _scoped_dialect_defaults(runtime, module)
+        object.__setattr__(self, "_module", module)
+        object.__setattr__(self, "_dialect_defaults", tuple(defaults.items()))
+
     @property
     def language(self) -> str:
         """The canonical language owning this program."""
@@ -149,7 +195,7 @@ class PreparedProgram:
     def _options(
         self, *, seed: int | None = None, reproducible: bool = False
     ) -> dict[str, Any]:
-        return dict(self._source_options) | execution_options(
+        return dict(self._dialect_defaults + self._source_options) | execution_options(
             self.language,
             ExecutionContext(seed=seed, reproducible=reproducible),
             catalog=self.catalog,
@@ -202,15 +248,7 @@ class PreparedProgram:
         plan = self._plan
         # A scoped hook can override either half of the installed runtime.
         # The machine's parse plan must not replace that declared native runner.
-        if (
-            plan is not None
-            and (
-                runtime.interpreter,
-                runtime.machine_preparation,
-                runtime.completion_entrypoint,
-            )
-            not in _installed_plan_hooks()
-        ):
+        if plan is not None and _plan_hooks(runtime) not in _installed_plan_hooks():
             plan = None
         if plan is None:
             code, options = self._call(seed=seed)
@@ -384,7 +422,7 @@ def _prepare_checked_program(
             language=name,
         ):
             module = module_loader(name, catalog=catalog)
-        object.__setattr__(prepared, "_module", module)
+        prepared._bind_module(module)  # noqa: SLF001 - preparation owns module binding
     if bind_machine:
         with interpreter_errors(
             f"the {name} interpreter recursed deeper than CPython's stack "

@@ -259,7 +259,6 @@ def test_read_answer_uses_the_first_group_of_the_last_match() -> None:
 def test_compiled_answer_pattern_keeps_its_semantics_in_json(
     monkeypatch, capsys, pattern, output, values, expected
 ) -> None:
-    from esolangs import cli
     from esolangs.registry import _table
 
     original = LANGUAGES[REFERENCE]
@@ -275,7 +274,6 @@ def test_compiled_answer_pattern_keeps_its_semantics_in_json(
     assert bound.read_answer(output) == expected
 
     monkeypatch.setattr(_table, "CATALOG", catalog)
-    monkeypatch.setattr(cli, "LANGUAGES", catalog.languages)
     shown = json.loads(call_main(["describe", "--json", REFERENCE], capsys))
     assert shown["answer_pattern"] == rendered
     assert (

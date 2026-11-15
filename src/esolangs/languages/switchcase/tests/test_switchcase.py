@@ -42,6 +42,16 @@ def test_redefining_a_variable_zeroes_it() -> None:
     assert _output("$_\n0?=A\n$A\n0?+4\n$_\n0?=A\n$A\n0?@") == "0"
 
 
+def test_wide_arithmetic_and_numeric_output_ignore_the_host_digit_cap() -> None:
+    from tests.support.execution import assert_digit_cap_independent
+
+    digits = "9" * 641
+    jump = "0" * 640 + "2"
+    source = f"$_\n0?'{jump}\n$_\n0?+{digits}@\n$_\n{digits}?-{digits}@"
+    assert_digit_cap_independent("SwitchCase", source, "", digits + "0")
+    assert_digit_cap_independent("SwitchCase", "$_\n0?#@", digits, digits)
+
+
 def test_rejected_numeric_input_stays_at_the_port() -> None:
     source = "$_\n0?#@"
     assert_rejected_input_retry(

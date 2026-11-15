@@ -15,7 +15,7 @@ from esolangs.exceptions import (
     TemplateError,
     UnknownLanguageError,
 )
-from esolangs.registry import LANGUAGES, SUGGESTION_CUTOFF, resolve
+from esolangs.registry import SUGGESTION_CUTOFF, Catalog, get_catalog
 from esolangs.runtime.source_hints import error_text
 
 #: A run stopped by its ``--execution-timeout``, following timeout(1).  Distinct from
@@ -60,21 +60,25 @@ def _notes(exc: BaseException) -> str:
     return _cli_error_text(exc)[len(str(exc)) :]
 
 
-def _generate_hint(exc: EsolangError, language: str, table: str) -> str:
+def _generate_hint(
+    exc: EsolangError, language: str, table: str, *, catalog: Catalog
+) -> str:
     """Keep generator notes and point template input advice at the CLI."""
     message = str(exc)
     notes = _notes(exc)
-    operand = _as_argument(language)
+    operand = _as_argument(language, catalog=catalog)
     for target in ("the generated program", "the raster"):
         notes = notes.replace(
             f"run {target} with stdin=encode_inputs(language, bits)",
             f"pipe input from esolangs encode-inputs {operand} <bits> "
             f"when running {target}",
         )
-    return message + _swapped_hint(language, table) + notes
+    return message + _swapped_hint(language, table, catalog=catalog) + notes
 
 
-def _template_hint(exc: TemplateError, language: str) -> str:
+def _template_hint(
+    exc: TemplateError, language: str, *, catalog: Catalog | None = None
+) -> str:
     """Re-point a template refusal at the CLI flag that fills the slots."""
     message = str(exc)
     notes = _notes(exc)
@@ -82,9 +86,10 @@ def _template_hint(exc: TemplateError, language: str) -> str:
     if pointer not in message:
         return message + notes
     head = message.split(pointer)[0]
+    operand = _as_argument(language, catalog=get_catalog(catalog))
     return (
         f"{head}fill them with: esolangs generate --bits <bits> "
-        f"{_as_argument(language)} <table>{notes}"
+        f"{operand} <table>{notes}"
     )
 
 
@@ -110,16 +115,16 @@ def _timeout_text(exc: ExecutionBudgetError) -> str:
     return str(exc) + _notes(exc).replace("the bound", flag).replace(bound, flag)
 
 
-def _shell_hint(message: str, language: str) -> str:
+def _shell_hint(message: str, language: str, *, catalog: Catalog) -> str:
     """Re-point ``encode-inputs``'s refusal at the flag that does the same job.
 
     ``instantiate()`` is not a thing you can type at a shell; ``generate
     --bits`` is.
     """
+    operand = _as_argument(language, catalog=catalog)
     return message.replace(
         "pass the bits to instantiate() to embed them in source",
-        "embed them in source with: "
-        f"esolangs generate --bits <bits> {_as_argument(language)} <table>",
+        f"embed them in source with: esolangs generate --bits <bits> {operand} <table>",
         1,
     )
 
@@ -132,7 +137,7 @@ def _looks_like_a_table(value: str) -> bool:
     return len(value) == 2**n and n >= 1
 
 
-def _swapped_hint(language: str, table: str) -> str:
+def _swapped_hint(language: str, table: str, *, catalog: Catalog) -> str:
     """Return a hint when the language and truth-table arguments look swapped.
 
     A power-of-two run of 0s and 1s in the language slot is a swap.
@@ -142,7 +147,8 @@ def _swapped_hint(language: str, table: str) -> str:
     separator = "-- " if table.startswith("-") else ""
     return (
         f"; {language!r} looks like a truth table -- the language comes "
-        f"first: esolangs generate {separator}{_as_argument(table)} {language}"
+        "first: esolangs generate "
+        f"{separator}{_as_argument(table, catalog=catalog)} {language}"
     )
 
 
@@ -180,12 +186,23 @@ def _input_sentence(facts: LanguageInfo) -> str:
     return f'one line per bit, e.g. "{lines}"'
 
 
-def _as_argument(language: str, *, encoding: str | None = None) -> str:
-    """Quote a language operand, using its ID if the name cannot be encoded."""
-    codec = encoding or sys.stderr.encoding or "utf-8"
+def _is_option(value: str) -> bool:
+    """Tell whether a leading dash makes a standalone operand an option."""
+    return len(value) > 1 and value[0] == "-" and not value[1].isdigit()
+
+
+def _as_argument(
+    language: str, *, catalog: Catalog, encoding: str | None = None
+) -> str:
+    """Quote a language, using its ID for an option-shaped or unencodable name."""
+    codec = encoding or getattr(sys.stderr, "encoding", None) or "utf-8"
     try:
         language.encode(codec)
     except UnicodeEncodeError:
+        needs_id = True
+    else:
+        needs_id = _is_option(language)
+    if needs_id:
         with suppress(UnknownLanguageError):
-            language = LANGUAGES[resolve(language)].id
+            language = catalog.languages[catalog.resolve(language)].id
     return shlex.quote(language)

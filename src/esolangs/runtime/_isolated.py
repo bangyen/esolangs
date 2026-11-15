@@ -528,6 +528,7 @@ def _launch(
     }
     env.pop("PYTHONPATH", None)
     env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONINTMAXSTRDIGITS"] = str(sys.get_int_max_str_digits())
     # Use the running interpreter's effective cache policy, which may have
     # come from command-line flags or changed since startup.
     for name, value in (
@@ -555,7 +556,8 @@ def _launch(
             *startup_flags,
             "-c",
             f"import sys; sys.path[:] = {search_path!r}; "
-            "from esolangs.runtime._isolated import _worker; _worker()",
+            "from esolangs.runtime._isolated import _worker; "
+            f"sys.setrecursionlimit({sys.getrecursionlimit()}); _worker()",
         ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,

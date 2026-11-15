@@ -86,9 +86,9 @@ def _reads_input(lang: LanguageDeclaration) -> bool:
 
 def _catalog_facts(lang: LanguageDeclaration, *, catalog: Catalog) -> _CatalogFacts:
     """Return the listing metadata without loading interpreter documentation."""
-    from esolangs.registry._catalog import get_catalog
+    from esolangs.registry._table import LANGUAGES
 
-    installed = get_catalog().languages.get(lang.name)
+    installed = LANGUAGES.get(lang.name)
     backend = lang.backend
     # Example and proof evidence belongs to the shipped implementation.
     packaged = (

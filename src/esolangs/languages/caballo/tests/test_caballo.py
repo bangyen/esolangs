@@ -6,7 +6,7 @@ from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.caballo import interpreter
 from esolangs.languages.caballo.interpreter import _Machine, prepare_machine, run
-from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import Seeded
 from esolangs.vm import run_until_halt_or_all_branches_cycle
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
@@ -142,6 +142,20 @@ def test_the_output_is_drawn_by_weight(monkeypatch) -> None:
     assert debugger.observation == expected
     # Seed 3's next draw selects [1], so two identical attempts prove replay.
     assert attempts == ["[]", "[]"]
+
+    bare = IO()
+    with monkeypatch.context() as port:
+        port.setattr(bare, "input_all", lambda: "")
+        port.setattr(bare, "print_str", lambda text: reject_once(bare, text))
+        attempts.clear()
+        machine = _Machine(source, bare, Seeded(3))
+        for _ in range(9):
+            machine.step()
+        with pytest.raises(HaltError, match="temporary output refusal"):
+            machine.step()
+        assert machine.halted
+        machine.step()
+        assert attempts == ["[]"]
 
 
 class _Fixed:

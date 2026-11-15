@@ -5,12 +5,12 @@ import os
 import re
 import subprocess
 import sys
+from dataclasses import replace
 
 import pytest
 
 import esolangs
-from esolangs import cli
-from esolangs.registry import _table
+from esolangs.registry import LANGUAGES, _table
 from tests.support.cli_support import call_both
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE
@@ -34,10 +34,9 @@ def _python_cli(
     )
 
 
-def test_empty_catalog_lists_in_every_format(monkeypatch, capsys) -> None:
+def test_active_catalog_lists_in_every_format(monkeypatch, capsys) -> None:
     scope = esolangs.Catalog([])
     monkeypatch.setattr(_table, "CATALOG", scope)
-    monkeypatch.setattr(cli, "LANGUAGES", scope.languages)
     assert esolangs.list_languages(catalog=scope) == []
     assert call_both(["list"], capsys) == ("", "")
     for flags in (["--json"], ["--json", "--details"]):
@@ -46,6 +45,32 @@ def test_empty_catalog_lists_in_every_format(monkeypatch, capsys) -> None:
     assert not error
     assert text.startswith("language  gen=generator")
     assert len(text.splitlines()) == 1
+
+    original = LANGUAGES[REFERENCE]
+    name = "Scoped catalog"
+    renamed = replace(original, name=name, id="scoped_catalog")
+    scoped = esolangs.Catalog([renamed, replace(original, backend=None)])
+    monkeypatch.setattr(_table, "CATALOG", scoped)
+    assert call_both(
+        ["list", "--generator", "--source-kind", "text", "--grep", "."], capsys
+    ) == (
+        name + "\n",
+        "",
+    )
+    text, error = call_both(["list", "--details"], capsys)
+    assert not error
+    assert name in text
+    assert REFERENCE in text
+    listing, _ = call_both(
+        ["list", "--json", "--details", "--interpreter-only"], capsys
+    )
+    (record,) = json.loads(listing)
+    description, _ = call_both(["describe", "--json", REFERENCE], capsys)
+    for facts in (record, json.loads(description)):
+        assert facts["name"] == REFERENCE
+        assert not facts["boolean_generator"]
+        assert facts["generator_scaling"] is None
+        assert facts["examples"] == []
 
 
 @pytest.mark.medium

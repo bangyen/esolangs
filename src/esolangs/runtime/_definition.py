@@ -5,10 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
+from types import FunctionType
 from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
-    from esolangs._dialect import DialectSchema
+    from esolangs._dialect import DialectSchema, Scalar
     from esolangs.runtime._capabilities import MachineCapabilities
 
 
@@ -82,6 +83,37 @@ type SourcePolicy = (
 )
 
 
+def _check_validator_defaults(
+    validator: FunctionType, defaults: dict[str, Scalar]
+) -> None:
+    """Read declared keyword defaults without evaluating annotations."""
+    code = validator.__code__
+    names = code.co_varnames
+    end = code.co_argcount
+    available: dict[str, object] = {}
+    positional = validator.__defaults__
+    if positional is not None:
+        count = min(end - code.co_posonlyargcount, tuple.__len__(positional))
+        if count:
+            values = tuple.__getitem__(positional, slice(-count, None))
+            available.update(zip(names[end - count : end], values, strict=True))
+    keyword = validator.__kwdefaults__
+    if keyword is not None:
+        keyword_names = names[end : end + code.co_kwonlyargcount]
+        available.update(
+            (name, value)
+            for name, value in dict.items(keyword)
+            if type(name) is str and name in keyword_names
+        )
+    for name, expected in defaults.items():
+        if name in available and (
+            type(actual := available[name]) is not type(expected) or actual != expected
+        ):
+            raise ValueError(
+                f"dialect validator default for {name} disagrees with its schema"
+            )
+
+
 @dataclass(frozen=True)
 class RuntimeSpec:
     """Interpreter, source representation and language-defined runtime choices."""
@@ -129,8 +161,17 @@ class RuntimeSpec:
         if self.dialect is None:
             if self.dialect_schema is not None:
                 raise ValueError("dialect metadata requires a validator")
-        elif self.dialect_schema is None or not self.dialect_schema.choices:
+            return
+        if self.dialect_schema is None or not (
+            defaults := self.dialect_schema.defaults
+        ):
             raise ValueError("dialect validator requires an explicit schema")
+        if "scale" in defaults and self.capabilities.supports_scale:
+            raise ValueError("dialect setting scale conflicts with raster scale")
+        if "rng" in defaults and self.random:
+            raise ValueError("dialect setting rng conflicts with runtime randomness")
+        if isinstance(self.dialect, FunctionType):
+            _check_validator_defaults(self.dialect, defaults)
 
     @property
     def split(self) -> bool:

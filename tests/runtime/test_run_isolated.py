@@ -241,14 +241,21 @@ for options in ({}, {'isolated': True}, {'limits': cap}):
     hook.write_text(f"""\
 import json
 import sys
-policy = [sys.dont_write_bytecode, sys.pycache_prefix, sys.flags.optimize]
+policy = [
+    sys.dont_write_bytecode, sys.pycache_prefix, sys.flags.optimize,
+    sys.get_int_max_str_digits(),
+]
 with open({str(observed)!r}, 'a', encoding='utf-8') as log:
     log.write(json.dumps(policy) + '\\n')
 """)
+    digits = sys.int_info.default_max_str_digits
     for flags, policy in (
-        ((), [False, None, 0]),
-        (("-B",), [True, None, 0]),
-        (("-OO", "-X", f"pycache_prefix={cache}"), [False, cache, 2]),
+        ((), [False, None, 0, digits]),
+        (("-B", "-X", "int_max_str_digits=640"), [True, None, 0, 640]),
+        (
+            ("-OO", "-X", f"pycache_prefix={cache}", "-X", "int_max_str_digits=0"),
+            [False, cache, 2, 0],
+        ),
     ):
         observed.unlink(missing_ok=True)
         run(*flags)

@@ -1,11 +1,12 @@
 """Tests for the Bleh interpreter."""
 
+import sys
 from itertools import product
 
 import pytest
 
 from esolangs import ExecutionLimits, ExecutionResult, Language
-from esolangs.exceptions import ProgramError
+from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.languages.bleh.interpreter import _Machine, run
 from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import native_runner
@@ -128,3 +129,30 @@ def test_a_forced_argument_is_read_once(monkeypatch) -> None:
         monkeypatch,
         cases=(("bz", "bb"), ("cz", "cc"), ("dz", "dd")),
     )
+
+
+@pytest.mark.medium
+def test_nested_source_respects_the_parent_recursion_limit() -> None:
+    language = Language("Bleh")
+    original = sys.getrecursionlimit()
+
+    def source(depth: int) -> str:
+        operand = "{" * depth + '"A"' + "}" * depth
+        return f"^:std::io; main := io::print({operand});"
+
+    try:
+        sys.setrecursionlimit(160)
+        for options in (
+            {},
+            {"limits": ExecutionLimits(max_steps=500)},
+            {"isolated": True},
+        ):
+            assert language.execute(source(1), **options).unwrap().output == "A"
+            limited = language.execute(source(85), **options)
+            assert limited.status == "limit"
+            assert isinstance(limited.error, InterpreterLimitError)
+            assert "recursed deeper" in str(limited.error)
+        sys.setrecursionlimit(400)
+        assert language.run(source(85), isolated=True).output == "A"
+    finally:
+        sys.setrecursionlimit(original)

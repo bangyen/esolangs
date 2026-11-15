@@ -47,8 +47,12 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+)
+from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 
 # Keep an escaped quote from backtracking into the closing delimiter.
 _TOKEN = re.compile(r'"((?:\\"|\\(?!")|[^"\\])*)"|([^\s;"]+)|(;)|(\S)')
@@ -175,6 +179,7 @@ class _Machine:
         #: Only the strings that no longer map to themselves.
         self.memory: dict[str, str] = {}
         self.pc: int | None = 0 if self.program else None
+        self._writer = _BufferedOutput()
 
     @property
     def halted(self) -> bool:
@@ -187,21 +192,31 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
+        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
-            instruction=self.pc,
+            instruction=(
+                self.pc
+                if accepted is None
+                else WorkspaceVariant("pending_output", (self.pc, accepted))
+            ),
             variables=frozenset(self.memory.items()),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.pc, frozenset(self.memory.items()), self.io.progress())
+        boundary = (self.pc, frozenset(self.memory.items()), self.io.progress())
+        accepted = self._writer.accepted
+        return boundary if accepted is None else (*boundary, accepted)
 
     def step(self) -> None:
         """Run one instruction."""
         if self.pc is None:
             return
         written, out, label = _advance(self.program[self.pc], self.memory)
+        if out is not None and isinstance(self.io, ScriptedIO):
+            self._writer.write(self.io, out)
+            out = None
         for name, value in written:
             if value == name:
                 self.memory.pop(name, None)

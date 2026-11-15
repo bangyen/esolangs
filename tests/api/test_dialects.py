@@ -14,7 +14,7 @@ from esolangs.operations.source import read_png_artifact
 from esolangs.registry import CATALOG, LANGUAGES
 from esolangs.registry._functions import FunctionRef
 from esolangs.runtime import _execution
-from esolangs.vm import make_vm
+from esolangs.vm import complete_vm, make_vm
 from tests.support.cli_support import _failure, call_both
 from tests.support.dialect_support import (
     Unreadable,
@@ -312,7 +312,16 @@ def test_dialect_settings_from_another_schema_name_the_catalog() -> None:
 def test_dialect_keys_survive_binding_and_round_trips() -> None:
     from dataclasses import replace
 
-    names = ("catalog", "language", "schema", "self", "K", "\N{KELVIN SIGN}")
+    names = (
+        "catalog",
+        "language",
+        "schema",
+        "self",
+        "scale",
+        "rng",
+        "K",
+        "\N{KELVIN SIGN}",
+    )
     schema = esolangs.DialectSchema(
         REFERENCE, dict.fromkeys(names, (1, 2)), dict.fromkeys(names, 1)
     )
@@ -329,6 +338,131 @@ def test_dialect_keys_survive_binding_and_round_trips() -> None:
     assert eval(repr(settings), {"Language": bound.catalog.bind}) == settings
     artifact = bound.from_source("+.", settings=settings)
     assert bound.from_json(bound.to_json(artifact)) == artifact
+
+    def untouched(**_choices):
+        pytest.fail("validating a declaration must not call its dialect hook")
+
+    raster = one_where(lambda info: info.source_kind == "raster")[0]
+    random = one_where(lambda info: info.random)[0]
+    for name, option in ((raster, "scale"), (random, "rng")):
+        schema = esolangs.DialectSchema(name, {option: (1, 2)}, {option: 2})
+        with pytest.raises(ValueError, match=rf"dialect setting {option} conflicts"):
+            replace(LANGUAGES[name].runtime, dialect=untouched, dialect_schema=schema)
+
+
+def test_scoped_runtime_defaults_reach_native_and_prepared_execution() -> None:
+    from dataclasses import replace
+
+    name = one_where(lambda info: "rotation" in info.dialect_settings)[0]
+    stock = esolangs.Language(name)
+    declaration = LANGUAGES[name]
+    runtime = declaration.runtime
+    schema = esolangs.DialectSchema(
+        name, runtime.dialect_schema.choices, {"rotation": "forward"}
+    )
+    with pytest.raises(ValueError, match="default for rotation"):
+        replace(runtime, dialect_schema=schema)
+
+    calls = []
+
+    def validate(*, rotation="forward"):
+        calls.append(rotation)
+        runtime.dialect(rotation=rotation)
+
+    scoped_runtime = replace(runtime, dialect=validate, dialect_schema=schema)
+    scope = CATALOG.with_language(replace(declaration, runtime=scoped_runtime)).bind(
+        name
+    )
+    assert scope.describe().dialect_settings["rotation"]["default"] == "forward"
+    source = "+,"
+    assert stock.run(source).output == ""
+    for settings, output in (
+        (None, "\x01"),
+        (scope.settings(), "\x01"),
+        (scope.settings(rotation="backward"), ""),
+    ):
+        calls.clear()
+        artifact = scope.from_source(source, settings=settings)
+        portable = scope.from_json(scope.to_json(artifact))
+        assert portable.settings == settings
+        assert scope.run(source, settings=settings).output == output
+        assert scope.run(portable).output == output
+        assert complete_vm(scope.make_vm(portable)) == output
+        prepared = scope.prepare(portable)
+        assert prepared.artifact.settings == settings
+        assert prepared.run().output == complete_vm(prepared.make_vm()) == output
+        if settings is None:
+            assert not calls
+
+    generated = scope.generate("01")
+    assert generated.settings.options() == {"rotation": "forward"}
+    for bit in (0, 1):
+        assert scope.evaluate(generated, (bit,)).answer == str(bit)
+
+
+def test_custom_runtime_defaults_follow_declared_runner_keywords(monkeypatch) -> None:
+    from dataclasses import replace
+
+    declaration = LANGUAGES[REFERENCE]
+    runtime = declaration.runtime
+    module = _execution.interpreter_module(REFERENCE)
+    execute = getattr(module, runtime.completion_entrypoint)
+    prepare = getattr(module, runtime.machine_preparation)
+
+    def expanded(source, options):
+        assert options.keys() <= {"increment", "multiplier"}
+        return source * options.get("increment", 1) + "." * options.get("multiplier", 1)
+
+    def custom_prepare(source, options):
+        return prepare(expanded(source, options), {})
+
+    def named(source, io, increment=1, *, multiplier=1, **options):
+        assert not options
+        return execute(
+            expanded(source, {"increment": increment, "multiplier": multiplier}), io
+        )
+
+    def positional(source, io, increment=1, /, *, multiplier=1):
+        return named(source, io, increment, multiplier=multiplier)
+
+    def variadic(*args, multiplier=1, **options):
+        return named(*args, multiplier=multiplier, **options)
+
+    def opaque(*args, **options):
+        return named(*args, **options)
+
+    monkeypatch.setattr(module, "custom_prepare", custom_prepare, raising=False)
+    fields = ("source", "io", "increment", "multiplier", "validation_only")
+    schema = esolangs.DialectSchema(
+        REFERENCE, dict.fromkeys(fields, (1, 2)), dict.fromkeys(fields, 2)
+    )
+    for runner, default, multiplier, override in (
+        (named, "\x02\x02", 1, "\x02"),
+        (positional, "\x01\x01", 1, "\x01"),
+        (variadic, "\x01\x01", 1, "\x01"),
+        (opaque, "\x01", 2, "\x01\x01"),
+    ):
+        monkeypatch.setattr(module, "custom_execute", runner, raising=False)
+        custom = replace(
+            runtime,
+            completion_entrypoint="custom_execute",
+            machine_preparation="custom_prepare",
+            dialect=lambda **choices: choices,
+            dialect_schema=schema,
+        )
+        scope = esolangs.Catalog([replace(declaration, runtime=custom)]).bind(REFERENCE)
+        for settings, output in (
+            (None, default),
+            (scope.settings(), default),
+            (scope.settings(multiplier=multiplier), override),
+        ):
+            artifact = scope.from_source("+", settings=settings)
+            portable = scope.from_json(scope.to_json(artifact))
+            assert portable.settings == settings
+            assert scope.run(portable).output == output
+            assert complete_vm(scope.make_vm(portable)) == output
+            prepared = scope.prepare(portable)
+            assert prepared.run().output == complete_vm(prepared.make_vm()) == output
 
 
 def test_dialect_schema_reports_invalid_mapping_arguments() -> None:
