@@ -3,16 +3,18 @@
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES, _table
 from tests.support.cli_support import _program, call_both
-from tests.support.pick import languages
+from tests.support.pick import languages, one_where
 from tests.support.reference import REFERENCE
 
 
@@ -121,6 +123,54 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
         spelling = expected[name]
         assert scope.resolve(spelling) == name
         assert call_both(["run", spelling, path], capsys) == ("\x01", "")
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "language",
+    one_where(
+        lambda d: not d.name.isascii(),
+        boolean_generator=True,
+        parameterized=False,
+        answer_mode="output",
+        random=False,
+    ),
+)
+def test_catalog_commands_are_copyable_with_ascii_stdout(
+    language: str, tmp_path: Path
+) -> None:
+    def call(*args: str, stdin: bytes | None = None) -> bytes:
+        return subprocess.run(
+            [sys.executable, "-m", "esolangs", *args],
+            input=stdin,
+            capture_output=True,
+            timeout=10,
+            check=True,
+            env={**os.environ, "PYTHONIOENCODING": "ascii"},
+        ).stdout
+
+    api = esolangs.Language(language)
+    report = call("describe", language).decode("ascii")
+    line = next(line for line in report.splitlines() if line.startswith("spec: "))
+    command = shlex.split(line.removeprefix("spec: "))
+    assert command[-1] == api.describe().id
+    spec = call(*command[1:])
+    assert spec == call("describe", "--spec", language)
+
+    names = esolangs.list_languages()
+    index = names.index(api.name)
+    selector = call("list").decode("ascii").splitlines()[index]
+    assert selector == api.describe().id
+    details = call("list", "--details").decode("ascii").splitlines()
+    assert details[index + 1].split()[0] == selector
+    assert json.loads(call("list", "--json")) == names
+
+    program = api.generate("01")
+    path = tmp_path / "program"
+    api.to_file(program, path, normalize=True)
+    stdin = api.encode_inputs([1])
+    assert api.run(program, stdin=stdin).output == "1"
+    assert call("run", selector, str(path), stdin=stdin.encode()) == b"1"
 
 
 @pytest.mark.medium

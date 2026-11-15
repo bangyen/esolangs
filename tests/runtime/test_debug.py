@@ -168,6 +168,32 @@ def test_breakpoint_predicate_is_checked_once_at_a_stop() -> None:
     assert dbg.run(limits=limits) == "halted"
     assert positions == [0, 0, 1, 2, 3]
 
+    class ChangingStack:
+        def __init__(self, first):
+            self.machine = debugger_api.make_vm(REFERENCE, "+.")
+            self.reads = 0
+            self.first = first
+
+        def __getattr__(self, name):
+            return getattr(self.machine, name)
+
+        @property
+        def stack(self):
+            self.reads += 1
+            return self.first if self.reads == 1 else []
+
+    for stack, expected, reason in (
+        ([42], None, "max_steps"),
+        ([42], 42, "breakpoint"),
+        ([None], None, "breakpoint"),
+        ([], None, "max_steps"),
+    ):
+        vm = ChangingStack(stack)
+        dbg = debugger_api.Debugger(vm)
+        dbg.break_on_stack(0, expected)
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=0)) == reason
+        assert vm.reads == 1
+
 
 def test_breakpoint_callback_cannot_start_a_command_after_deadline(monkeypatch) -> None:
     now = [0.0]
@@ -317,6 +343,32 @@ def test_breakpoint_hits_do_not_survive_rewrapping() -> None:
     assert outer.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "max_steps"
     assert middle.vm is new
     assert outer.observation.steps == 0
+
+    api = esolangs.Language(REFERENCE)
+    halted = api.make_vm("+.")
+    halted.step()
+    halted.step()
+
+    class RewrapOnInspection:
+        def __getattr__(self, name):
+            return getattr(halted, name)
+
+        @property
+        def halted(self):
+            nested.vm = replacement
+            return halted.halted
+
+    for already_halted in (False, True):
+        replacement = api.make_vm("++.")
+        if already_halted:
+            for _ in range(3):
+                replacement.step()
+        nested = debugger_api.Debugger(RewrapOnInspection())
+        outer = debugger_api.Debugger(nested)
+        observation = outer.observation
+        assert observation.output == ("\x02" if already_halted else "")
+        assert (observation.completion is not None) is already_halted
+        assert observation.steps == 0
 
 
 def test_manual_step_does_not_recheck_a_suppressed_breakpoint_after_rewrapping():

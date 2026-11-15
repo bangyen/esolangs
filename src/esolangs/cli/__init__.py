@@ -226,8 +226,8 @@ def _catalog_names(
 
 
 def _listed_name(name: str, *, catalog: Catalog, encoding: str) -> str:
-    """Use an accepted one-line spelling when the display name spans lines."""
-    if name.splitlines() == [name]:
+    """Represent the language with an encodable one-line spelling."""
+    if name.splitlines() == [name] and can_render_argument(name, encoding):
         return name
     declaration = catalog.languages[name]
     spellings = (

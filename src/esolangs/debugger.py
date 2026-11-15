@@ -236,12 +236,12 @@ class Debugger(_ExecutionController):
         ``value`` is unchecked: a slot holds whatever its language pushes.
         """
         slot = check_whole(slot, "slot")
-        self._breakpoints.append(
-            lambda vm: (
-                slot < len(vm.stack)
-                and _value_at(vm.stack, slot, from_top=True) == value
-            )
-        )
+
+        def matches(vm: VM) -> bool:
+            stack = vm.stack
+            return slot < len(stack) and stack[-1 - slot] == value
+
+        self._breakpoints.append(matches)
 
     def break_on_output(self, text: str) -> None:
         """Stop once ``text`` has been written so far.

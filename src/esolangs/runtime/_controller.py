@@ -96,17 +96,25 @@ class ExecutionController:
         Steps count successful calls through this controller while active;
         completion dump calls are excluded. Caller-owned IO counters stay None.
         """
-        report = None
-        if self.halted and self.steppable_to_answer and not _halt_faulted(self):
-            faulted = self._faulted_owner is not None and (
-                _controller_vm(self.vm) is self._faulted_owner
-            )
-            if self.dumps_on_the_post_halt_step:
-                if self._has_dumped() and not faulted:
-                    report = CompletionReport(Completion.POST_HALT)
-            elif not faulted:
-                report = CompletionReport(Completion.HALTED)
-        return replace(_capture_observation(self.vm, report), steps=self._steps)
+        while True:
+            receiver = self.vm
+            tail = _receiver_tail(receiver)
+            report = None
+            if self.halted and self.steppable_to_answer and not _halt_faulted(self):
+                faulted = self._faulted_owner is not None and (
+                    _controller_vm(self.vm) is self._faulted_owner
+                )
+                if self.dumps_on_the_post_halt_step:
+                    if self._has_dumped() and not faulted:
+                        report = CompletionReport(Completion.POST_HALT)
+                elif not faulted:
+                    report = CompletionReport(Completion.HALTED)
+            # An inspection callback can replace any link in the chain.
+            if not _receiver_matches(self, receiver, tail):
+                continue
+            observation = _capture_observation(receiver, report)
+            if _receiver_matches(self, receiver, tail):
+                return replace(observation, steps=self._steps)
 
     @property
     def self_halts(self) -> bool:

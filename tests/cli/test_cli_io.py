@@ -4,7 +4,6 @@ import gzip
 import json
 import os
 import select
-import shlex
 import signal
 import subprocess
 import sys
@@ -408,26 +407,6 @@ def test_ascii_stderr_adapter_keeps_usage_status(
     assert stream.getvalue() == "opt"
     cli_io._diagnostic("required notice\n")
     assert stream.getvalue() == "optrequired notice\n"
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("language", one_where(lambda d: not d.name.isascii()))
-def test_catalog_spec_command_is_copyable_with_ascii_stdout(language: str) -> None:
-    def call(*args: str) -> bytes:
-        return subprocess.run(
-            [sys.executable, "-m", "esolangs", *args],
-            capture_output=True,
-            timeout=10,
-            check=True,
-            env={**os.environ, "PYTHONIOENCODING": "ascii"},
-        ).stdout
-
-    report = call("describe", language).decode("ascii")
-    line = next(line for line in report.splitlines() if line.startswith("spec: "))
-    command = shlex.split(line.removeprefix("spec: "))
-    assert command[-1] == esolangs.describe(language).id
-    spec = call(*command[1:])
-    assert spec == call("describe", "--spec", language)
 
 
 @pytest.mark.medium
@@ -979,7 +958,7 @@ class TestAClosedPipeIsNotAnError:
         )
         assert (closed.returncode, closed.stdout) == (0, b"\x01")
 
-    def test_an_ascii_stdout_escapes_instead_of_crashing(
+    def test_an_ascii_stdout_lists_language_selectors(
         self, monkeypatch, capsys
     ) -> None:
         """``PYTHONIOENCODING=ascii esolangs list`` died mid-line, exit 70."""
@@ -994,7 +973,10 @@ class TestAClosedPipeIsNotAnError:
             check=False,
         )
         assert listed.returncode == 0, listed.stderr
-        assert b"For\\xfe" in listed.stdout
+        selectors = listed.stdout.decode("ascii").splitlines()
+        assert [esolangs.Language(label).name for label in selectors] == (
+            esolangs.list_languages()
+        )
 
         class Writer:
             def __init__(self, codec) -> None:

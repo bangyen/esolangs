@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 from esolangs._dialect import DialectSettings
 from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
+from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._validate import _has_backing_type, check_scale
 from esolangs.runtime.source_hints import program_error_context, syntax_error
@@ -789,19 +790,25 @@ def _check_retained_settings(
     saved: Any, requested: Any, owner: str | None, *, catalog: Catalog | None
 ) -> None:
     from esolangs.portable import _decode_settings_choices
+    from esolangs.settings import _settings_for
 
     if owner is None:
         raise ValueError("stored PNG settings need a language to apply to")
     choices = _decode_settings_choices(saved)
     if any(type(value) not in (int, str) for value in choices.values()):
         raise ValueError("stored PNG settings must be integer or string choices")
+    if requested is not None and choices == _decode_settings_choices(requested):
+        # Explicit settings already passed the catalog validator.
+        return
     if catalog is not None:
         schema = catalog.languages[owner].runtime.dialect_schema
-        if schema is not None:
+        if schema is not None and requested is None:
+            _settings_for(owner, choices, catalog=catalog)
+        elif schema is not None:
             schema.validate(choices)
         elif choices:
             raise ValueError(f"{owner} declares no PNG dialect settings")
-    if requested is not None and choices != _decode_settings_choices(requested):
+    if requested is not None:
         raise ValueError("conflicting PNG settings")
 
 
@@ -838,14 +845,17 @@ def _attach_metadata(
     if start == end:
         return _write_metadata_chunk(data, _encode_metadata(metadata), start, end)
     body = data[start + 8 : end - 4]
-    try:
-        stored = _decode_metadata(body)
-        _check_version(stored)
-        additions = _missing_claims(stored, metadata, catalog=catalog)
-    except ProgramError:
-        raise
-    except (ValueError, RecursionError) as error:
-        raise program_error_context(f"cannot tag PNG: {error}", error) from error
+    with _track_acquisition_failures():
+        try:
+            stored = _decode_metadata(body)
+            _check_version(stored)
+            additions = _missing_claims(stored, metadata, catalog=catalog)
+        except ProgramError:
+            raise
+        except (ValueError, RecursionError) as error:
+            if _is_acquisition_failure(error):
+                raise
+            raise program_error_context(f"cannot tag PNG: {error}", error) from error
     if not additions:
         return data
     _utf8_metadata(additions)
@@ -888,7 +898,7 @@ def attach_source_metadata(
     input_arity: int | None = None,
     catalog: Catalog | None = None,
 ) -> bytes:
-    """Add absent source claims to PNG bytes, refusing conflicting metadata."""
+    """Add absent source claims to PNG, checking settings in a supplied catalog."""
     claims = _source_claims(
         language, settings, scale, input_arity=input_arity, catalog=catalog
     )

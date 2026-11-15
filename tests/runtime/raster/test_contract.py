@@ -932,17 +932,38 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
         raw,
         {"version": 1, "language": name, "settings": {"mode": 1}},
     )
+    matching = scoped.settings(mode=1)
+    validations.clear()
     assert (
-        png.attach_source_metadata(
-            legacy, name, scoped.settings(mode=1), None, catalog=scoped.catalog
-        )
+        png.attach_source_metadata(legacy, name, matching, None, catalog=scoped.catalog)
         is legacy
     )
+    assert validations == [{"mode": 1}]
     with pytest.raises(esolangs.ProgramError, match="conflicting PNG settings"):
         png.attach_source_metadata(
             legacy, name, scoped.settings(mode=0), None, catalog=scoped.catalog
         )
+
+    retained = png.write_metadata(
+        raw, {"version": 1, "language": name, "scale": 2, "settings": {}}
+    )
+
+    def retag():
+        return png.attach_source_metadata(
+            retained, name, None, 2, input_arity=1, catalog=scoped.catalog
+        )
+
+    validations.clear()
+    tagged = retag()
+    assert validations == [{}]
+    assert tagged == png.attach_source_metadata(retained, name, None, 2, input_arity=1)
+    assert validations == [{}]
     path = tmp_path / "program.png"
+    path.write_bytes(tagged)
+    restored = scoped.from_file(path)
+    assert restored == artifact
+    assert "".join(scoped.evaluate(restored, [bit]).answer for bit in (0, 1)) == "01"
+
     scoped.to_file(artifact, path)
     portable = scoped.to_json(artifact)
     for load in (lambda: scoped.from_file(path), lambda: scoped.from_json(portable)):
@@ -974,6 +995,7 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
             lambda: scoped.from_json(portable),
             lambda: scoped.from_source(artifact.source, settings=settings),
             *writers,
+            retag,
         ):
             with pytest.raises(type(error)) as caught:
                 load()
@@ -991,7 +1013,11 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
         assert error.partial_output == "\x01"
 
     failures[:] = [TypeError("ordinary validation failure")]
-    for load in (lambda: scoped.from_file(path), lambda: scoped.from_json(portable)):
+    for load in (
+        lambda: scoped.from_file(path),
+        lambda: scoped.from_json(portable),
+        retag,
+    ):
         with pytest.raises(esolangs.ProgramError, match="invalid dialect settings"):
             load()
     assert prepared.run(stdin="0").output == "0"
