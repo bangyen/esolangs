@@ -221,7 +221,7 @@ def _key(value: _Value) -> int | None:
     if isinstance(value, float):
         return None
     if isinstance(value, str) and _INDEX.fullmatch(value):
-        return int(value)
+        return parse_integer(value)
     return None
 
 

@@ -1,10 +1,12 @@
 """Tests for the HQ9+ with headers interpreter."""
 
+import sys
 from itertools import product
 from operator import add, floordiv, mul, sub
 
 import pytest
 
+from esolangs import Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.hq9_with_headers import interpreter as native
 from esolangs.languages.hq9_with_headers.interpreter import _Machine, run
@@ -158,12 +160,42 @@ def test_decimal_read_stops_at_and_consumes_a_non_digit() -> None:
     assert _run(code, "") == "000"
 
 
-def test_arithmetic_is_unbounded_and_div_floors() -> None:
+def test_arithmetic_is_unbounded_and_div_floors(monkeypatch) -> None:
     body = ["[SUB z t d]", "[DIV d s q]", "p(Vq)", "[MUL t t t]", "p(Vt)"]
     code = _source(
         "1", {"x": body}, ["z = 0", "t = 7", "s = 2", "t = 99999999999"], "x"
     )
     assert _run(code) == "-50000000000" + str(99999999999**2)
+
+    from tests.support.execution import assert_digit_cap_independent
+
+    zeros, value = "0" * 641, "9" * 641
+    wide = _source(
+        zeros + "1,'J_" + zeros + "2,'H,2",
+        {"R": ["[>>. y]"], "P": ["p(Vx)", "p(Vy)"]},
+        ["x = " + value],
+        "RP",
+    )
+    assert_digit_cap_independent("HQ9+ with headers", wide, zeros + "7", value + "7")
+
+    seen_caps = []
+    print_num = ScriptedIO.print_num
+
+    def record_cap(io, number):
+        seen_caps.append(sys.get_int_max_str_digits())
+        print_num(io, number)
+
+    monkeypatch.setattr(ScriptedIO, "print_num", record_cap)
+    cap = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        assert (
+            Language("HQ9+ with headers").run(wide, stdin=zeros + "7").output
+            == value + "7"
+        )
+        assert seen_caps == [640, 640]
+    finally:
+        sys.set_int_max_str_digits(cap)
 
 
 def test_conditional_runs_hex_encoded_commands() -> None:

@@ -71,13 +71,19 @@ def _diagnostic(message: str, *, ready_only: bool = False) -> None:
     if stream is None or (ready_only and not _output_ready(stream)):
         return
     try:
-        stream.write(message)
+        try:
+            stream.write(message)
+        except UnicodeEncodeError:
+            # A caller-supplied text adapter may lack reconfigure().
+            stream.write(message.encode("ascii", "backslashreplace").decode("ascii"))
         stream.flush()
     except KeyboardInterrupt:
         _abandon_output(stream)
         raise
     except OSError:
         _abandon_output(stream)
+    except ValueError:
+        pass  # A closed adapter or one that rejected even the escaped message.
 
 
 def _fail(message: str | BaseException, code: int = 2) -> NoReturn:

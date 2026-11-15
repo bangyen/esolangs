@@ -15,7 +15,8 @@ from tempfile import TemporaryDirectory
 from time import monotonic
 from typing import IO, cast, overload
 
-from esolangs.exceptions import ArgumentError
+from esolangs.exceptions import ArgumentError, EsolangError
+from esolangs.outcomes import _remember_acquisition_failure
 
 _STREAM_DEADLINE: ContextVar[float | None] = ContextVar("stream_deadline", default=None)
 _BLOCK = 65_536
@@ -171,6 +172,9 @@ def explicit_path(path: str | PathLike[str]) -> _ExplicitPath:
         return path
     try:
         spelling = fspath(path)
+    except EsolangError as error:
+        _remember_acquisition_failure(error)
+        raise
     except (TypeError, ValueError) as error:
         raise ArgumentError("path must be a str or PathLike returning str") from error
     if not isinstance(spelling, str):

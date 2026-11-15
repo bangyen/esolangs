@@ -66,7 +66,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
-from esolangs.runtime.memory import parse_integer
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 __all__ = ["run"]
@@ -304,7 +304,7 @@ class _Parser:
             self.index += 1
             return node
         if symbol.isdigit():
-            return int(symbol)
+            return parse_integer(symbol)
         raise _InvalidFunctionError
 
 
@@ -364,7 +364,7 @@ def _plosive(state: _State, token: str) -> _State:
     if token in _FUNCTION_SYMBOLS:
         return (accumulator, deque, (*function, _FUNCTION_SYMBOLS[token]), pointer)
     deque, value = _popped(deque, front=token == _POP_FRONT_APPEND)
-    return (accumulator, deque, (*function, str(value)), pointer)
+    return (accumulator, deque, (*function, format_integer(value)), pointer)
 
 
 def _vowel(state: _State, token: str) -> _State:

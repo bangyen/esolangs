@@ -54,7 +54,7 @@ def test_apostrophes_in_strings() -> None:
 
 
 @pytest.mark.medium
-def test_line_input_and_output_caps_preserve_python_code_points() -> None:
+def test_line_input_and_output_caps_preserve_python_code_points(monkeypatch) -> None:
     api = Language("Between")
     code = "'x'v.\n[x]i.\n[x]p."
     text = "\U0001f600\ud800\udfff\r"
@@ -87,6 +87,43 @@ def test_line_input_and_output_caps_preserve_python_code_points() -> None:
     crlf = api.run(code, stdin=text + "\n", isolated=True)
     assert crlf.output == text[:-1]
     assert crlf.input_position == len(text) + 1
+
+    pending = api.make_debugger("[x]i.", stdin="first\nsecond")
+    with pytest.raises(HaltError, match="undeclared variable") as first:
+        pending.step()
+    assert first.value.observation.input_position == 6
+    assert first.value.observation.input_reads == 1
+    snapshot = pending.snapshot()
+    with pytest.raises(HaltError, match="undeclared variable") as retry:
+        pending.step()
+    assert retry.value is not first.value
+    assert retry.value.observation == first.value.observation
+    assert pending.snapshot() == snapshot
+
+    from esolangs import ExecutionTimeoutError
+    from esolangs.runtime.io import ScriptedIO
+
+    read = ScriptedIO.input_str
+
+    def fail_after_read(io, prompt="Input: "):
+        read(io, prompt)
+        error = ExecutionTimeoutError("reader exhausted its time budget")
+        error.bound = "execution_timeout"
+        raise error
+
+    monkeypatch.setattr(ScriptedIO, "input_str", fail_after_read)
+    pending = api.make_debugger(code, stdin="first\nsecond")
+    pending.step()
+    with pytest.raises(ExecutionTimeoutError) as first:
+        pending.step()
+    first.value.add_note("from the first observer")
+    with pytest.raises(ExecutionTimeoutError) as retry:
+        pending.step()
+    assert retry.value is not first.value
+    assert retry.value.bound == first.value.bound == "execution_timeout"
+    assert retry.value.__notes__ == first.value.__notes__[:-1]
+    assert retry.value.observation == first.value.observation
+    assert pending.observation.input_reads == 1
 
 
 def test_groups_nest_and_compute(monkeypatch) -> None:
@@ -124,3 +161,14 @@ def test_types_are_strict() -> None:
 def test_malformed_lines_raise(code: str) -> None:
     with pytest.raises(ValueError, match=r"\w"):
         out(code)
+
+
+def test_wide_numbers_survive_literals_input_conversion_and_output() -> None:
+    from tests.support.execution import assert_digit_cap_independent
+
+    digits = "9" * 641
+    source = f"|{digits}|c.\n'x'v.\n[x]i.\n|[x]c.|p.\n|{digits}|p."
+    assert_digit_cap_independent("Between", source, digits, digits * 2)
+    with pytest.raises(HaltError, match="outside the program") as error:
+        out("|" + "1" + "0" * 5000 + "|f.")
+    assert str(error.value).startswith("goto 1" + "0" * 5000)

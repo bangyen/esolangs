@@ -12,6 +12,7 @@ from os import PathLike
 from typing import ClassVar
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
+from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
 from esolangs.runtime._files import explicit_path, write_staged
 from esolangs.runtime._validate import _argument_repr, check_width
 from esolangs.runtime.memory import repr_value
@@ -286,10 +287,13 @@ class CompressedText:
         Raises:
             ProgramError: The file cannot be written.
         """
-        try:
-            target = explicit_path(path)
-        except (ArgumentError, OSError) as exc:
-            raise ProgramError(f"cannot save program: {exc}") from exc
+        with _track_acquisition_failures():
+            try:
+                target = explicit_path(path)
+            except (ArgumentError, OSError) as exc:
+                if _is_acquisition_failure(exc):
+                    raise
+                raise ProgramError(f"cannot save program: {exc}") from exc
         try:
             write_staged(target, (self.data,))
         except (OSError, TypeError, ValueError) as exc:

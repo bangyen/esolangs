@@ -61,7 +61,6 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.hq9.interpreter import _SONG
 from esolangs.languages.hq9_with_headers.lifecycle import CAPABILITIES
 from esolangs.runtime import persistent
-from esolangs.runtime._digits import digit_limit_for
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
@@ -69,6 +68,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 
 _BEGIN = "==== HEADER ===="
 _END = "==== END HEADER ===="
@@ -222,8 +222,7 @@ class _Compiler:
             body = self.program if kind == "code" else _SONG
             self.ops.append(_Op("text", line, text=body))
         elif kind == "set":
-            with digit_limit_for(len(groups[1])):
-                value = int(groups[1])
+            value = parse_integer(groups[1])
             self.ops.append(
                 _Op("set", line, (self.slot(groups[0], line),), value=value)
             )
@@ -321,7 +320,7 @@ def parse(code: str) -> tuple[list[_Op], int]:
     jumps: list[tuple[int, int]] = []
     for element in elements:
         if element.isdigit():
-            number = int(element)
+            number = parse_integer(element)
             if not 1 <= number <= len(program) or number in starts:
                 raise _fail(line, f"flow element {element} is not a new command")
             starts[number] = len(compiler.ops)
@@ -333,14 +332,14 @@ def parse(code: str) -> tuple[list[_Op], int]:
         kind, groups = _match(_FLOW, element, line, "flow element")
         args = (compiler.slot(groups[0], line),) if kind in ("jz", "fork") else ()
         if kind != "halt":
-            jumps.append((len(compiler.ops), int(groups[-1])))
+            jumps.append((len(compiler.ops), parse_integer(groups[-1])))
         compiler.ops.append(_Op("jump" if kind == "fork" else kind, line, args))
     if len(starts) != len(program):
         raise _fail(line, "the flow must list every command exactly once")
     ops = compiler.ops
     for at, number in jumps:
         if number not in starts:
-            raise _fail(ops[at].line, f"no command {number} to jump to")
+            raise _fail(ops[at].line, f"no command {format_integer(number)} to jump to")
         ops[at] = _Op(
             ops[at].kind,
             ops[at].line,
@@ -467,8 +466,7 @@ class _Machine:
             if not 48 <= char <= 57:
                 break
             digits += chr(char)
-        with digit_limit_for(len(digits)):
-            return int(digits)
+        return parse_integer(digits)
 
     def step(self) -> None:
         """Execute one op.
@@ -481,8 +479,7 @@ class _Machine:
         value = self._read(kind) if kind in ("readc", "readn") else None
         self.state, out = _advance(self.state, self.ops, value)
         if isinstance(out, int):
-            with digit_limit_for(out.bit_length() // 3 + 2):
-                self.io.print_num(out)
+            self.io.print_num(out)
         elif out is not None:
             self.io.print_str(out)
 

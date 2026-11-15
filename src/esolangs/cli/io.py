@@ -11,19 +11,20 @@ import select
 import stat
 import sys
 import threading
+from codecs import IncrementalEncoder, lookup
 from collections.abc import Buffer, Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from contextvars import copy_context
 from errno import EAGAIN
-from io import BufferedReader, FileIO, RawIOBase
+from io import BufferedReader, FileIO, RawIOBase, TextIOWrapper, UnsupportedOperation
 from math import ceil
 from time import monotonic, sleep
 from typing import BinaryIO, cast
 
 from esolangs.artifacts import ProgramArtifact
 from esolangs.cli.args import _abandon_output, _diagnostic, _fail
-from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note
-from esolangs.exceptions import EsolangError
+from esolangs.cli.hints import _TIMEOUT_EXIT, _decode_note, _exit_code, _timeout_text
+from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
 from esolangs.operations.source import _check_program
 from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._files import (
@@ -34,7 +35,7 @@ from esolangs.runtime._files import (
     read_snapshot,
     stream_read_deadline,
 )
-from esolangs.runtime._input import input_read_error
+from esolangs.runtime._input import input_read_error, read_input
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource
 from esolangs.runtime._wait import wait_slice
@@ -325,6 +326,78 @@ def _read_buffered_stdin(stream: BufferedReader, deadline: float | None) -> byte
             data.extend(chunk)
 
 
+@contextmanager
+def _override_io_method(
+    stream: object, name: str, replacement: Callable[..., object]
+) -> Iterator[None]:
+    """Restore the stream's own override, if any, when a borrowed method is done."""
+    attributes = vars(stream)
+    shadowed = name in attributes
+    previous = attributes.get(name)
+    attributes[name] = replacement
+    try:
+        yield
+    finally:
+        if shadowed:
+            attributes[name] = previous
+        else:
+            del attributes[name]
+
+
+def _read_stdin_bytes(stream: BinaryIO, deadline: float | None) -> bytes:
+    if isinstance(stream, BufferedReader):
+        return _read_buffered_stdin(stream, deadline)
+    return read_snapshot(stream)
+
+
+def _read_prefetched_stdin(stdin: TextIOWrapper, stream: BinaryIO, data: bytes) -> str:
+    """Drain existing text state and preserve the still-unprocessed byte tail."""
+    codec = lookup(stdin.encoding)
+    if codec.name == "utf-8-sig":
+        codec = lookup("utf-8")  # The active decoder has consumed the signature.
+    split = len(data)
+    if codec.name == "utf-8":
+        split = 0
+        while split < min(3, len(data)) and 0x80 <= data[split] < 0xC0:
+            split += 1  # Complete a code point started by the earlier read.
+    elif codec.name in {"ascii", "iso8859-1"}:
+        split = 0  # A single-byte decoder cannot have a pending code point.
+    if data[split : split + 1] == b"\n":
+        split += 1  # The newline decoder may still hold the matching CR.
+    with _override_io_method(stream, "read", lambda: data[:split]):
+        text = TextIOWrapper.read(stdin)
+
+    # An encoder with a starting state may insert bytes absent from the tail.
+    make_encoder = cast(
+        "Callable[[str], IncrementalEncoder] | None", codec.incrementalencoder
+    )
+    if make_encoder is None:
+        return text
+    encoder = make_encoder("surrogateescape")
+    if encoder.getstate():
+        return text
+    try:
+        restored = encoder.encode(text, final=True)
+    except UnicodeEncodeError:
+        return text + data[split:].decode("utf-8")
+    return (restored + data[split:]).decode("utf-8")
+
+
+def _read_wrapped_stdin(
+    stdin: TextIOWrapper, stream: BinaryIO, deadline: float | None
+) -> str:
+    try:
+        # Setting the same error handler distinguishes a fresh wrapper from
+        # one whose decoder may already hold characters or a split code unit.
+        TextIOWrapper.reconfigure(stdin, errors=stdin.errors)
+    except UnsupportedOperation:
+        # Finish waiting outside the text wrapper, then let it decode the
+        # suffix with its current state while no further I/O can block.
+        data = _read_stdin_bytes(stream, deadline)
+        return _read_prefetched_stdin(stdin, stream, data)
+    return _read_stdin_bytes(stream, deadline).decode("utf-8")
+
+
 def _read_stdin(
     timeout: float | None = None,
     hint: str = "",
@@ -348,18 +421,33 @@ def _read_stdin(
     deadline = None if timeout is None else monotonic() + timeout
 
     def _read_text() -> str:
-        stream = cast("BinaryIO | None", getattr(stdin, "buffer", None))
         try:
+            stream = cast("BinaryIO | None", getattr(stdin, "buffer", None))
             with stream_read_deadline(deadline):
-                if isinstance(stream, BufferedReader):
-                    return _read_buffered_stdin(stream, deadline).decode("utf-8")
-                if stream is not None:
-                    return read_snapshot(stream).decode("utf-8")
-                return read_snapshot(stdin)
+                if stream is None:
+                    return read_input(stdin)
+                if (
+                    isinstance(stdin, TextIOWrapper)
+                    and type(stdin).read is TextIOWrapper.read
+                    and hasattr(stream, "__dict__")
+                ):
+                    return _read_wrapped_stdin(stdin, stream, deadline)
+                return _read_stdin_bytes(stream, deadline).decode("utf-8")
         except StreamReadTimeoutError:
             raise
         except UnicodeDecodeError as exc:
             _fail(input_read_error(f"not text ({_decode_note(exc)})"))
+        except ExecutionBudgetError as exc:
+            _fail(_timeout_text(exc), _TIMEOUT_EXIT)
+        except ArgumentError as exc:
+            cause = exc.__cause__
+            if isinstance(cause, StreamReadTimeoutError):
+                raise cause from None
+            if isinstance(cause, UnicodeDecodeError):
+                _fail(input_read_error(f"not text ({_decode_note(cause)})"))
+            _fail(exc)
+        except EsolangError as exc:
+            _fail(exc, _exit_code(exc))
         except OSError as exc:
             _fail(input_read_error(exc))
 
@@ -422,23 +510,14 @@ def _complete_stdout_writes() -> Iterator[None]:
         yield
         return
     write = raw.write
-    attributes = vars(raw)
-    shadowed = "write" in attributes
-    previous = attributes.get("write")
 
     def complete(data: Buffer) -> int:
         return _write_all(write, memoryview(data).cast("B"))
 
     # TextIOWrapper discards the raw write count. Guard the existing stream
     # rather than replacing the wrapper and losing its encoder state.
-    attributes["write"] = complete
-    try:
+    with _override_io_method(raw, "write", complete):
         yield
-    finally:
-        if shadowed:
-            attributes["write"] = previous
-        else:
-            del attributes["write"]
 
 
 def _write_text(data: str) -> int:

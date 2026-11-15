@@ -10,7 +10,11 @@ from typing import IO, TYPE_CHECKING
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
-from esolangs.outcomes import _remember_acquisition_failure
+from esolangs.outcomes import (
+    _is_acquisition_failure,
+    _remember_acquisition_failure,
+    _track_acquisition_failures,
+)
 from esolangs.raster import Raster
 from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._files import explicit_path, read_snapshot
@@ -46,6 +50,7 @@ class _FileSource:
         return self.path
 
 
+@_track_acquisition_failures()
 def _read_container(
     source: ProgramSource | _FileSource,
 ) -> tuple[Program | bytes, str | None]:
@@ -76,6 +81,8 @@ def _read_container(
         if isinstance(value, bytes):
             return bytes.__bytes__(value), None
     except (OSError, TypeError, ValueError) as exc:
+        if _is_acquisition_failure(exc):
+            raise
         if reading_stream and isinstance(exc, EsolangError):
             _remember_acquisition_failure(exc)
             raise

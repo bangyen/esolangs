@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, TypedDict
 from esolangs._dialect import DialectSchema, Scalar
 from esolangs._dialect import DialectSettings as DialectSettings
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
+from esolangs.outcomes import _remember_acquisition_failure
 from esolangs.runtime._validate import _argument_repr
 
 if TYPE_CHECKING:
@@ -57,7 +58,8 @@ def dialect_options(
     if runtime.dialect is not None:
         try:
             runtime.dialect(**values)
-        except EsolangError:
+        except EsolangError as error:
+            _remember_acquisition_failure(error)
             raise
         except (TypeError, ValueError) as error:
             raise ArgumentError(

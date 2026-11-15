@@ -55,7 +55,7 @@ def _apply(function, accumulator):
                 source.append(token)
             elif token.isdigit():
                 name = f"n{len(bindings)}"
-                bindings[name] = int(token)
+                bindings[name] = decimal_value(token)
                 source.append(name)
             else:
                 return accumulator
@@ -105,7 +105,7 @@ def _function(token, accumulator, queue, function):
         function.clear()
     else:
         at = 0 if token == "p" else -1
-        function.append(str(queue[at]))
+        function.append(format(Decimal(queue[at]), "f"))
         queue.pop(at)
     return accumulator
 

@@ -81,6 +81,16 @@ def _checked_adapter(machine: object) -> object:
     return adapter
 
 
+def _protocol_state(machine: object, adapter: object, protocol: type[Any]) -> object:
+    """Prefer a caller's own proof protocol to any wrapped state."""
+    if isinstance(machine, protocol):
+        return machine
+    if adapter is not machine and isinstance(adapter, protocol):
+        return adapter
+    inner = getattr(adapter, "_machine", None)
+    return inner if isinstance(inner, protocol) else None
+
+
 def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> object:
     """Find proof state on a machine, its VM, or the underlying interpreter.
 
@@ -89,14 +99,9 @@ def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> ob
     ``protocol`` is ``type[Any]`` with a ``cast`` at each caller: mypy
     refuses a protocol class where ``type[T]`` is expected.
     """
-    adapter = _checked_adapter(machine)
-    if isinstance(machine, protocol):
-        return machine
-    if adapter is not machine and isinstance(adapter, protocol):
-        return adapter
-    inner = getattr(adapter, "_machine", None)
-    if isinstance(inner, protocol):
-        return inner
+    state = _protocol_state(machine, _checked_adapter(machine), protocol)
+    if state is not None:
+        return state
     raise with_hint(
         TypeError(
             f"{getattr(machine, 'language', type(machine).__name__)} is not {role}: "
@@ -118,9 +123,11 @@ def _refuse_random(machine: object, proof: str) -> None:
     Branching cannot stand in -- a growing state never repeats -- so a
     random machine is refused rather than handed over.
     """
-    inner = getattr(machine, "vm", machine)
-    inner = getattr(inner, "_machine", inner)
-    if isinstance(inner, _BranchingStepMachine) and not getattr(inner, "halted", True):
+    adapter = _checked_adapter(machine)
+    _, declared_random = _proof_runtime(adapter)
+    branch = _protocol_state(machine, adapter, _BranchingStepMachine)
+    live = machine if isinstance(machine, _SteppableMachine) else branch
+    if (declared_random or branch is not None) and not getattr(live, "halted", True):
         raise with_hint(
             TypeError(
                 f"random machines: a {proof} proof assumes each lap repeats "
@@ -139,12 +146,11 @@ def run_until_halt_or_cycle(
     A random language's machine is decided by branching instead (``limit``
     then counts branching states, its default when ``None``): ``False`` when
     every draw cycles, ``True`` when the program never drew and halts, and
-    :class:`TypeError` when this run's own draws decide it.  A repeated
-    deterministic snapshot *proves* a hang.  ``True`` on a halt, ``False``
-    once a cycle is proven; unbounded growth never repeats and is
-    :func:`run_until_halt_or_growth`'s.  Brent's algorithm: O(1)
-    snapshots, up to ~2x past the cycle's start, so rely on the verdict,
-    not the machine's state at detection.
+    :class:`TypeError` when this run's own draws decide it or branch
+    enumeration is unavailable.  A repeated deterministic snapshot *proves* a
+    hang.  ``True`` on a halt, ``False`` once a cycle is proven.  Unbounded
+    growth never repeats and is :func:`run_until_halt_or_growth`'s.  Brent's
+    algorithm uses O(1) snapshots and may run up to ~2x past the cycle's start.
 
     ``limit`` bounds the steps as the sibling detectors do, raising
     :class:`TimeoutError` rather than answer.  ``None`` (default) is the
@@ -206,20 +212,28 @@ def _drive_halt_or_cycle(
             hint="pass make_vm(...) or a machine with step, halted and snapshot",
         ),
     )
-    # A Debugger wraps a VM (``vm``); a VM wraps interpreter state (``_machine``).
-    underlying = getattr(machine, "vm", machine)
-    underlying = getattr(underlying, "_machine", underlying)
+    adapter = _checked_adapter(machine)
+    language, declared_random = _proof_runtime(adapter)
+    halted_before = machine.halted
+    branch = (
+        None
+        if halted_before
+        else cast(
+            "_BranchingStepMachine | None",
+            _protocol_state(machine, adapter, _BranchingStepMachine),
+        )
+    )
     # A seeded random program can repeat its visible state, then halt: the
     # next draw is not in the snapshot, so a repeat proves nothing.  Branching
     # keeps the verdicts that hold whatever this run draws.  It ignores the
     # machine's own draw source, so "some path halts" after a fork is not
     # this run's answer (a FirstDraw(0) coin loops where the other halts).
-    if not machine.halted and isinstance(underlying, _BranchingStepMachine):
+    if branch is not None:
         result = _branch_search(
-            underlying,
+            branch,
             10_000 if limit is None else limit,
             evidence=evidence,
-            language=_branch_language(machine),
+            language=language,
         )
         if not result.halts or not result.forked:
             return (
@@ -234,7 +248,7 @@ def _drive_halt_or_cycle(
             ),
             "use run_until_halt_or_all_branches_cycle for the any-draw question",
         )
-    if require_branches and not machine.halted:
+    if (require_branches or declared_random) and not halted_before:
         raise _BranchingUnavailableError(
             "termination proof for an active random machine requires branch enumeration"
         )
@@ -296,6 +310,9 @@ def run_until_halt_or_all_branches_cycle(
     A language with no random instruction raises :class:`TypeError`.
     """
     limit = check_whole(limit, "limit")
+    language, declared_random = _proof_runtime(_checked_adapter(machine))
+    if declared_random and isinstance(machine, _SteppableMachine) and machine.halted:
+        return True
     state = cast(
         _BranchingStepMachine,
         _unwrap(
@@ -308,7 +325,7 @@ def run_until_halt_or_all_branches_cycle(
     )
     if isinstance(machine, _SteppableMachine) and machine.halted:
         return True
-    return _branch_search(state, limit, language=_branch_language(machine)).halts
+    return _branch_search(state, limit, language=language).halts
 
 
 class _BranchResult(NamedTuple):
@@ -341,11 +358,12 @@ def _branch_budget(limit: int, *, evidence: bool) -> TimeoutError:
     )
 
 
-def _branch_language(machine: object) -> str | None:
+def _proof_runtime(adapter: object) -> tuple[str | None, bool]:
     from esolangs.vm import _DelegatingVM
 
-    adapter = _checked_adapter(machine)
-    return adapter.language if isinstance(adapter, _DelegatingVM) else None
+    if isinstance(adapter, _DelegatingVM):
+        return adapter.language, adapter._random  # noqa: SLF001
+    return None, False
 
 
 def _branch_fault(error: Exception, language: str) -> EsolangError:
@@ -482,9 +500,11 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
         ),
     )
     runner = _proof_runner(machine, state)
+    if runner.halted:
+        return True
     ancestors: list[tuple[int, Hashable]] = []
     pushes = 0
-    while not runner.halted:
+    while True:
         if pushes >= limit:
             raise with_hint(
                 TimeoutError(
@@ -498,6 +518,9 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
             )
         depth_before = len(state.frames)
         runner.step()
+        halted: bool = runner.halted
+        if halted:
+            return True
         if len(state.frames) <= depth_before:
             continue
         pushes += 1
@@ -510,7 +533,6 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
         if any(key == ancestor for _, ancestor in ancestors):
             return False
         ancestors.append((depth, key))
-    return True
 
 
 @runtime_checkable

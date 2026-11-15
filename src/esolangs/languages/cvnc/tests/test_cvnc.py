@@ -416,3 +416,5 @@ def test_an_invalid_function_is_inert_even_after_a_division_by_zero() -> None:
 
 def test_wide_decimal_input_ignores_the_host_digit_cap():
     assert_digit_cap_independent("CV(N)(C)", "suθi", "0" * 641 + "7", "7")
+    wide = "9" * 641
+    assert_digit_cap_independent("CV(N)(C)", "sunʒupuθu", wide + " ", wide)

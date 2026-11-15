@@ -380,6 +380,25 @@ def test_catalog_json_uses_utf8_on_a_pipe() -> None:
         assert json.loads(report.stdout.decode("utf-8"))
 
 
+def test_ascii_stderr_adapter_keeps_usage_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class AsciiStderr(StringIO):
+        encoding = "ascii"
+
+        def write(self, data: str) -> int:
+            data.encode(self.encoding)
+            return super().write(data)
+
+    stream = AsciiStderr()
+    monkeypatch.setattr(sys, "stderr", stream)
+    monkeypatch.setattr(sys, "argv", ["esolangs", "list", "--élan"])
+    with pytest.raises(SystemExit) as exited:
+        main()
+    assert exited.value.code == 2
+    assert stream.getvalue() == "unknown option: --\\xe9lan\n"
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize("language", one_where(lambda d: not d.name.isascii()))
 def test_catalog_spec_command_is_copyable_with_ascii_stdout(language: str) -> None:

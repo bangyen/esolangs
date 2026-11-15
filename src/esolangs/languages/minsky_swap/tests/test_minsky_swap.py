@@ -56,6 +56,12 @@ class TestMinskySwapBasicCommands:
             cases=(("", "1 0"),) * 3,
         )
 
+        from tests.support.execution import assert_digit_cap_independent
+
+        target = "9" * 641
+        for program in (f"~+\n{target}", f"decnz({target});\ninc();"):
+            assert_digit_cap_independent("Minsky Swap", program, "", "0 0")
+
 
 class TestMinskySwapReadableNotation:
     def test_swap_command_readable(self) -> None:

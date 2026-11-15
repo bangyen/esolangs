@@ -5,8 +5,8 @@ line input, conditions, goto and exit; sixteen instructions per trace.
 Mixed-type equality follows the explicitly open choice in Decisions.
 """
 
+from decimal import Decimal
 from itertools import product
-from sys import get_int_max_str_digits
 
 import pytest
 
@@ -15,6 +15,7 @@ from esolangs.languages.between.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import decorate_io, observed
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import decimal_value
 
 _WORKSPACE = workspace.workspace_model(
     "between-v1", "instruction variables exited input_cursor"
@@ -48,7 +49,7 @@ def _argument(value):
     if type(value) is bool:
         return "(True)" if value else "(False)"
     if isinstance(value, int):
-        return f"|{value}|"
+        return "|" + _text(value) + "|"
     if isinstance(value, str):
         return f"'{value}'"
     if value[0] == "var":
@@ -83,18 +84,8 @@ def _source(program):
     return "# ignored\n\n" + "\n\n".join(lines)
 
 
-class _HostLimitError(ValueError):
-    pass
-
-
 def _text(value):
-    if (
-        type(value) is int
-        and (limit := get_int_max_str_digits())
-        and abs(value) >= 10**limit
-    ):
-        raise _HostLimitError
-    return str(value)
+    return format(Decimal(value), "f") if type(value) is int else value
 
 
 def _pure(value, variables):
@@ -112,9 +103,7 @@ def _pure(value, variables):
         if type(left) is int:
             return _text(left)
         if type(left) is str and left and all(c in "0123456789" for c in left):
-            if (limit := get_int_max_str_digits()) and len(left) > limit:
-                raise _HostLimitError
-            return int(left)
+            return decimal_value(left)
         raise ValueError
     if type(left) is not bool or (operation == "or" and type(right) is not bool):
         raise ValueError
@@ -209,9 +198,10 @@ def _model(program, stdin, cap=16):
                 cursor,
                 progress,
             )
-            return "syntax" if isinstance(
-                error, _HostLimitError
-            ) else "input" if isinstance(error, EOFError) else "halt", [*trace, failed]
+            return ("input" if isinstance(error, EOFError) else "halt"), [
+                *trace,
+                failed,
+            ]
         pc = next_pc
     return None, trace
 
@@ -221,14 +211,22 @@ def _parts(row):
 
 
 def _check(factory, program, stdin="unused", cap=16):
-
+    result = _model(program, stdin, cap)
+    status, rows = result
+    fault = None
+    if status == "halt" and rows[-1][-1] != rows[-2][-1]:
+        _, name = program[rows[-1][0][1]]
+        fault = workspace.rejected_input(
+            rows[-1][-1], "HaltError", f"undeclared variable {name!r}", ()
+        )
     return workspace.agrees(
-        _model(program, stdin, cap),
+        result,
         (factory, _source(program), stdin),
         (_WORKSPACE, _parts),
         lambda m: (tuple(sorted(m.variables.items())), m.ind, m.exited),
         cap=cap,
         context=(program, stdin),
+        fault_cursor=fault,
     )
 
 
@@ -320,16 +318,15 @@ def corpus():
     ):
         yield program, "", 16
 
-    if limit := get_int_max_str_digits():
-        for digits in ("9" * (limit + 1), "0" * (limit + 1), "0" * (limit - 1) + "1"):
-            yield (("print", "prefix"), ("pure", ("convert", digits))), "", 16
+    for digits in ("9" * 4301, "0" * 4301, "0" * 4299 + "1"):
+        yield (("print", "prefix"), ("pure", ("convert", digits))), "", 16
 
-        x = ("var", "x")
-        prefix = (("declare", "x"), ("assign", "x", 10 ** (limit // 4))) + (
-            ("assign", "x", ("mul", x, x)),
-        ) * 3
-        for final in (("print", x), ("pure", ("convert", x))):
-            yield (*prefix, final), "", 16
+    x = ("var", "x")
+    prefix = (("declare", "x"), ("assign", "x", 10**1075)) + (
+        ("assign", "x", ("mul", x, x)),
+    ) * 3
+    for final in (("print", x), ("pure", ("convert", x))):
+        yield (*prefix, final), "", 16
 
 
 def syntax_cases():

@@ -1,9 +1,15 @@
 """The five hang detectors."""
 
+from dataclasses import replace
+from random import Random
+
 import pytest
 
+from esolangs import Catalog, ExecutionLimits, Language
+from esolangs.debugger import Debugger
 from esolangs.exceptions import ExecutionCapError, ExecutionTimeoutError
 from esolangs.languages.brainfuck.interpreter import _Machine as Brainfuck
+from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
     complete_vm,
@@ -191,6 +197,30 @@ class _Climber:
         return (self.n,)
 
 
+def test_ancestor_proof_prefers_halt_on_a_pushed_frame() -> None:
+    class FrameMachine(_Climber):
+        def __init__(self, stop_after: int | None) -> None:
+            super().__init__()
+            self.stop_after = stop_after
+
+        def step(self) -> None:
+            super().step()
+            self.halted = self.n == self.stop_after
+
+    for stop_after in (1, 2, None):
+        machine = FrameMachine(stop_after)
+        expected = stop_after is not None
+        assert run_until_halt_or_ancestor(machine, limit=2) is expected
+        assert machine.halted is expected
+        assert machine.n == (stop_after or 2)
+
+    machine = FrameMachine(2)
+    with pytest.raises(TimeoutError, match="after 1 pushed frames"):
+        run_until_halt_or_ancestor(machine, limit=1)
+    assert machine.n == 1
+    assert not machine.halted
+
+
 class _RandomClimber(_Climber):
     """The same machine, declaring a draw it could branch on."""
 
@@ -217,3 +247,110 @@ def test_a_lap_proof_refuses_a_random_machine(detector) -> None:
     assert detector(_Climber()) is False  # control: the deterministic hang is proved
     with pytest.raises(TypeError, match="random machines"):
         detector(_RandomClimber())
+
+
+def test_scoped_random_proofs_require_branch_enumeration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Seed 4 first repeats a state, while seed 1 first grows it twice.
+    def prepare(source, options):
+        rng = options["rng"]
+
+        def bind(io):
+            class Machine(_Climber):
+                def snapshot(self):
+                    return self.n, self.halted
+
+                def step(self) -> None:
+                    if rng.randbelow(2):
+                        io.print_str("H")
+                        self.halted = True
+                    elif source == "++":
+                        super().step()
+
+            return Machine()
+
+        return bind
+
+    stock = Language(REFERENCE)
+    declaration = stock.catalog.languages[stock.name]
+    monkeypatch.setattr(
+        interpreter_module(stock.name), "branchless_random", prepare, raising=False
+    )
+    runtime = replace(
+        declaration.runtime, random=True, machine_preparation="branchless_random"
+    )
+    scoped = Catalog([replace(declaration, runtime=runtime)]).bind(stock.name)
+    cases = [
+        (run_until_halt_or_cycle, "+", 4, 2, "requires branch enumeration"),
+        *((proof, "++", 1, 3, "random machines") for proof in _PROOFS),
+    ]
+    for detector, source, seed, steps, message in cases:
+        prepared = scoped.prepare(source)
+        limits = ExecutionLimits(max_steps=steps)
+        for execution in (
+            scoped.run(source, seed=seed, limits=limits),
+            prepared.run(seed=seed, limits=limits),
+        ):
+            assert (execution.output, execution.steps) == ("H", steps)
+        for machine in (
+            scoped.make_vm(source, seed=seed),
+            scoped.make_debugger(source, seed=seed),
+            prepared.make_vm(seed=seed),
+            prepared.make_debugger(seed=seed),
+        ):
+            initial = machine.snapshot()
+            with pytest.raises(TypeError, match=message):
+                detector(machine, limit=steps)
+            with pytest.raises(TypeError, match="branch-enumerable"):
+                run_until_halt_or_all_branches_cycle(machine, limit=steps)
+            assert machine.snapshot() == initial
+            assert machine.output == ""
+            assert run_until_halt(machine, limit=steps)
+            assert machine.output == "H"
+            assert detector(machine, limit=0) is True
+            assert run_until_halt_or_all_branches_cycle(machine, limit=0) is True
+
+
+def test_caller_branch_protocol_precedes_private_machine_storage() -> None:
+    class BranchMachine(_Climber):
+        output = ""
+        steppable_to_answer = True
+        dumps_on_the_post_halt_step = False
+
+        def __init__(self) -> None:
+            super().__init__()
+            self._machine = Random(4)
+            self.commands = 0
+
+        def step(self) -> None:
+            self.commands += 1
+            self.halted = bool(self._machine.randrange(2))
+
+        def snapshot(self) -> bool:
+            return self.halted
+
+        def branching_snapshot(self) -> int:
+            return int(self.halted)
+
+        def branching_halted(self, state: int) -> bool:
+            return state == 1
+
+        def branching_successors(self, state: int, _limit: int) -> tuple[int, ...]:
+            return (1,) if state else (0, 1)
+
+    for wrapped in (False, True):
+        machine = BranchMachine()
+        live = Debugger(machine) if wrapped else machine
+        with pytest.raises(TypeError, match="some draws halt"):
+            run_until_halt_or_cycle(live, limit=2)
+        for detector in _PROOFS:
+            with pytest.raises(TypeError, match="random machines"):
+                detector(live, limit=2)
+        assert run_until_halt_or_all_branches_cycle(live, limit=2)
+        assert machine.commands == 0
+        assert not live.halted
+        assert run_until_halt(live, limit=2)
+        assert machine.commands == 2
+        for detector in (run_until_halt_or_cycle, *_PROOFS):
+            assert detector(live, limit=0) is True

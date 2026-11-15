@@ -11,9 +11,11 @@ import sys
 import threading
 from collections.abc import Iterator
 from contextvars import ContextVar
+from pathlib import Path
 
 import pytest
 
+import esolangs
 from esolangs.cli import main
 from esolangs.cli.io import (
     _bounded_read,
@@ -36,6 +38,68 @@ def test_stdin_rejects_surrogateescaped_binary(monkeypatch, capsys, raw) -> None
 def test_stdin_preserves_surrogates_that_are_not_escaped_bytes(monkeypatch) -> None:
     monkeypatch.setattr(sys, "stdin", io.StringIO("\ud800"))
     assert _read_stdin() == "\ud800"
+
+
+def test_managed_stdin_uses_library_input_rules(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    subtests: pytest.Subtests,
+) -> None:
+    class Text(str):
+        def encode(self, *_args: str, **_options: str) -> bytes:
+            raise AssertionError("a stream's str subclass must be normalized")
+
+    class TextStream(io.StringIO):
+        def read(self, size: int = -1) -> str:
+            return Text(super().read(size))
+
+    class BrokenStream(io.StringIO):
+        def read(self, _size: int = -1) -> str:
+            raise ValueError("input adapter was closed by its owner")
+
+    program = tmp_path / "echo.txt"
+    program.write_text(",.")
+    monkeypatch.setattr(sys, "argv", ["esolangs", "run", REFERENCE, str(program)])
+    for make in (lambda: io.BytesIO(b"A"), lambda: TextStream("A")):
+        with subtests.test(stream=type(make()).__name__):
+            monkeypatch.setattr(sys, "stdin", make())
+            main()
+            expected = esolangs.run(REFERENCE, program, stdin=make()).output
+            assert expected == "A"
+            assert capsys.readouterr() == (expected, "")
+
+    for make in (BrokenStream, lambda: io.BytesIO(b"A\xff")):
+        with subtests.test(stream=type(make()).__name__):
+            monkeypatch.setattr(sys, "stdin", make())
+            with pytest.raises(SystemExit) as exited:
+                main()
+            assert exited.value.code == 2
+            output, diagnostic = capsys.readouterr()
+            assert not output
+            with pytest.raises(esolangs.ArgumentError) as error:
+                esolangs.run(REFERENCE, program, stdin=make())
+            message = str(error.value)
+            if isinstance(error.value.__cause__, UnicodeDecodeError):
+                message = "cannot read stdin: not text (invalid UTF-8 at byte 1)"
+            assert diagnostic.splitlines() == [message, *error.value.__notes__]
+
+    budget = esolangs.ExecutionTimeoutError("input adapter expired")
+    budget.bound = "preparation_timeout"
+    budget.partial_output = "inner invocation"
+
+    class ExpiredStream(io.StringIO):
+        def read(self, _size: int = -1) -> str:
+            raise budget
+
+    monkeypatch.setattr(sys, "stdin", ExpiredStream())
+    with pytest.raises(SystemExit) as exited:
+        main()
+    assert exited.value.code == 124
+    output, diagnostic = capsys.readouterr()
+    assert output == ""
+    assert "input adapter expired" in diagnostic
+    assert budget.partial_output == "inner invocation"
 
 
 def test_stdin_reads_prefetched_file_bytes(tmp_path, monkeypatch) -> None:
@@ -63,6 +127,109 @@ def test_stdin_reads_prefetched_pipe_bytes(monkeypatch, use_poll) -> None:
         monkeypatch.setattr(sys, "stdin", stdin)
         assert _read_stdin(1) == "λ"
         assert os.get_blocking(reader)
+
+
+@pytest.mark.medium
+@pytest.mark.skipif(not hasattr(select, "poll"), reason="requires POSIX pipe polling")
+def test_previously_read_stdin_keeps_decoder_state_and_wait_policy(
+    tmp_path: Path, subtests: pytest.Subtests
+) -> None:
+    path = tmp_path / "echo.txt"
+    path.write_text(",.,.,.,.")
+    script = """
+import os
+import sys
+from io import TextIOWrapper
+from esolangs.cli import io, main
+if os.environ.get("ESOLANGS_TEST_STDIN_SUBCLASS") == "yes":
+    class Wrapped(TextIOWrapper):
+        pass
+    sys.stdin = Wrapped(sys.stdin.detach(), encoding="utf-8", newline=None)
+assert sys.stdin.read(1) == "A"
+stream = sys.stdin.buffer
+read = stream.read
+stream.read = read
+io._WAITING_NOTICE_AFTER = 0.05
+main()
+assert stream.read is read
+assert sys.stdin.read() == ""
+"""
+    cases = (
+        ("utf-8", "eof", b"AB\xc3", b"\xa9\r\n"),
+        ("ascii:strict", "eof", b"AB", "é\r\n".encode()),
+        ("latin-1", "eof", b"AB\xc3", b"\xa9\r\n"),
+        ("utf-8", "subclass", b"AB\xc3", b"\xa9\r\n"),
+        ("utf-8:replace", "invalid", b"AB", b"\xff"),
+        ("utf-8", "timeout", b"AB\xc3", b""),
+        ("utf-8", "interrupt", b"AB\xc3", b""),
+    )
+    for encoding, action, prefix, suffix in cases:
+        with subtests.test(encoding=encoding, action=action):
+            options = ["--preparation-timeout", "1"] if action == "timeout" else []
+            command = [
+                sys.executable,
+                "-c",
+                script,
+                "run",
+                *options,
+                REFERENCE,
+                str(path),
+            ]
+            reader, writer = os.pipe()
+            with (
+                os.fdopen(reader, "rb", buffering=0) as source,
+                os.fdopen(writer, "wb", buffering=0) as feed,
+            ):
+                feed.write(prefix)
+                with subprocess.Popen(
+                    command,
+                    stdin=source,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env={
+                        **os.environ,
+                        "PYTHONIOENCODING": encoding,
+                        "ESOLANGS_TEST_STDIN_SUBCLASS": (
+                            "yes" if action == "subclass" else "no"
+                        ),
+                    },
+                ) as child:
+                    try:
+                        assert child.stderr is not None
+                        assert select.select([child.stderr], [], [], 5)[0]
+                        assert child.stderr.readline().startswith(
+                            b"still waiting for input"
+                        )
+                        if action in {"eof", "subclass", "invalid"}:
+                            feed.write(suffix)
+                            feed.close()
+                        elif action == "interrupt":
+                            child.send_signal(signal.SIGINT)
+                        output, diagnostic = child.communicate(timeout=5)
+                    finally:
+                        if child.poll() is None:
+                            child.kill()
+            if action in {"eof", "subclass"}:
+                assert (child.returncode, output, diagnostic) == (
+                    0,
+                    "Bé\r\n".encode(),
+                    b"",
+                )
+            elif action == "invalid":
+                assert (child.returncode, output) == (2, b"")
+                assert diagnostic.startswith(
+                    b"cannot read stdin: not text (invalid UTF-8 at byte 1)\n"
+                )
+            elif action == "timeout":
+                assert (child.returncode, output) == (124, b"")
+                assert b"stdin did not reach EOF" in diagnostic
+                assert b"--preparation-timeout" in diagnostic
+            else:
+                assert (child.returncode, output, diagnostic) == (
+                    130,
+                    b"",
+                    b"interrupted\n",
+                )
 
 
 @pytest.mark.medium

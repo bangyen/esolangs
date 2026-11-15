@@ -25,10 +25,12 @@ from esolangs.compressed import (
 )
 from esolangs.exceptions import (
     ArgumentError,
+    EsolangError,
     GeneratorCapError,
     ProgramError,
     TemplateError,
 )
+from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
@@ -154,6 +156,8 @@ def to_file(
         raise ArgumentError("normalize must be a boolean")
     try:
         target = explicit_path(path)
+    except EsolangError:
+        raise
     except OSError as error:
         raise ProgramError(f"cannot save program: {error}") from error
     from esolangs.operations.source import read_artifact
@@ -467,6 +471,7 @@ _LOADERS: dict[str, _Loader] = {
 }
 
 
+@_track_acquisition_failures()
 def from_json(
     language: str, document: str, *, catalog: Catalog | None = None
 ) -> Artifact:
@@ -525,6 +530,8 @@ def from_json(
             artifact = replace(artifact, input_arity=arity)
         return read_artifact(name, artifact, catalog=catalog, preserve_compression=True)
     except (ValueError, TypeError, RecursionError) as error:
+        if _is_acquisition_failure(error):
+            raise
         # A path or native source here is the usual mistake (dogfood, 2.0.0).
         hint = (
             "; from_json reads to_json JSON text, not a path; "

@@ -480,6 +480,66 @@ def test_path_provider_io_errors_match_the_file_operation(
     assert api.from_file(destination).source == compressed
 
 
+def test_managed_path_preserves_deliberate_errors_and_own_observations(
+    tmp_path: Path,
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    nested = api.execute("+.[+]", limits=esolangs.ExecutionLimits(max_steps=2))
+    assert nested.observation.output == "\x01"
+    with pytest.raises(esolangs.ProgramNotFoundError) as missing:
+        api.from_file(tmp_path / "missing")
+    timeout = esolangs.ExecutionTimeoutError("managed path timed out")
+    timeout.bound = "preparation_timeout"
+    errors = (missing.value, esolangs.ArgumentError("managed argument"), timeout)
+
+    class ManagedPath:
+        calls = 0
+
+        def __init__(self, failure: esolangs.EsolangError) -> None:
+            self.failure = failure
+
+        def __fspath__(self) -> str:
+            self.calls += 1
+            raise self.failure
+
+    source = io.BytesIO(b",.")
+    destination = tmp_path / "destination"
+    compressed = esolangs.CompressedText.from_chunks((",.",))
+    for error in errors:
+        error.observation = nested.observation
+        error.partial_output = nested.observation.output
+        for isolated in (False, True):
+            provider = ManagedPath(error)
+            stdin = io.BytesIO(b"Q")
+            outcome = api.execute(provider, stdin=stdin, isolated=isolated)
+            assert outcome.error is error
+            assert outcome.status == ("limit" if error is timeout else "rejected")
+            assert outcome.bound == (timeout.bound if error is timeout else None)
+            assert outcome.observation == esolangs.ExecutionResult("", None, None, None)
+            assert stdin.tell() == 0
+            assert provider.calls == 1
+        for accept in (
+            api.prepare,
+            api.make_debugger,
+            api.from_file,
+            api.to_json,
+            lambda provider: api.to_file(provider, destination),
+            lambda provider: api.to_file(source, provider),
+            compressed.to_file,
+        ):
+            provider = ManagedPath(error)
+            with pytest.raises(type(error)) as caught:
+                accept(provider)
+            assert caught.value is error
+            assert provider.calls == 1
+        assert error.observation is nested.observation
+        assert error.partial_output == "\x01"
+    assert source.tell() == 0
+    assert not destination.exists()
+    api.to_file(source, destination)
+    assert api.run(destination, stdin="Q").output == "Q"
+
+
 @pytest.mark.parametrize(
     ("spelling", "message"),
     [

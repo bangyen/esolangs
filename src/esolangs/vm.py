@@ -147,7 +147,9 @@ class _DelegatingVM:
         catalog = get_catalog(catalog)
         self.language = language
         self._io = _scripted_io(stdin, io_factory)
-        self._capabilities = catalog.languages[language].runtime.capabilities
+        runtime = catalog.languages[language].runtime
+        self._capabilities = runtime.capabilities
+        self._random = runtime.random
         # None denotes other completion policies.
         self._dump_pending: bool | None = (
             True if self._capabilities.completion is Completion.POST_HALT else None

@@ -25,6 +25,9 @@ def test_invocation_uses_the_first_managed_input_reader(prepared, route) -> None
             return ",."
 
     class Input:
+        def readable(self):
+            pytest.fail("a user provider's readability is not a stream mode")
+
         @property
         def read(self):
             events.append("lookup")
@@ -435,7 +438,7 @@ def test_expired_acquisition_does_not_start_another_read(monkeypatch, block):
 
 
 @pytest.mark.parametrize("route", ["native", "bounded", "isolated", "vm", "debugger"])
-def test_invalid_literal_utf8_leaves_program_stream_at_its_original_offset(route):
+def test_invalid_stdin_leaves_program_stream_at_its_original_offset(route, tmp_path):
     api = esolangs.Language(REFERENCE)
     source = io.BytesIO(b"skip,.")
     source.seek(4)
@@ -448,10 +451,21 @@ def test_invalid_literal_utf8_leaves_program_stream_at_its_original_offset(route
         if route == "bounded":
             options["limits"] = esolangs.ExecutionLimits(max_steps=2)
 
-    with pytest.raises(esolangs.ArgumentError, match="cannot read stdin") as caught:
-        invoke(source, stdin=b"\xff", **options)
-    assert isinstance(caught.value.__cause__, UnicodeDecodeError)
-    assert source.tell() == 4
+    closed = io.BytesIO()
+    closed.close()
+    with (tmp_path / "write-only").open("wb") as write_only:
+        for stdin, cause in (
+            (b"\xff", UnicodeDecodeError),
+            (closed, ValueError),
+            (write_only, io.UnsupportedOperation),
+        ):
+            with pytest.raises(
+                esolangs.ArgumentError, match="cannot read stdin"
+            ) as caught:
+                invoke(source, stdin=stdin, **options)
+            assert type(caught.value.__cause__) is cause
+            assert source.tell() == 4
+        assert not write_only.closed
     result = invoke(source, stdin="é".encode(), **options)
     if route == "vm":
         assert complete_vm(result, max_steps=2) == "é"

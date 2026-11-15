@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from functools import wraps
@@ -34,6 +35,27 @@ _FAILURE_EVIDENCE: ContextVar[_FailureEvidence | None] = ContextVar(
     "failure_evidence", default=None
 )
 _UNOBSERVED = ExecutionResult("", None, None, None)
+
+
+@contextmanager
+def _track_acquisition_failures() -> Iterator[None]:
+    """Distinguish caller failures even when no execution outcome is requested."""
+    if _FAILURE_EVIDENCE.get() is not None:
+        yield
+        return
+    token = _FAILURE_EVIDENCE.set(_FailureEvidence())
+    try:
+        yield
+    finally:
+        _FAILURE_EVIDENCE.reset(token)
+
+
+def _is_acquisition_failure(error: BaseException) -> bool:
+    """Check whether this exact error came from a caller's acquisition hook."""
+    state = _FAILURE_EVIDENCE.get()
+    return (
+        state is not None and state.error is error and state.observation is _UNOBSERVED
+    )
 
 
 def _remember_acquisition_failure(error: EsolangError) -> None:

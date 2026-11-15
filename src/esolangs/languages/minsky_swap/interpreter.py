@@ -32,6 +32,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _TRADITIONAL_START = re.compile(r"(inc|swap|decnz)\(")
@@ -100,12 +101,12 @@ def _parse(code: str) -> tuple[str, list[int]]:
                 prog += "*"
             else:
                 prog += "~"
-                nums.append(int(match[2]) if match[2] else 1)
+                nums.append(parse_integer(match[2]) if match[2] else 1)
     else:
         first, *rest = code.split("\n")
         prog = re.sub("[^+~*]", "", first)
         if rest:
-            nums = [int(k) for k in _NUMBERS.findall(rest[0])]
+            nums = list(map(parse_integer, _NUMBERS.findall(rest[0])))
 
     return prog, nums
 

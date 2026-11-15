@@ -49,6 +49,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 
@@ -80,15 +81,16 @@ def _parse(code: str) -> tuple[_Op, ...]:
             )
         fields = body.split()
         try:
-            a, b, c = (int(field) for field in fields)
+            a, b, c = map(parse_integer, fields)
         except ValueError:
             raise syntax_error(
                 f"line {line} is not three integers: {body.strip()!r}",
                 "write each instruction as a b c",
             ) from None
         if not (0 <= a <= 255 and 0 <= b <= 255 and c >= -5):
+            shown = " ".join(map(format_integer, (a, b, c)))
             raise syntax_error(
-                f"line {line} has a field out of range: {a} {b} {c}",
+                f"line {line} has a field out of range: {shown}",
                 "keep a and b in 0-255 and c at -5 or above",
             )
         # Skip the Python constructor wrapper.

@@ -69,17 +69,19 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Mapping
 from types import MappingProxyType
-from typing import Any
+from typing import Any, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.languages.between.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import IO
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 type _Value = str | int | bool | None
@@ -142,7 +144,7 @@ def _arg(line: str, i: int, *, second: bool) -> tuple[_Arg, int]:
     if c == "|":
         literal = _NUMERALS.match(line, i + 1)
         if literal and line.startswith("|", literal.end()):
-            return ("int", int(literal.group())), literal.end() + 1
+            return ("int", parse_integer(literal.group())), literal.end() + 1
         return _group(line, i)
     if c == "[":
         j = line.find("]", i)
@@ -213,9 +215,9 @@ def _plus(left: _Value, right: _Value) -> _Value:
 
 def _convert(value: _Value, _: _Value) -> _Value:
     if type(value) is int:
-        return str(value)
+        return format_integer(value)
     if type(value) is str and _NUMERALS.fullmatch(value):
-        return int(value)
+        return parse_integer(value)
     raise HaltError(f"c needs an integer or a string of numerals, got {value!r}")
 
 
@@ -287,7 +289,7 @@ def _advance(
         value = _eval(first, variables)
         if type(value) not in (str, int):
             raise HaltError(f"p cannot print {value!r}")
-        out = str(value)
+        out = format_integer(value) if type(value) is int else cast(str, value)
     elif op == "v":
         name = _eval(first, variables)
         if type(name) is not str:
@@ -305,7 +307,7 @@ def _advance(
         target = _int(_eval(first, variables), "f")
         if second == _NONE or _eval(second, variables) is True:
             if not 0 <= target <= len(code):
-                raise HaltError(f"goto {target} is outside the program")
+                raise HaltError(f"goto {format_integer(target)} is outside the program")
             nxt = target
     else:
         _PURE[op](_eval(first, variables), _eval(second, variables))
@@ -323,6 +325,7 @@ class _Machine:
     def __init__(self, code: str | tuple[_Instr, ...], io: IO) -> None:
         self.code = _parse(code) if isinstance(code, str) else code
         self.io = io
+        self._rejected = RejectedInput()
         self.variables: _Vars = MappingProxyType({})
         self.ind = 0
         self.exited = False
@@ -341,26 +344,37 @@ class _Machine:
             instruction=self.ind,
             variables=frozenset(self.variables.items()),
             exited=self.exited,
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
-            self.ind,
-            tuple(sorted(self.variables.items())),
-            self.exited,
-            self.io.progress(),
+        return self._rejected.snapshot(
+            (
+                self.ind,
+                tuple(sorted(self.variables.items())),
+                self.exited,
+                self.io.progress(),
+            )
         )
 
     def step(self) -> None:
         """Run one instruction; an ``i`` reads its line here."""
         if self.halted:
             return
-        line = self.io.input_str() if self.code[self.ind][0] == "i" else None
-        (self.variables, self.ind, self.exited), out = _advance(
-            self._state, self.code, line
+        line = (
+            self._rejected.read(self.io, self.io.input_str)
+            if self.code[self.ind][0] == "i"
+            else None
         )
+        try:
+            (self.variables, self.ind, self.exited), out = _advance(
+                self._state, self.code, line
+            )
+        except HaltError as error:
+            if line is not None:
+                self._rejected.remember(error)
+            raise
         if out is not None:
             self.io.print_str(out)
 

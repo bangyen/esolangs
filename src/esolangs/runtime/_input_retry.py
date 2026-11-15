@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from copy import copy
 from typing import TYPE_CHECKING, NamedTuple
 
-from esolangs.exceptions import HaltError
+from esolangs.exceptions import ExecutionBudgetError, HaltError
 from esolangs.runtime._state import WorkspaceVariant
 
 if TYPE_CHECKING:
@@ -14,18 +15,18 @@ if TYPE_CHECKING:
 
 
 type _Rejection = ValueError | HaltError
-type _Details = tuple[str, str, tuple[str, ...]]
+type _Details = tuple[str, str, tuple[str, ...]] | tuple[str, str, tuple[str, ...], str]
 
 
 class _Diagnostic(NamedTuple):
-    kind: type[_Rejection]
-    args: tuple[object, ...]
+    error: _Rejection
     details: _Details
     cause: BaseException | None
 
     def fresh(self) -> _Rejection:
         """Build an error before this caller adds its own execution evidence."""
-        error = BaseException.__new__(self.kind, *self.args)
+        error = copy(self.error)
+        error.__dict__.pop("__notes__", None)
         for note in self.details[2]:
             error.add_note(note)
         return error
@@ -43,9 +44,21 @@ class RejectedInput:
 
     def remember(self, error: _Rejection) -> None:
         """Keep the failure of a value already delivered to the interpreter."""
-        kind = type(error)
-        details = kind.__name__, str(error), tuple(getattr(error, "__notes__", ()))
-        self._fault = _Diagnostic(kind, error.args, details, error.__cause__)
+        details: _Details = (
+            type(error).__name__,
+            str(error),
+            tuple(getattr(error, "__notes__", ())),
+        )
+        if isinstance(error, ExecutionBudgetError) and (
+            bound := getattr(error, "bound", None)
+        ):
+            details = (*details, bound)
+        # Copying preserves native slots and typed fields such as a budget's
+        # bound. The observer adds output and observations per invocation.
+        frozen = copy(error)
+        for key in ("__notes__", "observation", "partial_output"):
+            frozen.__dict__.pop(key, None)
+        self._fault = _Diagnostic(frozen, details, error.__cause__)
 
     def raise_if_rejected(self) -> None:
         """Raise a fresh copy of an earlier rejection."""

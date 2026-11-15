@@ -5,10 +5,12 @@ from typing import Any
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import (
+    EsolangError,
     MissingDependencyError,
     ProgramError,
     TemplateError,
 )
+from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
@@ -80,6 +82,7 @@ def read_png_artifact(
     )
 
 
+@_track_acquisition_failures()
 def read_png_metadata(
     name: str, data: bytes, *, catalog: Catalog
 ) -> tuple[dict[str, Any], DialectSettings | None, int | None, int | None]:
@@ -107,6 +110,8 @@ def read_png_metadata(
     except (ProgramError, MissingDependencyError):
         raise
     except Exception as error:
+        if _is_acquisition_failure(error):
+            raise
         raise program_error_context(f"not a readable PNG: {error}", error) from error
 
 
@@ -161,14 +166,21 @@ def read_artifact(
         value.startswith(b"\x89PNG\r\n\x1a\n")
         or catalog.languages[name].runtime.source_kind is SourceKind.RASTER
     ):
-        try:
-            return read_png_artifact(name, value, settings=settings, catalog=catalog)
-        except ProgramError as error:
-            if path is None or type(error) is not ProgramError:
-                raise
-            raise program_error_context(
-                f"cannot read {path}: {error}", error
-            ) from error
+        with _track_acquisition_failures():
+            try:
+                return read_png_artifact(
+                    name, value, settings=settings, catalog=catalog
+                )
+            except ProgramError as error:
+                if (
+                    path is None
+                    or type(error) is not ProgramError
+                    or _is_acquisition_failure(error)
+                ):
+                    raise
+                raise program_error_context(
+                    f"cannot read {path}: {error}", error
+                ) from error
     # Re-wrap file bytes so a decoding error names the file, not its bytes.
     named = (
         _FileSource(path, value)
@@ -278,6 +290,8 @@ def from_file(
     dialect_options(name, settings, catalog=catalog)
     try:
         source = explicit_path(path)
+    except EsolangError:
+        raise
     except OSError as error:
         raise source_read_error("the program", error) from error
     artifact = read_artifact(

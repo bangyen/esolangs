@@ -82,3 +82,13 @@ def test_increment_and_decrement_wrap() -> None:
 def test_malformed_programs(code: str, match: str) -> None:
     with pytest.raises(ValueError, match=match):
         run(code, ScriptedIO())
+
+
+def test_wide_operands_preserve_jump_and_register_ranges() -> None:
+    from esolangs import Language, ProgramError
+    from tests.support.execution import assert_digit_cap_independent
+
+    source = "0 1 0\n0 2 " + "9" * 641 + "\n0 0 -2"
+    assert_digit_cap_independent("IEBEL", source, "", "")
+    with pytest.raises(ProgramError, match="field out of range"):
+        Language("IEBEL").run("9" * 5001 + " 1 0")

@@ -628,6 +628,73 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
         api.from_file(path)
 
 
+def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> None:
+    installed = esolangs.Language(RASTER_LANGUAGES[0])
+    name = installed.name
+    declaration = installed.catalog.languages[name]
+    schema = esolangs.DialectSchema(name, {"mode": (0, 1)}, {"mode": 0})
+    failures: list[Exception] = []
+
+    def validate(**choices):
+        if failures:
+            raise failures[-1]
+        return choices
+
+    runtime = replace(declaration.runtime, dialect=validate, dialect_schema=schema)
+    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(name)
+    settings = scoped.settings()
+    artifact = replace(installed.generate("01", scale=2), settings=settings)
+    path = tmp_path / "program.png"
+    scoped.to_file(artifact, path)
+    portable = scoped.to_json(artifact)
+    assert scoped.from_file(path) == scoped.from_json(portable) == artifact
+    prepared = scoped.prepare(path)
+    assert prepared.run(stdin="1").output == "1"
+
+    nested = esolangs.Language(REFERENCE).execute(
+        "+.[+]", limits=esolangs.ExecutionLimits(max_steps=2)
+    )
+    assert nested.observation.output == "\x01"
+    timeout = esolangs.ExecutionTimeoutError("dialect hook timed out")
+    timeout.bound = "preparation_timeout"
+    errors = (
+        esolangs.ProgramNotFoundError("policy not found"),
+        esolangs.ProgramError("policy failed"),
+        esolangs.ArgumentError("policy refused"),
+        timeout,
+    )
+    for error in errors:
+        error.observation = nested.observation
+        error.partial_output = nested.observation.output
+        failures[:] = [error]
+        for load in (
+            lambda: scoped.from_file(path),
+            lambda: scoped.prepare(path),
+            lambda: scoped.from_json(portable),
+            lambda: scoped.from_source(artifact.source, settings=settings),
+        ):
+            with pytest.raises(type(error)) as caught:
+                load()
+            assert caught.value is error
+        for outcome in (
+            scoped.execute(path),
+            scoped.execute(artifact),
+            scoped.execute(artifact.source, settings=settings),
+        ):
+            assert outcome.error is error
+            assert outcome.status == ("limit" if error is timeout else "rejected")
+            assert outcome.bound == (timeout.bound if error is timeout else None)
+            assert outcome.observation == esolangs.ExecutionResult("", None, None, None)
+        assert error.observation is nested.observation
+        assert error.partial_output == "\x01"
+
+    failures[:] = [TypeError("ordinary validation failure")]
+    for load in (lambda: scoped.from_file(path), lambda: scoped.from_json(portable)):
+        with pytest.raises(esolangs.ProgramError, match="invalid dialect settings"):
+            load()
+    assert prepared.run(stdin="0").output == "0"
+
+
 def test_portable_png_checks_record_metadata_before_pillow(monkeypatch) -> None:
     api = esolangs.Language(RASTER_LANGUAGES[0])
     pixels = Raster((((1, 2, 3),),)).upscaled(2)

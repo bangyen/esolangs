@@ -4,7 +4,19 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import IO
+from io import (
+    BufferedRandom,
+    BufferedReader,
+    BufferedRWPair,
+    BufferedWriter,
+    BytesIO,
+    FileIO,
+    IOBase,
+    StringIO,
+    TextIOWrapper,
+)
+from types import BuiltinMethodType
+from typing import IO, cast
 
 from esolangs.exceptions import ArgumentError, EsolangError
 from esolangs.outcomes import _remember_acquisition_failure
@@ -26,6 +38,17 @@ class _BoundReader:
 
 type CheckedInput = str | _BoundReader
 
+_STANDARD_STREAMS = (
+    BufferedRandom,
+    BufferedReader,
+    BufferedRWPair,
+    BufferedWriter,
+    BytesIO,
+    FileIO,
+    StringIO,
+    TextIOWrapper,
+)
+
 
 def check_input(source: InputSource) -> CheckedInput:
     """Validate literal stdin or bind a reader without consuming its stream."""
@@ -35,6 +58,16 @@ def check_input(source: InputSource) -> CheckedInput:
         return _decode_input(source)
     try:
         reader = getattr(source, "read", None)
+        kind = type(source)
+        if (
+            kind in _STANDARD_STREAMS
+            and isinstance(reader, BuiltinMethodType)
+            and reader.__self__ is source
+            and (source.closed or not kind.readable(cast(IOBase, source)))
+        ):
+            # Let the standard reader supply its own error. A zero-size read
+            # cannot consume input, even if one half of a stream pair is open.
+            reader(0)
     except EsolangError as error:
         _remember_acquisition_failure(error)
         raise

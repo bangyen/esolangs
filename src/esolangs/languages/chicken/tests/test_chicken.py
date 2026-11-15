@@ -120,6 +120,12 @@ def test_load_reads_the_input_and_the_stack() -> None:
     assert _go((10 + 7, 6, 0)) == "undefined"
     assert _go((10 + 9, 6, 2)) == "undefined"  # cell 2 holds a number
 
+    from tests.support.execution import assert_digit_cap_independent
+
+    assert_digit_cap_independent(
+        "Chicken", _lines(11, 6, 0, 6, 0), "9" * 641, "undefined"
+    )
+
     policy = sys.get_int_max_str_digits()
     for rounds in (3, 14):
         source_lines = 1 + 4 * rounds
@@ -152,6 +158,9 @@ def test_load_reads_the_input_and_the_stack() -> None:
 def test_store_overwrites_a_cell_and_grows_the_array() -> None:
     assert _go((15, 10 + 20, 7, 10 + 20, 6, 0)) == "5"
     assert _go((15, 10 + 20, 7, 10 + 19, 6, 0)) == "undefined"
+
+    with pytest.raises(InterpreterLimitError, match="grow its store"):
+        _go((27, 11, 6, 0, 7), "9" * 5001)
 
 
 def test_input_is_the_whole_stdin(monkeypatch) -> None:
