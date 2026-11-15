@@ -10,6 +10,7 @@ from typing import IO, TYPE_CHECKING
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
+from esolangs.outcomes import _remember_acquisition_failure
 from esolangs.raster import Raster
 from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._files import explicit_path, read_snapshot
@@ -76,8 +77,12 @@ def _read_container(
             return bytes.__bytes__(value), None
     except (OSError, TypeError, ValueError) as exc:
         if reading_stream and isinstance(exc, EsolangError):
+            _remember_acquisition_failure(exc)
             raise
         raise source_read_error(label, exc) from exc
+    except EsolangError as error:
+        _remember_acquisition_failure(error)
+        raise
     raise syntax_error(
         "program must be a string of source, bytes, a Raster, a Path, "
         f"or a readable stream, got {type(source).__name__}",

@@ -490,6 +490,50 @@ def test_png_owner_cannot_be_reassigned_by_a_catalog_alias(tmp_path: Path) -> No
         api.from_json(json.dumps(document))
 
 
+def test_scoped_png_writers_resolve_source_aliases_without_settings(
+    tmp_path: Path,
+) -> None:
+    alias = "my-drawing"
+    declaration = LANGUAGES[RASTER_LANGUAGES[0]]
+    scoped = replace(declaration, name="Scoped Drawing", id="", aliases=(alias,))
+    api = esolangs.Catalog([scoped]).bind(alias)
+    program = api.generate("01")
+    assert isinstance(program, esolangs.ProgramArtifact)
+    assert isinstance(program.source, Raster)
+    assert program.settings is None
+    path = tmp_path / "drawing.txt.gz"
+    api.to_file(program, path)
+    canonical = path.read_bytes()
+    raw = program.source.to_png()
+    document = json.loads(api.to_json(program))
+
+    for tagged in (
+        png.attach_source_metadata(
+            raw,
+            alias,
+            None,
+            program.scale,
+            input_arity=program.input_arity,
+            catalog=api.catalog,
+        ),
+        png.write_source(
+            program.source.rows,
+            alias,
+            None,
+            program.scale,
+            input_arity=program.input_arity,
+            catalog=api.catalog,
+        ),
+    ):
+        assert tagged == canonical
+        path.write_bytes(tagged)
+        restored = api.from_file(path)
+        assert restored == program
+        assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+        document["source"] = base64.b64encode(tagged).decode("ascii")
+        assert api.from_json(json.dumps(document)) == program
+
+
 def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
     declaration = esolangs.Language(RASTER_LANGUAGES[0]).catalog.languages[
         RASTER_LANGUAGES[0]

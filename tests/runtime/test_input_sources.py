@@ -275,6 +275,62 @@ def test_acquisition_failure_keeps_the_nested_error_and_its_completed_result(
 
 
 @pytest.mark.parametrize("budget", [{}, {"max_steps": 2}, {"total_timeout": 5}])
+@pytest.mark.parametrize(
+    ("channel", "bind_failure"),
+    [
+        ("path", False),
+        ("source", False),
+        ("source", True),
+        ("stdin", False),
+        ("stdin", True),
+        ("prepared_stdin", False),
+        ("prepared_stdin", True),
+    ],
+)
+def test_acquisition_failure_keeps_partial_evidence_on_the_nested_error(
+    budget, channel, bind_failure
+) -> None:
+    api = esolangs.Language(REFERENCE)
+    failures = []
+
+    def read():
+        try:
+            return api.run(
+                ",.,", stdin="A", limits=esolangs.ExecutionLimits(max_steps=3)
+            ).output
+        except esolangs.InputExhaustedError as failure:
+            failures.append(failure)
+            raise
+
+    class Reader:
+        @property
+        def read(self):
+            return read() if bind_failure else read
+
+    class CallbackPath:
+        def __fspath__(self):
+            return read()
+
+    limits = esolangs.ExecutionLimits(**budget)
+    if channel == "path":
+        result = api.execute(CallbackPath(), limits=limits)
+    elif channel == "prepared_stdin":
+        result = api.prepare(",.").execute(stdin=Reader(), limits=limits)
+    else:
+        source, stdin = (Reader(), "A") if channel == "source" else (",.", Reader())
+        result = api.execute(source, stdin=stdin, limits=limits)
+    assert result.status == "input_exhausted"
+    assert len(failures) == 1
+    assert result.error is failures[0]
+    assert result.observation == esolangs.ExecutionResult("", None, None, None)
+    with pytest.raises(esolangs.InputExhaustedError) as caught:
+        result.unwrap()
+    assert caught.value is failures[0]
+    assert caught.value.observation == esolangs.ExecutionResult("A", 1, 1, 1, steps=2)
+    assert caught.value.partial_output == "A"
+
+
+@pytest.mark.parametrize("budget", [{}, {"max_steps": 2}, {"total_timeout": 5}])
 def test_source_and_stdin_providers_see_caller_context(budget):
     source_text = ContextVar("source_text", default="+.")
     input_text = ContextVar("input_text", default="B")

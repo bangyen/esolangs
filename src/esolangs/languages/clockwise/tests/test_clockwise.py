@@ -4,6 +4,7 @@ from typing import ClassVar
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Language
 from esolangs.languages.clockwise import interpreter as native
 from esolangs.languages.clockwise.interpreter import (
     _Machine,
@@ -164,6 +165,36 @@ def test_reading_with_no_input_is_eof() -> None:
         run(".", ScriptedIO(""))
     assert "0 characters supplied, read 1" in str(caught.value)
     assert any("1 input character" in note for note in caught.value.__notes__)
+
+
+@pytest.mark.medium
+def test_exhausted_rotating_input_counts_the_failed_read() -> None:
+    top = ".;" * 7 + "R"
+    source = f"{top}\nR{' ' * (len(top) - 2)}R"
+    api = Language("Clockwise")
+    for limits, steps in (
+        (None, None),
+        (ExecutionLimits(max_steps=64), 0),
+        (ExecutionLimits(max_steps=64, execution_timeout=5), 0),
+    ):
+        outcome = api.execute(source, limits=limits)
+        assert isinstance(outcome.error, InputExhaustedError)
+        assert outcome.observation == ExecutionResult("", 0, 1, 1, steps=steps)
+        result = api.run(source, stdin="A", limits=limits)
+        assert result.output == "A"
+        assert (result.input_position, result.input_reads, result.input_past_end) == (
+            1,
+            1,
+            0,
+        )
+
+    debugger = api.make_debugger(source)
+    before = debugger.snapshot()
+    for failures in (1, 2):
+        with pytest.raises(InputExhaustedError) as caught:
+            debugger.step()
+        assert caught.value.observation == ExecutionResult("", 0, 1, failures, steps=0)
+        assert debugger.snapshot() == before
 
 
 def _machine(code: object) -> object:

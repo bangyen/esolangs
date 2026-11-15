@@ -596,7 +596,7 @@ def attach_source_metadata(
     input_arity: int | None = None,
     catalog: Catalog | None = None,
 ) -> bytes:
-    """Tag PNG pixels with the settings owner, resolving aliases in ``catalog``."""
+    """Tag PNG pixels with their owner, resolving language aliases in ``catalog``."""
     if catalog is not None:
         from esolangs.registry._catalog import get_catalog
 
@@ -621,6 +621,8 @@ def attach_source_metadata(
                     f"dialect settings belong to {owner}, not {claimed}"
                 )
         language = owner
+    elif catalog is not None and language is not None:
+        language = catalog.resolve(language)
     metadata: dict[str, Any] = {
         "version": 1,
         "language": language,

@@ -610,8 +610,8 @@ def _read_answer(rest: list[str]) -> None:
         (zero, one), _ = _answer_codec(language, contract)
     if contract.answer_mode == "termination":
         _fail(
-            f"{language} answers 0 if it {zero} and 1 if it {one}, so "
-            f"there is no output to read; use: esolangs run "
+            f"{language} answers 0 if it {zero} and 1 if it {one}. "
+            "Program output carries no answer. Use esolangs run "
             f"--execution-timeout <seconds> {_as_argument(language)} "
             "<program-file> and observe whether it halts. "
             "A timeout leaves the answer undecided."

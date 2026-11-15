@@ -303,11 +303,10 @@ more than `tail`.  For some it is not: several dump their entire final machine
 state, and the answer sits in a tagged memory value or the current marked
 cell. `esolangs describe <language>` reports the answer convention.
 
-The languages that answer by terminating have no output to read, so they
-are refused here.  A generated program in one halts for 0 and diverges for
-1: run it with `--execution-timeout S` and observe whether it halts.  A timeout leaves
-the answer undecided.  They are:
-  {_TERMINATION_NAMES}
+The languages that answer by terminating are {_TERMINATION_NAMES}.
+For their generated programs, halting means 0 and divergence means 1.
+Program output carries no answer. Use `esolangs run --execution-timeout S`
+and observe whether it halts. A timeout leaves the answer undecided.
 
 examples:
   esolangs generate brainfuck 0110 > p.txt

@@ -15,7 +15,7 @@ from esolangs.cli import main
 from esolangs.cli.hints import _timeout_text
 from esolangs.cli.io import _StdoutEncodingError, _write_output
 from esolangs.registry import LANGUAGES, _table
-from tests.support.cli_support import _failure, _refused, call_both, call_main
+from tests.support.cli_support import _failure, _refused, call_both, call_main, run_cli
 from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
 
@@ -235,6 +235,29 @@ def test_read_answer_leaves_a_timed_out_termination_undecided(capsys, language) 
     out, err = _failure(["read-answer", language], capsys)
     assert out == ""
     assert "A timeout leaves the answer undecided." in err
+
+
+@pytest.mark.medium
+def test_read_answer_distinguishes_a_queue_dump_from_a_termination_answer(
+    tmp_path: Path,
+) -> None:
+    generated = run_cli("generate", "--bits", "0", "ArrowQueue", "01")
+    assert generated.returncode == 0, generated.stderr
+    path = tmp_path / "program.txt"
+    path.write_text(generated.stdout, encoding="utf-8")
+    execution = run_cli("run", "--max-steps", "100", "ArrowQueue", str(path))
+    assert execution.returncode == 0, execution.stderr
+    assert execution.stdout
+
+    answer = run_cli("read-answer", "ArrowQueue", stdin=execution.stdout)
+    assert answer.returncode == 2
+    assert not answer.stdout
+    assert "answers 0 if it halts" in answer.stderr
+    assert "Program output carries no answer." in answer.stderr
+    assert "A timeout leaves the answer undecided." in answer.stderr
+    help_page = run_cli("read-answer", "--help")
+    assert help_page.returncode == 0
+    assert "Program output carries no answer." in help_page.stdout
 
 
 @pytest.mark.parametrize(

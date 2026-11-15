@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Language
 from esolangs.languages.kiss.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 
@@ -39,9 +40,39 @@ def test_only_the_head_is_rewritten() -> None:
     assert machine.stack == ["K", "K", "K"]
 
 
-def test_a_newline_ends_the_input() -> None:
-    with pytest.raises(EOFError):
-        run("S (K K) (S (K K) (S K))", ScriptedIO("1\n1"))
+@pytest.mark.medium
+@pytest.mark.parametrize(("stdin", "position"), [("1", 1), ("1\n1", 2)])
+def test_bit_input_ends_at_physical_eof_or_newline(stdin, position) -> None:
+    api = Language("Kiss")
+    source = "S (K K) (S (K K) (S K))"
+    for limits, steps in (
+        (None, None),
+        (ExecutionLimits(max_steps=4), 1),
+        (ExecutionLimits(max_steps=4, total_timeout=5), 1),
+    ):
+        outcome = api.execute(source, stdin=stdin, limits=limits)
+        assert isinstance(outcome.error, InputExhaustedError)
+        assert (outcome.error.reads, outcome.error.supplied, outcome.error.unit) == (
+            1,
+            1,
+            "bit",
+        )
+        assert outcome.observation == ExecutionResult(
+            "", position, position, 1, steps=steps
+        )
+
+    debugger = api.make_debugger(source, stdin=stdin)
+    debugger.step()
+    with pytest.raises(InputExhaustedError):
+        debugger.step()
+    sealed = debugger.snapshot()
+    with pytest.raises(InputExhaustedError) as caught:
+        debugger.step()
+    assert caught.value.observation == ExecutionResult(
+        "", position, position, 2, steps=1
+    )
+    assert debugger.snapshot() == sealed
+    assert api.run(source, stdin="11\n").output == "1"
 
 
 def test_the_empty_program_is_refused() -> None:

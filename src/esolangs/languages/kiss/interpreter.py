@@ -50,7 +50,7 @@ from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.combinators import State as _State
 from esolangs.runtime.combinators import count, parse, stack, unwind
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _input_exhausted
 from esolangs.runtime.source_hints import syntax_error
 
 #: How many arguments each rewrite takes.
@@ -144,14 +144,18 @@ class _Machine:
     def _read(self) -> int:
         """Return the next input bit."""
         if self.ended:
-            raise InputExhaustedError(self.bits, self.bits, unit="bit")
+            _input_exhausted(self.io, self.bits, self.bits, unit="bit")
         try:
             char = chr(self.io.input_char())
         except EOFError:
-            char = "\n"
-        if char == "\n":
+            char = None
+        if char is None:
+            # The physical read already recorded the EOF.
             self.ended = True
             raise InputExhaustedError(self.bits, self.bits, unit="bit")
+        if char == "\n":
+            self.ended = True
+            _input_exhausted(self.io, self.bits, self.bits, unit="bit")
         if char not in "01":
             raise syntax_error(
                 f"Kiss input must be a binary string, got {char!r}",

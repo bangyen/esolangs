@@ -12,6 +12,7 @@ from __future__ import annotations
 import io as _stdlib_io
 import re
 from collections.abc import Callable
+from typing import Never
 
 from esolangs.exceptions import ArgumentError, InputExhaustedError
 from esolangs.runtime._input import CheckedInput, InputSource, read_input
@@ -220,7 +221,7 @@ class ScriptedIO(IO):
 
     @property
     def past_end(self) -> int:
-        """How many reads went past the end of the supplied input.
+        """How many reads failed at physical or language-defined EOF.
 
         Counted even though the read raises, because seven languages catch
         that raise and carry on with a value -- and for them this is the
@@ -241,7 +242,7 @@ class ScriptedIO(IO):
         """
         return self._supplied
 
-    def _exhausted(self, unit: str) -> None:
+    def _exhausted(self, unit: str) -> Never:
         """Raise for a read past the end, in the unit the reads have used.
 
         Pure line reads report lines: ``_line_reads`` against ``supplied``.
@@ -250,14 +251,13 @@ class ScriptedIO(IO):
         reports characters instead: ``_offset`` against the raw source
         length.  The flip is one-way; mixed reads never realign to lines.
         """
-        self._past_end += 1
         if unit == "line" and self._character_reads:
             unit = "character"
         if unit == "line":
             reads, supplied = self._line_reads, self.supplied
         else:
             reads, supplied = self._offset, len(self._source)
-        raise InputExhaustedError(reads, supplied, unit=unit)
+        _input_exhausted(self, reads, supplied, unit=unit)
 
     def _read(self, _prompt: str) -> str:
         r"""Read one ``\n``-terminated line.
@@ -304,6 +304,13 @@ class ScriptedIO(IO):
     def getvalue(self) -> str:
         """Return everything written so far."""
         return self._buffer.getvalue()
+
+
+def _input_exhausted(io: IO, reads: int, supplied: int, *, unit: str) -> Never:
+    """Count and raise a failed request without consuming more input."""
+    if isinstance(io, ScriptedIO):
+        io._past_end += 1  # noqa: SLF001 - shared EOF path owns the counter
+    raise InputExhaustedError(reads, supplied, unit=unit)
 
 
 def _scripted_io(

@@ -22,7 +22,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, NamedTuple
 
-from esolangs.exceptions import InputExhaustedError
 from esolangs.languages.clockwise.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -30,7 +29,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _input_exhausted
 from esolangs.runtime.source_hints import syntax_error
 
 #: How many parity bits make one printed byte.
@@ -238,12 +237,8 @@ class _Machine:
         if not self.state[5]:
             row, col, r, acc, _out, _inp = self.state
             if move(row, col, r, self.code, acc)[3] == ".":
-                # ``InputExhaustedError`` (an ``EOFError`` too), not the
-                # bare one: a sweep on ``except EsolangError`` crashed here.
-                # Bits, not lines: the input was read up front as
-                # characters, so the failed read is the first and the
-                # supply is the character cursor.
-                raise InputExhaustedError(0, self.io.position(), unit="character")
+                # Report the failed bit request against the captured characters.
+                _input_exhausted(self.io, 0, self.io.position(), unit="character")
         self.state, byte = _advance(self.state, self.code)
         if byte is not None:
             self.io.print_char(chr(byte))

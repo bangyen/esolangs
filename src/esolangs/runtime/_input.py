@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import IO
 
 from esolangs.exceptions import ArgumentError, EsolangError
+from esolangs.outcomes import _remember_acquisition_failure
 from esolangs.runtime._files import read_snapshot
 from esolangs.runtime.source_hints import with_hint
 
@@ -32,7 +33,8 @@ def check_input(source: InputSource) -> CheckedInput:
         return source
     try:
         reader = getattr(source, "read", None)
-    except EsolangError:
+    except EsolangError as error:
+        _remember_acquisition_failure(error)
         raise
     except (OSError, TypeError, ValueError) as exc:
         raise _read_failed(exc) from exc
@@ -67,7 +69,8 @@ def read_input(source: InputSource | CheckedInput) -> str:
             return bytes.decode(value, "utf-8")
         if isinstance(value, str):
             return str.__str__(value)
-    except EsolangError:
+    except EsolangError as error:
+        _remember_acquisition_failure(error)
         raise
     except (OSError, TypeError, ValueError) as exc:
         raise _read_failed(exc) from exc

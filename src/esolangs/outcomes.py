@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import Literal
@@ -21,6 +22,23 @@ from esolangs.exceptions import (
 from esolangs.results import CompletionReport, ExecutionResult
 
 OutcomeStatus = Literal["completed", "rejected", "input_exhausted", "limit", "fault"]
+
+
+@dataclass(slots=True)
+class _AcquisitionFailure:
+    error: EsolangError | None = None
+
+
+_ACQUISITION_FAILURE: ContextVar[_AcquisitionFailure | None] = ContextVar(
+    "acquisition_failure", default=None
+)
+
+
+def _remember_acquisition_failure(error: EsolangError) -> None:
+    """Mark an error that escaped source or input acquisition without modifying it."""
+    failure = _ACQUISITION_FAILURE.get()
+    if failure is not None:
+        failure.error = error
 
 
 def _failure_status(error: EsolangError) -> OutcomeStatus:
@@ -94,17 +112,19 @@ class ExecutionOutcome:
         return self.observation
 
 
-def _failed_outcome(error: EsolangError) -> ExecutionOutcome:
+def _failed_outcome(
+    error: EsolangError, *, during_acquisition: bool = False
+) -> ExecutionOutcome:
     """Retain the original error and its unfinished execution observation."""
-    observation = error.observation
-    if observation is None:
-        observation = ExecutionResult(error.partial_output, None, None, None)
-    elif (
+    observation = None if during_acquisition else error.observation
+    if during_acquisition or (
         isinstance(observation, ExecutionResult) and observation.completion is not None
     ):
-        # A nested evaluation can fail while decoding completed output. Its
-        # evidence belongs to the original error, outside this invocation.
+        # A caller callback can fail in a nested invocation. The error keeps
+        # that invocation's observations, including completed output.
         observation = ExecutionResult("", None, None, None)
+    elif observation is None:
+        observation = ExecutionResult(error.partial_output, None, None, None)
     return ExecutionOutcome(_failure_status(error), observation, error=error)
 
 
@@ -115,9 +135,14 @@ def _capture_outcome[**P](
 
     @wraps(execute)
     def capture(*args: P.args, **kwargs: P.kwargs) -> ExecutionOutcome:
+        failure = _AcquisitionFailure()
+        # Isolated acquisition uses a copy of this context in its reader thread.
+        token = _ACQUISITION_FAILURE.set(failure)
         try:
             return execute(*args, **kwargs)
         except EsolangError as error:
-            return _failed_outcome(error)
+            return _failed_outcome(error, during_acquisition=failure.error is error)
+        finally:
+            _ACQUISITION_FAILURE.reset(token)
 
     return capture
