@@ -296,7 +296,7 @@ and every 128th row at fifteen and sixteen in the weekly run.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 120 languages.
+The collection has 123 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -430,6 +430,29 @@ rungs made the construction linear.
 BOOMOP leaves the brightness metric, edge collisions and teleport
 ties open. Semqain leaves scheduling, empty-queue reads and several
 subcommands open. The table above records the rejected candidates.
+
+ALEFL leaves function parameter scope unspecified. In
+`'=65;$_('){,(');}_(66);,(');`, local binding prints `BA` and shared binding
+prints `BB`. The published calls have no parameters.
+[ALEFL revision 168585](https://esolangs.org/w/index.php?title=ALEFL&oldid=168585)
+
+GolferDream's paired conditional grammar rejects its single-arm
+calculator. Its FizzBuzz puts 100 in the box before a loop that runs
+only at zero, so it prints nothing. The random range `[0,n)` is also
+described as inclusive. With seed 0, `1r.` prints 0 with an exclusive
+upper bound and 1 with an inclusive one in the probe.
+[Wiki revision 197426](https://esolangs.org/w/index.php?title=GolferDream&oldid=197426)
+
+Flump takes an integer in the last cell and leaves its answer there.
+For `T` input rows, some input is at least `T-1`, so an answer of 0 or 1
+takes at least `T-2` decrements of that cell. A loopless run with `P`
+program triplets must use distinct first operands for those decrements.
+Each operand must name cell `3P+2` at execution. It can gain at most
+`P` bits during the run, so it starts with at least `2P+2` unary ones.
+Since `P >= T-2`, the emitted source has a quadratic lower bound.
+An unrolled decrement scan matches it with at most `3(T-1)+1` triplets
+and `O(T)` unary address width.
+[Flump revision 141132](https://esolangs.org/w/index.php?title=Flump&oldid=141132)
 
 The detailed optimization, scaling and curation audits are archived at
 `48a5fb666:docs/limitations.md`.

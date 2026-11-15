@@ -72,7 +72,7 @@ class TestASuggestionIsWorthLessThanSilence:
                 esolangs.describe(head)
             assert longest in caught.value.suggestions, head
 
-    def test_junk_words_get_the_list_hint_without_suggestions(self) -> None:
+    def test_api_and_cli_withhold_guesses_for_junk(self) -> None:
         for word in self._JUNK:
             with pytest.raises(esolangs.UnknownLanguageError) as caught:
                 esolangs.describe(word)
@@ -80,6 +80,5 @@ class TestASuggestionIsWorthLessThanSilence:
             assert "did you mean" not in str(caught.value)
             assert "`esolangs list` shows all of them" in str(caught.value)
 
-    def test_the_cli_shares_the_number(self) -> None:
         assert _did_you_mean("snorey", esolangs.list_languages()) == ""
         assert "--width" in _did_you_mean("--wdith", ["--width", "--bits"])

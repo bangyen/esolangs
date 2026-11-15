@@ -1,0 +1,46 @@
+language = "Nybbleist"
+oldid = 17325
+
+[[examples]]
+id = "hello"
+source = "!48656C6C6F20576F726C6421@"
+expected = "Hello World!"
+
+[[examples]]
+id = "copy"
+source = ":0?X!X#0"
+stdin = "Hi!"
+expected = "Hi!"
+stop = "eof"
+
+[[examples]]
+id = "ascii-predecessor"
+source = """
+?X?Y-Y1#Y
+:0:1:2:3:4:5:6:7:8:9:A:B:C:D:E!XY@
+:F-X1!XY@
+"""
+stdin = "@"
+expected = "?"
+
+[[spec_triggers]]
+program = "["
+expect = "ProgramError"
+claim = "bracket scopes must close"
+
+[[spec_triggers]]
+program = "?X"
+stdin = "λ"
+expect = "ArgumentError"
+claim = "each code point must fit in one byte"
+
+[[spec_triggers]]
+program = "?X?Y?X"
+stdin = "a"
+expect = "InputExhaustedError"
+claim = "both nybbles have been consumed"
+
+[[spec_triggers]]
+program = "[#1]:1"
+expect = "HaltError"
+claim = "jumps cannot escape a bracket scope"

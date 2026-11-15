@@ -78,10 +78,13 @@ Modulous,yes,owned-adapter,modulous-v1
 Monotonic Boolfuck,yes,inherited-adapter,monotonic-boolfuck-v1
 Movesum,yes,owned-adapter,movesum-v1
 Nandypants,yes,owned-adapter,nandypants-v1
+NB,yes,owned-adapter,nb-v1
 Nope.,no,owned-adapter,nope-v1
 NOR machine,yes,owned-adapter,nor-machine-v1
 NQ,yes,owned-adapter,nq-v1
+Nybbleist,yes,owned-adapter,nybbleist-v1
 Object disoriented,yes,owned-adapter,object-disoriented-v1
+Onecode (Fergusq),yes,owned-adapter,onecode-fergusq-v1
 Packlang,yes,owned-adapter,packlang-v1
 Painfuck,yes,owned-adapter,painfuck-v1
 Parenthesys,yes,owned-adapter,parenthesys-v1

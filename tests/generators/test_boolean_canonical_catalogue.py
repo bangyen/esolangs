@@ -64,7 +64,7 @@ def _lacking(helpers: tuple[str, ...]) -> set[str]:
 # Reads every generator's source: ~0.97s alone, past the fast band under load.
 @pytest.mark.medium
 def test_the_catalogue_covers_exactly_the_exceptions() -> None:
-    """The only generators without a helper are the declared ones."""
+    """Every missing helper has a documented exception or native mechanism."""
     ignored, constant = _catalogue()
     ignored_local, constant_local = _native()
     assert _lacking(IGNORED) == set(ignored) | set(ignored_local), (
@@ -77,10 +77,6 @@ def test_the_catalogue_covers_exactly_the_exceptions() -> None:
         f"fold a constant span with one of {CONSTANT}, or say why not with "
         "folding_constant = '<reason>' under [catalogue] in its language.toml"
     )
-
-
-def test_declared_exceptions_state_a_reason() -> None:
-    ignored, constant = _catalogue()
     assert all(reason.strip() for reason in (*ignored.values(), *constant.values()))
 
 

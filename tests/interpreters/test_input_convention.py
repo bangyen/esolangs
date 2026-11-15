@@ -18,20 +18,17 @@ def test_character_input_preserves_newline() -> None:
     assert_echoes_a_newline(REFERENCE, ",.")
 
 
-def test_newline_is_distinct_from_eof() -> None:
+def test_scripted_and_interactive_reads_preserve_newlines() -> None:
     source = ScriptedIO("\n")
     assert source.input_char() == 10
     with pytest.raises(EOFError):
         source.input_char()
+    with patch("builtins.input", return_value=""):
+        assert IO().input_char() == 10
 
 
 def test_stream_echo_preserves_characters_on_the_same_line() -> None:
     assert esolangs.run(REFERENCE, ",.,.,.", stdin="ab\n").output == "ab\n"
-
-
-def test_interactive_empty_line_is_a_newline_character() -> None:
-    with patch("builtins.input", return_value=""):
-        assert IO().input_char() == 10
 
 
 # What a language does when a *reading* program is handed no input at all.

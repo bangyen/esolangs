@@ -367,6 +367,7 @@ Build language-specific stdin for a generated Boolean program with
 | Line | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Modulous | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Movesum | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| NB | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | NOR machine | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Painfuck | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Parenthesys | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
@@ -378,7 +379,7 @@ Build language-specific stdin for a generated Boolean program with
 | Whitespace | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | lol waht i cant edit talk pages | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
-The other 61 that read stdin take one `0`/`1` character per bit -- `'101'`.
+The other 63 that read stdin take one `0`/`1` character per bit -- `'101'`.
 The remaining 19 embed their inputs and read no stdin: `instantiate` fills them.
 The 3 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.

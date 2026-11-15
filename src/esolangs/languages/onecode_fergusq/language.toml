@@ -1,0 +1,94 @@
+[curation]
+backlinks = 4
+admitted = 2026-11-15T16:05:35-05:00
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "a string store writes successive addressed cells; a Horner index over essential inputs reads the selected cell"
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 96
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.onecode_fergusq.generator:onecode_fergusq_request"
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.literal_address_lookup]
+kind = "measurement"
+witness = { arity = 4, rule = "parity" }
+source = { value = 96, unit = "chars" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-15
+construction = "esolangs.languages.onecode_fergusq.generator:onecode_fergusq_request"
+notes = "A string store lays out sixteen answers and the input constructs one cell address."
+
+[audits]
+blind_reimplementation = 2026-11-15
+
+[catalogue]
+folding_constant = "constant tables discard all input and print their bit"
+
+[schemes]
+folds_without_tree = true
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.onecode_fergusq.generator:onecode_fergusq_request"
+
+[resource_evidence.execution]
+# Five operations for the first bit, nine for each later bit, and eight
+# for storing and reading the table. A discarded read takes two.
+expression = "9n+4"
+exact = true
+arities = [1, 2, 3, 4, 5]
+first = 1
+unit = "steps"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} steps; all inputs essential" }
+
+[resource_evidence.workspace]
+# Full tables write 6T+nT-T+2 bits to the addressed cells. The operand
+# stack peaks at 6T+2 before the store; the index uses 8+n bits.
+expression = "(n+11)T+n+12+bl(9n+4)+bl(n)"
+exact = true
+arities = [1, 2, 3, 4]
+first = 1
+unit = "bits"
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} bits, including integer addresses and ASCII cells" }
+
+[resource_evidence.scaling]
+# The full-essential form has T literal digits, 17 characters per input
+# and 12 fixed characters. Projected reads and constants are shorter.
+expression = "T+17n+12"
+exact = true
+arities = [1, 2, 3, 4, 6, 8]
+first = 1
+unit = "characters"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} characters; one lookup literal" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/onecode_fergusq/tests/test_onecode.py::test_onecode_execution",
+]
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 71 }
+"00001100" = { commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 24, "5" = 24, "6" = 24, "7" = 24 }, source_units = 58 }
+"00110110" = { commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 71 }
+"0110" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22 }, source_units = 50 }
+"01101001" = { commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 71 }
+"0110100110010110" = { commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40, "8" = 40, "9" = 40, "10" = 40, "11" = 40, "12" = 40, "13" = 40, "14" = 40, "15" = 40 }, source_units = 96 }
+"1101001101101101" = { commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40, "8" = 40, "9" = 40, "10" = 40, "11" = 40, "12" = 40, "13" = 40, "14" = 40, "15" = 40 }, source_units = 96 }
+"11111110" = { commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 71 }

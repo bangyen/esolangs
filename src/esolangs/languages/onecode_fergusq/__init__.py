@@ -1,0 +1,1 @@
+"""Fergusq's standalone Onecode."""

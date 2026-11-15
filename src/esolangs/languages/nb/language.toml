@@ -1,0 +1,87 @@
+[curation]
+backlinks = 1
+admitted = 2026-11-15T16:57:09-05:00
+
+[proof_status]
+labels = ["tree"]
+qualification = "nested tests skip equal cofactors and share reversed pairs by flipping the second selector under the first"
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 290
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.nb.generator:nb_request"
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.mirrored_cofactors]
+kind = "measurement"
+witness = { arity = 4, rule = "parity" }
+source = { value = 290, unit = "chars" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-15
+construction = "esolangs.languages.nb.generator:nb_request"
+notes = "In-place selector flips share reversed pairs of residuals. The unfactored four-input parity measured 475 chars."
+
+[audits]
+blind_reimplementation = 2026-11-15
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.nb.generator:nb_request"
+
+[resource_evidence.execution]
+# Input costs n steps, ordinary tests up to two each and paired
+# selectors up to five per pair. A false leaf uses two steps.
+expression = "3n+floor(n/2)+2"
+exact = true
+arities = [1, 2, 3, 4, 5]
+first = 1
+unit = "steps"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} steps, including else bypasses" }
+
+[resource_evidence.workspace]
+# At most n names of at most 2+n characters and one-bit values.
+expression = "17n+8n^2+bl(4T+n)+bl(2n)"
+exact = false
+arities = [1, 2, 3, 4]
+first = 1
+unit = "bits"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} bits; variables and cursors" }
+
+[resource_evidence.scaling]
+# Each leaf costs at most 19 chars. An ordinary or paired branch at
+# rank r costs at most 64+6r chars, summing to less than 70T.
+expression = "89T+7n+n^2"
+exact = false
+arities = [1, 2, 3, 4, 6, 8]
+first = 1
+unit = "characters"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} characters; shorter names at deeper levels" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/nb/tests/test_nb.py::test_nb_execution",
+]
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 8, "5" = 8, "6" = 10, "7" = 10 }, source_units = 135 }
+"00001100" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 7, "5" = 7, "6" = 9, "7" = 9 }, source_units = 101 }
+"00110110" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 9, "5" = 9, "6" = 11, "7" = 12 }, source_units = 173 }
+"0110" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 8, "3" = 9 }, source_units = 105 }
+"01101001" = { commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 10, "4" = 10, "5" = 12, "6" = 11, "7" = 11 }, source_units = 176 }
+"0110100110010110" = { commands_by_row = { "0" = 10, "1" = 10, "2" = 12, "3" = 13, "4" = 10, "5" = 12, "6" = 14, "7" = 13, "8" = 12, "9" = 14, "10" = 16, "11" = 15, "12" = 13, "13" = 13, "14" = 15, "15" = 16 }, source_units = 290 }
+"1101001101101101" = { commands_by_row = { "0" = 8, "1" = 8, "2" = 11, "3" = 11, "4" = 10, "5" = 10, "6" = 10, "7" = 10, "8" = 11, "9" = 11, "10" = 13, "11" = 14, "12" = 10, "13" = 10, "14" = 13, "15" = 13 }, source_units = 344 }
+"11111110" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 7, "5" = 7, "6" = 9, "7" = 11 }, source_units = 111 }

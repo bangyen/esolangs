@@ -1,0 +1,68 @@
+language = "Onecode (Fergusq)"
+oldid = 53784
+
+[[examples]]
+id = "hello"
+source = '''
+s~0;
+*s~"Hello, world\n";
+print:
+putc(*s);
+s~s+1;
+if (*s) goto print;'''
+expected = "Hello, world\n"
+
+[[examples]]
+id = "truth-machine-zero"
+source = '''
+i~getc();
+if (i='1') goto truth;
+if (i='0') goto lie;
+goto other;
+truth:
+putc(i);
+goto truth;
+lie:
+putc(i);
+other:'''
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-machine-one"
+source = '''
+i~getc();
+if (i='1') goto truth;
+if (i='0') goto lie;
+goto other;
+truth:
+putc(i);
+goto truth;
+lie:
+putc(i);
+other:'''
+stdin = "1"
+expected = "1111"
+stop = "steps"
+max_steps = 22
+
+[[spec_triggers]]
+program = "goto missing;"
+expect = "ProgramError"
+claim = "a goto needs a defined label"
+
+[[spec_triggers]]
+program = "getc();"
+expect = "InputExhaustedError"
+claim = "character input at EOF"
+
+[[spec_triggers]]
+program = "getn();"
+stdin = "z"
+expect = "ArgumentError"
+claim = "numeric input requires a decimal integer"
+
+[[spec_triggers]]
+program = "putc(1/0);"
+expect = "HaltError"
+claim = "division by zero"
