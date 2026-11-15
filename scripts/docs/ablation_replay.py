@@ -235,18 +235,10 @@ def _remaining(deadline: float) -> float:
     return remaining
 
 
-def _baseline(
-    language: str,
-    record: ReplayRecord,
-    table: str,
-    scratch: Path,
-    deadline: float,
-    *,
-    balanced: bool,
-) -> Artifact:
-    """Acquire and generate from the baseline within the same replay deadline."""
+def _extract_baseline(commit: str, scratch: Path, deadline: float) -> None:
+    """Extract the pinned source once into a new replay checkout."""
     archive = subprocess.run(
-        ["git", "archive", revision(record.baseline), "src"],
+        ["git", "archive", revision(commit), "src"],
         cwd=ROOT,
         capture_output=True,
         check=True,
@@ -254,6 +246,12 @@ def _baseline(
     )
     with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as bundle:
         bundle.extractall(scratch, filter="data")
+
+
+def _baseline(
+    language: str, table: str, source: Path, deadline: float, *, balanced: bool
+) -> Artifact:
+    """Run a fresh baseline generator from the archived source."""
     code = (
         "import esolangs,json,sys; r=json.load(sys.stdin); "
         "p=esolangs.generate(r['language'],r['table'],balance=r['balanced']); "
@@ -269,8 +267,8 @@ def _baseline(
     generated = subprocess.run(
         [sys.executable, "-c", code],
         input=json.dumps({"language": language, "table": table, "balanced": balanced}),
-        env=dict(os.environ, PYTHONPATH=str(scratch / "src")),
-        cwd=scratch,
+        env=dict(os.environ, PYTHONPATH=str(source / "src")),
+        cwd=source,
         capture_output=True,
         text=True,
         check=True,
@@ -394,6 +392,7 @@ def verify_replay(language: str, record: ReplayRecord, scratch: Path) -> None:
     """Execute declared rows before accepting any measured source figures."""
     deadline = time.monotonic() + record.budget
     scratch.mkdir(parents=True, exist_ok=True)
+    checkout = None
     try:
         table = _run(
             lambda *_args: record.witness.table(),
@@ -402,22 +401,19 @@ def verify_replay(language: str, record: ReplayRecord, scratch: Path) -> None:
             _remaining(deadline),
         )
         rows = record.rows if record.rows is not None else range(len(table))
+        if record.baseline is not None:
+            checkout = tempfile.TemporaryDirectory(dir=scratch, prefix="audit-")
+            _extract_baseline(record.baseline, Path(checkout.name), deadline)
         for balanced, measurement in ((False, record.source), (True, record.balanced)):
             if measurement is None:
                 continue
-            baseline = None
-            if record.baseline is not None:
-                with tempfile.TemporaryDirectory(
-                    dir=scratch, prefix="audit-"
-                ) as folder:
-                    baseline = _baseline(
-                        language,
-                        record,
-                        table,
-                        Path(folder),
-                        deadline,
-                        balanced=balanced,
-                    )
+            baseline = (
+                _baseline(
+                    language, table, Path(checkout.name), deadline, balanced=balanced
+                )
+                if checkout is not None
+                else None
+            )
             candidate = _run(
                 lambda *_args, balanced=balanced: esolangs.generate(
                     language, table, balance=balanced
@@ -455,3 +451,7 @@ def verify_replay(language: str, record: ReplayRecord, scratch: Path) -> None:
             _remaining(deadline)
     except (esolangs.EsolangError, subprocess.SubprocessError) as error:
         raise AuditError(f"audit execution failed: {error}") from error
+    finally:
+        if checkout is not None:
+            checkout.cleanup()
+    _remaining(deadline)

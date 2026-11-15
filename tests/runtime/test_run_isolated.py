@@ -658,6 +658,11 @@ def test_bulk_worker_receives_a_request_larger_than_a_pipe_buffer(spawned) -> No
     assert esolangs.run(REFERENCE, source, stdin="A", isolated=True).output == "A"
     (child,) = spawned
     assert child.poll() == 0
+    stdin = "A" + "é\ud800\U000103ff" * 8192
+    limits = esolangs.ExecutionLimits(max_steps=2, preparation_timeout=3)
+    result = esolangs.run(REFERENCE, ",.", stdin=stdin, limits=limits)
+    assert (result.output, result.steps, result.input_reads) == ("A", 2, 1)
+    assert [child.poll() for child in spawned] == [0, 0]
 
 
 @pytest.mark.parametrize("streaming", [False, True])

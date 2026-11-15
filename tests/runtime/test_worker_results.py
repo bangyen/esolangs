@@ -603,6 +603,8 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
     from esolangs.registry import SourceKind
     from esolangs.runtime import _isolated
 
+    _check_request_serialization(monkeypatch)
+
     def serve(value):
         document = json.dumps(value) if isinstance(value, dict) else value
         monkeypatch.setattr(sys, "stdin", io.StringIO(document))
@@ -719,6 +721,67 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
         with pytest.raises(ValueError, match="invalid worker raster"):
             serve({**raster, "program": runs})
         assert capsys.readouterr().out == ""
+
+
+def _check_request_serialization(monkeypatch) -> None:
+    from time import monotonic
+
+    from esolangs.runtime import _isolated, _json
+
+    with monkeypatch.context() as patch:
+        patch.setattr(_json, "_WORKER_TEXT_BLOCK", 8)
+        patch.setattr(_json, "_WORKER_REQUEST_BLOCK", 128)
+        source = esolangs.CompressedText.from_chunks(
+            ("".join(map(chr, range(65, 126))),)
+        )
+        stdin = ('é\ud800\U000103ff\r\\"' * 64) + "a"
+        plain = _isolated._request_wire(REFERENCE, source, stdin)
+        packed = _isolated._request_wire(REFERENCE, source, stdin, chunked=True)
+        parts = _json.worker_request(packed, lambda: False)
+        assert isinstance(parts, list)
+        assert max(map(len, parts)) <= 128
+        assert "".join(parts) == _json.worker_dumps(plain)
+        assert _json.worker_loads("".join(parts)) == plain
+
+        chunks = []
+        encode = _json.b64encode
+
+        def stop_after_base64(block):
+            chunks.append(block)
+            return encode(block)
+
+        patch.setattr(_json, "b64encode", stop_after_base64)
+        assert _json.worker_request(packed, lambda: bool(chunks)) is None
+        assert chunks == [source.to_gzip()[:24]]
+
+    with monkeypatch.context() as patch:
+        payload = "é" * 64
+        clock = [monotonic()]
+        chunks = []
+        dumps = _json.json.dumps
+
+        def stop_after_escape(value):
+            if isinstance(value, str) and value.startswith("é"):
+                chunks.append(value)
+                clock[0] += 2
+            return dumps(value)
+
+        def no_launch(*_args, **_kwargs):
+            pytest.fail("expired request serialization launched a worker")
+
+        patch.setattr(_json, "_WORKER_TEXT_BLOCK", 8)
+        patch.setattr(_json.json, "dumps", stop_after_escape)
+        patch.setattr(_isolated, "monotonic", lambda: clock[0])
+        patch.setattr(_isolated, "_launch", no_launch)
+        outcome = esolangs.execute(
+            REFERENCE,
+            ",.",
+            stdin=payload,
+            limits=esolangs.ExecutionLimits(preparation_timeout=1, max_steps=2),
+        )
+        assert outcome.bound == "preparation_timeout"
+        assert outcome.observation == ExecutionResult("", None, None, None)
+        assert chunks == [payload[:8]]
 
 
 def test_worker_error_requires_explicit_unavailable_observation_and_options():

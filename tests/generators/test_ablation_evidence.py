@@ -1,6 +1,9 @@
 """Every audit retains its historical evidence or executes a measured replay."""
 
 import copy
+import json
+import subprocess
+import sys
 import tempfile
 import time
 import tomllib
@@ -167,7 +170,22 @@ def _controls(tmp_path, monkeypatch):
         "band": "medium",
     }
     record = ablation_replay.parse_replay(REFERENCE, raw)
+    archives, builds = [], []
+    run = subprocess.run
+
+    def observe(command, *args, **options):
+        if command[:2] == ["git", "archive"]:
+            archives.append(command[2])
+        elif command[:2] == [sys.executable, "-c"] and "input" in options:
+            builds.append((options["cwd"], json.loads(options["input"])["balanced"]))
+        return run(command, *args, **options)
+
+    monkeypatch.setattr(subprocess, "run", observe)
     ablation_replay.verify_replay(REFERENCE, record, tmp_path)
+    checkout = builds[0][0]
+    assert archives == [revision]
+    assert builds == [(checkout, False), (checkout, True)]
+    assert not checkout.exists()
     initial = copy.deepcopy(raw)
     initial["kind"] = "measurement"
     del initial["baseline_revision"]
@@ -176,6 +194,7 @@ def _controls(tmp_path, monkeypatch):
     ablation_replay.verify_replay(
         REFERENCE, ablation_replay.parse_replay(REFERENCE, initial), tmp_path
     )
+    assert archives == [revision]
     for change in (
         {"budget": True},
         {"budget": 61},
@@ -196,6 +215,12 @@ def _controls(tmp_path, monkeypatch):
             ),
             tmp_path,
         )
+    next_checkout, balanced_build = builds[2]
+    assert archives == [revision, revision]
+    assert len(builds) == 3
+    assert not balanced_build
+    assert next_checkout != checkout
+    assert not next_checkout.exists()
     monkeypatch.setattr(
         esolangs,
         "generate",
@@ -241,9 +266,13 @@ def _pilot(language, tmp_path):
     if lang.runtime.random and lang.contract.answer_mode != "termination":
         raw["seed"] = 0
     draft = ablation_replay.parse_replay(language, raw)
+    assert draft.baseline is not None
     with tempfile.TemporaryDirectory(dir=tmp_path) as folder:
+        deadline = time.monotonic() + 5
+        checkout = Path(folder)
+        ablation_replay._extract_baseline(draft.baseline, checkout, deadline)
         baseline = ablation_replay._baseline(
-            language, draft, "01", Path(folder), time.monotonic() + 5, balanced=False
+            language, "01", checkout, deadline, balanced=False
         )
         raw["source"]["before"] = _units(baseline, unit)
     ablation_replay.verify_replay(

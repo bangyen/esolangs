@@ -2,6 +2,9 @@
 
 import json
 import re
+from base64 import b64encode
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from typing import Any, NoReturn
 
 from esolangs.runtime.memory import _hit_digit_cap, format_integer, parse_integer
@@ -123,13 +126,37 @@ def record_dumps(
 _WORKER_TAGS = ("$python_text", "$python_object", "$python_integer")
 # Keep decimal tokens below even the smallest Python digit cap.
 _WORKER_INTEGER_BITS = 1024
+_WORKER_TEXT_BLOCK = 4096
+_WORKER_REQUEST_BLOCK = 65_536
 
 
-def _worker_values(value: Any) -> Any:
+@dataclass(frozen=True, slots=True)
+class _WorkerBase64:
+    """A compressed request body whose base64 string is encoded in pieces."""
+
+    data: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class _WorkerSurrogates:
+    text: str
+
+
+def _contains_surrogate(text: str, checkpoint: Callable[[], None]) -> bool:
+    for offset in range(0, str.__len__(text), _WORKER_TEXT_BLOCK):
+        checkpoint()
+        if _SURROGATES.search(text, offset, offset + _WORKER_TEXT_BLOCK):
+            return True
+    return False
+
+
+def _worker_values(value: Any, checkpoint: Callable[[], None] | None = None) -> Any:
     pending: list[tuple[str, Any]] = [("value", value)]
     values: list[Any] = []
     active: set[int] = set()
     while pending:
+        if checkpoint is not None:
+            checkpoint()
         operation, item = pending.pop()
         if operation != "value":
             identity, keys, count = item
@@ -145,8 +172,17 @@ def _worker_values(value: Any) -> Any:
                     values.append(result)
             else:
                 values.append(children)
-        elif isinstance(item, str) and _SURROGATES.search(item):
-            values.append({"$python_text": item.encode("utf-8", "surrogatepass").hex()})
+        elif isinstance(item, str) and (
+            _SURROGATES.search(item)
+            if checkpoint is None
+            else _contains_surrogate(item, checkpoint)
+        ):
+            payload = (
+                item.encode("utf-8", "surrogatepass").hex()
+                if checkpoint is None
+                else _WorkerSurrogates(item)
+            )
+            values.append({"$python_text": payload})
         elif type(item) is int and item.bit_length() > _WORKER_INTEGER_BITS:
             values.append({"$python_integer": hex(item)})
         elif isinstance(item, (dict, list, tuple)):
@@ -181,17 +217,45 @@ def _worker_key(key: Any) -> str:
     )
 
 
-def worker_dumps(value: Any) -> str:
-    """Preserve Python code points and large integers in iterative JSON encoding."""
-    pending: list[tuple[str, Any]] = [("value", _worker_values(value))]
-    output: list[str] = []
+def _request_string(
+    item: str | _WorkerSurrogates | _WorkerBase64,
+    checkpoint: Callable[[], None],
+) -> Iterator[str]:
+    yield '"'
+    if isinstance(item, _WorkerBase64):
+        # A multiple of three leaves padding only at the end of the stream.
+        block = 3 * _WORKER_TEXT_BLOCK
+        for offset in range(0, len(item.data), block):
+            checkpoint()
+            yield b64encode(item.data[offset : offset + block]).decode("ascii")
+    else:
+        text = item.text if isinstance(item, _WorkerSurrogates) else item
+        for offset in range(0, str.__len__(text), _WORKER_TEXT_BLOCK):
+            checkpoint()
+            piece = str.__getitem__(text, slice(offset, offset + _WORKER_TEXT_BLOCK))
+            yield (
+                piece.encode("utf-8", "surrogatepass").hex()
+                if isinstance(item, _WorkerSurrogates)
+                else json.dumps(piece)[1:-1]
+            )
+    yield '"'
+
+
+def _worker_fragments(
+    value: Any, checkpoint: Callable[[], None] | None = None
+) -> Iterator[str]:
+    pending: list[tuple[str, Any]] = [("value", _worker_values(value, checkpoint))]
     while pending:
+        if checkpoint is not None:
+            checkpoint()
         operation, item = pending.pop()
         if operation == "text":
-            output.append(item)
+            yield item
+        elif operation == "key" and not isinstance(item, str):
+            yield _worker_key(item)
         elif isinstance(item, dict):
             pairs = list(item.items())
-            output.append("{")
+            yield "{"
             pending.append(("text", "}"))
             for index in range(len(pairs) - 1, -1, -1):
                 if index < len(pairs) - 1:
@@ -199,17 +263,61 @@ def worker_dumps(value: Any) -> str:
                 key, child = pairs[index]
                 pending.append(("value", child))
                 pending.append(("text", ": "))
-                pending.append(("text", _worker_key(key)))
+                pending.append(
+                    ("text", _worker_key(key)) if checkpoint is None else ("key", key)
+                )
         elif isinstance(item, list):
-            output.append("[")
+            yield "["
             pending.append(("text", "]"))
             for index in range(len(item) - 1, -1, -1):
                 if index < len(item) - 1:
                     pending.append(("text", ", "))
                 pending.append(("value", item[index]))
+        elif checkpoint is not None and (
+            isinstance(item, (_WorkerSurrogates, _WorkerBase64))
+            or (isinstance(item, str) and str.__len__(item) > _WORKER_TEXT_BLOCK)
+        ):
+            yield from _request_string(item, checkpoint)
         else:
-            output.append(json.dumps(item))
-    return "".join(output)
+            yield json.dumps(item)
+
+
+def worker_dumps(value: Any) -> str:
+    """Preserve Python code points and large integers in iterative JSON encoding."""
+    return "".join(_worker_fragments(value))
+
+
+class _WorkerRequestStoppedError(Exception):
+    """The caller cancelled request acquisition or reached its deadline."""
+
+
+def worker_request(value: Any, stopped: Callable[[], bool]) -> str | list[str] | None:
+    """Assemble canonical JSON in bounded writes, or abandon a cancelled request."""
+
+    def checkpoint() -> None:
+        if stopped():
+            raise _WorkerRequestStoppedError
+
+    blocks: list[str] = []
+    parts: list[str] = []
+    size = 0
+    try:
+        for part in _worker_fragments(value, checkpoint):
+            checkpoint()
+            if parts and size + len(part) > _WORKER_REQUEST_BLOCK:
+                blocks.append("".join(parts))
+                parts.clear()
+                size = 0
+            parts.append(part)
+            size += len(part)
+        tail = "".join(parts)
+        checkpoint()
+    except _WorkerRequestStoppedError:
+        return None
+    if not blocks:
+        return tail
+    blocks.append(tail)
+    return blocks
 
 
 def worker_object(pairs: list[tuple[str, Any]]) -> Any:

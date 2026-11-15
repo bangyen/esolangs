@@ -610,11 +610,13 @@ def test_blocked_readers_obey_their_deadline(
     monkeypatch, capsys, reader, tmp_path
 ) -> None:
     released = threading.Event()
+    threads = []
 
     class BlockedInput(io.StringIO):
         def read(self, *_args, **_kwargs):
-            released.wait()
-            return ""
+            threads.append(threading.current_thread())
+            assert released.wait(3)
+            raise OSError("late read failure")
 
     with monkeypatch.context() as patch:
         stream = BlockedInput()
@@ -622,26 +624,95 @@ def test_blocked_readers_obey_their_deadline(
         patch.setattr("esolangs.cli.io.open", lambda *_a: stream, raising=False)
         try:
             call = (
-                (lambda: _read_stdin(0.01))
+                (lambda: _read_stdin(0.1))
                 if reader == "stdin"
-                else (lambda: _bounded_read("blocked", 0.01))
+                else (lambda: _bounded_read("blocked", 0.1))
             )
             with pytest.raises(SystemExit) as caught:
                 call()
             assert caught.value.code == 124
+            assert len(threads) == 1
             assert (
                 "stdin" if reader == "stdin" else "blocked"
             ) in capsys.readouterr().err
         finally:
             released.set()
+            for thread in threads:
+                thread.join(1)
+                assert not thread.is_alive()
+        assert capsys.readouterr() == ("", "")
 
     path = tmp_path / "program"
     path.write_bytes(b"A")
     assert _bounded_read(str(path), 1) == b"A"
+    if reader == "stdin":
+        _check_expired_completed_input(monkeypatch, capsys, path)
     for target in (
         ("closed", "isatty", "buffer", "read") if reader == "stdin" else ("open",)
     ):
         _check_late_reader_does_not_probe(monkeypatch, capsys, path, target)
+
+
+def _check_expired_completed_input(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], path: Path
+) -> None:
+    from esolangs.cli import run as cli_run
+    from esolangs.runtime import _acquire, _files, _isolated
+
+    path.write_text(",.")
+    finished = 0.0
+
+    def clock() -> float:
+        return finished
+
+    class LateInput(io.StringIO):
+        def __init__(self, *, fail: bool) -> None:
+            super().__init__()
+            self.fail = fail
+
+        def read(self, _size: int | None = -1) -> str:
+            nonlocal finished
+            finished = 2.0
+            if self.fail:
+                raise esolangs.ProgramError("late input complaint")
+            return "A"
+
+    class FinishedBeforeWait(threading.Thread):
+        def start(self) -> None:
+            super().start()
+            self.join(1)
+            assert not self.is_alive()
+
+    for fail in (False, True):
+        with monkeypatch.context() as patch:
+            for module in (cli_io, cli_run, _acquire, _files, _isolated):
+                patch.setattr(module, "monotonic", clock)
+            finished = 0.0
+            outcome = esolangs.execute(
+                REFERENCE,
+                path,
+                stdin=LateInput(fail=fail),
+                limits=esolangs.ExecutionLimits(preparation_timeout=1),
+            )
+            assert outcome.status == "limit"
+            assert outcome.bound == "preparation_timeout"
+            assert isinstance(outcome.error, esolangs.ExecutionTimeoutError)
+
+            finished = 0.0
+            patch.setattr(threading, "Thread", FinishedBeforeWait)
+            patch.setattr(sys, "stdin", LateInput(fail=fail))
+            patch.setattr(
+                sys,
+                "argv",
+                ["esolangs", "run", REFERENCE, str(path), "--preparation-timeout", "1"],
+            )
+            with pytest.raises(SystemExit) as caught:
+                main()
+            assert caught.value.code == 124
+            output, diagnostic = capsys.readouterr()
+            assert not output
+            assert "--preparation-timeout" in diagnostic
+            assert "late input complaint" not in diagnostic
 
 
 def _check_late_reader_does_not_probe(monkeypatch, capsys, path, target) -> None:

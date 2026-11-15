@@ -6,7 +6,7 @@ import base64
 import os
 import subprocess  # fixed Python worker; source travels over stdin.
 import sys
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager, suppress
 from contextvars import ContextVar
 from functools import lru_cache
@@ -31,7 +31,13 @@ from esolangs.runtime._execution import (
 )
 from esolangs.runtime._files import stream_read_deadline
 from esolangs.runtime._input import InputSource, check_input, read_input
-from esolangs.runtime._json import canonical_integer, worker_dumps, worker_loads
+from esolangs.runtime._json import (
+    _WorkerBase64,
+    canonical_integer,
+    worker_dumps,
+    worker_loads,
+    worker_request,
+)
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._result_wire import (
@@ -444,7 +450,7 @@ def _invoke_worker(
         d for d in (deadline, preparation_deadline, execution_deadline) if d is not None
     )
 
-    def capture(stopped: Callable[[], bool]) -> str | None:
+    def capture(stopped: Callable[[], bool]) -> str | list[str] | None:
         with stream_read_deadline(acquisition_deadline):
             checked_input = check_input(stdin)
             if stopped():
@@ -467,7 +473,7 @@ def _invoke_worker(
             captured_input = read_input(checked_input)
         if stopped():
             return None
-        return worker_dumps(
+        return worker_request(
             _request_wire(
                 name,
                 artifact.source,
@@ -484,7 +490,9 @@ def _invoke_worker(
                 termination=termination,
                 catalog=catalog,
                 _settings_validated=True,
-            )
+                chunked=True,
+            ),
+            stopped,
         )
 
     def expired() -> exceptions.ExecutionTimeoutError:
@@ -532,7 +540,7 @@ def _timeout_named(timeout: float) -> Iterator[None]:
 
 
 def _launch(
-    request: str,
+    request: Sequence[str],
     deadline: float,
     *,
     max_output: int | None = None,
@@ -567,8 +575,8 @@ def _launch(
         startup_flags.append("-S")
     if sys.flags.no_user_site:
         startup_flags.append("-s")
-    report_prepared = preparation_deadline is not None or execution_timeout is not None
-    streaming = max_output is not None or report_prepared
+    phased = preparation_deadline is not None or execution_timeout is not None
+    streaming = max_output is not None or phased or not isinstance(request, str)
     with subprocess.Popen(  # fixed executable and code, no shell.
         [
             sys.executable,
@@ -596,7 +604,7 @@ def _launch(
                 if preparation_deadline is not None and preparation_deadline < deadline:
                     raise preparation_expired(partial_output=result.observation.output)
                 return result
-            if report_prepared:
+            if phased:
                 return _bounded_output(
                     child,
                     request,
@@ -604,7 +612,7 @@ def _launch(
                     preparation_deadline=preparation_deadline,
                     execution_timeout=execution_timeout,
                 )
-            if streaming:
+            if max_output is not None or not isinstance(request, str):
                 return _bounded_output(child, request, deadline)
             output, expired = communicate(child, request, deadline, clock=monotonic)
         except KeyboardInterrupt:
@@ -617,7 +625,7 @@ def _launch(
 
 def _bounded_output(
     child: subprocess.Popen[str],
-    request: str,
+    request: Sequence[str],
     deadline: float,
     *,
     preparation_deadline: float | None = None,
@@ -643,7 +651,10 @@ def _bounded_output(
             stdout = cast("TextIO", child.stdout)
             # Like communicate(), keep reading if the child closed its input.
             with suppress(BrokenPipeError), stdin:
-                stdin.write(request)
+                if isinstance(request, str):
+                    stdin.write(request)
+                else:
+                    stdin.writelines(request)
             for line in stdout:
                 if not publish(line):
                     return
@@ -771,11 +782,14 @@ def _read_worker_output(
     return result
 
 
-def _source_transport(source: Program) -> dict[str, Any]:
+def _source_transport(source: Program, *, chunked: bool) -> dict[str, Any]:
     """Encode all source containers for the JSON worker protocol."""
     if isinstance(source, CompressedText):
+        compressed = source.to_gzip()
         return {
-            "program": base64.b64encode(source.to_gzip()).decode("ascii"),
+            "program": _WorkerBase64(compressed)
+            if chunked
+            else base64.b64encode(compressed).decode("ascii"),
             "raster": False,
             "compressed": True,
         }
@@ -801,6 +815,7 @@ def _request_wire(
     report_prepared: bool = False,
     catalog: Catalog | None = None,
     _settings_validated: bool = False,
+    chunked: bool = False,
 ) -> dict[str, Any]:
     """Encode one complete worker request, including unavailable options."""
     from esolangs.registry._catalog import get_catalog
@@ -813,7 +828,7 @@ def _request_wire(
     )
     return {
         "language": name,
-        **_source_transport(source),
+        **_source_transport(source, chunked=chunked),
         "stdin": stdin,
         "settings": {
             key: hex(value) if type(value) is int else value

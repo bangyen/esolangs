@@ -41,7 +41,12 @@ from esolangs.cli.hints import (
     _exit_code,
     _timeout_text,
 )
-from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
+from esolangs.exceptions import (
+    ArgumentError,
+    EsolangError,
+    ExecutionBudgetError,
+    ProgramError,
+)
 from esolangs.operations.source import _check_program
 from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._files import (
@@ -147,6 +152,7 @@ def _read_program(
         timeout,
         timeout_flag=timeout_flag,
         directory=directory,
+        deadline=deadline,
         max_bytes=_MAX_GZIP_NATIVE_PROGRAM_BYTES if gzip_native else _MAX_PROGRAM_BYTES,
     )
 
@@ -167,12 +173,12 @@ def _read_program(
         remaining = deadline - monotonic()
         bound = f" ({timeout_flag})" if timeout_flag else ""
 
-        def on_timeout() -> None:
+        def on_timeout() -> NoReturn:
             _fail(f"gave up decoding {path} after {timeout:g}s{bound}", _TIMEOUT_EXIT)
 
         if remaining <= 0:
             on_timeout()
-        return _slurp_thread(decode, remaining, on_timeout=on_timeout)
+        return _slurp_thread(decode, deadline, on_timeout=on_timeout)
     except EsolangError as exc:
         _fail(exc)
         raise  # pragma: no cover - _fail exits
@@ -185,16 +191,15 @@ def _note(message: str) -> None:
 
 def _slurp_thread[SlurpT](
     work: Callable[[], SlurpT],
-    timeout: float | None,
+    deadline: float | None,
     *,
     notice: AbstractContextManager[None] | None = None,
-    on_timeout: Callable[[], None],
+    on_timeout: Callable[[], NoReturn],
 ) -> SlurpT:
-    """Run ``work`` on a daemon thread, abandoning it after ``timeout``.
+    """Accept a reader's result or exception only before the deadline.
 
-    ``notice`` wraps the join when the wait deserves announcing; a slow
-    thread is left to ``on_timeout`` (which exits).  An exception raised
-    by ``work`` is re-raised on the caller's thread.
+    An expired reader may still be running, so only the caller reports its
+    outcome. ``notice`` wraps waits that deserve announcing.
     """
     box: list[SlurpT | BaseException] = []
 
@@ -204,7 +209,6 @@ def _slurp_thread[SlurpT](
         except BaseException as exc:
             box.append(exc)
 
-    deadline = None if timeout is None else monotonic() + timeout
     reader = threading.Thread(target=copy_context().run, args=(_slurp,), daemon=True)
     reader.start()
     with notice if notice is not None else nullcontext():
@@ -215,11 +219,11 @@ def _slurp_thread[SlurpT](
             if waited <= 0:
                 break
             reader.join(waited)
-    if reader.is_alive():
+    if reader.is_alive() or (deadline is not None and monotonic() >= deadline):
         on_timeout()
     # A finished thread always appended; a live one exited above.
     result = box[0]
-    if isinstance(result, StreamReadTimeoutError):
+    if deadline is not None and isinstance(result, StreamReadTimeoutError):
         on_timeout()
     if isinstance(result, BaseException):
         raise result
@@ -232,6 +236,7 @@ def _bounded_read(
     *,
     timeout_flag: str = "",
     directory: _SourceDirectory | None = None,
+    deadline: float | None = None,
     max_bytes: int = _MAX_PROGRAM_BYTES,
 ) -> bytes:
     """Read up to the opening file size or the stream cap, under a deadline."""
@@ -240,7 +245,8 @@ def _bounded_read(
     except ArgumentError as error:
         _fail(error)
     waited = timeout if timeout is not None else _READ_DEADLINE
-    deadline = monotonic() + waited
+    if deadline is None:
+        deadline = monotonic() + waited
 
     def _read_file() -> bytes:
         try:
@@ -265,18 +271,17 @@ def _bounded_read(
                             handle, None, size, deadline, handle.read1
                         )
                 result = _binary_chunk(read_snapshot(handle, size=max_bytes + 1))
-                if len(result) > max_bytes:
-                    _fail(
-                        f"{path} is larger than the {max_bytes // 1024} KiB "
-                        "program file limit"
-                    )
-                return result
         except StreamReadTimeoutError:
             raise
         except (OSError, TypeError, ValueError) as exc:
-            _fail(source_read_error(path, exc))
+            raise source_read_error(path, exc) from exc
+        if len(result) > max_bytes:
+            raise ProgramError(
+                f"{path} is larger than the {max_bytes // 1024} KiB program file limit"
+            )
+        return result
 
-    def _on_timeout() -> None:
+    def _on_timeout() -> NoReturn:
         bound = f" ({timeout_flag})" if timeout_flag else ""
         _fail(
             f"gave up reading {path} after {waited:g}s{bound} -- it is not "
@@ -284,7 +289,10 @@ def _bounded_read(
             _TIMEOUT_EXIT,
         )
 
-    return _slurp_thread(_read_file, waited, on_timeout=_on_timeout)
+    try:
+        return _slurp_thread(_read_file, deadline, on_timeout=_on_timeout)
+    except ProgramError as exc:
+        _fail(exc)
 
 
 def _managed_stdin_text(text: str, stdin: TextIO) -> str:
@@ -535,25 +543,9 @@ def _read_stdin(
     deadline = None if timeout is None else monotonic() + timeout
 
     def _read_text() -> str:
-        try:
-            return _snapshot_stdin(stdin, deadline)
-        except StreamReadTimeoutError:
-            raise
-        except UnicodeDecodeError as exc:
-            _fail(input_read_error(exc))
-        except ExecutionBudgetError as exc:
-            _fail(_timeout_text(exc), _TIMEOUT_EXIT)
-        except ArgumentError as exc:
-            cause = exc.__cause__
-            if isinstance(cause, StreamReadTimeoutError):
-                raise cause from None
-            _fail(exc)
-        except EsolangError as exc:
-            _fail(exc, _exit_code(exc))
-        except (OSError, TypeError) as exc:
-            _fail(input_read_error(exc))
+        return _snapshot_stdin(stdin, deadline)
 
-    def _on_timeout() -> None:
+    def _on_timeout() -> NoReturn:
         bound = f" ({timeout_flag})" if timeout_flag else ""
         _fail(
             f"stdin did not reach EOF within {timeout:g}s{bound}{hint}",
@@ -569,20 +561,31 @@ def _read_stdin(
 
     # An interactive read has no deadline. Keeping it on the main thread
     # lets Ctrl-C interrupt it without leaving a reader holding stdin's lock.
-    terminal = _probe_stdin(stdin, None) if timeout is None else None
-    if timeout is None and terminal is not False:
-        result = _read_probed(terminal=terminal)
-    else:
+    terminal = _probe_stdin(stdin, None) if deadline is None else None
+    try:
+        if deadline is None and terminal is not False:
+            return _read_probed(terminal=terminal)
         # A managed adapter's terminal probes can block just like its read.
         read = (
             _read_text
-            if timeout is None
+            if deadline is None
             else lambda: _read_probed(terminal=_probe_stdin(stdin, deadline))
         )
-        result = _slurp_thread(
-            read, timeout, notice=_waiting_notice(hint), on_timeout=_on_timeout
+        return _slurp_thread(
+            read, deadline, notice=_waiting_notice(hint), on_timeout=_on_timeout
         )
-    return result
+    except UnicodeDecodeError as exc:
+        _fail(input_read_error(exc))
+    except ExecutionBudgetError as exc:
+        _fail(_timeout_text(exc), _TIMEOUT_EXIT)
+    except ArgumentError as exc:
+        if deadline is not None and isinstance(exc.__cause__, StreamReadTimeoutError):
+            _on_timeout()
+        _fail(exc)
+    except EsolangError as exc:
+        _fail(exc, _exit_code(exc))
+    except (OSError, TypeError) as exc:
+        _fail(input_read_error(exc))
 
 
 class _StdoutError(Exception):
