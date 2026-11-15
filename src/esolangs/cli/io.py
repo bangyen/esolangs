@@ -451,6 +451,15 @@ def _read_wrapped_stdin(
     return _read_stdin_bytes(stream, deadline).decode("utf-8")
 
 
+def _is_terminal(stream: object) -> bool:
+    """Treat missing or unavailable terminal probes as nonterminal streams."""
+    try:
+        isatty = getattr(stream, "isatty", None)
+        return callable(isatty) and bool(isatty())
+    except OSError:
+        return False
+
+
 def _read_stdin(
     timeout: float | None = None,
     hint: str = "",
@@ -466,7 +475,7 @@ def _read_stdin(
     stdin = sys.stdin
     if stdin is None or getattr(stdin, "closed", False):
         return ""
-    terminal = stdin.isatty()
+    terminal = _is_terminal(stdin)
     if terminal:
         if terminal_prompt is None:
             return ""
@@ -686,7 +695,7 @@ def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
         isinstance(data, str)
         and utf8
         and stream is not None
-        and not sys.stdout.isatty()
+        and not _is_terminal(sys.stdout)
     ):
         try:
             data = data.encode("utf-8")
@@ -736,6 +745,6 @@ def _emit_partial(exc: EsolangError) -> None:
         return
     # Terminal only, as on success: a pipe got "\x01\n" for "\x01", and a
     # --max-output 3 cap 4 bytes.
-    if not exc.partial_output.endswith("\n") and sys.stdout.isatty():
+    if not exc.partial_output.endswith("\n") and _is_terminal(sys.stdout):
         _write_output("\n")
     _flush_stdout()

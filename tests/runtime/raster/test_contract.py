@@ -2,6 +2,7 @@
 
 import base64
 import json
+import os
 import sys
 import zlib
 from array import array
@@ -103,7 +104,9 @@ def test_raster_png_refuses_released_input_buffers() -> None:
         Raster.from_png(buffer)
 
 
-def test_raster_png_uses_backing_bytearrays(tmp_path: Path) -> None:
+def test_raster_png_uses_backing_bytearrays(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     expected = Raster((((1, 2, 3),),))
     raw = expected.to_png()
     other = Raster((((9, 8, 7),),))
@@ -181,6 +184,43 @@ def test_raster_png_uses_backing_bytearrays(tmp_path: Path) -> None:
         png.write_grey([first, short, unread])
     assert first.acquired == first.released == short.acquired == short.released == 1
     assert unread.acquired == unread.released == 0
+
+    relocated = tmp_path / "other"
+    relocated.mkdir()
+    unrelated = relocated / destination.name
+    unrelated.write_bytes(b"unrelated")
+
+    class MovingRow(Once):
+        def __buffer__(self, flags: int) -> memoryview:
+            os.chdir(relocated)
+            return super().__buffer__(flags)
+
+    class MovingPath(os.PathLike[str]):
+        calls = 0
+
+        def __fspath__(self) -> str:
+            self.calls += 1
+            os.chdir(relocated)
+            return destination.name
+
+    for path in (destination.name, str(destination)):
+        monkeypatch.chdir(tmp_path)
+        destination.write_bytes(b"old")
+        moving = MovingRow(memoryview(grey[0]))
+        png.write_grey_file(path, [moving, grey[1]])
+        assert destination.read_bytes() == encoded
+        assert unrelated.read_bytes() == b"unrelated"
+        assert moving.acquired == moving.released == 1
+    monkeypatch.chdir(tmp_path)
+    destination.write_bytes(b"old")
+    provider = MovingPath()
+    with pytest.raises(ValueError, match="equal-length rows"):
+        png.write_grey_file(provider, [])
+    assert provider.calls == 0
+    png.write_grey_file(provider, grey)
+    assert provider.calls == 1
+    assert destination.read_bytes() == encoded
+    assert unrelated.read_bytes() == b"unrelated"
 
     class ClaimedBytes:
         probes = 0

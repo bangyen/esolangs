@@ -62,6 +62,7 @@ assert module in sys.modules, 'loading control did not fire'
         debug.step()
         assert debug.observation == finalized
         assert debug.snapshot() == snapshot
+    _check_callback_halt_boundaries(monkeypatch)
     monkeypatch.setattr(
         interpreter,
         "_execute",
@@ -69,6 +70,69 @@ assert module in sys.modules, 'loading control did not fire'
     )
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
         run("Cyclic tag", ",1")
+
+
+def _check_callback_halt_boundaries(monkeypatch):
+    limits = esolangs.ExecutionLimits(max_steps=1)
+    machine = vm.make_vm("Cyclic tag", ",1")
+    assert vm.run_until_halt(machine, limit=1)
+    assert machine.output == ""
+    assert vm.complete_vm(machine, max_steps=0) == "1"
+
+    class StopAfterStep:
+        def __init__(self, machine, stop):
+            self.machine = machine
+            self.stop = stop
+
+        def __bool__(self):
+            self.machine.step()
+            return self.stop
+
+    for requested in (False, True):
+        machine = vm.make_vm("Cyclic tag", ",1")
+        result = StopAfterStep(machine, requested)
+        assert vm.run_until_halt(machine, limit=1, stop=lambda result=result: result)
+        assert machine.halted
+        assert machine.output == ""
+        assert vm.complete_vm(machine, max_steps=0) == "1"
+
+        debug = make_debugger("Cyclic tag", ",1")
+        checks = []
+
+        def breakpoint_before_dump(machine, first=requested, checks=checks):
+            checks.append(machine.halted)
+            if not machine.halted:
+                machine.step()
+                return first
+            return machine.output == ""
+
+        debug.break_when(breakpoint_before_dump)
+        assert debug.run(limits=limits) == "breakpoint"
+        assert checks == ([False] if requested else [False, True])
+        assert debug.halted
+        assert debug.output == ""
+        assert debug.observation.steps == 0
+        debug.clear_breakpoints()
+        assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
+        assert debug.output == "1"
+        assert debug.observation.steps == 0
+
+    now = [0.0]
+    monkeypatch.setattr("esolangs.runtime._controller.monotonic", lambda: now[0])
+    debug = make_debugger("Cyclic tag", ",1")
+
+    def halt_after_deadline(machine):
+        if not machine.halted:
+            machine.step()
+            now[0] = 2.0
+        return False
+
+    debug.break_when(halt_after_deadline)
+    deadline = esolangs.ExecutionLimits(execution_timeout=1, max_steps=1)
+    assert debug.run(limits=deadline) == "execution_timeout"
+    assert debug.halted
+    assert debug.output == ""
+    assert debug.observation.steps == 0
 
 
 def test_declared_debug_surface_ignores_incidental_machine_attributes(monkeypatch):

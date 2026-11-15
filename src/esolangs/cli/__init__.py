@@ -85,6 +85,7 @@ from esolangs.cli.io import (
     _diagnostic,
     _fail,
     _flush_stdout,
+    _is_terminal,
     _read_stdin,
     _StdoutEncodingError,
     _StdoutError,
@@ -470,7 +471,7 @@ def _generate(rest: list[str]) -> None:
         or isinstance(program, Raster)
         or (isinstance(program, CompressedText) and "--plain" not in flags)
     )
-    if binary and sys.stdout.isatty():
+    if binary and _is_terminal(sys.stdout):
         # Unary's gzip once landed on a terminal unannounced.
         alternative = ""
         if not isinstance(program, Raster):

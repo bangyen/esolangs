@@ -10,6 +10,7 @@ import zlib
 from collections.abc import Buffer, Iterator, Sequence
 from contextlib import ExitStack
 from json import JSONDecoder
+from os import fsdecode, fsencode, fspath
 from typing import TYPE_CHECKING, Any
 
 from esolangs._dialect import DialectSettings
@@ -484,9 +485,28 @@ def write_grey(pixels: list[bytearray]) -> bytes:
 
 def write_grey_file(path: str, pixels: list[bytearray]) -> None:
     """Write greyscale rows to ``path`` as a PNG."""
+    from esolangs.runtime._files import _path_directory
+
+    directory = _path_directory(path)
     data = write_grey(pixels)
-    with open(path, "wb") as handle:
-        handle.write(data)
+    filename: str | bytes | int = path if _has_backing_type(path, int) else fspath(path)
+    if _has_backing_type(filename, str):
+        filename = str.__str__(filename)
+    elif _has_backing_type(filename, bytes):
+        filename = bytes.__bytes__(filename)
+    target = filename
+    if directory is not None and filename:
+        if type(filename) is str:
+            target = directory.resolve(filename)
+        elif type(filename) is bytes:
+            target = fsencode(directory.resolve(fsdecode(filename)))
+    try:
+        with open(target, "wb") as handle:
+            handle.write(data)
+    except OSError as error:
+        if target != filename and error.filename == target:
+            error.filename = filename
+        raise
 
 
 def _row_width(row: Sequence[Pixel]) -> int:

@@ -615,15 +615,21 @@ def test_unbuffered_stdout_retries_short_writes_and_restores_writer(
 def test_cli_completes_text_adapter_writes_or_reports_the_partial_failure(
     tmp_path, monkeypatch, capsys, blocked
 ):
-    class ShortText(StringIO):
+    class ShortText:
         encoding = "ascii"
 
+        def __init__(self) -> None:
+            self.sink = StringIO()
+
         def write(self, text: str) -> int:
-            if blocked and self.tell():
+            if blocked and self.sink.tell():
                 return 0
             segment = text[:2]
             segment.encode("ascii")
-            return super().write(segment)
+            return self.sink.write(segment)
+
+        def flush(self) -> None:
+            self.sink.flush()
 
     path = tmp_path / "echo.bf"
     path.write_text(",.,.,.,.")
@@ -638,8 +644,21 @@ def test_cli_completes_text_adapter_writes_or_reports_the_partial_failure(
             assert exited.value.code == 120
         else:
             main()
-    assert stdout.getvalue() == ("AB" if blocked else r"AB\xe9C")
+    assert stdout.sink.getvalue() == ("AB" if blocked else r"AB\xe9C")
     assert ("cannot write stdout" in capsys.readouterr().err) is blocked
+    if not blocked:
+        path.write_text(",.,.")
+        stdout = ShortText()
+        with monkeypatch.context() as patch:
+            patch.setattr(sys, "stdout", stdout)
+            patch.setattr(sys, "stdin", StringIO("Q"))
+            patch.setattr(sys, "argv", ["esolangs", "run", REFERENCE, str(path)])
+            with pytest.raises(SystemExit) as exited:
+                main()
+            assert exited.value.code == 1
+        assert stdout.sink.getvalue() == "Q"
+        diagnostic = capsys.readouterr().err
+        assert "no input" in diagnostic or "end of input" in diagnostic
 
 
 @pytest.mark.medium
@@ -655,6 +674,9 @@ def test_direct_binary_adapter_keeps_exact_utf8(tmp_path, monkeypatch, blocked):
 
     class Capture(StringIO):
         buffer = SimpleNamespace(write=write)
+
+        def isatty(self) -> bool:
+            raise OSError("terminal detection unavailable")
 
     path = tmp_path / "echo.bf"
     path.write_text(",.,.,.,.")

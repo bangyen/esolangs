@@ -1065,8 +1065,14 @@ def _drive_until_halt(
         while not machine.halted:
             if limit is not None and steps >= limit:
                 return None
-            if stop is not None and stop():
-                return None
+            if stop is not None:
+                requested = bool(stop())
+                halted: bool = machine.halted
+                if halted:
+                    _checked_adapter(machine)
+                    return steps
+                if requested:
+                    return None
             machine.step()
             steps += 1
     except EsolangError as error:

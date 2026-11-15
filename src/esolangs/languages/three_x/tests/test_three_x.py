@@ -10,10 +10,11 @@ from pathlib import Path
 
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.three_x.interpreter import _advance, _Machine, run
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import run_until_halt_or_cycle
+from esolangs.vm import run_until_halt, run_until_halt_or_cycle
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
@@ -309,6 +310,36 @@ class TestThreeXUnmatchedOpen:
         """``(`` over a zero jumps to its ``)``, or advances when there is none."""
         with pytest.raises(HaltError, match="empty stack"):
             run_program("1(", "")
+
+        language = Language("3x")
+        limits = ExecutionLimits(max_steps=1)
+
+        def catch_fault_and_request_stop(machine, *, errors, requested):
+            with pytest.raises(HaltError, match=r"unmatched \(") as caught:
+                machine.step()
+            errors.append(caught.value)
+            return requested
+
+        for requested in (False, True):
+            for with_breakpoint in (False, True):
+                debug = language.make_debugger("3(")
+                debug.step()
+                errors = []
+                callback = partial(
+                    catch_fault_and_request_stop, errors=errors, requested=requested
+                )
+                if with_breakpoint:
+                    debug.break_when(callback)
+                    execute = partial(debug.run, limits=limits)
+                else:
+                    execute = partial(
+                        run_until_halt, debug, limit=1, stop=partial(callback, debug)
+                    )
+                with pytest.raises(HaltError, match=r"unmatched \(") as caught:
+                    execute()
+                assert caught.value is errors[0]
+                assert caught.value.observation.completion is None
+                assert debug.observation.steps == 1
 
 
 def test_retry_replays_a_rejected_numeric_token():

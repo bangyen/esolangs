@@ -59,16 +59,39 @@ def test_managed_stdin_uses_library_input_rules(
         def read(self, _size: int = -1) -> str:
             raise ValueError("input adapter was closed by its owner")
 
+    class Reader:
+        def __init__(self, value):
+            self.value = value
+
+        def read(self):
+            return self.value
+
+    class FailedProbe(Reader):
+        def isatty(self):
+            raise OSError("terminal detection unavailable")
+
     program = tmp_path / "echo.txt"
     program.write_text(",.")
     monkeypatch.setattr(sys, "argv", ["esolangs", "run", REFERENCE, str(program)])
-    for make in (lambda: io.BytesIO(b"A"), lambda: TextStream("A")):
+    for make in (
+        lambda: io.BytesIO(b"A"),
+        lambda: TextStream("A"),
+        lambda: Reader("A"),
+        lambda: FailedProbe("A"),
+    ):
         with subtests.test(stream=type(make()).__name__):
             monkeypatch.setattr(sys, "stdin", make())
             main()
             expected = esolangs.run(REFERENCE, program, stdin=make()).output
             assert expected == "A"
             assert capsys.readouterr() == (expected, "")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(sys, "argv", ["esolangs", "read-answer", REFERENCE])
+        for adapter in (Reader("1"), FailedProbe("1")):
+            patch.setattr(sys, "stdin", adapter)
+            main()
+            assert capsys.readouterr() == ("1\n", "")
 
     for make in (BrokenStream, lambda: io.BytesIO(b"A\xff")):
         with subtests.test(stream=type(make()).__name__):

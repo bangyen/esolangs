@@ -17,6 +17,7 @@ from esolangs.registry._catalog import Catalog
 from esolangs.runtime._capabilities import IpShape
 from esolangs.runtime._controller import ExecutionController as _ExecutionController
 from esolangs.runtime._controller import StopReason as StopReason
+from esolangs.runtime._controller import _StopRequest
 from esolangs.runtime._drive import _check_snapshot_hash, _SnapshotUnavailableError
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._source import ProgramSource
@@ -28,7 +29,7 @@ from esolangs.runtime._validate import (
 )
 from esolangs.runtime._vm_protocol import VM
 from esolangs.settings import DialectSettings
-from esolangs.vm import _DelegatingVM, make_vm
+from esolangs.vm import _DelegatingVM, _raise_halt_fault, make_vm
 
 __all__ = [
     "STOP_REASONS",
@@ -285,14 +286,16 @@ class Debugger(_ExecutionController):
             for slot, stack_history in self._stack_history.items():
                 stack_history.append(_value_at(stack, slot, from_top=True))
 
-    def _stop_requested(self) -> bool:
-        """Whether a breakpoint fires now: one that holds and did not already.
+    def _stop_requested(self) -> _StopRequest:
+        """Check breakpoints and detect any halt reached in their callbacks.
 
         Suppressed until its condition goes false again, per condition.
         Invisible for position and value breakpoints; the whole story for
         :meth:`break_on_output`, whose ``text in vm.output`` is true forever.
         """
         breakpoints = self._breakpoints
+        if not breakpoints:
+            return None
         suppressed = self._suppressed
         hits = {
             i
@@ -301,7 +304,12 @@ class Debugger(_ExecutionController):
         }
         if self._breakpoints is breakpoints:
             self._suppressed = hits
-        return bool(hits - suppressed)
+        halted = self.halted
+        if halted:
+            _raise_halt_fault(self)
+        if hits - suppressed:
+            return "breakpoint"
+        return "halted" if halted else None
 
 
 def make_debugger(

@@ -25,6 +25,7 @@ from esolangs.vm import (
 )
 
 StopReason = Literal["halted", "breakpoint", "max_steps", "execution_timeout"]
+type _StopRequest = Literal["halted", "breakpoint"] | None
 
 _DRIVER_FIELDS = (
     "halted",
@@ -57,9 +58,9 @@ class ExecutionController:
     def _record(self) -> None:
         """Observe a completed step; debugger subclasses record watches."""
 
-    def _stop_requested(self) -> bool:
-        """Whether an observer asks to stop before the next step."""
-        return False
+    def _stop_requested(self) -> _StopRequest:
+        """Return a breakpoint or a halt reached while checking one."""
+        return None
 
     @property
     def halted(self) -> bool:
@@ -214,21 +215,24 @@ class ExecutionController:
         while not self.halted:
             if deadline is not None and monotonic() >= deadline:
                 return "execution_timeout"
-            if self._stop_requested():
-                return "breakpoint"
+            requested = self._stop_requested()
+            if requested is not None:
+                if requested == "breakpoint":
+                    return requested
+                break
             if deadline is not None and monotonic() >= deadline:
                 return "execution_timeout"
             if max_steps is not None and self._steps - start >= max_steps:
                 return "max_steps"
             self._take_step()
         # The final command and the dump can each trigger a breakpoint.
-        if self._stop_requested():
+        if self._stop_requested() == "breakpoint":
             return "breakpoint"
         if self.dumps_on_the_post_halt_step and not self._has_dumped():
             if deadline is not None and monotonic() >= deadline:
                 return "execution_timeout"
             self._take_step()
-            if self._stop_requested():
+            if self._stop_requested() == "breakpoint":
                 return "breakpoint"
         return "halted"
 
