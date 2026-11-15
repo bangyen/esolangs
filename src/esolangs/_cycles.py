@@ -494,6 +494,14 @@ def _branch_fault(error: Exception, language: str) -> EsolangError:
         return translated
 
 
+def _branch_root_states(root: Hashable) -> set[Hashable]:
+    try:
+        return {root}
+    except TypeError:
+        _check_snapshot_hash(root, _ProofSnapshotUnavailableError)
+        raise
+
+
 def _branch_search(
     machine: _BranchingStepMachine,
     limit: int,
@@ -506,7 +514,7 @@ def _branch_search(
         raise _branch_budget(limit, evidence=evidence)
     root = machine.branching_snapshot()
     pending = deque([root])
-    discovered = {root}
+    discovered = _branch_root_states(root)
     exceeded = False
     # Collecting for Boolean readers cost Caballo 11.5-11.6% at n=2/3.
     transitions: list[tuple[Hashable, tuple[Hashable, ...]]] | None = (
@@ -553,12 +561,18 @@ def _branch_search(
                     )
                 # Only a closed graph or an unforked clean run supplies evidence.
                 transitions = None
-            elif outcome not in discovered:
+                continue
+            try:
+                if outcome in discovered:
+                    continue
                 if len(discovered) == limit:
                     exceeded = True
                 else:
                     discovered.add(outcome)
                     pending.append(outcome)
+            except TypeError:
+                _check_snapshot_hash(outcome, _ProofSnapshotUnavailableError)
+                raise
     if failure is not None:
         raise failure
     if exceeded:

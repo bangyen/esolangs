@@ -44,9 +44,9 @@ from esolangs.exceptions import (
     ExecutionBudgetError,
     TemplateError,
 )
-from esolangs.operations.execution import default_total
+from esolangs.operations.execution import _execution_route, default_total
 from esolangs.registry import get_catalog
-from esolangs.runtime._execution import check_seed_for
+from esolangs.runtime._execution import check_seed_for, check_worker_runtime
 from esolangs.runtime._files import _source_directory
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
 from esolangs.runtime._source import check_scale_for
@@ -85,29 +85,7 @@ def _run(rest: list[str]) -> None:
         )
         _nonnegative(max_steps, "--max-steps", options["--max-steps"])
     rest, flags = _pop_flags(rest, {"--isolated"})
-    # A cap selects the worker, as run(max_output=...) does; both flags
-    # exited 2 with "requires --isolated".
-    isolated = bool({"--isolated", "--max-output", "--max-memory"} & {*flags, *options})
-    worker_total = (
-        default_total(total, timeout)
-        if isolated or timeout is not None or preparation is not None
-        else total
-    )
-    # File and stdin share the tightest acquisition budget. Execution gets
-    # its own execution_timeout after the worker has prepared the program.
-    acquisition, flag = min(
-        (
-            (bound, flag)
-            for bound, flag in (
-                (worker_total, "--total-timeout"),
-                (preparation, "--preparation-timeout"),
-                (timeout, "--execution-timeout"),
-            )
-            if bound is not None
-        ),
-        default=(None, ""),
-        key=lambda pair: pair[0],
-    )
+    isolated = "--isolated" in flags
     max_output = None
     if "--max-output" in options:
         max_output = _integer(
@@ -127,9 +105,34 @@ def _run(rest: list[str]) -> None:
                 f"{format_integer(max_memory)}"
             )
         try:
-            check_memory(max_memory, isolated=isolated)
+            check_memory(max_memory, isolated=True)
         except ArgumentError as exc:  # "max_memory is supported only on Linux"
             _fail(str(exc).replace("max_memory", "--max-memory"))
+    limits = ExecutionLimits(
+        preparation_timeout=preparation,
+        execution_timeout=timeout,
+        total_timeout=total,
+        max_steps=max_steps,
+        max_output=max_output,
+        max_memory=max_memory,
+    )
+    worker, _ = _execution_route(limits, isolated=isolated, prepared=False)
+    worker_total = default_total(total, timeout) if worker else None
+    # File and stdin share the tightest acquisition budget. Execution gets
+    # its own execution_timeout after the worker has prepared the program.
+    acquisition, flag = min(
+        (
+            (bound, flag)
+            for bound, flag in (
+                (worker_total, "--total-timeout"),
+                (preparation, "--preparation-timeout"),
+                (timeout, "--execution-timeout"),
+            )
+            if bound is not None
+        ),
+        default=(None, ""),
+        key=lambda pair: pair[0],
+    )
     rest = _split_positional(rest, set(), value_options | {"--set", "--isolated"})
     seed = _seed_of(options)
     scale = _scale_of(options)
@@ -149,6 +152,8 @@ def _run(rest: list[str]) -> None:
         # Before stdin too: held open, `run --seed 1 brainfuck` hung here.
         check_seed_for(declaration.name, seed, catalog=catalog)
         check_scale_for(declaration.name, scale, catalog=catalog)
+        if worker:
+            check_worker_runtime(declaration.name, catalog)
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
@@ -182,14 +187,7 @@ def _run(rest: list[str]) -> None:
                 language,
                 program,
                 stdin=stdin,
-                limits=ExecutionLimits(
-                    preparation_timeout=preparation,
-                    execution_timeout=timeout,
-                    total_timeout=total,
-                    max_steps=max_steps,
-                    max_output=max_output,
-                    max_memory=max_memory,
-                ),
+                limits=limits,
                 seed=seed,
                 scale=scale,
                 isolated=isolated,

@@ -40,33 +40,41 @@ def test_an_active_vm_has_no_successful_result():
     ],
 )
 def test_vm_completion_cap_preserves_observed_io(steps, expected):
+    from esolangs.debugger import make_debugger
+
     source = ",.[]"
-    vm = make_vm(REFERENCE, source, stdin="A")
-    with pytest.raises(esolangs.ExecutionCapError) as caught:
-        complete_vm(vm, max_steps=steps)
     bounded = esolangs.execute(
         REFERENCE, source, stdin="A", limits=esolangs.ExecutionLimits(max_steps=steps)
     )
-    assert caught.value.bound == bounded.bound == "max_steps"
-    assert caught.value.observation == bounded.observation == expected
-    assert caught.value.partial_output == vm.output == expected.output
-    assert complete_vm(make_vm(REFERENCE, ",.", stdin="A"), max_steps=2) == "A"
+    for make in (make_vm, make_debugger):
+        live = make(REFERENCE, source, stdin="A")
+        with pytest.raises(esolangs.ExecutionCapError) as caught:
+            complete_vm(live, max_steps=steps)
+        assert caught.value.bound == bounded.bound == "max_steps"
+        assert caught.value.observation == bounded.observation == expected
+        assert caught.value.partial_output == live.output == expected.output
+        assert complete_vm(make(REFERENCE, ",.", stdin="A"), max_steps=2) == "A"
 
 
 def test_vm_completion_cap_keeps_custom_input_counters_unknown():
+    from esolangs.debugger import Debugger
+
     class Custom:
         halted = False
         self_halts = True
+        steppable_to_answer = True
+        dumps_on_the_post_halt_step = False
         output = ""
 
         def step(self):
             self.output += "A"
 
-    with pytest.raises(esolangs.ExecutionCapError) as caught:
-        complete_vm(Custom(), max_steps=1)
-    assert caught.value.observation == esolangs.ExecutionResult(
-        "A", None, None, None, steps=1
-    )
+    for live in (Custom(), Debugger(Custom())):
+        with pytest.raises(esolangs.ExecutionCapError) as caught:
+            complete_vm(live, max_steps=1)
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "A", None, None, None, steps=1
+        )
 
 
 @pytest.mark.parametrize(("already_completed", "limit"), [(0, 3), (0, None), (2, 1)])

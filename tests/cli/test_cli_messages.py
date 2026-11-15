@@ -361,7 +361,7 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     schema = esolangs.DialectSchema(name, {"mode": (1,)}, {"mode": 1})
     runtime = replace(original.runtime, dialect=validate, dialect_schema=schema)
     declaration = replace(original, name=name, id="scoped_runtime", runtime=runtime)
-    scope = esolangs.Catalog([declaration])
+    scope = esolangs.Catalog([original, declaration])
     monkeypatch.setattr(_table, "CATALOG", scope)
     path = tmp_path / "source"
     path.write_text(",.")
@@ -383,6 +383,31 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     assert not output
     assert "mode" in diagnostic
     assert "cannot read" not in diagnostic
+
+    missing = path.with_name("missing")
+    expected = scope.bind(name).execute(missing, isolated=True)
+    assert expected.status == "rejected"
+    assert isinstance(expected.error, esolangs.ArgumentError)
+    worker_options = [
+        ["--isolated"],
+        ["--total-timeout", "1"],
+        ["--execution-timeout", "1"],
+        ["--preparation-timeout", "1"],
+        ["--max-output", "1"],
+    ]
+    if sys.platform == "linux":
+        worker_options.append(["--max-memory", "100000000"])
+    for options in worker_options:
+        assert _failure(["run", *options, name, str(missing)], capsys) == (
+            "",
+            f"{expected.error}\n",
+        )
+    assert call_both(
+        ["run", "--max-steps", "2", name, str(path)], capsys, stdin="Q"
+    ) == ("Q", "")
+    assert call_both(
+        ["run", "--max-output", "1", REFERENCE, str(path)], capsys, stdin="Q"
+    ) == ("Q", "")
 
 
 def test_timeout_hint_names_cli_flag_and_correction_runs(tmp_path, capsys) -> None:

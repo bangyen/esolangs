@@ -425,6 +425,10 @@ def _capture_observation(
     if isinstance(vm, _DelegatingVM):
         # Use owned code; unrelated instance attributes remain caller-owned.
         return _DelegatingVM._result(vm, report)  # noqa: SLF001
+    from esolangs.runtime._controller import ExecutionController
+
+    if isinstance(vm, ExecutionController):
+        return _capture_observation(vm.vm, report)
     return ExecutionResult(vm.output, None, None, None, completion=report)
 
 

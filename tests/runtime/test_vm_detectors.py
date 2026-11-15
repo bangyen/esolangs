@@ -6,9 +6,14 @@ from random import Random
 
 import pytest
 
-from esolangs import Catalog, ExecutionLimits, Language
+from esolangs import Catalog, ExecutionLimits, ExecutionResult, Language
 from esolangs.debugger import Debugger
-from esolangs.exceptions import ArgumentError, ExecutionCapError, ExecutionTimeoutError
+from esolangs.exceptions import (
+    ArgumentError,
+    ExecutionCapError,
+    ExecutionTimeoutError,
+    InterpreterLimitError,
+)
 from esolangs.languages.brainfuck.interpreter import _Machine as Brainfuck
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.io import ScriptedIO
@@ -365,7 +370,7 @@ def test_scoped_random_proofs_require_branch_enumeration(
             assert run_until_halt_or_all_branches_cycle(machine, limit=0) is True
 
 
-def test_caller_branch_protocol_precedes_private_machine_storage() -> None:
+def test_caller_branch_protocol_precedes_private_machine_storage(monkeypatch) -> None:
     class BranchMachine(_Climber):
         output = ""
         steppable_to_answer = True
@@ -407,3 +412,103 @@ def test_caller_branch_protocol_precedes_private_machine_storage() -> None:
         assert machine.commands == 2
         for detector in (run_until_halt_or_cycle, *_PROOFS):
             assert detector(live, limit=0) is True
+
+    _check_malformed_branch_states(monkeypatch)
+
+
+def _check_malformed_branch_states(monkeypatch) -> None:
+    stock = Language(REFERENCE)
+    declaration = stock.catalog.languages[stock.name]
+    runtime = replace(
+        declaration.runtime, random=True, machine_preparation="probe_branch_states"
+    )
+    contract = replace(
+        declaration.contract,
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+    )
+    api = Catalog([replace(declaration, runtime=runtime, contract=contract)]).bind(
+        stock.name
+    )
+    states = {"root": (0,), "successor": (1,), "replay": (1,)}
+
+    class Machine:
+        halted = False
+
+        def __init__(self, io):
+            self.io = io
+            io.print_char(chr(io.input_char()))
+
+        def step(self):
+            self.io.print_str("!")
+            self.halted = True
+
+        def snapshot(self):
+            return self.halted
+
+        def branching_snapshot(self):
+            return states["replay" if self.halted else "root"]
+
+        def branching_halted(self, state):
+            return state == (1,)
+
+        def branching_successors(self, _state, _limit):
+            return (states["successor"],)
+
+    module = interpreter_module(stock.name)
+    monkeypatch.setattr(
+        module, "probe_branch_states", lambda *_args: Machine, raising=False
+    )
+    artifact = api.from_source("+.")
+    limits = ExecutionLimits(max_steps=2)
+    detectors = (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle)
+    for detector in detectors:
+        assert detector(api.make_debugger(artifact, stdin="1"), limit=2)
+    result = api.evaluate(artifact, [1], limits=limits)
+    assert result.termination.branches.terminal == (1,)
+    assert result.observation == ExecutionResult("1!", 1, 1, 0)
+
+    class EqualUnhashable(list):
+        __hash__ = None
+
+        def __eq__(self, other):
+            return tuple(self) == other
+
+    for field, values in (
+        ("root", ([0], ([0],))),
+        ("successor", ([1], ([1],))),
+        ("replay", ([1], EqualUnhashable([1]))),
+    ):
+        original = states[field]
+        for value in values:
+            states[field] = value
+            for detector in detectors:
+                debug = api.make_debugger(artifact, stdin="1")
+                if field == "replay":
+                    assert detector(debug, limit=2)
+                else:
+                    with pytest.raises(TypeError, match="hashable state"):
+                        detector(debug, limit=2)
+                assert debug.observation == ExecutionResult("1", 1, 1, 0, steps=0)
+            with pytest.raises(InterpreterLimitError, match="hashable state") as caught:
+                api.evaluate(artifact, [1], limits=limits)
+            output = "1!" if field == "replay" else "1"
+            assert caught.value.observation == ExecutionResult(output, 1, 1, 0)
+            assert caught.value.partial_output == output
+        states[field] = original
+
+    original = TypeError("branching callback refused")
+
+    def refuse(*_args):
+        raise original
+
+    for name in ("branching_snapshot", "branching_successors"):
+        with monkeypatch.context() as hooks:
+            hooks.setattr(Machine, name, refuse)
+            debug = api.make_debugger(artifact, stdin="1")
+            with pytest.raises(TypeError, match="branching callback refused") as caught:
+                run_until_halt_or_all_branches_cycle(debug, limit=2)
+            assert caught.value is original
+            with pytest.raises(TypeError, match="branching callback refused") as caught:
+                api.evaluate(artifact, [1], limits=limits)
+            assert caught.value is original

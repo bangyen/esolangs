@@ -24,6 +24,7 @@ from esolangs.exceptions import (
 )
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
+from esolangs.runtime._drive import _check_snapshot_hash
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._prepared import PreparedProgram
 from esolangs.runtime._program import Program
@@ -56,12 +57,20 @@ def _observe_branch_path(machine: VM, proof: BranchProof) -> None:
     state = branch.branching_snapshot()
     seen = set()
     if state != proof.root:
+        _check_snapshot_hash(state, InterpreterLimitError)
         raise InterpreterLimitError("branch observation does not start at its root")
-    while state in graph and state not in seen:
-        seen.add(state)
+    while True:
+        try:
+            if state not in graph or state in seen:
+                break
+            seen.add(state)
+        except TypeError:
+            _check_snapshot_hash(state, InterpreterLimitError)
+            raise
         machine.step()
         successor = branch.branching_snapshot()
         if successor not in graph[state]:
+            _check_snapshot_hash(successor, InterpreterLimitError)
             raise InterpreterLimitError(
                 "live transition is absent from branch evidence"
             )

@@ -441,11 +441,20 @@ def write_grey_file(path: str, pixels: list[bytearray]) -> None:
         handle.write(data)
 
 
+def _row_width(row: Sequence[Pixel]) -> int:
+    """Measure tuple storage even if a subclass overrides its length."""
+    return tuple.__len__(row) if _has_backing_type(row, tuple) else len(row)
+
+
 def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
     """Encode rectangular 8-bit RGB rows as PNG bytes."""
+    from esolangs.raster import _freeze_pixel
+
+    if type(pixels) is not tuple and _has_backing_type(pixels, tuple):
+        pixels = tuple(tuple.__iter__(pixels))
     height = len(pixels)
-    width = len(pixels[0]) if height else 0
-    if not height or not width or any(len(row) != width for row in pixels):
+    width = _row_width(pixels[0]) if height else 0
+    if not height or not width or any(_row_width(row) != width for row in pixels):
         raise syntax_error(
             "expected a non-empty 2-D RGB image",
             "provide nonempty, equal-width rows of RGB pixels",
@@ -466,7 +475,12 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
         previous: tuple[int, int, int] | None = None
         previous_bytes = b""
         repeats = 0
-        for pixel in row:
+        row_pixels = (
+            tuple.__iter__(row)
+            if not immutable and _has_backing_type(row, tuple)
+            else row
+        )
+        for pixel in row_pixels:
             if previous is not None and pixel is previous:
                 repeats += 1
                 continue
@@ -480,16 +494,19 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
                     previous, previous_bytes = cached_pixel
                     repeats = 1
                     continue
-            if len(pixel) != 3 or any(not 0 <= value <= 255 for value in pixel):
+            try:
+                frozen = _freeze_pixel(pixel)
+            except (ProgramError, TypeError) as error:
                 raise syntax_error(
                     f"invalid RGB pixel {pixel!r}",
                     "use three integer RGB channels from 0 through 255",
-                )
-            raw.extend(pixel)
-            if type(pixel) is tuple:
+                    error_type=ProgramError,
+                ) from error
+            raw.extend(frozen)
+            if frozen is pixel:
                 if cache_pixels:
                     previous = pixel
-                    previous_bytes = bytes(pixel)
+                    previous_bytes = bytes(frozen)
                     packed_pixels[id(pixel)] = pixel, previous_bytes
                     cache_pixels = len(packed_pixels) < 1024
             else:

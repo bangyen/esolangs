@@ -83,8 +83,15 @@ def test_raster_freezes_integer_subclasses_before_validation_and_hashing() -> No
         type(channel) is int for row in raster.rows for p in row for channel in p
     )
     assert Raster.from_png(raster.to_png()) == expected
-    with pytest.raises(esolangs.ProgramError, match="RGB triples"):
-        Raster((((Channel(999), 2, 3),),))
+    assert png.write_rgb(((pixel, pixel),)) == expected.to_png()
+    for invalid in (Channel(999), True, 1.0):
+        rows = (((invalid, 2, 3),),)
+        with pytest.raises(esolangs.ProgramError, match="RGB triples"):
+            Raster(rows)
+        with pytest.raises(esolangs.ProgramError, match="invalid RGB"):
+            png.write_rgb(rows)
+        with pytest.raises(esolangs.ProgramError, match="invalid RGB"):
+            png.write_source(rows, None, None, 1)
 
 
 def test_raster_png_refuses_released_input_buffers() -> None:
@@ -136,6 +143,12 @@ def test_raster_freezes_backing_tuples_at_each_level() -> None:
         def __iter__(self):
             return iter(self.substitute)
 
+        def __len__(self):
+            return len(self.substitute) + 1
+
+        def __getitem__(self, index):
+            return self.substitute[index]
+
     pixel = (1, 2, 3)
     substitute = (9, 8, 7)
     row = (pixel,)
@@ -149,6 +162,10 @@ def test_raster_freezes_backing_tuples_at_each_level() -> None:
         stored = Raster(supplied)
         assert stored == expected
         assert Raster.from_png(stored.to_png()) == expected
+        assert png.write_rgb(supplied) == expected.to_png()
+        assert png.write_source(supplied, None, None, 1) == png.write_source(
+            rows, None, None, 1
+        )
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
