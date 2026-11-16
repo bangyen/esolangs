@@ -362,6 +362,35 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
     for saved in (native_record, rematerialized):
         assert "".join(api.evaluate(saved, [bit]).answer for bit in (0, 1)) == "01"
 
+    owner = replace(declaration, name="Color\x1b[2J\nMachine", id="")
+    decoy = replace(declaration, name="Other\x1b[2J\nMachine", id="")
+    api = esolangs.Catalog([owner, decoy]).bind(owner.name)
+    label = r"Color\x1b[2J\nMachine"
+    settings = api.settings()
+    record = api.generate("01", settings=settings, scale=2)
+    raw = record.source.to_png()
+    api.to_file(record, path)
+    native = path.read_bytes()
+    for restored in (api.from_file(path), api.from_json(api.to_json(record))):
+        assert restored == record
+        assert "".join(api.evaluate(restored, [bit]).answer for bit in (0, 1)) == "01"
+    malformed = png.write_metadata(
+        raw, png.read_metadata(native) | {"settings": {"mode": "enabled"}}
+    )
+    path.write_bytes(malformed)
+    with pytest.raises(esolangs.ProgramError) as invalid:
+        api.from_file(path)
+    assert f"unknown dialect setting for {label}: mode" in str(invalid.value)
+    with pytest.raises(esolangs.ProgramError) as refused:
+        png.attach_source_metadata(malformed, None, None, 2, catalog=api.catalog)
+    expected = f"cannot tag PNG: {label} declares no PNG dialect settings"
+    assert str(refused.value) == expected
+    with pytest.raises(esolangs.ArgumentError) as foreign:
+        png.attach_source_metadata(raw, decoy.name, settings, 2, catalog=api.catalog)
+    assert str(foreign.value) == (
+        f"dialect settings belong to {label}, " r"not Other\x1b[2J\nMachine"
+    )
+
 
 def test_critical_chunks_are_unique_and_ordered() -> None:
     from tests.runtime.raster.test_png import _chunk

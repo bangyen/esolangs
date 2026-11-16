@@ -22,6 +22,7 @@ from esolangs.raster import Raster
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._acquire import acquire, preparation_expired
+from esolangs.runtime._error_causes import cause_chain, decode_cause, encode_cause
 from esolangs.runtime._execution import (
     check_seed_for,
     check_worker_runtime,
@@ -120,12 +121,23 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
     cls = getattr(exceptions, kind, None) if isinstance(kind, str) else None
     if not isinstance(cls, type) or not issubclass(cls, exceptions.EsolangError):
         raise ValueError("unknown isolated error kind")
-    fields = {"error", "args", "notes", "execution", "output_limit"}
+    fields = {
+        "error",
+        "args",
+        "notes",
+        "execution",
+        "output_limit",
+        "cause",
+        "suppress_context",
+    }
     if issubclass(cls, exceptions.ExecutionBudgetError):
         fields.add("bound")
     if set(result) != fields or not isinstance(result["args"], list):
         raise ValueError("invalid isolated error fields")
-    if type(result["output_limit"]) is not bool:
+    if (
+        type(result["output_limit"]) is not bool
+        or type(result["suppress_context"]) is not bool
+    ):
         raise ValueError("invalid isolated error options")
     args = result["args"]
     # The wire keeps every argument positional; these options are keyword-only.
@@ -150,6 +162,8 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
         raise ValueError("inconsistent isolated output-limit marker")
     error.partial_output = partial
     _restore_error_notes(error, result["notes"])
+    error.__cause__ = decode_cause(result["cause"])
+    error.__suppress_context__ = result["suppress_context"]
     if isinstance(error, exceptions.ExecutionTimeoutError):
         if result["bound"] not in (
             "execution_timeout",
@@ -986,7 +1000,9 @@ def _check_raster_request(runs: Any) -> None:
                 raise ValueError("invalid worker raster pixel")
 
 
-def _failure_wire(error: BaseException) -> dict[str, Any]:
+def _failure_wire(
+    error: BaseException, *, include_cause: bool = True
+) -> dict[str, Any]:
     """Encode one retained failure for the worker's validated wire protocol."""
     args: tuple[object, ...] = error.args
     if isinstance(error, exceptions.UnknownLanguageError):
@@ -998,6 +1014,8 @@ def _failure_wire(error: BaseException) -> dict[str, Any]:
         "error": type(error).__name__,
         "args": args,
         "notes": getattr(error, "__notes__", None),
+        "cause": encode_cause(error.__cause__) if include_cause else None,
+        "suppress_context": error.__suppress_context__,
         "execution": encode_result(observation) if observation is not None else None,
         **(
             {"bound": getattr(error, "bound", None)}
@@ -1007,6 +1025,13 @@ def _failure_wire(error: BaseException) -> dict[str, Any]:
         "output_limit": isinstance(error, exceptions.ExecutionCapError)
         and str(error) == _OUTPUT_LIMIT,
     }
+
+
+def _failure_text(error: BaseException) -> str:
+    try:
+        return worker_dumps(_failure_wire(error))
+    except MemoryError:
+        return worker_dumps(_failure_wire(error, include_cause=False))
 
 
 def _serve_request(*, catalog: Catalog | None = None) -> None:
@@ -1047,18 +1072,14 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
     reserve = bytearray(65_536)
 
     def send_failure(error: BaseException) -> None:
-        nonlocal reserve
+        reserve.clear()
         # ``run`` translates an in-process MemoryError; here it is the cap.
-        cause: BaseException | None = error
-        while cause is not None and not isinstance(cause, MemoryError):
-            cause = cause.__cause__
-        if cause is not None:
-            del reserve
+        if any(isinstance(cause, MemoryError) for cause in cause_chain(error)):
             # Without max_memory the machine ran out, not a caller's budget.
             capped = request["max_memory"] is not None
             if not capped and isinstance(error, exceptions.InterpreterLimitError):
                 with suppress(MemoryError):
-                    send(_failure_wire(error))
+                    print(_failure_text(error), flush=True)
                     return
             send(
                 {
@@ -1069,13 +1090,15 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                         else "isolated worker ran out of memory"
                     ],
                     "notes": None,
+                    "cause": None,
+                    "suppress_context": False,
                     "execution": None,
                     **({"bound": "max_memory"} if capped else {}),
                     "output_limit": False,
                 }
             )
             return
-        send(_failure_wire(error))
+        print(_failure_text(error), flush=True)
 
     try:
         if request["max_memory"] is not None:

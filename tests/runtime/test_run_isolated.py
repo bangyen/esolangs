@@ -352,6 +352,8 @@ def test_decode_missing_result_and_notes() -> None:
         "error": "ProgramError",
         "args": ["bad"],
         "notes": ["row 1"],
+        "cause": None,
+        "suppress_context": False,
         "execution": None,
         "output_limit": False,
     }
@@ -690,6 +692,8 @@ def test_unknown_error_reconstructs_suggestions() -> None:
         "args": ["brainfuk", [REFERENCE]],
         "execution": None,
         "notes": [],
+        "cause": None,
+        "suppress_context": False,
         "output_limit": False,
     }
     with pytest.raises(esolangs.UnknownLanguageError) as caught:

@@ -906,7 +906,7 @@ def _check_retained_settings(
         elif schema is not None:
             schema.validate(choices)
         elif choices:
-            raise ValueError(f"{owner} declares no PNG dialect settings")
+            raise ValueError(f"{display_label(owner)} declares no PNG dialect settings")
     if requested is not None:
         raise ValueError("conflicting PNG settings")
 
@@ -1044,7 +1044,8 @@ def _source_claims(
             )
             if claimed != owner:
                 raise ArgumentError(
-                    f"dialect settings belong to {owner}, not {claimed}"
+                    f"dialect settings belong to {display_label(owner)}, "
+                    f"not {display_label(claimed)}"
                 )
         language = owner
     elif catalog is not None and language is not None:

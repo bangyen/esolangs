@@ -531,7 +531,7 @@ def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None
 def test_template_with_an_unregistered_owner_raises_template_error() -> None:
     owner = esolangs.Language(first(parameterized=True))
     original = owner.catalog.languages[owner.name]
-    local = replace(original, name="Private template", id="private_template")
+    local = replace(original, name="Private\x1b[2J\ntemplate", id="private_template")
     scoped = esolangs.Catalog([local]).bind(local.name)
     template = scoped.generate("01")
     assert scoped.instantiate(template, [1]) == template.fill([1])
@@ -540,6 +540,20 @@ def test_template_with_an_unregistered_owner_raises_template_error() -> None:
     assert result.answer == "1"
     with pytest.raises(esolangs.TemplateError, match="belongs to"):
         owner.instantiate(template, [1])
+
+    document = scoped.to_json(template)
+    restored = scoped.from_json(document)
+    assert restored == template
+    assert scoped.evaluate(restored, [1]).answer == "1"
+    receiver = esolangs.Catalog([replace(local, backend=None)]).bind(local.name)
+    expected = r"Private\x1b[2J\ntemplate does not support input templates"
+    for transfer, prefix in (
+        (lambda: receiver.from_json(document), "invalid portable program: "),
+        (lambda: receiver.to_json(template), ""),
+    ):
+        with pytest.raises(esolangs.ProgramError) as failure:
+            transfer()
+        assert str(failure.value) == prefix + expected
 
 
 def test_program_artifact_evaluation_can_select_a_scoped_contract() -> None:

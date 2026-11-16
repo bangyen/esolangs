@@ -1,5 +1,6 @@
 """Unit tests for the Inject interpreter."""
 
+import re
 from functools import partial
 from pathlib import Path
 from typing import Any, ClassVar
@@ -231,6 +232,22 @@ class TestCommands:
         )
         with raises_message(HaltError, "invalid regex: ("):
             _run(program)
+        program = "data;\nx\ndata;\nsend data\ninject data=(/x\n"
+        api = Language("Inject")
+        limits = ExecutionLimits(max_steps=12)
+        for isolated in (False, True):
+            with pytest.raises(HaltError, match="invalid regex") as caught:
+                api.run(program, limits=limits, isolated=isolated)
+            cause = caught.value.__cause__
+            assert isinstance(cause, re.error)
+            assert (cause.pattern, cause.pos, cause.lineno, cause.colno) == (
+                "(",
+                0,
+                1,
+                1,
+            )
+            assert caught.value.__suppress_context__
+            assert caught.value.observation == ExecutionResult("x\n", 0, 0, 0, steps=4)
 
     def test_readto_overwrites_the_block(self) -> None:
         from .oracle_checks import check_raw_inject

@@ -451,7 +451,7 @@ def _load_text(
 def _require_template_capability(name: str, *, catalog: Catalog) -> None:
     """Accept explicit markers where the selected language embeds its inputs."""
     if not catalog.languages[name].parameterized:
-        raise ProgramError(f"{name} does not support input templates")
+        raise ProgramError(f"{display_label(name)} does not support input templates")
 
 
 def _load_template(

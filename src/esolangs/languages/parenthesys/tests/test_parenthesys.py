@@ -2,12 +2,14 @@
 
 import subprocess
 import sys
+from decimal import Overflow
 from functools import partial
 from itertools import product
 from textwrap import dedent
 
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.parenthesys.interpreter import _Acc, _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -255,6 +257,34 @@ def test_runtime_errors() -> None:
         _run("([ind|3|abc])")
     with pytest.raises(HaltError, match="needs an integer"):
         _run("([chr|65.5|])")
+    api = Language("Parenthesys")
+    exponent = "100000000000000000000"
+    source = f"(Z)([^|10|{exponent}])"
+    message = f"Parenthesys ValueError: 10 ^ {exponent}"
+    limits = ExecutionLimits(max_steps=60)
+    native = api.execute(source)
+    bounded = api.execute(source, limits=limits)
+    worker = api.execute(source, limits=limits, isolated=True)
+    for outcome in (native, bounded, worker):
+        assert type(outcome.error) is HaltError
+        assert str(outcome.error) == message
+        assert outcome.observation.output == "Z"
+    assert isinstance(native.error.__cause__, Overflow)
+    assert bounded.observation == worker.observation
+    assert api.run("(Z)([^|10|3])").output == "Z1000"
+
+    debugger = api.make_debugger(source)
+    assert bounded.observation.steps is not None
+    for _ in range(bounded.observation.steps):
+        debugger.step()
+    before = debugger.snapshot()
+    for _ in range(2):
+        with pytest.raises(HaltError) as retried:
+            debugger.step()
+        assert str(retried.value) == message
+        assert debugger.snapshot() == before
+        assert debugger.observation.output == "Z"
+
     policy = sys.get_int_max_str_digits()
     digits = "1" + "0" * 5000
     for builtin, suffix in (("chr", " is no character"), ("ind", " outside 'a'")):

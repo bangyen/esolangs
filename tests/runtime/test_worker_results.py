@@ -3,6 +3,7 @@
 import copy
 import json
 from dataclasses import replace
+from decimal import DivisionByZero
 from fractions import Fraction
 
 import pytest
@@ -342,7 +343,14 @@ def test_worker_refuses_corrupt_counters_and_retains_output(counter, failure):
     metadata = encode_result(ExecutionResult("prefix", 0, 0, 0))
     metadata["input_reads"] = counter
     message = (
-        {"error": "HaltError", "args": ["bad"], "notes": [], "output_limit": False}
+        {
+            "error": "HaltError",
+            "args": ["bad"],
+            "notes": [],
+            "cause": None,
+            "suppress_context": False,
+            "output_limit": False,
+        }
         if failure
         else {"result": "prefix"}
     )
@@ -375,6 +383,8 @@ def test_failed_worker_cannot_claim_completion():
             "error": "HaltError",
             "args": ["bad"],
             "notes": [],
+            "cause": None,
+            "suppress_context": False,
             "output_limit": False,
             "execution": metadata,
         }
@@ -544,7 +554,14 @@ def test_seeded_worker_result_matches_native(language):
 @pytest.mark.parametrize("failure", [False, True])
 def test_missing_worker_observations_are_rejected_with_the_prefix(failure):
     result = (
-        {"error": "HaltError", "args": ["bad"], "notes": [], "output_limit": False}
+        {
+            "error": "HaltError",
+            "args": ["bad"],
+            "notes": [],
+            "cause": None,
+            "suppress_context": False,
+            "output_limit": False,
+        }
         if failure
         else {"result": "prefix"}
     )
@@ -857,6 +874,8 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
         "args": ["stopped"],
         "execution": None,
         "notes": ["row 1"],
+        "cause": None,
+        "suppress_context": False,
         "output_limit": False,
         "bound": "max_steps",
     }
@@ -870,7 +889,15 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
             _decode(json.dumps({**payload, "notes": notes}), expired=False)
         assert getattr(caught.value, "__notes__", None) == notes
         assert hasattr(caught.value, "__notes__") == (notes is not None)
-    for key in ("execution", "notes", "output_limit", "bound", "obsolete"):
+    for key in (
+        "execution",
+        "notes",
+        "cause",
+        "suppress_context",
+        "output_limit",
+        "bound",
+        "obsolete",
+    ):
         with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
             _decode(
                 json.dumps(
@@ -886,6 +913,19 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
         ("args", "deadline"),
         ("notes", "row 1"),
         ("notes", [1]),
+        ("cause", ["ValueError"]),
+        (
+            "cause",
+            [
+                {
+                    "kind": "os.system",
+                    "args": [],
+                    "notes": None,
+                    "suppress_context": False,
+                }
+            ],
+        ),
+        ("suppress_context", 1),
         ("bound", "unknown"),
         ("output_limit", 1),
         ("output_limit", True),
@@ -938,3 +978,55 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
     ):
         with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
             _decode(json.dumps({**cap, **change}), expired=False)
+    _check_worker_explicit_causes()
+
+
+def _check_worker_explicit_causes() -> None:
+    from esolangs.runtime._isolated import _failure_wire
+    from esolangs.runtime._json import worker_dumps
+
+    causes = (
+        ValueError(1),
+        ValueError("x" * 70_000, 1 << 600),
+        ZeroDivisionError(),
+        OverflowError(34, "Result too large"),
+        UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+        UnicodeEncodeError("latin-1", "😀", 0, 1, "ordinal not in range"),
+        DivisionByZero([DivisionByZero]),
+    )
+    for inner in causes:
+        inner.add_note("inner note")
+        middle = ValueError("nested parse error")
+        middle.__cause__ = inner
+        outer = esolangs.HaltError("top-level error")
+        outer.__cause__ = middle
+        outer.__suppress_context__ = False
+        with pytest.raises(esolangs.HaltError, match="top-level error") as caught:
+            _decode(worker_dumps(_failure_wire(outer)), expired=False)
+        assert not caught.value.__suppress_context__
+        received = caught.value.__cause__
+        assert type(received) is ValueError
+        assert received.args == middle.args
+        assert received.__suppress_context__
+        restored = received.__cause__
+        assert type(restored) is type(inner)
+        assert restored.args == inner.args
+        assert restored.__notes__ == ["inner note"]
+
+    unsupported = esolangs.HaltError("unsupported inner error")
+    unsupported.__cause__ = RuntimeWarning("unsupported cause class")
+    with pytest.raises(esolangs.HaltError, match="unsupported inner error") as caught:
+        _decode(worker_dumps(_failure_wire(unsupported)), expired=False)
+    assert caught.value.__cause__ is None
+    assert caught.value.__suppress_context__
+
+    cycle = ValueError("cyclic cause")
+    cycle.__cause__ = cycle
+    outer = esolangs.HaltError("cyclic inner error")
+    outer.__cause__ = cycle
+    with pytest.raises(esolangs.HaltError, match="cyclic inner error") as caught:
+        _decode(worker_dumps(_failure_wire(outer)), expired=False)
+    restored = caught.value.__cause__
+    assert type(restored) is ValueError
+    assert restored.args == cycle.args
+    assert restored.__cause__ is None

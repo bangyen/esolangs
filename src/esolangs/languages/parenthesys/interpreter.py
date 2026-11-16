@@ -372,7 +372,7 @@ def _builtin(name: str, x: _Value, y: _Value) -> _Value:
     with localcontext(_EXACT):
         try:
             return _show(_arithmetic(name, a, b))
-        except (InvalidOperation, DivisionByZero) as exc:
+        except (InvalidOperation, DivisionByZero, Overflow) as exc:
             raise _value_error(f"{a} {name} {b}") from exc
 
 
