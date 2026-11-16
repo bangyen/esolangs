@@ -198,24 +198,45 @@ def test_breakpoint_predicate_is_checked_once_at_a_stop() -> None:
 def test_breakpoint_callback_cannot_start_a_command_after_deadline(monkeypatch) -> None:
     now = [0.0]
     monkeypatch.setattr("esolangs.runtime._controller.monotonic", lambda: now[0])
-    dbg = debugger_api.make_debugger(REFERENCE, "+.")
-    checks = []
 
-    def slow_false(vm):
-        checks.append(vm.ip)
-        now[0] += 2.0
-        return False
+    def check_case(check_halt, hit):
+        now[0] = 0.0
+        dbg = debugger_api.make_debugger(REFERENCE, "+.")
+        checks = []
+        followed = []
 
-    dbg.break_when(slow_false)
-    assert (
-        dbg.run(limits=esolangs.ExecutionLimits(execution_timeout=1))
-        == "execution_timeout"
-    )
-    assert checks == [0]
-    assert dbg.observation == esolangs.ExecutionResult("", 0, 0, 0, steps=0)
-    dbg.clear_breakpoints()
-    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "halted"
-    assert dbg.output == "\x01"
+        def slow(vm):
+            if vm.halted == check_halt:
+                checks.append(vm.ip)
+                now[0] += 2.0
+                return hit
+            return False
+
+        def later(vm):
+            if vm.halted == check_halt:
+                followed.append(vm.ip)
+            return False
+
+        dbg.break_when(slow)
+        dbg.break_when(later)
+        assert (
+            dbg.run(limits=esolangs.ExecutionLimits(execution_timeout=1))
+            == "execution_timeout"
+        )
+        assert len(checks) == 1
+        assert followed == []
+        assert dbg.observation.steps == (2 if check_halt else 0)
+        assert dbg.output == ("\x01" if check_halt else "")
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=2)) == (
+            "breakpoint" if hit else "halted"
+        )
+        dbg.clear_breakpoints()
+        assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "halted"
+        assert dbg.output == "\x01"
+
+    for check_halt in (False, True):
+        for hit in (False, True):
+            check_case(check_halt, hit)
 
 
 def test_manual_steps_rearm_a_breakpoint_after_leaving_it() -> None:
@@ -551,6 +572,20 @@ class TestABreakpointAtTheHaltIsReported:
             == "execution_timeout"
         )
         assert dbg.observation.completion is None
+        now = [0.0]
+        monkeypatch.setattr("esolangs.runtime._controller.monotonic", lambda: now[0])
+        dump = dbg.step
+
+        def slow_dump():
+            dump()
+            now[0] += 1.0
+
+        monkeypatch.setattr(dbg, "step", slow_dump)
+        assert (
+            dbg.run(limits=esolangs.ExecutionLimits(execution_timeout=0.5))
+            == "execution_timeout"
+        )
+        assert dbg.observation.completion is not None
         assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
         assert dbg.observation.completion is not None
 

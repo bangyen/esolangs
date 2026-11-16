@@ -395,6 +395,8 @@ def _invoke_worker(
     )
     seed = check_seed(seed)
     check_seed_for(name, seed, catalog=catalog)
+    if not catalog.languages[name].runtime.reads_stdin:
+        stdin = ""
     started = _ACQUISITION_STARTED.get()
     if started is None:
         started = monotonic()

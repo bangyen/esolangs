@@ -41,7 +41,7 @@ Decisions:
     * A number keeps its text: ``007`` prints ``007``.  Arithmetic gives
       plain decimals, no exponent or trailing zeros.  ``+ - * %`` and
       integer powers are exact; ``/`` and negative powers round to 28
-      significant digits.  ``%`` takes the divisor's sign.
+      significant digits with ties to even.  ``%`` takes the divisor's sign.
     * Each function has one local namespace, as the spec says, not one per
       call: a recursive call overwrites its caller's locals.  A body sees
       its own locals, then globals.
@@ -59,10 +59,12 @@ from decimal import (
     MAX_EMAX,
     MAX_PREC,
     MIN_EMIN,
+    ROUND_HALF_EVEN,
     Context,
     Decimal,
     DivisionByZero,
     InvalidOperation,
+    Overflow,
     localcontext,
 )
 from typing import Any, Literal
@@ -78,10 +80,25 @@ from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, Workspace
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 
+
+def _decimal_context(precision: int) -> Context:
+    """Set arithmetic policy independently of decimal.DefaultContext."""
+    return Context(
+        prec=precision,
+        rounding=ROUND_HALF_EVEN,
+        Emin=MIN_EMIN,
+        Emax=MAX_EMAX,
+        capitals=1,
+        clamp=0,
+        flags=[],
+        traps=[InvalidOperation, DivisionByZero, Overflow],
+    )
+
+
 _NUMBER = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
 _SYNTAX = frozenset("()[]{}<>|$\\")
-_EXACT = Context(prec=MAX_PREC, Emax=MAX_EMAX, Emin=MIN_EMIN)
-_ROUNDED = Context(prec=28, Emax=MAX_EMAX, Emin=MIN_EMIN)
+_EXACT = _decimal_context(MAX_PREC)
+_ROUNDED = _decimal_context(28)
 _BUILTINS = frozenset(("+", "-", "*", "/", "%", "^", "=", "!", "gt", "lt", "ind"))
 _BUILTINS |= {"len", "chr", "ord", "tpe"}
 #: The brackets and the most ``|`` each may hold.

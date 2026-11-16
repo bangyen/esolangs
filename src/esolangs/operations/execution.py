@@ -21,6 +21,7 @@ from esolangs.runtime._prepared import (
     PreparedProgram,
     _check_source_options,
     _prepare_checked_program,
+    _runtime_reads_stdin,
     prepare_program,
 )
 from esolangs.runtime._program import Program
@@ -70,7 +71,8 @@ def run(
             its current position and left open. Use ``Language.from_file``
             with ``normalize=True`` for native newline handling.
         stdin: Consumed verbatim in the language's input unit, without
-            Boolean validation; binary is decoded as UTF-8.  Build a
+            Boolean validation; binary is decoded as UTF-8. Installed hooks
+            leave stdin untouched when the runtime declares no stdin. Build a
             Boolean-generated program's stdin with :func:`encode_inputs`,
             which validates the bits.
         limits: :class:`ExecutionLimits`; None is unbounded.  Every budget but
@@ -205,6 +207,8 @@ def _execute_invocation(
             catalog=catalog,
             _loaded=_loaded,
         )
+    if not _runtime_reads_stdin(catalog.languages[name].runtime):
+        stdin = ""
     checked = (
         check_input(stdin)
         if preparation_timeout is None or prepared is None

@@ -56,6 +56,7 @@ from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._execution import check_seed_for, check_worker_runtime
 from esolangs.runtime._files import _source_directory
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
+from esolangs.runtime._prepared import _runtime_reads_stdin
 from esolangs.runtime._source import check_scale_for
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import display_label
@@ -186,7 +187,7 @@ def _run(rest: list[str]) -> None:
         if scale is None and program.scale is not None:
             check_scale_for(declaration.name, program.scale, catalog=catalog)
         stdin = ""
-        if declaration.runtime.reads_stdin:
+        if _runtime_reads_stdin(declaration.runtime):
             stdin = _read_stdin(
                 _remaining(acquisition, monotonic() - started, flag),
                 "; send the input this program needs, or close stdin",

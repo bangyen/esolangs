@@ -655,7 +655,7 @@ def _make_vm(
 ) -> VM:
     """Prepare a scoped VM with an invocation-owned input/output factory."""
     from esolangs.registry._catalog import get_catalog
-    from esolangs.runtime._prepared import _check_source_options
+    from esolangs.runtime._prepared import _check_source_options, _runtime_reads_stdin
     from esolangs.runtime._source import anchor_program_source
 
     program = anchor_program_source(program)
@@ -670,7 +670,9 @@ def _make_vm(
     return _make_checked_vm(
         name,
         program,
-        stdin=check_input(stdin),
+        stdin=check_input(stdin)
+        if _runtime_reads_stdin(catalog.languages[name].runtime)
+        else "",
         settings=settings,
         scale=scale,
         seed=seed,
@@ -733,7 +735,8 @@ def make_vm(
 ) -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
-    ``stdin`` is consumed verbatim using the language's input unit. The name
+    ``stdin`` is consumed verbatim using the language's input unit when the
+    runtime can read stdin. The name
     resolves case-insensitively via
     :func:`~esolangs.registry.resolve`. Text and raster use the same step
     interface. TemplateArtifact must be filled first;

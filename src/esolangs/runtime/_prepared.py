@@ -75,6 +75,11 @@ def _installed_plan_hooks() -> dict[_RuntimeHooks, RuntimeSpec]:
     }
 
 
+def _runtime_reads_stdin(runtime: RuntimeSpec) -> bool:
+    """Keep stdin available to custom hooks that may change input behavior."""
+    return runtime.reads_stdin or _plan_hooks(runtime) not in _installed_plan_hooks()
+
+
 def _scoped_dialect_defaults(
     runtime: RuntimeSpec, module: ModuleType
 ) -> dict[str, Scalar]:

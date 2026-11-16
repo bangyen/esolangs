@@ -356,14 +356,15 @@ def _load_png(
     arity = positive_metadata_field(value, "input_arity")
     scale = positive_metadata_field(value, "scale")
     data = base64.b64decode(value["source"], validate=True)
-    metadata, png_settings, png_scale, png_arity = read_png_metadata(
+    _, png_settings, png_scale, png_arity = read_png_metadata(
         name, data, catalog=catalog, checked_settings=settings
     )
-    if "settings" in metadata and png_settings != settings:
+    # Native writers use null for settings and scale they do not supply.
+    if png_settings is not None and png_settings != settings:
         raise ValueError("conflicting PNG and document settings")
     if scale is None:
         scale = png_scale
-    elif "scale" in metadata and png_scale != scale:
+    elif png_scale is not None and png_scale != scale:
         raise ValueError("conflicting PNG and document scale")
     if arity is None:
         arity = png_arity

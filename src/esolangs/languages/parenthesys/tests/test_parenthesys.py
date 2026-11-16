@@ -1,8 +1,10 @@
 """Tests for the Parenthesys interpreter."""
 
+import subprocess
 import sys
 from functools import partial
 from itertools import product
+from textwrap import dedent
 
 import pytest
 
@@ -143,6 +145,78 @@ def test_numbers_keep_their_text_and_results_are_plain() -> None:
     )
 
     check_workspace_parenthesys()
+    _check_decimal_default_independence()
+
+
+def _check_decimal_default_independence() -> None:
+    child = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            dedent(
+                """
+                import decimal
+
+                defaults = decimal.DefaultContext
+                defaults.rounding = decimal.ROUND_UP
+                defaults.capitals = 0
+                defaults.clamp = 1
+                defaults.flags[decimal.Rounded] = True
+                defaults.traps[decimal.Inexact] = True
+                defaults.traps[decimal.InvalidOperation] = False
+                caller = decimal.Context(prec=3, rounding=decimal.ROUND_DOWN)
+                decimal.setcontext(caller)
+
+                from esolangs import ExecutionLimits, HaltError, Language
+                from esolangs.languages.parenthesys.interpreter import _EXACT, _ROUNDED
+
+                for context in (_EXACT, _ROUNDED):
+                    assert context.rounding == decimal.ROUND_HALF_EVEN
+                    assert (context.capitals, context.clamp) == (1, 0)
+                    assert not any(context.flags.values())
+                    traps = {signal for signal, trap in context.traps.items() if trap}
+                    assert traps == {
+                        decimal.InvalidOperation,
+                        decimal.DivisionByZero,
+                        decimal.Overflow,
+                    }
+
+                api = Language("Parenthesys")
+                source = "([+|0.1|0.2])(Z)([/|1|3])([^|3|-1])"
+                expected = "0.3Z" + ("0." + "3" * 28) * 2
+                limits = ExecutionLimits(max_steps=60)
+                plan = api.prepare(source)
+                native = api.run(source)
+                local = api.run(source, limits=limits)
+                assert local.output == native.output == expected
+                assert plan.run(limits=limits) == local
+                assert api.run(source, limits=limits, isolated=True) == local
+                debug = plan.make_debugger()
+                assert debug.run(limits=limits) == "halted"
+                assert debug.observation == local
+
+                fault = "(Z)([/|1|0])"
+                rejected = api.execute(fault, limits=limits)
+                isolated = api.execute(fault, limits=limits, isolated=True)
+                assert type(rejected.error) is type(isolated.error) is HaltError
+                assert str(rejected.error) == str(isolated.error)
+                assert rejected.observation.output == "Z"
+                assert rejected.observation == isolated.observation
+
+                assert decimal.getcontext() is caller
+                assert (caller.prec, caller.rounding) == (3, decimal.ROUND_DOWN)
+                assert defaults.rounding == decimal.ROUND_UP
+                assert defaults.flags[decimal.Rounded]
+                assert defaults.traps[decimal.Inexact]
+                """
+            ),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    assert child.returncode == 0, child.stderr
 
 
 def test_functions_have_one_namespace_and_see_globals() -> None:

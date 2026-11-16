@@ -8,6 +8,7 @@ import zlib
 from array import array
 from dataclasses import replace
 from importlib.resources import files
+from io import BytesIO
 from pathlib import Path
 from random import Random
 
@@ -699,24 +700,30 @@ def test_portable_raster_saves_settings_beyond_native_metadata_budget(
     assert api.from_json(api.to_json(no_scale)) == no_scale
 
 
-def test_portable_raster_applies_settings_absent_from_png(tmp_path: Path) -> None:
+def test_portable_raster_applies_claims_not_set_in_png(tmp_path: Path) -> None:
     api = esolangs.Language(RASTER_LANGUAGES[0])
-    pixels = Raster((((1, 2, 3),),)).upscaled(2)
-    record = esolangs.ProgramArtifact(
-        pixels, api.name, settings=api.settings(), scale=2
-    )
+    record = api.generate("01", settings=api.settings(), scale=2)
     document = json.loads(api.to_json(record))
-    metadata = {"version": 1, "language": api.name, "scale": 2}
-    bare = pixels.to_png()
-    native = png.write_metadata(bare, metadata)
+    document["scale"] = 2
+    metadata = {"version": 1, "language": api.name, "input_arity": 1}
+    bare = record.source.to_png()
     path = tmp_path / "source.png"
-    path.write_bytes(native)
-    assert api.from_file(path) == replace(record, settings=None)
-
-    document["source"] = base64.b64encode(native).decode("ascii")
-    assert api.from_json(json.dumps(document)) == record
-    explicit_none = png.write_metadata(bare, {**metadata, "settings": None})
-    for previous in (native, explicit_none):
+    for claims in ({"scale": 2}, {"scale": None, "settings": None}):
+        previous = png.write_metadata(bare, metadata | claims)
+        path.write_bytes(previous)
+        assert api.from_file(path) == replace(
+            record, settings=None, scale=claims["scale"]
+        )
+        prepared = api.prepare(BytesIO(previous), settings=record.settings, scale=2)
+        document["source"] = base64.b64encode(previous).decode("ascii")
+        restored = api.from_json(json.dumps(document))
+        assert restored == prepared.artifact == record
+        for bit in (0, 1):
+            assert (
+                prepared.evaluate([bit]).answer
+                == api.evaluate(restored, [bit]).answer
+                == str(bit)
+            )
         tagged = png.attach_source_metadata(previous, api.name, record.settings, 2)
         path.write_bytes(tagged)
         assert api.from_file(path) == record
@@ -724,11 +731,6 @@ def test_portable_raster_applies_settings_absent_from_png(tmp_path: Path) -> Non
             png.attach_source_metadata(tagged, api.name, record.settings, None)
             is tagged
         )
-    document["source"] = base64.b64encode(explicit_none).decode("ascii")
-    with pytest.raises(
-        esolangs.ProgramError, match="conflicting PNG and document settings"
-    ):
-        api.from_json(json.dumps(document))
 
 
 def test_portable_scale_validates_its_type_and_embedded_agreement() -> None:
@@ -1036,6 +1038,7 @@ def test_portable_png_checks_record_metadata_before_pillow(monkeypatch) -> None:
     monkeypatch.setattr(png, "Image", None)
     for changes, message in (
         ({"input_arity": False}, "input_arity must be a positive integer"),
+        ({"input_arity": None}, "input_arity must be a positive integer"),
         ({"scale": 0}, "scale must be a positive integer"),
         ({"scale": 3}, "conflicting PNG and document scale"),
         ({"settings": None}, "conflicting PNG and document settings"),

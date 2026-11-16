@@ -4,12 +4,14 @@ import io
 import os
 import select
 from contextvars import ContextVar
+from dataclasses import replace
 from threading import Event, Thread
 from time import monotonic
 
 import pytest
 
 import esolangs
+from esolangs.registry import LANGUAGES
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import complete_vm
 from tests.support.reference import REFERENCE
@@ -61,6 +63,54 @@ def test_invocation_uses_the_first_managed_input_reader(prepared, route) -> None
     assert output == "A"
     ordered = ["source", "lookup"] if prepared else ["lookup", "source"]
     assert events == [*ordered, "read"]
+    _check_no_stdin_invocation(prepared, route)
+
+
+def _check_no_stdin_invocation(prepared, route) -> None:
+    class Untouched:
+        @property
+        def read(self):
+            pytest.fail("a no-stdin runtime looked up the input reader")
+
+    declaration = next(
+        lang
+        for lang in LANGUAGES.values()
+        if not lang.runtime.reads_stdin
+        and lang.parameterized
+        and lang.contract.answer_mode == "output"
+    )
+    api = esolangs.Language(declaration.name)
+    program = api.instantiate(api.generate("01"), [1])
+    target = api.prepare(program) if prepared else api
+    arguments = () if prepared else (program,)
+    stdin = Untouched()
+    if route == "vm":
+        output = complete_vm(target.make_vm(*arguments, stdin=stdin))
+    elif route == "debugger":
+        debugger = target.make_debugger(*arguments, stdin=stdin)
+        assert debugger.run() == "halted"
+        output = debugger.output
+    else:
+        limits = esolangs.ExecutionLimits(
+            max_steps=100 if route == "bounded" else None,
+            preparation_timeout=1 if prepared else None,
+        )
+        result = target.run(
+            *arguments, stdin=stdin, limits=limits, isolated=route == "isolated"
+        )
+        output = result.output
+        assert result.input_position == result.input_reads == 0
+    assert api.read_answer(output) == "1"
+
+    if not prepared and route == "native":
+        reference = LANGUAGES[REFERENCE]
+        without_stdin = replace(
+            reference, runtime=replace(reference.runtime, reads_stdin=False)
+        )
+        scoped = esolangs.Catalog([without_stdin]).bind(REFERENCE)
+        assert scoped.run("+.", stdin=stdin).output == "\x01"
+        with pytest.raises(esolangs.ArgumentError, match="runtime declared"):
+            scoped.run("+.", stdin=stdin, isolated=True)
 
 
 @pytest.mark.parametrize("route", ["native", "bounded", "isolated", "vm", "debugger"])

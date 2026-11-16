@@ -27,7 +27,9 @@ from esolangs.vm import (
 )
 
 StopReason = Literal["halted", "breakpoint", "max_steps", "execution_timeout"]
-type _StopRequest = Literal["active", "halted", "breakpoint", "replaced"] | None
+type _StopRequest = (
+    Literal["active", "halted", "breakpoint", "replaced", "execution_timeout"] | None
+)
 
 _DRIVER_FIELDS = (
     "halted",
@@ -36,6 +38,10 @@ _DRIVER_FIELDS = (
     "dumps_on_the_post_halt_step",
 )
 _MISSING = object()
+
+
+def _expired(deadline: float | None) -> bool:
+    return deadline is not None and monotonic() >= deadline
 
 
 @dataclass(slots=True)
@@ -70,9 +76,9 @@ class ExecutionController:
     def _record(self) -> None:
         """Observe a completed step; debugger subclasses record watches."""
 
-    def _stop_requested(self) -> _StopRequest:
-        """Return a breakpoint or the VM state after checking callbacks."""
-        return None
+    def _stop_requested(self, deadline: float | None) -> _StopRequest:
+        """Check the budget before accepting a stop or taking another step."""
+        return "execution_timeout" if _expired(deadline) else None
 
     @property
     def halted(self) -> bool:
@@ -288,8 +294,9 @@ class ExecutionController:
         -- another ``step()`` takes the dump, which is outside ``max_steps``.
         Bounds return rather than raise (``None`` unbounded); a fault still
         raises, with ``partial_output`` set.
-        The deadline is checked with the breakpoints, so no main thread is
-        needed.  Drives the controller so observer hooks see every successful step.
+        The deadline is checked between steps and breakpoint callbacks,
+        including at halt and after a dump. A callback or command already
+        started can finish and its effects remain observable.
 
         Raises:
             ArgumentError: ``limits`` is not ExecutionLimits, or sets a bound
@@ -320,43 +327,32 @@ class ExecutionController:
         step = self._run_stepper()
         while True:
             while not self.halted:
-                if deadline is not None and monotonic() >= deadline:
-                    return "execution_timeout"
-                requested = self._stop_requested()
-                if requested is not None:
-                    if requested == "breakpoint":
-                        return requested
-                    if requested == "replaced":
-                        continue
-                    if requested == "halted":
-                        break
-                if deadline is not None and monotonic() >= deadline:
-                    return "execution_timeout"
+                requested = self._stop_requested(deadline)
+                if requested == "breakpoint" or requested == "execution_timeout":
+                    return requested
+                if requested == "replaced":
+                    continue
+                if requested == "halted":
+                    break
                 if max_steps is not None and self._steps - start >= max_steps:
                     return "max_steps"
                 step()
 
             _raise_halt_fault(self)
             # The final command and the dump can each trigger a breakpoint.
-            requested = self._stop_requested()
-            if requested == "breakpoint":
+            requested = self._stop_requested(deadline)
+            if requested == "breakpoint" or requested == "execution_timeout":
                 return requested
             if requested in ("active", "replaced"):
-                if (
-                    requested == "replaced"
-                    and deadline is not None
-                    and monotonic() >= deadline
-                ):
-                    return "execution_timeout"
                 continue
             if self.dumps_on_the_post_halt_step and not self._has_dumped():
-                if deadline is not None and monotonic() >= deadline:
-                    return "execution_timeout"
                 receiver = self.vm
                 tail = _receiver_tail(receiver)
+                if _expired(deadline):
+                    return "execution_timeout"
                 step()
-                requested = self._stop_requested()
-                if requested == "breakpoint":
+                requested = self._stop_requested(deadline)
+                if requested == "breakpoint" or requested == "execution_timeout":
                     return requested
                 if requested in ("active", "replaced") or not _receiver_matches(
                     self, receiver, tail
@@ -364,7 +360,7 @@ class ExecutionController:
                     # A new receiver gets its own command and dump boundaries.
                     _raise_halt_fault(self)
                     continue
-            return "halted"
+            return "execution_timeout" if _expired(deadline) else "halted"
 
     def _repeat_execution(
         self, vm: _DelegatingVM, max_steps: int

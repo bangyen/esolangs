@@ -17,7 +17,12 @@ from esolangs.registry._catalog import Catalog
 from esolangs.runtime._capabilities import IpShape
 from esolangs.runtime._controller import ExecutionController as _ExecutionController
 from esolangs.runtime._controller import StopReason as StopReason
-from esolangs.runtime._controller import _receiver_matches, _receiver_tail, _StopRequest
+from esolangs.runtime._controller import (
+    _expired,
+    _receiver_matches,
+    _receiver_tail,
+    _StopRequest,
+)
 from esolangs.runtime._drive import _check_snapshot_hash, _SnapshotUnavailableError
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._source import ProgramSource
@@ -319,13 +324,15 @@ class Debugger(_ExecutionController):
             for slot, stack_history in self._stack_history.items():
                 stack_history.append(_value_at(stack, slot, from_top=True))
 
-    def _stop_requested(self) -> _StopRequest:
+    def _stop_requested(self, deadline: float | None) -> _StopRequest:
         """Check breakpoints and detect any halt reached in their callbacks.
 
         Suppressed until its condition goes false again, per condition.
         Invisible for position and value breakpoints; the whole story for
         :meth:`break_on_output`, whose ``text in vm.output`` is true forever.
         """
+        if _expired(deadline):
+            return "execution_timeout"
         breakpoints = self._breakpoints
         if not breakpoints:
             return None
@@ -341,7 +348,11 @@ class Debugger(_ExecutionController):
         for index, predicate in enumerate(breakpoints[:]):
             if self._breakpoints is not breakpoints:
                 break
+            if _expired(deadline):
+                return "execution_timeout"
             hit = bool(predicate(wrapped))
+            if _expired(deadline):
+                return "execution_timeout"
             if not _receiver_matches(self, wrapped, tail):
                 # Earlier hits describe the old VM. Only this predicate can
                 # explicitly stop at its replacement.
@@ -353,6 +364,8 @@ class Debugger(_ExecutionController):
         halted = self.halted
         if halted:
             _raise_halt_fault(self)
+        if _expired(deadline):
+            return "execution_timeout"
         if replacement_hit is not None:
             return "breakpoint" if replacement_hit else "replaced"
         if not _receiver_matches(self, wrapped, tail):
