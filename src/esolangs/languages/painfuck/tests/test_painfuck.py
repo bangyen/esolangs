@@ -145,6 +145,42 @@ def test_read_number_rejects_garbage() -> None:
     with pytest.raises(HaltError):
         run_program("ip", "12x\n")
 
+    api = Language("Painfuck")
+    limits = ExecutionLimits(max_steps=5)
+    for commands, stdin, position, reads in (
+        ("poioe", "oops 7", 4, 1),
+        ("poboe", "", 0, 0),
+        ("poi", "oops 7", 4, 1),
+    ):
+        plan = api.prepare(_encode(commands))
+        expected = ExecutionResult("2", position, reads, 0, steps=2)
+        for isolated in (False, True):
+            outcome = plan.execute(stdin=stdin, limits=limits, isolated=isolated)
+            assert type(outcome.error) is HaltError
+            assert outcome.observation == expected
+        machine = plan.make_debugger(stdin=stdin)
+        with pytest.raises(HaltError) as before:
+            machine.run(limits=limits)
+        assert before.value.observation == expected
+        saved = machine.snapshot()
+        for invoke in (
+            machine.step,
+            lambda live=machine: live.run(limits=limits),
+            lambda live=machine: run_until_halt_or_cycle(live, limit=5),
+            lambda live=machine: run_until_halt_or_all_branches_cycle(live, limit=5),
+        ):
+            with pytest.raises(HaltError) as after:
+                invoke()
+            assert after.value is not before.value
+            assert after.value.args == before.value.args
+            assert str(after.value) == str(before.value)
+            assert before.value.observation == machine.observation == expected
+            assert machine.ip == 3
+            assert machine.snapshot() == saved
+
+    valid = api.run(_encode("poioe"), stdin="7", limits=limits)
+    assert (valid.output, valid.input_reads, valid.steps) == ("27", 1, 5)
+
 
 class TestStepMachine:
     def test_step_tracks_tape_and_cursor(self) -> None:

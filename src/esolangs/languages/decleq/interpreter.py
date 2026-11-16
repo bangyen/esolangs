@@ -124,6 +124,7 @@ class _Machine:
         """Parse ``code`` into memory and reset the pointer."""
         self.io = io
         self._writer = _BufferedOutput()
+        self._input_byte: int | None = None
         self.state: _State = (0, tuple(_parse(code)) if isinstance(code, str) else code)
 
     # Views on the state.
@@ -165,16 +166,25 @@ class _Machine:
         return _WORKSPACE_MODEL.capture(
             memory=self.state[1],
             instruction=instruction,
-            input_cursor=self.io.progress(),
+            input_cursor=self._input_cursor(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # Plus the input cursor: a repeat ignoring consumed input is not a cycle.
         pc, memory = self.state
-        boundary = (memory, pc, self.io.progress())
+        boundary = (memory, pc, self._input_cursor())
         accepted = self._writer.accepted
         return (*boundary, accepted) if accepted else boundary
+
+    def _input_cursor(self) -> int | WorkspaceVariant:
+        cursor = self.io.progress()
+        byte = self._input_byte
+        return (
+            cursor
+            if byte is None
+            else WorkspaceVariant("pending_input", (cursor, byte))
+        )
 
     def step(self) -> None:
         """Execute one instruction, advancing the pointer.
@@ -191,8 +201,13 @@ class _Machine:
                 self.io, output, first=partial(self.io.print_char, output)
             )
         elif a == _IN:
-            byte = self.io.input_char()
+            # Retain the received byte until its store succeeds.
+            if self._input_byte is None:
+                self._input_byte = self.io.input_char()
+            byte = self._input_byte
         self.state = _advance(self.state, byte)
+        if byte is not None:
+            self._input_byte = None
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

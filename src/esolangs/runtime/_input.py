@@ -72,13 +72,8 @@ def _preflight_standard_reader(stream: IO[str] | IO[bytes], reader: object) -> N
         return
 
 
-def check_input(source: InputSource) -> CheckedInput:
-    """Validate literal stdin or bind a reader without consuming its stream."""
-    if _has_backing_type(source, str):
-        return str.__str__(source)
-    if _has_backing_type(source, bytes):
-        return _decode_input(source)
-    stream = cast("IO[str] | IO[bytes]", source)
+def _bind_input_reader(stream: IO[str] | IO[bytes]) -> _BoundReader | None:
+    """Bind a stream's callable reader without consuming input."""
     try:
         reader = getattr(stream, "read", None)
         _preflight_standard_reader(stream, reader)
@@ -87,15 +82,29 @@ def check_input(source: InputSource) -> CheckedInput:
         raise
     except (OSError, TypeError, ValueError) as exc:
         raise input_read_error(exc) from exc
-    if not callable(reader):
-        raise with_hint(
-            ArgumentError(
-                "stdin must be a string, bytes, or a readable stream, got "
-                f"{type(source).__name__}"
-            ),
-            ("to read a file, pass its open stream or its UTF-8 text contents"),
-        )
-    return _BoundReader(stream, reader)
+    return _BoundReader(stream, reader) if callable(reader) else None
+
+
+def _unreadable_input(source: object) -> ArgumentError:
+    return with_hint(
+        ArgumentError(
+            "stdin must be a string, bytes, or a readable stream, got "
+            f"{type(source).__name__}"
+        ),
+        ("to read a file, pass its open stream or its UTF-8 text contents"),
+    )
+
+
+def check_input(source: InputSource) -> CheckedInput:
+    """Validate literal stdin or bind a reader without consuming its stream."""
+    if _has_backing_type(source, str):
+        return str.__str__(source)
+    if _has_backing_type(source, bytes):
+        return _decode_input(source)
+    checked = _bind_input_reader(cast("IO[str] | IO[bytes]", source))
+    if checked is None:
+        raise _unreadable_input(source)
+    return checked
 
 
 def input_read_error(detail: Exception | str) -> ArgumentError:

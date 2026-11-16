@@ -89,6 +89,30 @@ def test_managed_stdin_uses_library_input_rules(
             assert expected == "A"
             assert capsys.readouterr() == (expected, "")
 
+    class BufferedAdapter:
+        def __init__(self) -> None:
+            self.text = io.StringIO("Q")
+            self.raw = io.BytesIO(b"R")
+            self.lookups = 0
+
+        @property
+        def read(self):
+            self.lookups += 1
+            return self.text.read
+
+        @property
+        def buffer(self):
+            pytest.fail("a managed reader's buffer was probed")
+
+    cli_input = BufferedAdapter()
+    api_input = BufferedAdapter()
+    monkeypatch.setattr(sys, "stdin", cli_input)
+    main()
+    result = esolangs.run(REFERENCE, program, stdin=api_input)
+    assert capsys.readouterr() == (result.output, "") == ("Q", "")
+    for stream in (cli_input, api_input):
+        assert (stream.lookups, stream.text.tell(), stream.raw.tell()) == (1, 1, 0)
+
     with monkeypatch.context() as patch:
         patch.setattr(sys, "argv", ["esolangs", "read-answer", REFERENCE])
         for adapter in (Reader("1"), FailedProbe("1")):

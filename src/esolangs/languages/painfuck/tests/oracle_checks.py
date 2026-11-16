@@ -53,10 +53,11 @@ class _Model:
         self.repeat = 1
         self.cursor = self.reads = self.draws = 0
         self.output = ""
+        self.fault = None
 
     @property
     def halted(self):
-        return self.pc >= len(self.commands)
+        return self.fault is None and self.pc >= len(self.commands)
 
     def row(self):
         return (
@@ -64,7 +65,7 @@ class _Model:
                 tuple(self.tape),
                 tuple(self.loops),
                 self.pointer,
-                self.pc,
+                _instruction(self.pc, self.fault),
                 self.repeat,
                 self.origin,
                 self.reads,
@@ -90,6 +91,10 @@ class _Model:
             token = stdin[start : self.cursor]
             self.reads += 1
             if re.fullmatch(r"[+-]?[0-9]+", token) is None:
+                self.fault = (
+                    ("the interpreter halted on an operation with no defined result",),
+                    ("hint: supply a decimal integer for i input",),
+                )
                 return "halt"
             value = int(token)
         if command == "j":
@@ -100,6 +105,10 @@ class _Model:
     def loop(self, command):
         if command == "b":
             if not self.loops:
+                self.fault = (
+                    ("unmatched 'b': the loop stack is empty",),
+                    ("hint: execute a matching loop opener before b",),
+                )
                 return "halt"
             entry = self.loops.pop()
             if self.tape[self.pointer]:
@@ -198,12 +207,18 @@ def _model(commands, stdin, coin):
     return None, trace
 
 
+def _instruction(pc, fault):
+    return (
+        pc if fault is None else workspace.WorkspaceVariant("halt_fault", (pc, *fault))
+    )
+
+
 def _view(machine):
     return (
         machine.tape,
         machine.loop,
         machine.ptr,
-        machine.ind,
+        _instruction(machine.ind, machine._fault),
         machine.rep,
         machine.origin,
         machine._input_reads,

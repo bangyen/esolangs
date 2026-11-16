@@ -13,15 +13,21 @@ _WORKSPACE = workspace.workspace_model("decleq-v1", "memory instruction input_cu
 
 
 def _agrees(factory, oracle, code, stdin="", **options):
+    def parts(row):
+        (pc,) = row.cursor
+        cursor = row.consumed
+        if row.error in {"halt", "limit"} and row.memory[pc] == -1:
+            cursor = workspace.WorkspaceVariant(
+                "pending_input", (cursor, ord(stdin[cursor - 1]))
+            )
+        return row.memory, pc, cursor
+
     return agrees_memory(
         factory,
         oracle,
         code,
         stdin,
-        workspace=(
-            _WORKSPACE,
-            lambda row: (row.memory, row.cursor[0], row.consumed),
-        ),
+        workspace=(_WORKSPACE, parts),
         **options,
     )
 

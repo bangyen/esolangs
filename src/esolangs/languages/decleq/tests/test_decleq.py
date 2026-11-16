@@ -205,6 +205,39 @@ class TestNegativeWriteIndex:
         with pytest.raises(HaltError, match="past the left end"):
             _written((), -1, 9)
 
+        api = esolangs.Language("Decleq")
+        plan = api.prepare("-2 2 65 -1 -7 0")
+        limits = esolangs.ExecutionLimits(max_steps=2)
+        expected = esolangs.ExecutionResult("A", 1, 1, 0, steps=1)
+        for isolated in (False, True):
+            outcome = plan.execute(stdin="BC", limits=limits, isolated=isolated)
+            assert type(outcome.error) is HaltError
+            assert outcome.observation == expected
+
+        debug = plan.make_debugger(stdin="BC")
+        with pytest.raises(HaltError, match="past the left end") as initial:
+            debug.run(limits=limits)
+        saved = debug.snapshot()
+        for _ in range(2):
+            with pytest.raises(HaltError, match="past the left end") as retry:
+                debug.step()
+            assert retry.value is not initial.value
+            assert retry.value.observation == initial.value.observation == expected
+            assert debug.ip == 3
+            assert debug.snapshot() == saved
+
+        eof = plan.make_debugger()
+        with pytest.raises(esolangs.InputExhaustedError):
+            eof.run(limits=limits)
+        with pytest.raises(esolangs.InputExhaustedError) as exhausted:
+            eof.step()
+        assert exhausted.value.observation == esolangs.ExecutionResult(
+            "A", 0, 0, 2, steps=1
+        )
+        valid = api.run("-2 2 65 -1 -1 0", stdin="BC", limits=limits)
+        assert valid.output == "A"
+        assert valid.input_reads == 1
+
 
 def test_a_huge_address_is_refused_before_allocating() -> None:
     """A store grown to whatever the program named thrashed the machine."""

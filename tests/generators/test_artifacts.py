@@ -1,5 +1,7 @@
 """Immutable artifacts retain bindings, execution and persistence metadata."""
 
+import io
+import os
 import pickle
 from dataclasses import FrozenInstanceError, dataclass, replace
 from pathlib import Path
@@ -432,3 +434,67 @@ def test_retained_settings_accept_lexical_owner_spelling(language: str) -> None:
         assert api.catalog.resolve(foreign) == api.name
         with pytest.raises(esolangs.ArgumentError, match="settings belong to"):
             replace(generated, language=foreign, settings=settings)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX symlink traversal")
+def test_stream_export_retains_relative_symlink_traversal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    actual = tmp_path / "actual"
+    child = actual / "child"
+    child.mkdir(parents=True)
+    link = tmp_path / "link"
+    link.symlink_to(child, target_is_directory=True)
+    monkeypatch.chdir(tmp_path)
+
+    api = esolangs.Language(REFERENCE)
+    api.to_file(io.BytesIO(b"+."), "link/../program")
+    assert not (tmp_path / "program").exists()
+    assert (actual / "program").read_bytes() == b"+."
+    assert set(actual.iterdir()) == {child, actual / "program"}
+    assert api.run(actual / "program").output == "\x01"
+    assert api.from_file("link/../program").source == "+."
+
+    alternate = tmp_path / "alternate"
+    other_child = alternate / "child"
+    other_child.mkdir(parents=True)
+    referent = tmp_path / "referent"
+    referent.write_bytes(b"++.")
+    refusal = esolangs.ProgramError("source refused")
+
+    class RedirectedSource:
+        def __init__(self, *, refuse: bool) -> None:
+            self.refuse = refuse
+
+        def read(self) -> bytes:
+            link.unlink()
+            link.symlink_to(other_child, target_is_directory=True)
+            if self.refuse:
+                raise refusal
+            return b"+."
+
+    for spelling, original, other in (
+        ("link/program", child, other_child),
+        ("link/../program", actual, alternate),
+    ):
+        destination = original / "program"
+        destination.unlink(missing_ok=True)
+        destination.symlink_to(referent)
+        decoy = other / "program"
+        decoy.write_bytes(b"+++.")
+        entries = set(original.iterdir())
+        with pytest.raises(esolangs.ProgramError) as caught:
+            api.to_file(RedirectedSource(refuse=True), spelling)
+        assert caught.value is refusal
+        assert set(original.iterdir()) == entries
+        assert destination.is_symlink()
+        link.unlink()
+        link.symlink_to(child, target_is_directory=True)
+        api.to_file(RedirectedSource(refuse=False), spelling)
+        assert set(original.iterdir()) == entries
+        assert not destination.is_symlink()
+        assert api.run(destination).output == "\x01"
+        assert decoy.read_bytes() == b"+++."
+        assert referent.read_bytes() == b"++."
+        link.unlink()
+        link.symlink_to(child, target_is_directory=True)

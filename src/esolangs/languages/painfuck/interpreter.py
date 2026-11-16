@@ -645,6 +645,7 @@ class _Machine:
         self._random_draws = 0
         self._rng = rng
         self._pending_output: _PendingOutput | None = None
+        self._fault: tuple[tuple[object, ...], tuple[str, ...]] | None = None
         self._writer = _BufferedOutput()
         self.prog = _translate(code) if isinstance(code, str) else code.program
         self.n = len(self.prog)
@@ -657,8 +658,8 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the cursor has reached the end of the code."""
-        return self.ind >= self.n
+        """Whether execution finished without a terminal fault."""
+        return self._fault is None and self.ind >= self.n
 
     # The VM's language-shaped view: Translated tape + cursor; ip the cursor, memory
     # the tape.
@@ -676,15 +677,16 @@ class _Machine:
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
         pending = self._output_boundary()
+        instruction: int | WorkspaceVariant = self.ind
+        if pending is not None:
+            instruction = WorkspaceVariant("pending_output", (self.ind, *pending))
+        elif self._fault is not None:
+            instruction = WorkspaceVariant("halt_fault", (self.ind, *self._fault))
         return _WORKSPACE_MODEL.capture(
             tape=self.tape,
             loops=self.loop,
             pointer=self.ptr,
-            instruction=(
-                self.ind
-                if pending is None
-                else WorkspaceVariant("pending_output", (self.ind, *pending))
-            ),
+            instruction=instruction,
             repeat=self.rep,
             origin=self.origin,
             input_cursor=self.io.progress(),
@@ -717,11 +719,15 @@ class _Machine:
             self._input_reads,
             self._random_draws,
         )
+        if self._fault is not None:
+            return (*boundary, self._fault)
         pending = self._output_boundary()
         return boundary if pending is None else (*boundary, pending)
 
     def branching_snapshot(self) -> _BranchState:
         """Return the current control state or the target of an unflushed command."""
+        if self._fault is not None:
+            raise self._fresh_fault(*self._fault)
         pending = self._pending_output
         return self._state if pending is None else (pending[0],)
 
@@ -780,13 +786,22 @@ class _Machine:
         """Write a transition's result back onto the machine's fields."""
         self.tape, self.loop, self.ptr, self.ind, self.rep, self.origin = state
 
+    @staticmethod
+    def _fresh_fault(args: tuple[object, ...], notes: tuple[str, ...]) -> HaltError:
+        error = HaltError(*args)
+        for note in notes:
+            error.add_note(note)
+        return error
+
     def step(self) -> None:
         """Execute one command, advancing the cursor.
 
         A step can print or read more than once; the core collects writes and
         asks for each input, and this re-runs it with the inputs so far.
         """
-        if self.halted:
+        if self._fault is not None:
+            raise self._fresh_fault(*self._fault)
+        if self.ind >= self.n:
             return
         if self._pending_output is not None:
             self._finish_output(*self._pending_output)
@@ -815,6 +830,10 @@ class _Machine:
                 continue
             except _Halted as halt:
                 self._restore(halt.state)
+                self._fault = (
+                    halt.error.args,
+                    tuple(getattr(halt.error, "__notes__", ())),
+                )
                 raise halt.error from None
             break
         if effects:

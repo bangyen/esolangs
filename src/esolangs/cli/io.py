@@ -61,7 +61,12 @@ from esolangs.runtime._files import (
     read_snapshot,
     stream_read_deadline,
 )
-from esolangs.runtime._input import input_read_error, read_input
+from esolangs.runtime._input import (
+    _bind_input_reader,
+    _unreadable_input,
+    input_read_error,
+    read_input,
+)
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource, _open_program_path
 from esolangs.runtime._validate import _has_backing_type
@@ -495,13 +500,19 @@ def _custom_text_reader(stdin: TextIOWrapper) -> bool:
 def _snapshot_stdin(stdin: TextIO, deadline: float | None) -> str:
     _time_remaining(deadline)
     with stream_read_deadline(deadline):
-        if _has_backing_type(stdin, TextIOWrapper) and _custom_text_reader(stdin):
-            # Bypassing this reader can lose text it already decoded.
-            return _managed_stdin_text(read_input(stdin), stdin)
+        if _has_backing_type(stdin, TextIOWrapper):
+            if _custom_text_reader(stdin):
+                # Bypassing this reader can lose text it already decoded.
+                return _managed_stdin_text(read_input(stdin), stdin)
+        else:
+            checked = _bind_input_reader(stdin)
+            _time_remaining(deadline)
+            if checked is not None:
+                return _managed_stdin_text(read_input(checked), stdin)
         stream = cast("BinaryIO | None", getattr(stdin, "buffer", None))
         _time_remaining(deadline)
         if stream is None:
-            return _managed_stdin_text(read_input(stdin), stdin)
+            raise _unreadable_input(stdin)
         if _has_backing_type(stdin, TextIOWrapper) and hasattr(stream, "__dict__"):
             return _read_wrapped_stdin(stdin, stream, deadline)
         return decode_utf8(_read_stdin_bytes(stream, deadline))

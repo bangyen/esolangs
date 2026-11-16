@@ -369,17 +369,18 @@ def reserve_staged(
     if "\0" in target.spelling:
         raise ValueError("embedded null character in path")
     destination = target.destination()
-    parent = os.path.dirname(destination)
+    parent, filename = os.path.split(destination)
     try:
         parent_mode = os.stat(parent).st_mode
     except FileNotFoundError as error:
         raise FileNotFoundError("its directory does not exist") from error
     if not stat.S_ISDIR(parent_mode):
         raise NotADirectoryError(ENOTDIR, os.strerror(ENOTDIR), parent)
+    # Keep staging and replacement in the directory selected before acquisition.
+    # Resolve only the parent, leaving final symlinks as replaceable entries.
+    parent = os.path.realpath(parent, strict=True)
+    destination = os.path.join(parent, filename)
     _destination_mode(destination)
-    if os.name == "posix" and ".." in parent.split(os.sep):
-        # tempfile normalizes its result. Resolve symlinks before their '..'.
-        parent = os.path.realpath(parent, strict=True)
     with ExitStack() as cleanup:
         try:
             temporary = cleanup.enter_context(TemporaryDirectory(dir=parent))

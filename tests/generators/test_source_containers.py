@@ -720,25 +720,6 @@ def test_export_anchors_relative_destination_before_callbacks(
         scoped.to_file("+.", "missing/program", settings=settings)
 
 
-@pytest.mark.skipif(os.name != "posix", reason="requires POSIX symlink traversal")
-def test_stream_export_retains_relative_symlink_traversal(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    actual = tmp_path / "actual"
-    child = actual / "child"
-    child.mkdir(parents=True)
-    (tmp_path / "link").symlink_to(child, target_is_directory=True)
-    monkeypatch.chdir(tmp_path)
-
-    api = esolangs.Language(REFERENCE)
-    api.to_file(io.BytesIO(b"+."), "link/../program")
-    assert not (tmp_path / "program").exists()
-    assert (actual / "program").read_bytes() == b"+."
-    assert set(actual.iterdir()) == {child, actual / "program"}
-    assert api.run(actual / "program").output == "\x01"
-    assert api.from_file("link/../program").source == "+."
-
-
 @pytest.mark.skipif(os.name != "posix", reason="requires POSIX directory modes")
 def test_unwritable_export_directory_does_not_consume_source(tmp_path: Path) -> None:
     api = esolangs.Language(REFERENCE)

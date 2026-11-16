@@ -753,7 +753,6 @@ def instantiate(
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    settings = effective_settings(name, template, settings, catalog=catalog)
     width = check_width(width)
     body = (
         template.source
@@ -779,6 +778,7 @@ def instantiate(
     if resolve_origin(template.language, catalog=catalog) != name:
         raise TemplateError(f"template belongs to {template.language}, not {name}")
     bits = _check_template_bits(name, bits, len(template.bindings.setters))
+    settings = effective_settings(name, template, settings, catalog=catalog)
     if truth_table is not None:
         truth_table = check_table_text(truth_table)
         if not _is_template_for(

@@ -380,6 +380,29 @@ def test_evaluation_requires_unfilled_template_for_embedded_inputs() -> None:
         with pytest.raises(esolangs.ArgumentError, match="pass the unfilled template"):
             target.evaluate([0])
 
+    declaration = api.catalog.languages[api.name]
+    schema = esolangs.DialectSchema(api.name, {"mode": (0, 1)}, {"mode": 0})
+    refusal = esolangs.ArgumentError("retained dialect refused")
+    calls = []
+
+    def reject(**choices):
+        calls.append(choices)
+        raise refusal
+
+    runtime = replace(declaration.runtime, dialect=reject, dialect_schema=schema)
+    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    tagged = replace(template, settings=esolangs.DialectSettings(schema, mode=0))
+    for operation in (scoped.instantiate, scoped.evaluate):
+        for row, message in (([2], "each be 0 or 1"), ([0, 1], "1 input")):
+            with pytest.raises(esolangs.ArgumentError, match=message):
+                operation(tagged, row)
+            assert calls == []
+        with pytest.raises(esolangs.ArgumentError) as caught:
+            operation(tagged, [1])
+        assert caught.value is refusal
+        assert calls == [{"mode": 0}]
+        calls.clear()
+
 
 @pytest.mark.medium
 @pytest.mark.parametrize("streaming", [False, True])
