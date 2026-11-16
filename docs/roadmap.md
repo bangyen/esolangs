@@ -67,19 +67,23 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki candidate screening:** the 2026-11-12 refresh has 2,555 language
-  pages outside `Implemented` and `Unimplemented`; a screen of 803 left nine
-  candidates. Bifunge, BracketOnly, Help., Onecode (Fergusq), NB and
-  Nybbleist were admitted after checking public implementations and running
-  their generated programs.
-  - ALEFL and GolferDream were deferred on specification gaps. Flump was
-    screened out on source scaling. See the
+- **Wiki candidate screening:** the 2026-11-16 pass used the 2026-11-12
+  snapshot and 24 live additions or revisions. Of 629 flagged pages,
+  417 passed triage. Manual review focused on the highest-ranked specs.
+  - *Shortlist:* [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841).
+    A subset probe ran 3,610 cases against a loop-less O(T) decision tree
+    laid out on the byte grid. Three backlinks and no public implementation
+    surfaced in the initial check. Confirm source-row and EOF rules and audit
+    novelty against Bifunge before admission.
+  - *Parked in this pass:* Beetle (byte queue order and framing),
+    Irregular Expression (input and result semantics), and Godencode
+    (input framing and linear source construction).
+  - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
+    Onecode (Fergusq), NB and Nybbleist. ALEFL and GolferDream were deferred
+    on spec gaps. Flump failed source scaling. See
     [screening decisions](limitations.md#rejected-and-deferred-candidates).
-  - *Unscreened:* 277 parked pages, 629 flagged for review and 835 removed
-    by a keyword prefilter (under 800 characters, a joke or stub template,
-    no output or branch vocabulary, or a new page linking an implementation).
-  - *Admission:* missing links do not establish first-implementation
-    eligibility: check public implementations, fixed core semantics and an
-    executed loop-less O(T) Boolean construction under
-    [curation](limitations.md#curation). Record candidates and rejection
-    reasons.
+  - The prior pass parked 277 pages and prefiltered 835 by length,
+    templates, vocabulary or implementation links.
+  - *Admission:* check public implementations, fixed core semantics and
+    an executed loop-less O(T) Boolean construction under
+    [curation](limitations.md#curation).
