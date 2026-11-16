@@ -4,10 +4,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from esolangs._dialect import Scalar
+from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
 from esolangs.generation.template import TemplateLayout
 from esolangs.raster import Raster
 from esolangs.runtime._program import Program
+from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.memory import repr_value
 
 type GeneratedProgram = Program | TemplateLayout
@@ -75,15 +77,19 @@ class BalanceRequest:
     options: Options = Options()
 
     def text_source(self) -> str:
-        """Return text for a declared text balancer."""
-        if isinstance(self.source, TemplateLayout):
-            return self.source.source
-        if not isinstance(self.source, str):
-            raise ProgramError("text layout requires text source")
-        return self.source
+        """Return working text for a declared text balancer, including gzip."""
+        source = self.source
+        if _has_backing_type(source, TemplateLayout):
+            return source.source
+        if _has_backing_type(source, CompressedText):
+            return "".join(_freeze_compressed(source).chunks())
+        if _has_backing_type(source, str):
+            return source
+        raise ProgramError("text layout requires text source")
 
     def raster_source(self) -> Raster:
         """Return pixels for a declared raster balancer."""
-        if not isinstance(self.source, Raster):
+        source = self.source
+        if not _has_backing_type(source, Raster):
             raise ProgramError("raster layout requires raster source")
-        return self.source
+        return source

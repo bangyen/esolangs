@@ -1041,8 +1041,8 @@ def test_cli_completes_short_raw_adapter_writes(
             with cli_io._complete_stderr_writes():
                 cli_io._diagnostic("optional notice\n", ready_only=True)
                 assert bytes(raw.data) == b"op"
-                cli_io._diagnostic("required notice\n")
-            assert bytes(raw.data) == b"oprequired notice\n"
+                cli_io._diagnostic("required\tnotice\r\u009b\nnext line\n")
+            assert bytes(raw.data) == b"oprequired\tnotice\\r\\x9b\nnext line\n"
 
 
 def test_output_escapes_unencodable_text_without_a_binary_buffer(monkeypatch) -> None:

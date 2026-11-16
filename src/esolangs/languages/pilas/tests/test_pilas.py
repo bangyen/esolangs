@@ -1,5 +1,8 @@
 """Tests for the Pilas interpreter."""
 
+import sys
+from decimal import Decimal
+
 import pytest
 
 from esolangs.languages.pilas.interpreter import run
@@ -15,6 +18,47 @@ def test_arithmetic_pops_a_then_b() -> None:
     check_raw_pilas()
     # 9 6 - is b - a = 3, printed as '3' after adding 48.
     assert _out("96-6:+:+:++.\n0{0}") == "3"
+
+    _check_out_of_range_character()
+
+
+def _check_out_of_range_character() -> None:
+    import esolangs
+
+    api = esolangs.Language("Pilas")
+    previous = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        for doublings in (0, 18, 2200):
+            line = "99.9" + ":+" * doublings + "."
+            source = line + "\n" + " " * len(line)
+            prepared = api.prepare(source)
+            bound = 2 * len(line)
+            bounded = esolangs.ExecutionLimits(max_steps=bound)
+            outcomes = (
+                (api.execute(source), False),
+                (api.execute(source, limits=bounded), True),
+                (prepared.execute(), False),
+                (prepared.execute(limits=bounded, isolated=True), True),
+            )
+            for outcome, counts_steps in outcomes:
+                if not doublings:
+                    result = outcome.unwrap()
+                    assert result.output == "\t\t"
+                    assert result.steps == (bound - 1 if counts_steps else None)
+                    continue
+                value = Decimal(9 << doublings)
+                assert outcome.status == "fault"
+                assert type(outcome.error) is esolangs.HaltError
+                assert outcome.error.args == (
+                    f"'.' cannot print {value} as a character",
+                )
+                assert outcome.error.partial_output == "\t"
+                assert outcome.observation == esolangs.ExecutionResult(
+                    "\t", 0, 0, 0, steps=bound - 2 if counts_steps else None
+                )
+    finally:
+        sys.set_int_max_str_digits(previous)
 
 
 def test_lines_alternate_and_tilde_crosses() -> None:

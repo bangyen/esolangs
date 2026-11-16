@@ -1,6 +1,7 @@
 """Unit tests for the Inject interpreter."""
 
 from functools import partial
+from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
@@ -17,6 +18,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import run_program
+from tests.support.cli_support import run_cli
 from tests.support.raises import raises_message
 
 HELLO_WORLD = """send data
@@ -349,11 +351,30 @@ class TestCycle(CycleContract):
     )
 
 
-def test_a_malformed_replacement_is_a_halt() -> None:
+def test_a_malformed_replacement_is_a_halt(tmp_path: Path) -> None:
     """``\\2`` names a missing group; re's error becomes HaltError."""
     program = "inject data=a/\\2\nsend data\nskip\ndata;\na\ndata;"
     with pytest.raises(HaltError, match="invalid replacement"):
         run(program, ScriptedIO(""))
+
+    language = Language("Inject")
+    path = tmp_path / "program"
+    path.write_text(program.replace("\\2", "\x1b[2J\\2"))
+    outcome = language.execute(path)
+    assert isinstance(outcome.error, HaltError)
+    assert str(outcome.error) == "invalid replacement: \x1b[2J\\2"
+    failed = run_cli("run", language.name, str(path))
+    assert (failed.returncode, failed.stdout, failed.stderr) == (
+        1,
+        "",
+        r"invalid replacement: \x1b[2J\2" + "\n",
+    )
+
+    path.write_text(program.replace("\\2", "\x1b[2Jy"))
+    passed = run_cli("run", language.name, str(path))
+    output = language.run(path).output
+    assert (passed.returncode, passed.stdout, passed.stderr) == (0, output, "")
+    assert output == "\x1b[2Jy\n"
 
 
 def test_a_rewrite_cannot_erase_a_nested_block_s_delimiters() -> None:

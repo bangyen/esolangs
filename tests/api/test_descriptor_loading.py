@@ -11,6 +11,7 @@ import pytest
 import esolangs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import TemplateLayout
+from esolangs.generation.wrap import wrap_chars
 from esolangs.registry import LANGUAGES, _functions
 from esolangs.registry._backend import TemplateSpec
 from esolangs.registry._certification import load as load_certification
@@ -198,6 +199,43 @@ def test_template_hooks_validate_bindings_and_rows() -> None:
     )
     with pytest.raises(esolangs.ArgumentError, match="template hook refused request"):
         bound.generate("01")
+    _check_template_hooks_require_real_layouts(declaration, backend, emit)
+
+
+def _check_template_hooks_require_real_layouts(declaration, backend, emit) -> None:
+    class ClaimedLayout:
+        @property
+        def __class__(self) -> type:
+            return TemplateLayout
+
+    for hook, options in (("entrypoint", {}), ("balance", {"balance": True})):
+        valid = dataclasses.replace(backend, **{hook: emit})
+        bound = esolangs.Catalog(
+            [dataclasses.replace(declaration, backend=valid)]
+        ).bind(REFERENCE)
+        template = bound.generate("01", **options)
+        assert bound.run(bound.instantiate(template, [0])).output == "\x01"
+
+        invalid = dataclasses.replace(backend, **{hook: lambda _: ClaimedLayout()})
+        bound = esolangs.Catalog(
+            [dataclasses.replace(declaration, backend=invalid)]
+        ).bind(REFERENCE)
+        with pytest.raises(esolangs.ProgramError, match="did not return slots"):
+            bound.generate("01", **options)
+
+    for layout, diagnostic in (
+        (TemplateLayout(0, ((0, 1),)), "text source"),
+        (TemplateLayout("$.", (0,)), "pairs of offsets"),
+    ):
+        invalid = dataclasses.replace(
+            backend, wrap=wrap_chars, entrypoint=lambda _, layout=layout: layout
+        )
+        bound = esolangs.Catalog(
+            [dataclasses.replace(declaration, backend=invalid)]
+        ).bind(REFERENCE)
+        for width in (None, 1):
+            with pytest.raises(esolangs.TemplateError, match=diagnostic):
+                bound.generate("01", width=width)
 
 
 def test_scoped_dialect_keeps_declared_hook_errors() -> None:

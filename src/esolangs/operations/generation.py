@@ -12,6 +12,7 @@ from esolangs.artifacts import (
     ProgramArtifact,
     TemplateArtifact,
     TemplateBindings,
+    _freeze_span,
 )
 from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import (
@@ -286,12 +287,13 @@ def _generate(
     generated = (
         call_backend(fn, request) if probes is None else probes.generate(fn, request)
     )
-    if isinstance(generated, TemplateLayout):
+    if _has_backing_type(generated, TemplateLayout):
         if backend.template is None or lang.runtime.source_kind is SourceKind.RASTER:
             raise ProgramError(
                 f"{resolved}'s generator returned an undeclared template"
             )
         if width is not None and not laid_out and backend.wrap is not None:
+            _check_reflow_layout(generated)
             if not _can_wrap_template(generated, backend.wrap):
                 raise ProgramError(f"{resolved} requires a slot-aware wrapper")
             if isinstance(backend.wrap, TokenWrapper):
@@ -314,7 +316,7 @@ def _generate(
             generation_width=request.width,
         )
     if lang.runtime.source_kind is SourceKind.RASTER:
-        if not isinstance(generated, Raster):
+        if not _has_backing_type(generated, Raster):
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
         return ProgramArtifact(
             generated,
@@ -334,7 +336,7 @@ def _generate(
             settings=settings,
             input_arity=inputs,
         )
-    if not isinstance(generated, str):
+    if not _has_backing_type(generated, str):
         raise ProgramError(f"{resolved}'s generator did not return text")
     program = (
         generated
@@ -365,7 +367,11 @@ def _structured_template(
     generation_width: int | None = None,
 ) -> TemplateArtifact:
     """Preserve the backend's slot positions alongside its rendered source."""
+    if not _has_backing_type(layout, TemplateLayout):
+        raise ProgramError(f"{name}'s template wrapper did not return slots")
     text = layout.source
+    if not _has_backing_type(text, str):
+        raise TemplateError("template needs text source and TemplateBindings")
     # A backend-supplied str subclass may carry data its own setter reads.
     if type(text) is not str:
         probes = None
@@ -388,6 +394,25 @@ def _structured_template(
         spans=layout.spans,
         generation_width=generation_width,
     )
+
+
+def _check_reflow_layout(layout: TemplateLayout) -> None:
+    """Validate raw offsets before a wrapper uses them to slice source."""
+    if not _has_backing_type(layout.source, str):
+        raise TemplateError("template needs text source and TemplateBindings")
+    if not _has_backing_type(layout.spans, tuple):
+        raise TemplateError("template needs one span per input")
+    position, size = 0, str.__len__(layout.source)
+    try:
+        for span in tuple.__iter__(layout.spans):
+            start, end = _freeze_span(span)
+            if type(start) is not int or type(end) is not int:
+                raise ValueError("template spans must be pairs of offsets")
+            if not position <= start <= end <= size:
+                raise ValueError(f"invalid template span {span!r}")
+            position = end
+    except ValueError as error:
+        raise TemplateError(str(error)) from error
 
 
 def _generate_balanced(
@@ -421,9 +446,23 @@ def _generate_balanced(
                 balancer,
                 BalanceRequest(truth_table, source, choices),
             )
-            if not _has_backing_type(result, CompressedText):
+            if _has_backing_type(result, CompressedText):
+                balanced = _freeze_compressed(result)._inherit_limits(source.limits)  # noqa: SLF001
+            elif _has_backing_type(result, str) and not lang.runtime.compressed_source:
+                balanced_text = str.__str__(result)
+                if len(balanced_text) == len(source):
+                    offset = 0
+                    for chunk in source.chunks():
+                        if not balanced_text.startswith(chunk, offset):
+                            break
+                        offset += len(chunk)
+                    else:
+                        return default
+                balanced = CompressedText.from_chunks(
+                    (balanced_text,), limits=source.limits
+                )
+            else:
                 raise ProgramError(f"{name}'s balancer did not return CompressedText")
-            balanced = _freeze_compressed(result)._inherit_limits(source.limits)  # noqa: SLF001
         return replace(default, source=balanced)
     if isinstance(source, Raster):
         assert isinstance(default, ProgramArtifact)
@@ -433,7 +472,7 @@ def _generate_balanced(
             balancer,
             BalanceRequest(truth_table, source, choices),
         )
-        if not isinstance(result, Raster):
+        if not _has_backing_type(result, Raster):
             raise ProgramError(f"{name}'s balancer did not return a Raster")
         return replace(default, source=result)
     if balancer is not None:
@@ -444,7 +483,9 @@ def _generate_balanced(
             balancer,
             BalanceRequest(truth_table, balance_source, choices),
         )
-        if isinstance(text, TemplateLayout) and isinstance(default, TemplateArtifact):
+        if _has_backing_type(text, TemplateLayout) and isinstance(
+            default, TemplateArtifact
+        ):
             return _structured_template(
                 text,
                 lang.id,
@@ -456,7 +497,7 @@ def _generate_balanced(
             )
         if isinstance(default, TemplateArtifact):
             raise ProgramError(f"{name}'s template balancer did not return slots")
-        if not isinstance(text, str):
+        if not _has_backing_type(text, str):
             raise ProgramError(f"{name}'s balancer did not return text")
         return ProgramArtifact(text, name, settings=settings, input_arity=inputs)
     if isinstance(default, TemplateArtifact):
@@ -516,6 +557,8 @@ def _balance_template(
         )
     else:
         balanced = balance_character_slots(layout)
+    if not _has_backing_type(balanced, TemplateLayout):
+        raise ProgramError(f"{name}'s template wrapper did not return slots")
     return replace(template, source=balanced.source, spans=balanced.spans)
 
 

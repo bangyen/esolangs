@@ -10,6 +10,8 @@ import pytest
 import esolangs
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.generation.examples import BooleanExample
+from esolangs.generation.requests import BalanceRequest
+from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import (
     _cell_width,
     _span,
@@ -445,11 +447,63 @@ def test_wrap_tokens_refuses_a_pattern_that_does_not_tile() -> None:
     assert wrap_tokens("aXbXc", 2, "[abc]") == "aXbXc"
 
 
-def test_wrap_space_delimited_never_splits_a_token() -> None:
+def test_wrap_space_delimited_never_splits_a_token(tmp_path: Path) -> None:
     """A token longer than the width gets its own line, unbroken."""
     wrapped = wrap_space_delimited("1 22 333333 4", 3)
     assert "333333" in wrapped.split("\n")
     assert wrapped.replace("\n", " ") == "1 22 333333 4"
+    _check_text_balancer_accepts_compressed_source(tmp_path)
+
+
+def _check_text_balancer_accepts_compressed_source(tmp_path: Path) -> None:
+    declaration = next(
+        language
+        for language in LANGUAGES.values()
+        if (backend := language.backend) is not None
+        and backend.wrap is wrap_space_delimited
+        and backend.wrap_multiline
+        and backend.balance is not None
+        and not language.runtime.compressed_source
+        and not language.parameterized
+    )
+    stock = esolangs.Language(declaration.name)
+    backend = declaration.backend
+    original = stock.generate(TABLE).source
+    balanced = stock.generate(TABLE, balance=True).source
+    assert isinstance(original, str)
+    assert isinstance(balanced, str)
+    assert balanced != original
+    data = gzip.compress(original.encode(), mtime=1)
+    limits = esolangs.TextLimits(
+        plain_chars=0, generation_chars=len(original), gzip_bytes=len(data) + 20
+    )
+    source = esolangs.CompressedText(data, limits=limits)
+
+    def scoped(balancer):
+        local = replace(backend, entrypoint=lambda _: source, balance=balancer)
+        return esolangs.Catalog([replace(declaration, backend=local)]).bind(stock.name)
+
+    packed = scoped(backend.balance)
+    wrapped = packed.generate(TABLE, balance=True)
+    restored = packed.from_json(packed.to_json(wrapped))
+    assert restored == wrapped
+    assert isinstance(restored.source, esolangs.CompressedText)
+    assert restored.source.limits == limits
+    assert "".join(restored.source.chunks()) == balanced
+    path = tmp_path / "balanced.gz"
+    packed.to_file(restored, path, gzip=True)
+    assert path.read_bytes() == restored.source.to_gzip()
+    for result in (restored, packed.from_file(path)):
+        assert (
+            "".join(packed.evaluate(result, [i >> 1, i & 1]).answer for i in range(4))
+            == TABLE
+        )
+
+    same = scoped(lambda request: request.text_source()).generate(TABLE, balance=True)
+    assert same.source is source
+    longer = scoped(lambda request: request.text_source() + "\n")
+    with pytest.raises(esolangs.GeneratorCapError, match="work cap"):
+        longer.generate(TABLE, balance=True)
 
 
 def test_wrap_grid_right_aligns_into_columns() -> None:
@@ -566,3 +620,27 @@ def test_wrappers_refuse_input_they_do_not_recognize() -> None:
     # An empty program has no tokens to pack, in either packer.
     assert wrap_space_delimited("", 40) == ""
     assert wrap_grid("", 40) == ""
+
+    class ReportedSource:
+        def __init__(self, kind):
+            self.kind = kind
+
+        @property
+        def __class__(self):
+            return self.kind
+
+    for kind in (str, TemplateLayout, esolangs.CompressedText):
+        with pytest.raises(esolangs.ProgramError, match="text layout requires text"):
+            BalanceRequest(TABLE, ReportedSource(kind)).text_source()
+    with pytest.raises(esolangs.ProgramError, match="raster layout requires raster"):
+        BalanceRequest(TABLE, ReportedSource(esolangs.Raster)).raster_source()
+
+    class TextRaster(esolangs.Raster):
+        @property
+        def __class__(self):
+            return str
+
+    raster = TextRaster((((1, 2, 3),),))
+    assert BalanceRequest(TABLE, raster).raster_source() is raster
+    with pytest.raises(esolangs.ProgramError, match="text layout requires text"):
+        BalanceRequest(TABLE, raster).text_source()

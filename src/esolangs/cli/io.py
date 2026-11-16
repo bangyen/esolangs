@@ -94,6 +94,12 @@ _READ_DEADLINE = 10.0
 #: A constant so a test can shorten it rather than wait.
 _UNBOUNDED_NOTICE_AFTER = 10.0
 
+# Keep tabs and newlines for layout. Escape the other C0 and C1 controls.
+_DIAGNOSTIC_ESCAPES = {
+    point: display_label(chr(point))
+    for point in (*range(9), *range(11, 32), *range(127, 160))
+}
+
 
 class _DelayedNotice:
     """Print one line if the wrapped wait is still going after a while.
@@ -730,7 +736,9 @@ def _diagnostic(message: str, *, ready_only: bool = False) -> None:
 
     token = _READY_ONLY.set(ready_only)
     try:
-        _write_all(write, message.replace("\0", r"\x00"), before_write=check_ready)
+        _write_all(
+            write, message.translate(_DIAGNOSTIC_ESCAPES), before_write=check_ready
+        )
         check_ready()
         stream.flush()
     except KeyboardInterrupt:

@@ -53,6 +53,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
 
 #: Commands that pop, with how many values each needs.
@@ -206,7 +207,7 @@ class _Machine:
             )
         if char == "." and not 0 <= stks[me][-1] <= 0x10FFFF:
             raise HaltError(
-                f"'.' cannot print {stks[me][-1]} as a character",
+                f"'.' cannot print {format_integer(stks[me][-1])} as a character",
                 hint="keep printed values between 0 and 0x10FFFF",
             )
         byte = self.io.input_char() if char == "," else None
