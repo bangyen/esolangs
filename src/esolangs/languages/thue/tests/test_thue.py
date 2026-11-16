@@ -18,6 +18,7 @@ from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, Seeded
 from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
+from tests.support.cli_support import call_both
 from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_rejected_with_hint
 
@@ -161,15 +162,35 @@ def test_the_separator_may_carry_whitespace() -> None:
     assert run_program(run, "  ::=~y\n::=\na  b") == "y"
 
 
-def test_an_empty_output_string_prints_a_newline() -> None:
+def test_an_empty_output_string_prints_a_newline(tmp_path, capsys) -> None:
     """Vogel's convention, which the wiki carries: ``~`` alone is a newline."""
     assert run_program(run, "a::=~\n::=\na") == "\n"
+
+    api = esolangs.Language("Thue")
+    path = tmp_path / "rules"
+    for separator in ("\n", "\r\n"):
+        text = separator.join(("a::=~", "::=", "a"))
+        path.write_bytes(text.encode())
+        record = api.from_json(api.to_json(path))
+        assert record.source == text
+        assert api.run(path).output == "\n"
+        assert api.prepare(record).run().output == "\n"
+        debugger = api.make_debugger(text)
+        assert debugger.run() == "halted"
+        assert debugger.observation.output == "\n"
+        assert api.run(text, isolated=True).output == "\n"
+        assert call_both(["run", api.name, str(path)], capsys) == ("\n", "")
 
 
 def test_a_multi_line_state_survives_parsing() -> None:
     rules, state = _parse("a::=b\n::=\nfirst\nsecond")
     assert rules == (("a", "b"),)
     assert state == "first\nsecond"
+    source = "second\r::=~raw\rtext\r\r\n::=\r\nfirst\r\nsecond\r"
+    rules, state = _parse(source)
+    assert rules == (("second\r", "~raw\rtext\r"),)
+    assert state == "first\r\nsecond\r"
+    assert run_program(run, source) == "raw\rtext\r"
 
 
 @pytest.mark.parametrize(

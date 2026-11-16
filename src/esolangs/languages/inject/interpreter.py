@@ -103,7 +103,11 @@ class _Image(NamedTuple):
 
 def _parse(code: str | list[str]) -> _Image:
     """Retain the initial text and validated label spans."""
-    lines = tuple(code.split("\n")) if isinstance(code, str) else tuple(code)
+    lines = (
+        tuple(code.replace("\r\n", "\n").split("\n"))
+        if isinstance(code, str)
+        else tuple(code)
+    )
     return _Image(lines, MappingProxyType(_spans(lines)))
 
 

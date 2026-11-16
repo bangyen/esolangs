@@ -104,7 +104,10 @@ def _parse(code: str) -> _Program:
             ("insert a line containing only ::= between the rules and starting state"),
         )
     rules = []
-    for line in filter(str.strip, lines[:cut]):
+    # Each rule is LF-terminated. A preceding CR belongs to that separator;
+    # none of the initial state's characters are delimiters here.
+    rule_lines = (line.removesuffix("\r") for line in lines[:cut])
+    for line in filter(str.strip, rule_lines):
         head, found, tail = line.partition(_SEPARATOR)
         if not found:
             raise syntax_error(

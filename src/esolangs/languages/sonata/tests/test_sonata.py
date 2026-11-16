@@ -7,6 +7,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.sonata.interpreter import _Machine, run
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm
+from tests.support.cli_support import call_both
 
 
 def _step(code: str, text: str) -> str:
@@ -103,7 +104,27 @@ def test_one_trailing_newline_leaves_the_input(monkeypatch) -> None:
         assert attempts == [answer, answer]
 
 
-def test_a_later_arrow_is_literal() -> None:
+def test_a_later_arrow_is_literal(tmp_path, capsys) -> None:
     io = ScriptedIO("a")
     run("a->b->c", io)
     assert io.getvalue() == "b->c"
+
+    api = Language("Sonata")
+    path = tmp_path / "rules"
+    for separator in ("\n", "\r\n"):
+        text = separator.join(("a->b->c", "b->other"))
+        path.write_bytes(text.encode())
+        record = api.from_json(api.to_json(path))
+        assert record.source == text
+        assert api.run(path, stdin="a").output == "b->c"
+        assert api.prepare(record).run(stdin="a").output == "b->c"
+        assert complete_vm(api.make_vm(text, stdin="a")) == "b->c"
+        assert api.run(text, stdin="a", isolated=True).output == "b->c"
+        output = call_both(["run", api.name, str(path)], capsys, stdin="a")
+        assert output == ("b->c", "")
+    for text, expected in (
+        ("a->b->\rc\nb->other", "b->\rc"),
+        ("a->b->c\r\r\nb->other", "b->c\r"),
+        ("a->b->c\r", "b->c\r"),
+    ):
+        assert api.run(text, stdin="a").output == expected

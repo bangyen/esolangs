@@ -94,7 +94,7 @@ _WORKSPACE_MODEL = WorkspaceModel(
 
 
 def _prepare_grid(code: str) -> tuple[str, ...]:
-    lines = code.split("\n")
+    lines = code.replace("\r\n", "\n").split("\n")
     width = max(len(line) for line in lines)
     for line in lines:
         for c in line:

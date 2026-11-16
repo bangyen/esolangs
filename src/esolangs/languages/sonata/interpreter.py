@@ -125,7 +125,8 @@ def _rule(line: str) -> _Rule:
 
 
 def _parse(code: str) -> tuple[_Rule, ...]:
-    return tuple(_rule(line) for line in code.split("\n") if line.strip())
+    lines = code.replace("\r\n", "\n").split("\n")
+    return tuple(_rule(line) for line in lines if line.strip())
 
 
 def _advance(rules: tuple[_Rule, ...], text: str) -> str | None:

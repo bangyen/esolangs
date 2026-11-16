@@ -182,6 +182,7 @@ class TestCommands:
             ]
         )
         assert _run(program) == "heLo\n"
+        assert _run("data;\nx\ry\ndata;\nsend data") == "x\ry\n"
 
         language = Language("Inject")
         path = tmp_path / "source"
@@ -197,6 +198,18 @@ class TestCommands:
             assert language.run(path, limits=limits, isolated=True) == bounded
             cli = run_cli("run", language.name, str(path))
             assert (cli.returncode, cli.stdout, cli.stderr) == (0, expected, "")
+
+        for separator in ("\n", "\r\n"):
+            source = separator.join(
+                ("data;", "x", "data;", "inject data=x$/y ", "send data", "")
+            )
+            path.write_bytes(source.encode())
+            assert language.run(source).output == "y \n"
+            bounded = language.run(path, limits=limits)
+            assert bounded.output == "y \n"
+            assert language.prepare(path).run(limits=limits, isolated=True) == bounded
+            cli = run_cli("run", language.name, str(path))
+            assert (cli.returncode, cli.stdout, cli.stderr) == (0, "y \n", "")
 
     def test_inject_backreference(self) -> None:
         """A group reference in the replacement is a real backreference."""

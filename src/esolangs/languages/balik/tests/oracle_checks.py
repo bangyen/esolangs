@@ -2,6 +2,7 @@
 
 import itertools
 import random
+import re
 
 import pytest
 
@@ -15,8 +16,8 @@ _WORKSPACE = workspace.workspace_model(
 
 
 def _model(source, stdin):
-    lines = source.split("\n")
-    if any(char not in "+<>*@., \n" for char in source):
+    lines = re.split(r"\r?\n", source)
+    if any(char not in "+<>*@., " for line in lines for char in line):
         return "syntax", [(None, False, "", 0, 0)]
     width = max(map(len, lines))
     position, direction, pointer, extent, cells = 0j, 1 + 0j, 0, 1, {}

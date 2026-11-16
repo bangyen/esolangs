@@ -66,6 +66,9 @@ def _parse(code: str) -> tuple[tuple[_Instruction, ...], tuple[int, ...]]:
     offsets = []
     for found in re.finditer(r"[^;\n]+", code):
         text = found.group()
+        # Keep the match's raw source offsets when removing a CRLF terminator.
+        if text.endswith("\r") and code.startswith("\n", found.end()):
+            text = text.removesuffix("\r")
         if not text.strip(" \t"):
             continue
         parsed = _STATEMENT.fullmatch(text)
