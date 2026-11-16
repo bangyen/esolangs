@@ -9,8 +9,8 @@ rotates three, ``v`` swaps two; anything else is ignored.
 
 Arithmetic wraps to signed 32-bit and ``/``/``%`` truncate toward zero
 (C++11).  ``;`` on a key no ``{`` stored calls an empty scope.  The machine
-has an explicit call stack (one frame per scope); ``halted`` is true once no
-frame remains and a repeated ``snapshot`` proves a loop.  A top-level abort
+has an explicit call stack (one frame per scope); ``halted`` signals clean
+completion and a repeated ``snapshot`` proves a loop.  A top-level abort
 sets the machine's ``error`` so ``run`` raises HaltError.
 
 Input/output:
@@ -466,6 +466,7 @@ class _Machine:
         """Start with the top-level ``code`` as the only frame."""
         self.io = io
         self._writer = _BufferedOutput()
+        self._fault: tuple[tuple[object, ...], tuple[str, ...]] | None = None
         self.stack: tuple[int, ...] = ()
         self.table = _Scopes()
         frame = _prepare_source(code) if isinstance(code, str) else code
@@ -481,8 +482,8 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether every scope has completed."""
-        return not self.frames
+        """Whether every scope has completed without a terminal fault."""
+        return not self.frames and self._fault is None
 
     # The VM's language-shaped view: a stack language with a frame stack and
     # no addressable cells.
@@ -503,18 +504,23 @@ class _Machine:
         frames = self.frames
         return tuple(f.pc for f in frames) if frames else (self._length,)
 
+    def _workspace_frames(self) -> tuple[tuple[str, int, bool], ...] | WorkspaceVariant:
+        frames = tuple((frame.code, frame.pc, frame.loop) for frame in self.frames)
+        if self._fault is not None:
+            return WorkspaceVariant("halt_fault", (frames, *self._fault))
+        accepted = self._writer.accepted
+        return (
+            WorkspaceVariant("pending_output", (frames, accepted))
+            if accepted
+            else frames
+        )
+
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
-        frames = tuple((frame.code, frame.pc, frame.loop) for frame in self.frames)
-        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             stack=self.stack,
             scopes=frozenset(self.table.items()),
-            frames=(
-                WorkspaceVariant("pending_output", (frames, accepted))
-                if accepted
-                else frames
-            ),
+            frames=self._workspace_frames(),
             input_cursor=self.io.progress(),
             input_reads=self._input_reads,
         )
@@ -528,6 +534,8 @@ class _Machine:
             self.io.progress(),
             self._input_reads,
         )
+        if self._fault is not None:
+            return (*boundary, self._fault)
         accepted = self._writer.accepted
         return (*boundary, accepted) if accepted else boundary
 
@@ -567,7 +575,13 @@ class _Machine:
         Finished frames are finalized first, as the original did, so the
         ports see the frame about to run.
         """
-        if self.halted:
+        if self._fault is not None:
+            args, notes = self._fault
+            error = HaltError(*args)
+            for note in notes:
+                error.add_note(note)
+            raise error
+        if not self.frames:
             return
         state = _finalize(self._state)
         frames = state.frames
@@ -612,7 +626,11 @@ class _Machine:
             line = self.io.input_str()
             self._input_reads += 1
 
-        self._restore(_advance(state, line))
+        try:
+            self._restore(_advance(state, line))
+        except HaltError as fault:
+            self._fault = fault.args, tuple(getattr(fault, "__notes__", ()))
+            raise
         if entries is not None:
             depth = len(self.frames)
             if depth > len(frames):
@@ -624,9 +642,11 @@ class _Machine:
                 self._ancestor_history = entries[: max(0, depth - 1)]
         # Raised here, not in ``run``, so a stepped VM fails as ``run`` does.
         if self.error:
-            raise HaltError(
+            error = HaltError(
                 "the top-level scope aborted, which Forþ reports as status 3"
             )
+            self._fault = error.args, ()
+            raise error
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

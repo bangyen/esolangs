@@ -7,7 +7,6 @@ import json
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import ExitStack
 from dataclasses import asdict, replace
-from functools import partial
 from os import PathLike
 from typing import Any, Protocol, cast
 
@@ -34,7 +33,7 @@ from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failur
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
-from esolangs.runtime._files import destination_path, reserve_staged, write_staged
+from esolangs.runtime._files import destination_path, reserve_staged
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._source import (
     ProgramSource,
@@ -170,24 +169,28 @@ def to_file(
     # normalize appended "\n" even where a trailing newline is code.
     origin = catalog.resolve(language)
     runtime = catalog.languages[origin].runtime
-    publish: Callable[[Iterable[bytes]], None] = partial(write_staged, target)
     with ExitStack() as reservation:
         # Paths can open a FIFO, and a reader can consume bytes irreversibly.
         kind = type(program)
-        if issubclass(kind, PathLike) or not issubclass(
+        consumes_source = issubclass(kind, PathLike) or not issubclass(
             kind,
             (str, bytes, Raster, CompressedText, ProgramArtifact, TemplateArtifact),
-        ):
-            if gzip and runtime.source_kind is SourceKind.RASTER:
-                effective_settings(origin, program, settings, catalog=catalog)
-                raise ProgramError("gzip export requires text; rasters use PNG")
-            try:
-                publish = reservation.enter_context(reserve_staged(target))
-            except (OSError, ValueError) as error:
+        )
+        if consumes_source and gzip and runtime.source_kind is SourceKind.RASTER:
+            effective_settings(origin, program, settings, catalog=catalog)
+            raise ProgramError("gzip export requires text; rasters use PNG")
+        publish: Callable[[Iterable[bytes]], None] | None = None
+        unavailable: OSError | ValueError | None = None
+        try:
+            publish = reservation.enter_context(reserve_staged(target))
+        except (OSError, ValueError) as error:
+            if consumes_source:
                 effective_settings(origin, program, settings, catalog=catalog)
                 raise ProgramError(
                     f"cannot save program to {target}: {error}"
                 ) from error
+            # A materialized source's immediate validation failures still win.
+            unavailable = error
         record = read_artifact(
             origin,
             program,
@@ -196,11 +199,13 @@ def to_file(
             preserve_compression=True,
         )
         try:
-            publish(
-                _native_file_bytes(
-                    record, gzip=gzip, terminate=normalize and runtime.file_newline
-                )
+            chunks = _native_file_bytes(
+                record, gzip=gzip, terminate=normalize and runtime.file_newline
             )
+            if unavailable is not None:
+                raise unavailable
+            assert publish is not None
+            publish(chunks)
         except (GeneratorCapError, ProgramError, TemplateError):
             raise
         except (OSError, TypeError, ValueError) as error:

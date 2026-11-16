@@ -4,6 +4,7 @@ from functools import partial
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.for_thorn.interpreter import _advance, _Machine, run
 from esolangs.languages.for_thorn.interpreter import _Machine as Forth
@@ -105,6 +106,7 @@ class TestStepMachine:
         with pytest.raises(HaltError, match="stack is empty"):
             machine.step()
         assert machine.ip == (3,)
+        _check_terminal_fault_retries()
 
     def test_the_wrap_folds_at_exactly_two_to_the_thirty_first(self) -> None:
         """2**31 is the first value that wraps, and it lands on the floor."""
@@ -132,6 +134,47 @@ class TestStepMachine:
         machine.step()  # 1 pushes the key
         machine.step()  # ; pops it and pushes the stored scope
         assert [frame.code for frame in machine.frames] == ["1;", ""]
+
+
+def _check_terminal_fault_retries() -> None:
+    api = Language("Forþ")
+    plan = api.prepare("1..2.")
+    limits = ExecutionLimits(max_steps=8)
+    expected = ExecutionResult("\x01", 0, 0, 0, steps=2)
+    for isolated in (False, True):
+        rejected = plan.execute(limits=limits, isolated=isolated)
+        assert type(rejected.error) is HaltError
+        assert rejected.observation == expected
+
+    debug = plan.make_debugger()
+    with pytest.raises(HaltError, match="stack is empty") as initial:
+        debug.run(limits=limits)
+    assert initial.value.observation == expected
+    saved = debug.snapshot()
+    for retry in (
+        debug.step,
+        lambda: debug.run(limits=limits),
+        lambda: run_until_halt_or_cycle(debug, limit=8),
+        lambda: run_until_halt_or_ancestor(debug, limit=8),
+    ):
+        with pytest.raises(HaltError, match="stack is empty") as fault:
+            retry()
+        assert fault.value is not initial.value
+        assert fault.value.args == initial.value.args
+        assert initial.value.observation == debug.observation == expected
+        assert debug.ip == (3,)
+        assert debug.snapshot() == saved
+
+    aborted = _Machine("0/", ScriptedIO())
+    aborted.step()
+    for retry in (aborted.step, lambda: run_until_halt_or_cycle(aborted, limit=4)):
+        with pytest.raises(HaltError, match="top-level scope aborted"):
+            retry()
+        assert aborted.ip == (2,)
+        assert aborted.error
+
+    healthy = api.run("1.2.", limits=limits)
+    assert (healthy.output, healthy.steps) == ("\x01\x02", 5)
 
 
 def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle() -> None:

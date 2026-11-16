@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from contextlib import nullcontext
+from contextlib import ExitStack
 from time import monotonic
-from typing import NoReturn
+from typing import NoReturn, TextIO, cast
 
 from esolangs import ExecutionLimits
 from esolangs.cli.args import (
@@ -55,11 +55,26 @@ from esolangs.operations.execution import (
 from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._files import _source_directory
+from esolangs.runtime._input import InputSource
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
 from esolangs.runtime._prepared import _runtime_reads_stdin
 from esolangs.runtime._source import check_scale_for
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import display_label
+
+_INPUT_HINT = "; send the input this program needs, or close stdin"
+
+
+class _NativeStdin:
+    """Wait for native runtime validation before reading stdin."""
+
+    def __init__(self, notices: ExitStack) -> None:
+        self._notices = notices
+
+    def read(self) -> str:
+        text = _read_stdin(hint=_INPUT_HINT)
+        self._notices.enter_context(_unbounded_notice("run"))
+        return text
 
 
 def _remaining(timeout: float | None, elapsed: float, flag: str) -> float | None:
@@ -185,25 +200,27 @@ def _run(rest: list[str]) -> None:
         catalog=catalog,
         _settings_validated=True,
     )
+    reads_stdin = _runtime_reads_stdin(declaration.runtime)
+    unbounded = acquisition is None and max_steps is None
+    stdin: InputSource = ""
     try:
         if scale is None and program.scale is not None:
             check_scale_for(declaration.name, program.scale, catalog=catalog)
-        stdin = ""
-        if _runtime_reads_stdin(declaration.runtime):
+        if reads_stdin and not unbounded:
             stdin = _read_stdin(
                 _remaining(acquisition, monotonic() - started, flag),
-                "; send the input this program needs, or close stdin",
+                _INPUT_HINT,
                 timeout_flag=flag,
             )
     except EsolangError as acquisition_error:
         _fail_run(acquisition_error, language, catalog)
     _remaining(acquisition, monotonic() - started, flag)
-    with (
-        _unbounded_notice("run")
-        if acquisition is None and max_steps is None
-        else nullcontext(),
-        _acquisition_started_at(started),
-    ):
+    with ExitStack() as notices, _acquisition_started_at(started):
+        if unbounded:
+            if reads_stdin:
+                stdin = cast("TextIO", _NativeStdin(notices))
+            else:
+                notices.enter_context(_unbounded_notice("run"))
         outcome = _execute_loaded(
             program,
             stdin=stdin,

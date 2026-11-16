@@ -19,6 +19,12 @@ _WORKSPACE = workspace.workspace_model(
     "for-thorn-v1", "stack scopes frames input_cursor input_reads"
 )
 
+_STACK_FAULT = (
+    ("the stack is empty, so there is no top value to read",),
+    ("hint: push a value before reading or removing the stack top",),
+)
+_SCOPE_FAULT = (("the top-level scope aborted, which Forþ reports as status 3",), ())
+
 
 def _number(value):
     digits = format(abs(value), "X")
@@ -97,15 +103,12 @@ def _model(source, stdin):
     cursor = progress = reads = 0
     output, error = "", False
 
-    def row():
-        state = (
-            tuple(stack),
-            tuple(sorted(table.items())),
-            tuple(frames),
-            error,
-            reads,
-        )
-        return state, not frames, output, cursor, progress
+    def row(fault=None):
+        view = tuple(frames)
+        if fault is not None:
+            view = workspace.WorkspaceVariant("halt_fault", (view, *fault))
+        state = tuple(stack), tuple(sorted(table.items())), view, error, reads
+        return state, not frames and fault is None, output, cursor, progress
 
     for tick in range(97):
         trace.append(row())
@@ -156,7 +159,7 @@ def _model(source, stdin):
             else:
                 abort = not _operator(command, stack)
         except IndexError:
-            return "halt", [*trace, row()]
+            return "halt", [*trace, row(_STACK_FAULT)]
         if abort:
             top = len(frames) == 1
             code, _, loop = frames[-1]
@@ -164,10 +167,10 @@ def _model(source, stdin):
             try:
                 frames = _finish(frames, stack)
             except IndexError:
-                return "halt", [*trace, row()]
+                return "halt", [*trace, row(_STACK_FAULT)]
             error = error or top
             if error:
-                return "halt", [*trace, row()]
+                return "halt", [*trace, row(_SCOPE_FAULT)]
     return None, trace
 
 
@@ -184,7 +187,7 @@ def _check(factory, code, stdin="unused"):
         lambda m: (
             m.stack,
             tuple(sorted(m.table.items())),
-            tuple((f.code, f.pc, f.loop) for f in m.frames),
+            m._workspace_frames(),
             m.error,
             m._input_reads,
         ),
@@ -202,6 +205,12 @@ def check_raw_for_thorn():
         (":", "~", ".", "o", "c", "v", "+", "/", "%", "(", "[", "{", ";"),
     ):
         _check(_Machine, prefix + command)
+    for code, stdin in product(
+        (",", "0,.[.]", "0,o[.]", ",,"), ("", "abc\n", "λ\r\nmore", "\n", "Ā")
+    ):
+        _check(_Machine, code, stdin)
+    for value in (0xD7FF, 0xD800, 0xDFFF, 0xE000, 0x10FFFF, 0x110000, -1):
+        _check(_Machine, _number(value) + ".")
     for code in (
         "0(12+.)",
         "1(12+.)",
@@ -214,15 +223,6 @@ def check_raw_for_thorn():
         "1{1;}1;",
         "0;",
         "0(1[2.])",
-    ):
-        _check(_Machine, code)
-    for code, stdin in product(
-        (",", "0,.[.]", "0,o[.]", ",,"), ("", "abc\n", "λ\r\nmore", "\n", "Ā")
-    ):
-        _check(_Machine, code, stdin)
-    for value in (0xD7FF, 0xD800, 0xDFFF, 0xE000, 0x10FFFF, 0x110000, -1):
-        _check(_Machine, _number(value) + ".")
-    for code in (
         "09/~.",
         "65v..",
         "0F7*0+F4*C+[.]",

@@ -591,7 +591,36 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
                 _timeout_text(budget) + "\n",
             )
 
+    _check_native_run_validates_hook_before_reading(path, capsys)
     _check_described_input_samples(monkeypatch, capsys, tmp_path)
+
+
+def _check_native_run_validates_hook_before_reading(path, capsys) -> None:
+    original = LANGUAGES[REFERENCE]
+    runtime = replace(original.runtime, completion_entrypoint="absent_completion")
+    catalog = esolangs.Catalog([replace(original, runtime=runtime)])
+    api = catalog.bind(original.name)
+
+    class BrokenInput(StringIO):
+        def read(self, *_args):
+            pytest.fail(
+                "a missing native completion hook must refuse before reading stdin"
+            )
+
+    expected = api.execute(path, stdin=BrokenInput("Q"))
+    assert isinstance(expected.error, esolangs.ProgramError)
+    assert "absent_completion" in str(expected.error)
+    with patch.object(_table, "CATALOG", catalog):
+        command = ["run", REFERENCE, str(path)]
+        with (
+            patch.object(sys, "argv", ["esolangs", *command]),
+            patch.object(sys, "stdin", BrokenInput("Q")),
+            pytest.raises(SystemExit) as exited,
+        ):
+            main()
+        assert exited.value.code == 2
+        assert capsys.readouterr() == ("", f"{expected.error}\n")
+        assert call_both([*command, "--max-steps", "2"], capsys, stdin="Q") == ("Q", "")
 
 
 def _check_described_input_samples(monkeypatch, capsys, tmp_path) -> None:

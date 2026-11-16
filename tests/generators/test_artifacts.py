@@ -503,6 +503,7 @@ def test_stream_export_retains_relative_symlink_traversal(
 
     if _ANCHORED_STAGING:
         _check_stream_export_after_parent_rename(tmp_path, api)
+        _check_materialized_export_after_parent_rename(tmp_path, api)
 
 
 def _check_stream_export_after_parent_rename(
@@ -545,3 +546,55 @@ def _check_stream_export_after_parent_rename(
     assert stat.S_IMODE(saved.stat().st_mode) == 0o600
     assert api.run(saved).output == "\x01"
     assert destination.read_bytes() == b"+++."
+
+
+def _check_materialized_export_after_parent_rename(
+    tmp_path: Path, api: esolangs.Language
+) -> None:
+    declaration = LANGUAGES[REFERENCE]
+    schema = esolangs.DialectSchema(
+        REFERENCE, {"mode": ("hold", "move")}, {"mode": "hold"}
+    )
+    parent = tmp_path / "materialized"
+    moved = tmp_path / "saved"
+    destination = parent / "program"
+    saved = moved / destination.name
+    refusal = esolangs.ArgumentError("validator refused after rename")
+    phase = None
+    calls = []
+
+    def validate(mode="hold"):
+        calls.append(mode)
+        if phase is not None:
+            parent.rename(moved)
+            parent.mkdir()
+            destination.write_bytes(b"+++.")
+            saved.chmod(0o600)
+            if phase == "refuse":
+                raise refusal
+
+    runtime = replace(declaration.runtime, dialect=validate, dialect_schema=schema)
+    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
+    settings = scoped.settings(mode="move")
+    compressed = esolangs.CompressedText.from_chunks(("+.",))
+    parent.mkdir()
+    for source in ("+.", b"+.", api.from_source("+."), compressed):
+        for phase in ("refuse", "save"):
+            calls.clear()
+            destination.write_bytes(b"++.")
+            destination.chmod(0o644)
+            if phase == "refuse":
+                with pytest.raises(esolangs.ArgumentError) as caught:
+                    scoped.to_file(source, destination, settings=settings)
+                assert caught.value is refusal
+                assert saved.read_bytes() == b"++."
+            else:
+                scoped.to_file(source, destination, settings=settings)
+                assert api.run(saved).output == "\x01"
+            assert calls == ["move"]
+            assert stat.S_IMODE(saved.stat().st_mode) == 0o600
+            assert destination.read_bytes() == b"+++."
+            assert list(moved.iterdir()) == [saved]
+            destination.unlink()
+            parent.rmdir()
+            moved.rename(parent)
