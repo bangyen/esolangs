@@ -69,12 +69,18 @@ history at `f35aa4023`.
   non-uniform relation, or a term computing the step.
 - **Wiki candidate screening:** the 2026-11-16 pass used the 2026-11-12
   snapshot and 24 live additions or revisions. Of 629 flagged pages,
-  417 passed triage. Manual review focused on the highest-ranked specs.
-  - *Shortlist:* [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841).
-    A subset probe ran 3,610 cases against a loop-less O(T) decision tree
-    laid out on the byte grid. Three backlinks and no public implementation
-    surfaced in the initial check. Confirm source-row and EOF rules and audit
-    novelty against Bifunge before admission.
+  417 passed triage. Manual review covered the highest-ranked specs and
+  selected lower-ranked specs with distinct execution models.
+  - *Shortlist:* [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841),
+    [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300), and
+    [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks))
+    (rev. 180732).
+    - Bytemap: byte-grid decision tree, 3,610 subset runs. Resolve source
+      rows and EOF, and audit novelty against Bifunge.
+    - Tubes: modulo-selected exits in a Unicode grid, 3,616 subset runs.
+      Confirm stream framing and complete the public implementation check.
+    - 4s: one-shot guards on a separate control stack, 3,610 subset runs.
+      Confirm zero-entry cleanup, operand consumption and integer framing.
   - *Parked in this pass:* Beetle (byte queue order and framing),
     Irregular Expression (input and result semantics), and Godencode
     (input framing and linear source construction).
