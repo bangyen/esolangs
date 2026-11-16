@@ -72,49 +72,44 @@ history at `f35aa4023`.
   417 passed triage. Manual review covered the highest-ranked specs and
   selected lower-ranked and prefiltered specs with distinct execution
   models.
-  - *Shortlist in review order:* ranked by distinct execution behavior
-    and the work remaining before admission.
+  - *Advance to admission checks, in order:*
     1. [OBrainfuck](https://esolangs.org/wiki/OBrainfuck) (rev. 163644):
        ordinal brackets select a Boolean arm, 3,080 subset runs and 64
-       independent C-lowering checks. The pinned spec inherits Brainfuck
-       I/O and leaves EOF open. No public interpreter surfaced in the
-       targeted search. A scratch probe passed with the repo's EOF error
-       convention, including truncated Boolean input.
-    2. [Beetle](https://esolangs.org/wiki/Beetle) (rev. 156896): flip-on-entry
-       guards and byte parity, 7,220 subset runs. The published example
-       establishes output bit order. Confirm byte reads and EOF.
-    3. [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841): byte-grid
-       decision tree, 3,610 subset runs. The compare instruction reads
-       two addressed grid operands and encodes both jump destinations.
-       Resolve the one-row example discrepancy and EOF.
-    4. [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
+       independent C-lowering checks. The pinned spec leaves EOF open.
+       The repo's EOF-error convention passed on truncated input.
+       No public interpreter surfaced in the targeted search.
+    2. [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841): the
+       two-operand grid comparison selects independent jump targets,
+       3,610 subset runs. The greeting works with an unreachable padding
+       row under the even-row rule. Pin console EOF.
+    3. [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
        direction reversal and relative line jumps, 3,610 subset runs.
-       Confirm numeric input framing and line-offset range.
-    5. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo-selected
-       exits in a Unicode grid, 3,616 subset runs. Confirm stream framing
-       and complete the public implementation check.
-    6. [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks))
-       (rev. 180732): one-shot guards and a scratch-stack arithmetic
-       alternative, each with 3,610 subset runs. The arithmetic route
-       avoids zero-entry cleanup and comparison operand questions.
-       Confirm integer framing and compare both routes for novelty.
-    7. [Pancake](https://esolangs.org/wiki/Pancake) (rev. 199721): a
-       single-lane stack tree with an explicit halt, 2,682 subset runs.
-       Confirm lane transfers, embedded plates and EOF before admission.
-    8. [Trep](https://esolangs.org/wiki/Trep) (rev. 87605): fixed rewrite
-       rules select a subtree per embedded bit, 3,610 subset runs. Confirm
-       final-tree output and the status of the interpreter in development.
-    9. [Paint](https://esolangs.org/wiki/Paint) (rev. 130859): two-tape
-       guards and a marked canvas pixel, 3,610 subset runs. Confirm
-       final-canvas observation and audit novelty against dual-tape
-       languages with one-shot guards.
-    10. [Calcu-less 2](https://esolangs.org/wiki/Calcu-less_2) (rev. 159679):
-        nested definite integrals select arithmetic branches, 3,610 subset
-        runs. Confirm the source grammar, memory operations and EOF.
-    11. [Bit-ter lang](https://esolangs.org/wiki/Bit-ter_lang) (rev. 177676):
-        saved inputs and an AND/NOT expression tree, 3,610 subset runs.
-        Confirm slot-read semantics and audit novelty against existing
-        eager Boolean generators.
+       Pin numeric input framing and line-offset range.
+    4. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo-selected
+       exits in a Unicode grid, 3,616 subset runs. Pin EOF and ignored-symbol
+       handling for the numeric stream. Check the reported C interpreter.
+  - *Hold pending evidence:*
+    - [Beetle](https://esolangs.org/wiki/Beetle) (rev. 156896): 7,220 subset
+      runs. The greeting fixes output order. The byte relay distinguishes
+      input orders. Resolve input bit order and EOF.
+    - [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks))
+      (rev. 180732): 3,610 runs per route. The calculator supports consuming
+      `:`. Resolve equality operand consumption and zero-entry cleanup,
+      then compare the control-stack branch with collected languages.
+    - [Pancake](https://esolangs.org/wiki/Pancake) (rev. 199721): 2,682
+      single-lane runs with explicit halt. The greeting's string row fails
+      its regex. Resolve the literal syntax, embedded plates and lane entry.
+    - [Trep](https://esolangs.org/wiki/Trep) (rev. 87605): 3,610 rewrite
+      runs. Pin normal-form output and check the reported interpreter.
+    - [Paint](https://esolangs.org/wiki/Paint) (rev. 130859): 3,610
+      marked-pixel runs. Pin final-canvas observation and distinguish the
+      two-tape guards from collected languages.
+    - [Calcu-less 2](https://esolangs.org/wiki/Calcu-less_2) (rev. 159679):
+      3,610 constant-integrand runs. Resolve the source grammar, memory
+      effects and EOF.
+    - [Bit-ter lang](https://esolangs.org/wiki/Bit-ter_lang) (rev. 177676):
+      3,610 expression-tree runs. Resolve whether slot references read or
+      print, and distinguish the route from existing eager generators.
   - *Parked in this pass:* Irregular Expression (input and result semantics)
     and Godencode (input framing and linear source construction).
   - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
