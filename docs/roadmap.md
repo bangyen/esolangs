@@ -71,20 +71,26 @@ history at `f35aa4023`.
   snapshot and 24 live additions or revisions. Of 629 flagged pages,
   417 passed triage. Manual review covered the highest-ranked specs and
   selected lower-ranked specs with distinct execution models.
-  - *Shortlist:* [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841),
-    [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300),
-    [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks))
-    (rev. 180732), and [Beetle](https://esolangs.org/wiki/Beetle)
-    (rev. 156896).
-    - Bytemap: byte-grid decision tree, 3,610 subset runs. Resolve source
-      rows and EOF, and audit novelty against Bifunge.
-    - Tubes: modulo-selected exits in a Unicode grid, 3,616 subset runs.
-      Confirm stream framing and complete the public implementation check.
-    - 4s: one-shot guards on a separate control stack, 3,610 subset runs.
-      Confirm zero-entry cleanup, operand consumption and integer framing.
-    - Beetle: flip-on-entry guards and byte parity, 7,220 subset runs.
-      The published example establishes output bit order. Confirm byte
-      reads and EOF before admission.
+  - *Shortlist:*
+    - [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841): byte-grid
+      decision tree, 3,610 subset runs. Resolve source rows and EOF, and
+      audit novelty against Bifunge.
+    - [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo-selected
+      exits in a Unicode grid, 3,616 subset runs. Confirm stream framing
+      and complete the public implementation check.
+    - [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks))
+      (rev. 180732): one-shot guards on a separate control stack, 3,610
+      subset runs. Confirm zero-entry cleanup, operand consumption and
+      integer framing.
+    - [Beetle](https://esolangs.org/wiki/Beetle) (rev. 156896): flip-on-entry
+      guards and byte parity, 7,220 subset runs. The published example
+      establishes output bit order. Confirm byte reads and EOF.
+    - [Trep](https://esolangs.org/wiki/Trep) (rev. 87605): fixed rewrite
+      rules select a subtree per embedded bit, 3,610 subset runs. Confirm
+      final-tree output and the status of the interpreter in development.
+    - [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
+      direction reversal and relative line jumps, 3,610 subset runs.
+      Confirm numeric input framing and line-offset range.
   - *Parked in this pass:* Irregular Expression (input and result semantics)
     and Godencode (input framing and linear source construction).
   - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
