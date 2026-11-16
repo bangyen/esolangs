@@ -165,18 +165,38 @@ class TestParsing:
 
     def test_only_the_newline_is_stripped_from_a_row(self, tmp_path) -> None:
         """Trailing spaces stay, since a column is a position in the grid."""
-        machine = _Machine(["( )─(( ))  \n"], ScriptedIO(""))
-        assert machine.width == 11
-        assert machine.grid == ("( )─(( ))  ",)
+        row = "( )─(( ))  "
+        for newline in ("\n", "\r\n"):
+            machine = _Machine([row + newline], ScriptedIO(""))
+            assert machine.width == 11
+            assert machine.grid == (row,)
+        for newline in ("\r", "\r\r\n"):
+            with pytest.raises(
+                ValueError, match=r"unknown character '\\r' at \(11, 0\)"
+            ):
+                _Machine([row + newline], ScriptedIO(""))
 
         path = tmp_path / "flowchart"
         command = [sys.executable, "-m", run.__module__, str(path)]
-        for newline in ("\n", "\u2028"):
+        for newline in ("\n", "\r\n", "\u2028"):
             path.write_bytes((r"( )─\ \─(( ))  " + newline).encode())
             result = subprocess.run(
                 command, input=b"", capture_output=True, check=True, timeout=5
             )
             assert (result.stdout, result.stderr) == (b"\0", b"")
+
+        api = esolangs.Language("Flowchart")
+        artifact = api.generate("01")
+        for newline in ("\n", "\r\n"):
+            path.write_bytes(artifact.source.replace("\n", newline).encode())
+            with path.open(encoding="utf-8", newline="") as stream:
+                lines = stream.readlines()
+            assert lines[0].endswith(newline)
+            for bit in (0, 1):
+                stdin = api.encode_inputs([bit])
+                raw = run_program(lines, stdin)
+                assert raw == api.run(path, stdin=stdin).output
+                assert api.read_answer(raw) == str(bit)
 
     def test_nodes_touching_side_by_side_are_rejected(self) -> None:
         with pytest.raises(ValueError, match="nodes touch without a path"):

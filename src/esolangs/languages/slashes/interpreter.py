@@ -21,6 +21,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
 
@@ -154,4 +155,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    script_main(run)
+    script_main(run, loader=native_text_source)

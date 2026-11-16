@@ -1,7 +1,13 @@
 """HQ9+ output, accumulator and quine dialect controls."""
 
+import gzip
+import os
+import subprocess
+import sys
+
 import pytest
 
+from esolangs import Language
 from esolangs.languages.hq9.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -16,8 +22,41 @@ def test_greeting(code: str) -> None:
 
 
 @pytest.mark.parametrize("code", ["Q", "q", " Q\n☃", "qQ"])
-def test_quine_preserves_source(code: str) -> None:
+def test_quine_preserves_source(code: str, tmp_path) -> None:
     assert run_program(run, code) == code * sum(char in "Qq" for char in code)
+    if code == "Q":
+        _check_native_quine_files(tmp_path)
+
+
+def _check_native_quine_files(tmp_path) -> None:
+    import esolangs
+
+    api = Language("HQ9+")
+    native = esolangs.registry.INTERPRETERS[api.name]
+    path = tmp_path / "quine.hq9"
+    for data in (b"Q", "Q\r\n☃\r".encode()):
+        for packed in (False, True):
+            api.to_file(data, path, gzip=packed, normalize=True)
+            saved = path.read_bytes()
+            assert (gzip.decompress(saved) if packed else saved) == data
+            assert api.run(path).output.encode() == data
+            assert api.run(api.from_file(path, normalize=True)).output.encode() == data
+            for command in ([native], ["esolangs", "run", api.name]):
+                result = subprocess.run(
+                    [sys.executable, "-m", *command, str(path)],
+                    env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    check=False,
+                    timeout=5,
+                )
+                native_text = os.name == "nt" and command == [native]
+                expected = data.replace(b"\n", b"\r\n") if native_text else data
+                assert (result.returncode, result.stdout, result.stderr) == (
+                    0,
+                    expected,
+                    b"",
+                )
 
 
 def test_execution_order_and_silent_accumulator(

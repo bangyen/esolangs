@@ -2,6 +2,7 @@
 
 import gzip
 import random
+import subprocess
 import sys
 from dataclasses import replace
 
@@ -151,10 +152,46 @@ def _check_cli_fill_dialect(capsysbinary, monkeypatch) -> None:
         )
 
 
+def _check_standalone_native_source(path) -> None:
+    api = esolangs.Language("///")
+    source = api.instantiate(api.generate("01"), [1])
+    expected = api.run(source).output.encode()
+    assert expected == b"1"
+    native = esolangs.registry.INTERPRETERS[api.name]
+    emitted = subprocess.run(
+        [sys.executable, "-m", "esolangs", "generate", "--bits", "1", api.name, "01"],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=True,
+        timeout=5,
+    )
+    assert emitted.stdout == source.source.encode("utf-8") + b"\n"
+    for transport, output in (
+        (source.source.encode("utf-8"), expected),
+        (emitted.stdout, expected),
+        (emitted.stdout.replace(b"\n", b"\r\n"), expected),
+        (gzip.compress(emitted.stdout, mtime=0), expected),
+        (b"1\n\n", b"1\n"),
+    ):
+        path.write_bytes(transport)
+        api_source = api.from_file(path, normalize=True)
+        assert api.run(api_source).output.encode() == output
+        result = subprocess.run(
+            [sys.executable, "-m", native, str(path)],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
+        expected = output.replace(b"\n", b"\r\n") if sys.platform == "win32" else output
+        assert (result.returncode, result.stdout, result.stderr) == (0, expected, b"")
+
+
 def test_cli_preserves_literal_source(tmp_path, capsysbinary, monkeypatch) -> None:
     with monkeypatch.context() as patch:
         _check_cli_fill_dialect(capsysbinary, patch)
     path = tmp_path / "literal.txt"
+    _check_standalone_native_source(path)
     name = "///"
     run = ["esolangs", "run", name, str(path)]
     path.write_text("$", encoding="utf-8")

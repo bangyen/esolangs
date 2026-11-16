@@ -360,7 +360,7 @@ class _Diagram:
     """Build and validate the grid before binding an execution port."""
 
     def __init__(self, code: list[str]) -> None:
-        rows = [line.rstrip("\n") for line in code]
+        rows = [line.removesuffix("\r\n").rstrip("\n") for line in code]
         self.width = max((len(r) for r in rows), default=0)
         self.grid = tuple(r.ljust(self.width) for r in rows)
 
