@@ -38,8 +38,8 @@ from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _cli_error_text,
     _display_encoding,
+    _display_label,
     _exit_code,
-    _path_label,
     _timeout_text,
 )
 from esolangs.exceptions import (
@@ -148,7 +148,7 @@ def _read_program(
     deadline = None if timeout is None else monotonic() + timeout
     catalog = get_catalog(catalog)
     gzip_native = catalog.languages[language].runtime.compressed_source
-    label = _path_label(path)
+    label = _display_label(path)
     data = _bounded_read(
         path,
         timeout,
@@ -247,7 +247,7 @@ def _bounded_read(
         path = explicit_path(path).spelling
     except ArgumentError as error:
         _fail(error)
-    label = _path_label(path)
+    label = _display_label(path)
     waited = timeout if timeout is not None else _READ_DEADLINE
     if deadline is None:
         deadline = monotonic() + waited

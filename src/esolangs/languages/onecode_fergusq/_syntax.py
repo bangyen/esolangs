@@ -27,7 +27,10 @@ _PRECEDENCE = {
     "*": 5,
     "/": 5,
 }
-_FUNCTIONS = frozenset(("getc", "getn", "putc", "putn"))
+_PREFIX = {"*": "load_cell", "!": "not", "-": "neg"}
+_PREFIX_OPS = frozenset(_PREFIX.values())
+_WRITES = {"putc", "putn"}
+_FUNCTIONS = _WRITES | {"getc", "getn"}
 _RESERVED = _FUNCTIONS | {"if", "else", "goto"}
 _ESCAPES = {"n": "\n", "r": "\r", "t": "\t", "0": "\0", "\\": "\\", "'": "'", '"': '"'}
 
@@ -43,6 +46,9 @@ class Op(NamedTuple):
 class _Expr:
     op: Op
     children: tuple[_Expr, ...] = ()
+
+
+type _PendingExpr = tuple[str, int, _Expr | list[_Expr] | None]
 
 
 def _invalid(message: str) -> ValueError:
@@ -74,6 +80,16 @@ def _text(token: str) -> str:
         return _ESCAPES[letter]
 
     return re.sub(r"\\(.)", escape, token[1:-1])
+
+
+def _binary(operator: str, left: _Expr, right: _Expr) -> _Expr:
+    if operator != "~":
+        return _Expr(Op(operator), (left, right))
+    if left.op.code == "load_var":
+        return _Expr(Op("store_var", left.op.arg), (right,))
+    if left.op.code == "load_cell":
+        return _Expr(Op("store_cell"), (*left.children, right))
+    raise _invalid("assignment needs a variable or memory address")
 
 
 class _Parser:
@@ -109,52 +125,70 @@ class _Parser:
             raise _invalid(f"expected a label name, got {token!r}")
         return token
 
-    def primary(self) -> _Expr:
-        token = self.take()
-        if token in {"*", "!", "-"}:
-            operation = {"*": "load_cell", "!": "not", "-": "neg"}[token]
-            return _Expr(Op(operation), (self.primary(),))
-        if token == "(":
-            grouped = self.expression()
-            self.expect(")")
-            return grouped
-        if token == "[":
-            values: list[_Expr] = []
-            if not self.accept("]"):
-                values.append(self.expression())
-                while self.accept(","):
-                    values.append(self.expression())
-                self.expect("]")
-            return _Expr(Op("pack", len(values)), tuple(values))
+    def _atom(self, token: str) -> _Expr:
         if token[0] == '"':
             return _Expr(Op("literal", (*map(ord, _text(token)), 0)))
         if token[0] == "'":
             return _Expr(Op("literal", ord(_text(token))))
         if token[0].isdigit():
             return _Expr(Op("literal", parse_integer(token)))
-        if token in _FUNCTIONS:
+        if token in {"getc", "getn"}:
             self.expect("(")
-            args = (self.expression(),) if token in {"putc", "putn"} else ()
             self.expect(")")
-            return _Expr(Op(token), args)
+            return _Expr(Op(token))
         if _NAME.fullmatch(token) and token not in _RESERVED:
             return _Expr(Op("load_var", token))
-        raise _invalid(f"expected an expression, got {token!r}")
+        raise _invalid("expected an expression, got " + repr(token))
 
-    def expression(self, minimum: int = 1) -> _Expr:
-        left = self.primary()
-        while (precedence := _PRECEDENCE.get(self.peek(), 0)) >= minimum:
-            operator = self.take()
-            right = self.expression(precedence if operator == "~" else precedence + 1)
-            if operator != "~":
-                left = _Expr(Op(operator), (left, right))
-            elif left.op.code == "load_var":
-                left = _Expr(Op("store_var", left.op.arg), (right,))
-            elif left.op.code == "load_cell":
-                left = _Expr(Op("store_cell"), (*left.children, right))
+    def expression(self) -> _Expr:
+        """Apply Pratt binding power on an explicit stack of pending operands."""
+        pending: list[_PendingExpr] = []
+        minimum = 1
+        while True:
+            token = self.take()
+            if token in _PREFIX:
+                pending.append((_PREFIX[token], minimum, None))
+                continue
+            if token == "[" and self.accept("]"):
+                left = _Expr(Op("pack", 0))
+            elif token == "(" or token == "[" or token in _WRITES:
+                if token in _WRITES:
+                    self.expect("(")
+                pending.append((token, minimum, [] if token == "[" else None))
+                minimum = 1
+                continue
             else:
-                raise _invalid("assignment needs a variable or memory address")
-        return left
+                left = self._atom(token)
+
+            while True:
+                while pending and pending[-1][0] in _PREFIX_OPS:
+                    operator, minimum, _ = pending.pop()
+                    left = _Expr(Op(operator), (left,))
+                precedence = _PRECEDENCE.get(self.peek(), 0)
+                if precedence >= minimum:
+                    operator = self.take()
+                    pending.append((operator, minimum, left))
+                    minimum = precedence if operator == "~" else precedence + 1
+                    break
+                if not pending:
+                    return left
+                operator, minimum, operand = pending.pop()
+                if operator == "[":
+                    assert isinstance(operand, list)
+                    operand.append(left)
+                    if self.accept(","):
+                        pending.append((operator, minimum, operand))
+                        minimum = 1
+                        break
+                    self.expect("]")
+                    left = _Expr(Op("pack", len(operand)), tuple(operand))
+                elif operand is None:
+                    self.expect(")")
+                    if operator != "(":
+                        left = _Expr(Op(operator), (left,))
+                else:
+                    assert isinstance(operand, _Expr)
+                    left = _binary(operator, operand, left)
 
     def emit(self, expression: _Expr) -> None:
         pending: list[_Expr | Op] = [expression]
@@ -214,7 +248,4 @@ class _Parser:
 
 def parse(source: str) -> tuple[Op, ...]:
     """Compile source into immutable postfix operations."""
-    try:
-        return _Parser(source).program()
-    except RecursionError as exc:
-        raise _invalid("expression nesting is too deep") from exc
+    return _Parser(source).program()

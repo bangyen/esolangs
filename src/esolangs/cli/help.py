@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import shlex
 
-from esolangs.cli.hints import _as_argument
+from esolangs.cli.hints import _as_argument, _display_label
 from esolangs.registry import Catalog, SourceKind, get_catalog
 from esolangs.runtime._json import record_dumps
 from esolangs.runtime.memory import repr_value
@@ -370,6 +370,8 @@ def help_text(
         )
         text = text.replace(
             "{_TERMINATION_HELP}",
-            _TERMINATION_HELP.format(names=", ".join(terminating), meaning=meaning),
+            _TERMINATION_HELP.format(
+                names=", ".join(map(_display_label, terminating)), meaning=meaning
+            ),
         )
     return text

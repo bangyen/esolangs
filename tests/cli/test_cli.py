@@ -155,6 +155,13 @@ class TestInProcess:
             call_main(["help", "zzz"], capsys)
         assert exc.value.code == 2
         assert "unknown command: zzz" in capsys.readouterr().err
+        bad = "no\x1b[2J\ncommand"
+        notice = r"unknown command: no\x1b[2J\ncommand"
+        assert _failure(["help", bad], capsys) == ("", notice + "\n")
+        out, error = _failure([bad], capsys)
+        assert not out
+        assert error.startswith(notice + "\n\nusage:")
+        assert "\x1b" not in error
 
     def test_partial_output_on_a_pipe_is_byte_exact(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch

@@ -74,6 +74,7 @@ from esolangs.cli.hints import (
     _cli_error_text,
     _did_you_mean,
     _display_encoding,
+    _display_label,
     _generate_hint,
     _input_sentence,
     _looks_like_a_table,
@@ -568,8 +569,7 @@ def _printable(value: object) -> str:
     """
     if isinstance(value, int):
         return _argument_repr(value)
-    text = str(value)
-    return text if text.isprintable() else repr(text)[1:-1]
+    return _display_label(str(value))
 
 
 def _answer_sentence(facts: LanguageInfo) -> str:
@@ -737,7 +737,7 @@ def _read_answer(rest: list[str]) -> None:
             "<program-file>"
         )
         _fail(
-            f"{language} answers 0 if it {zero} and 1 if it {one}. "
+            f"{_display_label(language)} answers 0 if it {zero} and 1 if it {one}. "
             f"Program output carries no answer. Use {run} and observe whether it "
             "halts. A timeout leaves the answer undecided."
         )
@@ -863,7 +863,11 @@ def _dispatch() -> None:
     if cmd in ("--help", "-h", "help"):
         if rest and rest[0] not in COMMANDS:
             # `help nope` printed the usage and exited 0.
-            _fail(f"unknown command: {rest[0]}{_did_you_mean(rest[0], set(COMMANDS))}")
+            requested = rest[0]
+            _fail(
+                f"unknown command: {_display_label(requested)}"
+                f"{_did_you_mean(requested, set(COMMANDS))}"
+            )
         encoding = _display_encoding(sys.stdout)
         with _errors():
             page = help_text(rest[0], encoding=encoding) if rest else USAGE
@@ -873,7 +877,10 @@ def _dispatch() -> None:
         # Languages and options both suggest a near miss; the subcommands
         # they are typed after did not, so `esolangs lst` got the whole
         # usage block and no hint that `list` was one letter away.
-        _fail(f"unknown command: {cmd}{_did_you_mean(cmd, set(COMMANDS))}\n\n{USAGE}")
+        _fail(
+            f"unknown command: {_display_label(cmd)}"
+            f"{_did_you_mean(cmd, set(COMMANDS))}\n\n{USAGE}"
+        )
     if {"--help", "-h"} & set(option_argv[1:]):
         encoding = _display_encoding(sys.stdout)
         with _errors():

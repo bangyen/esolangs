@@ -345,6 +345,26 @@ def test_read_answer_checks_the_catalog_before_stdin(
 
         description = call_main(["describe", "--", name], capsys)
         assert "termination (diverges for 0, halts for 1)" in description
+
+        unsafe = "clear\x1b[2J\nlabel"
+        renamed = replace(scope.languages[name], name=unsafe)
+        renamed_scope = esolangs.Catalog([renamed])
+        monkeypatch.setattr(_table, "CATALOG", renamed_scope)
+        help_page = help_text("read-answer", catalog=renamed_scope)
+        assert r"The languages that answer by terminating are clear\x1b[2J\nlabel." in (
+            help_page.splitlines()
+        )
+        assert "\x1b" not in help_page
+        with pytest.raises(SystemExit) as exited:
+            call_main(["help", "read-answer"], capsys)
+        assert exited.value.code == 0
+        assert capsys.readouterr() == (help_page, "")
+        out, error = _failure(["read-answer", renamed.id], capsys)
+        assert not out
+        assert error.startswith(r"clear\x1b[2J\nlabel answers 0 if it diverges")
+        assert "\x1b" not in error
+        metadata = json.loads(call_main(["describe", "--json", renamed.id], capsys))
+        assert metadata["name"] == unsafe
     else:
         output, diagnostic = _failure(["describe", "--", name], capsys)
         assert not output

@@ -11,7 +11,7 @@ Input/output:
     Putc writes one character and putn writes decimal without a separator.
 
 Errors:
-    ProgramError: malformed syntax, bad labels or excessive expression nesting.
+    ProgramError: malformed syntax or bad labels.
     InputExhaustedError: an input request at EOF.
     ArgumentError: a getn token is not an integer.
     HaltError: division by zero, a list used as an integer, or invalid output.
@@ -32,6 +32,7 @@ from operator import add, mul, sub
 from typing import TYPE_CHECKING
 
 from esolangs.exceptions import ArgumentError, HaltError
+from esolangs.languages.onecode_fergusq._syntax import Op, _Value, parse
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
 from esolangs.runtime._input_retry import RejectedInput
@@ -40,8 +41,6 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer, trunc_div
-
-from ._syntax import Op, _Value, parse
 
 if TYPE_CHECKING:
     from collections.abc import Hashable, Mapping
