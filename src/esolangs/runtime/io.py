@@ -38,6 +38,9 @@ class IO:
     methods and the newline flag) is shared.
     """
 
+    _input_scan: tuple[str, list[str]] | None = None
+    _input_scan_interruptions = 0
+
     def __init__(self) -> None:
         """Create an IO with no pending prompt newline."""
         self._newline = False
@@ -88,6 +91,8 @@ class IO:
 
     def input_str(self, prompt: str = "Input: ") -> str:
         """Read one line, preserving any text left by character reads."""
+        if self._input_scan is not None:
+            del self._input_scan
         prefix = "\n" if self._newline else ""
         before = self.position()
         if self._pending:
@@ -108,6 +113,8 @@ class IO:
 
     def input_char(self, prompt: str = "Input: ") -> int:
         """Read the next Unicode character, including newlines."""
+        if self._input_scan is not None:
+            del self._input_scan
         prefix = "\n" if self._newline else ""
         value = self._read_char(prefix + prompt)
         self._newline = False
@@ -119,19 +126,50 @@ class IO:
             self._pending = self._read(prompt) + "\n"
         return self._pending[0]
 
+    @property
+    def _pending_input_scan(self) -> tuple[str, str] | None:
+        """Return the suspended scan's kind and accepted text for snapshots."""
+        if self._input_scan is None:
+            return None
+        kind, chars = self._input_scan
+        return kind, "".join(chars)
+
+    def _resume_input_scan(self, kind: str) -> list[str] | None:
+        pending = self._input_scan
+        if pending is not None:
+            del self._input_scan
+            if pending[0] == kind:
+                return pending[1]
+        return None
+
+    def _suspend_input_scan(self, kind: str, chars: list[str] | None) -> None:
+        self._input_scan_interruptions += 1
+        if chars is not None:
+            self._input_scan = kind, chars
+
     def input_token(self, prompt: str = "Input: ") -> str:
         """Read one whitespace-delimited token, leaving its delimiter unread."""
         prefix = "\n" if self._newline else ""
-        next_char = self._peek_char(prefix + prompt)
-        while next_char is not None and next_char.isspace():
-            self._read_char(prefix + prompt)
+        pending = self._resume_input_scan("token")
+        token = pending if pending is not None else []
+        before = self.progress()
+        try:
             next_char = self._peek_char(prefix + prompt)
-        if next_char is None:
-            self._read_char(prefix + prompt)
-        token = []
-        while next_char is not None and not next_char.isspace():
-            token.append(self._read_char(prefix + prompt))
-            next_char = self._peek_char(prefix + prompt)
+            if not token:
+                while next_char is not None and next_char.isspace():
+                    self._read_char(prefix + prompt)
+                    next_char = self._peek_char(prefix + prompt)
+                if next_char is None:
+                    self._read_char(prefix + prompt)
+            while next_char is not None and not next_char.isspace():
+                token.append(self._read_char(prefix + prompt))
+                next_char = self._peek_char(prefix + prompt)
+        except EOFError:
+            raise
+        except BaseException:
+            progressed = token or pending is not None or self.progress() != before
+            self._suspend_input_scan("token", token if progressed else None)
+            raise
         self._newline = False
         self._reads += 1
         return "".join(token)
@@ -153,9 +191,18 @@ class IO:
 
     def input_bit(self, prompt: str = "Input: ") -> int:
         """Read a 0 or 1 character, ignoring surrounding whitespace."""
-        value = chr(self.input_char(prompt))
-        while value.isspace():
+        pending = self._resume_input_scan("bit")
+        before = self.progress()
+        try:
             value = chr(self.input_char(prompt))
+            while value.isspace():
+                value = chr(self.input_char(prompt))
+        except EOFError:
+            raise
+        except BaseException:
+            progressed = pending is not None or self.progress() != before
+            self._suspend_input_scan("bit", [] if progressed else None)
+            raise
         if value not in {"0", "1"}:
             raise syntax_error(
                 "input must be a bit",
@@ -165,12 +212,16 @@ class IO:
 
     def input_all(self, prompt: str = "Input: ") -> str:
         """Read the remaining character stream through EOF."""
-        values = []
+        pending = self._resume_input_scan("all")
+        values = pending if pending is not None else []
         try:
             while self._peek_char(prompt) is not None:
                 values.append(self._read_char(prompt))
         except EOFError:
             pass
+        except BaseException:
+            self._suspend_input_scan("all", values or None)
+            raise
         self._newline = False
         self._reads += 1
         return "".join(values)

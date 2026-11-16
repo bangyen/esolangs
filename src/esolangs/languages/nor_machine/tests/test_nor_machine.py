@@ -8,7 +8,10 @@ from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
-from tests.support.vm_support import assert_rejected_input_retry
+from tests.support.vm_support import (
+    assert_interrupted_input_scan_retry,
+    assert_rejected_input_retry,
+)
 
 
 @pytest.mark.medium
@@ -23,6 +26,9 @@ _out = native_runner(run)
 
 def test_lone_nor_prints_the_value_itself(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _out("V", "5") == "5"
+    assert_interrupted_input_scan_retry(
+        "NOR machine", "V", "12", "12", "all", 0, monkeypatch
+    )
     api = Language("NOR machine")
     limits = ExecutionLimits(max_steps=1)
     complete = api.run("V", stdin="123", limits=limits)

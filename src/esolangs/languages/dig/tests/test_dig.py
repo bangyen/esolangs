@@ -14,6 +14,7 @@ from tests.interpreters.contract import CycleContract, InputCursorContract
 from tests.interpreters.runner import run_lines
 from tests.support.raises import assert_numeric_token_replayed, raises_message
 from tests.support.vm_support import (
+    assert_interrupted_input_scan_retry,
     assert_rejected_output_retry,
     assert_starts_downward,
 )
@@ -346,5 +347,8 @@ def test_the_first_move_is_down_the_rows() -> None:
     assert_starts_downward("Dig")
 
 
-def test_retry_replays_a_rejected_numeric_token():
+def test_retry_replays_a_rejected_numeric_token(monkeypatch):
     assert_numeric_token_replayed("Dig", ">$~:\n 2 ", "7", "7")
+    assert_interrupted_input_scan_retry(
+        "Dig", ">$~:\n 2 ", "12", "\x0c", "token", 2, monkeypatch
+    )

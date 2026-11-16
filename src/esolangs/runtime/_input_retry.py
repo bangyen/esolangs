@@ -70,10 +70,14 @@ class RejectedInput:
         if self._fault is not None:
             self.raise_if_rejected()
         before = io.progress()
+        interruptions = io._input_scan_interruptions  # noqa: SLF001 - sibling IO policy
         try:
             return acquire()
         except (ValueError, HaltError) as error:
-            if io.progress() != before:
+            if (
+                io._input_scan_interruptions == interruptions  # noqa: SLF001
+                and io.progress() != before
+            ):
                 self.remember(error)
             raise
 

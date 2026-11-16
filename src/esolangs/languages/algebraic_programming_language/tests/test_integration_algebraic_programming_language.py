@@ -9,7 +9,10 @@ import esolangs.debugger as debugger_api
 from esolangs import run
 from esolangs.vm import make_vm, run_until_halt_or_ancestor
 from tests.support.reference import REFERENCE
-from tests.support.vm_support import assert_rejected_output_retry
+from tests.support.vm_support import (
+    assert_interrupted_input_scan_retry,
+    assert_rejected_output_retry,
+)
 
 
 @pytest.mark.medium
@@ -66,6 +69,9 @@ def test_retried_line_bindings_keep_the_original_input(
         unchanged_if_unwritten=True,
         following_writes=(),
         monkeypatch=monkeypatch,
+    )
+    assert_interrupted_input_scan_retry(
+        api.name, "a + 1", "41\n", "42\n", "token", 0, monkeypatch
     )
 
 

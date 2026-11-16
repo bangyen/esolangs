@@ -34,6 +34,53 @@ def _step_to_halt(dbg: debugger_api.Debugger, budget: int = 200_000) -> None:
         dbg.step()
 
 
+def assert_interrupted_input_scan_retry(
+    name: str,
+    source: str,
+    stdin: str,
+    answer: str,
+    kind: str,
+    steps: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Check observation, pending state and completion across a partial input fault."""
+    limits = esolangs.ExecutionLimits(max_steps=64)
+    read_char = ScriptedIO._read_char
+    api = esolangs.Language(name)
+    expected = api.run(source, stdin=stdin, limits=limits)
+    assert api.run(source, stdin=stdin).output == expected.output == answer
+    assert api.run(source, stdin=stdin, limits=limits, isolated=True) == expected
+    clean = api.make_debugger(source, stdin=stdin)
+    assert clean.run(limits=limits) == "halted"
+    failure = esolangs.HaltError("transient character failure")
+    positions = []
+
+    def interrupt(port, prompt, positions=positions, failure=failure):
+        position = port.position()
+        positions.append(position)
+        if position == 1 and positions.count(1) == 1:
+            raise failure
+        return read_char(port, prompt)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(ScriptedIO, "_read_char", interrupt)
+        debugger = api.make_debugger(source, stdin=stdin)
+        with pytest.raises(esolangs.HaltError) as caught:
+            debugger.run(limits=limits)
+        assert caught.value is failure
+        assert failure.observation == esolangs.ExecutionResult("", 1, 0, 0, steps=steps)
+        variant = WorkspaceVariant("pending_input_scan", (kind, stdin[:1]))
+        assert debugger.snapshot()[1] == variant
+        workspace = _capture_workspace(debugger.vm)
+        cursor = workspace.parts[workspace.model.components.index("input_cursor")]
+        assert cursor == WorkspaceVariant("pending_input_scan", (1, kind, stdin[:1]))
+        assert debugger.run(limits=limits) == "halted"
+        assert debugger.observation == expected
+        assert positions == [0, 1, 1]
+        assert debugger.snapshot() == clean.snapshot()
+        assert _capture_workspace(debugger.vm) == _capture_workspace(clean.vm)
+
+
 def assert_proof_fault(
     detector: Callable[[VM, int], bool],
     language: str,

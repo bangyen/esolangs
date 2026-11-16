@@ -75,7 +75,7 @@ from esolangs.runtime._execution import (
 from esolangs.runtime._input import CheckedInput, InputSource, check_input
 from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime._source import ProgramSource
-from esolangs.runtime._state import WorkspaceSnapshot
+from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._traits import trait, traits
 from esolangs.runtime._validate import check_seed, check_whole
 from esolangs.runtime._vm_protocol import VM
@@ -421,7 +421,13 @@ class _DelegatingVM:
                 snapshot = None
             if not callable(snapshot):
                 raise _SnapshotUnavailableError(self)
-            return snapshot()
+            state = snapshot()
+            pending = self._io._pending_input_scan  # noqa: SLF001
+            return (
+                state
+                if pending is None
+                else (state, WorkspaceVariant("pending_input_scan", pending))
+            )
         except _SnapshotUnavailableError:
             raise
         except EsolangError as error:
@@ -608,6 +614,14 @@ def _capture_workspace(vm: VM) -> WorkspaceSnapshot:
     state = capture(machine)
     if not isinstance(state, WorkspaceSnapshot):
         raise TypeError("workspace_snapshot must return a WorkspaceSnapshot")
+    pending = vm._io._pending_input_scan  # noqa: SLF001 - owned adapter
+    if pending is not None and "input_cursor" in state.model.components:
+        index = state.model.components.index("input_cursor")
+        parts = state.parts
+        cursor = WorkspaceVariant("pending_input_scan", (parts[index], *pending))
+        return WorkspaceSnapshot(
+            state.model, (*parts[:index], cursor, *parts[index + 1 :])
+        )
     return state
 
 
