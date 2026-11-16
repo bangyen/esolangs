@@ -68,7 +68,7 @@ history at `f35aa4023`.
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
 - **Wiki candidate screening:** the 2026-11-16 pass used the 2026-11-12
-  snapshot and 24 live additions or revisions. Of 629 flagged pages,
+  snapshot and 25 live additions or revisions. Of 629 flagged pages,
   417 passed triage. Manual review covered the highest-ranked specs and
   selected lower-ranked specs with distinct execution models.
   - *Shortlist:*
@@ -91,6 +91,9 @@ history at `f35aa4023`.
     - [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
       direction reversal and relative line jumps, 3,610 subset runs.
       Confirm numeric input framing and line-offset range.
+    - [Calcu-less 2](https://esolangs.org/wiki/Calcu-less_2) (rev. 159679):
+      nested definite integrals select arithmetic branches, 3,610 subset
+      runs. Confirm the source grammar, memory operations and EOF.
   - *Parked in this pass:* Irregular Expression (input and result semantics)
     and Godencode (input framing and linear source construction).
   - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
