@@ -68,7 +68,7 @@ history at `f35aa4023`.
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
 - **Wiki candidate screening:** the 2026-11-16 pass used the 2026-11-12
-  snapshot and 25 live additions or revisions. Of 629 flagged pages,
+  snapshot and 27 live additions or revisions. Of 629 flagged pages,
   417 passed triage. Manual review covered the highest-ranked specs and
   selected lower-ranked and prefiltered specs with distinct execution
   models.
@@ -80,9 +80,10 @@ history at `f35aa4023`.
       exits in a Unicode grid, 3,616 subset runs. Confirm stream framing
       and complete the public implementation check.
     - [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks))
-      (rev. 180732): one-shot guards on a separate control stack, 3,610
-      subset runs. Confirm zero-entry cleanup, operand consumption and
-      integer framing.
+      (rev. 180732): one-shot guards and a scratch-stack arithmetic
+      alternative, each with 3,610 subset runs. The arithmetic route
+      avoids zero-entry cleanup and comparison operand questions.
+      Confirm integer framing and compare both routes for novelty.
     - [Beetle](https://esolangs.org/wiki/Beetle) (rev. 156896): flip-on-entry
       guards and byte parity, 7,220 subset runs. The published example
       establishes output bit order. Confirm byte reads and EOF.
