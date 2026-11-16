@@ -37,6 +37,7 @@ from esolangs.runtime._files import destination_path, reserve_staged
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._source import (
     ProgramSource,
+    _raster_gzip_error,
     anchor_program_source,
     native_file_terminator,
     source_for,
@@ -410,9 +411,7 @@ def _load_gzip(
 
     catalog = get_catalog(catalog)
     if catalog.languages[name].runtime.source_kind is SourceKind.RASTER:
-        raise ProgramError(
-            f"{name} requires raster source, but the program is gzip text"
-        )
+        raise _raster_gzip_error(name)
     limits = value["limits"]
     if limits is not None:
         if not isinstance(limits, dict) or set(limits) != {

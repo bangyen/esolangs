@@ -1,5 +1,6 @@
 """C-INTERCAL expression, I/O, and NEXT-stack semantics."""
 
+import sys
 from functools import partial
 from itertools import product
 
@@ -987,6 +988,7 @@ def test_a_failed_read_retries_only_the_missing_input() -> None:
 
 
 def test_branch_search_keeps_clean_qualified_statement_outcomes() -> None:
+    _check_wide_chance()
     api = Language("INTERCAL")
     source = "PLEASE DO %0 WRITE IN .1\nDO .2 <- #7\nDO GIVE UP"
     assert api.run(source, limits=ExecutionLimits(max_steps=3)).steps == 3
@@ -1009,3 +1011,28 @@ def test_branch_search_keeps_clean_qualified_statement_outcomes() -> None:
         saved = vm.snapshot()
         assert run_until_halt_or_all_branches_cycle(vm, limit=4) is True
         assert vm.snapshot() == saved
+
+
+def _check_wide_chance() -> None:
+    api = Language("INTERCAL")
+    previous = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        limits = ExecutionLimits(max_steps=3)
+        for chance in (
+            "100",
+            "0 " * 641 + "100",
+            "\u0660" * 641 + "\u0661\u0660\u0660",
+            "9" * 641,
+        ):
+            source = f"PLEASE .1 <- #4\nDO READ OUT .1\nDO %{chance} GIVE UP"
+            plan = api.prepare(source)
+            for result, steps in (
+                (api.run(source, seed=1), None),
+                (plan.run(limits=limits, seed=1), 3),
+                (plan.run(limits=limits, seed=1, isolated=True), 3),
+            ):
+                assert result.output == "IV\n"
+                assert result.steps == steps
+    finally:
+        sys.set_int_max_str_digits(previous)

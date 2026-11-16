@@ -1014,6 +1014,22 @@ def test_cli_completes_short_raw_adapter_writes(
         assert capsys.readouterr().err.startswith("cannot write stdout:")
     else:
         assert data == f"esolangs {esolangs.__version__}\r".encode("utf-16-le")
+        partial = ShortRaw()
+        with (
+            io.TextIOWrapper(partial, encoding="utf-16-le") as stdout,
+            monkeypatch.context() as patch,
+        ):
+            patch.setattr(sys, "stdout", stdout)
+            cli_io._emit_partial("ABé\ud800tail")
+            cli_io._emit_partial("\ud800tail")
+        assert bytes(partial.data) == "ABé".encode()
+        assert capsys.readouterr().err.splitlines() == [
+            "note: omitted the rest of partial output. output contains a surrogate "
+            "at character 3 and cannot be encoded as UTF-8",
+            "note: omitted partial output. output contains a surrogate "
+            "at character 0 and cannot be encoded as UTF-8",
+        ]
+
         for encoding, limit, expected in (
             ("utf-8", None, "unknown option: --élan\n".encode()),
             ("ascii", None, b"unknown option: --\\xe9lan\n"),

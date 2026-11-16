@@ -10,6 +10,7 @@ from itertools import pairwise
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError
+from esolangs.runtime.memory import parse_integer
 
 
 def _arg_key(arg: Any) -> tuple[Any, bool]:
@@ -553,7 +554,7 @@ def _load(text: str) -> _Statement:
         polite = header[2]
         abstained = header[3] is not None
         if header[4] is not None:
-            chance = int(re.sub(r"\s", "", header[4]))
+            chance = parse_integer(re.sub(r"\s", "", header[4]))
         body = text[header.end() :]
     after = 0
     try:

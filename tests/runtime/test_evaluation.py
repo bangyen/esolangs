@@ -85,7 +85,9 @@ def test_api_refuses_bad_source() -> None:
 )
 def test_api_refuses_raster_for_text_answer(name: str) -> None:
     raster = esolangs.generate(first(source_kind="raster"), "0110").source
-    with pytest.raises(esolangs.ProgramError, match="string of source"):
+    with pytest.raises(
+        esolangs.ProgramError, match="requires text source, but the program is a Raster"
+    ):
         _evaluate(name, raster, inputs=2)
 
 

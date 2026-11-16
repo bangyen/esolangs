@@ -69,6 +69,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import _hit_digit_cap, format_integer, parse_integer
 
 #: An exact Gaussian rational ``(re, im)``, or a float once inexact.
 type _Num = tuple[Fraction, Fraction] | complex
@@ -235,7 +236,7 @@ def _parts(value: _Num) -> tuple[Fraction | float, Fraction | float]:
 
 def _real_text(x: Fraction | float) -> str:
     if isinstance(x, Fraction):
-        return str(x.numerator) if x.denominator == 1 else repr(float(x))
+        return format_integer(x.numerator) if x.denominator == 1 else repr(float(x))
     return str(int(x)) if math.isfinite(x) and x.is_integer() else repr(x)
 
 
@@ -260,24 +261,40 @@ def _bytes(value: _Num) -> str:
     return out
 
 
+def _decimal_fraction(text: str) -> Fraction:
+    """Read a validated decimal exactly, including above the host digit cap."""
+    try:
+        return Fraction(text)
+    except ValueError as error:
+        if not _hit_digit_cap(error):
+            raise
+    mantissa, marker, exponent = text.lower().partition("e")
+    whole, _, fractional = mantissa.partition(".")
+    numerator = parse_integer(whole + fractional)
+    shift = (parse_integer(exponent) if marker else 0) - len(fractional)
+    if shift >= 0:
+        return Fraction(numerator * 10**shift)
+    return Fraction(numerator, 10**-shift)
+
+
 def _read_real(token: str) -> _Num:
     if not re.fullmatch(_REAL, token):
         raise HaltError(f"1 + i C needs a real number, got {token!r}")
-    return (Fraction(token), _ZERO)
+    return (_decimal_fraction(token), _ZERO)
 
 
 def _read_complex(line: str) -> _Num:
     text = line.strip()
     if re.fullmatch(_REAL, text):
-        return (Fraction(text), _ZERO)
+        return (_decimal_fraction(text), _ZERO)
     match = re.fullmatch(rf"(?:({_REAL})\s*([+-])\s*|([+-]?))({_UNSIGNED})?i", text)
     if match is None:
         raise HaltError(f"1 + i D needs a complex number, got {line!r}")
     real, sign, alone, size = match.groups()
     negative = (sign or alone) == "-"
-    coefficient = Fraction(size) if size else Fraction(1)
+    coefficient = _decimal_fraction(size) if size else Fraction(1)
     return (
-        Fraction(real) if real else _ZERO,
+        _decimal_fraction(real) if real else _ZERO,
         -coefficient if negative else coefficient,
     )
 

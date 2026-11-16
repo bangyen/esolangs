@@ -608,22 +608,33 @@ def test_named_png_damage_and_portable_wrapper_keep_repair_notes(
 def test_png_source_kind_checked_before_dependency(
     language, tmp_path, monkeypatch
 ) -> None:
-    image = png.write_grey([bytearray([0])])
+    api = esolangs.Language(language)
+    generated = api.generate("01")
+    image = generated.source.to_png()
     path = tmp_path / "program"
     path.write_bytes(image)
-    portable = json.loads(esolangs.to_json(language, image))
+    portable = json.loads(api.to_json(image))
+    for record in (api.from_file(path), api.from_json(json.dumps(portable))):
+        assert tuple(record.evaluate((bit,)).answer for bit in (0, 1)) == ("0", "1")
     portable["language"] = REFERENCE
     monkeypatch.setattr(png, "Image", None)
     with pytest.raises(esolangs.MissingDependencyError):
         esolangs.from_file(language, path)
     for load in (
         lambda: esolangs.from_file(REFERENCE, path),
+        lambda: esolangs.from_source(REFERENCE, generated.source),
+        lambda: esolangs.prepare(REFERENCE, generated.source),
         lambda: esolangs.prepare(REFERENCE, image),
         lambda: esolangs.to_json(REFERENCE, image),
         lambda: esolangs.from_json(REFERENCE, json.dumps(portable)),
     ):
-        with pytest.raises(esolangs.ProgramError, match="requires text source"):
+        with pytest.raises(
+            esolangs.ProgramError, match="requires text source"
+        ) as refused:
             load()
+        assert refused.value.__notes__ == [
+            "hint: use text source or select the language that reads the raster"
+        ]
 
 
 @pytest.mark.parametrize("language", one(source_kind="raster"))
@@ -660,8 +671,9 @@ def test_raster_language_names_gzip_before_decoding(
         api.from_file(path)
     assert str(path) in str(native.value)
     assert any("use a PNG" in note for note in native.value.__notes__)
-    with pytest.raises(esolangs.ProgramError, match=message):
+    with pytest.raises(esolangs.ProgramError, match=message) as portable:
         api.from_json(json.dumps(document))
+    assert portable.value.__notes__ == native.value.__notes__
 
 
 def test_png_rejects_dimensions_beyond_platform_size(

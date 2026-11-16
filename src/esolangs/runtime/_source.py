@@ -184,12 +184,23 @@ def check_raster_gzip(language: str, source: object) -> None:
     if _has_backing_type(source, CompressedText) or (
         _has_backing_type(source, bytes) and bytes.startswith(source, _GZIP_SIGNATURE)
     ):
-        raise with_hint(
-            ProgramError(
-                f"{language} requires raster source, but the program is gzip text"
-            ),
-            "use a PNG program or select the language that reads this gzip source",
-        )
+        raise _raster_gzip_error(language)
+
+
+def _raster_gzip_error(language: str) -> ProgramError:
+    return with_hint(
+        ProgramError(
+            f"{language} requires raster source, but the program is gzip text"
+        ),
+        "use a PNG program or select the language that reads this gzip source",
+    )
+
+
+def _text_raster_error(language: str, actual: str) -> ProgramError:
+    return with_hint(
+        ProgramError(f"{language} requires text source, but the program is {actual}"),
+        "use text source or select the language that reads the raster",
+    )
 
 
 def text_source(
@@ -323,6 +334,8 @@ def source_for(
     loader = catalog.languages[name].runtime.source_loader
     if loader is SourceLoader.RASTER:
         check_raster_gzip(name, source)
+    elif _has_backing_type(source, Raster):
+        raise _text_raster_error(name, "a Raster")
     if native and loader is SourceLoader.TEXT:
         return native_text_source(source)
     if native and loader is SourceLoader.COMPRESSED:

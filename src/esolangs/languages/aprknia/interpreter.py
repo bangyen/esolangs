@@ -48,6 +48,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import syntax_error
 
 #: How many values each command needs before it can run.
@@ -115,7 +116,7 @@ def _advance(
         elif mode == 1:
             out, stk = chr(stk[-1]), stk[:-1]
         elif mode == 2:
-            out = str(stk[-1])
+            out = format_integer(stk[-1])
     return _State(ind + 1, stk), out
 
 
@@ -190,7 +191,7 @@ class _Machine:
             )
         if char == "," and stk[-1] % 3 == 1 and not 0 <= stk[-2] <= 0x10FFFF:
             raise HaltError(
-                f"',' cannot print {stk[-2]} as a character",
+                f"',' cannot print {format_integer(stk[-2])} as a character",
                 hint="keep printed values between 0 and 0x10FFFF",
             )
         byte = None

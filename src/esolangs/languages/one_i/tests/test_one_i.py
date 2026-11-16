@@ -1,5 +1,6 @@
 """Tests for the 1 + i interpreter."""
 
+import sys
 from fractions import Fraction
 from itertools import product
 from math import pi
@@ -8,6 +9,7 @@ from struct import pack
 
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.one_i.interpreter import _Machine, _text, run
 from esolangs.languages.one_i.tests.oracle_checks import _text as reference_text
@@ -134,6 +136,7 @@ def test_printing(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _run("ici*:+/p") == "0.5"
     assert _run("ici*ic+p") == "1 - i"
     assert _run("ici*ii++p") == "1 + 2i"
+    _check_wide_decimal_io()
 
     def spelling(value: complex) -> str:
         return reference_text((Fraction(int(value.real)), Fraction(int(value.imag))))
@@ -150,6 +153,38 @@ def test_printing(monkeypatch: pytest.MonkeyPatch) -> None:
         stdin = spelling(value) + "\n"
         assert _run("Dcp", stdin) == spelling(value.conjugate())
         assert _run("[ici*p][ii*p]D?", stdin) == ("-1" if value else "1")
+
+
+def _check_wide_decimal_io() -> None:
+    api = Language("1 + i")
+    previous = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        integer = "1" + "0" * 699 + "1"
+        limits = ExecutionLimits(max_steps=2)
+        for code, stdin, expected in (
+            ("Bp", "12", "12"),
+            ("Bp", integer, integer),
+            ("Co", integer + ".0", "\x01"),
+            ("Co", "1e" + "0" * 640 + "2", "d"),
+            ("Cp", "0." + "0" * 640 + "5e640", "0.5"),
+            ("Dp", f"{integer} - {integer}i\n", f"{integer} - {integer}i"),
+        ):
+            plan = api.prepare(code)
+            for result, steps in (
+                (api.run(code, stdin=stdin), None),
+                (plan.run(stdin=stdin, limits=limits), 2),
+                (plan.run(stdin=stdin, limits=limits, isolated=True), 2),
+            ):
+                assert result.output == expected
+                assert result.steps == steps
+                assert (
+                    result.input_position,
+                    result.input_reads,
+                    result.input_past_end,
+                ) == (len(stdin), 1, 0)
+    finally:
+        sys.set_int_max_str_digits(previous)
 
 
 def test_bytes_and_eof() -> None:

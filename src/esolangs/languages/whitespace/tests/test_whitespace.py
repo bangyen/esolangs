@@ -298,11 +298,11 @@ def test_cli_rejects_surrogate_output_on_a_pipe(tmp_path, options, code) -> None
         timeout=15,
         check=False,
     )
-    assert (result.returncode, result.stdout) == (code, b"")
+    assert (result.returncode, result.stdout) == (code, b"A" if code == 124 else b"")
     assert b"surrogate at character 1" in result.stderr
     assert b"UTF-8" in result.stderr
     if code == 124:
-        assert b"omitted partial output" in result.stderr
+        assert b"omitted the rest of partial output" in result.stderr
         assert b"execution stopped at the max_steps bound" in result.stderr
 
 

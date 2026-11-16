@@ -1,6 +1,7 @@
 """Tests for the Basicfuck interpreter."""
 
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -10,6 +11,7 @@ from esolangs.languages.basicfuck.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import native_runner
+from tests.support.cli_support import run_cli
 from tests.support.execution import assert_digit_cap_independent
 from tests.support.vm_support import (
     assert_rejected_input_retry,
@@ -60,9 +62,28 @@ def test_the_wiki_cat_stops_on_255() -> None:
     assert _run(CAT, "abÿ") == "ab"
 
 
-def test_the_wiki_cat_at_eof_raises() -> None:
+def test_the_wiki_cat_at_eof_raises(tmp_path: Path) -> None:
     with pytest.raises(EOFError):
         _run(CAT, "ab")
+
+    language = Language("Basicfuck")
+    path = tmp_path / "source"
+    source = NEAREST + "#allocate X\nX += 65; write <- X; X += 55231; write <- X;\n"
+    path.write_text(source + "read -> X;\n")
+    for flags in ([], ["--isolated"]):
+        failure = language.execute(path, isolated=bool(flags))
+        assert isinstance(failure.error, InputExhaustedError)
+        assert failure.observation.output == "A\ud800"
+        cli = run_cli("run", *flags, language.name, str(path))
+        assert (cli.returncode, cli.stdout) == (1, "A")
+        assert "output contains a surrogate at character 1" in cli.stderr
+        assert str(failure.error) in cli.stderr
+
+    path.write_text(source)
+    assert language.run(path).output == "A\ud800"
+    cli = run_cli("run", language.name, str(path))
+    assert (cli.returncode, cli.stdout) == (1, "")
+    assert "output contains a surrogate at character 1" in cli.stderr
 
 
 def test_the_wiki_assignment_zeroes_then_adds() -> None:

@@ -620,11 +620,12 @@ class _StdoutError(Exception):
 class _StdoutEncodingError(Exception):
     """Output text cannot be written as UTF-8."""
 
-    def __init__(self, error: UnicodeEncodeError) -> None:
+    def __init__(self, error: UnicodeEncodeError, *, kept_prefix: bool = False) -> None:
         super().__init__(
             f"output contains a surrogate at character {error.start} "
             "and cannot be encoded as UTF-8"
         )
+        self.kept_prefix = kept_prefix
 
 
 def _write_all[DataT: (str, bytes, memoryview)](
@@ -796,7 +797,9 @@ def _write_text(stream: TextIO, data: str) -> int:
         return len(data)
 
 
-def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
+def _write_output(
+    data: str | bytes, *, utf8: bool = True, keep_encodable_prefix: bool = False
+) -> None:
     """Write data to stdout and distinguish destination errors from faults."""
     with _stdout_destination() as stdout:
         stream = getattr(stdout, "buffer", None)
@@ -809,7 +812,10 @@ def _write_output(data: str | bytes, *, utf8: bool = True) -> None:
             try:
                 data = data.encode("utf-8")
             except UnicodeEncodeError as exc:
-                raise _StdoutEncodingError(exc) from exc
+                kept_prefix = keep_encodable_prefix and exc.start > 0
+                if kept_prefix:
+                    _write_all(stream.write, exc.object[: exc.start].encode("utf-8"))
+                raise _StdoutEncodingError(exc, kept_prefix=kept_prefix) from exc
         if isinstance(data, bytes):
             if stream is None:
                 raise OSError("binary output requires a binary stdout stream")
@@ -834,9 +840,14 @@ def _emit_partial(output: str) -> None:
     if not output:
         return
     try:
-        _write_output(output)
+        _write_output(output, keep_encodable_prefix=True)
     except _StdoutEncodingError as error:
-        _note(f"note: omitted partial output. {error}")
+        if error.kept_prefix:
+            _flush_stdout()
+        omitted = (
+            "the rest of partial output" if error.kept_prefix else "partial output"
+        )
+        _note(f"note: omitted {omitted}. {error}")
         return
     # Terminal only, as on success: a pipe got "\x01\n" for "\x01", and a
     # --max-output 3 cap 4 bytes.

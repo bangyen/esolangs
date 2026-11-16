@@ -24,6 +24,7 @@ from esolangs.runtime._source import (
     _FileSource,
     _read_container,
     _SourcePath,
+    _text_raster_error,
     anchor_program_source,
     check_raster_gzip,
     source_for,
@@ -129,7 +130,7 @@ def read_png_metadata(
     from esolangs.portable import _decode_settings
 
     if catalog.languages[name].runtime.source_kind is not SourceKind.RASTER:
-        raise ProgramError(f"{name} requires text source, but the program is a PNG")
+        raise _text_raster_error(name, "a PNG")
     check_raster_gzip(name, data)
     with _png_metadata_errors():
         metadata = png.read_metadata(data)
