@@ -10,6 +10,7 @@ from dataclasses import replace
 from enum import IntEnum
 from importlib.resources import files
 from io import BytesIO
+from mmap import ACCESS_READ, mmap
 from pathlib import Path
 from random import Random
 
@@ -100,11 +101,50 @@ def test_raster_freezes_integer_subclasses_before_validation_and_hashing() -> No
             png.write_source(rows, None, None, 1)
 
 
-def test_raster_png_refuses_released_input_buffers() -> None:
-    buffer = memoryview(b"")
-    buffer.release()
-    with pytest.raises(esolangs.ArgumentError, match="PNG data"):
-        Raster.from_png(buffer)
+def test_raster_png_refuses_released_input_buffers(tmp_path: Path, monkeypatch) -> None:
+    api = esolangs.Language(RASTER_LANGUAGES[0])
+    artifact = api.generate("01", scale=2)
+    path = tmp_path / "source.png"
+    api.to_file(artifact, path)
+    data = path.read_bytes()
+    readers = (Raster.from_png, png.read_rgb, png.read_grey, png.read_metadata)
+    expected = tuple(read(data) for read in readers)
+    with (
+        path.open("rb") as stream,
+        mmap(stream.fileno(), 0, access=ACCESS_READ) as mapped,
+        memoryview(mapped) as view,
+    ):
+        for buffer in (bytearray(data), view, mapped):
+            assert tuple(read(buffer) for read in readers) == expected
+            tagged = png.attach_source_metadata(
+                buffer, api.name, None, 2, input_arity=1
+            )
+            assert tagged == data
+    for read in readers:
+        for released in (view, mapped):
+            with pytest.raises(esolangs.ArgumentError, match="cannot read PNG data"):
+                read(released)
+        for invalid in (object(), False):
+            with pytest.raises(esolangs.ArgumentError, match="PNG data must be bytes"):
+                read(invalid)
+
+    for record in (api.from_file(path), api.from_json(api.to_json(path))):
+        assert record == artifact
+        assert "".join(api.evaluate(record, [bit]).answer for bit in (0, 1)) == "01"
+
+    error = esolangs.ProgramError("buffer provider refused")
+
+    class RefusedBuffer:
+        def __buffer__(self, _flags):
+            raise error
+
+    monkeypatch.setattr(png, "Image", None)
+    for read in readers:
+        with pytest.raises(esolangs.ArgumentError, match="PNG data must be bytes"):
+            read(object())
+        with pytest.raises(esolangs.ProgramError) as refused:
+            read(RefusedBuffer())
+        assert refused.value is error
 
 
 def test_raster_png_uses_backing_bytearrays(

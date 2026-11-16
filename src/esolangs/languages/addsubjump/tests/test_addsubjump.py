@@ -12,7 +12,7 @@ from esolangs.languages.addsubjump.interpreter import (
     _store,
     run,
 )
-from esolangs.runtime.io import ScriptedIO
+from esolangs.runtime.io import IO, ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -243,6 +243,42 @@ class TestSpecialAddresses:
         assert debugger.observation == expected
         assert failure.value.observation == partial
         assert positions == [0, 1, 1]
+
+        refusal = HaltError("custom port temporarily unavailable")
+
+        class LinePort(IO):
+            def __init__(self) -> None:
+                super().__init__()
+                self.lines = iter(("", refusal, "B"))
+                self.output: list[object] = []
+
+            def _read(self, _prompt: str) -> str:
+                line = next(self.lines)
+                if isinstance(line, HaltError):
+                    raise line
+                return line
+
+            def _write(self, value: object) -> None:
+                self.output.append(value)
+
+        custom = LinePort()
+        machine = _Machine(source, custom)
+        before = machine.state
+        with pytest.raises(HaltError) as caught:
+            machine.step()
+        assert caught.value is refusal
+        assert machine.state == before
+        assert custom.progress() == 1
+        assert custom.output == []
+        pending = machine.snapshot()[-1]
+        assert pending.kind == "pending_input"
+        assert pending.values == (1, ord("\n"))
+        assert machine.workspace_snapshot().parts[-1] == pending
+        machine.step()
+        assert machine.halted
+        assert custom.progress() == 2
+        assert custom.output == ["B"]
+        assert machine.snapshot()[-1] == machine.workspace_snapshot().parts[-1] == 2
 
     def test_constants(self) -> None:
         # -6 = 1, -7 = 0, -8 = -1: memory[30] = 1 + 0 + (-1) = 0.

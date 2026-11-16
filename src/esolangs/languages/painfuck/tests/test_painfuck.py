@@ -9,6 +9,7 @@ from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Lang
 from esolangs.exceptions import HaltError
 from esolangs.languages.painfuck.interpreter import _Machine as Painfuck
 from esolangs.languages.painfuck.interpreter import prepare_machine
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw
 from esolangs.vm import (
@@ -182,6 +183,78 @@ def test_read_number_rejects_garbage() -> None:
     assert (valid.output, valid.input_reads, valid.steps) == ("27", 1, 5)
 
 
+def _check_repeated_port_retry(target, stdin, *, refusal, monkeypatch) -> None:
+    from esolangs.languages.painfuck import interpreter
+
+    api = Language("Painfuck")
+    source = _encode(target)
+    numeric = target == "cio"
+    operand = "input_token" if numeric else "input_char"
+    read = getattr(ScriptedIO, operand)
+    draws = []
+    reads = []
+    failed = False
+
+    def draw_zero(_rng, upper):
+        draws.append(upper)
+        if failed and refusal == "draw" and len(draws) == 2:
+            raise HaltError("temporary port refusal")
+        return 0
+
+    def read_operand(io, *args):
+        reads.append(io.position())
+        if failed and refusal == "read" and len(reads) == 2:
+            raise HaltError("temporary port refusal")
+        return read(io, *args)
+
+    limits = ExecutionLimits(max_steps=4)
+    with monkeypatch.context() as port:
+        port.setattr(interpreter, "draw", draw_zero)
+        port.setattr(ScriptedIO, operand, read_operand)
+        expected = api.run(source, stdin=stdin, limits=limits, seed=0)
+        assert (expected.output, expected.input_reads, expected.steps) == (
+            "7" if numeric else "g",
+            7,
+            2,
+        )
+        total_draws = 7 if target == "cyju" else 0
+        assert len(reads) == 7
+        assert len(draws) == total_draws
+        draws.clear()
+        reads.clear()
+        failed = True
+
+        debugger = api.make_debugger(source, stdin=stdin, seed=0)
+        with pytest.raises(HaltError, match="temporary port refusal") as caught:
+            debugger.run(limits=limits)
+        assert debugger.ip == 0
+        read_count = int(refusal == "read")
+        partial = ExecutionResult("", read_count, read_count, 0, steps=0)
+        assert caught.value.observation == debugger.observation == partial
+        accepted_draws = 1 if refusal == "draw" else total_draws
+        read_values = (("1" if numeric else ord("a")),) if read_count else ()
+        boundary = WorkspaceVariant(
+            "pending_ports", (0, read_values, (0,) * accepted_draws)
+        )
+        saved = debugger.snapshot()
+        assert saved[-1] == boundary
+        workspace = debugger.vm._machine.workspace_snapshot()
+        assert (
+            workspace.parts[workspace.model.components.index("instruction")] == boundary
+        )
+        if refusal == "read":
+            with pytest.raises(TimeoutError, match="needs input"):
+                run_until_halt_or_all_branches_cycle(debugger, limit=8)
+            assert debugger.snapshot() == saved
+
+        assert debugger.run(limits=limits) == "halted"
+        assert debugger.observation == expected
+        assert caught.value.observation == partial
+        assert len(reads) == 7 + int(refusal == "read")
+        assert len(draws) == total_draws + int(refusal == "draw")
+        assert debugger.snapshot()[9] == total_draws
+
+
 class TestStepMachine:
     def test_step_tracks_tape_and_cursor(self) -> None:
         machine = Painfuck("pp", ScriptedIO())
@@ -213,12 +286,22 @@ class TestStepMachine:
                 machine.step()
             assert machine.ind == 1, prog  # advanced past the read, not parked
 
-    def test_an_eof_keeps_the_repeated_reads_already_done(self) -> None:
+    def test_an_eof_keeps_the_repeated_reads_already_done(self, monkeypatch) -> None:
         """Pins EOF mid-repeat: ``ci`` reads 5, then EOF; the 5 survives."""
         machine = Painfuck(_encode("ci"), ScriptedIO("5\n"))
         with pytest.raises(EOFError):  # one step: c binds to the i
             machine.step()
         assert (machine.tape, machine.ind, machine.rep) == ((5,), 2, 5)
+
+        for target, data, refusal in (
+            ("cju", "abcdefghijklmn", "read"),
+            ("cio", "1 2 3 4 5 6 7 8 9", "read"),
+            ("cyju", "abcdefghijklmn", "read"),
+            ("cyju", "abcdefghijklmn", "draw"),
+        ):
+            _check_repeated_port_retry(
+                target, data, refusal=refusal, monkeypatch=monkeypatch
+            )
 
     def test_a_fault_keeps_what_the_step_already_did(self) -> None:
         """A ``_Halted`` fault writes its effects and state back before raising."""
@@ -597,6 +680,36 @@ def test_branching_limit_admits_exactly_its_outcomes() -> None:
     assert len(outcomes) == 1
     plain.step()
     assert outcomes == (plain.branching_snapshot(),)
+
+    class RefuseCoin:
+        draws = 0
+
+        def randbelow(self, upper):
+            assert upper == 2
+            self.draws += 1
+            if self.draws == 2:
+                raise HaltError("temporary coin refusal")
+            return int(self.draws == 1)
+
+    coins = RefuseCoin()
+    machine = Painfuck(_encode("cyp"), ScriptedIO(), coins)
+    initial = machine.branching_snapshot()
+    with pytest.raises(TimeoutError, match="coin outcomes"):
+        machine.branching_successors(initial, 64)
+    with pytest.raises(HaltError, match="temporary coin refusal"):
+        machine.step()
+    pending = machine.branching_snapshot()
+    assert not machine.branching_halted(pending)
+    assert pending != initial
+    outcomes = machine.branching_successors(pending, 64)
+    assert outcomes is not None
+    assert {state[0][0] for state in outcomes} == set(range(0, 13, 2))
+    assert machine.branching_snapshot() == pending
+    assert coins.draws == 2  # Analysis used only the remembered first draw.
+    machine.step()
+    assert machine.halted
+    assert machine.memory == [12]
+    assert coins.draws == 8
 
 
 def test_w_copies_the_right_neighbour_from_a_middle_cell() -> None:

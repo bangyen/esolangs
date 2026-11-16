@@ -670,7 +670,7 @@ class _Machine:
                 hint="keep memory addresses within the interpreter allocation limit",
             )
         reads: tuple[int, ...]
-        if d == b == _IO and isinstance(io, ScriptedIO):
+        if d == b == _IO:
             reads = self._read_pair(io)
         else:
             reads = tuple(io.input_char() for addr in (d, b) if addr == _IO)
@@ -684,16 +684,17 @@ class _Machine:
         if a == _IO:
             io.print_char(chr(value & 0xFF))
 
-    def _read_pair(self, io: ScriptedIO) -> tuple[int, int]:
+    def _read_pair(self, io: IO) -> tuple[int, int]:
         selector = self._pending_selector
         if selector is None:
             selector = io.input_char()
-        past_end = io.past_end
+        past_end = io.past_end if isinstance(io, ScriptedIO) else None
         try:
             operand = io.input_char()
         except BaseException:
-            # Physical EOF exhausts this fixed input. A port refusal can be retried.
-            self._pending_selector = selector if io.past_end == past_end else None
+            # Only the fixed input records physical exhaustion.
+            exhausted = isinstance(io, ScriptedIO) and io.past_end != past_end
+            self._pending_selector = None if exhausted else selector
             raise
         self._pending_selector = None
         return selector, operand

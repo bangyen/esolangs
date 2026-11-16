@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Buffer, Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from functools import partial
 from itertools import islice, takewhile
@@ -301,7 +301,7 @@ class Raster:
         )
 
     @classmethod
-    def from_png(cls, data: bytes) -> Raster:
+    def from_png(cls, data: Buffer) -> Raster:
         """Decode PNG bytes into raster source.
 
         Untrusted bytes: a corrupt chunk used to escape as a bare
@@ -310,16 +310,7 @@ class Raster:
         :class:`~esolangs.exceptions.ProgramError`; data that is not
         bytes-like is an :class:`~esolangs.exceptions.ArgumentError`.
         """
-        payload: object = data
-        if _has_backing_type(payload, memoryview):
-            try:
-                payload = payload.tobytes()
-            except ValueError as exc:
-                raise ArgumentError(f"cannot read PNG data: {exc}") from exc
-        elif not (
-            _has_backing_type(payload, bytes) or _has_backing_type(payload, bytearray)
-        ):
-            raise ArgumentError(f"PNG data must be bytes, got {type(data).__name__}")
+        payload = png._backing_bytes(data)  # noqa: SLF001
         try:
             decoded = png._rgb_rows(payload)  # noqa: SLF001
             # Inside the guard too: a 0x0 image decodes cleanly and then

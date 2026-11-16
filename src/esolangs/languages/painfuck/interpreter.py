@@ -136,7 +136,8 @@ class _Print:
 
 type _Effect = _Print
 type _PendingOutput = tuple[_State, tuple[_Effect, ...]]
-type _BranchState = _State | tuple[_State]
+type _PortValues = tuple[tuple[str | int, ...], tuple[int, ...]]
+type _BranchState = _State | tuple[_State] | tuple[_State, _PortValues]
 
 
 class _NeedRead(Exception):  # noqa: N818 - a control signal, not an error
@@ -645,6 +646,7 @@ class _Machine:
         self._random_draws = 0
         self._rng = rng
         self._pending_output: _PendingOutput | None = None
+        self._pending_ports: _PortValues | None = None
         self._fault: tuple[tuple[object, ...], tuple[str, ...]] | None = None
         self._writer = _BufferedOutput()
         self.prog = _translate(code) if isinstance(code, str) else code.program
@@ -682,6 +684,8 @@ class _Machine:
             instruction = WorkspaceVariant("pending_output", (self.ind, *pending))
         elif self._fault is not None:
             instruction = WorkspaceVariant("halt_fault", (self.ind, *self._fault))
+        elif self._pending_ports is not None:
+            instruction = self._port_boundary()
         return _WORKSPACE_MODEL.capture(
             tape=self.tape,
             loops=self.loop,
@@ -705,6 +709,10 @@ class _Machine:
             self._writer.accepted or 0,
         )
 
+    def _port_boundary(self) -> WorkspaceVariant:
+        assert self._pending_ports is not None
+        return WorkspaceVariant("pending_ports", (self.ind, *self._pending_ports))
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         boundary = (
@@ -722,19 +730,26 @@ class _Machine:
         if self._fault is not None:
             return (*boundary, self._fault)
         pending = self._output_boundary()
-        return boundary if pending is None else (*boundary, pending)
+        if pending is not None:
+            return (*boundary, pending)
+        if self._pending_ports is not None:
+            return (*boundary, self._port_boundary())
+        return boundary
 
     def branching_snapshot(self) -> _BranchState:
-        """Return the current control state or the target of an unflushed command."""
+        """Return control state with any effects already accepted by this command."""
         if self._fault is not None:
             raise self._fresh_fault(*self._fault)
-        pending = self._pending_output
-        return self._state if pending is None else (pending[0],)
+        if self._pending_output is not None:
+            return (self._pending_output[0],)
+        if self._pending_ports is not None:
+            return self._state, self._pending_ports
+        return self._state
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has run past the translated program."""
         current = cast(_BranchState, state)
-        return len(current) != 1 and current[3] >= self.n
+        return len(current) == 6 and current[3] >= self.n
 
     def branching_successors(
         self, state: object, limit: int
@@ -750,12 +765,18 @@ class _Machine:
         current = cast(_BranchState, state)
         if len(current) == 1:
             return current
-        pending: list[tuple[int, ...]] = [()]
+        if len(current) == 2:
+            current, (reads, accepted_coins) = current
+        else:
+            reads, accepted_coins = (), ()
+        pending = [accepted_coins]
         successors: list[_State | BranchFailure] = []
         while pending:
             coins = pending.pop()
             try:
-                next_state, _effects = _advance(current, self.prog, self.n, (), coins)
+                next_state, _effects = _advance(
+                    current, self.prog, self.n, reads, coins
+                )
             except _NeedCoin as need_coin:
                 if len(pending) + len(successors) + 2 > limit:
                     raise with_hint(
@@ -807,35 +828,48 @@ class _Machine:
             self._finish_output(*self._pending_output)
             return
         start = self._state
-        reads: tuple[str | int, ...] = ()
-        coins: tuple[int, ...] = ()
-        while True:
-            try:
-                state, effects = _advance(start, self.prog, self.n, reads, coins)
-            except _NeedRead as want:
+        pending = self._pending_ports
+        reads, coins = pending if pending is not None else ((), ())
+        try:
+            while True:
                 try:
-                    value = self.io.input_token() if want.line else self.io.input_char()
-                except EOFError:
-                    # Keep completed repeated reads and the core's cursor.
-                    if want.state is None:
-                        raise AssertionError("read suspension has no state") from None
-                    self._restore(want.state)
-                    raise
-                self._input_reads += 1
-                reads = (*reads, value)
-                continue
-            except _NeedCoin:
-                coins = (*coins, draw(self._rng, 2))
-                self._random_draws += 1
-                continue
-            except _Halted as halt:
-                self._restore(halt.state)
-                self._fault = (
-                    halt.error.args,
-                    tuple(getattr(halt.error, "__notes__", ())),
-                )
-                raise halt.error from None
-            break
+                    state, effects = _advance(start, self.prog, self.n, reads, coins)
+                except _NeedRead as want:
+                    try:
+                        value = (
+                            self.io.input_token() if want.line else self.io.input_char()
+                        )
+                    except EOFError:
+                        # Physical EOF commits the completed reads and the cursor.
+                        if want.state is None:
+                            raise AssertionError(
+                                "read suspension has no state"
+                            ) from None
+                        self._restore(want.state)
+                        reads, coins = (), ()
+                        raise
+                    self._input_reads += 1
+                    reads = (*reads, value)
+                    continue
+                except _NeedCoin:
+                    coins = (*coins, draw(self._rng, 2))
+                    self._random_draws += 1
+                    continue
+                except _Halted as halt:
+                    self._restore(halt.state)
+                    self._fault = (
+                        halt.error.args,
+                        tuple(getattr(halt.error, "__notes__", ())),
+                    )
+                    reads, coins = (), ()
+                    raise halt.error from None
+                break
+        except BaseException:
+            # Only replay accepted effects when the core has not committed.
+            self._pending_ports = (reads, coins) if reads or coins else None
+            raise
+        if pending is not None:
+            self._pending_ports = None
         if effects:
             self._finish_output(state, effects)
         else:

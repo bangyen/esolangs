@@ -61,7 +61,7 @@
   "ProgramArtifact.__init__": "(self, source: 'Source', language: 'str', *, settings: 'DialectSettings | None' = None, scale: 'int | None' = None, input_arity: 'int | None' = None) -> None",
   "ProgramArtifact.evaluate": "(self, bits: 'list[int] | tuple[int, ...]', *, limits: 'ExecutionLimits | None' = None, catalog: 'esolangs.Catalog | None' = None) -> 'BooleanEvaluation'",
   "Raster.__init__": "(self, rows: 'Rows') -> 'None'",
-  "Raster.from_png": "(cls, data: 'bytes') -> 'Raster'",
+  "Raster.from_png": "(cls, data: 'Buffer') -> 'Raster'",
   "Raster.to_png": "(self) -> 'bytes'",
   "Raster.upscaled": "(self, scale: 'int') -> 'Raster'",
   "TemplateArtifact.__init__": "(self, source: 'str', language: 'str', bindings: 'TemplateBindings', *, settings: 'DialectSettings | None' = None, spans: 'tuple[tuple[int, int], ...] | None' = None, generation_width: 'int | None' = None) -> None",

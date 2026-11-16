@@ -15,7 +15,12 @@ from os import fsdecode, fsencode, fspath
 from typing import TYPE_CHECKING, Any
 
 from esolangs._dialect import DialectSettings
-from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramError
+from esolangs.exceptions import (
+    ArgumentError,
+    EsolangError,
+    MissingDependencyError,
+    ProgramError,
+)
 from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
 from esolangs.runtime._files import _STREAM_DEADLINE, _time_remaining
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
@@ -82,13 +87,28 @@ _COLOUR_NAMES = {
 }
 
 
-def _backing_bytes(data: bytes | bytearray) -> bytes:
-    """Read the stored payload without invoking Python subclass hooks."""
-    if _has_backing_type(data, bytearray):
-        return bytes(bytearray.copy(data))
+def _backing_bytes(data: Buffer) -> bytes:
+    """Snapshot an image buffer, bypassing overrides on bytes and bytearrays."""
+    if type(data) is bytes:
+        return data
     if _has_backing_type(data, bytes):
         return bytes.__bytes__(data)
-    raise ArgumentError(f"PNG data must be bytes, got {type(data).__name__}")
+    deadline = _STREAM_DEADLINE.get()
+    _time_remaining(deadline)
+    if _has_backing_type(data, bytearray):
+        return bytes(bytearray.copy(data))
+    try:
+        with memoryview(data) as view:
+            _time_remaining(deadline)
+            return view.tobytes()
+    except EsolangError:
+        raise
+    except TypeError as error:
+        raise ArgumentError(
+            f"PNG data must be bytes, got {type(data).__name__}"
+        ) from error
+    except (BufferError, ValueError) as error:
+        raise ArgumentError(f"cannot read PNG data: {error}") from error
 
 
 def _chunk_label(kind: bytes) -> str:
@@ -411,11 +431,12 @@ def _validate_png(
     return width, depth, colour, palette or b""
 
 
-def _read(data: bytes | bytearray, mode: str) -> tuple[bytes, int]:
+def _read(data: Buffer, mode: str) -> tuple[bytes, int]:
     deadline = _STREAM_DEADLINE.get()
     _time_remaining(deadline)
-    image = _require_image()
     data = _backing_bytes(data)
+    _time_remaining(deadline)
+    image = _require_image()
     width, depth, colour, palette = _validate_png(data, image.MAX_IMAGE_PIXELS)
     _time_remaining(deadline)
     with image.open(io.BytesIO(data), formats=["PNG"]) as opened:
@@ -440,7 +461,7 @@ def _read(data: bytes | bytearray, mode: str) -> tuple[bytes, int]:
     return raw, width
 
 
-def read_grey(data: bytes) -> list[bytearray]:
+def read_grey(data: Buffer) -> list[bytearray]:
     """Decode PNG bytes to rows of greyscale levels, ignoring alpha."""
     raw, width = _read(data, "L")
     return [bytearray(raw[i : i + width]) for i in range(0, len(raw), width)]
@@ -449,7 +470,7 @@ def read_grey(data: bytes) -> list[bytearray]:
 _RGB_RUN = re.compile(rb"(.{3})\1*", re.DOTALL)
 
 
-def _rgb_rows(data: bytes | bytearray) -> Rows:
+def _rgb_rows(data: Buffer) -> Rows:
     """Decode immutable RGB rows, reusing up to 1024 pixels and row patterns."""
     deadline = _STREAM_DEADLINE.get()
     raw, width = _read(data, "RGB")
@@ -489,7 +510,7 @@ def _rgb_rows(data: bytes | bytearray) -> Rows:
     return tuple(rows)
 
 
-def read_rgb(data: bytes) -> list[list[tuple[int, int, int]]]:
+def read_rgb(data: Buffer) -> list[list[tuple[int, int, int]]]:
     """Decode PNG bytes to independent mutable RGB rows, ignoring alpha."""
     return [list(row) for row in _rgb_rows(data)]
 
@@ -717,7 +738,7 @@ def _check_version(metadata: dict[str, Any]) -> None:
         raise ValueError("unsupported esolangs PNG metadata version")
 
 
-def read_metadata(data: bytes) -> dict[str, Any] | None:
+def read_metadata(data: Buffer) -> dict[str, Any] | None:
     """Read bounded UTF-8 version-one source metadata."""
     found: dict[str, Any] | None = None
     for kind, body in _chunks(_backing_bytes(data)):
@@ -731,7 +752,7 @@ def read_metadata(data: bytes) -> dict[str, Any] | None:
     return found
 
 
-def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
+def write_metadata(data: Buffer, metadata: dict[str, Any]) -> bytes:
     """Append source metadata before IEND; image editors may discard it."""
     body = _encode_metadata(metadata)
     data = _backing_bytes(data)
@@ -916,7 +937,7 @@ def _missing_claims(
 
 
 def _attach_metadata(
-    data: bytes, metadata: dict[str, Any], *, catalog: Catalog | None
+    data: Buffer, metadata: dict[str, Any], *, catalog: Catalog | None
 ) -> bytes:
     data = _backing_bytes(data)
     start, end = _metadata_span(data, locate_existing=True)
@@ -968,7 +989,7 @@ def write_source(
 
 
 def attach_source_metadata(
-    data: bytes,
+    data: Buffer,
     language: str | None,
     settings: DialectSettings | None,
     scale: int | None,
