@@ -3,6 +3,7 @@
 import itertools
 import random
 import re
+from unicodedata import decimal
 
 import pytest
 
@@ -19,9 +20,12 @@ def _operand(token):
     if len(token) == 1:
         return 0
     char = token[1]
-    if char.isdigit():
-        return int(char)
-    return ord(char.upper()) - ord("A") + 10
+    digit = decimal(char, None)
+    if digit is not None:
+        return digit
+    normalized = tuple(map(ord, char.upper()))
+    value = normalized[0] if len(normalized) == 1 else ord(char)
+    return value - ord("A") + 10
 
 
 def _model(source, stdin):
@@ -61,15 +65,11 @@ def _model(source, stdin):
             else:
                 cells[position] = value + {"5": 5, "6": 6, "2": -5, "9": -6}[op]
         elif op in "78":
-            try:
-                operand = _operand(token)
-            except ValueError:
-                error = "syntax"
-            else:
-                if op == "7" and operand == value:
-                    next_pc += 1
-                elif op == "8" and 1 <= operand <= len(labels):
-                    next_pc = labels[operand - 1]
+            operand = _operand(token)
+            if op == "7" and operand == value:
+                next_pc += 1
+            elif op == "8" and 1 <= operand <= len(labels):
+                next_pc = labels[operand - 1]
         elif op == "A":
             if not 0 <= value <= 0x10FFFF:
                 error = "halt"
@@ -126,6 +126,8 @@ def check_raw_six_five():
         "2" * 9 + "7\nA",
         "7\u00b2",
         "07\u00b2",
+        "8ß6A",
+        "7\u06606A",
         "λ!\n",
         "1" * 80,
     ]
@@ -133,7 +135,7 @@ def check_raw_six_five():
     results = [
         _agrees(_Machine, source, stdin) for source in corpus for stdin in inputs
     ]
-    assert {error for error, _ in results} == {None, "syntax", "input", "halt"}
+    assert {error for error, _ in results} == {None, "input", "halt"}
     assert any(not trace[-1][1] for error, trace in results if not error)
     assert _model("BA", "λ")[1][-1][2] == "λ"  # repo's character-input convention
     controls = {

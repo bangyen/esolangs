@@ -96,8 +96,8 @@ def record_dumps(
     active: set[int] = set()
 
     def encode(item: Any) -> str:
-        if type(item) is int:
-            return format_integer(item)
+        if type(item) is not bool and issubclass(type(item), int):
+            return format_integer(int.__int__(item))
         if not isinstance(item, (dict, list, tuple)):
             return json.dumps(item, ensure_ascii=ensure_ascii, allow_nan=False)
         identity = id(item)

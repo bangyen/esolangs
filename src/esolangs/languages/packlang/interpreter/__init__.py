@@ -110,7 +110,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
-from esolangs.runtime.memory import repr_value
+from esolangs.runtime.memory import format_integer, repr_value
 
 # There is no recursion ceiling.  A call pushes a frame rather than
 # recursing natively, so a runaway program grows the frame list on the
@@ -199,7 +199,7 @@ def _evaluate(node: _Expr, store: _Store) -> int:
                 assert isinstance(array, tuple)
                 if not 0 <= result < len(array):
                     raise HaltError(
-                        f"index {result} is outside {name!r}",
+                        f"index {format_integer(result)} is outside {name!r}",
                         hint=(
                             "keep the index within the bounds stated in the diagnostic"
                         ),
@@ -434,7 +434,7 @@ def _write(
         at = _evaluate(_node(index), store)
         if not 0 <= at < len(value):
             raise HaltError(
-                f"index {at} is outside {name!r}",
+                f"index {format_integer(at)} is outside {name!r}",
                 hint=("keep the index within the bounds stated in the diagnostic"),
             )
         row = list(value)

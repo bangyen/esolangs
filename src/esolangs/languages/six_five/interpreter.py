@@ -64,7 +64,10 @@ def _operand(tok: str) -> int:
     if len(tok) < 2:
         return 0
     char = tok[1]
-    return int(char) if char.isdigit() else ord(char.upper()) - 55
+    if char.isdecimal():
+        return int(char)
+    upper = char.upper()
+    return ord(upper if len(upper) == 1 else char) - 55
 
 
 def _tokens(code: str) -> list[str]:

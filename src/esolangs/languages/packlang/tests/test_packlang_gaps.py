@@ -1,5 +1,6 @@
 """Packlang paths the wiki examples never take."""
 
+import sys
 from dataclasses import FrozenInstanceError
 from functools import partial
 
@@ -162,6 +163,35 @@ class TestArrayRuntime:
     def test_an_index_outside_the_row_halts(self) -> None:
         with pytest.raises(HaltError, match="is outside"):
             _run(_wrap("    charPut(row(9));", "Array(Integer, 2) row;"))
+        self._check_wide_array_index()
+
+    def _check_wide_array_index(self) -> None:
+        api = Language("Packlang")
+        limits = ExecutionLimits(max_steps=8)
+        index = "1" + "0" * 641
+        previous = sys.get_int_max_str_digits()
+        try:
+            sys.set_int_max_str_digits(640)
+            for command, reads in (("charGet", 1), ("charPut", 0)):
+                source = _wrap(
+                    f"    charPut(90);\n    {command}(row({index}));",
+                    "Array(Char, 2) row;",
+                )
+                plan = api.prepare(source)
+                for outcome, steps in (
+                    (api.execute(source, stdin="A"), None),
+                    (api.execute(source, stdin="A", limits=limits), 1),
+                    (plan.execute(stdin="A"), None),
+                    (plan.execute(stdin="A", limits=limits, isolated=True), 1),
+                ):
+                    assert outcome.status == "fault"
+                    assert type(outcome.error) is HaltError
+                    assert outcome.error.args == (f"index {index} is outside 'row'",)
+                    assert outcome.observation == ExecutionResult(
+                        "Z", reads, reads, 0, steps=steps
+                    )
+        finally:
+            sys.set_int_max_str_digits(previous)
 
     def test_length_of_a_scalar_halts(self) -> None:
         with pytest.raises(HaltError, match="is not an array"):

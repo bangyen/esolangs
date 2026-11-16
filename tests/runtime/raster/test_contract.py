@@ -7,6 +7,7 @@ import sys
 import zlib
 from array import array
 from dataclasses import replace
+from enum import IntEnum
 from importlib.resources import files
 from io import BytesIO
 from pathlib import Path
@@ -587,18 +588,28 @@ def test_png_metadata_integer_fallback_preserves_json_key_rules() -> None:
     data = pixels.to_png()
     cap = sys.int_info.str_digits_check_threshold
     large = 10**cap
+
+    class Choice(IntEnum):
+        SMALL = 7
+        LARGE = large
+
     previous = sys.get_int_max_str_digits()
     sys.set_int_max_str_digits(cap)
     try:
-        for value in (7, large):
-            metadata = {
-                "version": 1,
-                "extra": {2: value, None: 0, True: 1, False: 2, 1.25: 3, "é": 4},
-            }
+        for value in (7, Choice.SMALL, large, Choice.LARGE):
+            values = {2: value, None: 0, True: 1, False: 2, 1.25: 3, "é": 4}
+            metadata = {"version": 1, "extra": values, "flag": True}
             tagged = png.write_metadata(data, metadata)
+            assert tagged == png.write_metadata(
+                data, {**metadata, "extra": values | {2: int(value)}}
+            )
             assert Raster.from_png(tagged) == pixels
-            assert png.read_metadata(tagged) == {
+            decoded = png.read_metadata(tagged)
+            assert decoded is not None
+            assert decoded["flag"] is True
+            assert decoded == {
                 "version": 1,
+                "flag": True,
                 "extra": {
                     "2": value,
                     "null": 0,
@@ -613,13 +624,18 @@ def test_png_metadata_integer_fallback_preserves_json_key_rules() -> None:
             )
             with pytest.raises(ValueError, match="duplicate field: 2"):
                 png.read_metadata(duplicate)
-        tagged = png.write_metadata(data, {"version": 1, "extra": {large: "wide"}})
-        assert png.read_metadata(tagged)["extra"] == {"1" + "0" * cap: "wide"}
+        for key in (large, Choice.LARGE):
+            tagged = png.write_metadata(data, {"version": 1, "extra": {key: "wide"}})
+            assert png.read_metadata(tagged)["extra"] == {"1" + "0" * cap: "wide"}
         for key, error_type in (((1, 2), TypeError), (float("nan"), ValueError)):
             with pytest.raises(error_type):
                 png.write_metadata(
                     data, {"version": 1, "integer": large, "extra": {key: 0}}
                 )
+        with pytest.raises(TypeError, match="is not JSON serializable"):
+            png.write_metadata(
+                data, {"version": 1, "integer": large, "extra": object()}
+            )
     finally:
         sys.set_int_max_str_digits(previous)
 

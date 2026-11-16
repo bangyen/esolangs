@@ -4,6 +4,7 @@ import importlib
 
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.six_five.interpreter import _Machine
 from esolangs.languages.six_five.interpreter import _Machine as SixFive
@@ -160,6 +161,23 @@ class TestComments:
         # Only 7 and 8 take an operand; a non-instruction is no token at all.
         assert _tokens("X6") == ["6"]
         assert run_and_capture("X66666666A0") == "0"
+
+        language = Language("6-5")
+        for source, stdin, expected in (
+            ("7ß6A", "", "\x06"),
+            ("B7ß6A", "¨", "¨"),
+            ("B7²6A", "{", "{"),
+            ("B7é6A", "\x92", "\x92"),
+            ("7\u06606A", "", "\x00"),
+        ):
+            assert language.run(source, stdin=stdin).output == expected
+            limits = ExecutionLimits(max_steps=4)
+            bounded = language.run(source, stdin=stdin, limits=limits)
+            assert bounded.output == expected
+            assert (
+                language.run(source, stdin=stdin, limits=limits, isolated=True)
+                == bounded
+            )
 
     def test_a_skip_passes_over_blanks_to_the_next_instruction(self) -> None:
         """``7n`` "skips the next instruction"; a blank or comment is none."""
