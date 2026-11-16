@@ -253,12 +253,53 @@ def _check_branch_halt(halted: object, error_type: type[TypeError]) -> None:
         raise error_type("branching_halted must return a bool")
 
 
+_BRANCH_RUNTIME_ERRORS = (ValueError, OverflowError, RecursionError, MemoryError)
+
+
+def _branch_fault(error: Exception, language: str) -> EsolangError:
+    from esolangs.runtime._execution import interpreter_errors
+
+    try:
+        with interpreter_errors(
+            f"the {language} interpreter recursed deeper than CPython's stack "
+            "limit allows on this program",
+            language=language,
+        ):
+            raise error
+    except EsolangError as translated:
+        return translated
+
+
+def _owned_branch_hook_fault(
+    machine: _BranchingStepMachine, adapter: object, error: Exception
+) -> EsolangError | None:
+    from esolangs.vm import _DelegatingVM
+
+    if isinstance(adapter, _DelegatingVM):
+        owner: object = adapter._machine  # noqa: SLF001 - enforce ownership
+        if machine is owner:
+            return _branch_fault(error, adapter.language)
+    return None
+
+
+def _branch_snapshot(machine: _BranchingStepMachine, adapter: object) -> Hashable:
+    try:
+        return machine.branching_snapshot()
+    except EsolangError:
+        raise
+    except _BRANCH_RUNTIME_ERRORS as error:
+        translated = _owned_branch_hook_fault(machine, adapter, error)
+        if translated is None:
+            raise
+        raise translated from error
+
+
 def _read_branch_root(
     machine: _BranchingStepMachine, adapter: object, error_type: type[TypeError]
 ) -> tuple[Hashable, set[Hashable]]:
     """Read and hash a detached root, retaining owned IO on failure."""
     try:
-        root = machine.branching_snapshot()
+        root = _branch_snapshot(machine, adapter)
         try:
             return root, {root}
         except TypeError:
@@ -269,17 +310,27 @@ def _read_branch_root(
         raise
 
 
-def _branch_halt_fault_escapes(
+def _branch_halt_fault(
     machine: _BranchingStepMachine,
     adapter: object,
-    error: EsolangError | TimeoutError,
+    error: Exception,
     *,
     at_root: bool,
-) -> bool:
+) -> EsolangError | TimeoutError:
     """Root and budget faults abort the search; a detached arm may fail."""
-    if at_root and _has_backing_type(error, EsolangError):
-        _retain_branch_root_fault(machine, adapter, error)
-    return at_root or _has_backing_type(error, ExecutionBudgetError)
+    fault: EsolangError | TimeoutError
+    if _has_backing_type(error, EsolangError) or _has_backing_type(error, TimeoutError):
+        fault = error
+    else:
+        translated = _owned_branch_hook_fault(machine, adapter, error)
+        if translated is None:
+            raise error
+        fault = translated
+    if at_root and _has_backing_type(fault, EsolangError):
+        _retain_branch_root_fault(machine, adapter, fault)
+    if at_root or _has_backing_type(fault, ExecutionBudgetError):
+        raise fault
+    return fault
 
 
 def _retain_branch_root_fault(

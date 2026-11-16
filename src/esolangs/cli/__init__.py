@@ -583,7 +583,7 @@ def _answer_sentence(facts: LanguageInfo) -> str:
     else:
         text = f"printed output ({zero} for 0, {one} for 1)"
     if facts.answer_convention:
-        text += f"; {facts.answer_convention}"
+        text += f"; {_printable(facts.answer_convention)}"
     return text
 
 
@@ -599,7 +599,7 @@ def _generator_sentence(facts: LanguageInfo) -> str:
     if facts.generator_max_inputs is not None:
         parts.append(f"max {_argument_repr(facts.generator_max_inputs)} inputs")
     if facts.generator_restrictions:
-        parts.append(str(facts.generator_restrictions))
+        parts.append(_printable(facts.generator_restrictions))
     return "; ".join(parts)
 
 

@@ -31,6 +31,7 @@ from esolangs.runtime._program import Program
 from esolangs.runtime._proof import (
     BranchProof,
     TerminationResult,
+    _branch_snapshot,
     checked_decision,
     checked_termination,
 )
@@ -54,7 +55,7 @@ def _observe_branch_path(machine: VM, proof: BranchProof) -> None:
         ),
     )
     graph = dict(proof.transitions)
-    state = branch.branching_snapshot()
+    state = _branch_snapshot(branch, machine)
     seen = set()
     if state != proof.root:
         _check_snapshot_hash(state, InterpreterLimitError)
@@ -72,7 +73,7 @@ def _observe_branch_path(machine: VM, proof: BranchProof) -> None:
                 "live machine halted before branch evidence ends"
             )
         machine.step()
-        successor = branch.branching_snapshot()
+        successor = _branch_snapshot(branch, machine)
         if successor not in graph[state]:
             _check_snapshot_hash(successor, InterpreterLimitError)
             raise InterpreterLimitError(

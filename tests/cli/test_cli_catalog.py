@@ -79,7 +79,8 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
     escaped_name = r"Scoped\nCatalog"
     option_name, option_only = "--help", "--version"
     terminal_name = "clear\x1b[2Jscreen"
-    restrictions = "first line\nsecond line"
+    restrictions = "first line\nsecond line\x1b[2J"
+    escaped_restrictions = repr(restrictions)[1:-1]
     scope = esolangs.Catalog(
         [
             replace(original, name=lf_name, id="scoped_lf", aliases=()),
@@ -89,6 +90,7 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
                 id="unsafe\rid",
                 aliases=("scoped_cr",),
                 backend=replace(original.backend, restrictions=restrictions),
+                contract=replace(original.contract, note=restrictions),
             ),
             replace(original, name=escaped_name, id="escaped", aliases=()),
             replace(original, name=unreachable, id="unsafe\nid", aliases=()),
@@ -117,7 +119,7 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
     assert len(rows) == len(labels)
     width = max(map(len, labels))
     assert [row[:width].rstrip() for row in rows] == labels
-    assert r"(first line\nsecond line)" in text
+    assert f"({escaped_restrictions})" in text
 
     output, _ = call_both(["list", "--json"], capsys)
     assert json.loads(output) == canonical
@@ -138,6 +140,12 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
         lines = details.splitlines()
         assert not error
         assert lines[0] == (name if name.isprintable() else repr(name)[1:-1])
+        if name == cr_name:
+            assert lines[2].endswith(escaped_restrictions)
+            assert lines[3].endswith(escaped_restrictions)
+            assert "\x1b" not in details
+            raw, _ = call_both(["describe", "--json", spelling], capsys)
+            assert json.loads(raw)["answer_convention"] == restrictions
         spec = next(line for line in lines if line.startswith("spec: "))
         tool, *command = shlex.split(spec.removeprefix("spec: "))
         assert tool == "esolangs"

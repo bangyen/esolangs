@@ -2,6 +2,7 @@
 
 import io
 import json
+import os
 import shlex
 import sys
 from ast import literal_eval
@@ -154,6 +155,35 @@ class TestRoundSixQol:
         output, error = call_both(["run", REFERENCE, str(empty)], capsys)
         assert not output
         assert "contains no source, so there was no program to run" in error
+
+        if os.name == "posix":
+            path = tmp_path / "clear\x1b[2J\nsource"
+            label = str(tmp_path / r"clear\x1b[2J\nsource")
+            args = ["run", REFERENCE, str(path)]
+            output, error = _failure(args, capsys)
+            assert not output
+            assert error.splitlines()[0].startswith(f"cannot read {label}:")
+            assert "\x1b" not in error
+
+            path.write_bytes(b"A\xff")
+            outcome = esolangs.Language(REFERENCE).execute(path)
+            assert outcome.status == "rejected"
+            assert isinstance(outcome.error, esolangs.ProgramError)
+            message = f"cannot read {path}: not text (invalid UTF-8 at byte 1)"
+            assert str(outcome.error) == message
+            assert _failure(args, capsys) == (
+                "",
+                f"cannot read {label}: not text (invalid UTF-8 at byte 1)\n"
+                "hint: save the text program as UTF-8 before running it\n",
+            )
+
+            path.write_text("+.")
+            assert call_both(args, capsys) == ("\x01", "")
+            path.write_text("")
+            assert call_both(args, capsys) == (
+                "",
+                f"note: {label} contains no source, so there was no program to run\n",
+            )
 
 
 class TestTheLastResortPaths:

@@ -17,10 +17,12 @@ from esolangs.runtime._drive import (
 )
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import (
+    _BRANCH_RUNTIME_ERRORS,
     BranchFailure,
     BranchProof,
     CycleDecision,
-    _branch_halt_fault_escapes,
+    _branch_fault,
+    _branch_halt_fault,
     _BranchResult,
     _check_branch_halt,
     _drive_ancestor,
@@ -584,20 +586,6 @@ def _proof_runtime(adapter: object) -> tuple[str | None, bool]:
     return None, False
 
 
-def _branch_fault(error: Exception, language: str) -> EsolangError:
-    from esolangs.runtime._execution import interpreter_errors
-
-    try:
-        with interpreter_errors(
-            f"the {language} interpreter recursed deeper than CPython's stack "
-            "limit allows on this program",
-            language=language,
-        ):
-            raise error
-    except EsolangError as translated:
-        return translated
-
-
 def _bounded_branch_sequence(result: object, limit: int) -> tuple[Hashable, ...] | None:
     """Capture foreign successor containers within the declared state budget."""
     if not isinstance(result, Sequence):
@@ -648,12 +636,9 @@ def _branch_search(
         state = pending.popleft()
         try:
             halted = machine.branching_halted(state)
-        except (EsolangError, TimeoutError) as error:
-            if _branch_halt_fault_escapes(
-                machine, adapter, error, at_root=state is root
-            ):
-                raise
-            failure = error if failure is None else failure
+        except (EsolangError, TimeoutError, *_BRANCH_RUNTIME_ERRORS) as error:
+            fault = _branch_halt_fault(machine, adapter, error, at_root=state is root)
+            failure = fault if failure is None else failure
             continue
         if halted is not False:
             _check_branch_halt(halted, _BranchingUnavailableError)
@@ -670,7 +655,7 @@ def _branch_search(
         except (EsolangError, TimeoutError) as error:
             failure = error if failure is None else failure
             continue
-        except (ValueError, OverflowError, RecursionError, MemoryError) as error:
+        except _BRANCH_RUNTIME_ERRORS as error:
             if language is None:
                 raise
             failure = _branch_fault(error, language) if failure is None else failure

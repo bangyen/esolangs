@@ -39,6 +39,7 @@ from esolangs.cli.hints import (
     _cli_error_text,
     _display_encoding,
     _exit_code,
+    _path_label,
     _timeout_text,
 )
 from esolangs.exceptions import (
@@ -147,6 +148,7 @@ def _read_program(
     deadline = None if timeout is None else monotonic() + timeout
     catalog = get_catalog(catalog)
     gzip_native = catalog.languages[language].runtime.compressed_source
+    label = _path_label(path)
     data = _bounded_read(
         path,
         timeout,
@@ -160,7 +162,7 @@ def _read_program(
         with nullcontext() if deadline is None else stream_read_deadline(deadline):
             return _check_program(
                 language,
-                _FileSource(path, data),
+                _FileSource(label, data),
                 normalize=True,
                 settings=settings,
                 catalog=catalog,
@@ -174,7 +176,7 @@ def _read_program(
         bound = f" ({timeout_flag})" if timeout_flag else ""
 
         def on_timeout() -> NoReturn:
-            _fail(f"gave up decoding {path} after {timeout:g}s{bound}", _TIMEOUT_EXIT)
+            _fail(f"gave up decoding {label} after {timeout:g}s{bound}", _TIMEOUT_EXIT)
 
         if remaining <= 0:
             on_timeout()
@@ -245,6 +247,7 @@ def _bounded_read(
         path = explicit_path(path).spelling
     except ArgumentError as error:
         _fail(error)
+    label = _path_label(path)
     waited = timeout if timeout is not None else _READ_DEADLINE
     if deadline is None:
         deadline = monotonic() + waited
@@ -275,17 +278,17 @@ def _bounded_read(
         except StreamReadTimeoutError:
             raise
         except (OSError, TypeError, ValueError) as exc:
-            raise source_read_error(path, exc) from exc
+            raise source_read_error(label, exc) from exc
         if len(result) > max_bytes:
             raise ProgramError(
-                f"{path} is larger than the {max_bytes // 1024} KiB program file limit"
+                f"{label} is larger than the {max_bytes // 1024} KiB program file limit"
             )
         return result
 
     def _on_timeout() -> NoReturn:
         bound = f" ({timeout_flag})" if timeout_flag else ""
         _fail(
-            f"gave up reading {path} after {waited:g}s{bound} -- it is not "
+            f"gave up reading {label} after {waited:g}s{bound} -- it is not "
             f"delivering data (a FIFO with no writer, or a device)",
             _TIMEOUT_EXIT,
         )

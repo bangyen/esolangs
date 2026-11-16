@@ -525,14 +525,14 @@ def _matches_width_layout(
     """Compare a requested width and bounded candidates inferred from source."""
     if width is not None and text == layout(width):
         return True
-    # A narrow layout can switch representations. Either it or the widest
-    # stored line can exceed a backend cap.
+    # A narrow layout or the widest stored line can fall outside the backend's
+    # width domain, so an inferred width's rejection does not rule out balance.
     widest = max(map(len, text.splitlines()), default=0)
     for inferred_width in (1, widest) if widest > 1 else (1,):
         try:
             if text == layout(inferred_width):
                 return True
-        except GeneratorCapError:
+        except (ArgumentError, GeneratorCapError):
             continue
     return False
 

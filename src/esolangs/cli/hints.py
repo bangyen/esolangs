@@ -50,6 +50,11 @@ def _exit_code(exc: EsolangError) -> int:
     return 2 if isinstance(exc, ValueError) else 1
 
 
+def _path_label(path: str) -> str:
+    """Keep a CLI filename on one line without terminal controls."""
+    return path if path.isprintable() else repr(path)[1:-1]
+
+
 def _cli_error_text(
     exc: BaseException, *, language: str | None = None, catalog: Catalog | None = None
 ) -> str:

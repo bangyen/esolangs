@@ -27,6 +27,7 @@ from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _cli_error_text,
     _exit_code,
+    _path_label,
     _template_hint,
     _timeout_text,
 )
@@ -224,7 +225,10 @@ def _run(rest: list[str]) -> None:
         # Legal, and almost never what was meant: an empty file is what you
         # get from a redirect that failed or a generate that was never run.
         # Said on stderr, so a pipeline still receives the empty output.
-        _note(f"note: {path} contains no source, so there was no program to run")
+        _note(
+            f"note: {_path_label(path)} contains no source, "
+            "so there was no program to run"
+        )
     # A program that printed nothing is a legal program, and also what you
     # get from an empty file or the wrong path.  Say so on a terminal, where
     # the alternative is a blank line and no way to tell the two apart; a

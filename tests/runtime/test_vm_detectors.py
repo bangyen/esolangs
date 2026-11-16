@@ -14,6 +14,7 @@ from esolangs.exceptions import (
     ExecutionTimeoutError,
     HaltError,
     InterpreterLimitError,
+    ProgramError,
 )
 from esolangs.languages.brainfuck.interpreter import _Machine as Brainfuck
 from esolangs.results import Completion
@@ -659,6 +660,7 @@ def _check_malformed_branch_states(monkeypatch) -> None:
             assert caught.value.observation == ExecutionResult("1", 1, 1, 0)
     _check_branch_successor_containers(api, artifact, limits, Machine, monkeypatch)
     _check_branch_root_faults(api, artifact, Machine, monkeypatch)
+    _check_owned_branch_hook_failures(api, artifact, Machine, monkeypatch)
     _check_branch_replay_halt_boundary(api, module, monkeypatch)
 
     class EqualUnhashable(list):
@@ -872,6 +874,96 @@ def _check_branch_root_faults(api, artifact, machine, monkeypatch):
                 assert failure.observation is None
                 assert failure.partial_output == ""
                 assert live.observation == replace(initial, steps=0)
+
+
+def _check_owned_branch_hook_failures(api, artifact, machine, monkeypatch):
+    plan = api.prepare(artifact)
+    limits = ExecutionLimits(max_steps=3)
+    initial = ExecutionResult("1", 1, 1, 0)
+    completed = replace(initial, output="1!")
+    detectors = (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle)
+    evaluations = (
+        lambda: api.evaluate(artifact, [1], limits=limits),
+        lambda: plan.evaluate([1], limits=limits),
+    )
+    original = ValueError("scoped branch hook failed")
+
+    def refuse(*_args):
+        raise original
+
+    class CallerBranch(Debugger):
+        branching_snapshot = refuse
+        branching_halted = machine.branching_halted
+        branching_successors = machine.branching_successors
+
+    for detector in detectors:
+        with pytest.raises(ValueError, match="scoped branch hook failed") as caught:
+            detector(CallerBranch(plan.make_vm(stdin="1")), limit=3)
+        assert caught.value is original
+
+    for hook in ("branching_snapshot", "branching_halted"):
+        with monkeypatch.context() as hooks:
+            hooks.setattr(machine, hook, refuse)
+            for invoke in (
+                *(
+                    lambda proof=proof: proof(plan.make_debugger(stdin="1"), limit=3)
+                    for proof in detectors
+                ),
+                *evaluations,
+            ):
+                with pytest.raises(
+                    ProgramError, match="scoped branch hook failed"
+                ) as caught:
+                    invoke()
+                assert caught.value.__cause__ is original
+                assert caught.value.observation == initial
+                assert caught.value.partial_output == initial.output
+
+    snapshot = machine.branching_snapshot
+    with monkeypatch.context() as hooks:
+        hooks.setattr(
+            machine,
+            "branching_snapshot",
+            lambda live: refuse() if live.halted else snapshot(live),
+        )
+        for evaluate in evaluations:
+            with pytest.raises(
+                ProgramError, match="scoped branch hook failed"
+            ) as caught:
+                evaluate()
+            assert caught.value.__cause__ is original
+            assert caught.value.observation == completed
+            assert caught.value.partial_output == completed.output
+    for evaluate in evaluations:
+        assert evaluate().observation == completed
+
+    with monkeypatch.context() as hooks:
+        hooks.setattr(
+            machine,
+            "branching_halted",
+            lambda _vm, state: refuse() if state == (2,) else state == (1,),
+        )
+        for outcomes in (((2,), (1,)), ((1,), (2,)), ((2,),)):
+            hooks.setattr(
+                machine, "branching_successors", lambda *_args, edges=outcomes: edges
+            )
+            live = plan.make_debugger(stdin="1")
+            if len(outcomes) == 1:
+                with pytest.raises(
+                    ProgramError, match="scoped branch hook failed"
+                ) as caught:
+                    run_until_halt_or_all_branches_cycle(live, limit=3)
+                assert caught.value.__cause__ is original
+                assert caught.value.observation is None
+            else:
+                assert run_until_halt_or_all_branches_cycle(live, limit=3)
+                for evaluate in evaluations:
+                    with pytest.raises(
+                        InterpreterLimitError, match="depends on its own draws"
+                    ) as caught:
+                        evaluate()
+                    assert caught.value.observation == initial
+            assert live.observation == replace(initial, steps=0)
 
 
 def _check_branch_successor_containers(api, artifact, limits, machine, monkeypatch):

@@ -896,12 +896,11 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
     _check_width_provider_reuse()
     original = LANGUAGES[REFERENCE]
     refuse_guesses = False
+    rejected_width = esolangs.ArgumentError("width is outside this renderer's domain")
 
     def emit(request: GenerationRequest) -> TemplateLayout:
         if refuse_guesses and request.width == 1:
-            raise esolangs.ArgumentError(
-                "guessed width is outside this renderer's domain"
-            )
+            raise rejected_width
         width = None if request.width is None else max(1, request.width - 1)
         return _identity_layout(width)
 
@@ -911,6 +910,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
         template=TemplateSpec(pair=("x", "+")),
         layout_width=True,
         wrap=None,
+        balance=lambda _: _identity_layout(9),
     )
     api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     record = api.generate("01", width=8)
@@ -936,6 +936,13 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
 
     refuse_guesses = True
     assert api.run(api.instantiate(restored, [1], truth_table="01")).output == "1"
+    balanced = api.from_json(api.to_json(api.generate("01", balance=True)))
+    for bit in (0, 1):
+        filled = api.instantiate(balanced, [bit], truth_table="01")
+        assert api.run(filled).output == str(bit)
+    with pytest.raises(esolangs.ArgumentError) as caught:
+        api.instantiate(balanced, [1], width=1, truth_table="01")
+    assert caught.value is rejected_width
 
     retired_width = esolangs.ArgumentError("renderer no longer accepts width 8")
 

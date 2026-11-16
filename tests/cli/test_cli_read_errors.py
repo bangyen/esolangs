@@ -626,14 +626,14 @@ def test_blocked_readers_obey_their_deadline(
             call = (
                 (lambda: _read_stdin(0.1))
                 if reader == "stdin"
-                else (lambda: _bounded_read("blocked", 0.1))
+                else (lambda: _bounded_read("blocked\x1b[2J\npath", 0.1))
             )
             with pytest.raises(SystemExit) as caught:
                 call()
             assert caught.value.code == 124
             assert len(threads) == 1
             assert (
-                "stdin" if reader == "stdin" else "blocked"
+                "stdin" if reader == "stdin" else r"blocked\x1b[2J\npath"
             ) in capsys.readouterr().err
         finally:
             released.set()
