@@ -701,26 +701,37 @@ def _is_template_for(
             raise TemplateError("template layouts must return text")
         return source
 
-    if width_aware and _matches_retained_width(template, text, render, retained):
+    if width_aware and (
+        _matches_retained_width(template, text, render, retained)
+        or _matches_width_layout(text, layout, width)
+    ):
         return True
-    if width_aware and _matches_width_layout(text, layout, width):
-        return True
+
+    def matches_balance() -> bool:
+        if backend.balance is None and (
+            backend.wrap_balance is not None
+            or not _can_balance_template(canonical_layout, backend.wrap)
+        ):
+            return False
+        try:
+            balanced = render(balance=True)
+        except GeneratorCapError:
+            return False
+        return _same_generated_template(balanced, template, text)
+
     if backend.same_layout is not None:
-        matches: object = call_backend(backend.same_layout, text, plain, layout)
+        try:
+            matches: object = call_backend(backend.same_layout, text, plain, layout)
+        except (ArgumentError, GeneratorCapError):
+            # An unavailable layout probe cannot disprove an exact balanced render.
+            if matches_balance():
+                return True
+            raise
         if type(matches) is not bool:
             raise ProgramError(f"{name}'s layout matcher did not return a boolean")
         if matches:
             return True
-    if backend.balance is None and (
-        backend.wrap_balance is not None
-        or not _can_balance_template(canonical_layout, backend.wrap)
-    ):
-        return False
-    try:
-        balanced = render(balance=True)
-    except GeneratorCapError:
-        return False
-    return _same_generated_template(balanced, template, text)
+    return matches_balance()
 
 
 def _stdin_template_error(name: str) -> TemplateError:

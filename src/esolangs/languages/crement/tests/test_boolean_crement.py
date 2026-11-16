@@ -1,6 +1,7 @@
 """Covers :mod:`esolangs.languages.crement.generator`."""
 
 import random
+from dataclasses import replace
 from itertools import pairwise, product
 from unittest.mock import patch
 
@@ -18,6 +19,7 @@ from esolangs.languages.crement.generator import (
     crement_setters,
 )
 from esolangs.languages.crement.interpreter import _Machine
+from esolangs.registry import LANGUAGES
 from esolangs.vm import run_until_halt_or_cycle
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
@@ -265,6 +267,32 @@ def test_balanced_packed_template_instantiates_for_its_table() -> None:
         bits = [int(c) for c in format(row, "04b")]
         source = esolangs.instantiate("Crement", template, bits, truth_table=table)
         assert diverges("Crement", source, "") is (expected == "1")
+
+    declaration = LANGUAGES["Crement"]
+    backend = declaration.backend
+    cap = esolangs.GeneratorCapError("one column is unavailable")
+
+    def generate(request):
+        if request.width == 1:
+            raise cap
+        return backend.generate(request)
+
+    catalog = esolangs.Catalog(
+        [replace(declaration, backend=replace(backend, entrypoint=generate))]
+    )
+    api = catalog.bind("Crement")
+    table = "0110"
+    balanced = api.generate(table, balance=True)
+    restored = api.from_json(api.to_json(balanced))
+    for bits in product((0, 1), repeat=2):
+        source = api.instantiate(restored, bits, truth_table=table)
+        assert source == balanced.fill(bits)
+        assert api.evaluate(restored, bits).answer == table[2 * bits[0] + bits[1]]
+
+    altered = replace(restored, source=restored.source + "\n+J @ 1")
+    with pytest.raises(esolangs.GeneratorCapError) as caught:
+        api.instantiate(altered, [0, 0], truth_table=table)
+    assert caught.value is cap
 
 
 # language-owners: ["ArrowQueue"]
