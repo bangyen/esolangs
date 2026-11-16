@@ -104,6 +104,16 @@ def _acquisition_started_at(started: float) -> Iterator[None]:
         _ACQUISITION_STARTED.reset(token)
 
 
+def _restore_error_notes(error: exceptions.EsolangError, notes: object) -> None:
+    """Keep absent and explicitly empty notes distinct."""
+    if notes is None:
+        error.__dict__.pop("__notes__", None)
+    elif isinstance(notes, list) and all(isinstance(note, str) for note in notes):
+        error.__notes__ = list(notes)
+    else:
+        raise ValueError("invalid isolated error notes")
+
+
 def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.EsolangError:
     """Restore only the canonical error envelope and its explicit observation."""
     kind = result["error"]
@@ -115,12 +125,8 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
         fields.add("bound")
     if set(result) != fields or not isinstance(result["args"], list):
         raise ValueError("invalid isolated error fields")
-    if type(result["output_limit"]) is not bool or not isinstance(
-        result["notes"], list
-    ):
+    if type(result["output_limit"]) is not bool:
         raise ValueError("invalid isolated error options")
-    if any(not isinstance(note, str) for note in result["notes"]):
-        raise ValueError("invalid isolated error notes")
     args = result["args"]
     # The wire keeps every argument positional; these options are keyword-only.
     options: dict[str, Any] = {}
@@ -143,7 +149,7 @@ def _error_from_wire(result: dict[str, Any], partial: str) -> exceptions.Esolang
     ):
         raise ValueError("inconsistent isolated output-limit marker")
     error.partial_output = partial
-    error.__notes__ = list(result["notes"])
+    _restore_error_notes(error, result["notes"])
     if isinstance(error, exceptions.ExecutionTimeoutError):
         if result["bound"] not in (
             "execution_timeout",
@@ -991,7 +997,7 @@ def _failure_wire(error: BaseException) -> dict[str, Any]:
     return {
         "error": type(error).__name__,
         "args": args,
-        "notes": getattr(error, "__notes__", []),
+        "notes": getattr(error, "__notes__", None),
         "execution": encode_result(observation) if observation is not None else None,
         **(
             {"bound": getattr(error, "bound", None)}
@@ -1062,7 +1068,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                         if capped
                         else "isolated worker ran out of memory"
                     ],
-                    "notes": [],
+                    "notes": None,
                     "execution": None,
                     **({"bound": "max_memory"} if capped else {}),
                     "output_limit": False,

@@ -632,6 +632,16 @@ class TestMachine:
 def test_dice_retry_keeps_the_accepted_operand(stdin, error, position, reads):
     api = esolangs.Language("Interprogck8")
     source = "{values/=$py/=$py/=:}\ndiv"
+    limits = esolangs.ExecutionLimits(max_steps=40)
+    local = api.execute(source, stdin=stdin, limits=limits, seed=4)
+    worker = api.execute(source, stdin=stdin, limits=limits, isolated=True, seed=4)
+    assert (type(local.error), type(worker.error)) == (error, error)
+    assert local.error.args == worker.error.args
+    assert local.observation == worker.observation
+    assert getattr(local.error, "__notes__", None) == getattr(
+        worker.error, "__notes__", None
+    )
+    assert hasattr(worker.error, "__notes__") == (reads == 1)
     dbg = api.make_debugger(source, stdin=stdin, seed=4)
     for past_end in (1, 2):
         with pytest.raises(error) as caught:

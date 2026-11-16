@@ -865,6 +865,11 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
     assert caught.value.bound == "max_steps"
     assert caught.value.__notes__ == ["row 1"]
     assert caught.value.observation is None
+    for notes in (None, []):
+        with pytest.raises(esolangs.ExecutionCapError) as caught:
+            _decode(json.dumps({**payload, "notes": notes}), expired=False)
+        assert getattr(caught.value, "__notes__", None) == notes
+        assert hasattr(caught.value, "__notes__") == (notes is not None)
     for key in ("execution", "notes", "output_limit", "bound", "obsolete"):
         with pytest.raises(esolangs.InterpreterLimitError, match="invalid isolated"):
             _decode(
