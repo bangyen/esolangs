@@ -101,11 +101,6 @@ def _model(kind, statements, stdin):
 
 def cases():
     """Enumerate all 1132 unchanged old records, without running a target."""
-    records = []
-
-    def add(_factory, kind, statements, stdin="unused"):
-        records.append(Case(kind, statements, stdin))
-
     kinds = ("Integer", "Char", (0, 1, 1, 0), (2, 4, 3, 2), (0, 3, 2, 1))
     actions = (
         ("INIT", "cell"),
@@ -115,33 +110,25 @@ def cases():
         ("write", ("xor", "cell", 65)),
         ("value", ("not", "cell")),
     )
-    for kind, first, second, third in product(kinds, actions, actions, actions):
-        add(None, kind, (first, second, third))
-    for kind, stdin in product(
-        kinds, ("", "A", "\nZ", "λ", "ÿ", "Ā", "😀", "\x00", "abc")
-    ):
-        add(
-            None,
-            kind,
-            (
-                ("read", "cell"),
-                ("write", "cell"),
-                ("INCR", "cell"),
-                ("write", "cell"),
-                ("read", "cell"),
-                ("value", "cell"),
-            ),
-            stdin,
-        )
-    for operation in (("INCR", "missing"), ("read", "missing"), ("write", "missing")):
-        add(None, "Integer", (operation,))
-    for expr in (
+    records = [
+        Case(kind, (first, second, third))
+        for kind, first, second, third in product(kinds, actions, actions, actions)
+    ]
+    ports = tuple(
+        (op, "cell") for op in ("read", "write", "INCR", "write", "read", "value")
+    )
+    inputs = ("", "A", "\nZ", "λ", "ÿ", "Ā", "😀", "\x00", "abc")
+    records.extend(Case(kind, ports, stdin) for kind, stdin in product(kinds, inputs))
+    records.extend(
+        Case("Integer", ((op, "missing"),)) for op in ("INCR", "read", "write")
+    )
+    expressions = (
         ("xor", 48, ("not", ("xor", 7, 7))),
         ("xor", 48, ("not", ("xor", 7, 6))),
         ("xor", 48, ("not", ("not", ("xor", 7, 6)))),
-    ):
-        add(None, "Integer", (("write", expr),))
-    add(None, "Integer", (("write", 104), ("write", 105), ("value", 0)))
+    )
+    records.extend(Case("Integer", (("write", expr),)) for expr in expressions)
+    records.append(Case("Integer", (("write", 104), ("write", 105), ("value", 0))))
     assert len(records) == 1132
     return records
 

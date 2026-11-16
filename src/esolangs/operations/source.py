@@ -348,8 +348,8 @@ def from_file(
     """Read lossless source with retained metadata.
 
     Gzip and PNG are detected by content. ``normalize=True`` applies the
-    language's native file newline policy. Imports without newline
-    processing retain the original gzip bytes. PNG can retain the
+    language's native file newline policy. Imports retain the original
+    gzip bytes when the source text is unchanged. PNG can retain the
     input arity and canonical owner.
 
     Raises:

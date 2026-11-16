@@ -5,11 +5,14 @@ from functools import partial
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.packlang import interpreter as native
 from esolangs.languages.packlang.interpreter import _advance
 from esolangs.languages.packlang.interpreter._parse import _Parser
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import run_program
 
 _run = partial(run_program, native.run)
@@ -89,6 +92,64 @@ class TestArrayRuntime:
             "    charGet(row(0));\n    charPut(row(0));", "Array(Char, 2) row;"
         )
         assert _run(program, "A") == "A"
+        self._check_charget_fault_retry()
+
+    def _check_charget_fault_retry(self) -> None:
+        api = Language("Packlang")
+        limits = ExecutionLimits(max_steps=8)
+        for stdin, cursor, reads, past_end, byte in (
+            ("AB", 1, 1, 0, ord("A")),
+            ("", 0, 0, 1, 10),
+        ):
+            healthy = _wrap(
+                "    charPut(90);\n    charGet(row(0));\n    charPut(row(0));",
+                "Array(Char, 2) row;",
+            )
+            assert api.run(healthy, stdin=stdin, limits=limits).output == "Z" + chr(
+                byte
+            )
+
+            for destination, message in (
+                ("row(9)", "index 9 is outside 'row'"),
+                ("missing", "undefined variable 'missing'"),
+                ("row", "'row' is an array and needs an index"),
+            ):
+                source = _wrap(
+                    f"    charPut(90);\n    charGet({destination});",
+                    "Array(Char, 2) row;",
+                )
+                plan = api.prepare(source)
+                debugger = plan.make_debugger(stdin=stdin)
+                debugger.step()
+                observation = ExecutionResult("Z", cursor, reads, past_end, steps=1)
+                with pytest.raises(HaltError) as first:
+                    debugger.step()
+                snapshot = debugger.snapshot()
+                assert snapshot[-1] == ("pending_input", byte)
+                assert _capture_workspace(debugger.vm).parts[1] == WorkspaceVariant(
+                    "pending_input", (cursor, byte)
+                )
+                for _ in range(2):
+                    with pytest.raises(HaltError) as retry:
+                        debugger.step()
+                    assert retry.value is not first.value
+                    assert retry.value.args == first.value.args == (message,)
+                    assert (
+                        retry.value.observation
+                        == first.value.observation
+                        == observation
+                    )
+                    assert debugger.observation == observation
+                    assert debugger.snapshot() == snapshot
+                    assert debugger.ip == 1
+
+                if destination == "row(9)":
+                    error = plan.execute(
+                        stdin=stdin, limits=limits, isolated=True
+                    ).error
+                    assert isinstance(error, HaltError)
+                    assert error.args == (message,)
+                    assert error.observation == observation
 
     def test_an_array_has_no_scalar_value(self) -> None:
         with pytest.raises(HaltError, match="is an array and has no scalar value"):

@@ -77,12 +77,23 @@ def exact(actual, expected):
             assert left is right
 
 
-def wanted_capture(row, context):
+def exact_match(actual, expected):
+    try:
+        exact(actual, expected)
+    except AssertionError:
+        return False
+    return True
+
+
+def wanted_capture(row, pending, context):
+    cursor = row.cursor
+    if pending is not None:
+        cursor = context.variant("pending_input", (cursor, pending))
     return context.snapshot(
         context.model(*SCHEMA),
         (
             tuple(context.variant("frame", frame) for frame in row.frame_values()),
-            row.cursor,
+            cursor,
             row.reads,
         ),
     )
@@ -92,14 +103,8 @@ def readonly(raw, case, context, expected_plan=None):
     if expected_plan is None:
         expected_plan = compile_readonly(case)
     native = context.native
-    assert set(vars(raw)) == {
-        "io",
-        "program",
-        "_input_reads",
-        "_program_key",
-        "frames",
-        "_writer",
-    }
+    constant_fields = {"_program_key", "_writer", "frames", "io", "program"}
+    assert vars(raw).keys() == constant_fields | {"_input_reads", "_pending_input"}
     assert raw._writer.accepted is None
     assert type(raw.program) is native._Program
     program = raw.program
@@ -176,18 +181,22 @@ class Observer:
                 (pc, store, result, None, None),
             )
         exact(raw._input_reads, row.reads)
+        pending = None
+        if row.error is not None and self.case.statements[row.frame[0]][0] == "read":
+            pending = 10 if row.past else ord(self.case.stdin[row.cursor - 1])
+        exact(raw._pending_input, pending)
         exact(raw.halted, row.halted)
         exact(raw.ip, 0 if row.halted else row.frame[0])
         exact(raw.memory, [] if row.halted else [value for _, value in row.frame[1]])
         exact(raw.stack, [])
         check_io(raw.io, self.case, row)
-        expected = wanted_capture(row, context)
+        expected = wanted_capture(row, pending, context)
         actual = raw.workspace_snapshot()
         assert type(actual) is context.snapshot
         capture_plan = compile_capture(expected, context)
         assert capture_matches(actual, capture_plan)
         key = raw.snapshot()
-        expected_cycle = cycle_reference(row, self.readonly_plan.program_key)
+        expected_cycle = cycle_reference(row, pending, self.readonly_plan.program_key)
         cycle_plan = compile_cycle(expected_cycle, self.readonly_plan.key_plan)
         assert value_matches(key, cycle_plan)
         restored = _state_from_wire(worker_loads(worker_dumps(_state_wire(key))))
@@ -364,7 +373,7 @@ class CapturePlan(NamedTuple):
     name: str
     components: tuple
     frames: tuple
-    cursor: int
+    cursor: object
     reads: int
 
 
@@ -376,7 +385,7 @@ def compile_capture(expected, context):
     assert expected.model.components == SCHEMA[1]
     frames, cursor, reads = expected.parts
     assert type(frames) is tuple
-    assert type(cursor) is int
+    assert type(cursor) in (int, context.variant)
     assert type(reads) is int
     plans = []
     for frame in frames:
@@ -523,8 +532,7 @@ def capture_matches(actual, plan):
         return False
     frames, cursor, reads = actual.parts
     if (
-        type(cursor) is not int
-        or cursor != plan.cursor
+        not exact_match(cursor, plan.cursor)
         or type(reads) is not int
         or reads != plan.reads
     ):
@@ -560,13 +568,14 @@ def compile_readonly(case):
     )
 
 
-def cycle_reference(row, program_key):
-    """Keep the exact old independent cycle shape with its readonly tail shared."""
+def cycle_reference(row, pending, program_key):
+    """Retain the exact cycle shape and any accepted read on a failed write."""
     frames = ()
     if not row.halted:
         pc, store, result = row.frame
         frames = ((("scope", "main", pc, store, result), "None", None),)
-    return frames, row.cursor, row.reads, program_key
+    boundary = (frames, row.cursor, row.reads, program_key)
+    return boundary if pending is None else (*boundary, ("pending_input", pending))
 
 
 def compile_cycle(expected, key_plan):
@@ -713,9 +722,11 @@ def program_types(actual, body):
 
 def cycle_types(actual, expected, body):
     """Read all frame, IO and readonly key fields on every retained comparison."""
-    if type(actual) is not tuple or len(actual) != 4:
+    if type(actual) is not tuple or len(actual) != len(expected):
         return False
-    frames, cursor, reads, program = actual
+    if len(expected) == 5 and not exact_match(actual[4], expected[4]):
+        return False
+    frames, cursor, reads, program = actual[:4]
     if type(cursor) is not int or type(reads) is not int:
         return False
     if type(frames) is not tuple or len(frames) != len(expected[0]):

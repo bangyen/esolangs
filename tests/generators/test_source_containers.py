@@ -352,6 +352,25 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
     assert _check_program(REFERENCE, path).source == "+,\r\n.\r\n"
     assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
 
+    for raw, changes in ((b"+,\n.", False), (path.read_bytes(), True)):
+        output = io.BytesIO()
+        with gzip.GzipFile("original.bf", "wb", fileobj=output, mtime=123) as archive:
+            archive.write(raw)
+        data = output.getvalue()
+        path.write_bytes(data)
+        artifact = api.from_file(path, normalize=True)
+        expected = "+,\n." if changes else esolangs.CompressedText(data)
+        assert artifact == api.from_source(expected)
+        document = api.to_json(artifact)
+        assert json.loads(document)["kind"] == ("text" if changes else "gzip")
+        restored = api.from_json(document)
+        assert restored == artifact
+        assert api.run(restored, stdin="Q").output == "Q"
+        api.to_file(restored, path, gzip=True)
+        assert gzip.decompress(path.read_bytes()) == b"+,\n."
+        if not changes:
+            assert path.read_bytes() == data
+
 
 @pytest.mark.parametrize(
     ("data", "message", "hint"),

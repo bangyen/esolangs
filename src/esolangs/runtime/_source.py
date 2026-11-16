@@ -267,8 +267,10 @@ def _native_chunks(chunks: Iterable[str]) -> Iterator[str]:
 
 def _native_compressed_source(
     source: ProgramSource | _FileSource,
+    *,
+    recompress: bool = True,
 ) -> str | CompressedText:
-    """Normalize a gzip-native language without expanding it into one string."""
+    """Preserve unchanged gzip and normalize changed text for the source policy."""
     value = compressed_text_source(source)
     if _has_backing_type(value, CompressedText):
         # A measured final LF already requires a rewrite. Otherwise preserve
@@ -277,9 +279,10 @@ def _native_compressed_source(
             "\r" in chunk for chunk in value.chunks()
         ):
             return value
-        return CompressedText.from_chunks(
-            _native_chunks(value.chunks()), limits=value.limits
-        )
+        chunks = _native_chunks(value.chunks())
+        if recompress:
+            return CompressedText.from_chunks(chunks, limits=value.limits)
+        return "".join(chunks)
     return native_text_source(value)
 
 
@@ -337,6 +340,8 @@ def source_for(
     elif _has_backing_type(source, Raster):
         raise _text_raster_error(name, "a Raster")
     if native and loader is SourceLoader.TEXT:
+        if preserve_compression:
+            return _native_compressed_source(source, recompress=False)
         return native_text_source(source)
     if native and loader is SourceLoader.COMPRESSED:
         return _native_compressed_source(source)

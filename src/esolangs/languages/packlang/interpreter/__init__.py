@@ -597,6 +597,7 @@ class _Machine:
             _prepare_source(code, literal_policy) if isinstance(code, str) else code
         )
         self._input_reads = 0
+        self._pending_input: int | None = None
         entry = self.program.entry
         self.frames: _State = (_Frame(entry, _initial_store(entry, self.program)),)
 
@@ -643,6 +644,8 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture live frames and values independently of cycle serialization."""
+        cursor = self.io.progress()
+        pending = self._pending_input
         return _WORKSPACE_MODEL.capture(
             frames=tuple(
                 WorkspaceVariant(
@@ -667,7 +670,11 @@ class _Machine:
                 )
                 for frame in self.frames
             ),
-            input_cursor=self.io.progress(),
+            input_cursor=(
+                cursor
+                if pending is None
+                else WorkspaceVariant("pending_input", (cursor, pending))
+            ),
             input_reads=(
                 WorkspaceVariant("pending_output", (self._input_reads, accepted))
                 if (accepted := self._writer.accepted)
@@ -691,6 +698,8 @@ class _Machine:
             self._input_reads,
             self._program_key,
         )
+        if (pending := self._pending_input) is not None:
+            return (*boundary, ("pending_input", pending))
         accepted = self._writer.accepted
         return (*boundary, accepted) if accepted else boundary
 
@@ -708,12 +717,16 @@ class _Machine:
         """
         frames, out, wants_read = _advance(self.frames, self.program)
         if wants_read:
-            try:
-                byte = self.io.input_char()
-                self._input_reads += 1
-            except EOFError:
-                byte = 10
+            byte = self._pending_input
+            if byte is None:
+                try:
+                    byte = self.io.input_char()
+                    self._input_reads += 1
+                except EOFError:
+                    byte = 10
+                self._pending_input = byte
             frames, out, _ = _advance(self.frames, self.program, byte)
+            self._pending_input = None
         if out is not None:
             self._write_char(out)
         self.frames = frames
