@@ -81,9 +81,11 @@ class UnknownLanguageError(EsolangError, ValueError):
 
     def __init__(self, language: str, *, suggestions: tuple[str, ...] = ()) -> None:
         """Build the error for an unknown ``language``, with close ``suggestions``."""
+        from esolangs.runtime.source_hints import display_label
+
         # No close match: point at the command that lists them.
         hint = (
-            f" (did you mean {' or '.join(suggestions)}?)"
+            f" (did you mean {' or '.join(map(display_label, suggestions))}?)"
             if suggestions
             else "; `esolangs list` shows all of them"
         )

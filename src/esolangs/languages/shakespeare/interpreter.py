@@ -35,7 +35,7 @@ Errors:
         (including a third on stage), a second person with not exactly two on
         stage, a division by zero, a factorial or square root of a negative,
         a pop from an empty stack, an unprintable character code.
-    InterpreterLimitError: an expression nested past the host recursion limit.
+    InterpreterLimitError: expression nesting exceeds the configured recursion limit.
 
 Decisions:
     * Word lists: ``words.toml`` (SPL 1.2.1 lists via shakespearelang 1.0.0).
@@ -144,19 +144,33 @@ _BINARY: dict[str, Callable[[int, int], int]] = {
 
 
 def _eval(expr: Expr, state: _State, speaker: int) -> int:
-    kind = expr[0]
-    if kind == "const":
-        return int(expr[1])
-    if kind == "me":
-        return state.values[speaker]
-    if kind == "you":
-        return state.values[_listener(state, speaker)]
-    if kind == "name":
-        return state.values[expr[1]]
-    if kind == "un":
-        return _UNARY[expr[1]](_eval(expr[2], state, speaker))
-    left = _eval(expr[2], state, speaker)
-    return _BINARY[expr[1]](left, _eval(expr[3], state, speaker))
+    pending: list[tuple[str, Expr | None, int | None]] = []
+    while True:
+        while (kind := expr[0]) in ("un", "bin"):
+            pending.append((expr[1], expr[3] if kind == "bin" else None, None))
+            expr = expr[2]
+        if kind == "const":
+            value = int(expr[1])
+        elif kind == "me":
+            value = state.values[speaker]
+        elif kind == "you":
+            value = state.values[_listener(state, speaker)]
+        else:
+            value = state.values[expr[1]]
+
+        while pending:
+            operator, right, left = pending.pop()
+            if right is not None:
+                pending.append((operator, None, value))
+                expr = right
+                break
+            value = (
+                _UNARY[operator](value)
+                if left is None
+                else _BINARY[operator](left, value)
+            )
+        else:
+            return value
 
 
 def _active(state: _State, op: Op) -> bool:

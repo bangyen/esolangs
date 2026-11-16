@@ -151,7 +151,12 @@ class _Parser:
 
     def parse_type(self) -> _Type:
         """Parse a datatype, including its parenthesized parameters."""
+        wrappers: list[str] = []
         name = self.next_token()
+        while name in ("Array", "Pointer"):
+            self.expect("(")
+            wrappers.append(name)
+            name = self.next_token()
         if name == "Integer" and self.peek() == "(":
             self.next_token()
             args = [self.number()]
@@ -161,34 +166,27 @@ class _Parser:
             self.expect(")")
             if args[0] > args[1]:
                 raise ValueError("integer minimum exceeds maximum")
-            return _Type(args[0], args[1], args[2], args[3])
-        if name == "Array":
-            self.expect("(")
-            inner = self.parse_type()
-            self.expect(",")
-            length = self.number()
+            kind = _Type(args[0], args[1], args[2], args[3])
+        elif name in ("Integer", "Char", "String"):
+            # The wiki has no string literal syntax; declarations fix the length.
+            kind = _Type(length=0) if name == "String" else _Type()
+        else:
+            raise syntax_error(
+                f"unknown datatype {name!r}",
+                keyword_hint(
+                    name,
+                    ("Integer", "Char", "String", "Array", "Pointer"),
+                    "use Integer, Char, String, Array(type, length) or Pointer(type)",
+                ),
+            )
+        for name in reversed(wrappers):
+            if name == "Array":
+                self.expect(",")
+                length = self.number()
+                kind = _Type(kind.low, kind.high, kind.under, kind.over, length)
+            # Pointers use the value representation of the type they refer to.
             self.expect(")")
-            return _Type(inner.low, inner.high, inner.under, inner.over, length)
-        if name == "Pointer":
-            self.expect("(")
-            inner = self.parse_type()
-            self.expect(")")
-            # A pointer is stored as the value it refers to: no example
-            # takes an address, and charGet's "variable or pointer" case
-            # behaves identically either way.
-            return inner
-        if name in ("Integer", "Char", "String"):
-            # String is a byte sequence; with no literal syntax for one on
-            # the wiki, it is an array whose length a declaration fixes.
-            return _Type() if name != "String" else _Type(length=0)
-        raise syntax_error(
-            f"unknown datatype {name!r}",
-            keyword_hint(
-                name,
-                ("Integer", "Char", "String", "Array", "Pointer"),
-                "use Integer, Char, String, Array(type, length) or Pointer(type)",
-            ),
-        )
+        return kind
 
     def number(self) -> int:
         """Parse a decimal integer literal; see :mod:`.packlang`."""
@@ -201,51 +199,64 @@ class _Parser:
         return self.literals.parse(word)
 
     def expression(self) -> tuple[object, ...]:
-        """Parse ``a ^ b`` (left-associative) into a postfix tuple."""
-        node = self.unary()
-        while self.peek() == "^":
-            self.next_token()
-            node = ("xor", node, self.unary())
-        return node
-
-    def unary(self) -> tuple[object, ...]:
-        if self.peek() == "!":
-            self.next_token()
-            return ("not", self.unary())
-        return self.primary()
-
-    def primary(self) -> tuple[object, ...]:
-        word = self.next_token()
-        if word == "(":
-            node = self.expression()
-            self.expect(")")
-            return node
-        if word.isdigit():
-            return ("lit", self.literals.parse(word))
-        if not _starts_name(word):
-            raise syntax_error(
-                f"unexpected token {word!r} in an expression",
-                "use a decimal number, variable, call or ! expression",
-            )
-        if self.peek() == "(":
-            self.next_token()
-            # ``myArray(length)`` is spelled exactly like that on the wiki,
-            # so ``length`` here is the keyword, not a variable named so.
-            if self.peek() == "length":
+        """Parse unary and left-associative xor across nested groups and calls."""
+        pending: list[
+            tuple[str, tuple[object, ...] | list[tuple[object, ...]] | None]
+        ] = []
+        while True:
+            word = self.next_token()
+            if word in ("!", "("):
+                pending.append((word, None))
+                continue
+            if word.isdigit():
+                node: tuple[object, ...] = ("lit", self.literals.parse(word))
+            elif not _starts_name(word):
+                raise syntax_error(
+                    f"unexpected token {word!r} in an expression",
+                    "use a decimal number, variable, call or ! expression",
+                )
+            elif self.peek() != "(":
+                node = ("var", word)
+            else:
                 self.next_token()
-                self.expect(")")
-                return ("length", word)
-            args = []
-            if self.peek() != ")":
-                args.append(self.expression())
-                while self.peek() == ",":
+                # The keyword length always selects the array's length here.
+                if self.peek() == "length":
                     self.next_token()
-                    args.append(self.expression())
-            self.expect(")")
-            # An index and a call are spelled identically; which one it is
-            # depends on the name, so it is resolved at run time.
-            return ("apply", word, tuple(args))
-        return ("var", word)
+                    self.expect(")")
+                    node = ("length", word)
+                elif self.peek() == ")":
+                    self.next_token()
+                    node = ("apply", word, ())
+                else:
+                    pending.append((word, []))
+                    continue
+
+            while pending or self.peek() == "^":
+                if pending and pending[-1][0] == "!":
+                    pending.pop()
+                    node = ("not", node)
+                elif pending and pending[-1][0] == "^":
+                    _, left = pending.pop()
+                    node = ("xor", left, node)
+                elif self.peek() == "^":
+                    self.next_token()
+                    pending.append(("^", node))
+                    break
+                else:
+                    operator, args = pending[-1]
+                    if operator == "(":
+                        self.expect(")")
+                    else:
+                        assert isinstance(args, list)
+                        args.append(node)
+                        if self.peek() == ",":
+                            self.next_token()
+                            break
+                        self.expect(")")
+                        node = ("apply", operator, tuple(args))
+                    pending.pop()
+            else:
+                return node
 
     def lvalue(self) -> tuple[str, tuple[object, ...] | None]:
         """Parse a target: a name, optionally with an index."""
@@ -265,13 +276,31 @@ class _Parser:
     def block(self, out: list[list[object]], local_types: dict[str, _Type]) -> None:
         """Parse ``{ ... }``, appending statements to ``out``."""
         self.expect("{")
-        while self.peek() != "}":
-            if self.peek() is None:
+        jumps: list[tuple[int, bool]] = []
+        while True:
+            word = self.peek()
+            if word == "}":
+                self.next_token()
+                if not jumps:
+                    return
+                patch, repeats = jumps.pop()
+                if repeats:
+                    out.append([_JUMP, patch])
+                out[patch][2] = len(out)
+            elif word is None:
                 raise syntax_error(
                     "unbalanced '{' in program", "close the statement block with }"
                 )
-            self.statement(out, local_types)
-        self.next_token()
+            elif word in ("If", "While"):
+                self.next_token()
+                guard = self.expression()
+                repeats = word == "While"
+                self.expect("Do" if repeats else "Then")
+                jumps.append((len(out), repeats))
+                out.append([_JUMP_UNLESS, guard, -1])
+                self.expect("{")
+            else:
+                self.statement(out, local_types)
 
     def statement(self, out: list[list[object]], local_types: dict[str, _Type]) -> None:
         word = self.peek()
@@ -281,26 +310,6 @@ class _Parser:
             self.expect(";")
             op = {"INIT": _INIT, "INCR": _INCR, "DECR": _DECR}[str(word)]
             out.append([op, name, index])
-            return
-        if word == "If":
-            self.next_token()
-            guard = self.expression()
-            self.expect("Then")
-            patch = len(out)
-            out.append([_JUMP_UNLESS, guard, -1])
-            self.block(out, local_types)
-            out[patch][2] = len(out)
-            return
-        if word == "While":
-            self.next_token()
-            top = len(out)
-            guard = self.expression()
-            self.expect("Do")
-            patch = len(out)
-            out.append([_JUMP_UNLESS, guard, -1])
-            self.block(out, local_types)
-            out.append([_JUMP, top])
-            out[patch][2] = len(out)
             return
         # A declaration inside a function body: a type followed by a name.
         if word is not None and word in _DATATYPES and self.is_declaration():
@@ -315,7 +324,7 @@ class _Parser:
         self.expect(";")
         if expr[0] == "apply" and expr[1] in ("charPut", "charGet"):
             args = expr[2]
-            # ``primary`` always builds an "apply" with a tuple of nodes,
+            # ``expression`` always builds an "apply" with a tuple of nodes,
             # so this narrowing cannot fail; it is spelled for the checker
             # and would be a malformed tree rather than a bad program.
             assert isinstance(args, tuple)
@@ -339,7 +348,7 @@ class _Parser:
             index = None
             if target[0] == "apply":
                 slots = target[2]
-                # ``primary`` built this "apply" with a tuple of slots, so
+                # ``expression`` built this "apply" with a tuple of slots, so
                 # this narrowing cannot fail; it is spelled for the checker.
                 assert isinstance(slots, tuple)
                 if len(slots) != 1:

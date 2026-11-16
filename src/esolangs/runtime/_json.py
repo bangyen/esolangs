@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any, NoReturn
 
 from esolangs.runtime.memory import _hit_digit_cap, format_integer, parse_integer
+from esolangs.runtime.source_hints import display_label
 
 _SURROGATES = re.compile(r"[\ud800-\udfff]")
 
@@ -17,7 +18,7 @@ def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
-            raise ValueError(f"duplicate field: {key}")
+            raise ValueError(f"duplicate field: {display_label(key)}")
         result[key] = value
     return result
 

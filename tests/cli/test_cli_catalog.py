@@ -13,7 +13,7 @@ import pytest
 
 import esolangs
 from esolangs.registry import LANGUAGES, _table
-from tests.support.cli_support import _program, call_both
+from tests.support.cli_support import _failure, _program, call_both
 from tests.support.pick import languages, one_where
 from tests.support.reference import REFERENCE
 
@@ -155,6 +155,15 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
             scope.bind(name).describe().spec + "\n",
             "",
         )
+
+    with pytest.raises(esolangs.UnknownLanguageError) as unknown:
+        scope.resolve("terminal_nam")
+    assert unknown.value.language == "terminal_nam"
+    assert unknown.value.suggestions == (terminal_name,)
+    assert _failure(["describe", "terminal_nam"], capsys) == (
+        "",
+        r"unknown language: terminal_nam (did you mean clear\x1b[2Jscreen?)" + "\n",
+    )
 
 
 @pytest.mark.medium

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
 from math import isfinite
-from typing import Literal
+from typing import ClassVar, Literal, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime.memory import parse_integer
@@ -111,19 +111,29 @@ def _number(word: str) -> _Number:
     return _as_number(float(word)) if "." in word else parse_integer(word)
 
 
+type _ParseFrame = Generator[_ParseFrame, _Node, _Node]
+
+
 class _Parser:
-    """A recursive-descent parser for one expression.
+    """Parse one expression against the definitions active on its line.
 
-    Precedence, lowest first: ``|``, ``&``, ``+``/``-``, ``*``/``/``/``%``,
-    unary ``-`` and ``$``, ``**`` (right-associative), then custom
-    operators, calls, and brackets.  The wiki says custom operators bind
-    tighter than everything except brackets and functions, which is where
-    :meth:`_postfix` sits.
-
-    Parsing is by Python recursion over the *program text*, which is
-    bounded by the line's length; only *evaluation* uses the explicit
-    stack, because only evaluation can recurse without bound.
+    Operator stacks handle precedence within a group. Parentheses, call
+    arguments and custom-operator slots suspend parsing on an explicit stack
+    so their nesting consumes no Python call frames.
     """
+
+    _PRECEDENCE: ClassVar[dict[str, int]] = {
+        "|": 1,
+        "&": 2,
+        "+": 3,
+        "-": 3,
+        "*": 4,
+        "/": 4,
+        "%": 4,
+        "neg": 5,
+        "ret": 5,
+        "**": 6,
+    }
 
     def __init__(self, tokens: list[str], defs: Mapping[str, _Definition]) -> None:
         self.tokens = tokens
@@ -140,20 +150,13 @@ class _Parser:
         return self.tokens[self.ind] if self.ind < len(self.tokens) else None
 
     def take(self) -> str:
-        """Consume and return the next token.
-
-        Every call site has already established a token is there: the
-        precedence levels and ``_unary`` peek first, ``_try_pattern`` returns
-        None on a mismatch before taking, and the loops in ``_atom`` and
-        ``_arguments`` check the end in their conditions.  ``_atom`` raises
-        the "ran out" message where it *can* happen.
-        """
+        """Consume a token whose presence the caller has checked."""
         word = self.tokens[self.ind]
         self.ind += 1
         return word
 
     def expect(self, word: str) -> None:
-        """Consume ``token`` or fail as malformed."""
+        """Consume ``word`` or fail as malformed."""
         if self.peek() != word:
             raise syntax_error(
                 f"expected {word!r}", "put the expected token at this position"
@@ -162,99 +165,105 @@ class _Parser:
 
     def parse(self) -> _Node:
         """Parse the whole token list, rejecting a trailing remainder."""
-        node = self.expr()
+        frames = [self._expression()]
+        value = None
+        failure: ValueError | None = None
+        while frames:
+            frame = frames[-1]
+            try:
+                if failure is not None:
+                    child = frame.throw(failure)
+                elif value is not None:
+                    child = frame.send(value)
+                else:
+                    child = next(frame)
+            except StopIteration as done:
+                frames.pop()
+                value = cast("_Node", done.value)
+                failure = None
+            except ValueError as error:
+                # A custom pattern can backtrack if a nested slot is invalid.
+                frames.pop()
+                failure = error
+            else:
+                frames.append(child)
+                value = failure = None
+        if failure is not None:
+            raise failure
+        assert value is not None
         if self.peek() is not None:
             raise syntax_error(
                 f"trailing input at {self.peek()!r}",
                 "keep exactly one expression on this line",
             )
-        return node
+        return value
 
-    def expr(self) -> _Node:
-        """Parse at the lowest precedence (``|``)."""
-        return self._binary(0)
-
-    # ``|`` then ``&`` then additive then multiplicative; ``**`` is handled
-    # by :meth:`_power` because it associates the other way.
-    _LEVELS: tuple[tuple[str, ...], ...] = (("|",), ("&",), ("+", "-"), ("*", "/", "%"))
-
-    def _binary(self, level: int) -> _Node:
-        """Parse a left-associative level of the precedence ladder."""
-        if level == len(self._LEVELS):
-            return self._unary()
-        node = self._binary(level + 1)
+    def _expression(self) -> _ParseFrame:
+        """Parse one group, keeping ``**`` right-associative and above unary."""
+        nodes: list[_Node] = []
+        operators: list[str] = []
+        precedence = self._PRECEDENCE
         while True:
-            word = self.peek()
-            # No ``**`` guard is needed here: ``_power`` consumes one
-            # before returning, so the cursor never sits on the first
-            # ``*`` of a ``**`` by the time this loop sees it.
-            implied = (
-                level == 3
-                and word is not None
-                and _is_lower(word)
-                and self.ind > 0
-                and _is_lower(self.tokens[self.ind - 1])
-            )
-            if implied:
-                node = ("bin", "*", node, self._binary(level + 1))
-                continue
-            if word is None or word not in self._LEVELS[level]:
-                return node
-            self.take()
-            node = ("bin", word, node, self._binary(level + 1))
+            while (word := self.peek()) in ("-", "$"):
+                operators.append("neg" if word == "-" else "ret")
+                self.ind += 1
+            nodes.append((yield from self._operand()))
+            operator = self._binary_operator()
+            if operator is None:
+                break
+            level = precedence[operator]
+            while operators and (
+                precedence[operators[-1]] > level
+                or (operator != "**" and precedence[operators[-1]] == level)
+            ):
+                self._reduce(nodes, operators.pop())
+            operators.append(operator)
+        while operators:
+            self._reduce(nodes, operators.pop())
+        return nodes[0]
 
-    def _at_power(self) -> bool:
-        """Whether the cursor sits on a ``**`` rather than a ``*``."""
-        return (
-            self.ind + 1 < len(self.tokens)
-            and self.tokens[self.ind] == "*"
-            and self.tokens[self.ind + 1] == "*"
-        )
-
-    def _power(self) -> _Node:
-        """Parse ``**``, which is right-associative."""
-        base = self._operand()
-        if self._at_power():
-            self.take()
-            self.take()
-            return ("bin", "**", base, self._unary())
-        return base
-
-    def _unary(self) -> _Node:
-        """Parse unary ``-``, the ``$`` return operator, and prefix operators."""
+    def _binary_operator(self) -> str | None:
+        """Consume a binary operator; juxtaposed variables imply `*`."""
         word = self.peek()
-        if word == "-":
-            self.take()
-            return ("neg", self._unary())
-        if word == "$":
-            self.take()
-            return ("ret", self._unary())
-        return self._power()
+        if word is None:
+            return None
+        if word in self._PRECEDENCE:
+            self.ind += 1
+            if word == "*" and self.peek() == "*":
+                self.ind += 1
+                return "**"
+            return word
+        if _is_lower(word) and self.ind > 0 and _is_lower(self.tokens[self.ind - 1]):
+            return "*"
+        return None
 
-    def _operand(self) -> _Node:
+    @staticmethod
+    def _reduce(nodes: list[_Node], operator: str) -> None:
+        right = nodes.pop()
+        if operator == "neg":
+            nodes.append(("neg", right))
+        elif operator == "ret":
+            nodes.append(("ret", right))
+        else:
+            nodes.append(("bin", operator, nodes.pop(), right))
+
+    def _operand(self) -> _ParseFrame:
         """Parse a prefix operator, or an atom with its trailing operators."""
-        prefix = self._match_operator(None)
+        if not self.operator_patterns:
+            return (yield from self._atom())
+        prefix = yield from self._match_operator(None)
         if prefix is not None:
             return prefix
-        return self._postfix()
-
-    def _postfix(self) -> _Node:
-        """Parse an atom followed by any custom operators applying to it.
-
-        A custom operator is matched by walking its stored pattern against
-        the token stream: the pattern alternates symbols and argument
-        slots, and a *leading* slot is the atom already parsed.  Longer
-        patterns are tried first so ``^a^b^c^`` wins over a shorter one
-        that would otherwise match its opening ``^``.
-        """
-        node = self._atom()
+        node = yield from self._atom()
         while True:
-            match = self._match_operator(node)
+            match = yield from self._match_operator(node)
             if match is None:
                 return node
             node = match
 
-    def _match_operator(self, left: _Node | None) -> _Node | None:
+    def _match_operator(
+        self, left: _Node | None
+    ) -> Generator[_ParseFrame, _Node, _Node | None]:
         """Try each custom operator pattern at the cursor; None if none fit.
 
         ``left`` is the operand already parsed for an infix or postfix
@@ -266,7 +275,7 @@ class _Parser:
             if leading != (left is not None):
                 continue
             saved = self.ind
-            args = self._try_pattern(definition, left)
+            args = yield from self._try_pattern(definition, left)
             if args is not None:
                 return ("call", definition.name, args)
             self.ind = saved
@@ -274,7 +283,7 @@ class _Parser:
 
     def _try_pattern(
         self, definition: _Definition, left: _Node | None
-    ) -> tuple[_Node, ...] | None:
+    ) -> Generator[_ParseFrame, _Node, tuple[_Node, ...] | None]:
         r"""Match ``definition``'s pattern, with ``left`` filling a leading slot.
 
         The pattern is the operator's stored name with ``\0`` marking each
@@ -297,7 +306,7 @@ class _Parser:
                 # symbols delimit it.  A *prefix* operator is allowed
                 # there, so ``!!a`` is a complement of a complement.
                 try:
-                    args.append(self._operand())
+                    args.append((yield self._operand()))
                 except ValueError:
                     return None
                 ind += 1
@@ -308,7 +317,7 @@ class _Parser:
             ind += 1
         return tuple(args)
 
-    def _atom(self) -> _Node:
+    def _atom(self) -> _ParseFrame:
         """Parse a literal, name, call, or bracketed expression."""
         word = self.peek()
         if word is None:
@@ -329,7 +338,7 @@ class _Parser:
             return node
         if word == "(":
             self.take()
-            inner = self.expr()
+            inner = yield self._expression()
             self.expect(")")
             return inner
         if _is_lower(word):
@@ -337,14 +346,14 @@ class _Parser:
             if self.peek() == "(":
                 # ``c()`` where ``c`` is a parameter holding a function:
                 # the wiki's ``IF(x, c) = x & c()`` calls its argument.
-                return ("call", word, self._arguments())
+                return ("call", word, (yield from self._arguments()))
             return ("var", word)
         if _is_upper(word):
             name = ""
             while self.peek() is not None and _is_upper(str(self.peek())):
                 name += self.take()
             if self.peek() == "(":
-                return ("call", name, self._arguments())
+                return ("call", name, (yield from self._arguments()))
             # A bare uppercase name is the function itself, which is how
             # ``WHILE(x, c)`` receives something it can call.
             return ("ref", name)
@@ -353,15 +362,15 @@ class _Parser:
             "use a number, lowercase variable or uppercase function call here",
         )
 
-    def _arguments(self) -> tuple[_Node, ...]:
+    def _arguments(self) -> Generator[_ParseFrame, _Node, tuple[_Node, ...]]:
         """Parse a parenthesised, comma-separated argument list."""
         self.expect("(")
         args: list[_Node] = []
         if self.peek() != ")":
-            args.append(self.expr())
+            args.append((yield self._expression()))
             while self.peek() == ",":
                 self.take()
-                args.append(self.expr())
+                args.append((yield self._expression()))
         self.expect(")")
         return tuple(args)
 

@@ -1,11 +1,13 @@
 """Tests for the Shakespeare interpreter."""
 
+import sys
 from itertools import product
 from pathlib import Path
 
 import pytest
 
-from esolangs.exceptions import ExecutionCapError, HaltError
+from esolangs import ExecutionLimits, Language
+from esolangs.exceptions import ExecutionCapError, HaltError, InterpreterLimitError
 from esolangs.languages.shakespeare._syntax import parse
 from esolangs.languages.shakespeare.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -199,6 +201,39 @@ def test_a_character_off_stage_is_still_named_in_a_value() -> None:
 def test_parse_counts_the_cast_and_the_operations() -> None:
     size, ops = parse(_play("You are a rose."))
     assert (size, len(ops)) == (3, 2)
+    _check_expression_depth()
+
+
+def _check_expression_depth() -> None:
+    depth = sys.getrecursionlimit()
+    total = "the sum of " * depth + "nothing" + " and a rose" * depth
+    doubled = "twice " * depth + "nothing"
+    source = _play(
+        f"You are {total}. Open your heart! You are {doubled}. Open your heart!"
+    )
+    api = Language("Shakespeare")
+    plan = api.prepare(source)
+    expected = f"{depth}0"
+    limits = ExecutionLimits(max_steps=5)
+    assert api.run(source).output == plan.run().output == expected
+
+    bounded = api.run(source, limits=limits)
+    assert bounded.output == expected
+    assert bounded.steps == 5
+    assert plan.run(limits=limits) == api.run(source, limits=limits, isolated=True)
+    debug = plan.make_debugger()
+    assert debug.run(limits=limits) == "halted"
+    assert debug.observation == bounded
+
+    deeper = _play(f"You are twice {doubled}.")
+    for isolated in (False, True):
+        outcome = api.execute(deeper, limits=limits, isolated=isolated)
+        assert isinstance(outcome.error, InterpreterLimitError)
+        assert str(outcome.error) == "Shakespeare expression nested too deeply"
+
+    malformed = _play("You are " + "the sum of " * depth + "nothing.")
+    with pytest.raises(ValueError, match=r"expected 'and'"):
+        parse(malformed)
 
 
 def test_run_prints_through_the_io_it_is_given() -> None:

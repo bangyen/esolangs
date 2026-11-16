@@ -12,6 +12,7 @@ from unicodedata import normalize
 from esolangs.exceptions import ArgumentError
 from esolangs.runtime._validate import _argument_repr, _has_backing_type
 from esolangs.runtime.memory import repr_value
+from esolangs.runtime.source_hints import display_label
 
 type Scalar = int | str
 
@@ -106,13 +107,16 @@ class DialectSchema:
                     f"known settings: {', '.join(names)}" if names else "it has none"
                 )
                 raise ArgumentError(
-                    f"unknown dialect setting for {self.language}: {key}{suggestion}; "
+                    f"unknown dialect setting for {display_label(self.language)}: "
+                    f"{display_label(key)}{suggestion}; "
                     f"{known_names}"
                 )
             values = known[key]
             if type(value) is not type(values[0]) or value not in values:
                 available = ", ".join(
-                    choice if isinstance(choice, str) else _argument_repr(choice)
+                    display_label(choice)
+                    if isinstance(choice, str)
+                    else _argument_repr(choice)
                     for choice in values
                 )
                 raise ArgumentError(

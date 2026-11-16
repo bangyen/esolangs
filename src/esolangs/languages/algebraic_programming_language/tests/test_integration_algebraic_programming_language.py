@@ -1,5 +1,7 @@
 """Algebraic Programming Language through the shared API, CLI and machinery."""
 
+from dataclasses import replace
+
 import pytest
 
 import esolangs
@@ -102,10 +104,28 @@ class TestTheVmPathRefusesLikeRunDoes:
                 run(REFERENCE, "]")
             assert str(stepped.value) == str(ran.value)
 
-    def test_a_recursion_limit_is_an_interpreter_limit(self) -> None:
-        """Ninety open parens raised a bare ``RecursionError`` from ``step``."""
-        vm = debugger_api.make_vm("Algebraic Programming Language", "(" * 90)
-        with pytest.raises(esolangs.InterpreterLimitError):
+    def test_deep_source_parses_equally_across_routes(self) -> None:
+        api = esolangs.Language("Algebraic Programming Language")
+        limits = esolangs.ExecutionLimits(max_steps=5000)
+        for source, expected in (
+            ("(" * 86 + "7" + ")" * 86, "7\n"),
+            ("(" * 640 + "7" + ")" * 640, "7\n"),
+            ("F(x) = x\n" + "F(" * 120 + "7" + ")" * 120, "7\n"),
+            ("!x = 1 - x\n" + "!" * 321 + "0", "1\n"),
+            ("1**" * 320 + "1", "1\n"),
+        ):
+            native = api.run(source)
+            assert native.output == expected
+            bounded = api.run(source, limits=limits)
+            assert replace(bounded, steps=None) == native
+            assert api.run(source, isolated=True, limits=limits) == bounded
+            assert api.prepare(source).run() == native
+            debugger = api.make_debugger(source)
+            assert debugger.run(limits=limits) == "halted"
+            assert debugger.observation == bounded
+
+        vm = api.make_vm("(" * 640)
+        with pytest.raises(esolangs.ProgramError, match="unexpected end"):
             vm.step()
 
 

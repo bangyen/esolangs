@@ -74,7 +74,6 @@ from esolangs.cli.hints import (
     _cli_error_text,
     _did_you_mean,
     _display_encoding,
-    _display_label,
     _generate_hint,
     _input_sentence,
     _looks_like_a_table,
@@ -112,7 +111,7 @@ from esolangs.runtime._program import Program
 from esolangs.runtime._source import native_file_terminator
 from esolangs.runtime._validate import _argument_repr
 from esolangs.runtime.memory import format_integer
-from esolangs.runtime.source_hints import can_render_argument, is_option
+from esolangs.runtime.source_hints import can_render_argument, display_label, is_option
 
 
 def describe(language: str, *, catalog: Catalog | None = None) -> LanguageInfo:
@@ -569,7 +568,7 @@ def _printable(value: object) -> str:
     """
     if isinstance(value, int):
         return _argument_repr(value)
-    return _display_label(str(value))
+    return display_label(str(value))
 
 
 def _answer_sentence(facts: LanguageInfo) -> str:
@@ -737,7 +736,7 @@ def _read_answer(rest: list[str]) -> None:
             "<program-file>"
         )
         _fail(
-            f"{_display_label(language)} answers 0 if it {zero} and 1 if it {one}. "
+            f"{display_label(language)} answers 0 if it {zero} and 1 if it {one}. "
             f"Program output carries no answer. Use {run} and observe whether it "
             "halts. A timeout leaves the answer undecided."
         )
@@ -865,7 +864,7 @@ def _dispatch() -> None:
             # `help nope` printed the usage and exited 0.
             requested = rest[0]
             _fail(
-                f"unknown command: {_display_label(requested)}"
+                f"unknown command: {display_label(requested)}"
                 f"{_did_you_mean(requested, set(COMMANDS))}"
             )
         encoding = _display_encoding(sys.stdout)
@@ -878,7 +877,7 @@ def _dispatch() -> None:
         # they are typed after did not, so `esolangs lst` got the whole
         # usage block and no hint that `list` was one letter away.
         _fail(
-            f"unknown command: {_display_label(cmd)}"
+            f"unknown command: {display_label(cmd)}"
             f"{_did_you_mean(cmd, set(COMMANDS))}\n\n{USAGE}"
         )
     if {"--help", "-h"} & set(option_argv[1:]):

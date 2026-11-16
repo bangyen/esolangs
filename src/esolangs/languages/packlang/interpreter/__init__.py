@@ -110,6 +110,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import repr_value
 
 # There is no recursion ceiling.  A call pushes a frame rather than
 # recursing natively, so a runaway program grows the frame list on the
@@ -146,51 +147,72 @@ type _State = tuple[_Frame, ...]
 
 
 def _evaluate(node: _Expr, store: _Store) -> int:
-    """Return the value of an expression, which contains no unresolved call.
+    """Run the call-free remainder in left-to-right order."""
+    pending: list[tuple[str, object]] = []
+    while True:
+        kind = node[0]
+        if kind in ("lit", "done"):
+            result = _int(node[1])
+        elif kind == "var":
+            value = _get(store, str(node[1]))
+            if isinstance(value, tuple):
+                raise HaltError(
+                    f"{node[1]!r} is an array and has no scalar value",
+                    hint="index the array to select a scalar element",
+                )
+            result = _int(value)
+        elif kind == "length":
+            value = _get(store, str(node[1]))
+            if not isinstance(value, tuple):
+                raise HaltError(
+                    f"{node[1]!r} is not an array",
+                    hint="use an array variable for indexing",
+                )
+            result = len(value)
+        elif kind == "xor":
+            pending.append(("right", node[2]))
+            node = _node(node[1])
+            continue
+        elif kind == "not":
+            pending.append(("not", None))
+            node = _node(node[1])
+            continue
+        elif kind == "apply":
+            indexed, node = _array_index(node, store)
+            pending.append(("index", indexed))
+            continue
+        else:
+            raise HaltError(f"cannot evaluate {kind!r}")
 
-    Pure with respect to the store, and no longer recursive through a
-    call: ``_Machine.step`` pushes a frame for every function call and
-    rewrites its value in as a ``val`` node, so what reaches here is the
-    call-free remainder.
-    """
-    kind = node[0]
-    if kind in ("lit", "done"):
-        return _int(node[1])
-    if kind == "var":
-        value = _get(store, str(node[1]))
-        if isinstance(value, tuple):
-            raise HaltError(
-                f"{node[1]!r} is an array and has no scalar value",
-                hint="index the array to select a scalar element",
-            )
-        return _int(value)
-    if kind == "length":
-        value = _get(store, str(node[1]))
-        if not isinstance(value, tuple):
-            raise HaltError(
-                f"{node[1]!r} is not an array",
-                hint="use an array variable for indexing",
-            )
-        return len(value)
-    if kind == "xor":
-        left = _evaluate(_node(node[1]), store)
-        right = _evaluate(_node(node[2]), store)
-        return left ^ right
-    if kind == "not":
-        value = _evaluate(_node(node[1]), store)
-        return 0 if _truth(value) else 1
-    if kind == "apply":
-        return _apply(node, store)
-    raise HaltError(f"cannot evaluate {kind!r}")
+        while pending:
+            operation, operand = pending.pop()
+            if operation == "right":
+                pending.append(("xor", result))
+                node = _node(operand)
+                break
+            if operation == "xor":
+                result = _int(operand) ^ result
+            elif operation == "not":
+                result = 0 if _truth(result) else 1
+            else:
+                name, array = _node(operand)
+                assert isinstance(array, tuple)
+                if not 0 <= result < len(array):
+                    raise HaltError(
+                        f"index {result} is outside {name!r}",
+                        hint=(
+                            "keep the index within the bounds stated in the diagnostic"
+                        ),
+                    )
+                result = _int(array[result])
+        else:
+            return result
 
 
-def _apply(node: _Expr, store: _Store) -> int:
-    """Evaluate an array index.  A function call never reaches here.
-
-    Indexing and calling look alike in the grammar, and the store decides
-    which one a name is.  ``_Machine.step`` resolves every *call* into a
-    ``done`` node before evaluating, so what survives is the index case.
-    """
+def _array_index(
+    node: _Expr, store: _Store
+) -> tuple[tuple[str, tuple[object, ...]], _Expr]:
+    """Resolve the array before evaluating its index."""
     name = str(node[1])
     args = [_node(arg) for arg in _node(node[2])]
     if not any(slot == name for slot, _ in store):
@@ -205,74 +227,85 @@ def _apply(node: _Expr, store: _Store) -> int:
             f"indexing {name!r} takes exactly one index",
             hint="supply exactly one index when accessing an array",
         )
-    index = _evaluate(args[0], store)
-    if not 0 <= index < len(value):
-        raise HaltError(
-            f"index {index} is outside {name!r}",
-            hint="keep the index within the bounds stated in the diagnostic",
-        )
-    return _int(value[index])
+    return (name, value), args[0]
 
 
 def _pending_call(node: _Expr, store: _Store) -> _Expr | None:
-    """Return the call :func:`_evaluate` would reach first, or None.
-
-    Leftmost-innermost, which is ``_evaluate``'s own order: a call's own
-    arguments are searched before the call, and ``xor``'s left operand
-    before its right.  Keeping that order is what preserves which
-    ``HaltError`` fires first and the order of a callee's output.
-
-    An ``apply`` over an array *name* is an index, not a call, so it is
-    searched but never returned -- indexing has no body to step.
-    """
-    kind = node[0]
-    if kind in ("lit", "done", "var", "length"):
-        return None
-    if kind == "not":
-        return _pending_call(_node(node[1]), store)
-    if kind == "xor":
-        return _pending_call(_node(node[1]), store) or _pending_call(
-            _node(node[2]), store
-        )
-    if kind != "apply":
-        return None
-    for arg in _node(node[2]):
-        found = _pending_call(_node(arg), store)
-        if found is not None:
-            return found
-    name = str(node[1])
-    if any(slot == name for slot, _ in store):
-        return None  # an array index, evaluated in place
-    return node
+    """Find the leftmost innermost call in evaluation order."""
+    pending: list[tuple[_Expr, bool]] = []
+    while True:
+        kind = node[0]
+        if kind == "not":
+            node = _node(node[1])
+            continue
+        if kind == "xor":
+            pending.append((_node(node[2]), False))
+            node = _node(node[1])
+            continue
+        if kind == "apply":
+            pending.append((node, True))
+            pending.extend((_node(arg), False) for arg in reversed(_node(node[2])))
+        while pending:
+            node, checked = pending.pop()
+            if not checked:
+                break
+            name = str(node[1])
+            if not any(slot == name for slot, _ in store):
+                return node
+        else:
+            return None
 
 
 def _substitute(node: _Expr, target: _Expr, value: int) -> _Expr:
-    """Return ``node`` with ``target`` replaced by the literal ``value``.
+    """Replace a returned call without modifying the shared source tree."""
+    pending = [(node, False)]
+    rewritten: dict[int, _Expr] = {}
+    while pending:
+        current, ready = pending.pop()
+        if current is target:
+            rewritten[id(current)] = ("done", value)
+            continue
+        kind = current[0]
+        if kind in ("not", "xor"):
+            children = current[1:]
+        elif kind == "apply":
+            children = _node(current[2])
+        else:
+            rewritten[id(current)] = current
+            continue
+        if ready:
+            parts = tuple(rewritten[id(child)] for child in children)
+            rewritten[id(current)] = (
+                ("apply", current[1], parts) if kind == "apply" else (kind, *parts)
+            )
+        else:
+            pending.append((current, True))
+            pending.extend((_node(child), False) for child in children)
+    return rewritten[id(node)]
 
-    A rewritten *copy*: the parsed program is shared by every frame and by
-    each lap of a ``While``, so writing into it would corrupt the next
-    reader's view of the statement.
-    """
-    if node is target:
-        return ("done", value)
-    kind = node[0]
-    if kind in ("lit", "done", "var", "length"):
-        return node
-    if kind == "not":
-        return ("not", _substitute(_node(node[1]), target, value))
-    if kind == "xor":
-        return (
-            "xor",
-            _substitute(_node(node[1]), target, value),
-            _substitute(_node(node[2]), target, value),
-        )
-    if kind != "apply":
-        return node
-    return (
-        "apply",
-        node[1],
-        tuple(_substitute(_node(arg), target, value) for arg in _node(node[2])),
-    )
+
+def _expression_key(node: _Expr | None) -> str:
+    """Keep the previous snapshot spelling for deeply suspended calls."""
+    try:
+        return repr_value(node)
+    except RecursionError:
+        pass
+    parts: list[str] = []
+    pending: list[tuple[object, bool]] = [(node, False)]
+    while pending:
+        item, delimiter = pending.pop()
+        if delimiter:
+            parts.append(str(item))
+        elif isinstance(item, tuple):
+            parts.append("(")
+            pending.append((",)" if len(item) == 1 else ")", True))
+            for i in range(len(item) - 1, -1, -1):
+                pending.append((item[i], False))
+                if i:
+                    pending.append((", ", True))
+        else:
+            parts.append(repr_value(item))
+    return "".join(parts)
 
 
 def _callee(node: _Expr, program: _Program, caller: str) -> _Function:
@@ -402,7 +435,7 @@ def _write(
         if not 0 <= at < len(value):
             raise HaltError(
                 f"index {at} is outside {name!r}",
-                hint="keep the index within the bounds stated in the diagnostic",
+                hint=("keep the index within the bounds stated in the diagnostic"),
             )
         row = list(value)
         row[at] = update(_int(row[at]))
@@ -651,7 +684,7 @@ class _Machine:
         # returns, so it is built fresh rather than fixed at parse time.
         boundary = (
             tuple(
-                (frame.key(), repr(frame.pending), frame.returned)
+                (frame.key(), _expression_key(frame.pending), frame.returned)
                 for frame in self.frames
             ),
             self.io.progress(),

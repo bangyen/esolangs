@@ -284,6 +284,26 @@ def test_set_accepts_null_as_a_declared_string_choice(
     _, error = _failure([*command, "--settings", '{"mode":null}'], capsys)
     assert "invalid value for dialect setting mode: None" in error
 
+    bad_key = "oops\x1b[2J\nfield"
+    bad_label = r"oops\x1b[2J\nfield"
+    key_json = json.dumps(bad_key)
+    for flags in (
+        ["--set", f"{bad_key}=null"],
+        ["--settings", json.dumps({bad_key: "null"})],
+    ):
+        _, error = _failure([*command, *flags], capsys)
+        assert error == (
+            f"unknown dialect setting for {REFERENCE}: {bad_label}; "
+            "known settings: mode\n"
+        )
+    _, error = _failure(
+        [*command, "--settings", f"{{{key_json}: 1, {key_json}: 2}}"], capsys
+    )
+    assert error == (
+        f"--settings is not valid JSON (duplicate field: {bad_label}); "
+        "pass a JSON object\n"
+    )
+
     settings = [
         '--settings={"mode":"plain"}',
         "--set=mode=ignored value",

@@ -5,6 +5,7 @@ import importlib
 import inspect
 import pathlib
 import re
+import runpy
 
 import pytest
 
@@ -464,6 +465,9 @@ class TestEntryPointConventions:
     )
     def test_the_shape_matches_what_run_accepts(self, path: pathlib.Path) -> None:
         """``text`` goes to a ``str`` parameter, the line shapes to ``list[str]``."""
+        if path.name == "__init__.py":
+            for entry in (path.parent, path.with_name("__main__.py")):
+                assert callable(runpy.run_path(str(entry))["run"])
         call = self._main_call(path)
         assert isinstance(call.func, ast.Name)
         kwargs = {keyword.arg: keyword.value for keyword in call.keywords}

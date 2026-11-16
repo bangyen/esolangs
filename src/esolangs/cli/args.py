@@ -27,7 +27,7 @@ from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._json import record_dumps, record_loads
 from esolangs.runtime._validate import check_scale, check_timeout
 from esolangs.runtime.memory import _hit_digit_cap, format_integer, parse_integer
-from esolangs.runtime.source_hints import can_render_argument, is_option
+from esolangs.runtime.source_hints import can_render_argument, display_label, is_option
 from esolangs.settings import DialectSettings
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -158,7 +158,7 @@ def _split_positional(
         if is_option(arg) and arg.partition("=")[0] not in known:
             name = arg.partition("=")[0]
             suggest = set(known) | set(vocabulary) | _GLOBAL_FLAGS
-            _fail(f"unknown option: {arg}{_did_you_mean(name, suggest)}")
+            _fail(f"unknown option: {display_label(arg)}{_did_you_mean(name, suggest)}")
         args.append(arg)
     return args
 
@@ -480,7 +480,7 @@ def _settings_of(
             try:
                 overrides[key] = _set_value(key, raw, schema)
             except ValueError:
-                _fail(f"--set {key} needs an integer, got {raw!r}")
+                _fail(f"--set {display_label(key)} needs an integer, got {raw!r}")
         choices = values | overrides
         return bound.settings(**choices)  # type: ignore[arg-type]
     except ExecutionBudgetError as exc:

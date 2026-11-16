@@ -26,7 +26,6 @@ from esolangs.cli.args import (
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _cli_error_text,
-    _display_label,
     _exit_code,
     _template_hint,
     _timeout_text,
@@ -59,6 +58,7 @@ from esolangs.runtime._files import _source_directory
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
 from esolangs.runtime._source import check_scale_for
 from esolangs.runtime.memory import format_integer
+from esolangs.runtime.source_hints import display_label
 
 
 def _remaining(timeout: float | None, elapsed: float, flag: str) -> float | None:
@@ -226,7 +226,7 @@ def _run(rest: list[str]) -> None:
         # get from a redirect that failed or a generate that was never run.
         # Said on stderr, so a pipeline still receives the empty output.
         _note(
-            f"note: {_display_label(path)} contains no source, "
+            f"note: {display_label(path)} contains no source, "
             "so there was no program to run"
         )
     # A program that printed nothing is a legal program, and also what you

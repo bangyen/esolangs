@@ -713,6 +713,11 @@ def test_option_passes_cannot_steal_another_options_value(capsys, tmp_path) -> N
                 f"unknown option: {args[0]}\n",
             )
     assert _failure(["help", "-s"], capsys) == ("", "unknown command: -s\n")
+    bad_option = "--oops\x1b[2J\nfield"
+    assert _failure(["run", bad_option, REFERENCE, "prog.txt"], capsys) == (
+        "",
+        r"unknown option: --oops\x1b[2J\nfield" + "\n",
+    )
 
     path = _program(tmp_path, ",.")
     for args in (["--settings", "{}"], ["-s", "{}"], ["-s={}"]):

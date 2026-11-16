@@ -7,6 +7,11 @@ from difflib import get_close_matches
 from esolangs.exceptions import ProgramError, ProgramNotFoundError
 
 
+def display_label(text: str) -> str:
+    """Keep a diagnostic label on one line without terminal controls."""
+    return text if text.isprintable() else repr(text)[1:-1]
+
+
 def is_option(value: str) -> bool:
     """Tell whether the CLI reads a leading dash as an option."""
     return len(value) > 1 and value[0] == "-" and not value[1].isdigit()

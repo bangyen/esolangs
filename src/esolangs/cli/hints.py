@@ -50,11 +50,6 @@ def _exit_code(exc: EsolangError) -> int:
     return 2 if isinstance(exc, ValueError) else 1
 
 
-def _display_label(text: str) -> str:
-    """Keep a CLI label on one line without terminal controls."""
-    return text if text.isprintable() else repr(text)[1:-1]
-
-
 def _cli_error_text(
     exc: BaseException, *, language: str | None = None, catalog: Catalog | None = None
 ) -> str:

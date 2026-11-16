@@ -1,6 +1,6 @@
 """Shakespeare source to a flat list of operations.
 
-A hand-written lexer and recursive-descent parser over ``words.toml``.
+A hand-written lexer and parser over ``words.toml``.
 ``parse`` returns the cast, the operations with goto targets resolved, and
 nothing else: descriptions, titles and act/scene numbers are checked and
 dropped.
@@ -9,6 +9,7 @@ dropped.
 from __future__ import annotations
 
 import re
+import sys
 import tomllib
 from bisect import bisect_right
 from dataclasses import dataclass, replace
@@ -27,19 +28,19 @@ type Expr = tuple[Any, ...]
 _TOKEN = re.compile(r"\w[\w'\u2019-]*|\S")
 _ROMAN = re.compile(r"M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})")
 _ROMAN_VALUES = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
-_BINARY = {
-    ("the", "difference", "between"): "sub",
-    ("the", "product", "of"): "mul",
-    ("the", "quotient", "between"): "div",
-    ("the", "remainder", "of", "the", "quotient", "between"): "mod",
-    ("the", "sum", "of"): "add",
-}
-_UNARY = {
-    ("the", "cube", "of"): "cube",
-    ("the", "factorial", "of"): "factorial",
-    ("the", "square", "of"): "square",
-    ("the", "square", "root", "of"): "sqrt",
-    ("twice",): "twice",
+_OPERATORS = {
+    "the": (
+        (("the", "difference", "between"), "sub", True),
+        (("the", "product", "of"), "mul", True),
+        (("the", "quotient", "between"), "div", True),
+        (("the", "remainder", "of", "the", "quotient", "between"), "mod", True),
+        (("the", "sum", "of"), "add", True),
+        (("the", "cube", "of"), "cube", False),
+        (("the", "factorial", "of"), "factorial", False),
+        (("the", "square", "of"), "square", False),
+        (("the", "square", "root", "of"), "sqrt", False),
+    ),
+    "twice": ((("twice",), "twice", False),),
 }
 _GOTO_OPENERS = {("let", "us"), ("we", "shall"), ("we", "must")}
 
@@ -91,6 +92,7 @@ class _Parser:
         self.words = [m.group().lower() for m in found]
         self.lines = [bisect_right(breaks, m.start()) + 1 for m in found]
         self.pos = 0
+        self.value_depth = sys.getrecursionlimit()
         w = _words()
         self.be, self.articles = set(w["be"]), set(w["article"])
         self.possessives = set(w["possessive"])
@@ -414,15 +416,35 @@ class _Parser:
     # -- values --------------------------------------------------------
 
     def value(self) -> Expr:
-        for words, operator in _BINARY.items():
-            if self.take(words):
-                left = self.value()
-                self.expect("and")
-                return ("bin", operator, left, self.value())
-        for words, operator in _UNARY.items():
-            if self.take(words):
-                return ("un", operator, self.value())
-        word = self.peek()
+        """Parse nested prefix operands within the configured depth."""
+        pending: list[tuple[str, bool, Expr | None]] = []
+        while True:
+            word = self.peek()
+            for words, operator, binary in _OPERATORS.get(word, ()):
+                if self.take(words):
+                    if len(pending) >= self.value_depth:
+                        raise InterpreterLimitError(
+                            "Shakespeare expression nested too deeply",
+                            hint="split the expression across sentences",
+                        )
+                    pending.append((operator, binary, None))
+                    break
+            else:
+                value = self.value_atom(word)
+                while pending:
+                    operator, binary, left = pending.pop()
+                    if not binary:
+                        value = ("un", operator, value)
+                    elif left is not None:
+                        value = ("bin", operator, left, value)
+                    else:
+                        self.expect("and")
+                        pending.append((operator, True, value))
+                        break
+                else:
+                    return value
+
+    def value_atom(self, word: str) -> Expr:
         if word in self.first:
             self.pos += 1
             return ("me",)
@@ -473,11 +495,5 @@ class _Parser:
 def parse(text: str) -> tuple[int, list[Op]]:
     """Return the cast size and the operations of the play ``text``."""
     parser = _Parser(text)
-    try:
-        parser.play()
-    except RecursionError:
-        raise InterpreterLimitError(
-            "Shakespeare expression nested too deeply",
-            hint="split the expression across sentences",
-        ) from None
+    parser.play()
     return len(parser.cast), parser.ops

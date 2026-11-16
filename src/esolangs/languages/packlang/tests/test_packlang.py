@@ -391,6 +391,36 @@ class TestRegistry:
     def test_registered_interpreter_runs(self) -> None:
         assert execute("Packlang", HELLO).output == "Hello, World!\r\n"
 
+        depth = 1200
+        api = esolangs.Language("Packlang")
+        kind = "Pointer(" * depth + "Integer" + ")" * depth
+        value = "(" * depth + "65 ^ " + "!" * depth + "id(0)" + ")" * depth
+        blocks = "If 1 Then { " * depth + f"charPut({value}); " + "} " * depth
+        source = (
+            "Package : IO { Integer id : Integer n { n; } "
+            f"Integer main {{ {kind} a; {blocks} 0; }} }} p;"
+        )
+        prepared = api.prepare(source)
+        native = api.run(source)
+        assert native.output == "A"
+        assert prepared.run() == native
+        caps = esolangs.ExecutionLimits(max_steps=depth + 6)
+        bounded = api.run(source, limits=caps)
+        assert bounded.output == "A"
+        assert bounded.steps == depth + 6
+        assert api.run(source, limits=caps, isolated=True) == bounded
+        assert prepared.run(limits=caps) == bounded
+
+        debug = api.make_debugger(source)
+        for _ in range(depth + 1):
+            debug.step()
+        assert "'apply', 'id'" in debug.vm.snapshot()[0][0][1]
+        assert debug.run(limits=caps) == "halted"
+        assert debug.observation.output == "A"
+        broken = source.replace("id(0)", "id(0", 1)
+        with pytest.raises(esolangs.ProgramError, match=r"expected '\)', got ';'"):
+            api.run(broken)
+
 
 class TestBooleanGenerator:
     """Executed over complete truth tables, not inspected as source."""
