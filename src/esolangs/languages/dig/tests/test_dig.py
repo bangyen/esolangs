@@ -6,6 +6,7 @@ from typing import ClassVar
 
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.dig.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import IO, ScriptedIO
@@ -168,6 +169,26 @@ class TestDigEdgeCases:
         """A work command with no adjacent digit is an invalid operation."""
         with pytest.raises(HaltError):
             run([">$+:", "    "], io=IO())
+
+        api = Language("Dig")
+        limits = ExecutionLimits(max_steps=8)
+        for source, output in (
+            (">$²:\n 2  ", "0"),
+            (">$٢:\n 2  ", "2"),
+            (">$+:\n 3٢ ", "2"),
+            (">$+:\n 3² ", None),
+        ):
+            native = api.execute(source)
+            bounded = api.execute(source, limits=limits)
+            worker = api.prepare(source).execute(limits=limits, isolated=True)
+            assert worker.observation == bounded.observation
+            if output is not None:
+                assert native.unwrap().output == bounded.unwrap().output == output
+                worker.unwrap()
+            else:
+                for result in (native, bounded, worker):
+                    assert type(result.error) is HaltError
+                    assert "has no digit beside it" in str(result.error)
 
     def test_divide_by_zero_halts(self) -> None:
         """Dividing by an adjacent zero is an invalid operation."""

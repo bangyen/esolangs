@@ -28,6 +28,7 @@ from esolangs.runtime._files import (
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import _has_backing_type, check_scale
 from esolangs.runtime.source_hints import (
+    display_label,
     program_error_context,
     source_read_error,
     syntax_error,
@@ -176,7 +177,9 @@ def _read_gzip(data: bytes, label: str | None) -> CompressedText:
     except ProgramError as error:
         if label is None:
             raise
-        raise program_error_context(f"cannot read {label}: {error}", error) from error
+        raise program_error_context(
+            f"cannot read {display_label(label)}: {error}", error
+        ) from error
 
 
 def check_raster_gzip(language: str, source: object) -> None:
@@ -190,7 +193,8 @@ def check_raster_gzip(language: str, source: object) -> None:
 def _raster_gzip_error(language: str) -> ProgramError:
     return with_hint(
         ProgramError(
-            f"{language} requires raster source, but the program is gzip text"
+            f"{display_label(language)} requires raster source, "
+            "but the program is gzip text"
         ),
         "use a PNG program or select the language that reads this gzip source",
     )
@@ -198,7 +202,10 @@ def _raster_gzip_error(language: str) -> ProgramError:
 
 def _text_raster_error(language: str, actual: str) -> ProgramError:
     return with_hint(
-        ProgramError(f"{language} requires text source, but the program is {actual}"),
+        ProgramError(
+            f"{display_label(language)} requires text source, "
+            f"but the program is {actual}"
+        ),
         "use text source or select the language that reads the raster",
     )
 
@@ -219,8 +226,8 @@ def text_source(
     if _has_backing_type(value, bytes):
         if value.startswith(_PNG_SIGNATURE):
             raise syntax_error(
-                f"cannot read {label or 'the program'}: text source is required, "
-                "but the program is a PNG",
+                f"cannot read {display_label(label or 'the program')}: "
+                "text source is required, but the program is a PNG",
                 "use text source or select the language that reads the PNG",
                 error_type=ProgramError,
             )
@@ -228,7 +235,7 @@ def text_source(
             value = decode_utf8(value)
         except UnicodeDecodeError as exc:
             raise syntax_error(
-                f"cannot read {label or 'the program'}: not text "
+                f"cannot read {display_label(label or 'the program')}: not text "
                 f"(invalid UTF-8 at byte {exc.start})",
                 "save the text program as UTF-8 before running it",
                 error_type=ProgramError,

@@ -214,9 +214,9 @@ def _number(code: str, ind: int, default: int | None) -> tuple[int | None, int]:
     if code[ind] == "~":
         neg = True
         ind += 1
-    if ind < len(code) and code[ind].isdigit():
+    if ind < len(code) and code[ind].isdecimal():
         j = ind
-        while j < len(code) and code[j].isdigit():
+        while j < len(code) and code[j].isdecimal():
             j += 1
         dim = parse_integer(code[ind:j])
         return (-dim if neg else dim), j

@@ -64,7 +64,7 @@ def program_error_context(message: str, cause: BaseException) -> ProgramError:
 
 def source_read_error(label: str, cause: BaseException) -> ProgramError:
     """Describe a failed source read with its repair hint."""
-    message = f"cannot read {label}: {cause}"
+    message = f"cannot read {display_label(label)}: {cause}"
     if isinstance(cause, FileNotFoundError):
         return with_hint(
             ProgramNotFoundError(message),

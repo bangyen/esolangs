@@ -181,6 +181,30 @@ class TestRoundSixQol:
         assert scope.resolve(REFERENCE) == alias
         assert scope.resolve(random.id) == random_name
 
+        api = scope.bind(alias)
+        assert api.prepare(api.from_json(api.to_json("+."))).run().output == "\x01"
+        raster = esolangs.Language(one(source_kind="raster")[0])
+        pixels = raster.generate("01").source
+        image = tmp_path / "program.png"
+        image.write_bytes(pixels.to_png())
+        record = json.loads(raster.to_json(pixels))
+        record["language"] = alias
+        message = r"clear\x1b[2J\nlabel requires text source, but the program is"
+        for read in (
+            lambda: api.from_source(pixels),
+            lambda: api.from_file(image),
+            lambda: api.from_json(json.dumps(record)),
+        ):
+            with pytest.raises(esolangs.ProgramError) as error:
+                read()
+            assert message in str(error.value)
+            assert "\x1b" not in str(error.value)
+            assert "\n" not in str(error.value)
+        with patch.object(_table, "CATALOG", scope):
+            output, diagnostic = _failure(["run", REFERENCE, str(image)], capsys)
+        assert not output
+        assert diagnostic.splitlines()[0] == f"cannot read {image}: {message} a PNG"
+
     def test_a_pipe_still_receives_exactly_nothing(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -200,16 +224,24 @@ class TestRoundSixQol:
             assert error.splitlines()[0].startswith(f"cannot read {label}:")
             assert "\x1b" not in error
 
+            api = esolangs.Language(REFERENCE)
+            with pytest.raises(esolangs.ProgramNotFoundError) as missing:
+                api.from_file(path)
+            assert str(missing.value).startswith(f"cannot read {label}:")
+            assert missing.value.__cause__.filename == str(path)
+
             path.write_bytes(b"A\xff")
-            outcome = esolangs.Language(REFERENCE).execute(path)
+            outcome = api.execute(path)
             assert outcome.status == "rejected"
             assert isinstance(outcome.error, esolangs.ProgramError)
-            message = f"cannot read {path}: not text (invalid UTF-8 at byte 1)"
+            message = f"cannot read {label}: not text (invalid UTF-8 at byte 1)"
             assert str(outcome.error) == message
+            cause = outcome.error.__cause__
+            assert isinstance(cause, UnicodeDecodeError)
+            assert cause.object == b"A\xff"
             assert _failure(args, capsys) == (
                 "",
-                f"cannot read {label}: not text (invalid UTF-8 at byte 1)\n"
-                "hint: save the text program as UTF-8 before running it\n",
+                f"{message}\nhint: save the text program as UTF-8 before running it\n",
             )
 
             path.write_text("+.")

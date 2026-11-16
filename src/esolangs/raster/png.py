@@ -854,7 +854,9 @@ def _check_png_owner(
     from esolangs.runtime._definition import SourceKind
 
     if catalog.languages[owner].runtime.source_kind is not SourceKind.RASTER:
-        raise error_type(f"{owner} requires text source, but the program is a PNG")
+        raise error_type(
+            f"{display_label(owner)} requires text source, but the program is a PNG"
+        )
 
 
 def _check_retained_settings(

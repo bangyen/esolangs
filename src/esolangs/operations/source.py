@@ -246,7 +246,7 @@ def _read_source_artifact(
                 ):
                     raise
                 raise program_error_context(
-                    f"cannot read {path}: {error}", error
+                    f"cannot read {display_label(path)}: {error}", error
                 ) from error
     # Re-wrap file bytes so a decoding error names the file, not its bytes.
     named = (

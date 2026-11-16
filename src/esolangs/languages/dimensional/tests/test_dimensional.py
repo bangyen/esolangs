@@ -5,6 +5,7 @@ import importlib
 import pytest
 
 import esolangs.debugger as debugger_api
+from esolangs import ExecutionLimits, Language
 from esolangs.languages.dimensional import interpreter as native
 from esolangs.languages.dimensional.interpreter import _Machine
 from esolangs.languages.dimensional.interpreter import _Machine as Dimensional
@@ -145,6 +146,19 @@ class TestDimensional:
         """A bare ``>`` or ``$`` reads the current cell, not the next token."""
         assert run_and_capture(">$3?0.") == "\x00"
         assert run_and_capture("$>0?0.") == "\x01"
+
+        language = Language("Dimensional")
+        limits = ExecutionLimits(max_steps=8)
+        for source, output, steps in (
+            (">².", "\x00", 3),
+            (">0².", "\x00", 3),
+            (">\u0660.", "\x00", 2),
+            (">\u0661\u0662?\u0661\u0662.", "\x01", 3),
+        ):
+            assert language.run(source).output == output
+            bounded = language.run(source, limits=limits)
+            assert (bounded.output, bounded.steps) == (output, steps)
+            assert language.run(source, limits=limits, isolated=True) == bounded
 
     def test_a_hex_literal_stops_at_the_command_after_it(self) -> None:
         """The rejected text is the literal alone, not the rest of the line."""

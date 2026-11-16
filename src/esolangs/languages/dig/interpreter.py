@@ -94,7 +94,7 @@ def _value(code: _Grid, row: int, col: int, size: int) -> int:
             if isinstance(val, int):
                 # A stored12 is one operand; it must not become two cells.
                 return val
-            if val.isdigit():
+            if val.isdecimal():
                 return int(val)
     raise HaltError(
         f"the operator at row {row}, column {col} has no digit beside it "
@@ -210,7 +210,7 @@ def _work_command(work: _Work) -> _WorkResult:
     handler = _WORK_HANDLERS.get(work.char)
     if handler is not None:
         return handler(work)
-    if work.char.isdigit():
+    if work.char.isdecimal():
         return work.code, int(work.char)
     if work.char.isalpha() or work.char in ".,!?":
         return work.code, ord(work.char)
