@@ -70,7 +70,8 @@ history at `f35aa4023`.
 - **Wiki candidate screening:** the 2026-11-16 pass used the 2026-11-12
   snapshot and 25 live additions or revisions. Of 629 flagged pages,
   417 passed triage. Manual review covered the highest-ranked specs and
-  selected lower-ranked specs with distinct execution models.
+  selected lower-ranked and prefiltered specs with distinct execution
+  models.
   - *Shortlist:*
     - [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841): byte-grid
       decision tree, 3,610 subset runs. Resolve source rows and EOF, and
@@ -98,6 +99,10 @@ history at `f35aa4023`.
       guards and a marked canvas pixel, 3,610 subset runs. Confirm
       final-canvas observation and audit novelty against dual-tape
       languages with one-shot guards.
+    - [Bit-ter lang](https://esolangs.org/wiki/Bit-ter_lang) (rev. 177676):
+      saved inputs and an AND/NOT expression tree, 3,610 subset runs.
+      Confirm slot-read semantics and audit novelty against existing
+      eager Boolean generators.
   - *Parked in this pass:* Irregular Expression (input and result semantics)
     and Godencode (input framing and linear source construction).
   - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
