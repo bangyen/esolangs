@@ -36,6 +36,7 @@ from esolangs.runtime.source_hints import (
 )
 from esolangs.settings import (
     DialectSettings,
+    _check_dialect_conflicts,
     _merge_settings,
     dialect_options,
     effective_settings,
@@ -92,6 +93,8 @@ def read_png_artifact(
         name, data, catalog=catalog, checked_settings=settings
     )
     if retained is not None and retained is not settings:
+        if settings is not None:
+            _check_dialect_conflicts(retained, settings)
         with _png_metadata_errors():
             dialect_options(name, retained, catalog=catalog)
     merged = _merge_settings(name, retained, settings, catalog=catalog)

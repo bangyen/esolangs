@@ -104,15 +104,44 @@ def effective_settings(
     ) or resolve_origin(program.language, catalog=catalog) != catalog.resolve(language):
         return settings
     retained = program.settings
-    if retained is settings or (
+    if retained is settings:
+        return retained
+    if (
         settings is not None
         and _has_backing_type(retained, DialectSettings)
         and retained._schema == settings._schema  # noqa: SLF001
-        and DialectSettings.options(retained) == explicit_options
     ):
-        return retained
+        if DialectSettings.options(retained) == explicit_options:
+            return retained
+        _check_dialect_conflicts(retained, settings)
     dialect_options(language, retained, catalog=catalog)
     return _merge_settings(language, retained, settings, catalog=catalog)
+
+
+def _check_dialect_conflicts(
+    retained: DialectSettings,
+    settings: DialectSettings,
+) -> None:
+    """Refuse overriding a concrete retained choice before invoking its hook."""
+    retained_values = dict(retained._items)  # noqa: SLF001
+    # A retained choice is how the source was written; contradicting it reads
+    # the same text as a different program, the refusal check_origin makes for
+    # a foreign language.  Explicit choices may only add what was not retained.
+    conflicts = sorted(
+        (key, value)
+        for key, value in settings._items  # noqa: SLF001
+        if key in retained_values and retained_values[key] != value
+    )
+    if conflicts:
+        detail = ", ".join(
+            f"{key}={_argument_repr(retained_values[key])}, not {_argument_repr(value)}"
+            for key, value in conflicts
+        )
+        raise ProgramError(
+            f"this program was written with {detail}; reading it otherwise "
+            "may well run, and answer nonsense -- pass its .source to drop "
+            "the retained settings"
+        )
 
 
 def _merge_settings(
@@ -122,32 +151,13 @@ def _merge_settings(
     *,
     catalog: "Catalog",
 ) -> DialectSettings | None:
-    """Combine validated choices that apply to the same language."""
+    """Combine validated, nonconflicting choices for one language."""
     if retained is None:
         return settings
     if settings is None or settings is retained:
         return retained
     retained_values = dict(retained._items)  # noqa: SLF001
     explicit_values = dict(settings._items)  # noqa: SLF001
-    # A retained choice is how the source was written; contradicting it reads
-    # the same text as a different program, the refusal check_origin makes for
-    # a foreign language.  Explicit choices may only add what was not retained.
-    conflicts = sorted(
-        key
-        for key, value in explicit_values.items()
-        if key in retained_values and retained_values[key] != value
-    )
-    if conflicts:
-        detail = ", ".join(
-            f"{key}={_argument_repr(retained_values[key])}, "
-            f"not {_argument_repr(explicit_values[key])}"
-            for key in conflicts
-        )
-        raise ProgramError(
-            f"this program was written with {detail}; reading it otherwise "
-            "may well run, and answer nonsense -- pass its .source to drop "
-            "the retained settings"
-        )
     merged = retained_values | explicit_values
     if merged == retained_values:
         return retained

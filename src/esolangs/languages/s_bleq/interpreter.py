@@ -207,6 +207,7 @@ class _Machine:
         self.indirect = indirect
         self._halted = False
         self._writer = _BufferedOutput()
+        self._input_byte: int | None = None
         self._output_byte: int | None = None
         self._output_done = False
         if store not in _STORES:
@@ -237,15 +238,24 @@ class _Machine:
                 if pending is None
                 else WorkspaceVariant("pending_output", (self.ip, pending))
             ),
-            input_cursor=self.io.progress(),
+            input_cursor=self._input_cursor(),
             stopped=self._halted,
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        boundary = (tuple(self.mem), self.ip, self.io.progress(), self._halted)
+        boundary = (tuple(self.mem), self.ip, self._input_cursor(), self._halted)
         pending = self._pending_output()
         return boundary if pending is None else (*boundary, pending)
+
+    def _input_cursor(self) -> int | WorkspaceVariant:
+        cursor = self.io.progress()
+        byte = self._input_byte
+        return (
+            cursor
+            if byte is None
+            else WorkspaceVariant("pending_input", (cursor, byte))
+        )
 
     def _pending_output(self) -> int | tuple[int | None, int, bool] | None:
         accepted = self._writer.accepted or 0
@@ -283,8 +293,12 @@ class _Machine:
                     self._output_byte = self.input_byte()
                 self.output(_read(self.mem, self.ip, other, self._output_byte))
                 self._output_done = True
+        elif -2 in (a, b):
+            if self._input_byte is None:
+                self._input_byte = self.input_byte()
+            byte = self._input_byte
         else:
-            byte = self.input_byte() if -2 in (a, b) else None
+            byte = None
         (self.ip, self._halted), writes = _advance(
             (self.ip, self._halted),
             self.mem,
@@ -295,6 +309,8 @@ class _Machine:
         if outputting:
             self._output_byte = None
             self._output_done = False
+        elif byte is not None:
+            self._input_byte = None
         for addr, value in writes:
             if addr >= len(self.mem):
                 self.mem.extend([0] * (addr + 1 - len(self.mem)))

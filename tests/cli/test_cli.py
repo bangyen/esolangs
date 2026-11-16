@@ -18,7 +18,14 @@ from esolangs.cli import _emit, _generate, main
 from esolangs.cli.io import _StdoutEncodingError
 from esolangs.registry import LANGUAGES, _table
 from esolangs.registry._backend import BooleanBackend
-from tests.support.cli_support import _failure, _program, _refused, call_main, run_cli
+from tests.support.cli_support import (
+    _failure,
+    _program,
+    _refused,
+    call_both,
+    call_main,
+    run_cli,
+)
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
@@ -537,6 +544,41 @@ class TestOutputAndAbridging:
                 assert output.err.rstrip().endswith(
                     f"redirect stdout to a file{alternative}"
                 )
+
+        label = "clear\x1b[2J\nlabel"
+        shown = r"clear\x1b[2J\nlabel"
+        raster = LANGUAGES[_RASTER]
+        scope = esolangs.Catalog([replace(raster, name=label)])
+        with (
+            patch.object(_table, "CATALOG", scope),
+            patch.object(sys.stdout, "isatty", lambda: True),
+        ):
+            assert _failure(["generate", raster.id, "01"], capsys) == (
+                "",
+                f"{shown} generates a PNG; redirect stdout to a file\n",
+            )
+        bound = scope.bind(raster.id)
+        assert bound.evaluate(bound.generate("01"), [1]).answer == "1"
+
+        text = LANGUAGES[
+            first(
+                source_kind="text",
+                boolean_generator=True,
+                parameterized=False,
+                answer_mode="output",
+                width_effect="none",
+            )
+        ]
+        scope = esolangs.Catalog([replace(text, name=label)])
+        with patch.object(_table, "CATALOG", scope):
+            source, error = call_both(["generate", "--width=3", text.id, "01"], capsys)
+        assert error == (
+            f"note: --width has no effect on {shown} -- "
+            "the generator retains its original layout\n"
+        )
+        bound = scope.bind(text.id)
+        result = bound.run(source, stdin=bound.encode_inputs([1]))
+        assert bound.read_answer(result.output) == "1"
 
 
 def _check_dialect_repair(language, capsysbinary, monkeypatch) -> None:

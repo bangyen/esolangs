@@ -567,11 +567,13 @@ def from_json(
             if not isinstance(kind, str) or kind not in _LOADERS:
                 raise ValueError("unknown source kind")
             arity = positive_metadata_field(value, "input_arity")
-            settings = decode_settings(value["settings"], name, catalog=catalog)
+            settings = _decode_settings(value["settings"], name, catalog=catalog)
             artifact = _LOADERS[kind](value, name, settings, catalog=catalog)
             if isinstance(artifact, ProgramArtifact) and arity is not None:
                 artifact = replace(artifact, input_arity=arity)
         source_for(name, artifact.source, catalog=catalog, preserve_compression=True)
+        if kind != "png":
+            dialect_options(name, artifact.settings, catalog=catalog)
         return artifact
     except (ValueError, TypeError, RecursionError) as error:
         if _is_acquisition_failure(error):

@@ -319,6 +319,7 @@ class _Machine:
         self._writer = _BufferedOutput()
         self._sent_lines = 0
         self._input_reads = 0
+        self._pending_line: tuple[str | None] | None = None
         self.ind = 0
         self.done = False
 
@@ -353,7 +354,7 @@ class _Machine:
             ),
             stopped=self.done,
             lines=tuple(self.lines),
-            input_cursor=self.io.progress(),
+            input_cursor=self._input_cursor(),
             input_reads=self._input_reads,
             spans=frozenset(self.spans.items()),
         )
@@ -367,12 +368,21 @@ class _Machine:
             self.ind,
             self.done,
             tuple(self.lines),
-            self.io.progress(),
+            self._input_cursor(),
             self._input_reads,
             frozenset(self.spans.items()),
         )
         progress = self._send_progress()
         return boundary if progress is None else (*boundary, progress)
+
+    def _input_cursor(self) -> int | WorkspaceVariant:
+        cursor = self.io.progress()
+        pending = self._pending_line
+        return (
+            cursor
+            if pending is None
+            else WorkspaceVariant("pending_input", (cursor, *pending))
+        )
 
     def _send_progress(self) -> tuple[int, int] | None:
         accepted = self._writer.accepted or 0
@@ -407,21 +417,24 @@ class _Machine:
         line = self.lines[self.ind].strip()
         command, _, _ = line.partition(" ")
 
-        # ``readto`` is the one command that needs its input before the
-        # transition can run; EOF arrives as ``None``.
+        # Keep the acquired line, or EOF, until its rewrite commits.
         line_in = None
         if command == "readto":
-            try:
-                line_in = self.io.input_str()
-            except EOFError:
-                line_in = None
-            self._input_reads += 1
+            if self._pending_line is None:
+                try:
+                    line_in = self.io.input_str()
+                except EOFError:
+                    line_in = None
+                self._pending_line = (line_in,)
+                self._input_reads += 1
+            line_in = self._pending_line[0]
 
         state, output = _advance(self._state, line_in)
         for text in output[self._sent_lines :]:
             self._writer.write(self.io, text)
             self._sent_lines += 1
         self._restore(state)
+        self._pending_line = None
         self._sent_lines = 0
 
 

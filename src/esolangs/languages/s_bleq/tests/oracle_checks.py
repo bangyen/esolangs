@@ -61,6 +61,7 @@ def _model(words, stdin, store, *, indirect):
                 continue
             difference = read(a) - read(b)
         except KeyError:
+            delivered = incoming if -2 in (a, b) and -3 not in (a, b) else delivered
             error = "syntax"
             continue
         for key, address in zip("ab", (a, b), strict=True):
@@ -86,16 +87,24 @@ def _check(factory, words, stdin, store, *, indirect):
 
     def parts(row):
         ind, mem, stopped, delivered = row[0]
-        if delivered is not None:
+        cursor = row[-1]
+        if isinstance(delivered, int):
+            cursor = workspace.WorkspaceVariant("pending_input", (cursor, delivered))
+        elif delivered is not None:
             ind = workspace.WorkspaceVariant("pending_output", (ind, delivered))
-        return mem, ind, row[-1], stopped
+        return mem, ind, cursor, stopped
 
     code = " ".join(map(str, words))
     workspace.agrees(
         _model(words, stdin, store, indirect=indirect),
         (machine, code, stdin),
         (_WORKSPACE, parts),
-        lambda m: (m.ip, tuple(m.memory), m._halted, m._pending_output()),
+        lambda m: (
+            m.ip,
+            tuple(m.memory),
+            m._halted,
+            m._pending_output() if m._input_byte is None else m._input_byte,
+        ),
         cap=12,
         context=(words, stdin, store, indirect),
     )

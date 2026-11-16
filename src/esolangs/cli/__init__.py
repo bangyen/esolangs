@@ -516,7 +516,7 @@ def _generate(rest: list[str]) -> None:
     ):
         _diagnostic(
             f"note: {'--balance' if balance else '--width'} has no effect on "
-            f"{artifact.language} -- "
+            f"{display_label(artifact.language)} -- "
             f"the generator retains its original layout\n"
         )
     if "--plain" in flags and isinstance(program, Raster):
@@ -534,7 +534,7 @@ def _generate(rest: list[str]) -> None:
                 " or replace --gzip with --plain" if gzip else " or pass --plain"
             )
         _fail(
-            f"{artifact.language} generates "
+            f"{display_label(artifact.language)} generates "
             f"{'a PNG' if isinstance(program, Raster) else 'gzip'}; "
             f"redirect stdout to a file{alternative}"
         )

@@ -285,14 +285,18 @@ def test_native_png_checks_explicit_settings_before_pillow(
         esolangs.ProgramError, match="invalid value for dialect setting"
     ):
         api.from_file(invalid, settings=conflicting)
+    once = True
     for load in (
         lambda: api.from_file(path, settings=conflicting),
         lambda: api.prepare(path, settings=conflicting),
         lambda: api.to_json(path, settings=conflicting),
         lambda: api.to_file(path, destination, settings=conflicting),
     ):
+        validations.clear()
         with pytest.raises(esolangs.ProgramError, match="written with level=0, not 1"):
             load()
+        assert validations == [{"level": 1}]
+    once = False
     with pytest.raises(esolangs.MissingDependencyError):
         api.from_file(path, settings=additions)
     assert destination.read_bytes() == copied

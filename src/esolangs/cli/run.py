@@ -53,7 +53,7 @@ from esolangs.operations.execution import (
     default_total,
 )
 from esolangs.registry import Catalog, get_catalog
-from esolangs.runtime._execution import check_seed_for, check_worker_runtime
+from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._files import _source_directory
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
 from esolangs.runtime._prepared import _runtime_reads_stdin
@@ -165,10 +165,10 @@ def _run(rest: list[str]) -> None:
             check_memory(max_memory, isolated=True)
         except ArgumentError as exc:
             _fail(str(exc).replace("max_memory", "--max-memory"))
-    settings = _settings_of(settings_arguments, language=language, catalog=catalog)
+    settings = _settings_of(
+        settings_arguments, language=language, catalog=catalog, worker=worker
+    )
     with _errors():
-        if worker:
-            check_worker_runtime(declaration.name, catalog)
         # Match execution's order for source options and seed.
         check_scale_for(declaration.name, scale, catalog=catalog)
         check_seed_for(declaration.name, seed, catalog=catalog)

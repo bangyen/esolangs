@@ -372,6 +372,16 @@ def test_dialect_keys_survive_binding_and_round_trips(tmp_path: Path) -> None:
     assert provider.calls == 1
     assert path.read_bytes() == b"+."
 
+    envelope = json.loads(document)
+    for payload, message in (
+        ({"kind": "gzip", "limits": None, "source": "!"}, "base64"),
+        ({"kind": "template", "char": "?", "setters": []}, "input templates"),
+    ):
+        validations.clear()
+        with pytest.raises(esolangs.ProgramError, match=message):
+            bound.from_json(json.dumps(envelope | payload))
+        assert validations == []
+
     def untouched(**_choices):
         pytest.fail("validating a declaration must not call its dialect hook")
 
@@ -397,9 +407,13 @@ def test_scoped_runtime_defaults_reach_native_and_prepared_execution() -> None:
         replace(runtime, dialect_schema=schema)
 
     calls = []
+    reject_retained = False
+    rejected = esolangs.ArgumentError("retained rotation rejected")
 
     def validate(*, rotation="forward"):
         calls.append(rotation)
+        if reject_retained and rotation == "forward":
+            raise rejected
         runtime.dialect(rotation=rotation)
 
     scoped_runtime = replace(runtime, dialect=validate, dialect_schema=schema)
@@ -433,6 +447,20 @@ def test_scoped_runtime_defaults_reach_native_and_prepared_execution() -> None:
     assert generated.settings.options() == {"rotation": "forward"}
     for bit in (0, 1):
         assert scope.evaluate(generated, (bit,)).answer == str(bit)
+
+    restored = scope.from_json(scope.to_json(generated))
+    conflicting = scope.settings(rotation="backward")
+    reject_retained = True
+    for artifact in (generated, restored):
+        calls.clear()
+        with pytest.raises(esolangs.ProgramError, match="written with rotation="):
+            scope.prepare(artifact, settings=conflicting)
+        assert calls == ["backward"]
+        calls.clear()
+        with pytest.raises(esolangs.ArgumentError) as caught:
+            scope.prepare(artifact)
+        assert caught.value is rejected
+        assert calls == ["forward"]
 
 
 def test_custom_runtime_defaults_follow_declared_runner_keywords(monkeypatch) -> None:

@@ -2,7 +2,7 @@
 
 import pytest
 
-from esolangs import ExecutionLimits, HaltError, Language, ProgramError
+from esolangs import ExecutionLimits, ExecutionResult, HaltError, Language, ProgramError
 from esolangs.languages.s_bleq.interpreter import _Machine, prepare_machine, run
 from esolangs.languages.s_bleq.interpreter import _Machine as Sbleq
 from esolangs.runtime.io import ScriptedIO
@@ -105,6 +105,30 @@ class TestSpecialAddresses:
             with pytest.raises(ProgramError, match=r"invalid S\*bleq branch address"):
                 dbg.step()
             assert (dbg.output, dbg.observation.input_reads, dbg.ip) == ("A", 1, 0)
+
+        api = Language("S*bleq")
+        plan = api.prepare("6 -3 0 -2 0 -1 65")
+        limits = ExecutionLimits(max_steps=2)
+        for stdin, reads, eof in (("BC", 1, 0), ("", 0, 1)):
+            expected = ExecutionResult("A", reads, reads, eof, steps=1)
+            debug = plan.make_debugger(stdin=stdin)
+            with pytest.raises(ProgramError, match="branch address") as initial:
+                debug.run(limits=limits)
+            assert initial.value.observation == expected
+            saved = debug.snapshot()
+            for _ in range(2):
+                with pytest.raises(ProgramError, match="branch address") as retry:
+                    debug.step()
+                assert retry.value is not initial.value
+                assert retry.value.observation == debug.observation == expected
+                assert debug.ip == 3
+                assert debug.snapshot() == saved
+            worker = plan.execute(stdin=stdin, limits=limits, isolated=True)
+            assert worker.status == "rejected"
+            assert worker.observation == expected
+        valid = api.run("6 -3 0 -2 0 0 65", stdin="BC", limits=limits)
+        assert valid.output == "A"
+        assert valid.input_reads == 1
 
     @pytest.mark.parametrize(
         ("program", "stdin", "expected"),

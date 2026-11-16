@@ -147,8 +147,20 @@ def _model(source, stdin, cap=64):
     pc = cursor = attempts = reads = past_end = 0
     stopped, output, trace = False, "", []
 
-    def row():
-        parts = (pc, stopped, tuple(lines), cursor, attempts, frozenset(spans.items()))
+    def row(pending=()):
+        position = (
+            workspace.WorkspaceVariant("pending_input", (cursor, *pending))
+            if pending
+            else cursor
+        )
+        parts = (
+            pc,
+            stopped,
+            tuple(lines),
+            position,
+            attempts,
+            frozenset(spans.items()),
+        )
         return (
             (*parts, reads, past_end),
             stopped or pc >= len(lines),
@@ -179,7 +191,7 @@ def _model(source, stdin, cap=64):
         try:
             emitted = changed.execute(command, rest.strip(), line_in)
         except _ModelError as error:
-            return str(error), [*trace, row()]
+            return str(error), [*trace, row((line_in,) if command == "readto" else ())]
         lines, spans, pc, stopped = (
             changed.lines,
             changed.spans,
@@ -195,7 +207,7 @@ def _view(machine):
         machine.ind,
         machine.done,
         tuple(machine.lines),
-        machine.io.progress(),
+        machine._input_cursor(),
         machine._input_reads,
         frozenset(machine.spans.items()),
         machine.io.reads,

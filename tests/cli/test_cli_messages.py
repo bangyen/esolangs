@@ -557,9 +557,22 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     budget = esolangs.ExecutionTimeoutError("dialect validation exceeded its budget")
     budget.bound = "preparation_timeout"
     bound = scope.bind(name)
+    checked = esolangs.DialectSettings(schema, mode=1)
+    checks.clear()
+    rejected = bound.execute(path, stdin="Q", isolated=True, settings=checked)
+    assert rejected.error is not None
+    assert str(rejected.error) == str(expected.error)
+    for flags, diagnostic in (
+        (["--set", "mode=1"], f"{expected.error}\n"),
+        (["--set", "mode=wrong"], "--set mode needs an integer, got 'wrong'\n"),
+    ):
+        assert _failure(
+            ["run", "--isolated", *flags, name, str(path)], capsys, stdin="Q"
+        ) == ("", diagnostic)
+    assert checks == []
     for flags, settings in (
         ([], None),
-        (["--set", "mode=1"], esolangs.DialectSettings(schema, mode=1)),
+        (["--set", "mode=1"], checked),
     ):
         outcome = bound.execute(path, stdin="Q", settings=settings)
         assert outcome.status == "limit"

@@ -5,6 +5,7 @@ from typing import Any, ClassVar
 
 import pytest
 
+from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.inject.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -360,6 +361,31 @@ def test_a_rewrite_cannot_erase_a_nested_block_s_delimiters() -> None:
     program = "readto data\nsend in\nskip\ndata;\nin;\nx\nin;\ndata;"
     with pytest.raises(HaltError, match="another block's delimiters"):
         run(program, ScriptedIO("q\n"))
+
+    language = Language("Inject")
+    program = "send p\n" + program + "\np;\npre\np;"
+    plan = language.prepare(program)
+    limits = ExecutionLimits(max_steps=12)
+    for stdin, position, reads, eof in (("q\nw\n", 2, 1, 0), ("", 0, 0, 1)):
+        expected = ExecutionResult("pre\n", position, reads, eof, steps=1)
+        debug = plan.make_debugger(stdin=stdin)
+        with pytest.raises(HaltError, match="another block's delimiters") as initial:
+            debug.run(limits=limits)
+        assert initial.value.observation == expected
+        saved = debug.snapshot()
+        for _ in range(2):
+            with pytest.raises(HaltError, match="another block's delimiters") as retry:
+                debug.step()
+            assert retry.value is not initial.value
+            assert retry.value.observation == debug.observation == expected
+            assert debug.ip == 1
+            assert debug.snapshot() == saved
+        worker = plan.execute(stdin=stdin, limits=limits, isolated=True)
+        assert worker.status == "fault"
+        assert worker.observation == expected
+
+    valid = program.replace("send in", "send data").replace("in;\nx\nin;", "x")
+    assert language.run(valid, stdin="q\nw\n", limits=limits).output == "pre\nq\n"
 
 
 def test_skip_as_the_last_line_exits() -> None:

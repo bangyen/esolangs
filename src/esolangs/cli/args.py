@@ -24,6 +24,7 @@ from esolangs.cli.hints import (
 from esolangs.cli.io import _fail
 from esolangs.exceptions import EsolangError, ExecutionBudgetError
 from esolangs.registry import Catalog, get_catalog
+from esolangs.runtime._execution import check_worker_runtime
 from esolangs.runtime._json import record_dumps, record_loads
 from esolangs.runtime._validate import check_scale, check_timeout
 from esolangs.runtime.memory import _hit_digit_cap, format_integer, parse_integer
@@ -466,23 +467,28 @@ def _settings_of(
     *,
     language: str,
     catalog: Catalog | None = None,
+    worker: bool = False,
 ) -> DialectSettings | None:
-    """Validate choices against the selected language's schema."""
-    if arguments is None:
+    """Parse choice operands before checking runtime eligibility and semantics."""
+    if arguments is None and not worker:
         return None
-    values, pairs = arguments
     try:
         catalog = get_catalog(catalog)
         bound = Language(language, catalog=catalog)
-        schema = catalog.languages[bound.name].runtime.dialect_schema
-        overrides = {}
-        for key, raw in pairs.items():
-            try:
-                overrides[key] = _set_value(key, raw, schema)
-            except ValueError:
-                _fail(f"--set {display_label(key)} needs an integer, got {raw!r}")
-        choices = values | overrides
-        return bound.settings(**choices)  # type: ignore[arg-type]
+        choices = None
+        if arguments is not None:
+            values, pairs = arguments
+            schema = catalog.languages[bound.name].runtime.dialect_schema
+            overrides = {}
+            for key, raw in pairs.items():
+                try:
+                    overrides[key] = _set_value(key, raw, schema)
+                except ValueError:
+                    _fail(f"--set {display_label(key)} needs an integer, got {raw!r}")
+            choices = values | overrides
+        if worker:
+            check_worker_runtime(bound.name, catalog)
+        return None if choices is None else bound.settings(**choices)  # type: ignore[arg-type]
     except ExecutionBudgetError as exc:
         _fail(_timeout_text(exc), _TIMEOUT_EXIT)
     except EsolangError as exc:
