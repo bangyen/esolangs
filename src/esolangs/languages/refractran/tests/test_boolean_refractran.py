@@ -51,6 +51,9 @@ def _check_controlled_swap() -> None:
 def test_tables_and_reference() -> None:
     """Swap invariants, all small tables and seeded larger tables, every row."""
     _check_constants()
+    assert (
+        generator.refractran("0110") == esolangs.generate("REFRACTRAN", "0110").source
+    )
     _check_controlled_swap()
     _check_marked_paths()
     _check_pruned_children_and_polarity()

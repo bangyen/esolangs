@@ -45,5 +45,5 @@
 # default itself (threshold needs coincide; parity children are swaps).
 "crement/generator.py" = [
     "arm: if one != o0: -> if zero != z0:",
-    "arm: if zero != z0: -> body.append(f\"+J {cell} 1\")",
+    'arm: if zero != z0: -> body.append(("+J", str(cell), "1"))',
 ]

@@ -644,3 +644,30 @@ def test_wrappers_refuse_input_they_do_not_recognize() -> None:
     assert BalanceRequest(TABLE, raster).raster_source() is raster
     with pytest.raises(esolangs.ProgramError, match="text layout requires text"):
         BalanceRequest(TABLE, raster).text_source()
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "///",
+        "ArrowQueue",
+        "Back",
+        "Bitdeque",
+        "Crement",
+        "FRACTRAN",
+        "INTERCAL",
+        "Minsky Swap",
+        "RAM0",
+        "REFRACTRAN",
+        "Smallfuck",
+        "Underload",
+    ],
+)
+def test_slot_balancer_rejects_plain_text(name: str) -> None:
+    backend = LANGUAGES[name].backend
+    assert backend is not None
+    assert backend.balance is not None
+    with pytest.raises(
+        TypeError, match="balancing needs a rendered template with slots"
+    ):
+        backend.balance(BalanceRequest(TABLE, "plain text"))

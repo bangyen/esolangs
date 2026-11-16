@@ -1,6 +1,7 @@
 """Tests for the Stisp Boolean generator."""
 
 import esolangs
+from esolangs.languages.stisp.generator import stisp
 from esolangs.languages.stisp.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -51,6 +52,7 @@ def test_every_row_results_in_its_answer() -> None:
 
 
 def test_the_and_template_is_the_documented_one() -> None:
+    assert stisp("0001") == esolangs.generate("Stisp", "0001").source
     assert esolangs.generate("Stisp", "0001").source == (
         "(l h)->s[0]=l;(l h)->s[1]=h;c->s[x]=c;(0 (0 1))->s[$]->s[$]"
     )

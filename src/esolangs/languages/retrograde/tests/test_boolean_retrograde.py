@@ -5,6 +5,7 @@ from random import Random
 
 import esolangs
 from esolangs import run as execute
+from esolangs.languages.retrograde.generator import retrograde
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import constant_artifacts, evaluate_generated
@@ -46,6 +47,7 @@ def _reference(code: str) -> tuple[int, int, set[int]]:
 
 def check_boolean_tables() -> None:
     _check_constants()
+    assert retrograde("0110") == esolangs.generate("Retrograde", "0110").source
     n3_source = 0
     for n in (1, 2, 3):
         for value in range(2 ** (1 << n)):
