@@ -72,18 +72,21 @@ history at `f35aa4023`.
   417 passed triage. Manual review covered the highest-ranked specs and
   selected lower-ranked specs with distinct execution models.
   - *Shortlist:* [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841),
-    [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300), and
+    [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300),
     [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks))
-    (rev. 180732).
+    (rev. 180732), and [Beetle](https://esolangs.org/wiki/Beetle)
+    (rev. 156896).
     - Bytemap: byte-grid decision tree, 3,610 subset runs. Resolve source
       rows and EOF, and audit novelty against Bifunge.
     - Tubes: modulo-selected exits in a Unicode grid, 3,616 subset runs.
       Confirm stream framing and complete the public implementation check.
     - 4s: one-shot guards on a separate control stack, 3,610 subset runs.
       Confirm zero-entry cleanup, operand consumption and integer framing.
-  - *Parked in this pass:* Beetle (byte queue order and framing),
-    Irregular Expression (input and result semantics), and Godencode
-    (input framing and linear source construction).
+    - Beetle: flip-on-entry guards and byte parity, 7,220 subset runs.
+      The published example establishes output bit order. Confirm byte
+      reads and EOF before admission.
+  - *Parked in this pass:* Irregular Expression (input and result semantics)
+    and Godencode (input framing and linear source construction).
   - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
     Onecode (Fergusq), NB and Nybbleist. ALEFL and GolferDream were deferred
     on spec gaps. Flump failed source scaling. See
