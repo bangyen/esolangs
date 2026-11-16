@@ -108,6 +108,10 @@ history at `f35aa4023`.
     - [Pancake](https://esolangs.org/wiki/Pancake) (rev. 199721): a
       single-lane stack tree with an explicit halt, 2,682 subset runs.
       Confirm lane transfers, embedded plates and EOF before admission.
+    - [OBrainfuck](https://esolangs.org/wiki/OBrainfuck) (rev. 163644):
+      ordinal brackets select a Boolean arm, 3,080 subset runs and 64
+      independent C-lowering checks. Confirm EOF and public implementation
+      coverage before admission.
   - *Parked in this pass:* Irregular Expression (input and result semantics)
     and Godencode (input framing and linear source construction).
   - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
