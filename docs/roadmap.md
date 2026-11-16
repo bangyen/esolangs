@@ -105,6 +105,9 @@ history at `f35aa4023`.
       saved inputs and an AND/NOT expression tree, 3,610 subset runs.
       Confirm slot-read semantics and audit novelty against existing
       eager Boolean generators.
+    - [Pancake](https://esolangs.org/wiki/Pancake) (rev. 199721): a
+      single-lane stack tree with an explicit halt, 2,682 subset runs.
+      Confirm lane transfers, embedded plates and EOF before admission.
   - *Parked in this pass:* Irregular Expression (input and result semantics)
     and Godencode (input framing and linear source construction).
   - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
