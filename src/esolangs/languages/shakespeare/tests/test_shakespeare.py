@@ -6,8 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from esolangs import ExecutionLimits, Language
-from esolangs.exceptions import ExecutionCapError, HaltError, InterpreterLimitError
+from esolangs import ExecutionLimits, ExecutionResult, Language
+from esolangs.debugger import Debugger
+from esolangs.exceptions import (
+    ArgumentError,
+    ExecutionCapError,
+    HaltError,
+    InputExhaustedError,
+    InterpreterLimitError,
+)
 from esolangs.languages.shakespeare._syntax import parse
 from esolangs.languages.shakespeare.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -163,6 +170,7 @@ def test_stacks_remember_onto_the_listener_and_recall_into_it() -> None:
 def test_character_input_stores_the_code_and_number_input_a_token(monkeypatch) -> None:
     assert _run("Open your mind. Open your heart. Speak your mind.", "A") == "65A"
     assert _run("Listen to your heart. Open your heart.", "  -7 8") == "-7"
+    _check_number_retry_and_wide_output()
     assert_rejected_output_retry(
         "Shakespeare",
         _play("Listen to your heart. Open your heart."),
@@ -184,6 +192,72 @@ def test_character_input_stores_the_code_and_number_input_a_token(monkeypatch) -
         "_prepare_source",
         monkeypatch,
     )
+
+
+def _check_number_retry_and_wide_output() -> None:
+    api = Language("Shakespeare")
+    read = "You are a rose. Open your heart! Listen to your heart! "
+    source = _play(read + "Open your heart!")
+    plan = api.prepare(source)
+    limits = ExecutionLimits(max_steps=5)
+    expected = ExecutionResult("1", 3, 1, 0, steps=3)
+    for invoke in (
+        lambda: api.execute(source, stdin="bad 7", limits=limits),
+        lambda: plan.execute(stdin="bad 7", limits=limits),
+        lambda: api.execute(source, stdin="bad 7", limits=limits, isolated=True),
+    ):
+        outcome = invoke()
+        assert outcome.status == "rejected"
+        assert isinstance(outcome.error, ArgumentError)
+        assert outcome.observation == expected
+        assert str(outcome.error) == "input must be an integer, got 'bad'"
+
+    debug = plan.make_debugger(stdin="bad 7")
+    with pytest.raises(ArgumentError) as first:
+        debug.run(limits=limits)
+    saved = debug.snapshot()
+    assert debug.ip == 3
+    assert first.value.observation == expected
+    peer = Debugger(debug.vm)
+    with pytest.raises(ArgumentError) as retry:
+        peer.step()
+    assert retry.value is not first.value
+    assert str(retry.value) == str(first.value)
+    assert retry.value.observation == ExecutionResult("1", 3, 1, 0, steps=0)
+    assert first.value.observation == debug.observation == expected
+    assert debug.snapshot() == saved
+
+    eof = plan.make_debugger()
+    with pytest.raises(InputExhaustedError):
+        eof.run(limits=limits)
+    with pytest.raises(InputExhaustedError) as exhausted:
+        eof.step()
+    assert exhausted.value.observation == ExecutionResult("1", 0, 0, 2, steps=3)
+    assert plan.run(stdin="7", limits=limits).output == "17"
+
+    digits = "9" * 641
+    old_limit = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        assert api.run(source, stdin=digits).output == "1" + digits
+        for isolated in (False, True):
+            assert plan.run(stdin=digits, limits=limits, isolated=isolated).output == (
+                "1" + digits
+            )
+            invalid = api.execute(
+                _play(read + "Speak your mind!"),
+                stdin=digits,
+                limits=limits,
+                isolated=isolated,
+            )
+            assert type(invalid.error) is HaltError
+            assert (
+                str(invalid.error)
+                == "Shakespeare cannot print the character code " + digits
+            )
+            assert invalid.observation == ExecutionResult("1", 641, 1, 0, steps=4)
+    finally:
+        sys.set_int_max_str_digits(old_limit)
 
 
 def test_a_third_character_on_stage_halts() -> None:

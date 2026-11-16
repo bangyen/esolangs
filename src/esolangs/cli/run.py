@@ -121,10 +121,6 @@ def _run(rest: list[str]) -> None:
                 "--max-memory must be a positive integer, got "
                 f"{format_integer(max_memory)}"
             )
-        try:
-            check_memory(max_memory, isolated=True)
-        except ArgumentError as exc:  # "max_memory is supported only on Linux"
-            _fail(str(exc).replace("max_memory", "--max-memory"))
     limits = ExecutionLimits(
         preparation_timeout=preparation,
         execution_timeout=timeout,
@@ -158,13 +154,19 @@ def _run(rest: list[str]) -> None:
     _check_count("run", rest, 2, catalog=catalog)
     language, path = rest
     directory = _source_directory(path) if path else None
-    settings = _settings_of(settings_arguments, language=language, catalog=catalog)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
     with _errors():
         declaration = catalog.languages[catalog.resolve(language)]
+    if max_memory is not None:
+        try:
+            check_memory(max_memory, isolated=True)
+        except ArgumentError as exc:
+            _fail(str(exc).replace("max_memory", "--max-memory"))
+    settings = _settings_of(settings_arguments, language=language, catalog=catalog)
+    with _errors():
         if worker:
             check_worker_runtime(declaration.name, catalog)
         # Match execution's order for source options and seed.
@@ -236,6 +238,6 @@ def _run(rest: list[str]) -> None:
     # pipe still receives exactly the empty output.
     if not output and _stdout_is_terminal():
         _note(
-            f"{language}: the program ran and printed nothing"
+            f"{display_label(language)}: the program ran and printed nothing"
             f"{' (the file contains no source)' if empty else ''}"
         )

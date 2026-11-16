@@ -288,6 +288,17 @@ def check_address(addr: int, language: str) -> int:
     return addr
 
 
+def check_input_arity(arity: object) -> int:
+    """Normalize a positive integer supplied through a typed API."""
+    from esolangs.exceptions import ArgumentError
+
+    if type(arity) is not bool and _has_backing_type(arity, int):
+        value = int.__int__(arity)
+        if value > 0:
+            return value
+    raise ArgumentError("input_arity must be a positive integer")
+
+
 def check_scale(scale: object) -> int:
     """Return a positive integer pixel replication factor."""
     from esolangs.exceptions import ArgumentError

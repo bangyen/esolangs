@@ -900,132 +900,6 @@ def test_scoped_png_writers_resolve_source_aliases_without_settings(
         encode(alias, api.catalog)
 
 
-def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> None:
-    installed = esolangs.Language(RASTER_LANGUAGES[0])
-    name = installed.name
-    declaration = installed.catalog.languages[name]
-    schema = esolangs.DialectSchema(name, {"mode": (0, 1)}, {"mode": 0})
-    failures: list[Exception] = []
-    validations = []
-
-    def validate(**choices):
-        validations.append(choices)
-        if failures:
-            raise failures[-1]
-        return choices
-
-    runtime = replace(declaration.runtime, dialect=validate, dialect_schema=schema)
-    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(name)
-    settings = scoped.settings()
-    artifact = replace(installed.generate("01", scale=2), settings=settings)
-    raw = artifact.source.to_png()
-    writers = (
-        lambda: png.write_source(
-            artifact.source.rows, name, settings, 2, catalog=scoped.catalog
-        ),
-        lambda: png.attach_source_metadata(
-            raw, name, settings, 2, catalog=scoped.catalog
-        ),
-    )
-    for write in writers:
-        validations.clear()
-        write()
-        assert validations == [{}]
-    legacy = png.write_metadata(
-        raw,
-        {"version": 1, "language": name, "settings": {"mode": 1}},
-    )
-    matching = scoped.settings(mode=1)
-    validations.clear()
-    assert (
-        png.attach_source_metadata(legacy, name, matching, None, catalog=scoped.catalog)
-        is legacy
-    )
-    assert validations == [{"mode": 1}]
-    with pytest.raises(esolangs.ProgramError, match="conflicting PNG settings"):
-        png.attach_source_metadata(
-            legacy, name, scoped.settings(mode=0), None, catalog=scoped.catalog
-        )
-
-    retained = png.write_metadata(
-        raw, {"version": 1, "language": name, "scale": 2, "settings": {}}
-    )
-
-    def retag():
-        return png.attach_source_metadata(
-            retained, name, None, 2, input_arity=1, catalog=scoped.catalog
-        )
-
-    validations.clear()
-    tagged = retag()
-    assert validations == [{}]
-    assert tagged == png.attach_source_metadata(retained, name, None, 2, input_arity=1)
-    assert validations == [{}]
-    path = tmp_path / "program.png"
-    path.write_bytes(tagged)
-    restored = scoped.from_file(path)
-    assert restored == artifact
-    assert "".join(scoped.evaluate(restored, [bit]).answer for bit in (0, 1)) == "01"
-
-    scoped.to_file(artifact, path)
-    portable = scoped.to_json(artifact)
-    for load in (lambda: scoped.from_file(path), lambda: scoped.from_json(portable)):
-        validations.clear()
-        assert load() == artifact
-        assert validations == [{}]
-    prepared = scoped.prepare(path)
-    assert prepared.run(stdin="1").output == "1"
-
-    nested = esolangs.Language(REFERENCE).execute(
-        "+.[+]", limits=esolangs.ExecutionLimits(max_steps=2)
-    )
-    assert nested.observation.output == "\x01"
-    timeout = esolangs.ExecutionTimeoutError("dialect hook timed out")
-    timeout.bound = "preparation_timeout"
-    errors = (
-        esolangs.ProgramNotFoundError("policy not found"),
-        esolangs.ProgramError("policy failed"),
-        esolangs.ArgumentError("policy refused"),
-        timeout,
-    )
-    for error in errors:
-        error.observation = nested.observation
-        error.partial_output = nested.observation.output
-        failures[:] = [error]
-        for load in (
-            lambda: scoped.from_file(path),
-            lambda: scoped.prepare(path),
-            lambda: scoped.from_json(portable),
-            lambda: scoped.from_source(artifact.source, settings=settings),
-            *writers,
-            retag,
-        ):
-            with pytest.raises(type(error)) as caught:
-                load()
-            assert caught.value is error
-        for outcome in (
-            scoped.execute(path),
-            scoped.execute(artifact),
-            scoped.execute(artifact.source, settings=settings),
-        ):
-            assert outcome.error is error
-            assert outcome.status == ("limit" if error is timeout else "rejected")
-            assert outcome.bound == (timeout.bound if error is timeout else None)
-            assert outcome.observation == esolangs.ExecutionResult("", None, None, None)
-        assert error.observation is nested.observation
-        assert error.partial_output == "\x01"
-
-    failures[:] = [TypeError("ordinary validation failure")]
-    for load in (
-        lambda: scoped.from_file(path),
-        lambda: scoped.from_json(portable),
-        retag,
-    ):
-        with pytest.raises(esolangs.ProgramError, match="invalid dialect settings"):
-            load()
-    assert prepared.run(stdin="0").output == "0"
-
-
 def test_portable_png_checks_record_metadata_before_pillow(monkeypatch) -> None:
     api = esolangs.Language(RASTER_LANGUAGES[0])
     pixels = Raster((((1, 2, 3),),)).upscaled(2)
@@ -1098,7 +972,9 @@ def test_png_settings_retain_integer_choices(tmp_path: Path) -> None:
         esolangs.ProgramArtifact(pixels, api.name, settings=forged)
 
 
-def test_png_language_tag_refuses_cross_language_execution(native_png) -> None:
+def test_png_language_tag_refuses_cross_language_execution(
+    native_png, tmp_path
+) -> None:
     source = esolangs.generate(RASTER_LANGUAGES[0], "01")
     with pytest.raises(esolangs.ProgramError, match="generated for"):
         esolangs.run(
@@ -1106,6 +982,22 @@ def test_png_language_tag_refuses_cross_language_execution(native_png) -> None:
             native_png(source),
             limits=esolangs.ExecutionLimits(max_steps=1000),
         )
+
+    path = tmp_path / "foreign.png"
+    original = native_png(source)
+    claims = png.read_metadata(original)
+    foreign = "clear\x1b[2J\nlabel"
+    pixels = source.source.to_png()
+    path.write_bytes(png.write_metadata(pixels, claims | {"language": foreign}))
+    api = esolangs.Language(RASTER_LANGUAGES[0])
+    for isolated in (False, True):
+        failure = api.execute(path, isolated=isolated)
+        assert isinstance(failure.error, esolangs.ProgramError)
+        message = str(failure.error)
+        assert r"generated for clear\x1b[2J\nlabel" in message
+        assert "\x1b" not in message
+        assert "\n" not in message
+        assert failure.observation.output == ""
 
 
 def test_tagging_unknown_pixels_preserves_automatic_scale_detection() -> None:

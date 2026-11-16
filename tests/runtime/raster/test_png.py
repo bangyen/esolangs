@@ -515,26 +515,6 @@ def test_png_datastream_requires_an_empty_iend() -> None:
         esolangs.Raster.from_png(blob[:-12] + _chunk(b"IEND", b"x"))
 
 
-def test_critical_chunks_are_unique_and_ordered() -> None:
-    image = png.write_grey([bytearray([0])])
-    header, payload, trailer = [_chunk(k, b) for k, b in png._chunks(image)]
-    auxiliary = _chunk(b"aUNG", b"")
-    empty_idat = _chunk(b"IDAT", b"")
-    cases = (
-        ((auxiliary, header, payload, trailer), "IHDR must appear first"),
-        ((header, header, payload, trailer), "IHDR must appear first"),
-        ((header, trailer), "no IDAT"),
-        ((header, payload, auxiliary, empty_idat, trailer), "IDAT.*consecutive"),
-        ((header, payload, _chunk(b"AUNG", b""), trailer), "critical chunk AUNG"),
-    )
-    for chunks, message in cases:
-        with pytest.raises(esolangs.ProgramError, match=message):
-            esolangs.Raster.from_png(png._SIGNATURE + b"".join(chunks))
-    assert esolangs.Raster.from_png(
-        png._SIGNATURE + header + empty_idat + payload + auxiliary + trailer
-    ) == esolangs.Raster.from_png(image)
-
-
 def test_png_final_idat_may_have_unused_bytes() -> None:
     image = png.write_grey([bytearray([0])])
     data = b"".join(

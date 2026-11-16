@@ -3,6 +3,7 @@
 import json
 from base64 import b64encode
 from dataclasses import replace
+from enum import IntEnum
 from pathlib import Path
 
 import pytest
@@ -89,6 +90,20 @@ def test_scale_subclass_cannot_change_geometric_or_metadata_semantics(
         esolangs.ProgramArtifact(enlarged.source, name, scale=2)
     )
     assert esolangs.run(name, enlarged, stdin="1\n", scale=Scale(2)).output == "1"
+
+    class Arity(IntEnum):
+        ONE = 1
+
+    api = esolangs.Language(name)
+    typed = replace(base, input_arity=Arity.ONE)
+    assert type(typed.input_arity) is int
+    assert api.from_json(api.to_json(typed)) == base
+    data = png.attach_source_metadata(
+        base.source.to_png(), api.name, None, base.scale, input_arity=Arity.ONE
+    )
+    native = read_png_artifact(api.name, data)
+    assert native == base
+    assert api.evaluate(native, [1]).answer == "1"
 
 
 @pytest.mark.parametrize("name", RASTER)
@@ -227,6 +242,26 @@ def test_native_png_checks_explicit_settings_before_pillow(
     assert copy.read_bytes() == copied
     once = False
 
+    for arity, message in (
+        (False, "stored PNG input_arity must be a positive integer"),
+        (2, "conflicting PNG input_arity"),
+    ):
+        tagged = png.write_metadata(
+            pixels,
+            {
+                "version": 1,
+                "language": name,
+                "settings": {"level": 0},
+                "input_arity": arity,
+            },
+        )
+        validations.clear()
+        with pytest.raises(esolangs.ProgramError, match=message):
+            png.attach_source_metadata(
+                tagged, name, None, 2, input_arity=1, catalog=api.catalog
+            )
+        assert validations == []
+
     module = _execution_runtime.interpreter_module(name)
     run = getattr(module, runtime.completion_entrypoint)
 
@@ -322,3 +357,199 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
     assert native_record == rematerialized == record
     for saved in (native_record, rematerialized):
         assert "".join(api.evaluate(saved, [bit]).answer for bit in (0, 1)) == "01"
+
+
+def test_critical_chunks_are_unique_and_ordered() -> None:
+    from tests.runtime.raster.test_png import _chunk
+
+    image = png.write_grey([bytearray([0])])
+    header, payload, trailer = [_chunk(k, b) for k, b in png._chunks(image)]
+    auxiliary = _chunk(b"aUNG", b"")
+    empty_idat = _chunk(b"IDAT", b"")
+    cases = (
+        ((auxiliary, header, payload, trailer), "IHDR must appear first"),
+        ((header, header, payload, trailer), "IHDR must appear first"),
+        ((header, trailer), "no IDAT"),
+        ((header, payload, auxiliary, empty_idat, trailer), "IDAT.*consecutive"),
+        ((header, payload, _chunk(b"AUNG", b""), trailer), "critical chunk AUNG"),
+    )
+    for chunks, message in cases:
+        with pytest.raises(esolangs.ProgramError, match=message):
+            esolangs.Raster.from_png(png._SIGNATURE + b"".join(chunks))
+    control = b"\x1b[2J"
+    chunk = _chunk(control, b"x")
+    for invalid, message in (
+        (chunk, r"unknown PNG critical chunk \x1b[2J"),
+        (chunk[:8], r"truncated \x1b[2J chunk"),
+        (chunk[:-4], r"truncated \x1b[2J chunk CRC"),
+        (chunk[:-4] + bytes(4), r"invalid \x1b[2J chunk CRC"),
+    ):
+        with pytest.raises(esolangs.ProgramError) as failure:
+            esolangs.Raster.from_png(png._SIGNATURE + header + payload + invalid)
+        assert str(failure.value) == f"not a readable PNG: {message}"
+    assert esolangs.Raster.from_png(
+        png._SIGNATURE + header + empty_idat + payload + auxiliary + trailer
+    ) == esolangs.Raster.from_png(image)
+
+
+def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> None:
+    installed = esolangs.Language(RASTER[0])
+    name = installed.name
+    declaration = installed.catalog.languages[name]
+    schema = esolangs.DialectSchema(name, {"mode": (0, 1)}, {"mode": 0})
+    failures: list[Exception] = []
+    validations = []
+
+    def validate(**choices):
+        validations.append(choices)
+        if failures:
+            raise failures[-1]
+        return choices
+
+    runtime = replace(declaration.runtime, dialect=validate, dialect_schema=schema)
+    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(name)
+    settings = scoped.settings()
+    artifact = replace(installed.generate("01", scale=2), settings=settings)
+    raw = artifact.source.to_png()
+    writers = (
+        lambda: png.write_source(
+            artifact.source.rows, name, settings, 2, catalog=scoped.catalog
+        ),
+        lambda: png.attach_source_metadata(
+            raw, name, settings, 2, catalog=scoped.catalog
+        ),
+    )
+    for write in writers:
+        validations.clear()
+        write()
+        assert validations == [{}]
+    legacy = png.write_metadata(
+        raw,
+        {"version": 1, "language": name, "settings": {"mode": 1}},
+    )
+    matching = scoped.settings(mode=1)
+    validations.clear()
+    assert (
+        png.attach_source_metadata(legacy, name, matching, None, catalog=scoped.catalog)
+        is legacy
+    )
+    assert validations == [{"mode": 1}]
+    with pytest.raises(esolangs.ProgramError, match="conflicting PNG settings"):
+        png.attach_source_metadata(
+            legacy, name, scoped.settings(mode=0), None, catalog=scoped.catalog
+        )
+
+    retained = png.write_metadata(
+        raw, {"version": 1, "language": name, "scale": 2, "settings": {}}
+    )
+
+    def retag():
+        return png.attach_source_metadata(
+            retained, name, None, 2, input_arity=1, catalog=scoped.catalog
+        )
+
+    validations.clear()
+    tagged = retag()
+    assert validations == [{}]
+    assert tagged == png.attach_source_metadata(retained, name, None, 2, input_arity=1)
+    assert validations == [{}]
+    path = tmp_path / "program.png"
+    path.write_bytes(tagged)
+    restored = scoped.from_file(path)
+    assert restored == artifact
+    assert "".join(scoped.evaluate(restored, [bit]).answer for bit in (0, 1)) == "01"
+
+    scoped.to_file(artifact, path)
+    portable = scoped.to_json(artifact)
+    for load in (lambda: scoped.from_file(path), lambda: scoped.from_json(portable)):
+        validations.clear()
+        assert load() == artifact
+        assert validations == [{}]
+    prepared = scoped.prepare(path)
+    assert prepared.run(stdin="1").output == "1"
+
+    nested = esolangs.Language(REFERENCE).execute(
+        "+.[+]", limits=esolangs.ExecutionLimits(max_steps=2)
+    )
+    assert nested.observation.output == "\x01"
+    timeout = esolangs.ExecutionTimeoutError("dialect hook timed out")
+    timeout.bound = "preparation_timeout"
+    errors = (
+        esolangs.ProgramNotFoundError("policy not found"),
+        esolangs.ProgramError("policy failed"),
+        esolangs.ArgumentError("policy refused"),
+        timeout,
+    )
+    for error in errors:
+        error.observation = nested.observation
+        error.partial_output = nested.observation.output
+        failures[:] = [error]
+        for load in (
+            lambda: scoped.from_file(path),
+            lambda: scoped.prepare(path),
+            lambda: scoped.from_json(portable),
+            lambda: scoped.from_source(artifact.source, settings=settings),
+            *writers,
+            retag,
+        ):
+            with pytest.raises(type(error)) as caught:
+                load()
+            assert caught.value is error
+        for outcome in (
+            scoped.execute(path),
+            scoped.execute(artifact),
+            scoped.execute(artifact.source, settings=settings),
+        ):
+            assert outcome.error is error
+            assert outcome.status == ("limit" if error is timeout else "rejected")
+            assert outcome.bound == (timeout.bound if error is timeout else None)
+            assert outcome.observation == esolangs.ExecutionResult("", None, None, None)
+        assert error.observation is nested.observation
+        assert error.partial_output == "\x01"
+
+    failures[:] = [errors[2]]
+    document = json.loads(portable)
+    native = path.read_bytes()
+    document["source"] = b64encode(native).decode("ascii")
+    claims = png.read_metadata(native)
+    malformed = tmp_path / "malformed.png"
+    for changes, message in (
+        ({"language": "Foreign raster"}, "generated for Foreign raster"),
+        ({"input_arity": False}, "input_arity must be a positive integer"),
+        ({"scale": 0}, "scale must be a positive integer"),
+        ({"settings": {"mode": False}}, "invalid value for dialect setting"),
+    ):
+        data = png.write_metadata(raw, claims | changes)
+        malformed.write_bytes(data)
+        encoded = b64encode(data).decode("ascii")
+        for load in (
+            lambda: scoped.from_file(malformed),
+            lambda encoded=encoded: scoped.from_json(
+                json.dumps(document | {"source": encoded})
+            ),
+        ):
+            validations.clear()
+            with pytest.raises(esolangs.ProgramError, match=message):
+                load()
+            assert validations == []
+    for changes, message in (
+        ({"input_arity": False}, "input_arity must be a positive integer"),
+        ({"input_arity": 2}, "conflicting PNG and document input_arity"),
+        ({"scale": 3}, "conflicting PNG and document scale"),
+        ({"settings": {"mode": 1}}, "conflicting PNG and document settings"),
+        ({"kind": "unknown"}, "unknown source kind"),
+    ):
+        validations.clear()
+        with pytest.raises(esolangs.ProgramError, match=message):
+            scoped.from_json(json.dumps(document | changes))
+        assert validations == []
+
+    failures[:] = [TypeError("ordinary validation failure")]
+    for load in (
+        lambda: scoped.from_file(path),
+        lambda: scoped.from_json(portable),
+        retag,
+    ):
+        with pytest.raises(esolangs.ProgramError, match="invalid dialect settings"):
+            load()
+    assert prepared.run(stdin="0").output == "0"

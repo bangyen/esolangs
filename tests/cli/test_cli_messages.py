@@ -146,6 +146,41 @@ class TestRoundSixQol:
         assert "printed nothing" in captured.err
         assert "the file contains no source" in captured.err
 
+        alias = "clear\x1b[2J\nlabel"
+        declaration = replace(LANGUAGES[REFERENCE], aliases=(alias,))
+        scope = esolangs.Catalog([declaration])
+        silent = tmp_path / "silent.txt"
+        silent.write_text("+")
+        with (
+            patch.object(_table, "CATALOG", scope),
+            patch.object(sys, "argv", ["esolangs", "run", alias, str(silent)]),
+            patch.object(sys, "stdin", StringIO("")),
+            patch.object(sys.stdout, "isatty", lambda: True),
+        ):
+            main()
+        assert capsys.readouterr() == (
+            "",
+            r"clear\x1b[2J\nlabel: the program ran and printed nothing" + "\n",
+        )
+        assert scope.bind(alias).run(silent).output == ""
+
+        renamed = replace(declaration, name=alias, aliases=())
+        random = next(lang for lang in LANGUAGES.values() if lang.runtime.random)
+        random_name = "draw\x1b[2J\nrandom"
+        scope = esolangs.Catalog([renamed, replace(random, name=random_name)])
+        with patch.object(_table, "CATALOG", scope):
+            output, diagnostic = _failure(
+                ["run", "--seed", "1", REFERENCE, str(silent)], capsys
+            )
+        assert not output
+        assert diagnostic.splitlines() == [
+            r"clear\x1b[2J\nlabel draws no random values, so a seed has nothing to "
+            r"fix; the languages that draw are draw\x1b[2J\nrandom",
+            "hint: omit --seed when running a deterministic language",
+        ]
+        assert scope.resolve(REFERENCE) == alias
+        assert scope.resolve(random.id) == random_name
+
     def test_a_pipe_still_receives_exactly_nothing(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

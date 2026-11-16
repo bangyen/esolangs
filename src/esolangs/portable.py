@@ -46,7 +46,8 @@ from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.source_hints import program_error_context, with_hint
 from esolangs.settings import (
     DialectSettings,
-    _settings_for,
+    _settings_record,
+    dialect_options,
     effective_settings,
 )
 
@@ -306,7 +307,28 @@ def decode_settings(
     catalog: Catalog | None = None,
     checked_settings: DialectSettings | None = None,
 ) -> DialectSettings | None:
-    """Restore saved dialect settings; shared with PNG metadata."""
+    """Restore and validate saved choices outside a source envelope."""
+    from esolangs.registry._catalog import get_catalog
+
+    if value is None:
+        return None
+    catalog = get_catalog(catalog)
+    settings = _decode_settings(
+        value, language, catalog=catalog, checked_settings=checked_settings
+    )
+    if settings is not None and settings is not checked_settings:
+        dialect_options(settings.language, settings, catalog=catalog)
+    return settings
+
+
+def _decode_settings(
+    value: Any,
+    language: str | None,
+    *,
+    catalog: Catalog,
+    checked_settings: DialectSettings | None = None,
+) -> DialectSettings | None:
+    """Restore saved choices against a schema without calling its dialect."""
     if value is None:
         return None
     choices = _decode_settings_choices(value)
@@ -319,7 +341,7 @@ def decode_settings(
         and choices == DialectSettings.options(checked_settings)
     ):
         return checked_settings
-    return _settings_for(language, choices, catalog=catalog)
+    return _settings_record(catalog.resolve(language), choices, catalog=catalog)
 
 
 def _decode_settings_choices(value: Any) -> dict[str, Any]:
@@ -343,22 +365,17 @@ def _decode_settings_choices(value: Any) -> dict[str, Any]:
 def _load_png(
     value: dict[str, Any],
     name: str,
-    settings: DialectSettings | None,
     *,
-    catalog: Catalog | None = None,
+    catalog: Catalog,
 ) -> ProgramArtifact[Raster]:
     """Restore a ``png`` document's raster."""
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
     from esolangs.operations.source import positive_metadata_field, read_png_metadata
 
     arity = positive_metadata_field(value, "input_arity")
     scale = positive_metadata_field(value, "scale")
     data = base64.b64decode(value["source"], validate=True)
-    _, png_settings, png_scale, png_arity = read_png_metadata(
-        name, data, catalog=catalog, checked_settings=settings
-    )
+    png_settings, png_scale, png_arity = read_png_metadata(name, data, catalog=catalog)
+    settings = _decode_settings(value["settings"], name, catalog=catalog)
     # Native writers use null for settings and scale they do not supply.
     if png_settings is not None and png_settings != settings:
         raise ValueError("conflicting PNG and document settings")
@@ -370,6 +387,7 @@ def _load_png(
         arity = png_arity
     elif png_arity is not None and png_arity != arity:
         raise ValueError("conflicting PNG and document input_arity")
+    dialect_options(name, settings, catalog=catalog)
     return ProgramArtifact(
         Raster.from_png(data), name, settings=settings, scale=scale, input_arity=arity
     )
@@ -484,7 +502,6 @@ class _Loader(Protocol):
 
 #: Source-kind dispatch for :func:`from_json`.
 _LOADERS: dict[str, _Loader] = {
-    "png": _load_png,
     "gzip": _load_gzip,
     "text": _load_text,
     "template": _load_template,
@@ -544,13 +561,16 @@ def from_json(
         # Strict UTF-8 everywhere, as a program file is read: a JSON
         # "\ud800" escape in the source or a setter loaded a lone surrogate.
         check_record_utf8(value)
-        settings = decode_settings(value["settings"], name, catalog=catalog)
-        if not isinstance(kind, str) or kind not in _LOADERS:
-            raise ValueError("unknown source kind")
-        arity = None if kind == "png" else positive_metadata_field(value, "input_arity")
-        artifact = _LOADERS[kind](value, name, settings, catalog=catalog)
-        if isinstance(artifact, ProgramArtifact) and arity is not None:
-            artifact = replace(artifact, input_arity=arity)
+        if kind == "png":
+            artifact: Artifact = _load_png(value, name, catalog=catalog)
+        else:
+            if not isinstance(kind, str) or kind not in _LOADERS:
+                raise ValueError("unknown source kind")
+            arity = positive_metadata_field(value, "input_arity")
+            settings = decode_settings(value["settings"], name, catalog=catalog)
+            artifact = _LOADERS[kind](value, name, settings, catalog=catalog)
+            if isinstance(artifact, ProgramArtifact) and arity is not None:
+                artifact = replace(artifact, input_arity=arity)
         source_for(name, artifact.source, catalog=catalog, preserve_compression=True)
         return artifact
     except (ValueError, TypeError, RecursionError) as error:

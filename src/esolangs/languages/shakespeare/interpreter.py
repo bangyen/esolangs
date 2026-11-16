@@ -66,11 +66,13 @@ from esolangs.languages.shakespeare._syntax import Expr, Op, parse
 from esolangs.languages.shakespeare.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
+from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer
 
 #: A persistent stack: ``(top, rest)`` cells, ``None`` for empty.
 type _Stack = tuple[int, _Stack] | None
@@ -190,7 +192,7 @@ def _put[T](items: tuple[T, ...], index: int, item: T) -> tuple[T, ...]:
 def _show(code: int) -> str:
     if not 0 <= code <= 0x10FFFF or 0xD800 <= code <= 0xDFFF:
         raise HaltError(
-            f"Shakespeare cannot print the character code {code}",
+            f"Shakespeare cannot print the character code {format_integer(code)}",
             hint="print a code point in 0..0x10FFFF outside the surrogates",
         )
     return chr(code)
@@ -255,7 +257,7 @@ def _advance(
             state.flag,
         ), None
     if kind == "num_out":
-        return state, str(state.values[target])
+        return state, format_integer(state.values[target])
     if kind == "chr_out":
         return state, _show(state.values[target])
     if kind == "push":
@@ -303,6 +305,7 @@ class _Machine:
         image = _prepare_source(code) if isinstance(code, str) else code
         size, self.ops = image
         self.io = io
+        self._rejected = RejectedInput()
         self._writer = _BufferedOutput()
         self.state = _State(0, (0,) * size, (None,) * size, (), flag=False)
 
@@ -333,14 +336,14 @@ class _Machine:
             stacks=tuple(stacks),
             stage=self.state.stage,
             condition=self.state.flag,
-            input_cursor=self.io.progress(),
+            input_cursor=self._rejected.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         s = self.state
         boundary = (s.pc, s.values, s.stacks, s.stage, s.flag, self.io.progress())
         accepted = self._writer.accepted
-        return (*boundary, accepted) if accepted else boundary
+        return self._rejected.snapshot((*boundary, accepted) if accepted else boundary)
 
     def step(self) -> None:
         if self.halted:
@@ -349,8 +352,11 @@ class _Machine:
         value = None
         if op.kind in _READS and _active(self.state, op):
             _listener(self.state, op.speaker)
-            read = self.io.input_num if op.kind == "num_in" else self.io.input_char
-            value = read()
+            value = (
+                self._rejected.read(self.io, self.io.input_num)
+                if op.kind == "num_in"
+                else self.io.input_char()
+            )
         state, out = _advance(self.state, op, value)
         if out is not None:
             self._writer.write(self.io, out)

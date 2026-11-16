@@ -30,7 +30,12 @@ from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.memory import _hit_digit_cap
 from esolangs.runtime.randomness import Seeded
-from esolangs.runtime.source_hints import shell_argument, syntax_repair, with_hint
+from esolangs.runtime.source_hints import (
+    display_label,
+    shell_argument,
+    syntax_repair,
+    with_hint,
+)
 from esolangs.settings import dialect_options
 
 
@@ -157,7 +162,7 @@ def _seed_refusal(name: str, *, catalog: Catalog | None = None) -> ArgumentError
 
     catalog = get_catalog(catalog)
     random_languages = ", ".join(
-        language
+        display_label(language)
         for language, lang in sorted(catalog.languages.items())
         if lang.runtime.random
     )
@@ -168,8 +173,8 @@ def _seed_refusal(name: str, *, catalog: Catalog | None = None) -> ArgumentError
     )
     return with_hint(
         ArgumentError(
-            f"{name} draws no random values, so a seed has nothing to fix; "
-            f"{alternatives}"
+            f"{display_label(name)} draws no random values, so a seed has nothing "
+            f"to fix; {alternatives}"
         ),
         ("omit seed when running a deterministic language"),
     )

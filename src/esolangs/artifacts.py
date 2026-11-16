@@ -32,6 +32,7 @@ from esolangs.runtime._validate import (
     _has_backing_type,
     check_bit_count,
     check_bits,
+    check_input_arity,
     check_scale,
     check_width,
 )
@@ -142,10 +143,10 @@ class ProgramArtifact[Source: Program]:
         object.__setattr__(self, "language", owner)
         if settings is not self.settings:
             object.__setattr__(self, "settings", settings)
-        if self.input_arity is not None and (
-            type(self.input_arity) is not int or self.input_arity < 1
-        ):
-            raise ArgumentError("input_arity must be a positive integer")
+        if self.input_arity is not None:
+            arity = check_input_arity(self.input_arity)
+            if type(self.input_arity) is not int:
+                object.__setattr__(self, "input_arity", arity)
         if issubclass(kind, Raster):
             if self.scale is not None:
                 object.__setattr__(self, "scale", check_scale(self.scale))

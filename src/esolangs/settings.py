@@ -12,6 +12,16 @@ if TYPE_CHECKING:
     from esolangs.registry._catalog import Catalog
 
 
+def _settings_record(
+    name: str, choices: dict[str, Scalar], *, catalog: "Catalog"
+) -> DialectSettings:
+    """Check decoded choices against the schema before invoking runtime hooks."""
+    schema = catalog.languages[name].runtime.dialect_schema or DialectSchema(
+        name, {}, {}
+    )
+    return DialectSettings(schema, **choices)
+
+
 def _settings_for(
     language: str, choices: dict[str, Scalar], *, catalog: "Catalog | None" = None
 ) -> DialectSettings:
@@ -21,10 +31,7 @@ def _settings_for(
     catalog = get_catalog(catalog)
 
     name = catalog.resolve(language)
-    schema = catalog.languages[name].runtime.dialect_schema or DialectSchema(
-        name, {}, {}
-    )
-    settings = DialectSettings(schema, **choices)
+    settings = _settings_record(name, choices, catalog=catalog)
     dialect_options(name, settings, catalog=catalog)
     return settings
 

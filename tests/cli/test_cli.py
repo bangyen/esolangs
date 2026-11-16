@@ -229,6 +229,16 @@ class TestInProcess:
         with pytest.raises(SystemExit):
             call_main(["run", "--max-memory", "1000", REFERENCE, str(path)], capsys)
         assert "--max-memory is supported only on Linux" in capsys.readouterr().err
+        name = "No such language"
+        limits = esolangs.ExecutionLimits(max_memory=1000)
+        expected = esolangs.execute(name, path, limits=limits)
+        assert isinstance(expected.error, esolangs.UnknownLanguageError)
+        assert _failure(["run", "--max-memory", "1000", name, str(path)], capsys) == (
+            "",
+            f"{expected.error}\n",
+        )
+        _, diagnostic = _failure(["run", "--max-memory", "0", name, str(path)], capsys)
+        assert diagnostic == "--max-memory must be a positive integer, got 0\n"
 
     @pytest.mark.medium
     def test_an_output_cap_implies_isolation(

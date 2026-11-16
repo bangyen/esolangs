@@ -18,8 +18,16 @@ from esolangs.exceptions import ArgumentError, MissingDependencyError, ProgramEr
 from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
 from esolangs.runtime._files import _STREAM_DEADLINE, _time_remaining
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
-from esolangs.runtime._validate import _has_backing_type, check_scale
-from esolangs.runtime.source_hints import program_error_context, syntax_error
+from esolangs.runtime._validate import (
+    _has_backing_type,
+    check_input_arity,
+    check_scale,
+)
+from esolangs.runtime.source_hints import (
+    display_label,
+    program_error_context,
+    syntax_error,
+)
 
 if TYPE_CHECKING:
     from esolangs.raster import Pixel, Rows
@@ -82,6 +90,11 @@ def _backing_bytes(data: bytes | bytearray) -> bytes:
     raise ArgumentError(f"PNG data must be bytes, got {type(data).__name__}")
 
 
+def _chunk_label(kind: bytes) -> str:
+    """Render an untrusted chunk type for diagnostics."""
+    return display_label(kind.decode("ascii", "replace"))
+
+
 def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
     """Yield validated chunks through the end of the PNG datastream."""
     deadline = _STREAM_DEADLINE.get()
@@ -99,18 +112,18 @@ def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
         body = data[pos + 8 : pos + 8 + length]
         if len(body) != length:
             raise syntax_error(
-                f"truncated {kind.decode('ascii', 'replace')} chunk",
+                f"truncated {_chunk_label(kind)} chunk",
                 ("restore or re-export the complete PNG file; this chunk is truncated"),
             )
         crc = data[pos + 8 + length : pos + 12 + length]
         if len(crc) != 4:
             raise syntax_error(
-                f"truncated {kind.decode('ascii', 'replace')} chunk CRC",
+                f"truncated {_chunk_label(kind)} chunk CRC",
                 ("restore or re-export the complete PNG file including its checksums"),
             )
         if struct.unpack(">I", crc)[0] != zlib.crc32(kind + body) & 0xFFFFFFFF:
             raise syntax_error(
-                f"invalid {kind.decode('ascii', 'replace')} chunk CRC",
+                f"invalid {_chunk_label(kind)} chunk CRC",
                 (
                     "restore or re-export the PNG; its chunk checksum does not "
                     "match the data"
@@ -213,7 +226,7 @@ def _scan_chunks(
             in_image_data = True
             idat += body
         elif kind != b"IEND" and not kind[0] & 0x20:
-            name = kind.decode("ascii", "replace")
+            name = _chunk_label(kind)
             raise syntax_error(f"unknown PNG critical chunk {name}", _REEXPORT)
     if header is not None and not in_image_data:
         raise syntax_error("PNG has no IDAT chunk", _REEXPORT)
@@ -876,10 +889,6 @@ def _missing_claims(
     owner = _retained_owner(
         stored.get("language"), requested["language"], catalog=catalog
     )
-    if (settings := stored.get("settings")) is not None:
-        _check_retained_settings(
-            settings, requested["settings"], owner, catalog=catalog
-        )
     for key in ("scale", "input_arity"):
         value = stored.get(key)
         if value is None and (key == "scale" or key not in stored):
@@ -888,6 +897,10 @@ def _missing_claims(
             raise ValueError(f"stored PNG {key} must be a positive integer")
         if requested.get(key) not in (None, value):
             raise ValueError(f"conflicting PNG {key}")
+    if (settings := stored.get("settings")) is not None:
+        _check_retained_settings(
+            settings, requested["settings"], owner, catalog=catalog
+        )
     return {
         key: value
         for key, value in requested.items()
@@ -1020,9 +1033,7 @@ def _source_claims(
         "scale": None if scale is None else check_scale(scale),
     }
     if input_arity is not None:
-        if type(input_arity) is not int or input_arity < 1:
-            raise ArgumentError("input_arity must be a positive integer")
-        metadata["input_arity"] = input_arity
+        metadata["input_arity"] = check_input_arity(input_arity)
     if catalog is not None and language is not None:
         _check_png_owner(language, catalog, error_type=ArgumentError)
         if settings is not None:

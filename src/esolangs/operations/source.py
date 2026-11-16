@@ -1,5 +1,7 @@
 """Acquire runnable source and validate language ownership."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from os import PathLike
 from typing import Any
 
@@ -27,7 +29,11 @@ from esolangs.runtime._source import (
     source_for,
 )
 from esolangs.runtime._validate import _has_backing_type, check_flag, check_scale
-from esolangs.runtime.source_hints import program_error_context, source_read_error
+from esolangs.runtime.source_hints import (
+    display_label,
+    program_error_context,
+    source_read_error,
+)
 from esolangs.settings import (
     DialectSettings,
     _merge_settings,
@@ -49,9 +55,11 @@ def check_origin(
         raise ProgramError("source language must be a string")
     canonical = resolve_origin(origin, catalog=catalog)
     if canonical != language:
+        owner = display_label(canonical or str.__str__(origin))
+        requested = display_label(language)
         raise ProgramError(
-            f"this program was generated for {canonical or origin}, not {language}; "
-            f"read as {language} source it may well run, and answer nonsense"
+            f"this program was generated for {owner}, not {requested}; "
+            f"read as {requested} source it may well run, and answer nonsense"
         )
 
 
@@ -80,56 +88,64 @@ def read_png_artifact(
     name = catalog.resolve(language)
     if not _settings_validated:
         dialect_options(name, settings, catalog=catalog)
-    _, retained, scale, arity = read_png_metadata(
-        name,
-        data,
-        catalog=catalog,
-        checked_settings=settings,
+    retained, scale, arity = read_png_metadata(
+        name, data, catalog=catalog, checked_settings=settings
     )
+    if retained is not None and retained is not settings:
+        with _png_metadata_errors():
+            dialect_options(name, retained, catalog=catalog)
     merged = _merge_settings(name, retained, settings, catalog=catalog)
     return ProgramArtifact(
         Raster.from_png(data), name, settings=merged, scale=scale, input_arity=arity
     )
 
 
-@_track_acquisition_failures()
+@contextmanager
+def _png_metadata_errors() -> Iterator[None]:
+    with _track_acquisition_failures():
+        try:
+            yield
+        except (ProgramError, MissingDependencyError, StreamReadTimeoutError):
+            raise
+        except Exception as error:
+            if _is_acquisition_failure(error):
+                raise
+            raise program_error_context(
+                f"not a readable PNG: {error}", error
+            ) from error
+
+
 def read_png_metadata(
     name: str,
     data: bytes,
     *,
     catalog: Catalog,
     checked_settings: DialectSettings | None = None,
-) -> tuple[dict[str, Any], DialectSettings | None, int | None, int | None]:
-    """Validate native source claims without opening the image."""
-    from esolangs.portable import decode_settings
+) -> tuple[DialectSettings | None, int | None, int | None]:
+    """Validate native claims before opening the image or calling its dialect."""
+    from esolangs.portable import _decode_settings
 
     if catalog.languages[name].runtime.source_kind is not SourceKind.RASTER:
         raise ProgramError(f"{name} requires text source, but the program is a PNG")
     check_raster_gzip(name, data)
-    try:
+    with _png_metadata_errors():
         metadata = png.read_metadata(data)
         if metadata is None:
-            return {}, None, None, None
+            return None, None, None
         origin = metadata.get("language")
         if origin is not None and not isinstance(origin, str):
             raise ValueError("PNG language must be a string")
         check_origin(name, origin, catalog=catalog)
-        settings = decode_settings(
+        scale = metadata.get("scale")
+        scale = None if scale is None else check_scale(scale)
+        arity = positive_metadata_field(metadata, "input_arity")
+        settings = _decode_settings(
             metadata.get("settings"),
             None if origin is None else name,
             catalog=catalog,
             checked_settings=checked_settings,
         )
-        scale = metadata.get("scale")
-        scale = None if scale is None else check_scale(scale)
-        arity = positive_metadata_field(metadata, "input_arity")
-        return metadata, settings, scale, arity
-    except (ProgramError, MissingDependencyError, StreamReadTimeoutError):
-        raise
-    except Exception as error:
-        if _is_acquisition_failure(error):
-            raise
-        raise program_error_context(f"not a readable PNG: {error}", error) from error
+        return settings, scale, arity
 
 
 def read_artifact(

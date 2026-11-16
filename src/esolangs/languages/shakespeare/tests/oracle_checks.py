@@ -9,6 +9,7 @@ from esolangs.runtime._state import WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import reject_faults
 from tests.support import workspace_oracle as workspace
+from tests.support.model_input import rejected_integer
 
 _WORKSPACE = workspace.workspace_model(
     "shakespeare-v1", "instruction values stacks stage condition input_cursor"
@@ -107,10 +108,8 @@ def _model(plan, stdin):
             else:
                 value = ord(stdin[cursor])
                 cursor += 1
-            if failure == "input":
-                past_end += 1
-            else:
-                reads += 1
+            past_end += failure == "input"
+            reads += failure != "input"
             if not failure:
                 values[target] = value
                 pc += 1
@@ -171,6 +170,7 @@ def _check(factory, source, plan, stdin):
         _view,
         cap=32,
         context=(plan, stdin),
+        rejected_input=rejected_integer,
     )
 
 
