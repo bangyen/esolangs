@@ -134,15 +134,6 @@ def _unbounded_notice(command: str) -> _DelayedNotice:
     )
 
 
-def _waiting_notice(hint: str = "") -> _DelayedNotice:
-    """Notice for stdin still not delivering after a while."""
-    return _DelayedNotice(
-        _WAITING_NOTICE_AFTER,
-        f"still waiting for input on stdin after {_WAITING_NOTICE_AFTER:.0f}s; "
-        f"nothing has closed it{hint}\n",
-    )
-
-
 def _read_program(
     path: str,
     timeout: float | None = None,
@@ -206,13 +197,14 @@ def _slurp_thread[SlurpT](
     work: Callable[[], SlurpT],
     deadline: float | None,
     *,
-    notice: AbstractContextManager[None] | None = None,
+    stdin_hint: str | None = None,
     on_timeout: Callable[[], NoReturn],
 ) -> SlurpT:
     """Accept a reader's result or exception only before the deadline.
 
     An expired reader may still be running, so only the caller reports its
-    outcome. ``notice`` wraps waits that deserve announcing.
+    outcome. Stdin notices run on the caller thread so shutdown cannot race
+    a daemon holding the buffered stderr lock.
     """
     box: list[SlurpT | BaseException] = []
 
@@ -224,14 +216,25 @@ def _slurp_thread[SlurpT](
 
     reader = threading.Thread(target=copy_context().run, args=(_slurp,), daemon=True)
     reader.start()
-    with notice if notice is not None else nullcontext():
-        # A signal delivered to the reader may leave the main thread's join
-        # asleep even though Python must handle that signal on the main thread.
-        while reader.is_alive():
-            waited = wait_slice(deadline, monotonic())
-            if waited <= 0:
-                break
-            reader.join(waited)
+    notice_at = None if stdin_hint is None else monotonic() + _WAITING_NOTICE_AFTER
+    # Poll the join so Python can handle signals delivered to the reader.
+    while reader.is_alive():
+        now = monotonic()
+        waited = wait_slice(deadline, now)
+        if waited <= 0:
+            break
+        if notice_at is not None:
+            if now >= notice_at:
+                _diagnostic(
+                    "still waiting for input on stdin after "
+                    f"{_WAITING_NOTICE_AFTER:.0f}s; "
+                    f"nothing has closed it{stdin_hint}\n",
+                    ready_only=True,
+                )
+                notice_at = None
+                continue
+            waited = min(waited, notice_at - now)
+        reader.join(waited)
     if reader.is_alive() or (deadline is not None and monotonic() >= deadline):
         on_timeout()
     # A finished thread always appended; a live one exited above.
@@ -591,9 +594,7 @@ def _read_stdin(
             if deadline is None
             else lambda: _read_probed(terminal=_probe_stdin(stdin, deadline))
         )
-        return _slurp_thread(
-            read, deadline, notice=_waiting_notice(hint), on_timeout=_on_timeout
-        )
+        return _slurp_thread(read, deadline, stdin_hint=hint, on_timeout=_on_timeout)
     except UnicodeDecodeError as exc:
         _fail(input_read_error(exc))
     except ExecutionBudgetError as exc:
@@ -714,6 +715,8 @@ def _check_diagnostic_ready(stream: TextIO) -> None:
 
 def _complete_stderr_writes() -> AbstractContextManager[None]:
     stream = sys.stderr
+    if _output_unavailable(stream):
+        return nullcontext()
     return _complete_raw_writes(
         stream, before_write=partial(_check_diagnostic_ready, stream)
     )
@@ -762,14 +765,15 @@ def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
 
 def _output_unavailable(stream: TextIO | None) -> bool:
     """Check closure without asking a detached wrapper for its closed flag."""
-    return (
-        stream is None
-        or (
-            _has_backing_type(stream, TextIOWrapper)
-            and getattr_static(TextIOWrapper, "buffer").__get__(stream) is None
-        )
-        or bool(getattr(stream, "closed", False))
-    )
+    if stream is None:
+        return True
+    if _has_backing_type(stream, TextIOWrapper):
+        try:
+            if getattr_static(TextIOWrapper, "buffer").__get__(stream) is None:
+                return True
+        except ValueError:
+            return True
+    return bool(getattr(stream, "closed", False))
 
 
 @contextmanager

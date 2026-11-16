@@ -243,7 +243,19 @@ def test_nonblocking_stdin_reads_delayed_utf8(
     payload = "é".encode()
     feed.write(prefix)
     script = (
-        "from esolangs.cli import io, main\nio._WAITING_NOTICE_AFTER = 0.1\nmain()\n"
+        "import threading\n"
+        "from esolangs.cli import io, main\n"
+        "io._WAITING_NOTICE_AFTER = 0.1\n"
+        "diagnostic = io._diagnostic\n"
+        "background_notice = False\n"
+        "def announce(*args, **kwargs):\n"
+        "    global background_notice\n"
+        "    if threading.current_thread() is not threading.main_thread():\n"
+        "        background_notice = True\n"
+        "    diagnostic(*args, **kwargs)\n"
+        "io._diagnostic = announce\n"
+        "main()\n"
+        "assert not background_notice\n"
     )
     with subprocess.Popen(
         [sys.executable, "-c", script, "run", REFERENCE, str(path)],
