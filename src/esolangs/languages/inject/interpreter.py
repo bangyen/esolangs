@@ -211,7 +211,7 @@ def _injected(state: _State, rest: str) -> _State:
     name, sep, expression = rest.partition("=")
     if not sep:
         raise syntax_error(
-            f"inject needs a label and a regex: {rest}",
+            f"inject needs a label and a regex: {rest.rstrip()}",
             "write inject <label>=<regex>/<replacement>",
         )
     # The pattern cannot contain a slash, so the *first* slash is the
@@ -220,7 +220,7 @@ def _injected(state: _State, rest: str) -> _State:
     pattern, sep, replacement = expression.partition("/")
     if not sep:
         raise syntax_error(
-            f"inject needs a replacement: {rest}",
+            f"inject needs a replacement: {rest.rstrip()}",
             ("put / and the replacement after the regex, for example inject data=x/y"),
         )
     try:
@@ -267,7 +267,10 @@ def _advance(
         state = _replaced(state, rest, [] if line_in is None else [line_in])
         lines, spans, ind, done = state
     elif command == "inject":
-        state = _injected(state, rest)
+        # Keep replacement whitespace, excluding the line terminator.
+        source = lines[ind].removesuffix("\n").removesuffix("\r").lstrip()
+        _, _, operand = source.partition(" ")
+        state = _injected(state, operand.lstrip())
         lines, spans, ind, done = state
     elif command == "skip":
         if rest:

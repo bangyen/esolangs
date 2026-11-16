@@ -85,6 +85,8 @@ def _parse(code: str) -> _Program:
     slots: dict[str, int] = {}
     for found in re.finditer(r"[^\n]+", code):
         line = found.group()
+        if line.endswith("\r") and found.end() != len(code):
+            line = line[:-1]
         if not line.strip():
             continue
         name, _, rest = line.lstrip().partition(" ")

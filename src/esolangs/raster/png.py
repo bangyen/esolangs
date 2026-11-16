@@ -10,6 +10,7 @@ import zlib
 from collections.abc import Buffer, Iterator, Sequence
 from contextlib import ExitStack
 from json import JSONDecoder
+from json.encoder import encode_basestring_ascii
 from os import fsdecode, fsencode, fspath
 from typing import TYPE_CHECKING, Any
 
@@ -688,6 +689,7 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
 _METADATA_CHUNK = b"esOL"
 _METADATA_LIMIT = 16_384
 _JSON_TOKEN = re.compile(r"[^ \r\n\t]")
+_JSON_ASCII_ESCAPE = re.compile(rb"[\x7f-\xff]+")
 
 
 class SourceMetadataSizeError(ProgramError):
@@ -739,12 +741,15 @@ def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
 
 def _encode_metadata(metadata: dict[str, Any]) -> bytes:
     utf8 = _utf8_metadata(metadata)
-    body = record_dumps(metadata).encode("ascii")
-    if len(body) <= _METADATA_LIMIT:
-        return body
     if len(utf8) > _METADATA_LIMIT:
         raise SourceMetadataSizeError("oversized esolangs PNG metadata")
-    return utf8
+    # Characters requiring ASCII escapes occur only inside JSON strings.
+    # Escape this validated snapshot without reading caller containers again.
+    body = _JSON_ASCII_ESCAPE.sub(
+        lambda run: encode_basestring_ascii(run[0].decode())[1:-1].encode("ascii"),
+        utf8,
+    )
+    return body if len(body) <= _METADATA_LIMIT else utf8
 
 
 def _metadata_span(data: bytes, *, locate_existing: bool) -> tuple[int, int]:

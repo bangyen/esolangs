@@ -1,10 +1,14 @@
 """Tests for the CreativeScript v2 interpreter."""
 
+from pathlib import Path
+
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.creativescript_v2.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.cli_support import run_cli
 from tests.support.vm_support import (
     assert_rejected_input_retry,
     assert_rejected_output_retry,
@@ -37,13 +41,29 @@ def test_the_pages_equality_program_needs_floor_division(
     assert output(EQUALS, f"{a}\n{b}\n") == expected
 
 
-def test_say_prints_the_rest_of_the_line_and_a_plus_b_adds(monkeypatch) -> None:
+def test_say_prints_the_rest_of_the_line_and_a_plus_b_adds(
+    monkeypatch, tmp_path: Path
+) -> None:
     from esolangs.languages.creativescript_v2.tests.oracle_checks import (
         check_raw_creativescript_v2,
     )
 
     check_raw_creativescript_v2()
     assert output("say! Hello world!") == "Hello world!"
+    api = Language("CreativeScript v2")
+    path = tmp_path / "source"
+    limits = ExecutionLimits(max_steps=4)
+    for ending in ("\n", "\r\n"):
+        source = ending.join(("say!", "  say! hello  \t", "say! world", ""))
+        path.write_bytes(source.encode())
+        expected = "hello  \tworld"
+        assert api.run(source).output == expected
+        bounded = api.run(path, limits=limits)
+        assert (bounded.output, bounded.steps) == (expected, 3)
+        assert api.prepare(path).run(limits=limits, isolated=True) == bounded
+        result = run_cli("run", api.name, str(path))
+        assert (result.returncode, result.stdout, result.stderr) == (0, expected, "")
+    assert output("say! a\r") == "a\r"
     assert output("in! a\nin! b\nadd! a b c\nout! c", "2\n40\n") == "42"
     for source, value, stdin, prefix in (
         ("say! ab", "ab", "", 0),

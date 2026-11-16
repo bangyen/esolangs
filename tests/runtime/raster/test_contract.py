@@ -661,6 +661,30 @@ def test_png_metadata_refuses_cycles_and_allows_shared_values() -> None:
     finally:
         sys.set_int_max_str_digits(previous)
 
+    class CurrentMetadata(dict):
+        calls = 0
+
+        def items(self):
+            self.calls += 1
+            return super().items() if self.calls == 1 else {"changed": "\ud800"}.items()
+
+    for initial, ascii_only in (
+        ({"\x7f😀": '\\u007f"\r\né\x1b'}, True),
+        ({"large": "é" * 4096}, False),
+    ):
+        snapshot = CurrentMetadata(initial)
+        metadata = {"version": 1, "extra": snapshot}
+        expected = {"version": 1, "extra": initial}
+        legacy = json.dumps(expected, ensure_ascii=ascii_only, separators=(",", ":"))
+        tagged = png.write_metadata(data, metadata)
+        assert snapshot.calls == 1
+        assert legacy.encode("utf-8") in tagged
+        assert png.read_metadata(tagged) == expected
+        with pytest.raises(
+            esolangs.ProgramError, match="PNG metadata is not valid UTF-8"
+        ):
+            png.write_metadata(data, metadata)
+
 
 def test_raster_scale_metadata_stays_a_json_integer(tmp_path: Path) -> None:
     api = esolangs.Language(RASTER_LANGUAGES[0])

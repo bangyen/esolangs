@@ -169,7 +169,7 @@ class TestCorrectedTruthMachine:
 
 
 class TestCommands:
-    def test_inject_substitutes_by_regex(self) -> None:
+    def test_inject_substitutes_by_regex(self, tmp_path: Path) -> None:
         """``inject`` rewrites a block through a regular expression."""
         program = "\n".join(
             [
@@ -182,6 +182,21 @@ class TestCommands:
             ]
         )
         assert _run(program) == "heLo\n"
+
+        language = Language("Inject")
+        path = tmp_path / "source"
+        limits = ExecutionLimits(max_steps=12)
+        for terminator, replacement in (("\n", "  \t"), ("\r\n", " L/z \t")):
+            source = f"  inject  data=o/{replacement}{terminator}"
+            source += "send data \t\nskip \t\ndata;\nhello\ndata;\n"
+            path.write_bytes(source.encode())
+            expected = f"hell{replacement}\n"
+            assert language.run(path).output == expected
+            bounded = language.run(path, limits=limits)
+            assert bounded.output == expected
+            assert language.run(path, limits=limits, isolated=True) == bounded
+            cli = run_cli("run", language.name, str(path))
+            assert (cli.returncode, cli.stdout, cli.stderr) == (0, expected, "")
 
     def test_inject_backreference(self) -> None:
         """A group reference in the replacement is a real backreference."""
