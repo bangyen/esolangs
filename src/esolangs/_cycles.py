@@ -21,11 +21,15 @@ from esolangs.runtime._proof import (
     BranchFailure,
     BranchProof,
     CycleDecision,
+    _branch_callbacks,
     _branch_fault,
     _branch_halt_fault,
     _BranchResult,
     _check_branch_halt,
+    _checked_branch_result,
     _drive_ancestor,
+    _exact_halt,
+    _proof_halted,
     _proof_receiver_check,
     _read_branch_root,
     _step_proof_receiver,
@@ -373,7 +377,8 @@ def _drive_halt_or_cycle(
     )
     adapter = _checked_adapter(machine)
     _, declared_random = _proof_runtime(adapter)
-    halted_before = _checked_halted(machine.halted)
+    check_receiver = _proof_receiver_check(supplied, owner=adapter)
+    halted_before = _proof_halted(machine, check_receiver)
     branch = (
         None
         if halted_before
@@ -388,12 +393,13 @@ def _drive_halt_or_cycle(
     # machine's own draw source, so "some path halts" after a fork is not
     # this run's answer (a FirstDraw(0) coin loops where the other halts).
     if branch is not None:
-        return _branch_cycle(branch, limit, evidence=evidence, adapter=adapter)
+        return _branch_cycle(
+            branch, limit, check_receiver, evidence=evidence, adapter=adapter
+        )
     if (require_branches or declared_random) and not halted_before:
         raise _BranchingUnavailableError(
             "termination proof for an active random machine requires branch enumeration"
         )
-    check_receiver = _proof_receiver_check(supplied, owner=adapter)
     if record_commands is not None:
         record_commands(0)
     if halted_before:
@@ -485,6 +491,7 @@ def _exact_repeat(
 def _branch_cycle(
     branch: _BranchingStepMachine,
     limit: int | None,
+    check_receiver: Callable[[], None] | None,
     *,
     evidence: bool,
     adapter: object,
@@ -492,6 +499,7 @@ def _branch_cycle(
     result = _branch_search(
         branch,
         10_000 if limit is None else limit,
+        check_receiver=check_receiver,
         evidence=evidence,
         adapter=adapter,
     )
@@ -510,14 +518,6 @@ def _branch_cycle(
     )
 
 
-def _exact_halt(
-    steps: int, check_receiver: Callable[[], None] | None, *, evidence: bool
-) -> bool | CycleDecision:
-    if check_receiver is not None:
-        check_receiver()
-    return CycleDecision(halts=True, commands=steps) if evidence else True
-
-
 def run_until_halt_or_all_branches_cycle(
     machine: _BranchingStepMachine | VM, limit: int = 10_000
 ) -> bool:
@@ -532,11 +532,12 @@ def run_until_halt_or_all_branches_cycle(
     """
     limit = check_whole(limit, "limit")
     adapter = _checked_adapter(machine)
+    check_receiver = _proof_receiver_check(machine, owner=adapter)
     _, random = _proof_runtime(adapter)
     if (
         random
         and isinstance(machine, _SteppableMachine)
-        and _checked_halted(machine.halted)
+        and _proof_halted(machine, check_receiver)
     ):
         return True
     state = cast(
@@ -549,9 +550,13 @@ def run_until_halt_or_all_branches_cycle(
             "branching_halted and branching_successors",
         ),
     )
-    if isinstance(machine, _SteppableMachine) and _checked_halted(machine.halted):
+    if isinstance(machine, _SteppableMachine) and _proof_halted(
+        machine, check_receiver
+    ):
         return True
-    return _branch_search(state, limit, adapter=adapter).halts
+    return _branch_search(
+        state, limit, check_receiver=check_receiver, adapter=adapter
+    ).halts
 
 
 def _unforkable_branch() -> TimeoutError:
@@ -614,6 +619,7 @@ def _branch_search(
     machine: _BranchingStepMachine,
     limit: int,
     *,
+    check_receiver: Callable[[], None] | None = None,
     evidence: bool = False,
     adapter: object,
 ) -> _BranchResult:
@@ -621,7 +627,10 @@ def _branch_search(
     if not limit:
         raise _branch_budget(limit, evidence=evidence)
     root, discovered = _read_branch_root(
-        machine, adapter, _ProofSnapshotUnavailableError
+        machine, adapter, _ProofSnapshotUnavailableError, check_receiver
+    )
+    hooks, capture = _branch_callbacks(
+        machine, check_receiver, _bounded_branch_sequence
     )
     language, _ = _proof_runtime(adapter)
     pending = deque([root])
@@ -635,7 +644,7 @@ def _branch_search(
     while pending:
         state = pending.popleft()
         try:
-            halted = machine.branching_halted(state)
+            halted = hooks.branching_halted(state)
         except (EsolangError, TimeoutError, *_BRANCH_RUNTIME_ERRORS) as error:
             fault = _branch_halt_fault(machine, adapter, error, at_root=state is root)
             failure = fault if failure is None else failure
@@ -647,9 +656,11 @@ def _branch_search(
                 if transitions is not None and not forked
                 else None
             )
-            return _BranchResult(halts=True, forked=forked, proof=proof)
+            return _checked_branch_result(
+                _BranchResult(halts=True, forked=forked, proof=proof), check_receiver
+            )
         try:
-            successors = machine.branching_successors(state, limit)
+            successors = hooks.branching_successors(state, limit)
         except ExecutionBudgetError:
             raise
         except (EsolangError, TimeoutError) as error:
@@ -663,7 +674,7 @@ def _branch_search(
         successors = (
             successors
             if type(successors) is tuple or successors is None
-            else _bounded_branch_sequence(successors, limit)
+            else capture(successors, limit)
         )
         count = 0 if successors is None else len(successors)
         if successors is None or count > limit:
@@ -705,7 +716,9 @@ def _branch_search(
         if transitions is not None
         else None
     )
-    return _BranchResult(halts=False, forked=forked, proof=proof)
+    return _checked_branch_result(
+        _BranchResult(halts=False, forked=forked, proof=proof), check_receiver
+    )
 
 
 @runtime_checkable

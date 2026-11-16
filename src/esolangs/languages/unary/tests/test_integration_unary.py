@@ -11,6 +11,7 @@ import pytest
 import esolangs
 from esolangs import run
 from esolangs.runtime._files import StreamReadTimeoutError, stream_read_deadline
+from esolangs.runtime._source import _native_compressed_source
 from tests.support.cli_support import call_main
 
 
@@ -60,7 +61,44 @@ def test_compressed_and_plain_sources_share_execution(tmp_path, monkeypatch) -> 
         ).output
         == ""
     )
+    _check_normalized_gzip_storage(path)
     _check_expired_gzip_acquisition(path, monkeypatch)
+
+
+def _check_normalized_gzip_storage(path) -> None:
+    api = esolangs.Language("Unary")
+    code = str(api.generate("01").source)
+    limits = esolangs.ExecutionLimits(max_steps=20)
+    for text, canonical in (
+        (code, code),
+        (code[:100] + "\r" + code[100:], code[:100] + "\n" + code[100:]),
+        (code + "\r\n", code),
+    ):
+        data = gzip.compress(text.encode(), mtime=123)
+        path.write_bytes(data)
+        restored = api.from_file(path, normalize=True)
+        assert gzip.decompress(restored.source.to_gzip()).decode() == canonical
+        assert (restored.source.to_gzip() == data) is (text == canonical)
+        checked = api.from_json(api.to_json(restored))
+        assert checked == restored
+        assert (
+            "".join(
+                api.evaluate(checked, [bit], limits=limits).answer for bit in (0, 1)
+            )
+            == "01"
+        )
+
+        budgets = esolangs.TextLimits(
+            plain_chars=0, generation_chars=len(text), gzip_bytes=len(data) + 5
+        )
+        source = esolangs.CompressedText(data, limits=budgets)
+        normalized = _native_compressed_source(source)
+        assert normalized == esolangs.CompressedText(
+            restored.source.to_gzip(), limits=budgets
+        )
+        assert (normalized is source) is (text == canonical)
+        with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
+            str(normalized)
 
 
 def _check_expired_gzip_acquisition(path, monkeypatch) -> None:

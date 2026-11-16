@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Hashable
+from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass, fields
 from reprlib import recursive_repr
 from typing import TYPE_CHECKING, NamedTuple, cast
@@ -232,6 +232,23 @@ def _proof_receiver_check(
     return check_chain
 
 
+def _exact_halt(
+    steps: int, check_receiver: Callable[[], None] | None, *, evidence: bool
+) -> bool | CycleDecision:
+    if check_receiver is not None:
+        check_receiver()
+    return CycleDecision(halts=True, commands=steps) if evidence else True
+
+
+def _proof_halted(
+    machine: _SteppableMachine, check_receiver: Callable[[], None] | None
+) -> bool:
+    halted = _checked_halted(machine.halted)
+    if check_receiver is not None:
+        check_receiver()
+    return halted
+
+
 def _step_proof_receiver(
     runner: _SteppableMachine, check_receiver: Callable[[], None], completed: int
 ) -> None:
@@ -295,11 +312,18 @@ def _branch_snapshot(machine: _BranchingStepMachine, adapter: object) -> Hashabl
 
 
 def _read_branch_root(
-    machine: _BranchingStepMachine, adapter: object, error_type: type[TypeError]
+    machine: _BranchingStepMachine,
+    adapter: object,
+    error_type: type[TypeError],
+    check_receiver: Callable[[], None] | None,
 ) -> tuple[Hashable, set[Hashable]]:
     """Read and hash a detached root, retaining owned IO on failure."""
+    if check_receiver is not None:
+        check_receiver()
     try:
         root = _branch_snapshot(machine, adapter)
+        if check_receiver is not None:
+            check_receiver()
         try:
             return root, {root}
         except TypeError:
@@ -308,6 +332,57 @@ def _read_branch_root(
     except EsolangError as error:
         _retain_branch_root_fault(machine, adapter, error)
         raise
+
+
+@dataclass(frozen=True, slots=True)
+class _GuardedBranchCallbacks:
+    """Keep detached branch callbacks tied to their original live receiver."""
+
+    machine: _BranchingStepMachine
+    check_receiver: Callable[[], None]
+    capture: Callable[[object, int], tuple[Hashable, ...] | None]
+
+    def branching_halted(self, state: Hashable) -> bool:
+        self.check_receiver()
+        halted = self.machine.branching_halted(state)
+        self.check_receiver()
+        return halted
+
+    def branching_successors(
+        self, state: Hashable, limit: int
+    ) -> Sequence[Hashable] | None:
+        successors = self.machine.branching_successors(state, limit)
+        self.check_receiver()
+        return successors
+
+    def capture_successors(
+        self, successors: object, limit: int
+    ) -> tuple[Hashable, ...] | None:
+        captured = self.capture(successors, limit)
+        self.check_receiver()
+        return captured
+
+
+def _branch_callbacks(
+    machine: _BranchingStepMachine,
+    check_receiver: Callable[[], None] | None,
+    capture: Callable[[object, int], tuple[Hashable, ...] | None],
+) -> tuple[
+    _BranchingStepMachine | _GuardedBranchCallbacks,
+    Callable[[object, int], tuple[Hashable, ...] | None],
+]:
+    if check_receiver is None:
+        return machine, capture
+    hooks = _GuardedBranchCallbacks(machine, check_receiver, capture)
+    return hooks, hooks.capture_successors
+
+
+def _checked_branch_result(
+    result: _BranchResult, check_receiver: Callable[[], None] | None
+) -> _BranchResult:
+    if check_receiver is not None:
+        check_receiver()
+    return result
 
 
 def _branch_halt_fault(

@@ -426,6 +426,43 @@ def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) ->
     assert scope.bind(REFERENCE).read_answer("") == "0"
     assert call_both(["read-answer", REFERENCE], capsys) == ("0\n", "")
 
+    name = "clear\x1b[2J\nreader"
+    label = r"clear\x1b[2J\nreader"
+    contract = replace(original.contract, note="first line\nsecond line")
+    declaration = replace(original, name=name, contract=contract)
+    scope = esolangs.Catalog([declaration])
+    monkeypatch.setattr(_table, "CATALOG", scope)
+    api = scope.bind(REFERENCE)
+    output = api.run("+.").output
+    assert output == "\x01"
+    with pytest.raises(esolangs.ProgramError) as refused:
+        api.read_answer(output)
+    assert str(refused.value).startswith(f"{name} produced no answer")
+    assert _failure(["read-answer", REFERENCE], capsys, code=1, stdin=output) == (
+        "",
+        str(refused.value).replace(name, label, 1) + "\n",
+    )
+    generated = api.generate("01")
+    answer = api.run(generated, stdin=api.encode_inputs([1])).output
+    assert call_both(["read-answer", REFERENCE], capsys, stdin=answer) == ("1\n", "")
+    assert (
+        json.loads(call_main(["describe", "--json", REFERENCE], capsys))["name"] == name
+    )
+    _, diagnostic = _failure(["generate", "--bits", "1", REFERENCE, "01"], capsys)
+    assert diagnostic.startswith(f"{label} reads its inputs")
+
+    invalid = replace(declaration, contract=replace(contract, answer_pattern="("))
+    monkeypatch.setattr(_table, "CATALOG", esolangs.Catalog([invalid]))
+    for command in ("describe", "read-answer"):
+        _, diagnostic = _failure([command, REFERENCE], capsys)
+        assert diagnostic.startswith(f"{label} has an invalid answer pattern")
+
+    invalid = replace(declaration, contract=replace(contract, alphabet=("0", "0")))
+    monkeypatch.setattr(_table, "CATALOG", esolangs.Catalog([invalid]))
+    for arguments in (["encode-inputs", REFERENCE, "1"], ["describe", REFERENCE]):
+        _, diagnostic = _failure(arguments, capsys)
+        assert diagnostic.startswith(f"{label} has an invalid input encoding")
+
 
 @pytest.mark.parametrize("language", one(source_kind="raster"))
 def test_run_checks_saved_metadata_before_stdin(

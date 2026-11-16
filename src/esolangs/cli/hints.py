@@ -15,7 +15,7 @@ from esolangs.exceptions import (
     TemplateError,
     UnknownLanguageError,
 )
-from esolangs.operations.boolean_io import encode_inputs
+from esolangs.operations.boolean_io import _encode_inputs
 from esolangs.registry import (
     SUGGESTION_CUTOFF,
     Catalog,
@@ -25,6 +25,7 @@ from esolangs.registry import (
 from esolangs.registry._contracts import CHAR_STREAMS
 from esolangs.runtime.source_hints import (
     can_render_argument,
+    display_label,
     error_text,
     is_option,
     shell_argument,
@@ -222,7 +223,9 @@ def _did_you_mean(word: str, known: Iterable[str]) -> str:
 def _input_sentence(facts: LanguageInfo, *, catalog: Catalog) -> str:
     """Describe this language's stdin with a sample from its own encoder."""
     shape = facts.input_shape
-    example = encode_inputs(facts.name, [1, 0], catalog=catalog)
+    example = _encode_inputs(
+        catalog.languages[facts.name], display_label(facts.name), [1, 0]
+    )
     # Keep the newline that represents a final empty line or normalizes CRLF.
     if shape not in CHAR_STREAMS and not example.endswith(("\n\n", "\r\n")):
         example = example.removesuffix("\n")

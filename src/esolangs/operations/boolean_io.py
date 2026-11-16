@@ -13,6 +13,7 @@ from esolangs.exceptions import (
 )
 from esolangs.registry._catalog import Catalog
 from esolangs.registry._contracts import CHAR_STREAMS, BooleanContract
+from esolangs.registry._language import LanguageDeclaration
 from esolangs.results import ExecutionResult
 from esolangs.runtime._validate import _has_backing_type, check_bits
 from esolangs.runtime.memory import format_integer
@@ -96,7 +97,17 @@ def encode_inputs(
 
     catalog = get_catalog(catalog)
     name = catalog.resolve(language)
-    lang = catalog.languages[name]
+    return _encode_inputs(catalog.languages[name], name, bits, truth_table=truth_table)
+
+
+def _encode_inputs(
+    lang: LanguageDeclaration,
+    name: str,
+    bits: list[int] | tuple[int, ...],
+    *,
+    truth_table: str | None = None,
+) -> str:
+    """Encode for the resolved declaration using its display label in errors."""
     contract = lang.contract
     if lang.parameterized:
         raise ArgumentError(
@@ -128,8 +139,15 @@ def encode_inputs(
     zero, one = _symbol_pair(name, contract.alphabet, "input encoding")
     stream = shape in CHAR_STREAMS
     if stream:
+        if contract.input_sets and ("\n" in zero or "\n" in one):
+            raise ProgramError(
+                f"{name} has an invalid input encoding. A newline ends the input set."
+            )
+        left, right = zero, one
+        if contract.ignores_whitespace:
+            left, right = "".join(zero.split()), "".join(one.split())
         # Two words form a uniquely decodable code exactly when they do not commute.
-        if zero + one == one + zero:
+        if left + right == right + left:
             raise ProgramError(
                 f"{name} has an invalid input encoding. "
                 "The two bit values are ambiguous when concatenated."

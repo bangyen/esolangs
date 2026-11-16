@@ -47,7 +47,6 @@ from esolangs import (
     LanguageInfo,
     Raster,
     __version__,
-    encode_inputs,
     list_languages,
 )
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
@@ -101,7 +100,11 @@ from esolangs.exceptions import (
     ExecutionBudgetError,
     ProgramError,
 )
-from esolangs.operations.boolean_io import _answer_codec, _read_output_answer
+from esolangs.operations.boolean_io import (
+    _answer_codec,
+    _encode_inputs,
+    _read_output_answer,
+)
 from esolangs.raster import png
 from esolangs.registry import Catalog, LanguageDeclaration, SourceKind, get_catalog
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
@@ -130,8 +133,11 @@ def _encode(rest: list[str]) -> None:
     if set(bits) - {"0", "1"} or not bits:
         _fail(f"bits must be a string of 0s and 1s, got {bits!r}")
     try:
+        name = catalog.resolve(language)
         _write_output(
-            encode_inputs(language, [int(bit) for bit in bits], catalog=catalog)
+            _encode_inputs(
+                catalog.languages[name], display_label(name), [int(bit) for bit in bits]
+            )
         )
     except EsolangError as exc:
         _fail(_shell_hint(_cli_error_text(exc), language, catalog=catalog))
@@ -424,9 +430,10 @@ def _generation_bits(
         raise _raster_template_error(
             "raster programs read bits from stdin and cannot be instantiated"
         )
+    name = display_label(declaration.name)
     if not declaration.parameterized:
-        raise _stdin_template_error(declaration.name)
-    return _check_template_bits(declaration.name, [int(bit) for bit in bits], inputs)
+        raise _stdin_template_error(name)
+    return _check_template_bits(name, [int(bit) for bit in bits], inputs)
 
 
 def _generate(rest: list[str]) -> None:
@@ -670,7 +677,9 @@ def _describe(rest: list[str]) -> None:
         input_sentence = (
             _input_sentence(facts, catalog=catalog) if facts.reads_input else ""
         )
-        values, _ = _answer_codec(facts.name, catalog.languages[facts.name].contract)
+        values, _ = _answer_codec(
+            display_label(facts.name), catalog.languages[facts.name].contract
+        )
         facts = replace(facts, answer_encoding=values)
     # The contract first: how bits go in, where the answer comes out, and
     # whether a generator exists.  The field list below keeps the facts
@@ -724,8 +733,9 @@ def _read_answer(rest: list[str]) -> None:
     _check_count("read-answer", rest, 1, catalog=catalog)
     with _errors():
         language = catalog.resolve(rest[0])
+        label = display_label(language)
         contract = catalog.languages[language].contract
-        values, pattern = _answer_codec(language, contract)
+        values, pattern = _answer_codec(label, contract)
     if contract.answer_mode == "termination":
         zero, one = values
         language_arg = _as_argument(language, catalog=catalog)
@@ -736,7 +746,7 @@ def _read_answer(rest: list[str]) -> None:
             "<program-file>"
         )
         _fail(
-            f"{display_label(language)} answers 0 if it {zero} and 1 if it {one}. "
+            f"{label} answers 0 if it {zero} and 1 if it {one}. "
             f"Program output carries no answer. Use {run} and observe whether it "
             "halts. A timeout leaves the answer undecided."
         )
@@ -747,7 +757,7 @@ def _read_answer(rest: list[str]) -> None:
     )
     # NQ's false answer is a space; only absent output is empty stdin.
     try:
-        answer = _read_output_answer(language, output, values, pattern, contract.note)
+        answer = _read_output_answer(label, output, values, pattern, contract.note)
     except ProgramError as exc:
         # Output with no readable answer is the program's failure, as in run.
         if not output:

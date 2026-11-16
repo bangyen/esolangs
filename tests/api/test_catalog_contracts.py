@@ -403,6 +403,39 @@ def test_row_number_encodes_a_large_positive_input() -> None:
     scope = esolangs.Catalog([replace(original, contract=contract)])
     stdin = scope.bind(REFERENCE).encode_inputs([1] * 15000)
     assert parse_integer(stdin.strip()) == 1 << 15000
+    for declaration in LANGUAGES.values():
+        contract = declaration.contract
+        if (
+            declaration.has_backend
+            and contract.input_shape == "char_stream"
+            and contract.ignores_whitespace
+            and contract.alphabet == ("0", "1")
+        ):
+            _check_stream_encoding_respects_the_declared_input_parser(declaration)
+
+
+def _check_stream_encoding_respects_the_declared_input_parser(original) -> None:
+    name = original.name
+    artifact = esolangs.Language(name).generate("01")
+
+    def scoped(symbols):
+        contract = replace(original.contract, alphabet=symbols)
+        return esolangs.Catalog([replace(original, contract=contract)]).bind(name)
+
+    cases = [(("0", " 0"), "ambiguous")]
+    if original.contract.input_sets:
+        cases.append((("0", "\n1"), "newline ends the input set"))
+    for alphabet, message in cases:
+        invalid = scoped(alphabet)
+        with pytest.raises(esolangs.ProgramError, match=message):
+            invalid.encode_inputs([1])
+        with pytest.raises(esolangs.ProgramError, match=message):
+            invalid.evaluate(artifact, [1])
+
+    padded = scoped((" 0", "\t1"))
+    for bit, encoded in enumerate((" 0", "\t1")):
+        assert padded.encode_inputs([bit]) == encoded
+        assert padded.evaluate(artifact, [bit]).answer == str(bit)
 
 
 def test_read_answer_reports_a_malformed_catalog_pattern() -> None:

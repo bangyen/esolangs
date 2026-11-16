@@ -231,6 +231,9 @@ def test_halt_driver_requires_a_stepper_before_inspecting_state() -> None:
 def test_branch_search_does_not_hide_an_unexpected_or_global_failure() -> None:
     class _BranchOnly:
         halted = False
+        dumps_on_the_post_halt_step = False
+        steppable_to_answer = True
+        output = ""
 
         def __init__(self, error, *, phase, outcomes=(1, 2)):
             self.error = error
@@ -293,6 +296,48 @@ def test_branch_search_does_not_hide_an_unexpected_or_global_failure() -> None:
             _BranchOnly(failure, phase="root"), limit=3
         )
     assert caught.value is failure
+    _check_branch_receiver_ownership(_BranchOnly, failure)
+
+
+def _check_branch_receiver_ownership(branch_machine, failure) -> None:
+    class BranchDebugger(Debugger):
+        def __init__(self, *, switch_at=None, error=None):
+            phase = "root" if error is not None else ""
+            self.original = branch_machine(error, phase=phase, outcomes=(2,))
+            super().__init__(self.original)
+            self.switch_at = switch_at
+            self.replacement = make_vm(REFERENCE, "+[]")
+
+        def _branch(self, phase, *args):
+            if self.switch_at == phase:
+                self.vm = self.replacement
+            return getattr(self.original, "branching_" + phase)(*args)
+
+        def branching_snapshot(self):
+            return self._branch("snapshot")
+
+        def branching_halted(self, state):
+            return self._branch("halted", state)
+
+        def branching_successors(self, state, limit):
+            return self._branch("successors", state, limit)
+
+    for proof in (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle):
+        for wrap in (Debugger, lambda vm: vm):
+            stable = BranchDebugger()
+            assert proof(wrap(stable), limit=2)
+            assert not stable.halted
+            for switch_at in ("snapshot", "halted", "successors"):
+                switched = BranchDebugger(switch_at=switch_at)
+                with pytest.raises(TypeError, match="debugger VM changed during proof"):
+                    proof(wrap(switched), limit=2)
+                assert switched.vm is switched.replacement
+                assert switched.replacement.ip == 0
+
+            switched = BranchDebugger(switch_at="halted", error=failure)
+            with pytest.raises(TimeoutError, match="root halt check failed") as caught:
+                proof(wrap(switched), limit=2)
+            assert caught.value is failure
 
 
 class _SwitchingDebugger(Debugger):

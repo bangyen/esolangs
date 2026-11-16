@@ -83,12 +83,15 @@ class ExecutionController:
     @property
     def halted(self) -> bool:
         """Whether the wrapped VM has finished executing."""
-        wrapped = self.vm
-        try:
-            return _checked_halted(wrapped.halted)
-        except EsolangError as error:
-            self._observe_inspection_fault(wrapped, error)
-            raise
+        while True:
+            wrapped = self.vm
+            try:
+                halted = wrapped.halted
+                if self.vm is wrapped:
+                    return _checked_halted(halted)
+            except EsolangError as error:
+                self._observe_inspection_fault(wrapped, error)
+                raise
 
     @property
     def output(self) -> str:
@@ -197,16 +200,28 @@ class ExecutionController:
                 # Reading caller-owned output cannot replace the original fault.
                 return
 
+    def _observe_delegated_fault(
+        self, error: EsolangError, completed: tuple[VM, bool] | None
+    ) -> None:
+        if completed is not None:
+            owner, active = completed
+            self._observer_fault = (error, active)
+            self._observe_inspection_fault(owner, error)
+
     def _take_step(self, override: Callable[[], None] | None = None) -> None:
         """Drive a command or finalization step, accounting for its effects."""
         dispatch = self._step_dispatch
         self._observer_fault = None
-        wrapped = self.vm
-        try:
-            active = not _checked_halted(wrapped.halted)
-        except EsolangError as error:
-            self._observe_inspection_fault(wrapped, error)
-            raise
+        while True:
+            wrapped = self.vm
+            try:
+                halted = wrapped.halted
+                if self.vm is wrapped:
+                    active = not _checked_halted(halted)
+                    break
+            except EsolangError as error:
+                self._observe_inspection_fault(wrapped, error)
+                raise
         controller = wrapped if isinstance(wrapped, ExecutionController) else None
         owner = _controller_vm(controller) if controller is not None else wrapped
         if controller is not None:
@@ -221,10 +236,7 @@ class ExecutionController:
             if override is not None:
                 assert dispatch is not None
                 if dispatch.delegated:
-                    if dispatch.completed is not None:
-                        owner, active = dispatch.completed
-                        self._observer_fault = (exc, active)
-                        self._observe_inspection_fault(owner, exc)
+                    self._observe_delegated_fault(exc, dispatch.completed)
                     raise
                 current = self.vm
                 if (

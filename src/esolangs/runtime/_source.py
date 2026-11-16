@@ -260,6 +260,12 @@ def _native_compressed_source(
     """Normalize a gzip-native language without expanding it into one string."""
     value = compressed_text_source(source)
     if _has_backing_type(value, CompressedText):
+        # A measured final LF already requires a rewrite. Otherwise preserve
+        # the native archive unless a carriage return needs translation.
+        if value._last_character() != "\n" and not any(  # noqa: SLF001
+            "\r" in chunk for chunk in value.chunks()
+        ):
+            return value
         return CompressedText.from_chunks(
             _native_chunks(value.chunks()), limits=value.limits
         )

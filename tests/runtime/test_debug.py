@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs.vm import complete_vm, run_until_halt, run_until_halt_or_cycle
 from tests.support.pick import one
 from tests.support.reference import REFERENCE
 
@@ -27,6 +28,7 @@ class TestRun:
         assert dbg.output == esolangs.run(REFERENCE, "+++[>+++<-]>.").output
 
         _check_overridden_step_dispatch()
+        _check_replacement_during_halt_inspection()
 
     def test_max_steps_bounds_runaway(self) -> None:
         dbg = debugger_api.make_debugger(REFERENCE, "+[]")
@@ -38,6 +40,80 @@ class TestRun:
         dbg.run()
         dbg.step()  # must not raise
         assert dbg.halted
+
+
+def _check_replacement_during_halt_inspection() -> None:
+    class Forwarder:
+        def __init__(self, vm, *, malformed=False):
+            self.vm = vm
+            self.inspect = None
+            self.malformed = malformed
+
+        def __getattr__(self, name):
+            return getattr(self.vm, name)
+
+        @property
+        def halted(self):
+            if self.inspect is not None:
+                inspect, self.inspect = self.inspect, None
+                inspect()
+            return 1 if self.malformed else self.vm.halted
+
+    def wrap(nested, *, old_source="", malformed=False):
+        old = debugger_api.make_vm(REFERENCE, old_source)
+        new = debugger_api.make_vm(REFERENCE, "+.")
+        forwarding = Forwarder(old, malformed=malformed)
+        inner = debugger_api.Debugger(forwarding)
+        live = debugger_api.Debugger(inner) if nested else inner
+        forwarding.inspect = lambda: setattr(inner, "vm", new)
+        return live, old, new
+
+    zero = esolangs.ExecutionLimits(max_steps=0)
+    two = esolangs.ExecutionLimits(max_steps=2)
+    for nested in (False, True):
+        live, old, new = wrap(nested)
+        assert live.run(limits=zero) == "max_steps"
+        assert old.halted
+        assert not new.halted
+        assert live.observation.steps == 0
+        assert live.run(limits=two) == "halted"
+        assert live.output == "\x01"
+        assert live.observation.steps == 2
+
+        live, _, new = wrap(nested)
+        assert not run_until_halt(live, limit=0)
+        assert new.ip == 0
+        assert run_until_halt(live, limit=2)
+        assert live.output == "\x01"
+
+        live, _, _ = wrap(nested)
+        with pytest.raises(esolangs.ExecutionCapError) as caught:
+            complete_vm(live, max_steps=0)
+        assert caught.value.observation == esolangs.ExecutionResult(
+            "", 0, 0, 0, steps=0
+        )
+        live, _, _ = wrap(nested)
+        assert complete_vm(live, max_steps=2) == "\x01"
+
+        for malformed in (False, True):
+            live, old, new = wrap(nested, old_source="-.", malformed=malformed)
+            live.step()
+            assert old.ip == 0
+            assert new.ip == 1
+            assert live.observation.steps == 1
+
+        live, _, new = wrap(nested)
+        with pytest.raises(TypeError, match="debugger VM changed during proof"):
+            run_until_halt_or_cycle(live, limit=2)
+        assert new.ip == 0
+        assert run_until_halt_or_cycle(live, limit=2)
+
+    forwarding = Forwarder(debugger_api.make_vm(REFERENCE, ""))
+    live = debugger_api.Debugger(forwarding)
+    forwarding.inspect = lambda: setattr(live, "vm", debugger_api.Debugger(forwarding))
+    with pytest.raises(TypeError, match="debugger VM changed during proof"):
+        run_until_halt_or_cycle(live, limit=0)
+    assert run_until_halt_or_cycle(live, limit=0)
 
 
 def _check_overridden_step_dispatch() -> None:
