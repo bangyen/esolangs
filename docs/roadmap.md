@@ -94,6 +94,10 @@ history at `f35aa4023`.
     - [Calcu-less 2](https://esolangs.org/wiki/Calcu-less_2) (rev. 159679):
       nested definite integrals select arithmetic branches, 3,610 subset
       runs. Confirm the source grammar, memory operations and EOF.
+    - [Paint](https://esolangs.org/wiki/Paint) (rev. 130859): two-tape
+      guards and a marked canvas pixel, 3,610 subset runs. Confirm
+      final-canvas observation and audit novelty against dual-tape
+      languages with one-shot guards.
   - *Parked in this pass:* Irregular Expression (input and result semantics)
     and Godencode (input framing and linear source construction).
   - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
