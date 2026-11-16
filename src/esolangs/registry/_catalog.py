@@ -52,7 +52,7 @@ class Catalog:
             if slug:
                 origins.setdefault(slug, []).append(language.name)
             for spelling in (language.id, language.name, *language.aliases):
-                key = spelling.strip().casefold()
+                key = _folded_spelling(spelling)
                 if key in folded and folded[key] != language.name:
                     raise ArgumentError(
                         "catalog names, identifiers, and aliases must have one owner"
@@ -142,7 +142,7 @@ class Catalog:
         name = str.__str__(name)
         if name in self.languages:
             return name
-        match = self._by_folded.get(name.strip().casefold())
+        match = self._by_folded.get(_folded_spelling(name))
         if match is not None:
             return match
         match = self._by_id.get(canonical_id(name))
@@ -177,11 +177,21 @@ class Catalog:
         return difflib.get_close_matches(key, candidates, n=2, cutoff=cutoff)
 
 
+def _folded_spelling(spelling: str) -> str:
+    """Compare canonically equivalent spellings without changing display names."""
+    decomposed = unicodedata.normalize("NFD", spelling.strip())
+    return unicodedata.normalize("NFD", decomposed.casefold())
+
+
 def _symbols(*names: str) -> Counter[str]:
     """Count the characters a slug drops that are not separators."""
     counts: Counter[str] = Counter()
     for name in names:
-        counts |= Counter(c for c in name if not (c.isalnum() or _separator(c)))
+        counts |= Counter(
+            c
+            for c in unicodedata.normalize("NFC", name)
+            if not (c.isalnum() or _separator(c))
+        )
     return counts
 
 
@@ -217,9 +227,9 @@ def resolve_origin(origin: str, *, catalog: Catalog) -> str | None:
     origin = str.__str__(origin)
     if origin in catalog.languages:
         return origin
-    folded = origin.strip().casefold()
+    folded = _folded_spelling(origin)
     owner = catalog._by_folded.get(folded)  # noqa: SLF001 - catalog-owned index
-    if owner is not None and folded == owner.strip().casefold():
+    if owner is not None and folded == _folded_spelling(owner):
         return owner
     slug = canonical_id(origin)
     # IDs can differ from display slugs or point to unrelated languages.

@@ -108,8 +108,7 @@ _FUNCTION_SYMBOLS = {
     "ʡ": ")",
 }
 
-_ADDITIVE = frozenset("+-")
-_MULTIPLICATIVE = frozenset("*/")
+_PRECEDENCE = {"(": 0, "+": 1, "-": 1, "*": 2, "/": 2}
 
 # The individual commands the dispatch tests by name, so each branch body
 # reads as the operation it performs rather than as a comparison against a
@@ -225,21 +224,47 @@ def _match_loops(tokens: list[str]) -> dict[int, int]:
     return pairs
 
 
-#: A parsed function: an int leaf, or ``(operator, left, right)``.
-_Node = int | tuple[str, "_Node", "_Node"]
+def _postfix(symbols: tuple[str, ...], accumulator: int) -> list[int | str] | None:
+    """Compile a complete function before evaluating any of its operations."""
+    code: list[int | str] = []
+    pending: list[str] = []
+    needs_value = True
+    for symbol in symbols:
+        if needs_value:
+            if symbol == "(":
+                pending.append(symbol)
+                continue
+            if symbol == "a":
+                code.append(accumulator)
+            elif symbol.isdigit():
+                code.append(parse_integer(symbol))
+            else:
+                return None
+            needs_value = False
+        elif symbol == ")":
+            while pending and pending[-1] != "(":
+                code.append(pending.pop())
+            if not pending:
+                return None
+            pending.pop()
+        elif (precedence := _PRECEDENCE.get(symbol, 0)) > 0:
+            while pending and _PRECEDENCE[pending[-1]] >= precedence:
+                code.append(pending.pop())
+            pending.append(symbol)
+            needs_value = True
+        else:
+            return None
+    if needs_value or "(" in pending:
+        return None
+    code.extend(reversed(pending))
+    return code
 
 
-def _evaluate(node: _Node) -> int:
-    """Evaluate a parsed function tree."""
-    if isinstance(node, int):
-        return node
-    symbol, left, right = node
-    lval, rval = _evaluate(left), _evaluate(right)
+def _operate(symbol: str, lval: int, rval: int) -> int:
     if symbol == "+":
         return lval + rval
     if symbol == "-":
-        # The accumulator is unsigned, so a subtraction floors at zero
-        # rather than going negative.
+        # The accumulator is unsigned, so a subtraction floors at zero.
         return max(lval - rval, 0)
     if symbol == "*":
         return lval * rval
@@ -249,64 +274,6 @@ def _evaluate(node: _Node) -> int:
             hint="ensure the divisor is nonzero before dividing",
         )
     return lval // rval
-
-
-class _InvalidFunctionError(Exception):
-    """The built function does not parse, so ``u`` leaves the accumulator."""
-
-
-class _Parser:
-    """A recursive-descent reader for the function the program has built."""
-
-    def __init__(self, symbols: list[str], accumulator: int) -> None:
-        """Read ``symbols``, substituting ``accumulator`` for every ``a``."""
-        self.symbols = symbols
-        self.accumulator = accumulator
-        self.index = 0
-
-    def _peek(self) -> str | None:
-        return self.symbols[self.index] if self.index < len(self.symbols) else None
-
-    def parse(self) -> _Node:
-        """Read the whole function as a syntax tree, rejecting leftovers."""
-        node = self._expression()
-        if self.index != len(self.symbols):
-            raise _InvalidFunctionError
-        return node
-
-    def _expression(self) -> _Node:
-        """Read a sum of terms, left to right."""
-        node = self._term()
-        while (symbol := self._peek()) in _ADDITIVE:
-            self.index += 1
-            node = (symbol, node, self._term())
-        return node
-
-    def _term(self) -> _Node:
-        """Read a product of factors, left to right."""
-        node = self._factor()
-        while (symbol := self._peek()) in _MULTIPLICATIVE:
-            self.index += 1
-            node = (symbol, node, self._factor())
-        return node
-
-    def _factor(self) -> _Node:
-        """Read ``a``, a literal, or a parenthesized expression."""
-        symbol = self._peek()
-        if symbol is None:
-            raise _InvalidFunctionError
-        self.index += 1
-        if symbol == "a":
-            return self.accumulator
-        if symbol == "(":
-            node = self._expression()
-            if self._peek() != ")":
-                raise _InvalidFunctionError
-            self.index += 1
-            return node
-        if symbol.isdigit():
-            return parse_integer(symbol)
-        raise _InvalidFunctionError
 
 
 #: One instant of a run: ``(accumulator, deque, function, pointer)``.
@@ -334,10 +301,17 @@ def _popped(deque: tuple[int, ...], *, front: bool) -> tuple[tuple[int, ...], in
 
 def _applied(accumulator: int, function: tuple[str, ...]) -> int:
     """Return the function applied to the accumulator, if it parses."""
-    try:
-        return _evaluate(_Parser(list(function), accumulator).parse())
-    except _InvalidFunctionError:
+    code = _postfix(function, accumulator)
+    if code is None:
         return accumulator
+    values: list[int] = []
+    for item in code:
+        if isinstance(item, int):
+            values.append(item)
+        else:
+            right = values.pop()
+            values[-1] = _operate(item, values[-1], right)
+    return values[0]
 
 
 def _fricative(

@@ -6,7 +6,7 @@ from itertools import product
 import pytest
 
 from esolangs import Catalog, ExecutionLimits, Language
-from esolangs.exceptions import HaltError
+from esolangs.exceptions import HaltError, ProgramError
 from esolangs.languages.dinac.interpreter import _Frame, _Machine, _Value, run
 from esolangs.languages.dinac.tests.oracle_checks import check_raw_dinac
 from esolangs.runtime.io import ScriptedIO
@@ -376,6 +376,46 @@ def test_debugger_views() -> None:
     assert machine.memory == [5]
     assert machine.stack == ["<top>", "f"]
     assert machine.ind == 0
+
+    api = Language("DINAC")
+    depth = 1200
+    source = (
+        "DEF/00 f n:00\n    GIVE n\nOUT 'Z\nOUT "
+        + "(" * depth
+        + "'A"
+        + ")" * depth
+        + "\nOUT "
+        + "~" * depth
+        + "f(01)"
+    )
+    native = api.run(source)
+    assert native.output == "ZA01"
+    prepared = api.prepare(source)
+    assert prepared.run() == native
+    limits = ExecutionLimits(max_steps=6)
+    bounded = api.run(source, limits=limits)
+    assert replace(bounded, steps=None) == native
+    assert prepared.run(limits=limits) == bounded
+    assert api.run(source, limits=limits, isolated=True) == bounded
+    debug = api.make_debugger(source)
+    assert debug.run(limits=limits) == "halted"
+    assert debug.observation == bounded
+    machine = _Machine(source, ScriptedIO())
+    for _ in range(3):
+        machine.step()
+    assert machine.stack == ["<top>", "f"]
+    assert machine.workspace_snapshot().model.name == "dinac-v1"
+    with pytest.raises(ProgramError, match="unclosed parenthesis"):
+        api.run("OUT " + "(" * depth + "01" + ")" * (depth - 1))
+
+    depth = 550
+    blocks = (
+        "DEF/00 f\n"
+        + "".join("    " * level + "WHILE 01\n" for level in range(1, depth + 1))
+        + "    " * (depth + 1)
+        + "GIVE 41\nOUT f()"
+    )
+    assert api.run(blocks, limits=ExecutionLimits(max_steps=depth + 4)).output == "41"
 
 
 def test_null_retains_parameter_and_local_types() -> None:

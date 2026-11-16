@@ -94,10 +94,12 @@ def _origin(
         raise ArgumentError("settings must be a DialectSettings or None")
     schema = settings._schema  # noqa: SLF001
     owner = schema.language
-    if owner != language and owner.strip().casefold() != language.strip().casefold():
-        from esolangs.registry._catalog import _matches_origin_slug
+    if owner != language:
+        from esolangs.registry._catalog import _folded_spelling, _matches_origin_slug
 
-        if not _matches_origin_slug(language, owner):
+        if _folded_spelling(owner) != _folded_spelling(
+            language
+        ) and not _matches_origin_slug(language, owner):
             raise ArgumentError(f"dialect settings belong to {owner}, not {language}")
     if type(settings) is DialectSettings:
         settings.options()

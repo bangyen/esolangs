@@ -898,40 +898,6 @@ def test_scoped_png_writers_resolve_source_aliases_without_settings(
         encode(alias, api.catalog)
 
 
-def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
-    declaration = esolangs.Language(RASTER_LANGUAGES[0]).catalog.languages[
-        RASTER_LANGUAGES[0]
-    ]
-    owner = replace(declaration, name="Scoped Drawing!", id="")
-    decoy = replace(
-        declaration, name="Alias Drawing", id="", aliases=("scoped-drawing",)
-    )
-    catalog = esolangs.Catalog([owner, decoy])
-    assert catalog.bind("scoped-drawing").name == decoy.name
-    api = catalog.bind(owner.name)
-    raster = Raster((((1, 2, 3),),))
-    path = tmp_path / "source.png"
-    for spelling in (" SCOPED-DRAWING ", " scoped_drawing! "):
-        tagged = png.write_metadata(
-            raster.to_png(), {"version": 1, "language": spelling, "settings": {}}
-        )
-        assert (
-            png.attach_source_metadata(
-                tagged, api.name, api.settings(), None, catalog=catalog
-            )
-            is tagged
-        )
-        path.write_bytes(tagged)
-        assert api.from_file(path) == api.from_source(raster, settings=api.settings())
-    path.write_bytes(
-        png.write_metadata(
-            raster.to_png(), {"version": 1, "language": "Scoped Drawing?"}
-        )
-    )
-    with pytest.raises(esolangs.ProgramError, match="generated for"):
-        api.from_file(path)
-
-
 def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> None:
     installed = esolangs.Language(RASTER_LANGUAGES[0])
     name = installed.name

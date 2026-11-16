@@ -79,6 +79,27 @@ class TestTheStdinReaderInProcess:
                 "--max-memory must be a positive integer",
             ),
         )
+        scale_refusal = "scale is only supported for raster interpreters"
+        combined = []
+        for flags in ([], ["--isolated"]):
+            outcome = esolangs.Language(REFERENCE).execute(
+                path, scale=2, seed=1, isolated=bool(flags)
+            )
+            assert outcome.status == "rejected"
+            assert isinstance(outcome.error, esolangs.ArgumentError)
+            assert str(outcome.error) == scale_refusal
+            assert outcome.observation.steps is None
+            options = [*flags, "--seed", "1", "--scale", "2"]
+            combined.extend(
+                (
+                    ([*options, REFERENCE], scale_refusal),
+                    ([*options, "--settings", "{}", REFERENCE], scale_refusal),
+                    (
+                        [*options, "--settings", '{"unknown":1}', REFERENCE],
+                        "unknown dialect setting",
+                    ),
+                )
+            )
         with (
             patch(
                 "esolangs.cli.run._read_program",
@@ -86,7 +107,7 @@ class TestTheStdinReaderInProcess:
             ),
             patch.object(sys, "stdin", _NeverEnding()),
         ):
-            for args, error in cases:
+            for args, error in (*cases, *combined):
                 with subtests.test(args=args):
                     argv = ["esolangs", "run", *args, str(path)]
                     with (

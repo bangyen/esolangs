@@ -254,41 +254,73 @@ class _Reader:
 
 
 def _parse_expr(reader: _Reader) -> _Expr:
-    """``a = b`` / ``a ! b`` (infix, unchained) or just the left operand."""
-    left = _parse_unary(reader)
-    reader.skip()
-    if reader.peek() in ("=", "!"):
-        op = reader.peek()
-        reader.pos += 1
-        return ("cmp", op, left, _parse_unary(reader))
-    return left
-
-
-def _parse_unary(reader: _Reader) -> _Expr:
-    """``~``-prefixed operands, which stack (``~~b``)."""
-    reader.skip()
-    if reader.peek() == "~":
-        reader.pos += 1
-        return ("not", _parse_unary(reader))
-    expr = _parse_primary(reader)
-    # No space before ``+``/``-`` (``N+``), so a spaced ``-`` is no operator.
-    while reader.peek() in ("+", "-"):
-        expr = ("step", reader.peek(), expr)
-        reader.pos += 1
-    return expr
-
-
-def _parse_primary(reader: _Reader) -> _Expr:
-    """A parenthesized group, a call, a name, or a literal."""
-    reader.skip()
-    if reader.peek() == "(":
-        reader.pos += 1
-        inner = _parse_expr(reader)
+    """Parse one comparison per group with separate prefix and postfix binding."""
+    groups: list[tuple[str, list[_Expr], int, tuple[str, _Expr] | None]] = []
+    comparison = None
+    while True:
         reader.skip()
-        if reader.peek() != ")":
-            raise _bad("unclosed parenthesis", "close the group with )")
-        reader.pos += 1
-        return inner
+        negations = 0
+        while reader.peek() == "~":
+            negations += 1
+            reader.pos += 1
+            reader.skip()
+        if reader.peek() == "(":
+            head: _Expr | str = "("
+        else:
+            head = _parse_atom(reader)
+        if isinstance(head, str):
+            reader.pos += 1  # opening parenthesis
+            reader.skip()
+            if head == "(" or reader.peek() != ")":
+                groups.append((head, [], negations, comparison))
+                comparison = None
+                continue
+            reader.pos += 1
+            expr: _Expr = ("call", head, ())
+        else:
+            expr = head
+
+        while True:
+            # An adjacent + or - binds before every prefix ~.
+            while reader.peek() in ("+", "-"):
+                expr = ("step", reader.peek(), expr)
+                reader.pos += 1
+            for _ in range(negations):
+                expr = ("not", expr)
+            if comparison is None:
+                reader.skip()
+                if (op := reader.peek()) in ("=", "!"):
+                    reader.pos += 1
+                    comparison = (op, expr)
+                    break
+            else:
+                op, left = comparison
+                expr = ("cmp", op, left, expr)
+                reader.skip()
+            if not groups:
+                return expr
+            name, args, negations, comparison = groups[-1]
+            tail = reader.peek()
+            if name == "(":
+                if tail != ")":
+                    raise _bad("unclosed parenthesis", "close the group with )")
+            else:
+                args.append(expr)
+                if tail == ",":
+                    reader.pos += 1
+                    comparison = None
+                    break
+                if tail != ")":
+                    raise _bad(
+                        "malformed argument list", "separate arguments with commas"
+                    )
+                expr = ("call", name, tuple(args))
+            groups.pop()
+            reader.pos += 1
+
+
+def _parse_atom(reader: _Reader) -> _Expr | str:
+    """Read a scalar or identify a call without consuming its arguments."""
     start = reader.pos
     while reader.pos < len(reader.text) and reader.text[reader.pos] not in " ()~=!,+-":
         reader.pos += 1
@@ -308,7 +340,7 @@ def _parse_primary(reader: _Reader) -> _Expr:
     if reader.peek() == "(":
         if not _is_name(token):
             raise _bad(f"{token!r} is not a function name", "use [a-z][A-Za-z0-9]*")
-        return ("call", token, _parse_args(reader))
+        return token
     literal = _parse_literal(token)
     if literal is not None:
         return ("lit", literal)
@@ -318,26 +350,6 @@ def _parse_primary(reader: _Reader) -> _Expr:
         f"malformed value {token!r}",
         "a wubyte is two hex digits 00-FF, an aschar ' and a character",
     )
-
-
-def _parse_args(reader: _Reader) -> tuple[_Expr, ...]:
-    """A call's parenthesized, comma-separated argument list."""
-    reader.pos += 1  # the "("
-    args: list[_Expr] = []
-    reader.skip()
-    if reader.peek() == ")":
-        reader.pos += 1
-        return ()
-    while True:
-        args.append(_parse_expr(reader))
-        reader.skip()
-        if reader.peek() == ",":
-            reader.pos += 1
-        elif reader.peek() == ")":
-            reader.pos += 1
-            return tuple(args)
-        else:
-            raise _bad("malformed argument list", "separate arguments with commas")
 
 
 def _parse_whole(text: str, slots: _Slots) -> _Expr:
@@ -403,14 +415,24 @@ def _parse_type(token: str) -> _Kind:
 def _walk(bodies: list[tuple[_Stmt, ...]], block: int) -> list[_Stmt]:
     """Every statement under ``block``, descending into nested blocks."""
     found: list[_Stmt] = []
-    for stmt in bodies[block]:
+    pending = list(reversed(bodies[block]))
+    while pending:
+        stmt = pending.pop()
         found.append(stmt)
         if stmt[0] == "if":
-            found += _walk(bodies, stmt[2])
-            found += _walk(bodies, stmt[3])
-        elif stmt[0] == "while":
-            found += _walk(bodies, stmt[2])
+            pending.extend(reversed(bodies[stmt[3]]))
+        if stmt[0] in ("if", "while"):
+            pending.extend(reversed(bodies[stmt[2]]))
     return found
+
+
+@dataclass(slots=True)
+class _IndentedBody:
+    level: int
+    owner: str
+    body: list[_Stmt]
+    statement: _Stmt | None = None
+    then: int | None = None
 
 
 class _Parser:
@@ -442,7 +464,7 @@ class _Parser:
                 self._parse_def()
                 self.slots = top_slots
             else:
-                top.append(self._statement(0))
+                top.append(self._top_statement())
         self.bodies.append(tuple(top))
         self.fns[0] = _Fn(
             "", "snuval", (), tuple(top_slots.names), len(self.bodies) - 1
@@ -459,21 +481,61 @@ class _Parser:
         )
 
     def _block(self, level: int, owner: str) -> int:
-        """Parse the statements one level below ``level``; return the block id."""
-        body: list[_Stmt] = []
-        while self.pos < len(self.lines):
-            here, text = self.lines[self.pos]
-            if here <= level:
-                break
-            if here != level + 1:
+        """Close indented bodies in source order, retaining stable block ids."""
+        pending = [_IndentedBody(level, owner, [])]
+        while True:
+            current = pending[-1]
+            if self.pos < len(self.lines):
+                here, text = self.lines[self.pos]
+                if here > current.level:
+                    if here != current.level + 1:
+                        raise _bad(
+                            f"indent jumps to {here} before {text!r}",
+                            "indent one level",
+                        )
+                    stmt = self._statement()
+                    if stmt[0] in ("if", "while"):
+                        pending.append(_IndentedBody(here, stmt[0].upper(), [], stmt))
+                    else:
+                        current.body.append(stmt)
+                    continue
+            if not current.body:
                 raise _bad(
-                    f"indent jumps to {here} before {text!r}", "indent one level"
+                    f"{current.owner} needs an indented body",
+                    "indent the body 4 spaces",
                 )
-            body.append(self._statement(here))
-        if not body:
-            raise _bad(f"{owner} needs an indented body", "indent the body 4 spaces")
-        self.bodies.append(tuple(body))
-        return len(self.bodies) - 1
+            block = len(self.bodies)
+            self.bodies.append(tuple(current.body))
+            pending.pop()
+            parent = current.statement
+            if parent is None:
+                return block
+            if parent[0] == "if" and current.then is None:
+                self._expect_else(current.level)
+                pending.append(_IndentedBody(current.level, "ELSE", [], parent, block))
+                continue
+            if parent[0] == "if":
+                pending[-1].body.append((*parent, current.then, block))
+            else:
+                pending[-1].body.append((*parent, block))
+
+    def _expect_else(self, level: int) -> None:
+        if self.pos < len(self.lines):
+            here, text = self.lines[self.pos]
+            if here == level and text.rstrip() == "ELSE":
+                self.pos += 1
+                return
+        raise _bad("IF without its ELSE", "follow every IF body with ELSE")
+
+    def _top_statement(self) -> _Stmt:
+        stmt = self._statement()
+        if stmt[0] == "if":
+            then = self._block(0, "IF")
+            self._expect_else(0)
+            return (*stmt, then, self._block(0, "ELSE"))
+        if stmt[0] == "while":
+            return (*stmt, self._block(0, "WHILE"))
+        return stmt
 
     def _parse_def(self) -> None:
         """Parse one ``DEF/<type> name p:v ...`` and register the overload."""
@@ -513,25 +575,17 @@ class _Parser:
         self.overloads[key] = len(self.fns)
         self.fns.append(_Fn(name, returns, key[1], tuple(self.slots.names), body))
 
-    def _statement(self, level: int) -> _Stmt:
-        """Parse the statement at the cursor, consuming any indented body."""
+    def _statement(self) -> _Stmt:
+        """Parse one statement line, leaving any indented body at the cursor."""
         _, text = self.lines[self.pos]
         self.pos += 1
         slots = self.slots
         if text.startswith(("DEF/", "DEF ")):
             raise _bad("a DEF may not be nested", "declare functions at column 0")
         if text.startswith("IF "):
-            condition = _parse_whole(text[3:], slots)
-            then = self._block(level, "IF")
-            if self.pos >= len(self.lines):
-                raise _bad("IF without its ELSE", "follow every IF body with ELSE")
-            here, nxt = self.lines[self.pos]
-            if here != level or nxt.rstrip() != "ELSE":
-                raise _bad("IF without its ELSE", "follow every IF body with ELSE")
-            self.pos += 1
-            return ("if", condition, then, self._block(level, "ELSE"))
+            return ("if", _parse_whole(text[3:], slots))
         if text.startswith("WHILE "):
-            return ("while", _parse_whole(text[6:], slots), self._block(level, "WHILE"))
+            return ("while", _parse_whole(text[6:], slots))
         if text.rstrip() == "ELSE":
             raise _bad("ELSE without a matching IF", "ELSE follows an IF body")
         if text.startswith("OUT "):
@@ -575,61 +629,111 @@ def _bit(*, flag: bool) -> _Value:
 def _eval(
     expr: _Expr, scope: tuple[_Value | None, ...], names: tuple[str, ...]
 ) -> _Value:
-    """Evaluate a call-free expression."""
-    if expr[0] == "lit":
-        literal: _Value = expr[1]
-        return literal
-    if expr[0] == "name":
-        value = scope[expr[1]]
-        if value is None:
-            raise HaltError(f"undeclared name {names[expr[1]]!r}")
-        return value
-    if expr[0] == "not":
-        return _bit(flag=not _eval(expr[1], scope, names).truthy())
-    if expr[0] == "step":
-        return _step_value(_eval(expr[2], scope, names), expr[1])
-    if expr[0] == "cmp":
-        same = _eval(expr[2], scope, names) == _eval(expr[3], scope, names)
-        return _bit(flag=same if expr[1] == "=" else not same)
-    # Unreachable: every call is pushed and rewritten in before evaluating.
-    raise HaltError(f"unresolved call to {expr[1]!r}")  # pragma: no cover
+    """Evaluate a call-free expression in left-to-right order."""
+    pending: list[tuple[str, object]] = []
+    while True:
+        kind = expr[0]
+        if kind == "lit":
+            value: _Value | None = expr[1]
+        elif kind == "name":
+            value = scope[expr[1]]
+            if value is None:
+                raise HaltError(f"undeclared name {names[expr[1]]!r}")
+        elif kind == "not":
+            pending.append(("not", None))
+            expr = expr[1]
+            continue
+        elif kind == "step":
+            pending.append((expr[1], None))
+            expr = expr[2]
+            continue
+        elif kind == "cmp":
+            pending.append(("right", (expr[1], expr[3])))
+            expr = expr[2]
+            continue
+        else:
+            raise HaltError(f"unresolved call to {expr[1]!r}")  # pragma: no cover
+
+        assert value is not None
+        while pending:
+            operation, operand = pending.pop()
+            if operation == "right":
+                assert isinstance(operand, tuple)
+                operator, expr = operand
+                pending.append((operator, value))
+                break
+            if operation == "not":
+                value = _bit(flag=not value.truthy())
+            elif operation in ("=", "!"):
+                same = value == operand
+                value = _bit(flag=same if operation == "=" else not same)
+            else:
+                value = _step_value(value, operation)
+        else:
+            return value
 
 
-def _pending_call(expr: _Expr) -> _Expr | None:
-    """The call evaluation would reach first (leftmost-innermost), or None."""
-    if expr[0] in ("lit", "name"):
-        return None
-    if expr[0] == "not":
-        return _pending_call(expr[1])
-    if expr[0] == "step":
-        return _pending_call(expr[2])
-    if expr[0] == "cmp":
-        return _pending_call(expr[2]) or _pending_call(expr[3])
-    for arg in expr[2]:
-        found = _pending_call(arg)
-        if found is not None:
-            return found
-    return expr
+def _first_call(expr: _Expr, returned: _Value | None = None) -> _Expr | None:
+    """Find the first call, or replace it with its returned value."""
+    pending: list[tuple[_Expr, int]] = []
+    while True:
+        kind = expr[0]
+        if kind == "not":
+            pending.append((expr, 0))
+            expr = expr[1]
+            continue
+        if kind == "step":
+            pending.append((expr, 0))
+            expr = expr[2]
+            continue
+        if kind == "cmp":
+            pending.append((expr, 0))
+            expr = expr[2]
+            continue
+        if kind == "call":
+            if not expr[2]:
+                break
+            pending.append((expr, 0))
+            expr = expr[2][0]
+            continue
+        finished = False
+        while pending:
+            expr, index = pending.pop()
+            if expr[0] == "call":
+                if index + 1 == len(expr[2]):
+                    finished = True
+                    break
+                pending.append((expr, index + 1))
+                expr = expr[2][index + 1]
+                break
+            if expr[0] == "cmp" and index == 0:
+                pending.append((expr, 1))
+                expr = expr[3]
+                break
+        else:
+            return None
+        if finished:
+            break
 
-
-def _substitute(expr: _Expr, target: _Expr, value: _Value) -> _Expr:
-    """A copy of ``expr`` with the call ``target`` replaced by a literal."""
-    if expr is target:
-        return ("lit", value)
-    if expr[0] in ("lit", "name"):
+    if returned is None:
         return expr
-    if expr[0] == "not":
-        return ("not", _substitute(expr[1], target, value))
-    if expr[0] == "step":
-        return ("step", expr[1], _substitute(expr[2], target, value))
-    if expr[0] == "cmp":
-        return (
-            "cmp",
-            expr[1],
-            _substitute(expr[2], target, value),
-            _substitute(expr[3], target, value),
-        )
-    return ("call", expr[1], tuple(_substitute(a, target, value) for a in expr[2]))
+    result: _Expr = ("lit", returned)
+    for parent, index in reversed(pending):
+        kind = parent[0]
+        if kind == "not":
+            result = ("not", result)
+        elif kind == "step":
+            result = ("step", parent[1], result)
+        elif kind == "cmp":
+            result = (
+                ("cmp", parent[1], parent[2], result)
+                if index
+                else ("cmp", parent[1], result, parent[3])
+            )
+        else:
+            args = parent[2]
+            result = ("call", parent[1], (*args[:index], result, *args[index + 1 :]))
+    return result
 
 
 def _wanted_read(state: _State, prog: _Program) -> _Kind | None:
@@ -745,11 +849,11 @@ def _advance(
     if slot is not None:
         working: _Expr = frame.pending if frame.pending is not None else stmt[slot]
         if frame.returned is not None:
-            done = _pending_call(working)
-            if done is not None:  # pragma: no branch
-                working = _substitute(working, done, frame.returned)
+            resolved = _first_call(working, frame.returned)
+            assert resolved is not None
+            working = resolved
             frame = frame._replace(returned=None)
-        call = _pending_call(working)
+        call = _first_call(working)
         if call is not None:
             frame = frame._replace(pending=working)
             return _push_call((frame, parent), prog, call), None
@@ -803,6 +907,33 @@ def _wubyte_of(line: str) -> int:
 _WORKSPACE_MODEL = WorkspaceModel("dinac-v1", ("frames", "input_cursor"))
 
 
+def _workspace_value(item: object) -> object:
+    """Convert typed values inside suspended expressions without recursion."""
+    if isinstance(item, _Value):
+        return (item.kind, item.code)
+    if item is None or isinstance(item, (int, str)):
+        return item
+    if not isinstance(item, tuple):
+        raise TypeError("unsupported DINAC workspace value")
+    frozen: dict[int, object] = {}
+    pending: list[tuple[object, bool]] = [(item, False)]
+    while pending:
+        node, ready = pending.pop()
+        if isinstance(node, _Value):
+            frozen[id(node)] = (node.kind, node.code)
+        elif isinstance(node, tuple):
+            if ready:
+                frozen[id(node)] = tuple(frozen[id(part)] for part in node)
+            else:
+                pending.append((node, True))
+                pending.extend((part, False) for part in node)
+        elif node is None or isinstance(node, (str, int)):
+            frozen[id(node)] = node
+        else:
+            raise TypeError("unsupported DINAC workspace value")
+    return frozen[id(item)]
+
+
 class _Machine:
     """A DINAC run: the call stack as an immutable linked pair."""
 
@@ -851,16 +982,6 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
-
-        def value(item: object) -> object:
-            if isinstance(item, _Value):
-                return (item.kind, item.code)
-            if isinstance(item, tuple):
-                return tuple(value(part) for part in item)
-            if item is None or isinstance(item, (int, str)):
-                return item
-            raise TypeError("unsupported DINAC workspace value")
-
         frames = []
         rest = self.state
         while rest is not None:
@@ -868,10 +989,10 @@ class _Machine:
             frames.append(
                 (
                     f.fn,
-                    tuple(value(v) for v in f.scope),
+                    tuple(_workspace_value(v) for v in f.scope),
                     tuple((body, pc) for body, pc in f.blocks),
-                    value(f.pending),
-                    value(f.returned),
+                    _workspace_value(f.pending),
+                    _workspace_value(f.returned),
                     tuple(f.null_types),
                 )
             )

@@ -1,6 +1,9 @@
 """Scaling survives PNG round trips, including ambiguous codel grids."""
 
+import json
+from base64 import b64encode
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -258,3 +261,64 @@ def test_native_png_checks_explicit_settings_before_pillow(
     with pytest.raises(esolangs.MissingDependencyError):
         api.from_file(path, settings=additions)
     assert destination.read_bytes() == copied
+
+
+def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
+    declaration = LANGUAGES[RASTER[0]]
+    owner = replace(declaration, name="Scoped Drawing!", id="")
+    decoy = replace(
+        declaration, name="Alias Drawing", id="", aliases=("scoped-drawing",)
+    )
+    catalog = esolangs.Catalog([owner, decoy])
+    assert catalog.bind("scoped-drawing").name == decoy.name
+    api = catalog.bind(owner.name)
+    raster = Raster((((1, 2, 3),),))
+    path = tmp_path / "source.png"
+    for spelling in (" SCOPED-DRAWING ", " scoped_drawing! "):
+        tagged = png.write_metadata(
+            raster.to_png(), {"version": 1, "language": spelling, "settings": {}}
+        )
+        assert (
+            png.attach_source_metadata(
+                tagged, api.name, api.settings(), None, catalog=catalog
+            )
+            is tagged
+        )
+        path.write_bytes(tagged)
+        assert api.from_file(path) == api.from_source(raster, settings=api.settings())
+    path.write_bytes(
+        png.write_metadata(
+            raster.to_png(), {"version": 1, "language": "Scoped Drawing?"}
+        )
+    )
+    with pytest.raises(esolangs.ProgramError, match="generated for"):
+        api.from_file(path)
+
+    owner = replace(declaration, name="Café drawing!", id="")
+    api = esolangs.Catalog([owner]).bind(owner.name)
+    settings = api.settings()
+    record = api.generate("01", settings=settings, scale=2)
+    api.to_file(record, path)
+    native = path.read_bytes()
+    raw = record.source.to_png()
+    alias = "Cafe\u0301 drawing!"
+    assert (
+        png.write_source(record.source.rows, alias, settings, 2, input_arity=1)
+        == native
+    )
+    assert png.attach_source_metadata(raw, alias, settings, 2, input_arity=1) == native
+    tag = png.read_metadata(native) | {"language": alias}
+    altered = png.write_metadata(raw, tag)
+    assert png.attach_source_metadata(altered, owner.name, None, 2) is altered
+    assert png.attach_source_metadata(altered, alias, settings, 2) is altered
+    with pytest.raises(esolangs.ProgramError, match="conflicting PNG language"):
+        png.attach_source_metadata(altered, "cafe_drawing", None, 2)
+    path.write_bytes(altered)
+    native_record = api.from_file(path)
+    portable = json.loads(api.to_json(record))
+    portable["language"] = alias
+    portable["source"] = b64encode(altered).decode("ascii")
+    rematerialized = api.from_json(json.dumps(portable))
+    assert native_record == rematerialized == record
+    for saved in (native_record, rematerialized):
+        assert "".join(api.evaluate(saved, [bit]).answer for bit in (0, 1)) == "01"

@@ -425,6 +425,34 @@ def test_an_invalid_function_is_inert_even_after_a_division_by_zero() -> None:
     assert _applied(5, ("a", "/", "0", "+")) == 5
     with pytest.raises(HaltError, match="division by zero"):
         _applied(5, ("a", "/", "0"))
+    _check_deep_function_routes()
+
+
+def _check_deep_function_routes() -> None:
+    api = Language("CV(N)(C)")
+    flat = "do" + "bodo" * 1100
+    assert api.run(flat + "suθi", stdin="7").output == "7707"
+
+    source = "ʔo" * 400 + flat + "ʡo" * 400 + "suθi"
+    prepared = api.prepare(source)
+    native = api.run(source, stdin="7")
+    assert native.output == "7707"
+    assert prepared.run(stdin="7") == native
+
+    limits = ExecutionLimits(max_steps=len(source))
+    bounded = api.run(source, stdin="7", limits=limits)
+    assert bounded.output == native.output
+    assert bounded.steps == len(source)
+    assert (bounded.input_position, bounded.input_reads, bounded.input_past_end) == (
+        1,
+        1,
+        0,
+    )
+    assert prepared.run(stdin="7", limits=limits) == bounded
+    assert api.run(source, stdin="7", limits=limits, isolated=True) == bounded
+    debug = prepared.make_debugger(stdin="7")
+    assert debug.run(limits=limits) == "halted"
+    assert debug.observation == bounded
 
 
 def test_wide_decimal_input_ignores_the_host_digit_cap():

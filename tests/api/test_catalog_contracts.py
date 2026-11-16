@@ -4,6 +4,7 @@ import json
 import re
 from dataclasses import replace
 from pathlib import Path
+from unicodedata import normalize
 
 import pytest
 
@@ -212,6 +213,45 @@ def test_unicode_catalog_name_round_trips_and_forms_a_wiki_url() -> None:
     restored = api.from_json(api.to_json(program))
     assert restored == program
     assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+
+    original = LANGUAGES[REFERENCE]
+    alias = "Maître"
+    renamed_alias = normalize("NFD", alias.upper())
+    for name in ("Café noir", "Cafe\u0301 noir", "Άλφα", "≠"):
+        alternate = normalize("NFD", name)
+        if alternate == name:
+            alternate = normalize("NFC", name)
+        declaration = replace(
+            original, name=name, id="private_script", aliases=(alias,)
+        )
+        catalog = esolangs.Catalog([declaration])
+        assert catalog.resolve(name) == name
+        scoped = catalog.bind(alternate.upper())
+        assert catalog.resolve(renamed_alias) == scoped.name == name
+        with pytest.raises(esolangs.ArgumentError, match="one owner"):
+            catalog.with_language(
+                replace(declaration, name=alternate, id="other", aliases=())
+            )
+        stable = scoped.generate("01", settings=scoped.settings())
+        attached = replace(stable, language=alternate)
+        assert stable == attached
+        document = json.loads(scoped.to_json(stable))
+        assert document["language"] == name
+        document["language"] = alternate
+        restored = scoped.from_json(json.dumps(document))
+        assert restored == stable
+        assert "".join(scoped.evaluate(restored, [b]).answer for b in (0, 1)) == "01"
+        if " " in name:
+            lexical = alternate.replace(" ", "-")
+            assert (
+                scoped.from_json(json.dumps(document | {"language": lexical})) == stable
+            )
+        for foreign in (renamed_alias, alternate + "+"):
+            with pytest.raises(esolangs.ProgramError, match="program language must be"):
+                scoped.from_json(json.dumps(document | {"language": foreign}))
+        if name == "Άλφα":
+            with pytest.raises(esolangs.UnknownLanguageError):
+                catalog.resolve(alternate + "\u0323")
 
 
 def test_wiki_urls_use_utf8_backing_text() -> None:

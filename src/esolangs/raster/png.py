@@ -817,10 +817,11 @@ def _retained_owner(
     if not isinstance(owner, str) or not owner.strip():
         raise ValueError("stored PNG language must be a nonblank string")
     if catalog is None:
-        if (
-            requested is None
-            or owner.strip().casefold() == requested.strip().casefold()
-        ):
+        if requested is None or requested == owner:
+            return owner
+        from esolangs.registry._catalog import _folded_spelling
+
+        if _folded_spelling(owner) == _folded_spelling(requested):
             return owner
     else:
         from esolangs.registry._catalog import resolve_origin
@@ -990,14 +991,16 @@ def _source_claims(
             raise ArgumentError("settings must be a DialectSettings or None")
         owner = settings._schema.language  # noqa: SLF001
         spelling = owner if language is None else language
-        if (
-            catalog is not None
-            or spelling.strip().casefold() != owner.strip().casefold()
-        ):
-            # A distinct spelling needs the catalog that declares the alias.
-            from esolangs.registry._catalog import get_catalog
+        if catalog is not None or spelling != owner:
+            # An alias outside the owner's spelling needs its declared catalog.
+            from esolangs.registry._catalog import _folded_spelling, get_catalog
 
-            claimed = get_catalog(catalog).resolve(spelling)
+            claimed = (
+                owner
+                if catalog is None
+                and _folded_spelling(spelling) == _folded_spelling(owner)
+                else get_catalog(catalog).resolve(spelling)
+            )
             if claimed != owner:
                 raise ArgumentError(
                     f"dialect settings belong to {owner}, not {claimed}"

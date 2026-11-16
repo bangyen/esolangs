@@ -505,6 +505,13 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
             "",
             f"{expected.error}\n",
         )
+    combined = scope.bind(name).execute(missing, isolated=True, scale=2, seed=1)
+    assert combined.error is not None
+    assert str(combined.error) == str(expected.error)
+    assert _failure(
+        ["run", "--isolated", "--scale", "2", "--seed", "1", name, str(missing)],
+        capsys,
+    ) == ("", f"{expected.error}\n")
     assert call_both(
         ["run", "--max-steps", "2", name, str(path)], capsys, stdin="Q"
     ) == ("Q", "")

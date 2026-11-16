@@ -164,11 +164,11 @@ def _run(rest: list[str]) -> None:
     # have answered without reading a byte.
     with _errors():
         declaration = catalog.languages[catalog.resolve(language)]
-        # Before stdin too: held open, `run --seed 1 brainfuck` hung here.
-        check_seed_for(declaration.name, seed, catalog=catalog)
-        check_scale_for(declaration.name, scale, catalog=catalog)
         if worker:
             check_worker_runtime(declaration.name, catalog)
+        # Match execution's order for source options and seed.
+        check_scale_for(declaration.name, scale, catalog=catalog)
+        check_seed_for(declaration.name, seed, catalog=catalog)
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
