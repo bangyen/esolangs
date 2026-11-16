@@ -3,6 +3,7 @@
 import io
 import os
 import pickle
+import stat
 from dataclasses import FrozenInstanceError, dataclass, replace
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from esolangs.artifacts import (
     TemplateBindings,
 )
 from esolangs.registry import LANGUAGES, canonical_id
+from esolangs.runtime._files import _ANCHORED_STAGING
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages, one, one_where
 from tests.support.reference import REFERENCE
@@ -498,3 +500,48 @@ def test_stream_export_retains_relative_symlink_traversal(
         assert referent.read_bytes() == b"++."
         link.unlink()
         link.symlink_to(child, target_is_directory=True)
+
+    if _ANCHORED_STAGING:
+        _check_stream_export_after_parent_rename(tmp_path, api)
+
+
+def _check_stream_export_after_parent_rename(
+    tmp_path: Path, api: esolangs.Language
+) -> None:
+    parent = tmp_path / "original"
+    destination = parent / "program"
+    moved = tmp_path / "moved"
+    saved = moved / destination.name
+    parent.mkdir()
+    destination.write_bytes(b"++.")
+    destination.chmod(0o644)
+    refusal = esolangs.ArgumentError("reader refused after rename")
+
+    class RenamingSource:
+        def __init__(self, *, refuse: bool) -> None:
+            self.refuse = refuse
+
+        def read(self) -> bytes:
+            parent.rename(moved)
+            parent.mkdir()
+            destination.write_bytes(b"+++.")
+            saved.chmod(0o600)
+            if self.refuse:
+                raise refusal
+            return b"+."
+
+    with pytest.raises(esolangs.ArgumentError) as caught:
+        api.to_file(RenamingSource(refuse=True), destination)
+    assert caught.value is refusal
+    assert set(moved.iterdir()) == {saved}
+    assert saved.read_bytes() == b"++."
+    destination.unlink()
+    parent.rmdir()
+    moved.rename(parent)
+    destination.chmod(0o644)
+
+    api.to_file(RenamingSource(refuse=False), destination)
+    assert set(moved.iterdir()) == {saved}
+    assert stat.S_IMODE(saved.stat().st_mode) == 0o600
+    assert api.run(saved).output == "\x01"
+    assert destination.read_bytes() == b"+++."

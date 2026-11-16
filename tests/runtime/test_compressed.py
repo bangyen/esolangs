@@ -10,6 +10,7 @@ import pytest
 
 import esolangs
 from esolangs.compressed import CompressedText
+from esolangs.runtime import _files
 from esolangs.runtime._files import explicit_path, write_staged
 from esolangs.runtime._source import text_source
 from scripts.source_units import source_units
@@ -42,21 +43,37 @@ def test_compressed_writers_publish_only_after_success(
     destination = tmp_path / "source.gz"
     destination.write_bytes(b"existing file")
 
-    def refuse_replace(staged, requested):
-        assert fspath(requested) == fspath(destination)
-        assert staged.read_bytes() == program.to_gzip()
+    def refuse_replace(staged, requested, *, src_dir_fd=None, dst_dir_fd=None):
+        if dst_dir_fd is None:
+            assert fspath(requested) == fspath(destination)
+        else:
+            assert requested == destination.name
+            assert os.path.samestat(os.fstat(dst_dir_fd), tmp_path.stat())
+        with open(
+            staged,
+            "rb",
+            opener=lambda name, flags: os.open(name, flags, dir_fd=src_dir_fd),
+        ) as file:
+            assert file.read() == program.to_gzip()
         raise PermissionError("replacement refused")
 
-    monkeypatch.setattr(Path, "replace", refuse_replace)
-    for save in (
-        program.to_file,
-        lambda path: esolangs.to_file(REFERENCE, program, path, gzip=True),
-    ):
-        with pytest.raises(
-            esolangs.ProgramError, match=r"source\.gz.*replacement refused"
-        ):
-            save(destination)
-        assert destination.read_bytes() == b"existing file"
+    for anchored in dict.fromkeys((_files._ANCHORED_STAGING, False)):
+        monkeypatch.setattr(_files, "_ANCHORED_STAGING", anchored)
+        destination.write_bytes(b"existing file")
+        with monkeypatch.context() as patch:
+            patch.setattr(os, "replace", refuse_replace)
+            for save in (
+                program.to_file,
+                lambda path: esolangs.to_file(REFERENCE, program, path, gzip=True),
+            ):
+                with pytest.raises(
+                    esolangs.ProgramError, match=r"source\.gz.*replacement refused"
+                ):
+                    save(destination)
+                assert destination.read_bytes() == b"existing file"
+                assert list(tmp_path.iterdir()) == [destination]
+        program.to_file(destination)
+        assert destination.read_bytes() == program.to_gzip()
         assert list(tmp_path.iterdir()) == [destination]
 
 

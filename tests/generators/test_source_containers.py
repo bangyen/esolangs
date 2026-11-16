@@ -793,14 +793,13 @@ def test_stream_export_retains_error_when_staging_cleanup_is_denied(
             return b"+."
 
     if not source_refused:
-        replace_path = Path.replace
+        replace_path = os.replace
 
-        def replace_and_restrict(path: Path, target: str) -> Path:
-            result = replace_path(path, target)
+        def replace_and_restrict(path, target, **directories) -> None:
+            replace_path(path, target, **directories)
             parent.chmod(0o555)
-            return result
 
-        monkeypatch.setattr(Path, "replace", replace_and_restrict)
+        monkeypatch.setattr(os, "replace", replace_and_restrict)
 
     try:
         with pytest.raises(esolangs.ProgramError) as caught:

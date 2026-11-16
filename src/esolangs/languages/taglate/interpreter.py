@@ -228,6 +228,7 @@ class _Machine:
         image = code if isinstance(code, _Image) else _prepare_source(code)
         self.queue, self.tokens, self.match = image
         self.ind = 0
+        self._fault: tuple[tuple[object, ...], tuple[str, ...]] | None = None
         self._writer = _BufferedOutput()
 
     @property
@@ -243,22 +244,29 @@ class _Machine:
         """The addressable cells."""
         return list(self.queue)
 
+    def _instruction(self) -> int | WorkspaceVariant:
+        if self._fault is not None:
+            return WorkspaceVariant("halt_fault", (self.ind, *self._fault))
+        accepted = self._writer.accepted
+        return (
+            WorkspaceVariant("pending_output", (self.ind, accepted))
+            if accepted
+            else self.ind
+        )
+
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of cycle grouping."""
-        accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             queue=self.queue,
-            instruction=(
-                WorkspaceVariant("pending_output", (self.ind, accepted))
-                if accepted
-                else self.ind
-            ),
+            instruction=self._instruction(),
             input_cursor=self.io.progress(),
         )
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         boundary = (self.queue, self.ind, self.io.progress())
+        if self._fault is not None:
+            return (*boundary, self._fault)
         accepted = self._writer.accepted
         return (*boundary, accepted) if accepted else boundary
 
@@ -278,6 +286,12 @@ class _Machine:
         the call.  A failed step still writes the state back, so the queue
         is left as the original left it.
         """
+        if self._fault is not None:
+            args, notes = self._fault
+            error = HaltError(*args)
+            for note in notes:
+                error.add_note(note)
+            raise error
         if self.halted:
             return
         tok = self.tokens[self.ind]
@@ -290,9 +304,10 @@ class _Machine:
         state = self._state
         try:
             self._restore(_advance(state, tok, self.match, byte))
-        except HaltError:
-            # The pops that succeeded before the halt still happened.
+        except HaltError as error:
+            # The successful pops stand, but the failed command cannot restart.
             self._restore(_consumed(state, tok))
+            self._fault = error.args, tuple(getattr(error, "__notes__", ()))
             raise
 
 

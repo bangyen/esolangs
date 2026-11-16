@@ -8,11 +8,12 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs import ExecutionLimits
+from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs import run as execute_program
 from esolangs.exceptions import HaltError
 from esolangs.languages.taglate.interpreter import run
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_lines
 from tests.support.raises import raises_message
@@ -86,6 +87,10 @@ def test_binary_underflow_retains_consumed_pops(seed, command) -> None:
         machine.step()
     assert machine.queue == ()
     assert machine.ind == 0
+    saved = machine.snapshot()
+    with pytest.raises(HaltError, match="queue is empty"):
+        machine.step()
+    assert machine.snapshot() == saved
 
 
 def test_repeated_programs_share_immutable_parser_state() -> None:
@@ -303,3 +308,36 @@ def test_a_halting_division_leaves_the_rest_of_the_queue() -> None:
     with pytest.raises(HaltError, match="zero"):
         machine.step()
     assert machine.queue == (ord("A"),)
+
+    api = Language("Taglate")
+    plan = api.prepare("ZA\0BC\nidi")
+    limits = ExecutionLimits(max_steps=3)
+    expected = ExecutionResult("Z", 0, 0, 0, steps=1)
+    for isolated in (False, True):
+        outcome = plan.execute(limits=limits, isolated=isolated)
+        assert type(outcome.error) is HaltError
+        assert outcome.observation == expected
+
+    debug = plan.make_debugger()
+    with pytest.raises(HaltError, match="queued 0") as initial:
+        debug.run(limits=limits)
+    assert initial.value.observation == expected
+    assert debug.memory == [ord("B"), ord("C")]
+    saved = debug.snapshot()
+    for invoke in (
+        debug.step,
+        lambda: debug.run(limits=limits),
+        lambda: run_until_halt_or_cycle(debug, limit=3),
+    ):
+        with pytest.raises(HaltError, match="queued 0") as retry:
+            invoke()
+        assert retry.value is not initial.value
+        assert retry.value.args == initial.value.args
+        assert retry.value.observation == initial.value.observation == expected
+        assert debug.ip == 1
+        assert debug.snapshot() == saved
+
+    healthy = "ZA\x02BC\nidi"
+    finished = api.run(healthy, limits=limits)
+    assert (finished.output, finished.steps) == ("ZB", 3)
+    assert api.run(healthy, limits=limits, isolated=True) == finished

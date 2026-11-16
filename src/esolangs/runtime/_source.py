@@ -125,7 +125,12 @@ def _read_container(
                 if located is None
                 else located.argument
             )
-            label = explicit_path(argument).spelling
+            try:
+                label = explicit_path(argument).spelling
+            except ArgumentError as error:
+                # Binding the operand can fail before any filesystem access.
+                _remember_acquisition_failure(error)
+                raise
             filename = label if located is None else located.resolve(label)
             with _open_program_path(filename, label) as file:
                 return read_snapshot(file), label

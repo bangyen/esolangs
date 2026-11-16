@@ -293,16 +293,45 @@ class TestAMissingFileIsAFileNotFoundError:
         assert not isinstance(caught.value, FileNotFoundError)
         assert "cannot read" in str(caught.value)
 
-    def test_a_pathlike_returning_a_non_str_is_a_program_error(self) -> None:
-        """``__fspath__`` returning a non-str made ``pathlib`` raise ``TypeError``."""
+    def test_a_pathlike_returning_an_invalid_spelling_is_an_argument_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """All routes reject the operand before opening a file."""
 
         class Bad:
-            def __fspath__(self) -> int:
-                return 5
+            def __init__(self, spelling: object) -> None:
+                self.spelling = spelling
 
-        with pytest.raises(esolangs.ProgramError) as caught:
-            _check_program(REFERENCE, Bad())
-        assert "cannot read" in str(caught.value)
+            def __fspath__(self) -> object:
+                return self.spelling
+
+        def unexpected_open(*_args):
+            pytest.fail("opened a file with an invalid path operand")
+
+        monkeypatch.setattr(
+            "esolangs.runtime._source._open_program_path", unexpected_open
+        )
+        api = esolangs.Language(REFERENCE)
+        for spelling, message in (
+            ("", "path must not be empty"),
+            (5, "path must be a str or PathLike returning str"),
+            (b"program", "path must be a str or PathLike returning str"),
+        ):
+            path = Bad(spelling)
+            for invoke in (
+                api.from_file,
+                api.prepare,
+                api.run,
+                api.make_vm,
+                lambda source: api.run(source, isolated=True),
+                lambda source: api.run(
+                    source, limits=esolangs.ExecutionLimits(max_steps=2)
+                ),
+            ):
+                with pytest.raises(esolangs.ArgumentError) as caught:
+                    invoke(path)
+                assert str(caught.value) == message
+                assert not getattr(caught.value, "__notes__", ())
 
 
 class TestSourceAndPathsAreExplicit:

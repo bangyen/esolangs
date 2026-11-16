@@ -9,9 +9,8 @@ import pytest
 
 from esolangs.languages.taglate.interpreter import _Machine
 from esolangs.runtime._state import WorkspaceModel
+from tests.support import workspace_oracle as workspace
 from tests.support.model_input import matching_delimiter
-from tests.support.workspace_oracle import agrees as workspace_agrees
-from tests.support.workspace_oracle import check_erasures
 
 _WORKSPACE = WorkspaceModel("taglate-v1", ("queue", "instruction", "input_cursor"))
 
@@ -31,20 +30,13 @@ def _partner(tokens, pc):
 
 def _model(seed, tokens, stdin):
     queue = deque(ord(c) % 65536 for c in seed)
-    pc = cursor = 0
-    output = ""
-    error = None
-    trace = []
+    pc = cursor = instruction = 0
+    output, error, trace = "", None, []
     for step in range(17):
         halted = pc == len(tokens)
-        trace.append(((tuple(queue), pc), halted, output, cursor, cursor))
-        if error:
-            break
-        if halted:
-            trace.extend([trace[-1]] * 3)
-            break
-        if step == 16:
-            break
+        trace.append(((tuple(queue), instruction), halted, output, cursor, cursor))
+        if error or halted or step == 16:
+            return error, trace + ([trace[-1]] * 3 if halted else [])
         token = tokens[pc]
         destination = pc + 1
         try:
@@ -79,20 +71,28 @@ def _model(seed, tokens, stdin):
                     error = "syntax"
                     continue
                 destination = partner + 1
-        except (IndexError, ZeroDivisionError):
+        except (IndexError, ZeroDivisionError) as problem:
+            note = "hint: enqueue a value before removing one from the queue"
+            message = "the queue is empty, so there is nothing to pop"
+            if isinstance(problem, ZeroDivisionError):
+                message = f"'d' divides {first} by the queued {second}, which is zero"
+                note = "hint: ensure the divisor is nonzero before dividing"
+            instruction = workspace.WorkspaceVariant(
+                "halt_fault", (pc, (message,), (note,))
+            )
             error = "halt"
             continue
-        pc = destination
+        pc = instruction = destination
     return error, trace
 
 
 def _check(factory, seed, tokens, stdin):
     code = [seed, "g?qq".join(tokens)]
-    workspace_agrees(
+    workspace.agrees(
         _model(seed, tokens, stdin),
         (factory, code, stdin),
         (_WORKSPACE, lambda row: (*row[0], row[-1])),
-        lambda m: (m.queue, m.ind),
+        lambda m: (m.queue, m._instruction()),
         cap=16,
         context=(seed, tokens, stdin),
     )
@@ -116,4 +116,4 @@ def check_raw_taglate():
 
     with pytest.raises(AssertionError):
         _check(MissingInput, "", ("h", "i"), "x")
-    check_erasures(_WORKSPACE, _check, _Machine, "A", ("a", "i"), "")
+    workspace.check_erasures(_WORKSPACE, _check, _Machine, "A", ("a", "i"), "")
