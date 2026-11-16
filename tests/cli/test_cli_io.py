@@ -811,6 +811,7 @@ def test_sigint_does_not_wait_on_full_stderr(
     os.set_blocking(writer.fileno(), True)
     code = r"""
 import os
+import signal
 import sys
 from esolangs import cli
 from esolangs.cli import io
@@ -830,11 +831,14 @@ if phase == "diagnostic":
         return write(data)
     raw.write = blocked
 elif phase == "interrupt":
-    read_stdin = cli._read_stdin
-    def started(**options):
-        ready()
-        return read_stdin(**options)
-    cli._read_stdin = started
+    def start(_thread):
+        try:
+            ready()
+            signal.pause()
+        except KeyboardInterrupt:
+            # CPython can mask the interrupt while releasing its startup lock.
+            raise RuntimeError("release unlocked lock") from None
+    io.threading.Thread.start = start
 else:
     io._WAITING_NOTICE_AFTER = 0.1
     diagnostic = io._diagnostic

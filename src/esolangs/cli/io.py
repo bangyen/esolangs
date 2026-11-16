@@ -215,7 +215,14 @@ def _slurp_thread[SlurpT](
             box.append(exc)
 
     reader = threading.Thread(target=copy_context().run, args=(_slurp,), daemon=True)
-    reader.start()
+    try:
+        reader.start()
+    except RuntimeError as exc:
+        # SIGINT during CPython's startup condition release can raise
+        # "release unlocked lock" while unwinding the original interrupt.
+        if isinstance(exc.__context__, KeyboardInterrupt):
+            raise exc.__context__ from None
+        raise
     notice_at = None if stdin_hint is None else monotonic() + _WAITING_NOTICE_AFTER
     # Poll the join so Python can handle signals delivered to the reader.
     while reader.is_alive():
