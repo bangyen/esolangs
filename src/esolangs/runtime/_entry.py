@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
@@ -18,7 +19,7 @@ from esolangs.runtime._source import (
     native_text_source,
     text_source,
 )
-from esolangs.runtime.io import IO
+from esolangs.runtime.io import IO, _RedirectedIO
 
 if TYPE_CHECKING:
     from os import PathLike
@@ -31,6 +32,16 @@ if TYPE_CHECKING:
 SourceShape = Literal["text", "keep", "strip"]
 # These loaders accept exact path spellings without needing a pathlib.Path.
 _TEXT_LOADERS = (text_source, native_text_source, compressed_text_source)
+
+
+def _standard_io() -> IO:
+    """Keep TTY input interactive and borrow redirected text without a snapshot."""
+    stream = sys.stdin
+    with suppress(OSError, ValueError):
+        isatty = getattr(stream, "isatty", None)
+        if callable(isatty) and isatty():
+            return IO()
+    return _RedirectedIO(stream)
 
 
 def script_main(
@@ -61,7 +72,7 @@ def script_main(
         source = source.splitlines(keepends=True)
     elif shape == "strip":
         source = source.splitlines()
-    code = run(source, IO())
+    code = run(source, _standard_io())
     if code is not None:
         sys.exit(code)
 
@@ -81,6 +92,6 @@ def raster_script_main(language: str, run: _RasterRunner) -> None:
 
     artifact = from_file(language, sys.argv[1])
     assert isinstance(artifact.source, Raster)
-    code = run(artifact.source, IO(), scale=artifact.scale)
+    code = run(artifact.source, _standard_io(), scale=artifact.scale)
     if code is not None:
         sys.exit(code)

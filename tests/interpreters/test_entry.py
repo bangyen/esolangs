@@ -1,7 +1,10 @@
 """Unit tests for the shared interpreter ``__main__`` body."""
 
 import gzip
+import io
 import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +18,7 @@ from esolangs.runtime._source import (
     text_source,
 )
 from esolangs.runtime.io import IO
+from tests.support.reference import REFERENCE
 
 PROGRAM = "one\ntwo\n"
 
@@ -86,9 +90,16 @@ class TestArgumentHandling:
     def test_none_exits_normally(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _seen, run = _spy()
+        seen, run = _spy()
         monkeypatch.setattr("sys.argv", ["prog", str(_written(tmp_path))])
         script_main(run)
+        closed = io.StringIO()
+        closed.close()
+        monkeypatch.setattr(sys, "stdin", closed)
+        script_main(run)
+        assert seen == [PROGRAM, PROGRAM]
+        _check_redirected_stdin(monkeypatch)
+        _check_reference_script(tmp_path)
 
     def test_the_file_is_read_as_utf8(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -100,6 +111,65 @@ class TestArgumentHandling:
         monkeypatch.setattr("sys.argv", ["prog", str(path)])
         script_main(run)
         assert seen == ["◘\n"]
+
+
+def _check_redirected_stdin(monkeypatch: pytest.MonkeyPatch) -> None:
+    # This wrapper already owns decoded, prefetched input when the script starts.
+    payload = io.BytesIO(b"X  42\r\nline\r\nlast\r")
+    with io.TextIOWrapper(payload, encoding="utf-8", newline="\n") as stream:
+        assert stream.read(1) == "X"
+        monkeypatch.setattr(sys, "stdin", stream)
+
+        def consume(_source, port: IO) -> None:
+            assert port.input_token() == "42"
+            assert port.input_char() == ord("\r")
+            assert port.input_char() == ord("\n")
+            assert port.input_str() == "line"
+            assert port.input_all() == "last\r"
+            with pytest.raises(EOFError):
+                port.input_char()
+
+        script_main(consume)
+        assert not stream.closed
+
+    monkeypatch.setattr(sys, "stdin", None)
+
+    def no_stdin(_source, port: IO) -> None:
+        assert port.input_all() == ""
+        with pytest.raises(EOFError):
+            port.input_str()
+
+    script_main(no_stdin)
+
+
+def _check_reference_script(tmp_path: Path) -> None:
+    path = tmp_path / "echo"
+    path.write_text(",.,.", encoding="utf-8")
+    command = [sys.executable, "-m", f"esolangs.languages.{REFERENCE}.interpreter"]
+    for data in (b"A", b"AB", b"A\r\n"):
+        run = subprocess.run(
+            [*command, str(path)],
+            input=data,
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+        assert run.stdout == b"Input: " + data[:2]
+        assert (run.returncode != 0) == (len(data) == 1)
+    path.write_text(",.", encoding="utf-8")
+    with subprocess.Popen(
+        [*command, str(path)], stdin=subprocess.PIPE, stdout=subprocess.PIPE
+    ) as child:
+        assert child.stdin is not None
+        assert child.stdout is not None
+        try:
+            child.stdin.write(b"Z")
+            child.stdin.flush()
+            assert child.wait(timeout=5) == 0
+            assert child.stdout.read() == b"Input: Z"
+        finally:
+            if child.poll() is None:
+                child.kill()
 
 
 def test_loader_receives_the_path_and_owns_source_decoding(

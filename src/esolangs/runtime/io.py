@@ -12,12 +12,15 @@ from __future__ import annotations
 import io as _stdlib_io
 import re
 from collections.abc import Callable
-from typing import Never
+from typing import TYPE_CHECKING, Never
 
 from esolangs.exceptions import ArgumentError, InputExhaustedError
 from esolangs.runtime._input import CheckedInput, InputSource, read_input
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
+
+if TYPE_CHECKING:
+    from typing import TextIO
 
 
 def _output_text(value: object) -> str:
@@ -238,6 +241,61 @@ class IO:
         0. Use ``progress()`` for state-cycle and growth detection.
         """
         return 0
+
+
+class _RedirectedIO(IO):
+    """Read standalone stdin incrementally, with one prompt per input line."""
+
+    def __init__(self, stream: TextIO | None) -> None:
+        super().__init__()
+        self._stream = stream
+        self._lookahead: str | None = None
+        self._line_start = True
+        self._offset = 0
+
+    def _prompt(self, prompt: str) -> None:
+        if self._line_start:
+            print(prompt, end="", flush=True)
+            self._line_start = False
+
+    def _read(self, prompt: str) -> str:
+        stream = self._stream
+        if stream is None:
+            raise EOFError("EOF when reading a line")
+        self._prompt(prompt)
+        chunk = self._lookahead
+        self._lookahead = None
+        if chunk is None:
+            chunk = stream.readline()
+        if not chunk:
+            raise EOFError("EOF when reading a line")
+        chunks = [chunk]
+        while not chunk.endswith("\n") and (chunk := stream.readline()):
+            chunks.append(chunk)
+        line = "".join(chunks)
+        self._offset += len(line)
+        self._line_start = line.endswith("\n")
+        return line[:-1].removesuffix("\r") if self._line_start else line
+
+    def _peek_char(self, prompt: str) -> str | None:
+        if self._lookahead is None and self._stream is not None:
+            self._prompt(prompt)
+            self._lookahead = self._stream.read(1)
+        return self._lookahead or None
+
+    def _read_char(self, prompt: str) -> str:
+        char = self._peek_char(prompt)
+        self._lookahead = None
+        if char is None:
+            raise EOFError("EOF when reading a line")
+        self._offset += 1
+        self._consumed += 1
+        self._line_start = char == "\n"
+        return char
+
+    def position(self) -> int:
+        """Return the number of original text characters consumed."""
+        return self._offset
 
 
 class ScriptedIO(IO):

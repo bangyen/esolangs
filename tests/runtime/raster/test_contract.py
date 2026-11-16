@@ -57,7 +57,25 @@ def test_a_raster_hashes_by_pixels() -> None:
     first = Raster((((0, 0, 0),),))
     second = Raster((((0, 0, 0),),))
     assert hash(first) == hash(second)
-    assert len({first, second}) == 1
+
+    class DerivedRaster(Raster):
+        pass
+
+    derived = DerivedRaster(second.rows)
+    assert derived == first
+    assert len({first, second, derived}) == 1
+
+    class ReportedRaster:
+        probes = 0
+
+        @property
+        def __class__(self) -> type:
+            self.probes += 1
+            return Raster
+
+    claim = ReportedRaster()
+    assert first != claim
+    assert claim.probes == 0
 
 
 def test_a_raster_language_has_no_template_to_instantiate() -> None:

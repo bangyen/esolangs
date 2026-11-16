@@ -223,7 +223,7 @@ class Raster:
 
     def __eq__(self, other: object) -> bool:
         """Whether two rasters have identical RGB pixels."""
-        return isinstance(other, Raster) and self.rows == other.rows
+        return _has_backing_type(other, Raster) and self.rows == other.rows
 
     def __reduce__(self) -> tuple[object, tuple[object, ...]]:
         """Pickle pixels; a lazy renderer may be a closure."""
