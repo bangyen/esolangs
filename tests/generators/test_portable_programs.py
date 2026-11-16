@@ -869,15 +869,9 @@ def _check_width_provider_reuse() -> None:
             assert [request.width for request in requests] == (
                 [None, 8] if layout_width else [None]
             )
-            extra = (
-                [(_identity_layout(1).source, 1)]
-                if width is None and not layout_width
-                else []
-            )
             assert extracted == [
                 (_identity_layout().source, 1),
                 (restored.source, 1),
-                *extra,
             ]
             assert api.run(filled).output == str(bit)
 

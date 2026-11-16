@@ -182,7 +182,10 @@ def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> boo
         narrow = str(layout(width))
         if _underload_layout_tokens(template) == _underload_layout_tokens(narrow):
             return True
-    return same_up_to_wrapping(template, plain)
+    # A line break in an output literal changes the text it pushes.
+    return same_up_to_wrapping(template, plain) and all(
+        template.count(literal) == plain.count(literal) for literal in ("(0)", "(1)")
+    )
 
 
 def underload_request(request: GenerationRequest) -> TemplateLayout:

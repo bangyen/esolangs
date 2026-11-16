@@ -228,6 +228,22 @@ def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
             truth_table="0000",
         )
 
+    api = esolangs.Language("Underload")
+    plain = api.generate("01")
+    for bit in (0, 1):
+        changed = replace(
+            plain, source=plain.source.replace(f"({bit})", f"(\n{bit})", 1)
+        )
+        assert api.run(changed.fill([bit])).output == f"\n{bit}"
+        with pytest.raises(esolangs.TemplateError, match="not the template"):
+            api.instantiate(changed, [bit], truth_table="01")
+
+    wrapped = replace(plain, source=plain.source.removesuffix("S") + "\nS")
+    for valid in (wrapped, *(api.generate("01", width=width) for width in (1, 4, 8))):
+        for bit in (0, 1):
+            filled = api.instantiate(valid, [bit], truth_table="01")
+            assert api.run(filled).output == str(bit)
+
 
 @pytest.mark.parametrize("n", [4, 5, 6])
 def test_short_selectors_execute_larger_carried_trees(n: int) -> None:

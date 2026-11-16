@@ -292,6 +292,7 @@ def _generate(
             raise ProgramError(
                 f"{resolved}'s generator returned an undeclared template"
             )
+        generation_width = request.width
         if width is not None and not laid_out and backend.wrap is not None:
             _check_reflow_layout(generated)
             if not _can_wrap_template(generated, backend.wrap):
@@ -305,6 +306,7 @@ def _generate(
                 )
             else:
                 generated = wrap_character_slots(generated, width)
+            generation_width = width
         return _structured_template(
             generated,
             lang.id,
@@ -313,7 +315,7 @@ def _generate(
             settings,
             catalog,
             probes=probes,
-            generation_width=request.width,
+            generation_width=generation_width,
         )
     if lang.runtime.source_kind is SourceKind.RASTER:
         if not _has_backing_type(generated, Raster):
@@ -641,11 +643,7 @@ def _is_template_for(
     options = {} if settings is None else DialectSettings.options(settings)
     settings = _generation_settings(name, options, settings, catalog=catalog)
     backend = catalog.languages[name].backend
-    retained = (
-        template.generation_width
-        if width is None and backend is not None and backend.layout_width
-        else None
-    )
+    retained = template.generation_width if width is None else None
     probes = _TemplateProbes()
 
     @cache
@@ -703,7 +701,7 @@ def _is_template_for(
             raise TemplateError("template layouts must return text")
         return source
 
-    if _matches_retained_width(template, text, render, retained):
+    if width_aware and _matches_retained_width(template, text, render, retained):
         return True
     if width_aware and _matches_width_layout(text, layout, width):
         return True

@@ -248,7 +248,7 @@ def _template_pickle_fields(artifact: TemplateArtifact) -> tuple[str, ...]:
 class TemplateArtifact:
     """Text with explicit input bindings; never runnable source.
 
-    The generation width, when present, identifies a native layout to check.
+    The generation width, when present, identifies the layout to check.
     """
 
     source: str
@@ -314,7 +314,7 @@ class TemplateArtifact:
         return state
 
     def __setstate__(self, state: list[object]) -> None:
-        """Restore the template fields and an optional native width."""
+        """Restore the template fields and an optional layout width."""
         names = _template_pickle_fields(self)
         width = None
         if len(state) == len(names) + 1:

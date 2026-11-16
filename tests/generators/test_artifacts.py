@@ -15,7 +15,10 @@ from esolangs.artifacts import (
     TemplateArtifact,
     TemplateBindings,
 )
+from esolangs.generation.template import InputSlot, layout_tokens
+from esolangs.generation.wrap import TokenWrapper
 from esolangs.registry import LANGUAGES, canonical_id
+from esolangs.registry._backend import TemplateSpec
 from esolangs.runtime._files import _ANCHORED_STAGING
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages, one, one_where
@@ -264,6 +267,46 @@ def test_template_record_copies_bindings_and_retains_settings() -> None:
     assert template.bindings.fill(template.source, [1]) == "1"
     assert template.language == REFERENCE
     assert template.settings is settings
+    _check_wrapped_template_width()
+
+
+def _check_wrapped_template_width() -> None:
+    original = LANGUAGES[REFERENCE]
+
+    def layout(width=None):
+        return layout_tokens([*("+" * 48), InputSlot(1), "."], width, separator="")
+
+    backend = replace(
+        original.backend,
+        layout_width=False,
+        entrypoint=lambda _: layout(),
+        template=TemplateSpec(pair=("x", "+")),
+        wrap=TokenWrapper(r"\+{11}|[\s\S]"),
+        balance=lambda _: layout(9),
+    )
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    record = api.generate("01", width=3)
+    assert isinstance(record, TemplateArtifact)
+    restored = api.from_json(api.to_json(record))
+    assert isinstance(restored, TemplateArtifact)
+    assert restored == record
+    assert restored.generation_width == 3
+    assert max(map(len, restored.source.splitlines())) == 11
+    legacy = api.from_json(api.to_json(replace(restored, generation_width=None)))
+    wrong = replace(restored, generation_width=4)
+    for bit in (0, 1):
+        for candidate in (record, restored, pickle.loads(pickle.dumps(restored))):
+            filled = api.instantiate(candidate, [bit], truth_table="01")
+            assert filled == record.fill([bit])
+            assert api.run(filled).output == str(bit)
+        for candidate in (legacy, wrong):
+            filled = api.instantiate(candidate, [bit], width=3, truth_table="01")
+            assert api.run(filled).output == str(bit)
+    for candidate in (legacy, wrong):
+        with pytest.raises(esolangs.TemplateError, match="not the template"):
+            api.instantiate(candidate, [1], truth_table="01")
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        api.instantiate(restored, [1], width=4, truth_table="01")
 
 
 @pytest.mark.medium
