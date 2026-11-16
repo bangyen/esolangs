@@ -1,5 +1,7 @@
 """Tests for the Pilas interpreter."""
 
+import gzip
+import subprocess
 import sys
 from decimal import Decimal
 
@@ -7,6 +9,7 @@ import pytest
 
 from esolangs.languages.pilas.interpreter import run
 from tests.interpreters.runner import native_runner
+from tests.support.cli_support import run_cli
 from tests.support.vm_support import assert_rejected_output_retry
 
 _out = native_runner(run)
@@ -99,6 +102,24 @@ def test_reads_bytes(tmp_path, monkeypatch) -> None:
     )
     api = esolangs.Language("Pilas")
     path = tmp_path / "source.txt"
+    limits = esolangs.ExecutionLimits(max_steps=8)
+    for separator in ("\n", "\r\n"):
+        scheduled = "  " + separator + ",."
+        path.write_bytes(scheduled.encode())
+        assert api.run(path, stdin="A").output == ""
+        bounded = api.run(path, stdin="A", limits=limits)
+        assert (bounded.output, bounded.steps, bounded.input_reads) == ("", 3, 1)
+        record = api.from_json(api.to_json(path))
+        assert record.source == scheduled
+        assert (
+            api.prepare(record).run(stdin="A", limits=limits, isolated=True) == bounded
+        )
+        cli = run_cli("run", api.name, str(path), stdin="A")
+        assert (cli.returncode, cli.stdout, cli.stderr) == (0, "", "")
+    for literal in (" \r \n,.", "  \r\r\n,."):
+        result = api.run(literal, stdin="A", limits=limits)
+        assert (result.output, result.steps) == ("A", 4)
+
     path.write_bytes((source + "\r\n").encode())
     assert api.from_file(path).source == source + "\r\n"
     for program in (source + "\r\n", path):
@@ -113,6 +134,25 @@ def test_reads_bytes(tmp_path, monkeypatch) -> None:
     assert api.run(path, stdin="A").output == "A"
     api.to_file(api.from_source(source), path, normalize=True)
     assert path.read_bytes() == (source + "\n").encode()
+    exported = run_cli("generate", api.name, "01")
+    assert exported.returncode == 0
+    assert exported.stderr == ""
+    lf = exported.stdout.encode()
+    crlf = lf.replace(b"\n", b"\r\n")
+    for payload in (lf, crlf, gzip.compress(crlf)):
+        path.write_bytes(payload)
+        direct = subprocess.run(
+            [sys.executable, "-m", "esolangs.languages.pilas.interpreter", str(path)],
+            input=b"1",
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+        assert (direct.returncode, direct.stdout, direct.stderr) == (
+            0,
+            b"Input: 1",
+            b"",
+        )
 
     from esolangs.languages.pilas import interpreter
     from tests.support.prepared_support import check_image_reuse

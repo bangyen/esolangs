@@ -91,7 +91,8 @@ type _Image = tuple[tuple[_Line, ...], Mapping[int, int]]
 
 def _parse(code: str) -> _Image:
     """Return the lines in run order and a map from line number to index."""
-    rows = [row.removesuffix("\r").lstrip() for row in code.split("\n") if row.strip()]
+    source_lines = code.replace("\r\n", "\n").split("\n")
+    rows = [line.lstrip() for line in source_lines if line.strip()]
     numbered = [row.rstrip().partition(" ")[0].isdigit() for row in rows]
     if any(numbered) and not all(numbered):
         raise syntax_error(

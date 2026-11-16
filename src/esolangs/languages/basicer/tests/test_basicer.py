@@ -120,6 +120,14 @@ def test_numbered_and_unnumbered_jump_targets(monkeypatch, tmp_path: Path) -> No
         assert language.run(path, isolated=True).output == expected
         cli = run_cli("run", language.name, str(path))
         assert (cli.returncode, cli.stdout, cli.stderr) == (0, expected, "")
+    for source, expected in (
+        ("PRINT last\r", "last\r\n"),
+        ("PRINT first\r\r\nPRINT next", "first\r\nnext\n"),
+    ):
+        path.write_bytes(source.encode())
+        assert language.run(path).output == expected
+        record = language.from_json(language.to_json(path))
+        assert language.prepare(record).run(isolated=True).output == expected
 
 
 def test_plot_validates_its_operands() -> None:

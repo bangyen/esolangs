@@ -51,6 +51,7 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
+from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
@@ -95,7 +96,7 @@ def _braces(line: str) -> Mapping[int, int]:
 
 def _parse(code: str) -> _Image:
     """Retain both source lines and their matched braces."""
-    lines = code.split("\n")
+    lines = code.replace("\r\n", "\n").split("\n")
     if len(lines) > 2:
         raise syntax_error(
             f"{len(lines)} lines; Pilas programs have two",
@@ -243,4 +244,4 @@ def run(code: str, io: IO) -> None:
 
 
 if __name__ == "__main__":
-    script_main(run)
+    script_main(run, loader=native_text_source)
