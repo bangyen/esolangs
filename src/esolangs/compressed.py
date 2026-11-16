@@ -22,7 +22,7 @@ from esolangs.runtime._files import (
 )
 from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_width
 from esolangs.runtime.memory import repr_value
-from esolangs.runtime.source_hints import syntax_error
+from esolangs.runtime.source_hints import display_label, syntax_error
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -93,6 +93,20 @@ def _normalize_limits(limits: object) -> TextLimits | None:
     )
 
 
+class _DeadlineGzipInput(io.BytesIO):
+    """Check acquisition even when a gzip member yields no decoded bytes."""
+
+    def __init__(self, data: bytes, deadline: float) -> None:
+        super().__init__(data)
+        self._deadline = deadline
+
+    def read(self, size: int | None = -1, /) -> bytes:
+        _time_remaining(self._deadline)
+        # gzip can process many empty members or padding from a single pull.
+        block = 8192
+        return super().read(block if size is None or size < 0 else min(size, block))
+
+
 @dataclass(frozen=True)
 class CompressedText:
     """Validated UTF-8 gzip source; len counts expanded characters."""
@@ -134,7 +148,12 @@ class CompressedText:
         deadline = _STREAM_DEADLINE.get()
         try:
             decoder = codecs.getincrementaldecoder("utf-8")()
-            with gzip.GzipFile(fileobj=io.BytesIO(self.data)) as stream:
+            source = (
+                io.BytesIO(self.data)
+                if deadline is None
+                else _DeadlineGzipInput(self.data, deadline)
+            )
+            with gzip.GzipFile(fileobj=source) as stream:
                 while True:
                     _time_remaining(deadline)
                     block = stream.read(_BLOCK)
@@ -336,7 +355,9 @@ class CompressedText:
         try:
             write_staged(target, (self.data,))
         except (OSError, TypeError, ValueError) as exc:
-            raise ProgramError(f"cannot save program to {target}: {exc}") from exc
+            raise ProgramError(
+                f"cannot save program to {display_label(target.spelling)}: {exc}"
+            ) from exc
 
     def wrapped(self, width: int | None) -> CompressedText:
         """Insert line breaks at width without collecting expanded source.

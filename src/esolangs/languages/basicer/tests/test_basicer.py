@@ -1,11 +1,15 @@
 """Tests for the BASICER interpreter."""
 
+from pathlib import Path
+
 import pytest
 
+from esolangs import Language
 from esolangs.exceptions import ArgumentError, HaltError
 from esolangs.languages.basicer.interpreter import run
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import native_runner
+from tests.support.cli_support import run_cli
 from tests.support.vm_support import assert_rejected_output_retry
 
 ADDER = """10 PRINT First digit please! (1 = 0, 2 = 1, 3 = exit)
@@ -72,7 +76,7 @@ def test_rpg_menu_branches_and_loops() -> None:
     assert "escaped" in io.getvalue()
 
 
-def test_numbered_and_unnumbered_jump_targets(monkeypatch) -> None:
+def test_numbered_and_unnumbered_jump_targets(monkeypatch, tmp_path: Path) -> None:
     from esolangs.languages.basicer import interpreter
     from tests.support.prepared_support import check_image_reuse
 
@@ -101,6 +105,21 @@ def test_numbered_and_unnumbered_jump_targets(monkeypatch) -> None:
     label = "9" * 641
     source = f"10 GOTO {label}\n20 PRINT skipped\n{label} PRINT reached"
     assert_digit_cap_independent("BASICER", source, "", "reached\n")
+
+    language = Language("BASICER")
+    path = tmp_path / "source"
+    for source, expected in (
+        ("  PRINT hello   \n\nPRINT   there \t\nPAUSE \t\n", "hello   \n  there \t\n"),
+        (
+            "  20 PRINT   \t\r\n\r\n10 PRINT hello \t\r\n30 CLEAR \t\r\n",
+            "hello \t\n  \t\n",
+        ),
+    ):
+        path.write_bytes(source.encode())
+        assert language.run(path).output == expected
+        assert language.run(path, isolated=True).output == expected
+        cli = run_cli("run", language.name, str(path))
+        assert (cli.returncode, cli.stdout, cli.stderr) == (0, expected, "")
 
 
 def test_plot_validates_its_operands() -> None:

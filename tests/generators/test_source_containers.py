@@ -315,24 +315,33 @@ def test_native_file_operations_keep_directory_qualified_spellings(
             self.calls += 1
             return self.spelling
 
-    source = tmp_path / "source"
+    source = tmp_path / "source\x1b[2J\n"
     source.write_bytes(b"+.")
     api = esolangs.Language(REFERENCE)
     assert api.from_file(source).source == "+."
     spelling = str(source) + suffix
+    label = repr(spelling)[1:-1]
     exact = FileName(spelling)
     for load in (lambda: api.from_file(spelling), lambda: api.prepare(exact)):
         with pytest.raises(esolangs.ProgramError, match="Not a directory") as caught:
             load()
-        assert spelling in str(caught.value)
+        assert label in str(caught.value)
     assert exact.calls == 1
 
     compressed = esolangs.CompressedText.from_chunks(("++.",))
-    for save in (lambda target: api.to_file("++.", target), compressed.to_file):
+    for save in (
+        lambda target: api.to_file("++.", target),
+        lambda target: api.to_file(io.BytesIO(b"++."), target),
+        compressed.to_file,
+    ):
         for target in (spelling, FileName(spelling)):
             with pytest.raises(esolangs.ProgramError, match="cannot save") as caught:
                 save(target)
-            assert spelling in str(caught.value)
+            message = str(caught.value)
+            assert message.startswith(f"cannot save program to {label}:")
+            assert "\x1b" not in message
+            assert "\n" not in message
+            assert isinstance(caught.value.__cause__, OSError)
             if isinstance(target, FileName):
                 assert target.calls == 1
         assert source.read_bytes() == b"+."

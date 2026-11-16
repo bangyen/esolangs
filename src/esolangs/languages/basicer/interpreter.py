@@ -70,17 +70,18 @@ class _Line(NamedTuple):
 
 def _instruction(body: str) -> _Line:
     """Parse one instruction, rejecting an unknown or malformed one."""
-    op, _, rest = body.partition(" ")
+    trimmed = body.rstrip()
+    op, _, rest = trimmed.partition(" ")
     if op in ("CLEAR", "PAUSE") and not rest:
         return _Line(op, "", ())
     if op == "PRINT":
-        return _Line(op, rest, ())
+        return _Line(op, body.partition(" ")[2], ())
     if op == "PLOT" and _PLOT.fullmatch(rest):
         return _Line(op, rest, ())
     if op == "GOTO" and rest and all(t.isdigit() for t in rest.split()):
         return _Line(op, "", tuple(map(parse_integer, rest.split())))
     raise syntax_error(
-        f"cannot parse {body!r}",
+        f"cannot parse {trimmed!r}",
         "use CLEAR, PLOT X Y #RRGGBB, PRINT text, PAUSE or GOTO numbers",
     )
 
@@ -90,8 +91,8 @@ type _Image = tuple[tuple[_Line, ...], Mapping[int, int]]
 
 def _parse(code: str) -> _Image:
     """Return the lines in run order and a map from line number to index."""
-    rows = [row.strip() for row in code.split("\n") if row.strip()]
-    numbered = [row.split(" ", 1)[0].isdigit() for row in rows]
+    rows = [row.removesuffix("\r").lstrip() for row in code.split("\n") if row.strip()]
+    numbered = [row.rstrip().partition(" ")[0].isdigit() for row in rows]
     if any(numbered) and not all(numbered):
         raise syntax_error(
             "line numbers on only some lines", "number every line or none"

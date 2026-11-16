@@ -43,7 +43,11 @@ from esolangs.runtime._source import (
     source_for,
 )
 from esolangs.runtime._validate import _has_backing_type
-from esolangs.runtime.source_hints import program_error_context, with_hint
+from esolangs.runtime.source_hints import (
+    display_label,
+    program_error_context,
+    with_hint,
+)
 from esolangs.settings import (
     DialectSettings,
     _settings_record,
@@ -188,7 +192,7 @@ def to_file(
             if consumes_source:
                 effective_settings(origin, program, settings, catalog=catalog)
                 raise ProgramError(
-                    f"cannot save program to {target}: {error}"
+                    f"cannot save program to {display_label(target.spelling)}: {error}"
                 ) from error
             # A materialized source's immediate validation failures still win.
             unavailable = error
@@ -210,7 +214,9 @@ def to_file(
         except (GeneratorCapError, ProgramError, TemplateError):
             raise
         except (OSError, TypeError, ValueError) as error:
-            raise ProgramError(f"cannot save program to {target}: {error}") from error
+            raise ProgramError(
+                f"cannot save program to {display_label(target.spelling)}: {error}"
+            ) from error
 
 
 def to_json(

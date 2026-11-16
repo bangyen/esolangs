@@ -17,7 +17,7 @@ from scripts.source_units import source_units
 from tests.support.reference import REFERENCE
 
 
-def test_streaming_text_round_trip_and_size(tmp_path: Path) -> None:
+def test_streaming_text_round_trip_and_size(tmp_path: Path, monkeypatch) -> None:
     source = "aÿ\n" * 30000
     program = CompressedText.from_chunks((source[:65535], source[65535:]))
     assert str(program) == source
@@ -34,6 +34,27 @@ def test_streaming_text_round_trip_and_size(tmp_path: Path) -> None:
     assert empty.data
     with pytest.raises(esolangs.ProgramError, match="no gzip member"):
         CompressedText(b"")
+
+    archive = gzip.compress(b"", mtime=0) * 1024 + gzip.compress(b"+.", mtime=0)
+    api = esolangs.Language(REFERENCE)
+    with _files.stream_read_deadline(float("inf")):
+        restored = api.from_json(api.to_json(archive))
+        assert restored.source.to_gzip() == archive
+    assert api.prepare(restored).run().output == "\x01"
+
+    finish_member = gzip._GzipReader._read_eof
+    members = 0
+
+    def observed_finish(reader):
+        nonlocal members
+        finish_member(reader)
+        members += 1
+
+    monkeypatch.setattr(gzip._GzipReader, "_read_eof", observed_finish)
+    monkeypatch.setattr(_files, "monotonic", lambda: 1.0 if members else 0.0)
+    with _files.stream_read_deadline(1.0), pytest.raises(_files.StreamReadTimeoutError):
+        CompressedText(archive)
+    assert 0 < members < 1025
 
 
 def test_compressed_writers_publish_only_after_success(
@@ -164,8 +185,15 @@ def test_staged_write_uses_mode_tightened_during_writing(tmp_path: Path) -> None
     ids=["plain", "truncated_header", "invalid_utf8", "truncated_payload"],
 )
 def test_corrupt_or_non_utf8_gzip_is_a_program_error(data: bytes) -> None:
-    with pytest.raises(esolangs.ProgramError):
+    with pytest.raises(esolangs.ProgramError) as unbounded:
         CompressedText(data)
+    with (
+        _files.stream_read_deadline(float("inf")),
+        pytest.raises(esolangs.ProgramError) as bounded,
+    ):
+        CompressedText(data)
+    assert str(bounded.value) == str(unbounded.value)
+    assert bounded.value.__notes__ == unbounded.value.__notes__
 
 
 @pytest.mark.parametrize("tail", [b"\xf0\x9f\xff", b"\xf0\x9f"])
