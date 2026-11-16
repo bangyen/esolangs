@@ -5,6 +5,20 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 2.2.0
+
+- **Compatibility:** Historical artifact pickle payloads that rely on removed
+  reconstruction helpers no longer load. Export them to portable JSON with
+  a version that can still read them before upgrading.
+- Add Bifunge, BracketOnly, Help., Onecode (Fergusq), NB, and Nybbleist.
+- Resolve unambiguous display-name slugs in public language lookup.
+- Retain template layout widths and verify balanced and wrapped layouts when
+  loading portable templates.
+- Apply deadlines during source acquisition and preparation, including
+  UTF-8 decoding and gzip decompression.
+- Preserve buffered input, accepted output, and fault evidence across
+  interpreter retries and isolated execution.
+
 ## 2.1.0
 
 - **Breaking:** the registry's declaration class is `LanguageDeclaration`,
