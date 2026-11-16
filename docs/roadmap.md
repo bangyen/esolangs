@@ -74,8 +74,9 @@ history at `f35aa4023`.
   models.
   - *Shortlist:*
     - [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841): byte-grid
-      decision tree, 3,610 subset runs. Resolve source rows and EOF, and
-      audit novelty against Bifunge.
+      decision tree, 3,610 subset runs. The compare instruction reads
+      two addressed grid operands and encodes both jump destinations.
+      Resolve the one-row example discrepancy and EOF.
     - [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo-selected
       exits in a Unicode grid, 3,616 subset runs. Confirm stream framing
       and complete the public implementation check.
