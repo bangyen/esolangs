@@ -511,6 +511,22 @@ def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None
             == str(bit)
         )
 
+    name = "Private\x1b[2J\nscope"
+    local = replace(original, name=name, id="private_scope")
+    scoped = esolangs.Catalog([local]).bind(name)
+    program = scoped.generate("01", scale=2)
+    assert scoped.evaluate(scoped.from_json(scoped.to_json(program)), [1]).answer == "1"
+
+    foreign = owner.generate("01", scale=2)
+    label = r"Private\x1b[2J\nscope"
+    with pytest.raises(esolangs.ProgramError) as artifact:
+        scoped.prepare(foreign)
+    with pytest.raises(esolangs.ProgramError) as portable:
+        scoped.from_json(owner.to_json(foreign))
+    assert label in str(artifact.value)
+    expected = f"invalid portable program: program language must be {label}"
+    assert str(portable.value) == expected
+
 
 def test_template_with_an_unregistered_owner_raises_template_error() -> None:
     owner = esolangs.Language(first(parameterized=True))

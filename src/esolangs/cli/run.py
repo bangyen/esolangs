@@ -65,15 +65,16 @@ from esolangs.runtime.source_hints import display_label
 _INPUT_HINT = "; send the input this program needs, or close stdin"
 
 
-class _NativeStdin:
-    """Wait for native runtime validation before reading stdin."""
+class _DeferredStdin:
+    """Wait for in-process runtime validation before reading stdin."""
 
-    def __init__(self, notices: ExitStack) -> None:
+    def __init__(self, notices: ExitStack | None) -> None:
         self._notices = notices
 
     def read(self) -> str:
         text = _read_stdin(hint=_INPUT_HINT)
-        self._notices.enter_context(_unbounded_notice("run"))
+        if self._notices is not None:
+            self._notices.enter_context(_unbounded_notice("run"))
         return text
 
 
@@ -201,12 +202,12 @@ def _run(rest: list[str]) -> None:
         _settings_validated=True,
     )
     reads_stdin = _runtime_reads_stdin(declaration.runtime)
-    unbounded = acquisition is None and max_steps is None
+    unbounded = not worker and max_steps is None
     stdin: InputSource = ""
     try:
         if scale is None and program.scale is not None:
             check_scale_for(declaration.name, program.scale, catalog=catalog)
-        if reads_stdin and not unbounded:
+        if reads_stdin and worker:
             stdin = _read_stdin(
                 _remaining(acquisition, monotonic() - started, flag),
                 _INPUT_HINT,
@@ -216,11 +217,10 @@ def _run(rest: list[str]) -> None:
         _fail_run(acquisition_error, language, catalog)
     _remaining(acquisition, monotonic() - started, flag)
     with ExitStack() as notices, _acquisition_started_at(started):
-        if unbounded:
-            if reads_stdin:
-                stdin = cast("TextIO", _NativeStdin(notices))
-            else:
-                notices.enter_context(_unbounded_notice("run"))
+        if reads_stdin and not worker:
+            stdin = cast("TextIO", _DeferredStdin(notices if unbounded else None))
+        elif unbounded:
+            notices.enter_context(_unbounded_notice("run"))
         outcome = _execute_loaded(
             program,
             stdin=stdin,

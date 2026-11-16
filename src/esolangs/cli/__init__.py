@@ -86,6 +86,7 @@ from esolangs.cli.io import (
     _diagnostic,
     _fail,
     _flush_stdout,
+    _output_unavailable,
     _read_stdin,
     _stdout_is_terminal,
     _StdoutEncodingError,
@@ -810,11 +811,11 @@ def _run_cli() -> None:
             # A closed stream refuses; the write that follows reports it.
             with suppress(ValueError, OSError):
                 reconfigure(errors="backslashreplace")
-    if sys.stderr is None or getattr(sys.stderr, "closed", False):
+    if _output_unavailable(sys.stderr):
         # Started with fd 2 closed (``2>&-``): every note and error wrote to
         # None, so even a successful `run` printed nothing and exited 1.
         sys.stderr = open(os.devnull, "w")  # noqa: SIM115 - lives for the run
-    if sys.stdout is None or getattr(sys.stdout, "closed", False):
+    if _output_unavailable(sys.stdout):
         # A closed stream object, in process, is the same case: it exited 70.
         # Started with fd 1 closed (``esolangs list >&-``): ``print`` drops
         # silently and the flush below raised AttributeError, exit 70.  The

@@ -581,8 +581,8 @@ def _read_stdin(
 
     # An interactive read has no deadline. Keeping it on the main thread
     # lets Ctrl-C interrupt it without leaving a reader holding stdin's lock.
-    terminal = _probe_stdin(stdin, None) if deadline is None else None
     try:
+        terminal = _probe_stdin(stdin, None) if deadline is None else None
         if deadline is None and terminal is not False:
             return _read_probed(terminal=terminal)
         # A managed adapter's terminal probes can block just like its read.
@@ -604,7 +604,7 @@ def _read_stdin(
         _fail(exc)
     except EsolangError as exc:
         _fail(exc, _exit_code(exc))
-    except (OSError, TypeError) as exc:
+    except (OSError, TypeError, ValueError) as exc:
         _fail(input_read_error(exc))
 
 
@@ -760,12 +760,24 @@ def _fail(message: str | BaseException, code: int = 2) -> NoReturn:
     sys.exit(code)
 
 
+def _output_unavailable(stream: TextIO | None) -> bool:
+    """Check closure without asking a detached wrapper for its closed flag."""
+    return (
+        stream is None
+        or (
+            _has_backing_type(stream, TextIOWrapper)
+            and getattr_static(TextIOWrapper, "buffer").__get__(stream) is None
+        )
+        or bool(getattr(stream, "closed", False))
+    )
+
+
 @contextmanager
 def _stdout_destination() -> Iterator[TextIO]:
     """Classify failures at the output destination."""
     stream = sys.stdout
     try:
-        if stream is None or getattr(stream, "closed", False):
+        if _output_unavailable(stream):
             raise OSError("stdout is closed")
         yield stream
     except KeyboardInterrupt:
@@ -774,7 +786,7 @@ def _stdout_destination() -> Iterator[TextIO]:
     except OSError as exc:
         raise _StdoutError(exc) from exc
     except ValueError as exc:
-        if not getattr(stream, "closed", False):
+        if not _output_unavailable(stream):
             raise
         raise _StdoutError(exc) from exc
 

@@ -565,7 +565,7 @@ def from_json(
             raise ValueError("unsupported program format or version")
         owner = value["language"]
         if not isinstance(owner, str) or resolve_origin(owner, catalog=catalog) != name:
-            raise ValueError(f"program language must be {name}")
+            raise ValueError(f"program language must be {display_label(name)}")
         if not isinstance(value["source"], str):
             raise ValueError("source must be a string")
         # Strict UTF-8 everywhere, as a program file is read: a JSON

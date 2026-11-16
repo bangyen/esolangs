@@ -141,18 +141,31 @@ class TestInProcess:
         """A closed stream object exited 70 (or raised, stderr closed too)."""
         import io
 
-        closed = io.TextIOWrapper(io.BytesIO())
-        closed.close()
+        for detached in (False, True):
+            closed = io.TextIOWrapper(io.BytesIO())
+            if detached:
+                closed.detach().close()
+            else:
+                closed.close()
+            with (
+                patch.object(sys, "argv", ["esolangs", "list"]),
+                patch.object(sys, "stdout", closed),
+                patch.object(
+                    sys, "stderr", closed if closed_streams == "both" else io.StringIO()
+                ),
+                pytest.raises(SystemExit) as exc,
+            ):
+                main()
+            assert exc.value.code == 120
+
+        output = io.StringIO()
         with (
-            patch.object(sys, "argv", ["esolangs", "list"]),
-            patch.object(sys, "stdout", closed),
-            patch.object(
-                sys, "stderr", closed if closed_streams == "both" else io.StringIO()
-            ),
-            pytest.raises(SystemExit) as exc,
+            patch.object(sys, "argv", ["esolangs", "encode-inputs", REFERENCE, "1"]),
+            patch.object(sys, "stdout", output),
+            patch.object(sys, "stderr", closed),
         ):
             main()
-        assert exc.value.code == 120
+        assert output.getvalue() == "1"
 
     def test_help_for_an_unknown_command_fails(
         self, capsys: pytest.CaptureFixture[str]

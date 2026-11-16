@@ -425,6 +425,7 @@ class _Machine:
         self.io = io
         self.state: _State = (0, persistent.chunked([None] * count))
         self._writer = _BufferedOutput()
+        self._digits: list[str] = []
 
     @property
     def halted(self) -> bool:
@@ -442,14 +443,16 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture semantic components independently of storage and cycle grouping."""
-        instruction = self.state[0]
+        instruction: int | WorkspaceVariant = self.state[0]
         accepted = self._writer.accepted
+        if self._digits:
+            instruction = WorkspaceVariant(
+                "pending_input", (instruction, "".join(self._digits))
+            )
+        elif accepted is not None:
+            instruction = WorkspaceVariant("pending_output", (instruction, accepted))
         return _WORKSPACE_MODEL.capture(
-            instruction=(
-                instruction
-                if accepted is None
-                else WorkspaceVariant("pending_output", (instruction, accepted))
-            ),
+            instruction=instruction,
             cells=persistent.flatten(self.state[1]),
             input_cursor=self.io.progress(),
         )
@@ -457,6 +460,8 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         boundary = (*self.state, self.io.progress())
+        if self._digits:
+            return (*boundary, "".join(self._digits))
         accepted = self._writer.accepted
         return boundary if accepted is None else (*boundary, accepted)
 
@@ -467,7 +472,6 @@ class _Machine:
                 return self.io.input_char()
             except EOFError:
                 return 0
-        digits = "0"
         while True:
             try:
                 char = self.io.input_char()
@@ -475,8 +479,11 @@ class _Machine:
                 break
             if not 48 <= char <= 57:
                 break
-            digits += chr(char)
-        return parse_integer(digits)
+            # The next read can fail after this digit has left the port.
+            self._digits.append(chr(char))
+        value = parse_integer("".join(self._digits) or "0")
+        self._digits.clear()
+        return value
 
     def step(self) -> None:
         """Execute one op.

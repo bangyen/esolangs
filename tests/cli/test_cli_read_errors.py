@@ -135,6 +135,32 @@ def test_managed_stdin_uses_library_input_rules(
                 message = "cannot read stdin: not text (invalid UTF-8 at byte 1)"
             assert diagnostic.splitlines() == [message, *error.value.__notes__]
 
+    def detached_input():
+        stream = io.TextIOWrapper(io.BytesIO(b"A"), encoding="utf-8")
+        stream.detach().close()
+        return stream
+
+    with pytest.raises(esolangs.ArgumentError) as detached:
+        esolangs.run(REFERENCE, program, stdin=detached_input())
+    run = ["esolangs", "run", REFERENCE, str(program)]
+    for argv in (
+        run,
+        [*run, "--max-steps", "2"],
+        [*run, "--preparation-timeout", "3"],
+        ["esolangs", "read-answer", REFERENCE],
+    ):
+        monkeypatch.setattr(sys, "argv", argv)
+        monkeypatch.setattr(sys, "stdin", detached_input())
+        with pytest.raises(SystemExit) as exited:
+            main()
+        assert exited.value.code == 2
+        output, diagnostic = capsys.readouterr()
+        assert not output
+        assert diagnostic.splitlines() == [
+            str(detached.value),
+            *detached.value.__notes__,
+        ]
+
     budget = esolangs.ExecutionTimeoutError("input adapter expired")
     budget.bound = "preparation_timeout"
     budget.partial_output = "inner invocation"
@@ -144,6 +170,7 @@ def test_managed_stdin_uses_library_input_rules(
             raise budget
 
     monkeypatch.setattr(sys, "stdin", ExpiredStream())
+    monkeypatch.setattr(sys, "argv", run)
     with pytest.raises(SystemExit) as exited:
         main()
     assert exited.value.code == 124

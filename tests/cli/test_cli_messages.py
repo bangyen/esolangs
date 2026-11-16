@@ -19,6 +19,7 @@ from esolangs.cli.help import help_text
 from esolangs.cli.hints import _timeout_text
 from esolangs.cli.io import _StdoutEncodingError, _write_output
 from esolangs.registry import LANGUAGES, _table
+from esolangs.runtime.source_hints import error_text
 from tests.support.cli_support import (
     _failure,
     _program,
@@ -660,36 +661,59 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
                 _timeout_text(budget) + "\n",
             )
 
-    _check_native_run_validates_hook_before_reading(path, capsys)
+    _check_run_validates_runtime_before_reading(path, capsys)
     _check_described_input_samples(monkeypatch, capsys, tmp_path)
 
 
-def _check_native_run_validates_hook_before_reading(path, capsys) -> None:
+def _check_run_validates_runtime_before_reading(path, capsys) -> None:
     original = LANGUAGES[REFERENCE]
-    runtime = replace(original.runtime, completion_entrypoint="absent_completion")
-    catalog = esolangs.Catalog([replace(original, runtime=runtime)])
-    api = catalog.bind(original.name)
 
     class BrokenInput(StringIO):
         def read(self, *_args):
-            pytest.fail(
-                "a missing native completion hook must refuse before reading stdin"
-            )
+            pytest.fail("run read stdin before rejecting an unavailable runtime")
 
-    expected = api.execute(path, stdin=BrokenInput("Q"))
-    assert isinstance(expected.error, esolangs.ProgramError)
-    assert "absent_completion" in str(expected.error)
-    with patch.object(_table, "CATALOG", catalog):
-        command = ["run", REFERENCE, str(path)]
+    stepped = ["--max-steps", "2"]
+    command = ["run", REFERENCE, str(path)]
+    limits = esolangs.ExecutionLimits(max_steps=2)
+    for runtime, options, budget, missing in (
+        (
+            replace(original.runtime, completion_entrypoint="absent_completion"),
+            [],
+            None,
+            "absent_completion",
+        ),
+        (
+            replace(original.runtime, interpreter="not_an_installed_runtime"),
+            stepped,
+            limits,
+            "not_an_installed_runtime",
+        ),
+    ):
+        catalog = esolangs.Catalog([replace(original, runtime=runtime)])
+        api = catalog.bind(original.name)
+        expected = api.execute(path, stdin=BrokenInput("Q"), limits=budget)
+        assert isinstance(expected.error, esolangs.ProgramError)
+        assert missing in str(expected.error)
         with (
-            patch.object(sys, "argv", ["esolangs", *command]),
+            patch.object(_table, "CATALOG", catalog),
+            patch.object(sys, "argv", ["esolangs", *command, *options]),
             patch.object(sys, "stdin", BrokenInput("Q")),
             pytest.raises(SystemExit) as exited,
         ):
             main()
         assert exited.value.code == 2
-        assert capsys.readouterr() == ("", f"{expected.error}\n")
-        assert call_both([*command, "--max-steps", "2"], capsys, stdin="Q") == ("Q", "")
+        assert capsys.readouterr() == ("", error_text(expected.error) + "\n")
+
+    runtime = replace(original.runtime, completion_entrypoint="absent_completion")
+    catalog = esolangs.Catalog([replace(original, runtime=runtime)])
+    with (
+        patch.object(_table, "CATALOG", catalog),
+        patch(
+            "esolangs.cli.run._unbounded_notice",
+            side_effect=AssertionError("a step limit already bounds execution"),
+        ),
+    ):
+        assert call_both([*command, *stepped], capsys, stdin="Q") == ("Q", "")
 
 
 def _check_described_input_samples(monkeypatch, capsys, tmp_path) -> None:

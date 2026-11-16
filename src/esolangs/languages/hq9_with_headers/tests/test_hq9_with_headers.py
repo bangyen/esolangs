@@ -6,11 +6,13 @@ from operator import add, floordiv, mul, sub
 
 import pytest
 
-from esolangs import Language
+from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.hq9_with_headers import interpreter as native
 from esolangs.languages.hq9_with_headers.interpreter import _Machine, run
+from esolangs.runtime._state import WorkspaceVariant
 from esolangs.runtime.io import ScriptedIO
+from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
 from tests.support.prepared_support import check_image_reuse
 from tests.support.vm_support import assert_rejected_output_retry
@@ -165,13 +167,51 @@ def test_wiki_infinite_loop_never_halts() -> None:
     assert not _steps(_LOOP, "", 100).halted
 
 
-def test_decimal_read_stops_at_and_consumes_a_non_digit() -> None:
+def test_decimal_read_stops_at_and_consumes_a_non_digit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     code = _source(
         "1,2,3", {"n": ["[>>. v]", "p(Vv)"], "c": ["[>>, v]", "p(Vv)"]}, [], "nnc"
     )
     assert _run(code, "12x34\n7") == "123455"
     # EOF: the assumed 0, and 0 for a character.
     assert _run(code, "") == "000"
+
+    code = _source("1", {"n": ["[>>. v]", "p(Vv)"]}, [], "n")
+    api = Language("HQ9+ with headers")
+    stdin = "12\n"
+    limits = ExecutionLimits(max_steps=2)
+    expected = api.run(code, stdin=stdin, limits=limits)
+    assert api.run(code, stdin=stdin).output == expected.output == "12"
+    assert api.run(code, stdin=stdin, limits=limits, isolated=True) == expected
+
+    def interrupted(port: ScriptedIO, prompt: str) -> str:
+        position = port.position()
+        if position < len(stdin) and position not in refusals:
+            refusals.add(position)
+            raise HaltError("transient input failure")
+        return read_char(port, prompt)
+
+    refusals: set[int] = set()
+    read_char = ScriptedIO._read_char
+    monkeypatch.setattr(ScriptedIO, "_read_char", interrupted)
+    debugger = api.make_debugger(code, stdin=stdin)
+    start_ip = debugger.ip
+    for count in range(3):
+        with pytest.raises(HaltError, match="transient input failure") as fault:
+            debugger.run(limits=limits)
+        assert debugger.ip == start_ip
+        assert fault.value.observation == ExecutionResult("", count, count, 0, steps=0)
+        assert fault.value.observation == debugger.observation
+        workspace = _capture_workspace(debugger.vm).parts
+        if count:
+            assert debugger.snapshot()[-1] == stdin[:count]
+            assert workspace[0] == WorkspaceVariant("pending_input", (0, stdin[:count]))
+        else:
+            assert workspace[0] == 0
+    assert debugger.run(limits=limits) == "halted"
+    assert debugger.observation == expected
+    assert _capture_workspace(debugger.vm).parts[0] == 2
 
 
 def test_arithmetic_is_unbounded_and_div_floors(monkeypatch) -> None:
