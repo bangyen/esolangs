@@ -746,7 +746,9 @@ def _diagnostic(message: str, *, ready_only: bool = False) -> None:
         check_ready()
         stream.flush()
     except KeyboardInterrupt:
-        _abandon_output(stream)
+        # An interrupted notice must leave stderr available to report SIGINT.
+        if not ready_only:
+            _abandon_output(stream)
         raise
     except OSError:
         _abandon_output(stream)

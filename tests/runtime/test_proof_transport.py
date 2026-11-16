@@ -20,6 +20,7 @@ from esolangs.runtime._result_wire import (
     encode_decision,
     encode_result,
 )
+from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_observation, make_vm
 from tests.support.certification_barrier import guarded_worker
 from tests.support.execution import run_observed, termination_observed
@@ -202,8 +203,16 @@ def test_wire_steps_match_a_deterministic_proof() -> None:
 @pytest.mark.medium
 def test_proof_deadlines_keep_output_without_claiming_divergence():
     source = ",.+[>+]"
+
+    class DeadlineAfterOutput(ScriptedIO):
+        def _write(self, value: object) -> None:
+            super()._write(value)
+            raise esolangs.ExecutionTimeoutError("deadline after the first write")
+
     with pytest.raises(esolangs.ExecutionTimeoutError) as native:
-        termination_observed(REFERENCE, source, "A", 0.01)
+        termination_observed(
+            REFERENCE, source, "A", None, io_factory=DeadlineAfterOutput
+        )
     assert native.value.partial_output == "A"
     assert native.value.observation == ExecutionResult("A", 1, 1, 0)
     with pytest.raises(esolangs.ExecutionTimeoutError) as worker:
