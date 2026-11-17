@@ -1,4 +1,4 @@
-"""Declared completion and debugger attributes for OBrainfuck."""
+"""Declared completion and debugger attributes for oBrainfuck."""
 
 from esolangs.runtime._capabilities import DebugSpec, MachineCapabilities
 from esolangs.runtime._lifecycle import Completion

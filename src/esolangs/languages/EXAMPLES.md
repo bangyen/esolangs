@@ -98,7 +98,7 @@ don't edit by hand.
 | `nq/nq.txt` | NQ | `0001` | `01` | 01 | ' ' |
 | `nybbleist/nybbleist.txt` | Nybbleist | `0001` | `01` | 01 | '0' |
 | `object_disoriented/object-disoriented.txt` | Object disoriented | `0001` | `01` | 01 | '0' |
-| `obrainfuck/obrainfuck.txt` | OBrainfuck | `0001` | `01` | 01 | '0' |
+| `obrainfuck/obrainfuck.txt` | oBrainfuck | `0001` | `01` | 01 | '0' |
 | `one_i/one-i.txt` | 1 + i | `0001` | `01` | 0 1 | '0' |
 | `onecode_fergusq/onecode-fergusq.txt` | Onecode (Fergusq) | `0001` | `01` | 01 | '0' |
 | `packlang/packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |

@@ -1,4 +1,4 @@
-"""Tests for the OBrainfuck interpreter."""
+"""Tests for the oBrainfuck interpreter."""
 
 import pytest
 
@@ -23,7 +23,7 @@ def test_kth_opener_pairs_with_kth_closer() -> None:
     assert _out(",[.[-].]", "\3") == "\3\2\1\0"
     # The page: "][ is a valid program that falls into an infinite loop".
     with pytest.raises(ExecutionCapError):
-        Language("OBrainfuck").run("][", limits=ExecutionLimits(max_steps=1000))
+        Language("oBrainfuck").run("][", limits=ExecutionLimits(max_steps=1000))
     for code, position in (("[[]", 1), ("[]]", 2), ("]", 0)):
         with pytest.raises(ValueError, match=f"at position {position}"):
             ordinal_brackets(code)

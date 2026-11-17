@@ -1,4 +1,4 @@
-"""OBrainfuck Boolean program generator: a tape-laid table indexed by the inputs.
+"""oBrainfuck Boolean program generator: a tape-laid table indexed by the inputs.
 
 The table, projected onto its m essential inputs, is written loop-free, row
 ``k``'s bit at cell ``k`` of ``t = 2^m``, and the head steps onto cell ``t``.

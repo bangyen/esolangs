@@ -82,7 +82,6 @@ Languages that operate on a tape (similar to Turing machines).
 - [Monotonic Boolfuck](https://esolangs.org/wiki/Monotonic_Boolfuck) ([code](../src/esolangs/languages/monotonic_boolfuck/interpreter.py))
 - [Movesum](https://esolangs.org/wiki/Movesum) ([code](../src/esolangs/languages/movesum/interpreter.py))
 - [Nandypants](https://esolangs.org/wiki/Nandypants) ([code](../src/esolangs/languages/nandypants/interpreter.py))
-- [OBrainfuck](https://esolangs.org/wiki/OBrainfuck) ([code](../src/esolangs/languages/obrainfuck/interpreter.py))
 - [Painfuck](https://esolangs.org/wiki/Painfuck) ([code](../src/esolangs/languages/painfuck/interpreter.py))
 - [Pointless](https://esolangs.org/wiki/Pointless) ([code](../src/esolangs/languages/pointless/interpreter.py))
 - [ROTfuck](https://esolangs.org/wiki/ROTfuck) ([code](../src/esolangs/languages/rotfuck/interpreter.py))
@@ -96,6 +95,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [What!?](https://esolangs.org/wiki/What!%3F) ([code](../src/esolangs/languages/what/interpreter.py))
 - [bit~](https://esolangs.org/wiki/bit~) ([code](../src/esolangs/languages/bit_tilde/interpreter.py))
 - [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](../src/esolangs/languages/brainfuck/interpreter.py))
+- [oBrainfuck](https://esolangs.org/wiki/oBrainfuck) ([code](../src/esolangs/languages/obrainfuck/interpreter.py))
 
 ### Register-based Languages
 

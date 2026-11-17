@@ -576,7 +576,7 @@ def quick_tests(name: str) -> list[str]:
         "tests/interpreters/test_transition_purity.py"
         f"::test_interpreter_core_is_pure_for_its_sample[{name}]",
         # ~17 s; at 9,999 of 10,000 it first failed in finish's 648 s pytest
-        # (OBrainfuck, 2026-11-17).
+        # (oBrainfuck, 2026-11-17).
         "tests/tooling/test_file_sizes.py::test_the_suite_stays_under_its_test_budget",
     ]
     if lang.backend is None:

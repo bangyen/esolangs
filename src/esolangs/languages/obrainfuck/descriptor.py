@@ -1,4 +1,4 @@
-"""Runtime and compiler capabilities for OBrainfuck."""
+"""Runtime and compiler capabilities for oBrainfuck."""
 
 from esolangs.languages.obrainfuck.lifecycle import CAPABILITIES
 from esolangs.registry._contracts import BooleanContract
@@ -29,7 +29,7 @@ def _backend() -> BackendDefinition:
 
 
 LANGUAGE = LanguageDeclaration(
-    "OBrainfuck",
+    "oBrainfuck",
     RuntimeSpec(
         "obrainfuck",
         category="tape_based",

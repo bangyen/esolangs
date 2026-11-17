@@ -1,4 +1,4 @@
-"""Interpreter for OBrainfuck.
+"""Interpreter for oBrainfuck.
 
 Brainfuck whose k-th ``[`` pairs with the k-th ``]`` by occurrence, not
 nesting.  The wiki's C lowering, ``[`` as ``goto Rk;Lk:`` and ``]`` as
@@ -17,6 +17,8 @@ Errors:
     InputExhaustedError: ``,`` at EOF.
 
 Decisions:
+    * The name keeps the page's own spelling, oBrainfuck; the wiki title's
+      capital is MediaWiki's.
     * A closer may precede its opener: the page calls ``][`` "a valid
       program that falls into an infinite loop".
     * Cells, tape growth and ``,`` follow this repo's Brainfuck; the page
@@ -69,9 +71,9 @@ def parse(code: str) -> BracketProgram:
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Pair brackets once; each IO port receives a fresh Brainfuck machine."""
     if not isinstance(source, str):
-        raise TypeError("OBrainfuck machines require text source")
+        raise TypeError("oBrainfuck machines require text source")
     if options:
-        raise TypeError("OBrainfuck machines accept no runtime options")
+        raise TypeError("oBrainfuck machines accept no runtime options")
     program = parse(source)
     return RuntimePlan(
         lambda io: _Machine(program, io),
