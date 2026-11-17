@@ -20,8 +20,8 @@ def root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 @pytest.mark.usefixtures("root")
 def test_scaffold_creates_source_generator_and_tests() -> None:
-    source, test, descriptor, generator, generator_test, *packages = (
-        new_language.scaffold("Tiny Lang", "other")
+    source, test, descriptor, generator, *packages = new_language.scaffold(
+        "Tiny Lang", "other"
     )
     assert (source.name, generator.name) == ("interpreter.py", "generator.py")
     assert (
@@ -33,11 +33,9 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
     assert descriptor.name == "descriptor.py"
     assert descriptor.parent == source.parent
     assert "OperationRef" in descriptor.read_text()
-    assert test.parent == generator_test.parent == source.parent / "tests"
-    assert (test.name, generator_test.name) == (
-        "test_tiny_lang.py",
-        "test_boolean_tiny_lang.py",
-    )
+    assert test.parent == source.parent / "tests"
+    assert test.name == "test_tiny_lang.py"
+    assert not (test.parent / "test_boolean_tiny_lang.py").exists()
     stub = source.read_text()
     assert stub.startswith('"""Interpreter for Tiny Lang.')
     assert "<Language>" not in stub
@@ -63,7 +61,6 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
     assert new_language.PLACEHOLDER in stub
     assert "def tiny_lang(truth_table: str) -> str:" in generator.read_text()
     assert "LANGUAGE" not in generator.read_text()
-    assert "compat" not in generator_test.read_text()
 
 
 @pytest.mark.usefixtures("root")

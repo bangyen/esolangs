@@ -148,25 +148,6 @@ LANGUAGE = Language("{name}", RuntimeSpec(
     ))
 '''
 
-_GENERATOR_TEST = '''"""Tests for the {name} Boolean generator."""
-
-import esolangs
-from tests.support.witness_tables import SMALL_TABLES as TABLES
-
-
-def test_every_row_prints_its_answer() -> None:
-    """Each row's stdin is what the registry's BooleanContract encodes."""
-    for table in (*TABLES, "00010111", "01101001", "11101000"):
-        n = len(table).bit_length() - 1
-        program = esolangs.generate("{name}", table)
-        for row in range(len(table)):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-            stdin = esolangs.encode_inputs("{name}", bits)
-            got = esolangs.run("{name}", program, stdin=stdin).output
-            # The answer as the contract reads it, not the raw output.
-            assert esolangs.read_answer("{name}", got) == table[row], (table, row)
-'''
-
 
 def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     """Create and return the interpreter, generator and test stubs."""
@@ -191,10 +172,9 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
         _DESCRIPTOR if generator else _INTERPRETER_DESCRIPTOR
     ).format(**fields)
     if generator:
+        # No per-row test: test_every_input_is_read checks every row's answer
+        # on its tables for every generator, and a duplicate costs budget.
         files[package / "generator.py"] = _GENERATOR.format(**fields)
-        files[package / "tests" / f"test_boolean_{slug}.py"] = _GENERATOR_TEST.format(
-            **fields
-        )
     files[package / "tests/__init__.py"] = '"""Language-specific execution tests."""\n'
     files[package / "__init__.py"] = '"""Language implementation modules."""\n'
     files[package / "language.toml"] = (
@@ -595,6 +575,9 @@ def quick_tests(name: str) -> list[str]:
         "tests/api/test_catalog_contracts.py::TestTheSpecIsReachable",
         "tests/interpreters/test_transition_purity.py"
         f"::test_interpreter_core_is_pure_for_its_sample[{name}]",
+        # ~17 s; at 9,999 of 10,000 it first failed in finish's 648 s pytest
+        # (OBrainfuck, 2026-11-17).
+        "tests/tooling/test_file_sizes.py::test_the_suite_stays_under_its_test_budget",
     ]
     if lang.backend is None:
         return _escaped(nodes)
