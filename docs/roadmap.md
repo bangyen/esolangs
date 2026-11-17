@@ -102,6 +102,10 @@ history at `f35aa4023`.
        A linear-character tree passed 2,458 byte-exact cases with no
        implicit output separator. Check full command semantics, word
        framing and public implementation coverage.
+    10. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
+        runtime rewrite queries select weighted graph routes, and the final
+        stop callback identifies the answer. The text probe passed 2,120
+        subset cases. Check query and callback framing and the source bound.
   - *Admission:* check public implementations, fixed core semantics and
     an executed loop-less O(T) Boolean construction under
     [curation](limitations.md#curation).
