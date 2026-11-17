@@ -67,8 +67,8 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki candidates, in admission order.** Six subset probes passed
-  27,202 generated cases in the screening recheck. No qualifying public
+- **Wiki candidates, in admission order.** Seven subset probes passed
+  35,420 generated cases in the screening recheck. No qualifying public
   implementation surfaced for these dialects.
     1. [Ser2](https://esolangs.org/wiki/Ser2) (rev. 70987): eager rewrite
        selection and linear I/O, 5,146 cases. Escaped names, wildcard
@@ -95,6 +95,11 @@ history at `f35aa4023`.
        dequeued input bytes execute branch bodies redefined at each node.
        The probe embeds the input and returns the final queue, passing
        10,250 cases. At arity 10 it emits 13,342 characters.
+    7. [Q-BAL](https://esolangs.org/wiki/Q-Bal) (rev. 152296):
+       numeric stdin selects a forward offset in the program-counter queue.
+       The loop-less tree passed 8,218 cases and emits 38,136 characters
+       at arity 10. Verify numeric framing and instruction-queue mutation
+       semantics at admission.
   - *Admission:* check public implementations, fixed core semantics and
     an executed loop-less O(T) Boolean construction under
     [curation](limitations.md#curation).
