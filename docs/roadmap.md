@@ -67,14 +67,7 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki candidate screening:** the 2026-11-16 pass used the 2026-11-12
-  snapshot and 27 live additions or revisions. Of 629 flagged pages,
-  417 passed triage. Manual review covered the highest-ranked specs and
-  selected lower-ranked and prefiltered specs with distinct execution
-  models.
-  - The combined shortlist review screened 29 candidates. Eight advance
-    to admission checks and 21 remain on hold.
-  - *Advance to admission checks, in order:*
+- **Wiki candidate admission checks, in order:**
     1. [OBrainfuck](https://esolangs.org/wiki/OBrainfuck) (rev. 163644):
        ordinal brackets select a Boolean arm, 3,080 subset runs and 64
        independent C-lowering checks. The pinned spec leaves EOF open.
@@ -104,41 +97,6 @@ history at `f35aa4023`.
     8. [NOR Machine](https://esolangs.org/wiki/NOR_Machine) (rev. 154406):
        indexed bit input and final-stack output, 2,680 subset runs. Pin
        input framing and check implementation coverage for this dialect.
-  - *Hold pending evidence:*
-    - [Beetle](https://esolangs.org/wiki/Beetle) (rev. 156896): 7,220 subset
-      runs. The greeting fixes output order. The byte relay distinguishes
-      input orders. Resolve input bit order and EOF.
-    - [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks))
-      (rev. 180732): 3,610 runs per route. The calculator supports consuming
-      `:`. Resolve equality operand consumption and zero-entry cleanup,
-      then compare the control-stack branch with collected languages.
-    - [Pancake](https://esolangs.org/wiki/Pancake) (rev. 199721): 2,682
-      single-lane runs with explicit halt. The greeting's string row fails
-      its regex. Resolve the literal syntax, embedded plates and lane entry.
-    - [Trep](https://esolangs.org/wiki/Trep) (rev. 87605): 3,610 rewrite
-      runs. Pin normal-form output and check the reported interpreter.
-    - [Paint](https://esolangs.org/wiki/Paint) (rev. 130859): 3,610
-      marked-pixel runs. Pin final-canvas observation and distinguish the
-      two-tape guards from collected languages.
-    - [Calcu-less 2](https://esolangs.org/wiki/Calcu-less_2) (rev. 159679):
-      3,610 constant-integrand runs. Resolve the source grammar, memory
-      effects and EOF.
-    - [Bit-ter lang](https://esolangs.org/wiki/Bit-ter_lang) (rev. 177676):
-      3,610 expression-tree runs. Resolve whether slot references read or
-      print, and distinguish the route from existing eager generators.
-    - *bfuck, ArtState, GTF, Mepytaruon, Slink, Stackish, Tables,
-      Wow, labels are variables now!, and XBF need execution or I/O rules
-      pinned, or a full Boolean construction.
-    - Optimism, Portable Minsky Machine Notation, Shifted brainfuck,
-      Sugueziume, and \BV need a comparison with collected routes.
-  - *Parked in this pass:* Irregular Expression (input and result semantics)
-    and Godencode (input framing and linear source construction).
-  - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
-    Onecode (Fergusq), NB and Nybbleist. ALEFL and GolferDream were deferred
-    on spec gaps. Flump failed source scaling. See
-    [screening decisions](limitations.md#rejected-and-deferred-candidates).
-  - The prior pass parked 277 pages and prefiltered 835 by length,
-    templates, vocabulary or implementation links.
   - *Admission:* check public implementations, fixed core semantics and
     an executed loop-less O(T) Boolean construction under
     [curation](limitations.md#curation).
