@@ -384,6 +384,7 @@ for the level counts. `tests/proofs/test_execution_formulas.py` and
 | brainfuck | tree | zero-pruned decision tree; residuals defer through level flags; affine tables stream; literal conjunctions/disjunctions share ASCII normalization | linear: at most 35T/2 + 55n + 25 characters: the plain tree | proved | poly n: worst 75n + 49 commands past n = 2: OR all-zeros | poly n: at most max(7n,2n+7) + bl(2n) + bl(n) + bl(L) bits |
 | BrainIf | tree | equal cofactors share a layered DAG; OR uses a known-zero entry and holds its answer beside trailing input; width requests retain tree/spatial readers | linear: at most 52N+823+A+2digits(4N+54) characters: layered DAG before fall-through | proved | poly n: at most 4n + 50 commands, one DAG path and a tail | poly n: at most C + bl(R) + bl(n) bits: cell storage C and R lines |
 | Bruijndejx | tree | decision tree of ? reads through a two-way read combinator Q and an ignoring read I; multi-parent residuals are named once, raced arithmetically against the inline tree | linear: at most 5T + 23 characters | proved | poly n: at most 11n + 2 commands | poly n: at most 9*bl(2L) + bl(n) + 5 bits |
+| Bytemap | linear lookup | five-byte prints paged 128 rows by 16 blocks from column 0; row 0 doubles and adds each input character into three counters; a self-written left jump and strip of down jumps land on the print, and page headers compare and carry the page counter | linear: at most 21T/2 + 512 characters | proved | linear: at most 4n + T/200 + 40 commands | poly n: at most 60n + 40 bits |
 | Caballo | tree | the inputs are the initial stack; selectors `dp` (keeps a 1 and pops it), `(p+dp-)` (keeps a 0 and pops it) build a tree leaving an empty stack of weight 1 on each 1 row, a 0 subtable no branch and a constant 1 its pops; `(i+-)` beside n pops makes that `[1]` and the 0 rows `[]`; more ones than zeros builds the complement; equal halves pop untested | linear: worst 33T/4 + n - 4 characters past n = 1: parity | proved | poly n: worst n^2 + 12n + 6 commands past n = 2: a skipped dp chain, 2 a level | poly n: at most (n+1)(n+2)/2 + 51n + 82 + bl(n) + (3n+3) bl(⌊2L/5⌋) + (n+1) bl(n+3) bits: nested frames |
 | CARP | tree | the diagram branches on every essential input with DEC; an equal subtree is emitted once, reached by a jump through a register held at 15, and constants jump to one of two print gadgets | linear: at most 2T + n + 20 lines | proved | poly n: at most 3n + 19 commands | poly n: worst n + 23 bits |
 | Chicken | finite lookup | the essential input bits fold into a row number from a pushed base, and a load reads that row's chicken count back out of the program's own lines | linear: at most 5T + 4n^2 + 372n + 300 characters | proved | linear: at most 9n + 3 commands | linear: at most 3T/2 + 80n + 301 bits |
@@ -566,7 +567,7 @@ The remaining `cap` rows do have a uniform lift argument.
 
 <!-- PROOF-TOTALS:START -->
 
-Accordingly, this ledger records 120 theoretical totality arguments and
+Accordingly, this ledger records 121 theoretical totality arguments and
 two exceptions under the source-embedded contract.
 
 <!-- PROOF-TOTALS:END -->

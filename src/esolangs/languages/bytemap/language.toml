@@ -1,0 +1,103 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+# Wiki rev. 169841; 3 backlinks (Language list, User:Milcho, Unimplemented
+# By Date) in the 2026-11-17 screen; the page says no interpreter exists.
+backlinks = 3
+admitted = 2026-11-17T18:00:00-05:00
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "five-byte prints paged 128 rows by 16 blocks from column 0; row 0 doubles and adds each input character into three counters; a self-written left jump and strip of down jumps land on the print, and page headers compare and carry the page counter"
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.direct_header_20261117]
+kind = "measurement"
+witness = { arity = 10, rule = "random", seed = 1847 }
+source = { value = 10847, unit = "chars" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-17
+construction = "esolangs.languages.bytemap.generator:bytemap_request"
+notes = "Shipped (row 0 is page 0's header while the reading code fits 255 cells): 10,847 chars; data slots plus a row-1 return emit 11,252, and 598 against 367 at n=4 parity (16 sampled rows correct each; notes/ablations/bytemap-direct-header.py)."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 367
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bytemap.generator:bytemap_request"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 10847
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bytemap.generator:bytemap_request"
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.bytemap.generator:bytemap_request"
+
+[resource_evidence.execution]
+# 3 commands an input (1 for its part's first), 4 fix-ups, 9 a passed page
+# (9/2048 <= 1/200 a row), the chosen page's 16 strip writes and 10 more;
+# a long row 0 adds a copy a segment and two a return hop.
+expression = "4n + T/200 + 40"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.workspace]
+# Written cells: the counters and their scratch, the chosen page's strip;
+# a passed page zeroes its header, so pages add only a row number's bits.
+expression = "60n + 40"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.scaling]
+# 10 chars a table row; ~530 a 2,048-row page; O(n) reading, worst over
+# 21T/2 at n = 11 (276), the first long row 0.
+expression = "21T/2 + 512"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "characters"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/bytemap/tests/test_bytemap.py::test_the_pages_examples_and_rulings",
+]
+
+[catalogue]
+folding_constant_local = "_PRINT"  # reads every input over its own opcode, prints the constant
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18 }, source_units = 255 }
+"00001100" = { commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 16, "5" = 16, "6" = 16, "7" = 16 }, source_units = 187 }
+"00110110" = { commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18 }, source_units = 255 }
+"0110" = { commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15 }, source_units = 179 }
+"01101001" = { commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18 }, source_units = 255 }
+"0110100110010110" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 21, "7" = 21, "8" = 21, "9" = 21, "10" = 21, "11" = 21, "12" = 21, "13" = 21, "14" = 21, "15" = 21 }, source_units = 367 }
+"1101001101101101" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 21, "7" = 21, "8" = 21, "9" = 21, "10" = 21, "11" = 21, "12" = 21, "13" = 21, "14" = 21, "15" = 21 }, source_units = 367 }
+"11111110" = { commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18 }, source_units = 255 }

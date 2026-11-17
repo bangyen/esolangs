@@ -67,30 +67,26 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki candidates, in admission order.** All six subset probes passed
-  20,562 generated cases in the screening recheck. No qualifying public
+- **Wiki candidates, in admission order.** All five subset probes passed
+  16,952 generated cases in the screening recheck. No qualifying public
   implementation surfaced for these dialects.
-    1. [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841):
-       grid comparison with two jump targets, 3,610 cases. The greeting
-       uses an even-height grid. The ASCII probe raises before writing
-       on a short read. EOF is open.
-    2. [Ser2](https://esolangs.org/wiki/Ser2) (rev. 70987): eager rewrite
+    1. [Ser2](https://esolangs.org/wiki/Ser2) (rev. 70987): eager rewrite
        selection and linear I/O, 5,146 cases. Escaped names, wildcard
        validation and ambiguous matches were checked. Verify optional
        signals and remaining special-object grammar at admission.
-    3. [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
+    2. [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
        direction-dependent jumps, 3,610 cases. Tested a 114,685-line
        jump. The probe uses one exact decimal per line and raises at EOF.
        The spec leaves numeric width, framing and EOF open.
-    4. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo
+    3. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo
        selects ordered exits, 3,616 cases. The probe skips characters
        outside ASCII digits 0–3 and raises at EOF. EOF is open, and the
        reported C interpreter in development has no public copy found.
-    5. [Artppeice](https://esolangs.org/wiki/Artppeice) (rev. 201757):
+    4. [Artppeice](https://esolangs.org/wiki/Artppeice) (rev. 201757):
        dequeued words select payload destinations, 2,458 byte-exact
        cases. The probe checks wraparound and rename. Word framing,
        EOF, output separators and rename collisions are open.
-    6. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
+    5. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
        runtime rewrite queries and a stop callback, 2,122 cases. The
        shared graph and message stream have an O(T) character bound.
        The probe uses line framing and serial literal deletion on

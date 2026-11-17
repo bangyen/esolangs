@@ -14,6 +14,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [Balik](https://esolangs.org/wiki/Balik) ([code](../src/esolangs/languages/balik/interpreter.py))
 - [Befunge](https://esolangs.org/wiki/Befunge) ([code](../src/esolangs/languages/befunge/interpreter.py))
 - [Bifunge](https://esolangs.org/wiki/Bifunge) ([code](../src/esolangs/languages/bifunge/interpreter.py))
+- [Bytemap](https://esolangs.org/wiki/Bytemap) ([code](../src/esolangs/languages/bytemap/interpreter.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](../src/esolangs/languages/circuit_diagram/interpreter/__init__.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](../src/esolangs/languages/clockwise/interpreter.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](../src/esolangs/languages/dig/interpreter.py))

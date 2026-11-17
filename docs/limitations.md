@@ -296,7 +296,7 @@ and every 128th row at fifteen and sixteen in the weekly run.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 125 languages.
+The collection has 126 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -383,10 +383,15 @@ admission records are in each language's `language.toml`.
 | Ground | Languages |
 |---|---|
 | route | 123, BF-PDA, BIO, Jaune, NoComment, Sophie, Funge-98, Emmental, Prelude, LOLCODE, Brainloller, Braincopter, Turing Paint, Befunk, Factor, Polynomial, Piet++, Tiangou |
-| spec | 3D Brainfuck, Transistor, Pinyin, Self-replicating marbles, Wirefunge, Bytemap, Gifunk, BitCode, PicCode, Minifuck, the Minecraft ports; deferred: 大白话, BOOMOP, Semqain |
+| spec | 3D Brainfuck, Transistor, Pinyin, Self-replicating marbles, Wirefunge, Gifunk, BitCode, PicCode, Minifuck, the Minecraft ports; deferred: 大白话, BOOMOP, Semqain |
 | token substitution | Trivial brainfuck substitution |
 | scaling | Vandevelo, %^2^-1, WII2D, COD, ZTOALC L |
 | no generator | HuePrism (no input), Nopstacle (its blank and `#` spell no input embed) |
+
+Bytemap, removed on 2026-09-27 for undefined byte order, division faults
+and 8bpp images, was readmitted on 2026-11-17: no example depends on byte
+order (ruled big-endian, grid order), a zero divisor halts, and the image
+format is the page's optional alternative to its hex text.
 
 Minifuck's removed generator counted non-commands in skip offsets. Under
 command-only offsets, all 258 corpus rows diverged. Its replacement could

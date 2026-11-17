@@ -30,6 +30,7 @@ BracketOnly,yes,owned-adapter,bracketonly-v1
 brainfuck,yes,owned-adapter,brainfuck-v1
 BrainIf,yes,owned-adapter,brainif-v1
 Bruijndejx,yes,owned-adapter,bruijndejx-v1
+Bytemap,yes,owned-adapter,bytemap-v1
 Caballo,yes,owned-adapter,caballo-v1
 CARP,yes,owned-adapter,carp-v1
 Chicken,yes,owned-adapter,chicken-v2

@@ -1,0 +1,17 @@
+[[spec_triggers]]
+program = "0g"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a character other than ``0-9``, ``A-F`` or a newline, or a row with an odd number of hex digits."
+
+[[spec_triggers]]
+program = "10560401"
+stdin = "x"
+expect = "ArgumentError"
+claim = "ArgumentError: a ``10`` token that is not a decimal integer."
+
+[[spec_triggers]]
+program = "20"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a byte with no command run as one, or division or modulus by zero."
