@@ -549,8 +549,9 @@ Every language steps under the debugger.
 | Watches | `watch_cell(index)`, `watch_stack(slot)`: both return per-step histories |
 | Inspect | `ip` (shaped by `ip_shape`), `memory`, `ptr`, `stack`, `views` |
 
-- A cell the machine has not reached reads `None`, so `break_on_cell(i, 0)`
-  fires only once the pointer gets there.
+- A cell outside the current `memory` view records `None` in a watch.
+  `break_on_cell(i, 0)` can stop before the first step if cell `i` already
+  exists and holds zero.
 - `break_on_output(text)` stops once output contains `text`. After a hit,
   `run` suppresses that breakpoint until its condition becomes false, so
   resuming can progress without clearing it.
