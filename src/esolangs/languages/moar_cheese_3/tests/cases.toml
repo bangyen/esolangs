@@ -1,0 +1,5 @@
+[[spec_triggers]]
+program = "(0)(1)"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a malformed instruction, a missing separator, or a character outside printable ASCII."

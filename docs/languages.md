@@ -68,6 +68,7 @@ Languages whose primary data structure is a queue or deque.
 - [Qrain](https://esolangs.org/wiki/Qrain) ([code](../src/esolangs/languages/qrain/interpreter.py))
 - [Taglate](https://esolangs.org/wiki/Taglate) ([code](../src/esolangs/languages/taglate/interpreter.py))
 - [artppeice](https://esolangs.org/wiki/artppeice) ([code](../src/esolangs/languages/artppeice/interpreter.py))
+- [moar cheese :3](https://esolangs.org/wiki/moar_cheese_:3) ([code](../src/esolangs/languages/moar_cheese_3/interpreter.py))
 
 ### Tape-based Languages
 

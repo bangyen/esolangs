@@ -93,6 +93,7 @@ don't edit by hand.
 | `lol_waht_i_cant_edit_talk_pages/lol-waht-i-cant-edit-talk-pages.txt` | lol waht i cant edit talk pages | `0001` | `01` | 0 1 | '0' |
 | `malbolge/malbolge.txt` | Malbolge | `0001` | `01` | 01 | '0' |
 | `minsky_swap/minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '1 0' |
+| `moar_cheese_3/moar-cheese-3.txt` | moar cheese :3 | `0001` | `01` | embedded 01 | '0' |
 | `modulous/modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
 | `monotonic_boolfuck/monotonic-boolfuck.txt` | Monotonic Boolfuck | `0001` | `01` | 01 | '0' |
 | `movesum/movesum.txt` | Movesum | `0001` | `01` | 0 1 | '0 0' |
@@ -168,6 +169,7 @@ don't edit by hand.
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **malbolge** -- the answer is one character and is printed with no newline
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
+- **moar-cheese-3** -- Inputs are embedded as n or y; the final queue is the answer.
 - **nq** -- The whole output is a space for false or # for true.
 - **nybbleist** -- Each input digit is one byte, read high nybble first.
 - **object-disoriented** -- Object disoriented reads input bits most significant first, so a program keeps each input byte's eighth bit and drops the seven before it

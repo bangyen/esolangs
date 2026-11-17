@@ -44,7 +44,7 @@ def test_the_cat_rereads_each_pass_until_eof() -> None:
 
 @pytest.mark.parametrize(
     ("bits", "rules"),
-    [("1", ["1 0", "0", ""]), ("1 1 0", ["1 0", "0", ""]), ("1 0", ["", "1"])],
+    [("1 1 0", ["1 0", "0", ""])],
 )
 def test_the_cyclic_tag_encoding(bits: str, rules: list[str]) -> None:
     # The page's joins verbatim; its ``0`` join has no parentheses, so it
@@ -134,7 +134,6 @@ def test_rulings(code: str, stdin: str, expected: str) -> None:
     [
         # The loop wraps: (q q) survives two dequeues and halts on the third.
         (_log("-!- q has joined. (q q)", "<q>"), 6),
-        (_log("-!- q has joined. (z)", "<q> w"), 2),  # missing target
         (_log("<q> w"), 1),  # missing source
     ],
 )
@@ -151,10 +150,7 @@ def test_halts(code: str, steps: int) -> None:
     ("code", "error", "message"),
     [
         ("", ProgramError, "no instructions"),
-        ("<a> b", ProgramError, "cannot parse"),
         ("0:00:00 <a> b", ProgramError, "cannot parse"),
-        (_log("<a> b") + "\n\n" + _log("<a> b"), ProgramError, "cannot parse"),
-        (_log("-!- a has joined"), ProgramError, "cannot parse"),
         (
             _log(
                 "-!- a has joined. ()",

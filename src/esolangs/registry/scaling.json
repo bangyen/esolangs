@@ -72,6 +72,7 @@
   "lol_waht_i_cant_edit_talk_pages": "linear: at most 105T characters: one while-equal loop per branch",
   "malbolge": "linear, measured: worst 13340 (n=1..13), 19683 (n=14), 52480 (n=15), 59049 (n\u226516) characters; final range uses the whole 3^10-cell store",
   "minsky_swap": "linear: worst 40n+11 (n=1..5), 5T/2+6n+19+(8n-1)(digits(T+6n+13)+1) (n\u22656) characters; attained through n=5",
+  "moar_cheese_3": "linear: at most 4T + 22n + 58 characters",
   "modulous": "linear: worst 68 (n=1), 6T+28n+21 (n=2..4), 3T+28n+144 (n=5), T/2+48n+157+power2_digits_sum(n-1) (n\u22656) characters",
   "monotonic_boolfuck": "linear: worst 53T/2 - 21 characters past n = 1",
   "movesum": "linear: 4T + 6n + 4 commands, 32 characters a row",
