@@ -294,7 +294,7 @@ def _generate(
             )
         generation_width = request.width
         if width is not None and not laid_out and backend.wrap is not None:
-            _check_reflow_layout(generated)
+            generated = _check_reflow_layout(generated)
             if not _can_wrap_template(generated, backend.wrap):
                 raise ProgramError(f"{resolved} requires a slot-aware wrapper")
             if isinstance(backend.wrap, TokenWrapper):
@@ -395,23 +395,26 @@ def _structured_template(
     )
 
 
-def _check_reflow_layout(layout: TemplateLayout) -> None:
+def _check_reflow_layout(layout: TemplateLayout) -> TemplateLayout:
     """Validate raw offsets before a wrapper uses them to slice source."""
     if not _has_backing_type(layout.source, str):
         raise TemplateError("template needs text source and TemplateBindings")
     if not _has_backing_type(layout.spans, tuple):
         raise TemplateError("template needs one span per input")
     position, size = 0, str.__len__(layout.source)
+    spans = []
     try:
         for span in tuple.__iter__(layout.spans):
             start, end = _freeze_span(span)
             if type(start) is not int or type(end) is not int:
                 raise ValueError("template spans must be pairs of offsets")
             if not position <= start <= end <= size:
-                raise ValueError(f"invalid template span {span!r}")
+                raise ValueError(f"invalid template span {(start, end)!r}")
+            spans.append((start, end))
             position = end
     except ValueError as error:
         raise TemplateError(str(error)) from error
+    return TemplateLayout(layout.source, tuple(spans))
 
 
 def _generate_balanced(

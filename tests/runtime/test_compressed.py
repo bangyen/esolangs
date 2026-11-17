@@ -407,5 +407,25 @@ def test_format_budgets_are_independent_and_survive_wrapping() -> None:
         CompressedText.from_chunks(
             ("x",), limits=TextLimits(plain_chars=10, generation_chars=10, gzip_bytes=1)
         )
-    with pytest.raises(esolangs.ArgumentError, match="nonnegative"):
-        TextLimits(plain_chars=1, generation_chars=-1, gzip_bytes=1)
+
+    class Budget(int):
+        def __int__(self):
+            raise AssertionError("converted the budget subclass")
+
+        def __lt__(self, other):
+            raise AssertionError("compared the budget subclass")
+
+    budgets = TextLimits(
+        plain_chars=Budget(1), generation_chars=Budget(2), gzip_bytes=Budget(100)
+    )
+    assert all(
+        type(value) is int
+        for value in (budgets.plain_chars, budgets.generation_chars, budgets.gzip_bytes)
+    )
+    compressed = CompressedText.from_chunks(("x",), limits=budgets)
+    api = esolangs.Language(REFERENCE)
+    artifact = api.from_source(compressed)
+    assert api.from_json(api.to_json(artifact)) == artifact
+    for bad in (-1, Budget(-1), True, 1.0):
+        with pytest.raises(esolangs.ArgumentError, match="nonnegative"):
+            TextLimits(plain_chars=1, generation_chars=bad, gzip_bytes=1)

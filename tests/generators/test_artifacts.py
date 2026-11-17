@@ -15,10 +15,10 @@ from esolangs.artifacts import (
     TemplateArtifact,
     TemplateBindings,
 )
-from esolangs.generation.template import InputSlot, layout_tokens
-from esolangs.generation.wrap import TokenWrapper
+from esolangs.generation.template import InputSlot, TemplateLayout, layout_tokens
+from esolangs.generation.wrap import TokenWrapper, wrap_chars
 from esolangs.registry import LANGUAGES, canonical_id
-from esolangs.registry._backend import TemplateSpec
+from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.runtime._files import _ANCHORED_STAGING
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages, one, one_where
@@ -219,6 +219,68 @@ def test_template_bindings_require_ordered_pairs() -> None:
 
     bindings = TemplateBindings(setters=[OrderedPair()])
     assert bindings.fill("$", [1]) == "1"
+
+    class Offset(int):
+        def __int__(self):
+            raise AssertionError("converted the offset subclass")
+
+        def __repr__(self):
+            raise AssertionError("formatted the offset subclass")
+
+        def __lt__(self, other):
+            raise AssertionError("compared the offset subclass")
+
+        def __floordiv__(self, other):
+            raise AssertionError("divided the offset subclass")
+
+    class Source(str):
+        pass
+
+    source = Source("$x")
+
+    def emit(_request):
+        return TemplateLayout(source, ((Offset(0), Offset(1)),))
+
+    def setters(template, inputs):
+        if "\n" not in template:
+            assert template is source
+        return (("0", "1"),) * inputs
+
+    declaration = LANGUAGES[_EMBEDDING[0]]
+    backend = BooleanBackend(
+        emit, template=TemplateSpec(setters=setters), wrap=wrap_chars
+    )
+    scoped = esolangs.Catalog([replace(declaration, backend=backend)]).bind(
+        declaration.name
+    )
+    plain = scoped.generate("01")
+    wrapped = scoped.generate("01", width=1)
+    assert plain.source == "$x"
+    assert wrapped.source == "$\nx"
+    assert wrapped.spans == ((0, 1),)
+    assert wrapped.fill([1]).source == "1\nx"
+
+    def invalid_layout(_request):
+        return TemplateLayout(source, ((Offset(-1), Offset(1)),))
+
+    invalid = esolangs.Catalog(
+        [replace(declaration, backend=replace(backend, entrypoint=invalid_layout))]
+    ).bind(declaration.name)
+    with pytest.raises(
+        esolangs.TemplateError, match=r"invalid template span \(-1, 1\)"
+    ):
+        invalid.generate("01", width=1)
+
+    spans = ((Offset(0), Offset(1)),)
+    template = TemplateArtifact("$", REFERENCE, bindings, spans=spans)
+    assert template.spans == ((0, 1),)
+    assert all(type(offset) is int for offset in template.spans[0])
+    assert template.fill([1]).source == bindings.fill("$", [1], spans=spans) == "1"
+    for bad in (True, 0.0, -1, Offset(-1)):
+        with pytest.raises(esolangs.TemplateError, match="invalid template span"):
+            TemplateArtifact("$", REFERENCE, bindings, spans=((bad, 1),))
+        with pytest.raises(esolangs.TemplateError, match="invalid template span"):
+            bindings.fill("$", [1], spans=((bad, 1),))
     with pytest.raises(esolangs.TemplateError, match="spans must be pairs of offsets"):
         TemplateArtifact("$", REFERENCE, bindings, spans=(OrderedPair(),))
 

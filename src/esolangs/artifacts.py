@@ -235,7 +235,14 @@ def _freeze_span(span: tuple[int, int]) -> tuple[int, int]:
     if not _has_backing_type(span, tuple):
         raise ValueError("template spans must be pairs of offsets")
     start, end = tuple.__iter__(span)
-    return start, end
+    return (
+        int.__int__(start)
+        if type(start) is not bool and _has_backing_type(start, int)
+        else start,
+        int.__int__(end)
+        if type(end) is not bool and _has_backing_type(end, int)
+        else end,
+    )
 
 
 def _template_pickle_fields(artifact: TemplateArtifact) -> tuple[str, ...]:

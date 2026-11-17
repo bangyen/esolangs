@@ -35,9 +35,14 @@ class TextLimits:
 
     def __post_init__(self) -> None:
         """Require nonnegative integer budgets."""
-        for value in (self.plain_chars, self.generation_chars, self.gzip_bytes):
-            if type(value) is not int or value < 0:
+        for name in ("plain_chars", "generation_chars", "gzip_bytes"):
+            value = getattr(self, name)
+            if type(value) is bool or not _has_backing_type(value, int):
                 raise ArgumentError("text limits must be nonnegative integers")
+            value = int.__int__(value)
+            if value < 0:
+                raise ArgumentError("text limits must be nonnegative integers")
+            object.__setattr__(self, name, value)
 
     def __repr__(self) -> str:
         """Represent each budget even beyond the decimal digit cap."""
