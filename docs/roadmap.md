@@ -67,42 +67,45 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki candidate admission checks, in order:**
+- **Wiki candidates, in admission order.** All nine subset probes passed
+  28,444 generated cases in the screening recheck. No qualifying public
+  implementation surfaced for these dialects.
     1. [OBrainfuck](https://esolangs.org/wiki/OBrainfuck) (rev. 163644):
-       ordinal brackets select a Boolean arm, 3,080 subset runs and 64
-       independent C-lowering checks. The pinned spec leaves EOF open.
-       The repo's EOF-error convention passed on truncated input.
-       No public interpreter surfaced in the targeted search.
+       ordinal bracket pairing, 3,080 cases and 64 earlier C-lowering
+       checks. Empty and truncated input raise in the probe. EOF is open.
     2. [Bruijndejx](https://esolangs.org/wiki/Bruijndejx) (rev. 139554):
-       one native read selects the zero, one or EOF continuation. The
-       subset passed 5,146 runs. Check lambda and declaration semantics.
-    3. [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841): the
-       two-operand grid comparison selects independent jump targets,
-       3,610 subset runs. The greeting works with an unreachable padding
-       row under the even-row rule. Pin console EOF.
-    4. [Ser2](https://esolangs.org/wiki/Ser2) (rev. 70987): eager rewrites
-       select the most specific input pattern and return the original
-       I/O object. The subset passed 5,146 runs and selected zero, one
-       and EOF in both rule orders. Check full grammar and execution.
+       zero, one and EOF continuations, 2,122 cases in the binding probe.
+       Macro capture and ordinary declaration lookup differ. Evaluation
+       timing, duplicate declarations and unbound-index errors are open.
+    3. [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841):
+       grid comparison with two jump targets, 3,610 cases. The greeting
+       uses an even-height grid. The ASCII probe raises before writing
+       on a short read. EOF is open.
+    4. [Ser2](https://esolangs.org/wiki/Ser2) (rev. 70987): eager rewrite
+       selection and linear I/O, 5,146 cases. Escaped names, wildcard
+       validation and ambiguous matches were checked. Verify optional
+       signals and remaining special-object grammar at admission.
     5. [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
-       direction reversal and relative line jumps, 3,610 subset runs.
-       Pin numeric input framing and line-offset range.
-    6. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo-selected
-       exits in a Unicode grid, 3,616 subset runs. Pin EOF and ignored-symbol
-       handling. The spec reports a C interpreter in development, and
-       the targeted search found no qualifying public implementation.
+       direction-dependent jumps, 3,610 cases. Tested a 114,685-line
+       jump. The probe uses one exact decimal per line and raises at EOF.
+       The spec leaves numeric width, framing and EOF open.
+    6. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo
+       selects ordered exits, 3,616 cases. The probe skips characters
+       outside ASCII digits 0–3 and raises at EOF. EOF is open, and the
+       reported C interpreter in development has no public copy found.
     7. [NOR Machine](https://esolangs.org/wiki/NOR_Machine) (rev. 154406):
-       indexed bit input and final-stack output, 2,680 subset runs. Pin
-       input framing and check implementation coverage for this dialect.
+       zero-based indexed input and top-first stack output, 2,680 cases.
+       The probe caches bits on demand and raises for a missing bit.
+       Consumption and error handling remain implementation choices.
     8. [Artppeice](https://esolangs.org/wiki/Artppeice) (rev. 201757):
-       dequeued words select destination queues for literal payloads.
-       A linear-character tree passed 2,458 byte-exact cases with no
-       implicit output separator. Check full command semantics, word
-       framing and public implementation coverage.
+       dequeued words select payload destinations, 2,458 byte-exact
+       cases. The probe checks wraparound and rename. Word framing,
+       EOF, output separators and rename collisions are open.
     9. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
-        runtime rewrite queries select weighted graph routes, and the final
-        stop callback identifies the answer. The text probe passed 2,120
-        subset cases. Check query and callback framing and the source bound.
+       runtime rewrite queries and a stop callback, 2,122 cases. The
+       shared graph and message stream have an O(T) character bound.
+       The probe uses line framing and serial literal deletion on
+       positive-weight arcs.
   - *Admission:* check public implementations, fixed core semantics and
     an executed loop-less O(T) Boolean construction under
     [curation](limitations.md#curation).
