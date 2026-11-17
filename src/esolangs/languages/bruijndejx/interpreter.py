@@ -53,6 +53,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _TOKEN = re.compile(r"\s+|#[^\n]*|\$?[A-Za-z_][A-Za-z_0-9']*|[0-9]+|[\[\].:;=*/\\?]")
@@ -124,7 +125,7 @@ class _Builder:
                 for _ in range(1 + (token == ":")):
                     apply()
             elif token.isdigit():
-                stack.append(self.term(_IDX, int(token)))
+                stack.append(self.term(_IDX, parse_integer(token)))
             elif token in _ARITY:
                 stack.append(self.term(_PRIM, token))
             elif _NAME.fullmatch(token.lstrip("$")):

@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.bruijndejx.interpreter import run
 from esolangs.runtime.io import ScriptedIO
+from tests.support.execution import assert_digit_cap_independent
 
 
 def _out(code: str, stdin: str = "") -> str:
@@ -28,6 +29,7 @@ def test_the_pages_examples_and_binding_rules() -> None:
         _out("main=* [" + "9" * 40 + "].;")
     # Call-by-name: an unused looping argument is never evaluated.
     assert _out("loop=loop; main=loop [*].;") == ""
+    assert_digit_cap_independent("Bruijndejx", "9" * 4500 + r" [*\.] .", "", "1")
     # Missing operands are index 0 on the left; missing '.' are appended.
     assert _out("main=* [ ].;") == _out("main=* *[[1]]:;") == ""
     for code, message in (

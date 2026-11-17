@@ -2,9 +2,11 @@
 
 import pytest
 
+from esolangs import ExecutionLimits, Language, ProgramError
 from esolangs.exceptions import HaltError
 from esolangs.languages.bytemap.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.support.vm_support import assert_rejected_output_retry
 
 _TRUTH = (
     "105201045202\nFFFFFFFFFFFF\n5201FFFF5404\n"
@@ -23,7 +25,7 @@ def _out(code: str, stdin: str = "", steps: int | None = None) -> str:
     return io.getvalue()
 
 
-def test_the_pages_examples_and_rulings() -> None:
+def test_the_pages_examples_and_rulings(monkeypatch: pytest.MonkeyPatch) -> None:
     # The page's examples with stated output.
     assert _out("0A56050CFF48656C6C6F20576F726C6421") == "Hello World!"
     assert _out("005603015404", steps=6) == "111"
@@ -56,3 +58,43 @@ def test_the_pages_examples_and_rulings() -> None:
     for code, message in (("20", "not a command"), ("A30000560856090100", "zero")):
         with pytest.raises(HaltError, match=message):
             _out(code)
+    _check_retry_and_line_endings(monkeypatch)
+
+
+def _check_retry_and_line_endings(monkeypatch: pytest.MonkeyPatch) -> None:
+    api = Language("Bytemap")
+    limits = ExecutionLimits(max_steps=8)
+    assert_rejected_output_retry(
+        api.name, "0A560502FF4142", "AB", "AB", prefix=0, monkeypatch=monkeypatch
+    )
+    for source in ("FF\n", "FF\r\n"):
+        assert api.run(source, limits=limits, isolated=True).steps == 1
+    for source in ("FF\r", "FF\r\r\n"):
+        with pytest.raises(ProgramError, match="uppercase hex digit"):
+            api.run(source, limits=limits, isolated=True)
+
+    read = ScriptedIO.input_char
+    for command, stdin in (("1A", "ABC"), ("1F", "414243")):
+        source = command + "5609020A560502FF0000"
+        expected = api.run(source, stdin=stdin, limits=limits, isolated=True)
+        assert expected.output == "AB"
+
+        def refuse(io, prompt="Input: "):
+            if io.position() == 1:
+                raise HaltError("temporary input refusal")
+            return read(io, prompt)
+
+        debugger = api.make_debugger(source, stdin=stdin)
+        before = debugger.snapshot()
+        with monkeypatch.context() as patch:
+            patch.setattr(ScriptedIO, "input_char", refuse)
+            with pytest.raises(HaltError, match="temporary input refusal"):
+                debugger.step()
+        assert debugger.ip == (0, 0)
+        assert (debugger.observation.input_position, debugger.observation.steps) == (
+            1,
+            0,
+        )
+        assert debugger.snapshot() != before
+        assert debugger.run(limits=limits) == "halted"
+        assert debugger.observation == expected

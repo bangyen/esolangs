@@ -103,11 +103,10 @@ _HEX = "0123456789ABCDEF"
 def _parse(code: str) -> dict[_Cell, int]:
     """Return the source's bytes by cell; a missing cell is ``FF``."""
     grid: dict[_Cell, int] = {}
-    rows = code.split("\n")
+    rows = code.replace("\r\n", "\n").split("\n")
     if rows and rows[-1] == "":
         rows.pop()  # a final newline ends the last row
-    for r, raw in enumerate(rows):
-        row = raw.removesuffix("\r")
+    for r, row in enumerate(rows):
         if bad := next((ch for ch in row if ch not in _HEX), None):
             raise syntax_error(
                 f"row {r + 1} has {bad!r}, not an uppercase hex digit",
@@ -252,6 +251,7 @@ class _Machine:
         self.writes: dict[_Cell, int] = {}
         #: UTF-8 bytes of a character read but not yet written.
         self.pending: tuple[int, ...] = ()
+        self._read_prefix: list[int] = []
         self._rejected_input = RejectedInput()
         self._writer = _BufferedOutput()
 
@@ -275,7 +275,7 @@ class _Machine:
             (
                 *self.state,
                 frozenset(self.writes.items()),
-                self.pending,
+                self._pending_input(),
                 self.io.progress(),
             )
         )
@@ -291,12 +291,19 @@ class _Machine:
             column=self.state[1],
             stopped=self.state[2],
             writes=tuple(sorted(self.writes.items())),
-            pending=self.pending,
+            pending=self._pending_input(),
             input_cursor=(
                 cursor
                 if accepted is None
                 else WorkspaceVariant("pending_output", (cursor, accepted))
             ),
+        )
+
+    def _pending_input(self) -> tuple[int, ...] | WorkspaceVariant:
+        if not self._read_prefix:
+            return self.pending
+        return WorkspaceVariant(
+            "pending_read", (self.pending, tuple(self._read_prefix))
         )
 
     def _byte(self) -> int:
@@ -309,16 +316,27 @@ class _Machine:
         byte, self.pending = self.pending[0], self.pending[1:]
         return byte
 
-    def _hex_pair(self) -> int:
+    @staticmethod
+    def _hex_pair(first: int, second: int) -> int:
         """Return two input characters as one hex byte; invalid or EOF is FF."""
-        digits = bytes((self._byte(), self._byte())).decode("latin-1")
+        digits = bytes((first, second)).decode("latin-1")
         return int(digits, 16) if all(d in _HEX for d in digits.upper()) else _BLANK
 
     def _read(self, kind: str, count: int) -> tuple[int, ...]:
-        if kind == "char":
-            return tuple(self._byte() for _ in range(count))
-        if kind == "hex":
-            return tuple(self._hex_pair() for _ in range(count))
+        if kind in ("char", "hex"):
+            size = count * 2 if kind == "hex" else count
+            prefix = self._read_prefix
+            while len(prefix) < size:
+                prefix.append(self._byte())
+            data = (
+                tuple(
+                    self._hex_pair(prefix[i], prefix[i + 1]) for i in range(0, size, 2)
+                )
+                if kind == "hex"
+                else tuple(prefix)
+            )
+            prefix.clear()
+            return data
         try:
             number = self._rejected_input.read(self.io, self.io.input_num)
         except EOFError:
@@ -331,14 +349,15 @@ class _Machine:
             return
         read = _reads(self.state, self.cell)
         data = () if read is None else self._read(*read)
-        self.state, (writes, text) = _advance(self.state, self.cell, data)
+        state, (writes, text) = _advance(self.state, self.cell, data)
+        if text:
+            self._writer.write(self.io, text, first=lambda: self.io.print_str(text))
         for at, byte in writes:
             if self.source.get(at, _BLANK) == byte:
                 self.writes.pop(at, None)
             else:
                 self.writes[at] = byte
-        if text:
-            self._writer.write(self.io, text, first=lambda: self.io.print_str(text))
+        self.state = state
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
