@@ -76,36 +76,32 @@ history at `f35aa4023`.
     2. [Bruijndejx](https://esolangs.org/wiki/Bruijndejx) (rev. 139554):
        one native read selects the zero, one or EOF continuation. The
        subset passed 5,146 runs. Check lambda and declaration semantics.
-    3. [Hopscotch (Asa-z)](https://esolangs.org/wiki/Hopscotch_(Asa-z))
-       (rev. 193077): a relative jump loads the destination's predecessor
-       literal. The subset passed 5,144 runs. Pin EOF and recheck the WIP
-       implementation.
-    4. [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841): the
+    3. [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841): the
        two-operand grid comparison selects independent jump targets,
        3,610 subset runs. The greeting works with an unreachable padding
        row under the even-row rule. Pin console EOF.
-    5. [Ser2](https://esolangs.org/wiki/Ser2) (rev. 70987): eager rewrites
+    4. [Ser2](https://esolangs.org/wiki/Ser2) (rev. 70987): eager rewrites
        select the most specific input pattern and return the original
        I/O object. The subset passed 5,146 runs and selected zero, one
        and EOF in both rule orders. Check full grammar and execution.
-    6. [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
+    5. [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
        direction reversal and relative line jumps, 3,610 subset runs.
        Pin numeric input framing and line-offset range.
-    7. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo-selected
-       exits in a Unicode grid, 3,616 subset runs. Pin EOF and ignored-symbol
-       handling for the numeric stream. Check the reported C interpreter.
-    8. [NOR Machine](https://esolangs.org/wiki/NOR_Machine) (rev. 154406):
+    6. [NOR Machine](https://esolangs.org/wiki/NOR_Machine) (rev. 154406):
        indexed bit input and final-stack output, 2,680 subset runs. Pin
        input framing and check implementation coverage for this dialect.
-    9. [Artppeice](https://esolangs.org/wiki/Artppeice) (rev. 201757):
+    7. [Artppeice](https://esolangs.org/wiki/Artppeice) (rev. 201757):
        dequeued words select destination queues for literal payloads.
        A linear-character tree passed 2,458 byte-exact cases with no
        implicit output separator. Check full command semantics, word
        framing and public implementation coverage.
-    10. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
+    8. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
         runtime rewrite queries select weighted graph routes, and the final
         stop callback identifies the answer. The text probe passed 2,120
         subset cases. Check query and callback framing and the source bound.
+  - **Pending:** [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300).
+    The spec reports a C interpreter in development. Verify whether a
+    runnable implementation exists before reconsidering it.
   - *Admission:* check public implementations, fixed core semantics and
     an executed loop-less O(T) Boolean construction under
     [curation](limitations.md#curation).
