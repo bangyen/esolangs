@@ -379,6 +379,7 @@ Build language-specific stdin for a generated Boolean program with
 | Unary | `char_stream` | `\x00`/`ÿ` | `'ÿ\x00ÿ'` |
 | What!? | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Whitespace | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| artppeice | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | lol waht i cant edit talk pages | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
 The other 66 that read stdin take one `0`/`1` character per bit -- `'101'`.

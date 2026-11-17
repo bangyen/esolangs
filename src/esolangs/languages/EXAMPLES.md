@@ -27,6 +27,7 @@ don't edit by hand.
 | `alight/alight.txt` | Alight | `0001` | `01` | 01 | '0' |
 | `aprknia/aprknia.txt` | Aprknia | `0001` | `01` | 01 | '0' |
 | `arrowqueue/arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | (nothing) |
+| `artppeice/artppeice.txt` | artppeice | `0001` | `01` | 0 1 | '0' |
 | `ascenic/ascenic.txt` | Ascenic | `0001` | `01` | 0 1 | '0' |
 | `b_tapemark/b-tapemark.txt` | B-tapemark | `0001` | `01` | 01 | '0' |
 | `back/back.txt` | Back | `0001` | `01` | embedded 01 | '1 0 0' |

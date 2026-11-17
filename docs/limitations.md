@@ -296,7 +296,7 @@ and every 128th row at fifteen and sixteen in the weekly run.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 128 languages.
+The collection has 129 languages.
 
 <!-- COLLECTION-SIZE:END -->
 

@@ -1,0 +1,17 @@
+[[spec_triggers]]
+program = "<a> b"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a line matching no form, or no lines."
+
+[[spec_triggers]]
+program = "00:00:00 -!- a has joined."
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: a join that reads at EOF."
+
+[[spec_triggers]]
+program = "00:00:00 -!- a has joined. ()\n00:00:00 -!- b has joined. ()\n00:00:00 -!- a has changed nick to b."
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a rename onto another existing queue."

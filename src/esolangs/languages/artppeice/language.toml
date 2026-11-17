@@ -1,0 +1,110 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+# Wiki rev. 201757; 1 backlink (User:Dragoneater67) on 2026-11-17, redirects
+# and all namespaces included. Tagged Unimplemented; none of its 3 revisions
+# tags or links an implementation.
+backlinks = 1
+admitted = 2026-11-17T16:00:00-05:00
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/artppeice/tests/test_artppeice.py::test_the_xkcd_random_number",
+    "src/esolangs/languages/artppeice/tests/test_artppeice.py::test_hello_world",
+    "src/esolangs/languages/artppeice/tests/test_artppeice.py::test_the_cat_rereads_each_pass_until_eof",
+    "src/esolangs/languages/artppeice/tests/test_artppeice.py::test_the_cyclic_tag_encoding",
+]
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "the first pass routes w counter words per set input of weight w into a counter queue closed by P, beside a queue holding the essential inputs' table, a word an entry; each pass dequeues both in step, and only the closing P puts a word ahead of the entry's digit in the printed queue, whose first word is then dropped; an ignored input is a bare read"
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 587
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.artppeice.generator:artppeice_request"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 5486
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.artppeice.generator:artppeice_request"
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.counter_lookup_20261117]
+kind = "measurement"
+witness = { arity = 6, rule = "random", seed = 1847 }
+source = { value = 1172, unit = "chars" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-17
+construction = "esolangs.languages.artppeice.generator:artppeice_request"
+notes = "Shipped (skip counter beside the table, ceil(n/4) entries a pass): 1,172 chars; the screening probe's loop-free gate tree emits 153,124 (32 sampled rows correct each under this interpreter; notes/ablations/art_probe_compare.py)."
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.artppeice.generator:artppeice_request"
+
+[resource_evidence.execution]
+# c = ceil(n/4) entries a pass.  A pass replays at most 3n + 5 setup lines
+# and 2 closing ones, an entry takes 10, and the copy after the indexed
+# one halts on its third line: at most floor(T/c) + 1 passes start.
+expression = "(3n + 7)⌊T/⌈n/4⌉⌋ + 10T + 3n + 8"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.workspace]
+# One-character words of 8 bits: at most T in the counter, 2T in the
+# table queues, T + 3c in the sink (emptied every pass), n + c + 2 in E,
+# one per input queue, five in P and D; 8 + n one-letter names; the line
+# index and the input cursor.
+expression = "32T + 32n + 192"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.scaling]
+# One table queue, m essential inputs of weights summing to 2^m - 1 <= T - 1
+# and c = ceil(n/4) entry copies: 2T + 2(2^m - 1) + 27n + 32m + 207c + 181
+# characters, reached at m = n (input names are one letter below n = 26).
+expression = "4T + 59n + 207⌈n/4⌉ + 179"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "characters"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[catalogue]
+folding_constant_local = "input_weights"  # no essential input: a one-entry table and no counter words
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 40, "1" = 63, "2" = 63, "3" = 86, "4" = 63, "5" = 86, "6" = 86, "7" = 109 }, source_units = 522 }
+"00001100" = { commands_by_row = { "0" = 36, "1" = 36, "2" = 57, "3" = 57, "4" = 78, "5" = 78, "6" = 99, "7" = 99 }, source_units = 490 }
+"00110110" = { commands_by_row = { "0" = 40, "1" = 63, "2" = 86, "3" = 109, "4" = 132, "5" = 155, "6" = 178, "7" = 201 }, source_units = 546 }
+"0110" = { commands_by_row = { "0" = 34, "1" = 54, "2" = 54, "3" = 74 }, source_units = 457 }
+"01101001" = { commands_by_row = { "0" = 40, "1" = 63, "2" = 63, "3" = 86, "4" = 63, "5" = 86, "6" = 86, "7" = 109 }, source_units = 522 }
+"0110100110010110" = { commands_by_row = { "0" = 46, "1" = 72, "2" = 72, "3" = 98, "4" = 72, "5" = 98, "6" = 98, "7" = 124, "8" = 72, "9" = 98, "10" = 98, "11" = 124, "12" = 98, "13" = 124, "14" = 124, "15" = 150 }, source_units = 587 }
+"1101001101101101" = { commands_by_row = { "0" = 46, "1" = 72, "2" = 98, "3" = 124, "4" = 150, "5" = 176, "6" = 202, "7" = 228, "8" = 254, "9" = 280, "10" = 306, "11" = 332, "12" = 358, "13" = 384, "14" = 410, "15" = 436 }, source_units = 653 }
+"11111110" = { commands_by_row = { "0" = 40, "1" = 63, "2" = 63, "3" = 86, "4" = 63, "5" = 86, "6" = 86, "7" = 109 }, source_units = 522 }
