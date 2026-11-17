@@ -375,6 +375,7 @@ Build language-specific stdin for a generated Boolean program with
 | Piet | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Shakespeare | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Thue | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Tubes | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Unary | `char_stream` | `\x00`/`ÿ` | `'ÿ\x00ÿ'` |
 | What!? | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Whitespace | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |

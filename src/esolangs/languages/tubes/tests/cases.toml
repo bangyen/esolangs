@@ -1,0 +1,17 @@
+[[spec_triggers]]
+program = "◆▷"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: no ``▶``, or more than one."
+
+[[spec_triggers]]
+program = "▶◇▷"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: a ``◇`` at EOF."
+
+[[spec_triggers]]
+program = "▶◆x"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: entering any other character, a blank or the outside of the grid, or a mover with no arm toward the cell the pointer left.  The message is that character, as the page prints it."

@@ -1,0 +1,106 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+# Wiki rev. 78300; 2 backlinks (Truth-machine, User:Tetrapyronia) on
+# 2026-11-17, redirects and all namespaces included. No revision of the page
+# tags or links an implementation; the C interpreter it announces was never
+# posted.
+backlinks = 2
+admitted = 2026-11-17T15:19:00-05:00
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/tubes/tests/test_tubes.py::test_the_loop_prints_0123_forever",
+    "src/esolangs/languages/tubes/tests/test_tubes.py::test_the_switch_takes_its_labelled_exit",
+    "src/esolangs/languages/tubes/tests/test_tubes.py::test_the_wolfram_machine_matches_the_2_3_turing_machine",
+    "src/esolangs/languages/tubes/tests/test_tubes.py::test_the_truth_machine",
+]
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "row 0 writes the essential inputs' table (or its complement) into memory, a cell an entry; each essential input's gadget sends a 1 along w double lines, walking the memory pointer left by the input's weight w, and both arms reset the cell to 1 before merging; an ignored input is a bare read"
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 75
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.tubes.generator:tubes_request"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 4611
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.tubes.generator:tubes_request"
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.memory_lookup_20261117]
+kind = "measurement"
+witness = { arity = 10, rule = "random", seed = 1847 }
+source = { value = 4611, unit = "cells" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-17
+construction = "esolangs.languages.tubes.generator:tubes_request"
+notes = "Shipped (memory lookup walked by weighted double lines): 3 rows by 1,537, 4,611 cells; the screening probe's decision tree draws 512 by 512, 262,144 cells (32 sampled rows correct each; notes/ablations/tubes_probe_compare.py)."
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.tubes.generator:tubes_request"
+
+[resource_evidence.execution]
+# Row 0 enters at most 2T - 1 cells, a gadget w + 6, the end at most 10.
+expression = "3T + 6n + 9"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.workspace]
+# At most T written table cells and n read cells, each an x of at most n
+# bits, a 1-bit row and a 2-bit value; the pointers, heading and cursor.
+expression = "(n + 3)T + 2n^2 + 8n + 64"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.scaling]
+# Three rows by the longer of row 0, at most 3T/2 + 1 with the minority
+# marked, and row 1, at most T + 4n + 8.
+expression = "9T/2 + 12n + 26"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "cells"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[catalogue]
+folding_constant_local = "input_weights"  # no essential input: one table cell, every read bare
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 33, "1" = 31, "2" = 31, "3" = 29, "4" = 31, "5" = 29, "6" = 29, "7" = 27 }, source_units = 60 }
+"00001100" = { commands_by_row = { "0" = 28, "1" = 28, "2" = 26, "3" = 26, "4" = 26, "5" = 26, "6" = 24, "7" = 24 }, source_units = 51 }
+"00110110" = { commands_by_row = { "0" = 44, "1" = 42, "2" = 42, "3" = 40, "4" = 42, "5" = 40, "6" = 40, "7" = 38 }, source_units = 72 }
+"0110" = { commands_by_row = { "0" = 25, "1" = 23, "2" = 23, "3" = 21 }, source_units = 45 }
+"01101001" = { commands_by_row = { "0" = 34, "1" = 32, "2" = 32, "3" = 30, "4" = 32, "5" = 30, "6" = 30, "7" = 28 }, source_units = 60 }
+"0110100110010110" = { commands_by_row = { "0" = 42, "1" = 40, "2" = 40, "3" = 38, "4" = 40, "5" = 38, "6" = 38, "7" = 36, "8" = 40, "9" = 38, "10" = 38, "11" = 36, "12" = 38, "13" = 36, "14" = 36, "15" = 34 }, source_units = 75 }
+"1101001101101101" = { commands_by_row = { "0" = 72, "1" = 70, "2" = 70, "3" = 68, "4" = 70, "5" = 68, "6" = 68, "7" = 66, "8" = 70, "9" = 68, "10" = 68, "11" = 66, "12" = 68, "13" = 66, "14" = 66, "15" = 64 }, source_units = 108 }
+"11111110" = { commands_by_row = { "0" = 35, "1" = 33, "2" = 33, "3" = 31, "4" = 33, "5" = 31, "6" = 31, "7" = 29 }, source_units = 60 }

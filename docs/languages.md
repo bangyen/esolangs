@@ -24,6 +24,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](../src/esolangs/languages/laserfuck/interpreter.py))
 - [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](../src/esolangs/languages/streetcode/interpreter/__init__.py))
 - [Super SNUSP](https://esolangs.org/wiki/Super_SNUSP) ([code](../src/esolangs/languages/super_snusp/interpreter.py))
+- [Tubes](https://esolangs.org/wiki/Tubes) ([code](../src/esolangs/languages/tubes/interpreter.py))
 - [thisthat](https://esolangs.org/wiki/thisthat) ([code](../src/esolangs/languages/thisthat/interpreter.py))
 
 ### Stack-based Languages
