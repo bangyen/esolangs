@@ -67,28 +67,24 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki candidates, in admission order.** Four subset probes passed
-  25,058 generated cases in the screening recheck. No page revision
+- **Wiki candidates, in admission order.** Three subset probes passed
+  22,936 generated cases in the screening recheck. No page revision
   links or tags a public implementation.
-    1. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
-       runtime rewrite queries and a stop callback, 2,122 cases. The
-       shared graph and message stream have an O(T) character bound.
-       The probe uses line framing and serial literal deletion on
-       positive-weight arcs.
-    2. [Moar cheese :3](https://esolangs.org/wiki/Moar_cheese_:3) (rev. 201115):
+    1. [Moar cheese :3](https://esolangs.org/wiki/Moar_cheese_:3) (rev. 201115):
        dequeued input bytes execute branch bodies redefined at each node.
        The probe embeds the input and returns the final queue, passing
        10,250 cases. At arity 10 it emits 13,342 characters.
-    3. [Q-BAL](https://esolangs.org/wiki/Q-Bal) (rev. 152296):
+    2. [Q-BAL](https://esolangs.org/wiki/Q-Bal) (rev. 152296):
        numeric stdin selects a forward offset in the program-counter queue.
        The loop-less tree passed 8,218 cases and emits 38,136 characters
        at arity 10. Verify numeric framing and instruction-queue mutation
        semantics at admission.
-    4. [GridScript](https://esolangs.org/wiki/GridScript) (rev. 42260):
+    3. [GridScript](https://esolangs.org/wiki/GridScript) (rev. 42260):
        collocated nodes execute in source order in a fixed 8 by 1 layout.
        A subroutine selects between two buffer entries at each node of
        a loop-less O(T) Boolean tree. The subset probe passed 4,468 runs.
        Verify stdin framing and the rest of the tracer semantics at admission.
   - *Admission:* check public implementations, fixed core semantics and
     an executed loop-less O(T) Boolean construction under
-    [curation](limitations.md#curation).
+    [curation](limitations.md#curation). Its input must arrive as the
+    contract's fixed per-bit strings, not driver-built queries.
