@@ -737,3 +737,13 @@ def test_setting_the_pointers_keeps_the_cursor() -> None:
     assert machine.cursor == 1
     machine.pointers = ()
     assert machine.cursor == 1
+
+
+def test_break_at_accepts_an_empty_instruction_tuple() -> None:
+    debugger = Language("thisthat").make_debugger("▣")
+    assert debugger.ip == (0, 0)
+    debugger.break_at(())
+    limits = ExecutionLimits(max_steps=3)
+    assert debugger.run(limits=limits) == "breakpoint"
+    assert debugger.ip == ()
+    assert debugger.run(limits=limits) == "halted"

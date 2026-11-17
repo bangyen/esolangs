@@ -222,12 +222,8 @@ class Debugger(_ExecutionController):
             ip = tuple(tuple.__iter__(ip))
         if type(ip) is not bool and _has_backing_type(ip, int):
             ip = int.__int__(ip)  # AddSubJump and Subleq halt at -8 and -1.
-        elif (
-            _has_backing_type(ip, tuple)
-            and ip
-            and all(
-                type(part) is not bool and _has_backing_type(part, int) for part in ip
-            )
+        elif _has_backing_type(ip, tuple) and all(
+            type(part) is not bool and _has_backing_type(part, int) for part in ip
         ):
             ip = tuple(int.__int__(part) for part in ip)
         else:
