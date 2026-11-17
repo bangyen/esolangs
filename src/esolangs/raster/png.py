@@ -25,6 +25,7 @@ from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failur
 from esolangs.runtime._files import _STREAM_DEADLINE, _time_remaining
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._validate import (
+    _argument_repr,
     _has_backing_type,
     check_input_arity,
     check_scale,
@@ -634,9 +635,19 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
     if type(pixels) is not tuple and _has_backing_type(pixels, tuple):
         pixels = tuple(tuple.__iter__(pixels))
     shape_hint = "provide nonempty, equal-width rows of RGB pixels"
-    height = len(pixels)
-    width = _row_width(pixels[0]) if height else 0
-    if not height or not width or any(_row_width(row) != width for row in pixels):
+    try:
+        height = len(pixels)
+        width = _row_width(pixels[0]) if height else 0
+        rectangular = bool(height and width) and all(
+            _row_width(row) == width for row in pixels
+        )
+    except EsolangError:
+        raise
+    except (TypeError, ValueError, IndexError) as error:
+        raise syntax_error(
+            "expected a non-empty 2-D RGB image", shape_hint, error_type=ProgramError
+        ) from error
+    if not rectangular:
         raise syntax_error(
             "expected a non-empty 2-D RGB image",
             shape_hint,
@@ -681,7 +692,7 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
                 frozen = _freeze_pixel(pixel)
             except (ProgramError, TypeError) as error:
                 raise syntax_error(
-                    f"invalid RGB pixel {pixel!r}",
+                    f"invalid RGB pixel {_argument_repr(pixel)}",
                     "use three integer RGB channels from 0 through 255",
                     error_type=ProgramError,
                 ) from error

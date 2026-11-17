@@ -343,6 +343,10 @@ def test_rgb_writer_rejects_empty_ragged_and_invalid_pixels() -> None:
     with pytest.raises(ValueError, match="invalid RGB"):
         png.write_rgb([[(0, 0, 256)]])
 
+    for bad_shape in (42, None, [42]):
+        with pytest.raises(esolangs.ProgramError, match="non-empty 2-D RGB"):
+            png.write_rgb(bad_shape)
+
 
 def _repair_ihdr_crc(blob: bytearray) -> None:
     blob[29:33] = struct.pack(">I", zlib.crc32(blob[12:29]) & 0xFFFFFFFF)

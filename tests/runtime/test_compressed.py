@@ -234,6 +234,44 @@ def test_gzip_cap_below_empty_member_refuses_before_acquiring_chunks() -> None:
 
 
 def test_empty_gzip_member_fits_exact_byte_cap() -> None:
+    class Chunks:
+        def __getitem__(self, index):
+            if index == 0:
+                return "+."
+            raise IndexError
+
+    assert CompressedText.from_chunks(Chunks()) == CompressedText.from_chunks(("+.",))
+
+    class Disabled(Chunks):
+        __iter__ = None
+
+    with pytest.raises(esolangs.ArgumentError, match="chunks must be an iterable"):
+        CompressedText.from_chunks(Disabled())
+
+    class DescriptorChunks:
+        @classmethod
+        def __getitem__(cls, index):
+            if index == 0:
+                return "+."
+            raise IndexError
+
+    assert CompressedText.from_chunks(DescriptorChunks()) == CompressedText.from_chunks(
+        ("+.",)
+    )
+
+    class BrokenChunks:
+        def __getitem__(self, _index):
+            raise RuntimeError("could not acquire chunk")
+
+    with pytest.raises(RuntimeError, match="could not acquire chunk"):
+        CompressedText.from_chunks(BrokenChunks())
+
+    class InvalidChunks:
+        def __getitem__(self, _index):
+            return 42
+
+    with pytest.raises(esolangs.ArgumentError, match="chunks must be strings"):
+        CompressedText.from_chunks(InvalidChunks())
     limits = esolangs.TextLimits(plain_chars=0, generation_chars=0, gzip_bytes=20)
     empty = CompressedText.from_chunks((), limits=limits)
     assert len(empty.to_gzip()) == 20
@@ -243,6 +281,17 @@ def test_empty_gzip_member_fits_exact_byte_cap() -> None:
 
 
 def test_oversized_repeat_reports_the_work_cap_without_rendering() -> None:
+    class Count(int):
+        def __int__(self):
+            raise AssertionError("converted subclass")
+
+        def __lt__(self, other):
+            raise AssertionError("compared subclass")
+
+    assert CompressedText.repeated("+", Count(2)) == CompressedText.repeated("+", 2)
+    for bad in (Count(-1), True, 2.0):
+        with pytest.raises(esolangs.ArgumentError, match="nonnegative count"):
+            CompressedText.repeated("+", bad)
     cap = 10**5000
     limits = esolangs.TextLimits(plain_chars=0, generation_chars=cap, gzip_bytes=100)
     with pytest.raises(esolangs.GeneratorCapError, match="character work cap"):

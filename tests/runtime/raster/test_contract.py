@@ -52,6 +52,29 @@ def test_a_raster_needs_pixels_or_a_materializer() -> None:
         Raster(None)
 
 
+def test_raster_exports_handle_faulting_pixel_repr(tmp_path: Path) -> None:
+    class Pixel(tuple):
+        def __repr__(self):
+            raise RuntimeError("pixel representation failed")
+
+    class Drawing(esolangs.Raster):
+        @property
+        def rows(self):
+            return ((Pixel((256, 0, 0)),),)
+
+    drawing = Drawing((((0, 0, 0),),))
+    api = esolangs.Language(RASTER_LANGUAGES[0])
+    artifact = api.from_source(drawing)
+    for export in (
+        drawing.to_png,
+        lambda: api.to_json(artifact),
+        lambda: api.to_file(artifact, tmp_path / "invalid.png"),
+    ):
+        with pytest.raises(esolangs.ProgramError, match="invalid RGB pixel <Pixel>"):
+            export()
+    assert not (tmp_path / "invalid.png").exists()
+
+
 def test_a_raster_hashes_by_pixels() -> None:
     """It is usable as a mapping key, hashed on its immutable pixels."""
     first = Raster((((0, 0, 0),),))

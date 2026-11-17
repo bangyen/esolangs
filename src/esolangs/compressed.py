@@ -8,6 +8,7 @@ import io
 import zlib
 from collections.abc import Iterable, Iterator
 from dataclasses import KW_ONLY, dataclass, field
+from inspect import getattr_static
 from os import PathLike
 from typing import ClassVar
 
@@ -199,7 +200,13 @@ class CompressedText:
         """Compress text deterministically without collecting expanded source."""
         limits = _normalize_limits(limits)
         if not issubclass(type(chunks), Iterable):
-            raise ArgumentError("chunks must be an iterable of strings")
+            missing = object()
+            if getattr_static(type(chunks), "__iter__", missing) is not missing:
+                raise ArgumentError("chunks must be an iterable of strings")
+            try:
+                chunks = iter(chunks)
+            except TypeError as error:
+                raise ArgumentError("chunks must be an iterable of strings") from error
         if limits is not None:
             _check_gzip(limits, _MIN_GZIP_BYTES)
         output = io.BytesIO()
@@ -312,9 +319,14 @@ class CompressedText:
         if (
             not _has_backing_type(character, str)
             or str.__len__(character) != 1
-            or type(count) is not int
-            or count < 0
+            or type(count) is bool
+            or not _has_backing_type(count, int)
         ):
+            raise ArgumentError(
+                "repeated source needs one character and a nonnegative count"
+            )
+        count = int.__int__(count)
+        if count < 0:
             raise ArgumentError(
                 "repeated source needs one character and a nonnegative count"
             )
