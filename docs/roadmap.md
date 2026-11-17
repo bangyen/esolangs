@@ -67,8 +67,8 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki candidates, in admission order.** All nine subset probes passed
-  28,444 generated cases in the screening recheck. No qualifying public
+- **Wiki candidates, in admission order.** All eight subset probes passed
+  25,764 generated cases in the screening recheck. No qualifying public
   implementation surfaced for these dialects.
     1. [OBrainfuck](https://esolangs.org/wiki/OBrainfuck) (rev. 163644):
        ordinal bracket pairing, 3,080 cases and 64 earlier C-lowering
@@ -93,15 +93,11 @@ history at `f35aa4023`.
        selects ordered exits, 3,616 cases. The probe skips characters
        outside ASCII digits 0–3 and raises at EOF. EOF is open, and the
        reported C interpreter in development has no public copy found.
-    7. [NOR Machine](https://esolangs.org/wiki/NOR_Machine) (rev. 154406):
-       zero-based indexed input and top-first stack output, 2,680 cases.
-       The probe caches bits on demand and raises for a missing bit.
-       Consumption and error handling remain implementation choices.
-    8. [Artppeice](https://esolangs.org/wiki/Artppeice) (rev. 201757):
+    7. [Artppeice](https://esolangs.org/wiki/Artppeice) (rev. 201757):
        dequeued words select payload destinations, 2,458 byte-exact
        cases. The probe checks wraparound and rename. Word framing,
        EOF, output separators and rename collisions are open.
-    9. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
+    8. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
        runtime rewrite queries and a stop callback, 2,122 cases. The
        shared graph and message stream have an O(T) character bound.
        The probe uses line framing and serial literal deletion on
