@@ -112,9 +112,9 @@ esolangs.from_json("brainfuck", text)  # takes the JSON text, not a path
 `Language.from_source(source)` and `Language.from_file(path)` return runnable
 artifacts. A string passed to `run` is source, and a `Path` loads a file.
 API imports and exports preserve native text by default. Use `normalize=True`
-for native terminators. CLI file loading normalizes newlines, and CLI
-generation adds native terminators where needed while preserving generated
-compressed text.
+for the language's native newline policy. CLI file loading uses the same
+policy, so HQ9+ and Whitespace keep their source verbatim. CLI generation adds
+native terminators where needed and preserves generated compressed text.
 
 `to_file(..., gzip=True)` and `generate --gzip` compress text exports.
 `to_file(..., gzip=False)` writes compressed text decompressed. For
