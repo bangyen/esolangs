@@ -22,15 +22,15 @@ def input_cap_error(inputs: int) -> GeneratorCapError:
         "65,536 of the store's 59,049"
     )
     detail = (
-        "seventeen is built only for a table that ignores an input or "
-        "is constant on Hamming-weight classes, and this one does neither; "
-        if inputs == MAX_INPUTS + 1
-        else ""
+        "17 inputs require a table that ignores an input or "
+        "is constant on Hamming-weight classes"
     )
+    if inputs == MAX_INPUTS + 1:
+        detail += ", and this one does neither"
     return with_hint(
         GeneratorCapError(
-            f"Malbolge builds at most {_DIGITS_N} inputs, got {inputs}: "
-            f"{detail}{storage}"
+            f"Malbolge builds at most {_DIGITS_N} inputs for unrestricted tables "
+            f"(got {inputs}): {detail}; {storage}"
         ),
         (
             "use fewer inputs or check another generator's "
