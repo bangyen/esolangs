@@ -96,6 +96,8 @@ from esolangs.runtime._program import Program
 
 def {slug}(truth_table: str) -> str:
     """Build a {name} program printing ``truth_table[row]`` for the inputs."""
+    # A decision tree must share repeated subtrees, or record sharing_exempt
+    # under [catalogue] with the reason: test_boolean_sharing_catalogue.py.
     _validate_truth_table(truth_table)
     raise NotImplementedError("{name} generator")
 
@@ -924,6 +926,12 @@ def main(argv: list[str] | None = None) -> int:
         tests = quick_tests(args.name)
         print("+ pytest", " ".join(tests), flush=True)
         failed = subprocess.run([*quick, *tests], cwd=ROOT, check=False)
+        if not failed.returncode:
+            # ~1 s for the changed interpreter; a 40-digit index hung a step
+            # and first failed in finish's gate (Bruijndejx, 2026-11-17).
+            leaks = [sys.executable, "checks/verify_no_exception_leaks.py"]
+            print("+", " ".join(leaks[1:]), flush=True)
+            failed = subprocess.run(leaks, cwd=ROOT, check=False)
         if failed.returncode:
             print(f"{args.name}: integrated, but fix the failures above first")
             return 1

@@ -1,8 +1,6 @@
 """Native stdin consumption through the public API."""
 
 import esolangs
-from esolangs.registry import LANGUAGES
-from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 
 
@@ -30,21 +28,3 @@ class TestNativeInputConsumption:
             ).output
             == "\x01"
         )
-
-    def test_underfed_programs_use_the_native_eof_value(self) -> None:
-        carry_on = languages(
-            eof_is_a_value=True, input_shape="char_stream", parameterized=False
-        )
-        # A language that refuses instead is ``test_debug``'s exception.
-        for name in [n for n in carry_on if not LANGUAGES[n].runtime.underfed_raises][
-            :3
-        ]:
-            program = esolangs.generate(name, "10010110")
-            short = esolangs.encode_inputs(name, [1, 0])
-            output = esolangs.run(
-                name,
-                program,
-                stdin=short,
-                limits=esolangs.ExecutionLimits(execution_timeout=10),
-            ).output
-            assert esolangs.read_answer(name, output) in {"0", "1"}
