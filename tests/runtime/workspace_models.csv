@@ -83,6 +83,7 @@ Nope.,no,owned-adapter,nope-v1
 NOR machine,yes,owned-adapter,nor-machine-v1
 NQ,yes,owned-adapter,nq-v1
 Nybbleist,yes,owned-adapter,nybbleist-v1
+OBrainfuck,yes,inherited-adapter,brainfuck-v1
 Object disoriented,yes,owned-adapter,object-disoriented-v1
 Onecode (Fergusq),yes,owned-adapter,onecode-fergusq-v1
 Packlang,yes,owned-adapter,packlang-v1

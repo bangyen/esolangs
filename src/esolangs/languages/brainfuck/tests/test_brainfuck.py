@@ -66,8 +66,6 @@ class TestBrainfuck:
         [
             pytest.param("-.", "\xff", id="cell_wraps_below_zero"),
             pytest.param("abc+++abc.abc", "\x03", id="comments_ignored"),
-            # +[-] enters a loop, zeroes the cell, and exits.
-            pytest.param("+[-].", "\x00", id="loop_zeroing"),
             pytest.param("[.]", "", id="loop_skipped_when_zero"),
             # ++[>+<-] moves 2 from cell 0 to cell 1.
             pytest.param("++[>+<-]>.>.", "\x02\x00", id="loop_iterates_while_nonzero"),

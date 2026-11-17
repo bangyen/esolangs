@@ -77,6 +77,7 @@
   "nq": "linear: at most 10T - 6 characters",
   "nybbleist": "linear: at most 3T+9n+4n^2+4 characters; half-table selectors and labels",
   "object_disoriented": "linear: worst min(24T+56,H) (n=1), H (n=2..8), min(24T+56,H) (n\u22659) characters, exact n=2..8",
+  "obrainfuck": "linear: at most 4T + 52n + 47 characters",
   "one_i": "linear: worst 9T/2 - 6 characters past n = 1: six a node",
   "onecode_fergusq": "linear: worst T+17n+12 characters; one lookup literal",
   "packlang": "linear: at most 97+digits(T)+67n+(digits_sum(T)+max(9(T/2+1)-digits_sum(T/2-1),29+digits(T)+9max(0,T/2-2)-digits_sum(min(T,T/2+2))))+3ceil((37+(digits_sum(T)+max(9(T/2+1)-digits_sum(T/2-1),29+digits(T)+9max(0,T/2-2)-digits_sum(min(T,T/2+2)))))/56) (n=1..7), 109+2digits(2^(n-7)-1)+67n+757\u00b72^(n-7)+digits_sum(2^(n-7))+3ceil((21+773\u00b72^(n-7)+digits_sum(2^(n-7)))/56) (n\u22658) characters: one write per differing row",

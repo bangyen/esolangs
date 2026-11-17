@@ -1,0 +1,105 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+# Wiki rev. 163644; zero backlinks in the 2026-11-16 shortlist screen.
+backlinks = 0
+admitted = 2026-11-17T00:00:00-05:00
+bf_derivative = true
+
+[catalogue]
+folding_constant_local = "obrainfuck"  # direct read-and-print constant
+
+[schemes]
+folds_without_tree = true
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "table laid on the tape loop-free; each input bit moves the head 2^(n-1-i) cells across a zero block inside one flat loop; the head steps back T and prints"
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.interleaved_scratch_20261117]
+kind = "measurement"
+witness = { arity = 10, rule = "random", seed = 1847 }
+source = { value = 4152, unit = "chars" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-17
+construction = "esolangs.languages.obrainfuck.generator:obrainfuck_request"
+notes = "Shipped zero-block layout: 4,152 chars. A zero scratch beside each table bit (stride 2) costs 4T + ones + 52n + 47 chars, 5,175 here: its layout and head moves sum to 4(T - 1) where the zero block's sum to 3T. Both executed on every row n <= 6 and 40 sampled rows per table n = 7..10."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 312
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.obrainfuck.generator:obrainfuck_request"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 4152
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.obrainfuck.generator:obrainfuck_request"
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.obrainfuck.generator:obrainfuck_request"
+
+[resource_evidence.execution]
+# Layout 2(T - 1), one step onto the block, 52 per one-bit read plus its
+# 2^(n-1-i) moves (T - 1 in all), T back and 49 to print: the all-ones row
+# of a table with T - 1 ones.
+expression = "4T + 52n + 47"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: all-ones row, one zero in the table" }
+
+[resource_evidence.workspace]
+# 2T one-bit cells, one widened to an ASCII byte; the head reaches 2T - 1.
+# A constant holds two ASCII bytes at the head's first two cells.
+expression = "max(2T + n + 6, 13) + bl(L) + bl(n)"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.scaling]
+# 3T + ones + 52n + 48 with ones <= T - 1; constants n + 50 + b.
+expression = "4T + 52n + 47"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "characters"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/obrainfuck/tests/test_obrainfuck.py::test_kth_opener_pairs_with_kth_closer",
+]
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 216, "1" = 219, "2" = 220, "3" = 223, "4" = 222, "5" = 225, "6" = 226, "7" = 229 }, source_units = 229 }
+"00001100" = { commands_by_row = { "0" = 159, "1" = 159, "2" = 162, "3" = 162, "4" = 163, "5" = 163, "6" = 166, "7" = 166 }, source_units = 166 }
+"00110110" = { commands_by_row = { "0" = 219, "1" = 222, "2" = 223, "3" = 226, "4" = 225, "5" = 228, "6" = 229, "7" = 232 }, source_units = 232 }
+"0110" = { commands_by_row = { "0" = 159, "1" = 162, "2" = 163, "3" = 166 }, source_units = 166 }
+"01101001" = { commands_by_row = { "0" = 219, "1" = 222, "2" = 223, "3" = 226, "4" = 225, "5" = 228, "6" = 229, "7" = 232 }, source_units = 232 }
+"0110100110010110" = { commands_by_row = { "0" = 289, "1" = 292, "2" = 293, "3" = 296, "4" = 295, "5" = 298, "6" = 299, "7" = 302, "8" = 299, "9" = 302, "10" = 303, "11" = 306, "12" = 305, "13" = 308, "14" = 309, "15" = 312 }, source_units = 312 }
+"1101001101101101" = { commands_by_row = { "0" = 291, "1" = 294, "2" = 295, "3" = 298, "4" = 297, "5" = 300, "6" = 301, "7" = 304, "8" = 301, "9" = 304, "10" = 305, "11" = 308, "12" = 307, "13" = 310, "14" = 311, "15" = 314 }, source_units = 314 }
+"11111110" = { commands_by_row = { "0" = 222, "1" = 225, "2" = 226, "3" = 229, "4" = 228, "5" = 231, "6" = 232, "7" = 235 }, source_units = 235 }
