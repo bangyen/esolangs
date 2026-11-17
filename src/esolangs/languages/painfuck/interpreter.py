@@ -77,7 +77,7 @@ from enum import Enum, auto
 from functools import partial
 from typing import Any, NamedTuple, cast
 
-from esolangs.exceptions import HaltError
+from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.painfuck.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -86,6 +86,7 @@ from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._proof import BranchFailure, branch_outcomes
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import _MAX_CELLS
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.randomness import Randomness, draw
@@ -237,7 +238,13 @@ def _visit(span: tuple[int, int], pos: int) -> tuple[int, int]:
 def _dense(cells: _Cells, span: tuple[int, int]) -> tuple[int, ...]:
     """Return the visited tape, leftmost cell first, as the debugger shows it."""
     low, high = span
-    tape = [0] * (high - low + 1)
+    size = high - low + 1
+    if size > _MAX_CELLS:
+        raise InterpreterLimitError(
+            f"Painfuck visited tape exceeds the {_MAX_CELLS}-cell dense view limit",
+            hint="inspect individual cells with debugger watches or breakpoints",
+        )
+    tape = [0] * size
     for pos, value in zip(*cells, strict=True):
         tape[pos - low] = value
     return tuple(tape)
@@ -696,6 +703,12 @@ class _Machine:
     def memory(self) -> list[int]:
         """The visited cells, leftmost first."""
         return list(self.tape)
+
+    def memory_at(self, index: int) -> int | None:
+        """Read one cell by its index from the left edge of the visited tape."""
+        low, high = self.span
+        pos = low + index
+        return _get(self.cells, pos) if low <= pos <= high else None
 
     @property
     def tape(self) -> tuple[int, ...]:

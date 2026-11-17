@@ -9,6 +9,7 @@ step, so ``break_at`` on the initial position fires without executing it.
 from __future__ import annotations
 
 from collections.abc import Callable, Hashable, Sequence
+from inspect import getattr_static
 from types import MethodType
 from typing import get_args
 
@@ -55,6 +56,27 @@ def _value_at[T](
 ) -> T | None:
     """Read a cell or stack slot, returning None when it is absent."""
     return values[-1 - index if from_top else index] if index < len(values) else None
+
+
+def _cell_reader(vm: VM) -> Callable[[int], int | None]:
+    """Use an indexed view only through wrappers that preserve native memory."""
+    if isinstance(vm, Debugger) and getattr_static(vm, "memory") is Debugger.memory:
+        tail = _receiver_tail(vm)
+        if tail is not None and all(
+            isinstance(link, Debugger)
+            and getattr_static(link, "memory") is Debugger.memory
+            for link in tail[:-1]
+        ):
+            vm = tail[-1]
+    if (
+        isinstance(vm, _DelegatingVM)
+        and getattr_static(vm, "memory") is _DelegatingVM.memory
+    ):
+        reader = vm._memory_reader()  # noqa: SLF001
+        if reader is not None:
+            return reader
+    memory = vm.memory
+    return lambda index: _value_at(memory, index)
 
 
 def _watch[T](histories: dict[int, list[T]], index: int, name: str) -> list[T]:
@@ -233,7 +255,7 @@ class Debugger(_ExecutionController):
                 f"value must be an integer, got {_argument_repr(value)}"
             )
         value = int.__int__(value)
-        self._breakpoints.append(lambda vm: _value_at(vm.memory, index) == value)
+        self._breakpoints.append(lambda vm: _cell_reader(vm)(index) == value)
 
     def break_on_stack(self, slot: int, value: object) -> None:
         """Stop when the ``slot``-th stack value from the top holds ``value``.
@@ -316,9 +338,9 @@ class Debugger(_ExecutionController):
         # Read only when watched: ``vm.memory`` copies the tape, so reading it
         # unconditionally made every step O(tape) (``+[>+]``: 80k steps 8.3 s).
         if self._cell_history:
-            memory = self.vm.memory
+            read_cell = _cell_reader(self.vm)
             for index, cell_history in self._cell_history.items():
-                cell_history.append(_value_at(memory, index))
+                cell_history.append(read_cell(index))
         if self._stack_history:
             stack = self.vm.stack
             for slot, stack_history in self._stack_history.items():

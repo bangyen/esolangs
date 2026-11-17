@@ -6,7 +6,8 @@ from itertools import product
 import pytest
 
 from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Language
-from esolangs.exceptions import HaltError
+from esolangs.debugger import Debugger, make_debugger
+from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.painfuck.interpreter import _Machine as Painfuck
 from esolangs.languages.painfuck.interpreter import prepare_machine
 from esolangs.runtime._state import WorkspaceVariant
@@ -340,6 +341,21 @@ class TestStepMachine:
             assert machine.cells == (tuple(sorted((0, pos))), (2, 2)), move
         assert run_program("pocttlzoe") == "20"
         assert _put(_put(((), ()), 3, 5), 3, 0) == ((), ())
+
+    def test_debugger_inspects_far_cells_without_building_the_tape(self) -> None:
+        debugger = Debugger(make_debugger("Painfuck", _encode("pccttle")))
+        distant = 49**13
+        first = debugger.watch_cell(0)
+        origin = debugger.watch_cell(distant)
+        outside = debugger.watch_cell(distant + 1)
+        debugger.break_on_cell(distant, 2)
+        assert debugger.run(limits=ExecutionLimits(max_steps=4)) == "breakpoint"
+        assert first == [2, 0]
+        assert origin == [None, 2]
+        assert outside == [None, None]
+        with pytest.raises(InterpreterLimitError, match="dense view limit"):
+            _ = debugger.memory
+        assert debugger.run(limits=ExecutionLimits(max_steps=4)) == "halted"
 
 
 class TestRepeatCollapsing:

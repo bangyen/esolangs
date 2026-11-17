@@ -26,6 +26,8 @@ class DebugSpec:
     stack: str | None = None
     views: tuple[str, ...] = ()
     ip_shape: IpShape = "offset"
+    #: Optional indexed read that avoids materializing the memory view.
+    memory_at: str | None = None
 
 
 @dataclass(frozen=True)

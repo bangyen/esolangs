@@ -462,6 +462,9 @@ class _DelegatingVM:
             return cells
         return []
 
+    def _memory_reader(self) -> Callable[[int], int | None] | None:
+        return cast("Callable[[int], int | None] | None", self._view("memory_at", None))
+
     @property
     def ptr(self) -> int | None:
         value = self._view("ptr", None)
