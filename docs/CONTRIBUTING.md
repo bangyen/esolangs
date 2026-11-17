@@ -64,6 +64,12 @@ installation with and without the image extra.
 
 ## What makes a candidate worth adding
 
+A candidate that meets the criteria below is eligible for admission if and
+only if it meets the [fame threshold](limitations.md#how-a-language-is-admitted)
+or the repo would provide its first implementation. For the second route,
+the language must have no qualifying public implementation at admission.
+The curation rules define what counts as a public implementation.
+
 A new language must add an uncovered construction, branch mechanism, answer
 convention or input interface:
 
