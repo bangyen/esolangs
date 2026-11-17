@@ -135,10 +135,10 @@ def to_file(
     ``normalize=True`` appends one native file terminator where permitted,
     including gzip exports. Native import normalizes line endings to LF and
     removes the added terminator.
-    An existing file is replaced after encoding and
-    writing succeed. ``settings`` merge over an artifact's own as
-    :func:`esolangs.run` merges them. PNG metadata records the result and
-    any input arity. Use :func:`to_json` to retain text artifacts' settings
+    An existing file is replaced after encoding and writing succeed.
+    ``settings`` can add choices to an artifact's retained settings.
+    PNG metadata records the result and any input arity.
+    Use :func:`to_json` to retain text artifacts' settings
     and input arity or to preserve templates with their setters.
 
     Raises:
@@ -148,8 +148,9 @@ def to_file(
             is invalid for the language.
         TemplateError: ``program`` is an unfilled template.
         ProgramNotFoundError: ``program`` is a Path that does not exist.
-        ProgramError: The record belongs to another language, or the source
-            cannot be read or encoded or the file cannot be written.
+        ProgramError: The record belongs to another language, a supplied
+            setting conflicts with a retained one, the source cannot be read
+            or encoded, or the file cannot be written.
         GeneratorCapError: Plain text exceeds its raw-export budget, or
             adding a native terminator exceeds its generation or gzip budget.
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
@@ -237,7 +238,8 @@ def to_json(
         UnknownLanguageError: ``language`` is not registered.
         ArgumentError: ``settings`` is invalid for the language.
         ProgramNotFoundError: ``program`` is a Path that does not exist.
-        ProgramError: ``program`` cannot be read (base of the above).
+        ProgramError: ``program`` cannot be read or a supplied setting
+            conflicts with a retained one.
         MissingDependencyError: A raster needs ``esolangs[image]`` for PNG.
     """
     from esolangs.registry._catalog import get_catalog
