@@ -50,6 +50,7 @@
   "false": "linear: at most 9T/2+5n-7 characters past n = 3: to n = 15",
   "fargo": "linear: at most 15T/2-1+weighted_bit_sum(n-1) (n\u22652) characters: inline Davio form",
   "fish": "linear: worst 18n+18 (n=2), 15\u2308(4n+43)/15\u2309+6+\u2308T/6\u2309 (n=3..45), 2^bl(4n+39+4bl(4n+43))+6+\u2308T/6\u2309 (n=46..55), 2T (n\u226556) cells",
+  "flipscript": "linear: at most 17T + 64 characters",
   "flowchart": "linear: worst 20T+16\u00b72^\u230an/2\u230b+12\u00b72^\u2308n/2\u2309+72n+14 cells past n = 1: two rows",
   "for_thorn": "linear: at most characters: scope and distance costs over essential arities",
   "forbin": "linear: at most 16n+2+max(0,n-51)+G+2^max(0,n-7)(24+min(1,max(0,n-50))+2^(min(n,7)+1))+max(0,2^max(0,n-7)-2^51) characters, n=2..134",

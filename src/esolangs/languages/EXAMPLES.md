@@ -71,6 +71,7 @@ don't edit by hand.
 | `false/false.txt` | FALSE | `0001` | `01` | 01 | '0' |
 | `fargo/fargo.txt` | Fargo | `0001` | `01` | 1 | '0' |
 | `fish/fish.txt` | Fish | `0001` | `01` | 01 | '0' |
+| `flipscript/flipscript.txt` | Flipscript | `0001` | `01` | 0 1 | '0' |
 | `flowchart/flowchart.txt` | Flowchart | `0001` | `01` | 01 | '0' |
 | `forbin/forbin.txt` | Forbin | `0001` | `01` | 01 | '0' |
 | `for_thorn/forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |

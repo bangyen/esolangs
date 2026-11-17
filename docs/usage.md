@@ -358,6 +358,7 @@ Build language-specific stdin for a generated Boolean program with
 | Dig | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Dimensional | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Fargo | `row_index` | `0`/`1` | `'5\n'` |
+| Flipscript | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Forþ | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Freestajlo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |

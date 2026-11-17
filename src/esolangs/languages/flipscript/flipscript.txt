@@ -1,0 +1,9 @@
+start(0)
+num X = input
+jump 0-2*X+3
+num X = input
+jump X*2+2
+num X = input
+output("0")
+stop
+output("1")

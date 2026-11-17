@@ -67,36 +67,32 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki candidates, in admission order.** Seven subset probes passed
-  34,742 generated cases in the screening recheck. No page revision
+- **Wiki candidates, in admission order.** Six subset probes passed
+  31,132 generated cases in the screening recheck. No page revision
   links or tags a public implementation.
-    1. [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
-       direction-dependent jumps, 3,610 cases. Tested a 114,685-line
-       jump. The probe uses one exact decimal per line and raises at EOF.
-       The spec leaves numeric width, framing and EOF open.
-    2. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo
+    1. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo
        selects ordered exits, 3,616 cases. The probe skips characters
        outside ASCII digits 0–3 and raises at EOF. EOF is open, and the
        reported C interpreter in development has no public copy found.
-    3. [Artppeice](https://esolangs.org/wiki/Artppeice) (rev. 201757):
+    2. [Artppeice](https://esolangs.org/wiki/Artppeice) (rev. 201757):
        dequeued words select payload destinations, 2,458 byte-exact
        cases. The probe checks wraparound and rename. Word framing,
        EOF, output separators and rename collisions are open.
-    4. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
+    3. [Tamerlane](https://esolangs.org/wiki/Tamerlane) (rev. 93756):
        runtime rewrite queries and a stop callback, 2,122 cases. The
        shared graph and message stream have an O(T) character bound.
        The probe uses line framing and serial literal deletion on
        positive-weight arcs.
-    5. [Moar cheese :3](https://esolangs.org/wiki/Moar_cheese_:3) (rev. 201115):
+    4. [Moar cheese :3](https://esolangs.org/wiki/Moar_cheese_:3) (rev. 201115):
        dequeued input bytes execute branch bodies redefined at each node.
        The probe embeds the input and returns the final queue, passing
        10,250 cases. At arity 10 it emits 13,342 characters.
-    6. [Q-BAL](https://esolangs.org/wiki/Q-Bal) (rev. 152296):
+    5. [Q-BAL](https://esolangs.org/wiki/Q-Bal) (rev. 152296):
        numeric stdin selects a forward offset in the program-counter queue.
        The loop-less tree passed 8,218 cases and emits 38,136 characters
        at arity 10. Verify numeric framing and instruction-queue mutation
        semantics at admission.
-    7. [GridScript](https://esolangs.org/wiki/GridScript) (rev. 42260):
+    6. [GridScript](https://esolangs.org/wiki/GridScript) (rev. 42260):
        collocated nodes execute in source order in a fixed 8 by 1 layout.
        A subroutine selects between two buffer entries at each node of
        a loop-less O(T) Boolean tree. The subset probe passed 4,468 runs.

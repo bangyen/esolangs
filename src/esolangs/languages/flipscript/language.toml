@@ -1,0 +1,100 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+# Wiki rev. 188418; 1 backlink (Language list) on 2026-11-17, redirects and
+# all namespaces included. No revision of the page tags or links an
+# implementation.
+backlinks = 1
+admitted = 2026-11-17T14:05:00-05:00
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/flipscript/tests/test_flipscript.py::test_the_pages_examples",
+    "src/esolangs/languages/flipscript/tests/test_flipscript.py::test_the_array_example_fills_ten_cells",
+]
+
+[proof_status]
+labels = ["tree"]
+qualification = "the quasi-reduced decision diagram, root level first; a node reads one input line and jumps X*A+B lines down to its zero or one child; a constant child lands in a run of reads ending in its output"
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 218
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.flipscript.generator:flipscript_request"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 6547
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.flipscript.generator:flipscript_request"
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.shared_diagram_20261117]
+kind = "measurement"
+witness = { arity = 10, rule = "random", seed = 1847 }
+source = { value = 6547, unit = "chars" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-17
+construction = "esolangs.languages.flipscript.generator:flipscript_request"
+notes = "Shipped (shared diagram, downward computed jumps): 6,547 chars; the screening probe's unshared flip tree, 7 lines a node, emits 78,932 (32 sampled rows correct each; notes/ablations/flipscript-probe-tree.py)."
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.flipscript.generator:flipscript_request"
+
+[resource_evidence.execution]
+# start, two lines an input, then output and stop.
+expression = "2n + 3"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.workspace]
+# X, the line index (n + 1 bits for O(T/n) lines) and the input cursor.
+expression = "2n + 100"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.scaling]
+# At most sum_k min(2^k, 2^2^(n-k)) nodes, O(T/n), of 25 chars plus two
+# offsets of O(n) digits; that count stays under 17T + 64 for n <= 63 and
+# its ratio to T only falls after.  Random tables measure 3.6T at n = 18.
+expression = "17T + 64"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "characters"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 8 }, source_units = 144 }
+"00001100" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 7, "5" = 7, "6" = 8, "7" = 8 }, source_units = 133 }
+"00110110" = { commands_by_row = { "0" = 8, "1" = 8, "2" = 7, "3" = 7, "4" = 9, "5" = 8, "6" = 8, "7" = 9 }, source_units = 192 }
+"0110" = { commands_by_row = { "0" = 7, "1" = 6, "2" = 6, "3" = 7 }, source_units = 114 }
+"01101001" = { commands_by_row = { "0" = 9, "1" = 8, "2" = 8, "3" = 9, "4" = 8, "5" = 9, "6" = 9, "7" = 8 }, source_units = 166 }
+"0110100110010110" = { commands_by_row = { "0" = 11, "1" = 10, "2" = 10, "3" = 11, "4" = 10, "5" = 11, "6" = 11, "7" = 10, "8" = 10, "9" = 11, "10" = 11, "11" = 10, "12" = 11, "13" = 10, "14" = 10, "15" = 11 }, source_units = 218 }
+"1101001101101101" = { commands_by_row = { "0" = 9, "1" = 9, "2" = 11, "3" = 10, "4" = 10, "5" = 10, "6" = 9, "7" = 9, "8" = 11, "9" = 10, "10" = 10, "11" = 11, "12" = 9, "13" = 9, "14" = 11, "15" = 10 }, source_units = 272 }
+"11111110" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 7, "5" = 7, "6" = 8, "7" = 9 }, source_units = 146 }

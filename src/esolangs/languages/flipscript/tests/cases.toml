@@ -1,0 +1,23 @@
+[[spec_triggers]]
+program = 'output("x")'
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: no ``start`` line or a malformed one, or an executed line that does not parse or exceeds 4000 characters."
+
+[[spec_triggers]]
+program = "start(0)\nnum X = input"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: an ``input`` at EOF."
+
+[[spec_triggers]]
+program = "start(0)\nnum X = input"
+stdin = "x\n"
+expect = "ArgumentError"
+claim = "ArgumentError: a ``num`` input line that is not a decimal number."
+
+[[spec_triggers]]
+program = "start(0)\noutput(1/0)"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: an unassigned variable, a type mismatch, division or remainder by zero, a non-finite result, a jump that is not a positive whole number, or a decay that is not whole."
