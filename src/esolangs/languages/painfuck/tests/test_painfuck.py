@@ -26,7 +26,28 @@ from tests.support.factories import reject_rng_options, rng_factory
 from tests.support.raises import assert_halts_with_hint
 from tests.support.vm_support import assert_random_steps_reproduce
 
-run = importlib.import_module("esolangs.languages.painfuck.interpreter").run
+_interpreter = importlib.import_module("esolangs.languages.painfuck.interpreter")
+run = _interpreter.run
+_put = _interpreter._put
+
+
+def _set(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
+    return (*tape[:ptr], value, *tape[ptr + 1 :])
+
+
+def _advance(state, prog, n, reads, coins):
+    """``_advance`` over the dense ``(tape, loop, ptr, ind, rep, origin)``."""
+    tape, loop, ptr, ind, rep, origin = state
+    kept = [(i - origin, v) for i, v in enumerate(tape) if v]
+    cells = (tuple(i for i, _ in kept), tuple(v for _, v in kept))
+    span = (-origin, len(tape) - 1 - origin)
+    sparse = (cells, loop, ptr - origin, ind, rep, span)
+    (cells, loop, pos, ind, rep, span), effects = _interpreter._advance(
+        sparse, prog, n, reads, coins
+    )
+    dense = _interpreter._dense(cells, span)
+    return (dense, loop, pos - span[0], ind, rep, -span[0]), effects
+
 
 # The source text is translated through a position-dependent shift per cycle
 # before execution.  _encode builds a source program whose translation is
@@ -306,14 +327,19 @@ class TestStepMachine:
             loose.step()
         assert loose.ind == 1
 
-    def test_growing_the_tape_leaves_an_addressable_pointer_alone(self) -> None:
-        """``_grow`` returns the tape untouched when the pointer already fits."""
-        from esolangs.languages.painfuck.interpreter import _grow
+    def test_a_far_move_stores_no_cells(self) -> None:
+        """``ctt`` moves 7**13 cells in one step; the tape stays sparse.
 
-        tape = (1, 2, 3)
-        assert _grow(tape, 0) is tape  # in range, so the same object comes back
-        assert _grow(tape, 2) is tape  # the last addressable cell
-        assert _grow(tape, 4) == (1, 2, 3, 0, 0)  # past the end, so extended
+        A dense tuple built every cell, and a trace-corpus program was killed
+        at 8 GB (2026-11-17).  Zero cells are never stored.
+        """
+        for move, pos in (("l", -(7**13)), ("r", 2 * 7**13)):
+            machine = Painfuck(_encode(f"pctt{move}pe"), ScriptedIO())
+            for _ in range(3):
+                machine.step()
+            assert machine.cells == (tuple(sorted((0, pos))), (2, 2)), move
+        assert run_program("pocttlzoe") == "20"
+        assert _put(_put(((), ()), 3, 5), 3, 0) == ((), ())
 
 
 class TestRepeatCollapsing:
@@ -324,8 +350,6 @@ class TestRepeatCollapsing:
         op: str, tape: tuple[int, ...], ptr: int, origin: int, rep: int
     ) -> tuple:
         """Apply ``op`` ``rep`` times, one step at a time."""
-        from esolangs.languages.painfuck.interpreter import _set
-
         for _ in range(rep):
             if op == "p":
                 tape = _set(tape, ptr, tape[ptr] + 2)
@@ -365,8 +389,6 @@ class TestRepeatCollapsing:
     def test_a_collapsed_op_equals_repeating_it(
         self, op: str, rep: int, cells: list[int]
     ) -> None:
-        from esolangs.languages.painfuck.interpreter import _advance
-
         for ptr in range(len(cells)):
             tape = tuple(cells)
             if op == "k" and abs(tape[ptr]) > 1 and rep > 5:
@@ -383,8 +405,6 @@ class TestRepeatCollapsing:
 
     def test_a_repeated_loop_command_decides_once(self) -> None:
         """``a``/``b`` are jumps, so repeating one changes nothing."""
-        from esolangs.languages.painfuck.interpreter import _advance
-
         entered = None
         for rep in (1, 2, 7, 1000):
             state = ((5,), (), 0, 0, rep, 0)  # nonzero cell: the loop is entered
@@ -413,8 +433,6 @@ class TestRepeatCollapsing:
     )
     def test_a_c_run_absorbs_the_t_run_after_it(self, prog: str, runs: int) -> None:
         """A ``t`` run after a ``c`` run repeats *the ``c``*."""
-        from esolangs.languages.painfuck.interpreter import _advance
-
         state = ((0,), (), 0, 0, 1, 0)
         (tape, _loop, _ptr, _ind, _r, _o), _fx = _advance(
             state, prog, len(prog), (), ()
@@ -430,8 +448,6 @@ class TestRepeatCollapsing:
         self, prog: str, runs: int
     ) -> None:
         """Each ``t`` in a run repeats the previous repeat three times."""
-        from esolangs.languages.painfuck.interpreter import _advance
-
         tape: tuple[int, ...] = (0,)
         loop: tuple[int, ...] = ()
         ptr = ind = 0
@@ -450,8 +466,6 @@ class TestRepeatCollapsing:
         self, prog: str, trace: list[int]
     ) -> None:
         """The forward read is only for a ``t`` reached from a ``c`` run."""
-        from esolangs.languages.painfuck.interpreter import _advance
-
         tape: tuple[int, ...] = (0,)
         loop: tuple[int, ...] = ()
         ptr = ind = 0
@@ -466,8 +480,6 @@ class TestRepeatCollapsing:
 
     def test_halving_rounds_down_not_toward_zero(self) -> None:
         """The one collapse a truncating shift would get wrong."""
-        from esolangs.languages.painfuck.interpreter import _advance
-
         state = ((-7,), (), 0, 0, 2, 0)
         (tape, _loop, _ptr, _ind, _r, _o), _fx = _advance(state, "h", 1, (), ())
         assert tape == (-2,), "halving a negative must round down"
@@ -694,7 +706,9 @@ def test_branching_limit_admits_exactly_its_outcomes() -> None:
     assert pending != initial
     outcomes = machine.branching_successors(pending, 64)
     assert outcomes is not None
-    assert {state[0][0] for state in outcomes} == set(range(0, 13, 2))
+    assert {_interpreter._get(state[0], 0) for state in outcomes} == set(
+        range(0, 13, 2)
+    )
     assert machine.branching_snapshot() == pending
     assert coins.draws == 2  # Analysis used only the remembered first draw.
     machine.step()
@@ -749,8 +763,6 @@ def test_trailing_y_consumes_only_its_owed_coins(
 
 @pytest.mark.parametrize("value", [0, 1, -1])
 def test_loop_end_tests_the_cell_before_jumping(value: int) -> None:
-    from esolangs.languages.painfuck.interpreter import _advance
-
     state = ((value,), (0,), 0, 2, 1, 0)
     (tape, loops, _pointer, cursor, _repeat, _origin), _effects = _advance(
         state, "azb", 3, (), ()

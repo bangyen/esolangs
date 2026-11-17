@@ -70,6 +70,7 @@ Decisions:
       unmatched ``a`` on zero halts.
 """
 
+from bisect import bisect_left
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -117,12 +118,17 @@ class _Image(NamedTuple):
     program: str
 
 
-#: ``(tape, loop, ptr, ind, rep, origin)``: cells, loop-entry stack,
-#: pointer, cursor, repeat counter, and the index of the starting cell
-#: (``d``'s target, which moves right as ``l`` grows the tape left).
+#: ``(cells, loop, pos, ind, rep, span)``: the nonzero cells as sorted
+#: positions and their values, loop-entry stack, pointer, cursor, repeat
+#: counter, and the ``(low, high)`` positions visited.  Positions count from
+#: the starting cell (``d``'s target).  Sparse because ``ctt`` moves 7**13
+#: cells in one step: a dense tuple built them all and a trace-corpus program
+#: was killed at 8 GB (2026-11-17).  ``span`` keeps the dense tape the debugger
+#: shows, and makes snapshots equal exactly when those tapes are.
 #: ``c`` multiplies ``rep`` by 7 and ``t`` by 3 and the whole command runs
 #: that many times, so effects are a list.
-type _State = tuple[tuple[int, ...], tuple[int, ...], int, int, int, int]
+type _Cells = tuple[tuple[int, ...], tuple[int, ...]]
+type _State = tuple[_Cells, tuple[int, ...], int, int, int, tuple[int, int]]
 
 
 @dataclass(frozen=True)
@@ -197,16 +203,44 @@ class _Cursor[T]:
         return value
 
 
-def _grow(tape: tuple[int, ...], ptr: int) -> tuple[int, ...]:
-    """Return ``tape`` extended with zeros so ``ptr`` is addressable."""
-    if ptr < len(tape):
-        return tape
-    return (*tape, *([0] * (ptr + 1 - len(tape))))
+#: No cell stored.  Positions apart from values, so ``bisect`` compares
+#: plain ints: a key function cost 10% of the step rate.
+_EMPTY: _Cells = ((), ())
 
 
-def _set(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
-    """Return ``tape`` with the cell at ``ptr`` set to ``value``."""
-    return (*tape[:ptr], value, *tape[ptr + 1 :])
+def _get(cells: _Cells, pos: int) -> int:
+    """Return the cell at ``pos``; unstored cells are zero."""
+    positions, values = cells
+    at = bisect_left(positions, pos)
+    return values[at] if at < len(positions) and positions[at] == pos else 0
+
+
+def _put(cells: _Cells, pos: int, value: int) -> _Cells:
+    """Return ``cells`` with ``pos`` set to ``value``, storing no zero."""
+    positions, values = cells
+    at = bisect_left(positions, pos)
+    after = at + (at < len(positions) and positions[at] == pos)
+    if value:
+        return (
+            (*positions[:at], pos, *positions[after:]),
+            (*values[:at], value, *values[after:]),
+        )
+    return (*positions[:at], *positions[after:]), (*values[:at], *values[after:])
+
+
+def _visit(span: tuple[int, int], pos: int) -> tuple[int, int]:
+    """Return ``span`` widened to include ``pos``."""
+    low, high = span
+    return (pos, high) if pos < low else (low, pos) if pos > high else span
+
+
+def _dense(cells: _Cells, span: tuple[int, int]) -> tuple[int, ...]:
+    """Return the visited tape, leftmost cell first, as the debugger shows it."""
+    low, high = span
+    tape = [0] * (high - low + 1)
+    for pos, value in zip(*cells, strict=True):
+        tape[pos - low] = value
+    return tuple(tape)
 
 
 def _skip_loop(prog: str, ind: int, n: int) -> int:
@@ -222,33 +256,14 @@ def _skip_loop(prog: str, ind: int, n: int) -> int:
     return ind
 
 
-def _collapse_right(
-    tape: tuple[int, ...], ptr: int, rep: int
-) -> tuple[tuple[int, ...], int]:
-    """Return the tape and pointer after ``rep`` ``r``s: ``+2`` each."""
-    ptr += 2 * rep
-    return _grow(tape, ptr), ptr
-
-
-def _collapse_left(
-    tape: tuple[int, ...], ptr: int, origin: int, rep: int
-) -> tuple[tuple[int, ...], int, int]:
-    """Return tape, pointer and origin after ``rep`` ``l``s, as one closed form.
-
-    Past the left edge the tape grows by the overshoot.
-    """
-    grown = max(0, rep - ptr)
-    return (0,) * grown + tape, ptr + grown - rep, origin + grown
-
-
-def _collapse_print(tape: tuple[int, ...], ptr: int, c: str, rep: int) -> _Print:
+def _collapse_print(cells: _Cells, pos: int, c: str, rep: int) -> _Print:
     """Return one effect carrying a repeated print's ``rep``.
 
     A repeated print emits the same cell every time -- nothing in the loop
     writes the tape -- so one effect carries the count rather than
     appending ``rep`` identical ones.
     """
-    value = tape[ptr] if c == "o" else tape[ptr] & 0xFF
+    value = _get(cells, pos) if c == "o" else _get(cells, pos) & 0xFF
     return _Print(value, as_char=c == "u", count=rep)
 
 
@@ -315,7 +330,7 @@ class _Step:
         coins: tuple[int, ...],
     ) -> None:
         """Unpack ``state`` and read the first command."""
-        self.tape, self.loop, self.ptr, self.ind, self.rep, self.origin = state
+        self.cells, self.loop, self.pos, self.ind, self.rep, self.span = state
         self.prog = prog
         self.n = n
         self.reads = _Cursor(reads, _NeedRead)
@@ -324,43 +339,57 @@ class _Step:
         self.cmd = self.prog[self.ind]
         self.ind += 1
 
+    @property
+    def cell(self) -> int:
+        """The cell under the pointer."""
+        # ``_get`` inlined: the extra call cost 1% of the step rate.
+        positions, values = self.cells
+        pos = self.pos
+        at = bisect_left(positions, pos)
+        return values[at] if at < len(positions) and positions[at] == pos else 0
+
+    @cell.setter
+    def cell(self, value: int) -> None:
+        self.cells = _put(self.cells, self.pos, value)
+
+    def move(self, pos: int) -> None:
+        """Point at ``pos``, widening the visited span."""
+        self.pos = pos
+        self.span = _visit(self.span, pos)
+
     def snapshot(self) -> _State:
         """Return the working fields as the value the transition works on."""
-        return (self.tape, self.loop, self.ptr, self.ind, self.rep, self.origin)
+        return (self.cells, self.loop, self.pos, self.ind, self.rep, self.span)
 
     def finish(self) -> tuple[_State, tuple[_Effect, ...]]:
         """Return the step's result once the repeat counter runs out."""
-        tape, loop, ptr, ind, rep, origin = self.snapshot()
-        return (tape, loop, ptr, ind, rep + 1, origin), tuple(self.effects)
+        cells, loop, pos, ind, rep, span = self.snapshot()
+        return (cells, loop, pos, ind, rep + 1, span), tuple(self.effects)
 
     def finish_at_end(self) -> tuple[_State, tuple[_Effect, ...]]:
         """Return the step's result for ``e``: the cursor past the program."""
-        state = (self.tape, self.loop, self.ptr, self.n, 0, self.origin)
+        state = (self.cells, self.loop, self.pos, self.n, 0, self.span)
         return state, tuple(self.effects)
 
 
 def _do_p(step: _Step) -> None:
     """Add two to the cell."""
-    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] + 2)
+    step.cell += 2
 
 
 def _do_s(step: _Step) -> None:
     """Subtract one from the cell."""
-    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] - 1)
+    step.cell -= 1
 
 
 def _do_r(step: _Step) -> None:
-    """Move the pointer two cells right, growing the tape."""
-    step.ptr += 2
-    step.tape = _grow(step.tape, step.ptr)
+    """Move the pointer two cells right."""
+    step.move(step.pos + 2)
 
 
 def _do_l(step: _Step) -> None:
-    """Move the pointer one cell left, growing the tape past the edge."""
-    if step.ptr:
-        step.ptr -= 1
-    else:
-        step.tape, step.origin = (0, *step.tape), step.origin + 1
+    """Move the pointer one cell left."""
+    step.move(step.pos - 1)
 
 
 def _do_i(step: _Step) -> None:
@@ -370,7 +399,7 @@ def _do_i(step: _Step) -> None:
     except _NeedRead as want:
         raise _NeedRead(line=True, state=step.snapshot()) from want
     try:
-        step.tape = _set(step.tape, step.ptr, parse_integer(cast(str, line)))
+        step.cell = parse_integer(cast(str, line))
     except ValueError:
         raise _Halted(
             step.snapshot(),
@@ -385,22 +414,22 @@ def _do_j(step: _Step) -> None:
         byte = step.reads.take(line=False)
     except _NeedRead as want:
         raise _NeedRead(line=False, state=step.snapshot()) from want
-    step.tape = _set(step.tape, step.ptr, int(byte))
+    step.cell = int(byte)
 
 
 def _do_o(step: _Step) -> None:
     """Queue the cell as a decimal number for printing."""
-    step.effects.append(_Print(step.tape[step.ptr], as_char=False))
+    step.effects.append(_Print(step.cell, as_char=False))
 
 
 def _do_u(step: _Step) -> None:
     """Queue the cell's low byte as a character for printing."""
-    step.effects.append(_Print(step.tape[step.ptr] & 0xFF, as_char=True))
+    step.effects.append(_Print(step.cell & 0xFF, as_char=True))
 
 
 def _do_a(step: _Step) -> None:
     """Enter the loop on nonzero; skip to its end on zero."""
-    if step.tape[step.ptr] != 0:
+    if step.cell != 0:
         step.loop = (*step.loop, step.ind - 1)
     else:
         step.ind = _skip_loop(step.prog, step.ind, step.n)
@@ -417,35 +446,34 @@ def _do_b(step: _Step) -> None:
                 hint="execute a matching loop opener before b",
             ),
         )
-    if step.tape[step.ptr] != 0:
+    if step.cell != 0:
         step.ind = step.loop[-1]
     step.loop = step.loop[:-1]
 
 
 def _do_k(step: _Step) -> None:
     """Square the cell."""
-    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] * step.tape[step.ptr])
+    step.cell **= 2
 
 
 def _do_z(step: _Step) -> None:
     """Zero the cell."""
-    step.tape = _set(step.tape, step.ptr, 0)
+    step.cell = 0
 
 
 def _do_h(step: _Step) -> None:
     """Halve the cell, rounding down per the author clarification."""
-    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] // 2)
+    step.cell //= 2
 
 
 def _do_w(step: _Step) -> None:
     """Copy the right neighbour into the cell (zero past the end)."""
-    right = step.tape[step.ptr + 1] if step.ptr + 1 < len(step.tape) else 0
-    step.tape = _set(step.tape, step.ptr, right)
+    step.cell = _get(step.cells, step.pos + 1)
 
 
 def _do_q(step: _Step) -> None:
     """Copy the left neighbour into the cell (zero past the start)."""
-    step.tape = _set(step.tape, step.ptr, step.tape[step.ptr - 1] if step.ptr else 0)
+    step.cell = _get(step.cells, step.pos - 1)
 
 
 def _do_c(step: _Step) -> None:
@@ -481,13 +509,13 @@ def _do_v(step: _Step) -> None:
     """Run the next command only when the cell is zero; consume it either way."""
     if step.ind < step.n:
         step.cmd = step.prog[step.ind]
-        step.rep = int(step.tape[step.ptr] == 0)
+        step.rep = int(step.cell == 0)
         step.ind += 1
 
 
 def _do_d(step: _Step) -> None:
     """Return the pointer to the starting cell."""
-    step.ptr = step.origin
+    step.pos = 0
 
 
 def _do_t(step: _Step) -> None:
@@ -547,27 +575,25 @@ def _collapse_repeat(step: _Step) -> bool:
         return False
     cmd, rep = step.cmd, step.rep
     if cmd == "p":
-        step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] + 2 * rep)
+        step.cell += 2 * rep
     elif cmd == "s":
-        step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] - rep)
+        step.cell -= rep
     elif cmd == "r":
-        step.tape, step.ptr = _collapse_right(step.tape, step.ptr, rep)
+        step.move(step.pos + 2 * rep)
     elif cmd == "l":
-        step.tape, step.ptr, step.origin = _collapse_left(
-            step.tape, step.ptr, step.origin, rep
-        )
+        step.move(step.pos - rep)
     elif cmd == "h":
         # Repeated floor division by two is an arithmetic shift; the author
         # rounds negative odd values down.
-        step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] >> rep)
-    elif cmd == "k" and -1 <= step.tape[step.ptr] <= 1:
+        step.cell >>= rep
+    elif cmd == "k" and -1 <= step.cell <= 1:
         # Squaring has a closed form, ``x ** (2 ** rep)``, but for ``|x| > 1``
         # the *result* has 2**rep times the bits, so no rewrite makes it
         # affordable (measured at 1.0x); the loop is not the cost there.  At
         # the fixed points (``|x| <= 1``) it collapses to one squaring.
-        step.tape = _set(step.tape, step.ptr, step.tape[step.ptr] ** 2)
+        step.cell **= 2
     elif cmd in "ou":
-        step.effects.append(_collapse_print(step.tape, step.ptr, cmd, rep))
+        step.effects.append(_collapse_print(step.cells, step.pos, cmd, rep))
     elif cmd in _IDEMPOTENT or cmd in "ab":
         # Repeating these is doing them once: an idempotent writes a value
         # fixed by the state this iteration began in, and the wiki defines
@@ -651,12 +677,12 @@ class _Machine:
         self._writer = _BufferedOutput()
         self.prog = _translate(code) if isinstance(code, str) else code.program
         self.n = len(self.prog)
-        self.tape: tuple[int, ...] = (0,)
+        self.cells = _EMPTY
         self.loop: tuple[int, ...] = ()
-        self.ptr = 0
+        self.pos = 0
         self.ind = 0
         self.rep = 1
-        self.origin = 0
+        self.span = (0, 0)
 
     @property
     def halted(self) -> bool:
@@ -668,8 +694,23 @@ class _Machine:
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        """The visited cells, leftmost first."""
         return list(self.tape)
+
+    @property
+    def tape(self) -> tuple[int, ...]:
+        """The visited cells, leftmost first; ``ptr`` and ``origin`` index it."""
+        return _dense(self.cells, self.span)
+
+    @property
+    def ptr(self) -> int:
+        """The pointer's index into ``tape``."""
+        return self.pos - self.span[0]
+
+    @property
+    def origin(self) -> int:
+        """The starting cell's index into ``tape``."""
+        return -self.span[0]
 
     @property
     def stack(self) -> list[object]:
@@ -687,6 +728,8 @@ class _Machine:
         elif self._pending_ports is not None:
             instruction = self._port_boundary()
         return _WORKSPACE_MODEL.capture(
+            # The visited tape, as before the sparse store: the ledger prices
+            # the cells a run reaches, and its pins were measured on these.
             tape=self.tape,
             loops=self.loop,
             pointer=self.ptr,
@@ -716,12 +759,12 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         boundary = (
-            self.tape,
+            self.cells,
             self.loop,
-            self.ptr,
+            self.pos,
             self.ind,
             self.rep,
-            self.origin,
+            self.span,
             self.io.progress(),
             self.prog,
             self._input_reads,
@@ -801,11 +844,11 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (self.tape, self.loop, self.ptr, self.ind, self.rep, self.origin)
+        return (self.cells, self.loop, self.pos, self.ind, self.rep, self.span)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""
-        self.tape, self.loop, self.ptr, self.ind, self.rep, self.origin = state
+        self.cells, self.loop, self.pos, self.ind, self.rep, self.span = state
 
     @staticmethod
     def _fresh_fault(args: tuple[object, ...], notes: tuple[str, ...]) -> HaltError:
