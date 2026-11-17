@@ -6,5 +6,5 @@ from esolangs.runtime._lifecycle import Completion
 CAPABILITIES = MachineCapabilities(
     completion=Completion.HALTED,
     eof_is_a_value=True,
-    debug=DebugSpec(ip="ip", memory="memory"),
+    debug=DebugSpec(ip="ip", memory="_debug_memory", memory_at="memory_at"),
 )

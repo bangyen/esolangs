@@ -4,7 +4,7 @@ import pytest
 
 from esolangs import ArgumentError, ExecutionCapError, ExecutionLimits, Language
 from esolangs.debugger import Debugger
-from esolangs.exceptions import HaltError
+from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.movesum.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_workspace, complete_vm
@@ -63,6 +63,24 @@ def test_no_separator_trails_and_blank_lines_are_skipped() -> None:
 
 def test_the_array_is_unbounded_to_the_right() -> None:
     assert out("0=3\nmove 0 100000\nmove 100000 -1\nmove 0 0") == "3"
+    api = Language("Movesum")
+    dbg = api.make_debugger("7=19 2=13\nmove 7 -1")
+    assert dbg.memory == []
+    dbg.step()
+    assert dbg.memory == [0, 0, 13, 0, 0, 0, 0, 19]
+
+    distant = 10**30
+    dbg = api.make_debugger(f"{distant}=19\nmove {distant} -1")
+    value = dbg.watch_cell(distant)
+    gap = dbg.watch_cell(distant - 1)
+    outside = dbg.watch_cell(distant + 1)
+    dbg.break_on_cell(distant, 19)
+    assert dbg.run(limits=ExecutionLimits(max_steps=3)) == "breakpoint"
+    assert (value, gap, outside) == ([19], [0], [None])
+    with pytest.raises(InterpreterLimitError, match="dense view limit"):
+        _ = dbg.memory
+    assert dbg.run(limits=ExecutionLimits(max_steps=3)) == "halted"
+    assert dbg.output == "19 19"
 
 
 def test_a_negative_input_is_refused() -> None:

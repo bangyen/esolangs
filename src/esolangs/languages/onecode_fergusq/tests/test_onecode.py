@@ -42,6 +42,12 @@ def test_onecode_execution(tmp_path: Path) -> None:
             ), (table, row)
 
     api = esolangs.Language(_NAME)
+    dbg = api.make_debugger("*(-2)~19; *2~13; putn(*(-2));")
+    dbg.break_on_cell(4, 13)
+    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=30)) == "breakpoint"
+    assert dbg.memory == [19, 0, 0, 0, 13]
+    assert dict(dbg.views)["origin"] == "2"
+
     source = tmp_path / "identity.onecode"
     api.to_file(api.generate("01"), source)
     entry = Path(__file__).resolve().parents[1] / "interpreter.py"

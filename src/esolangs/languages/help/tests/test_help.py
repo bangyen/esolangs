@@ -32,7 +32,15 @@ def _check_byte_instructions() -> None:
     assert run_until_halt_or_all_branches_cycle(machine, limit=100)
     assert esolangs.run("Help.", "rnd 41 41 $0\nout $0", seed=0).output == "A"
 
-    assert esolangs.Language("help").name == "Help."
+    api = esolangs.Language("help")
+    assert api.name == "Help."
+    dbg = api.make_debugger("set $3 13\nset $3 0\nend")
+    watched = dbg.watch_cell(3)
+    dbg.step()
+    assert dbg.memory == [0, 0, 0, 0x13]
+    dbg.step()
+    assert dbg.memory == []
+    assert watched == [0x13, None]
     with pytest.raises(esolangs.UnknownLanguageError) as caught:
         esolangs.describe("Hlp.")
     assert caught.value.suggestions == ("Help.",)

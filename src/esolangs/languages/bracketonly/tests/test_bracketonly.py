@@ -50,6 +50,12 @@ def _check_raw_functions_and_io() -> None:
         run(_call(8, _call(function, _value(2), _value(4))), io)
         assert io.getvalue() == str(answer), function
 
+    source = _call(14, _value(3), _value(5)) + _call(8, _call(13, _value(3)))
+    dbg = esolangs.Language("BracketOnly").make_debugger(source)
+    dbg.break_on_cell(3, 5)
+    assert dbg.run(limits=esolangs.ExecutionLimits(max_steps=150)) == "breakpoint"
+    assert dbg.memory == [0, 0, 0, 5]
+
     io = ScriptedIO()
     run(_call(8, _call(10, "()()", "()()")) + _call(8, _call(18, _value(0))), io)
     assert io.getvalue() == "11"

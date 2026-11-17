@@ -37,7 +37,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=MachineCapabilities(
             completion=Completion.HALTED,
             eof_is_a_value=False,
-            debug=DebugSpec(ip="ip", memory="memory"),
+            debug=DebugSpec(ip="ip", memory="_debug_memory", memory_at="memory_at"),
         ),
     ),
     backend=DeferredBackend(_backend),

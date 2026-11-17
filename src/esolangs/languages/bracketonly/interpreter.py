@@ -35,6 +35,7 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._vm_views import sparse_cell, sparse_memory
 from esolangs.runtime.io import ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, trunc_div, trunc_mod
 from esolangs.runtime.randomness import FirstDraw, draw
@@ -205,6 +206,13 @@ class _Machine:
     @property
     def halted(self) -> bool:
         return not self.frames and self.top == len(self.source.root)
+
+    @property
+    def _debug_memory(self) -> list[int]:
+        return sparse_memory(self.memory)
+
+    def memory_at(self, index: int) -> int | None:
+        return sparse_cell(self.memory, index)
 
     @property
     def ip(self) -> int | None:

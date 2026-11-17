@@ -57,6 +57,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._vm_views import sparse_cell, sparse_memory
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -171,6 +172,13 @@ class _Machine:
     @property
     def memory(self) -> dict[int, int]:
         return dict(self.state[1]) if self.state else {}
+
+    @property
+    def _debug_memory(self) -> list[int]:
+        return sparse_memory(self.state[1]) if self.state is not None else []
+
+    def memory_at(self, index: int) -> int | None:
+        return sparse_cell(self.state[1], index) if self.state is not None else None
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""

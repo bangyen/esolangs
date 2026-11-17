@@ -33,7 +33,14 @@ LANGUAGE = LanguageDeclaration(
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",
         capabilities=MachineCapabilities(
-            debug=DebugSpec(ip="ip", ip_shape="opaque", memory="memory", stack="stack")
+            debug=DebugSpec(
+                ip="ip",
+                ip_shape="opaque",
+                memory="_debug_memory",
+                memory_at="memory_at",
+                views=("origin",),
+                stack="stack",
+            )
         ),
     ),
     backend=DeferredBackend(_backend),

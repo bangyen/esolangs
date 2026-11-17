@@ -39,6 +39,7 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._vm_views import sparse_cell, sparse_memory
 from esolangs.runtime.io import _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer, trunc_div
 
@@ -113,6 +114,18 @@ class _Machine:
     @property
     def halted(self) -> bool:
         return self.pc >= len(self.code)
+
+    @property
+    def origin(self) -> int:
+        """Index of address zero in the leftmost-first memory view."""
+        return -min(0, min(self.memory, default=0))
+
+    @property
+    def _debug_memory(self) -> list[int]:
+        return sparse_memory(self.memory, start=-self.origin)
+
+    def memory_at(self, index: int) -> int | None:
+        return sparse_cell(self.memory, index, start=-self.origin)
 
     @property
     def ip(self) -> int | None:

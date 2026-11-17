@@ -21,7 +21,7 @@ sub-protocol.  :func:`run_until_halt` proves nothing.
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, Hashable
+from collections.abc import Callable, Hashable, Mapping
 from contextlib import AbstractContextManager
 from dataclasses import replace
 from inspect import getattr_static
@@ -457,7 +457,10 @@ class _DelegatingVM:
         Crement's instructions, B-tapemark's grids): they leaked through as
         ``list[int]``, and ``break_on_cell`` could not name a value.
         """
-        cells = list(self._view("memory", ()))
+        memory = self._view("memory", ())
+        if isinstance(memory, Mapping):
+            return []
+        cells = list(memory)
         if all(type(cell) is int for cell in cells):
             return cells
         return []
