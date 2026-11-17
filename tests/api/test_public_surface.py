@@ -404,6 +404,15 @@ class TestProgramObjectsRefuseMisuse:
                         },
                     )
 
+    def test_vm_driver_annotations_resolve_at_runtime(self) -> None:
+        from typing import get_type_hints
+
+        from esolangs import vm
+
+        for name, driver in vars(vm).items():
+            if name == "run_until_halt" or name.startswith("run_until_halt_or_"):
+                assert "machine" in get_type_hints(driver)
+
     def test_a_scaled_raster_pickles(self) -> None:
         """Its renderer was a local closure: PicklingError."""
         import pickle

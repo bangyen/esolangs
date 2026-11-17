@@ -7,7 +7,7 @@ from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
 from inspect import getattr_static
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import ArgumentError, EsolangError, ExecutionBudgetError
 from esolangs.runtime._drive import (
@@ -35,10 +35,8 @@ from esolangs.runtime._proof import (
     _step_proof_receiver,
 )
 from esolangs.runtime._validate import _call_signature, _has_backing_type, check_whole
+from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.source_hints import with_hint
-
-if TYPE_CHECKING:
-    from esolangs.runtime._vm_protocol import VM
 
 
 @runtime_checkable
