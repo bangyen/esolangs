@@ -217,9 +217,8 @@ options:
                things it does, as `width_effect`: `wrap` reflows the
                finished program between whole tokens, `layout` hands the
                width to the generator as a *hint*, so routing may exceed
-               the requested width, and `none` ignores it, because
-               the language's newlines are semantic or it rejects them.  A
-               template wraps with each input's run kept whole, so every
+               the requested width, and `none` ignores it. A template
+               wraps with each input's run kept whole, so every
                row it fills to has the same breaks; a layout language lays
                it out instead. If --width has no integer operand, it uses
                the default. Use --width=N to make the value explicit.

@@ -149,8 +149,8 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
           a recorded proof). Linear refers to size and generation time, not
           totality.
         - Width: ``width_effect`` is ``"layout"`` (a shape built to fit; a
-          hint), ``"wrap"`` (reflowed between tokens) or ``"none"`` (newlines
-          are semantic).
+          hint), ``"wrap"`` (reflowed between tokens) or ``"none"`` (no
+          width adjustment).
         - Input: ``reads_input``; ``input_shape`` and ``input_encoding``, the
           ``(zero, one)`` pair (the wrong alphabet is a wrong answer), both
           None unless ``reads_input``.
