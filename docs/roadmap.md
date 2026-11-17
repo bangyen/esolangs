@@ -97,6 +97,11 @@ history at `f35aa4023`.
     8. [NOR Machine](https://esolangs.org/wiki/NOR_Machine) (rev. 154406):
        indexed bit input and final-stack output, 2,680 subset runs. Pin
        input framing and check implementation coverage for this dialect.
+    9. [Artppeice](https://esolangs.org/wiki/Artppeice) (rev. 201757):
+       dequeued words select destination queues for literal payloads.
+       A linear-character tree passed 2,458 byte-exact cases with no
+       implicit output separator. Check full command semantics, word
+       framing and public implementation coverage.
   - *Admission:* check public implementations, fixed core semantics and
     an executed loop-less O(T) Boolean construction under
     [curation](limitations.md#curation).
