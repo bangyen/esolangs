@@ -187,6 +187,19 @@ def test_stdin_reads_prefetched_file_bytes(tmp_path, monkeypatch, capsys) -> Non
         assert stdin.buffer.peek(1).startswith(b"1")
         monkeypatch.setattr(sys, "stdin", stdin)
         assert _read_stdin(1) == "12"
+    prefix = b"A" + b"x" * 8190 + b"\xe2"
+    malformed = tmp_path / "malformed-stdin"
+    for tail in (b"Z", b"\n", b""):
+        malformed.write_bytes(prefix + tail)
+        for errors in ("strict", "ignore", "replace"):
+            with malformed.open(encoding="utf-8", errors=errors) as stdin:
+                stdin._CHUNK_SIZE = len(prefix)
+                assert stdin.read(1) == "A"
+                monkeypatch.setattr(sys, "stdin", stdin)
+                with pytest.raises(SystemExit) as caught:
+                    _read_stdin(1)
+                assert caught.value.code == 2
+                assert "invalid UTF-8 at byte 8190" in capsys.readouterr().err
     _check_raw_decode_deadline(path, monkeypatch, capsys)
 
 

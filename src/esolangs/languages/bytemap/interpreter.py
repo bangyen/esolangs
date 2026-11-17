@@ -310,9 +310,14 @@ class _Machine:
         """Return the next input byte, or ``FF`` at EOF."""
         if not self.pending:
             try:
-                self.pending = tuple(chr(self.io.input_char()).encode())
+                char = self.io.input_char()
             except EOFError:
                 return _BLANK
+            try:
+                self.pending = tuple(chr(char).encode())
+            except UnicodeEncodeError as error:
+                self._rejected_input.remember(error)
+                raise
         byte, self.pending = self.pending[0], self.pending[1:]
         return byte
 
@@ -324,6 +329,7 @@ class _Machine:
 
     def _read(self, kind: str, count: int) -> tuple[int, ...]:
         if kind in ("char", "hex"):
+            self._rejected_input.raise_if_rejected()
             size = count * 2 if kind == "hex" else count
             prefix = self._read_prefix
             while len(prefix) < size:

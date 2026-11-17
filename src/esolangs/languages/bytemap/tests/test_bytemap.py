@@ -98,3 +98,21 @@ def _check_retry_and_line_endings(monkeypatch: pytest.MonkeyPatch) -> None:
         assert debugger.snapshot() != before
         assert debugger.run(limits=limits) == "halted"
         assert debugger.observation == expected
+
+    for command, prefix in (("1A", "A"), ("1F", "41")):
+        source = command + "5609020A560502FF0000"
+        stdin = prefix + "\ud800BC"
+        expected = api.execute(source, stdin=stdin, limits=limits, isolated=True)
+        assert isinstance(expected.error, ProgramError)
+        cause = expected.error.__cause__
+        assert isinstance(cause, UnicodeEncodeError)
+        debugger = api.make_debugger(source, stdin=stdin)
+        for _ in range(2):
+            with pytest.raises(ProgramError, match="surrogates not allowed") as caught:
+                debugger.step()
+            actual = caught.value.__cause__
+            assert isinstance(actual, UnicodeEncodeError)
+            assert actual.args == cause.args
+            assert debugger.ip == (0, 0)
+            assert debugger.observation == expected.observation
+        assert debugger.observation.input_position == len(prefix) + 1

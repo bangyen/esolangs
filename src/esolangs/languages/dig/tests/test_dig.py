@@ -6,7 +6,7 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs import ExecutionLimits, Language
+from esolangs import ExecutionLimits, Language, ProgramError
 from esolangs.exceptions import HaltError
 from esolangs.languages.dig.interpreter import _Machine, prepare_machine, run
 from esolangs.runtime.io import IO, ScriptedIO
@@ -349,6 +349,22 @@ def test_the_first_move_is_down_the_rows() -> None:
 
 def test_retry_replays_a_rejected_numeric_token(monkeypatch):
     assert_numeric_token_replayed("Dig", ">$~:\n 2 ", "7", "7")
+    api = Language("Dig")
+    source, stdin = ">$~:\n 2 ", "oops 12"
+    limits = ExecutionLimits(max_steps=8)
+    worker = api.execute(source, stdin=stdin, limits=limits, isolated=True)
+    assert isinstance(worker.error, ProgramError)
+    expected = worker.error.__cause__
+    assert type(expected) is ValueError
+    debugger = api.make_debugger(source, stdin=stdin)
+    for _ in range(2):
+        with pytest.raises(ProgramError, match="oops") as fault:
+            debugger.run(limits=limits)
+        cause = fault.value.__cause__
+        assert type(cause) is ValueError
+        assert cause.args == expected.args
+        assert not cause.__suppress_context__
+        assert fault.value.observation == worker.observation
     assert_interrupted_input_scan_retry(
         "Dig", ">$~:\n 2 ", "12", "\x0c", "token", 2, monkeypatch
     )

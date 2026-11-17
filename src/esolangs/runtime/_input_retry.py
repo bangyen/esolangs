@@ -22,13 +22,18 @@ class _Diagnostic(NamedTuple):
     error: _Rejection
     details: _Details
     cause: BaseException | None
+    suppress_context: bool
+    had_notes: bool
 
     def fresh(self) -> _Rejection:
         """Build an error before this caller adds its own execution evidence."""
         error = copy(self.error)
-        error.__dict__.pop("__notes__", None)
-        for note in self.details[2]:
-            error.add_note(note)
+        if self.had_notes:
+            error.__notes__ = list(self.details[2])
+        else:
+            error.__dict__.pop("__notes__", None)
+        error.__cause__ = self.cause
+        error.__suppress_context__ = self.suppress_context
         return error
 
 
@@ -58,12 +63,18 @@ class RejectedInput:
         frozen = copy(error)
         for key in ("__notes__", "observation", "partial_output"):
             frozen.__dict__.pop(key, None)
-        self._fault = _Diagnostic(frozen, details, error.__cause__)
+        self._fault = _Diagnostic(
+            frozen,
+            details,
+            error.__cause__,
+            error.__suppress_context__,
+            hasattr(error, "__notes__"),
+        )
 
     def raise_if_rejected(self) -> None:
         """Raise a fresh copy of an earlier rejection."""
         if self._fault is not None:
-            raise self._fault.fresh() from self._fault.cause
+            raise self._fault.fresh()
 
     def read[T](self, io: IO, acquire: Callable[[], T]) -> T:
         """Retry reads that failed before any input became available."""
