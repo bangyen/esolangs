@@ -2,6 +2,9 @@
 backlinks = 3
 admitted = 2026-11-15T14:14:48-05:00
 
+[audits]
+blind_reimplementation = 2026-11-16
+
 [proof_status]
 labels = ["tree"]
 qualification = "straight-line Shannon reductions over byte registers, with constant spans and equal cofactors pruned; scratch addresses are shortest near the leaves"

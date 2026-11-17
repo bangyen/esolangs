@@ -6,6 +6,9 @@ admitted = 2026-11-15T13:34:00-05:00
 folding_constant_local = "input_weights"
 sharing_exempt = "the alternating-axis layout gives each descendant one incoming wire and reserves disjoint rectangles for the branches"
 
+[audits]
+blind_reimplementation = 2026-11-16
+
 [proof_status]
 labels = ["tree"]
 qualification = "folds each ASCII digit to one bit, then walks an alternating-axis tree in reverse input order; every leaf emits one byte and halts"

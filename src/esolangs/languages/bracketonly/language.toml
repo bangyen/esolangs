@@ -5,6 +5,9 @@ admitted = 2026-11-15T13:34:00-05:00
 [catalogue]
 sharing_exempt = "built-in lazy arms are inline expressions; the language has no operation that calls a stored expression"
 
+[audits]
+blind_reimplementation = 2026-11-16
+
 [proof_status]
 labels = ["tree"]
 qualification = "a lazy if reads one character before selecting its arm; each leaf prints its digit, and generation writes a fixed fragment per node"
