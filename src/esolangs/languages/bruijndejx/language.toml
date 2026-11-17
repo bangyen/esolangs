@@ -1,0 +1,99 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+# Wiki rev. 139554; 3 backlinks in the 2026-11-16 shortlist screen.
+backlinks = 3
+admitted = 2026-11-17T12:00:00-05:00
+
+[proof_status]
+labels = ["tree"]
+qualification = "decision tree of ? reads through a two-way read combinator Q and an ignoring read I; multi-parent residuals are named once, raced arithmetically against the inline tree"
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.named_sharing_20261117]
+kind = "measurement"
+witness = { arity = 10, rule = "random", seed = 1847 }
+source = { value = 1218, unit = "chars" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-17
+construction = "esolangs.languages.bruijndejx.generator:bruijndejx_request"
+notes = "Shipped (multi-parent residuals named, raced against inline): 1,218 chars. The all-inline tree emits 3,875 and naming every residual but the root 2,594 (64 sampled rows correct). Names lengthen with their count, O(T log T) at worst, so both forms are priced arithmetically and the shorter built; the bound stays the inline 5T + 23."
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 69
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bruijndejx.generator:bruijndejx_request"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1218
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.bruijndejx.generator:bruijndejx_request"
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.bruijndejx.generator:bruijndejx_request"
+
+[resource_evidence.execution]
+# A two-way read is 10 transitions (2 pushes, the Q lookup, 2 binds, 3
+# pushes, the ?, the chosen index), an ignoring read 8; a named residual
+# adds its lookup, never at the root; the leaf's /, push and * add 3.
+expression = "11n + 2"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.workspace]
+# Peak at ? inside Q: three argument cells, each holding Q's two-cell
+# environment; term ids are below K <= 2L (':' alone makes two terms).
+expression = "9*bl(2L) + bl(n) + 5"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.scaling]
+# The race never exceeds the inline tree: 3T leaf + 2(T - 1) branch chars
+# + 14-char Q header; a fold saves >= 3 and the I header costs 12.
+expression = "5T + 23"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "characters"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/bruijndejx/tests/test_bruijndejx.py::test_the_pages_examples_and_binding_rules",
+]
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 31, "5" = 31, "6" = 33, "7" = 33 }, source_units = 52 }
+"00001100" = { commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 49 }
+"00110110" = { commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 33, "5" = 33, "6" = 33, "7" = 33 }, source_units = 60 }
+"0110" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23 }, source_units = 33 }
+"01101001" = { commands_by_row = { "0" = 34, "1" = 34, "2" = 34, "3" = 34, "4" = 34, "5" = 34, "6" = 34, "7" = 34 }, source_units = 51 }
+"0110100110010110" = { commands_by_row = { "0" = 45, "1" = 45, "2" = 45, "3" = 45, "4" = 45, "5" = 45, "6" = 45, "7" = 45, "8" = 45, "9" = 45, "10" = 45, "11" = 45, "12" = 45, "13" = 45, "14" = 45, "15" = 45 }, source_units = 69 }
+"1101001101101101" = { commands_by_row = { "0" = 43, "1" = 43, "2" = 45, "3" = 45, "4" = 41, "5" = 41, "6" = 42, "7" = 42, "8" = 44, "9" = 44, "10" = 43, "11" = 43, "12" = 43, "13" = 43, "14" = 45, "15" = 45 }, source_units = 87 }
+"11111110" = { commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 31, "5" = 31, "6" = 33, "7" = 33 }, source_units = 52 }

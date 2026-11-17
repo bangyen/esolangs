@@ -46,6 +46,7 @@ don't edit by hand.
 | `bracketonly/bracketonly.txt` | BracketOnly | `0001` | `01` | 01 | '0' |
 | `brainfuck/brainfuck.txt` | brainfuck | `0001` | `01` | 01 | '0' |
 | `brainif/brainif.txt` | BrainIf | `0001` | `01` | 01 | '0' |
+| `bruijndejx/bruijndejx.txt` | Bruijndejx | `0001` | `01` | 01 | '0' |
 | `caballo/caballo.txt` | Caballo | `0001` | `01` | 0 1 | '[]' |
 | `carp/carp.txt` | CARP | `0001` | `01` | 0 1 | '0' |
 | `chicken/chicken.txt` | Chicken | `0001` | `01` | 01 | '0' |

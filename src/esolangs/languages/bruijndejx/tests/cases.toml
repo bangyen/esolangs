@@ -1,0 +1,17 @@
+[[spec_triggers]]
+program = "main = x"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a character outside the syntax, a declaration with no name before ``=``, a duplicate or undeclared name, an unclosed or stray bracket, a bare expression before the last item, or no item."
+
+[[spec_triggers]]
+program = "main = *main/.main\\.?"
+stdin = "2"
+expect = "ArgumentError"
+claim = "ArgumentError: an input character other than ``0`` or ``1``."
+
+[[spec_triggers]]
+program = "[0]"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a value that is not an I/O action (a lambda with no argument, an I/O primitive with the wrong number of arguments) or an unbound index."

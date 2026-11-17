@@ -152,6 +152,7 @@ Languages that don't fit into the above categories.
 
 - [Bleh](https://esolangs.org/wiki/Bleh) ([code](../src/esolangs/languages/bleh/interpreter.py))
 - [BracketOnly](https://esolangs.org/wiki/BracketOnly) ([code](../src/esolangs/languages/bracketonly/interpreter.py))
+- [Bruijndejx](https://esolangs.org/wiki/Bruijndejx) ([code](../src/esolangs/languages/bruijndejx/interpreter.py))
 - [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C)) ([code](../src/esolangs/languages/cvnc/interpreter.py))
 - [Codesick](https://esolangs.org/wiki/Codesick) ([code](../src/esolangs/languages/codesick/interpreter.py))
 - [DINAC](https://esolangs.org/wiki/DINAC) ([code](../src/esolangs/languages/dinac/interpreter.py))

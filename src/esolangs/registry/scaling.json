@@ -25,6 +25,7 @@
   "bracketonly": "linear: at most 316T-180; folding prunes tests and their arms",
   "brainfuck": "linear: at most 35T/2 + 55n + 25 characters: the plain tree",
   "brainif": "linear: at most 52N+823+A+2digits(4N+54) characters: layered DAG before fall-through",
+  "bruijndejx": "linear: at most 5T + 23 characters",
   "caballo": "linear: worst 33T/4 + n - 4 characters past n = 1: parity",
   "carp": "linear: at most 2T + n + 20 lines",
   "chicken": "linear: at most 5T + 4n^2 + 372n + 300 characters",
