@@ -496,9 +496,24 @@ def test_invalid_row_budgets(max_rows) -> None:
         _evaluate(REFERENCE, ",.", inputs=1, max_rows=max_rows)
 
 
+def test_evaluation_rejects_width_mismatch_and_nonboolean_isolation() -> None:
+    program = esolangs.generate(REFERENCE, "0110")
+    with pytest.raises(esolangs.ArgumentError, match="has 2 inputs, but inputs=3"):
+        _evaluate(REFERENCE, program, inputs=3)
+    with pytest.raises(esolangs.ArgumentError, match="but inputs=3"):
+        _evaluate(REFERENCE, replace(program, input_arity=10**5000), inputs=3)
+    name = first(answer_mode="termination", boolean_generator=True)
+    with pytest.raises(esolangs.ArgumentError, match="isolated must be"):
+        _evaluate(name, esolangs.generate(name, "01"), inputs=1, isolated=1)
+
+
 @pytest.mark.medium
 def test_row_budget_can_be_raised_or_disabled() -> None:
-    for limit in (2, None):
+    class Budget(int):
+        def __lt__(self, other: object) -> bool:
+            return True
+
+    for limit in (2, Budget(2), None):
         assert _evaluate(REFERENCE, ",.", inputs=1, max_rows=limit) == "01"
     with pytest.raises(esolangs.InterpreterLimitError):
         _evaluate(REFERENCE, ",.", inputs=1, max_rows=1)

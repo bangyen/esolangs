@@ -340,11 +340,8 @@ def _generate(
         )
     if not _has_backing_type(generated, str):
         raise ProgramError(f"{resolved}'s generator did not return text")
-    program = (
-        generated
-        if laid_out
-        else wrap_program(generated, lang.id, width, catalog=catalog)
-    )
+    text = str.__str__(generated)
+    program = text if laid_out else wrap_program(text, lang.id, width, catalog=catalog)
     return ProgramArtifact(program, resolved, settings=settings, input_arity=inputs)
 
 

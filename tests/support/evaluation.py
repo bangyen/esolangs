@@ -15,7 +15,7 @@ from typing import Protocol, cast
 
 import esolangs
 import esolangs.operations.source as _source_operations
-from esolangs.artifacts import Artifact, TemplateArtifact
+from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -34,7 +34,13 @@ from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._prepared import PreparedProgram, prepare_program
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, check_scale_for
-from esolangs.runtime._validate import check_timeout, check_whole
+from esolangs.runtime._validate import (
+    _argument_repr,
+    _has_backing_type,
+    check_flag,
+    check_timeout,
+    check_whole,
+)
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
@@ -123,12 +129,13 @@ def _prepare[T](call: Callable[[], T], deadline: float | None, *, isolated: bool
 def _evaluation_rows(inputs: int, max_rows: int | None) -> int:
     """Validate an evaluation's input count and row budget before acquisition."""
     if max_rows is not None:
-        check_whole(max_rows, "max_rows")
-    if (
-        isinstance(inputs, bool)
-        or not isinstance(inputs, int)
-        or not 1 <= inputs <= MOST_INPUTS
-    ):
+        max_rows = check_whole(max_rows, "max_rows")
+    inputs = (
+        int.__int__(inputs)
+        if type(inputs) is not bool and _has_backing_type(inputs, int)
+        else 0
+    )
+    if not 1 <= inputs <= MOST_INPUTS:
         raise with_hint(
             ArgumentError(f"inputs must be an integer from 1 to {MOST_INPUTS}"),
             (
@@ -172,6 +179,7 @@ def _iter_evaluate(
     Retained dialect choices apply to filling and execution; explicit ``settings``
     overrides individual choices.
     """
+    check_flag(isolated, "isolated")
     check_limits(max_output, max_memory, isolated=isolated)
     settings = effective_settings(language, program, settings)
     dialect_options(language, settings)
@@ -188,6 +196,7 @@ def _iter_evaluate(
     parameterized = LANGUAGES[name].parameterized
     check_scale_for(name, scale)
     rows = _evaluation_rows(inputs, max_rows)
+    inputs = rows.bit_length() - 1
     terminating = LANGUAGES[name].contract.answer_mode == "termination"
     if terminating and scale is not None:
         # Scale upscales raster output; a termination answer (halts vs
@@ -207,6 +216,15 @@ def _iter_evaluate(
         isolated=isolated,
     )
     settings = effective_settings(name, program, settings)
+    if (
+        isinstance(program, ProgramArtifact)
+        and program.input_arity is not None
+        and inputs != program.input_arity
+    ):
+        raise ArgumentError(
+            f"{name} program has {_argument_repr(program.input_arity)} inputs, "
+            f"but inputs={inputs}"
+        )
     if parameterized and not isinstance(program, TemplateArtifact):
         raise TemplateError(
             "evaluation needs a TemplateArtifact with explicit bindings"

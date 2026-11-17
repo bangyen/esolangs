@@ -5,6 +5,7 @@ from dataclasses import fields, replace
 import pytest
 
 import esolangs
+from esolangs.generation.wrap import wrap_chars
 from esolangs.registry import LANGUAGES
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
@@ -56,16 +57,20 @@ def test_backend_constructor_and_replacement_use_only_entrypoint():
 def test_scoped_arity_cap_refuses_before_generation_or_layout() -> None:
     entered = []
 
+    class Source(str):
+        def __contains__(self, item):
+            raise AssertionError("reflow inspected the source subclass")
+
     def generate(request):
         entered.append(request.table)
-        return ",."
+        return Source(",.")
 
     def balance(request):
         entered.append(request.table)
         return request.source
 
     record = LANGUAGES[REFERENCE]
-    backend = BooleanBackend(generate, max_inputs=1, balance=balance)
+    backend = BooleanBackend(generate, max_inputs=1, balance=balance, wrap=wrap_chars)
     scoped = esolangs.Catalog([replace(record, backend=backend)]).bind(REFERENCE)
     assert scoped.describe().generator_max_inputs == 1
     for layout in ({}, {"width": 1}, {"balance": True}):
@@ -75,6 +80,13 @@ def test_scoped_arity_cap_refuses_before_generation_or_layout() -> None:
     program = scoped.generate("01", balance=True)
     assert entered == ["01", "01"]
     assert [scoped.evaluate(program, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+    wrapped = scoped.generate("01", width=1)
+    assert type(wrapped.source) is str
+    assert wrapped.source == ",\n."
+    assert wrapped == esolangs.generate(
+        REFERENCE, "01", width=1, catalog=scoped.catalog
+    )
+    assert [scoped.evaluate(wrapped, [bit]).answer for bit in (0, 1)] == ["0", "1"]
 
 
 def test_arity_refusal_does_not_load_the_entrypoint() -> None:
