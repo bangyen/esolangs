@@ -151,8 +151,40 @@ LANGUAGE = Language("{name}", RuntimeSpec(
 '''
 
 
+def removed_ground(name: str) -> str | None:
+    """Return the ground ``docs/limitations.md`` removed ``name`` on, if any.
+
+    Bytemap, removed on spec in 2026-09, was screened and built again
+    before anyone noticed; readmission reverses a recorded ruling, so it
+    must come with the ruling's answer (2026-11-17).
+    """
+    path = ROOT / "docs/limitations.md"
+    if not path.exists():  # a scaffold test's empty root
+        return None
+    text = path.read_text(encoding="utf-8")
+    table = text.split("### Removed languages", 1)[-1].split("\n\n", 2)[1]
+    wanted = name.casefold()
+    for line in table.splitlines()[2:]:
+        _, ground, names, *_ = (cell.strip() for cell in line.split("|"))
+        for entry in names.replace("deferred:", ",").replace(";", ",").split(","):
+            if entry.split(" (")[0].strip().casefold() == wanted:
+                return ground
+    return None
+
+
+def _readmission(name: str) -> str:
+    ground = removed_ground(name)
+    return (
+        f"{name} was removed on {ground!r} grounds (docs/limitations.md, "
+        "Removed languages); readmitting reverses that ruling: answer it and "
+        "drop the name from the table first"
+    )
+
+
 def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     """Create and return the interpreter, generator and test stubs."""
+    if removed_ground(name):
+        raise ValueError(_readmission(name))
     slug = _slug(name)
     package = ROOT / "src/esolangs/languages" / slug
     fields = {"name": name, "slug": slug, "category": category}
@@ -518,6 +550,8 @@ def check(name: str) -> list[Gap]:
     if lang is None:
         return _unregistered(name, canonical_id(name))
     gaps = _common_gaps(name, lang.runtime.interpreter or "")
+    if removed_ground(name):
+        gaps.insert(0, Gap("docs/limitations.md", _readmission(name)))
     from docs.semantic import load as semantic_evidence
 
     try:
@@ -587,8 +621,9 @@ def quick_tests(name: str) -> list[str]:
         "tests/proofs/test_ledger.py",
         "tests/proofs/test_schemes.py",
         "tests/generators/test_boolean_sharing_catalogue.py",
-        "tests/generators/test_generator_docstrings.py"
-        "::test_the_size_anchor_is_what_generate_emits",
+        # The whole module, ~10 s: its figure-said-once test first failed in
+        # finish's 630 s pytest (Bytemap, 2026-11-17).
+        "tests/generators/test_generator_docstrings.py",
         "tests/generators/test_boolean_canonical_catalogue.py"
         "::test_native_mechanisms_are_referenced",
         "tests/runtime/test_answer_plumbing.py::TestWhatHappensWhenAProgramIsUnderfed",

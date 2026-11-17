@@ -190,7 +190,7 @@ def parse_audits(language: str, group: str, data: dict[str, Any]) -> AuditFile:
         if key in {"version", "archive_revision", "archive_context"}:
             continue
         if not isinstance(raw, dict) or not isinstance(raw.get("kind"), str):
-            raise ValueError("audit records need an explicit kind")
+            raise ValueError(f"audit record {key!r} needs an explicit kind")
         if raw["kind"] == "archive_ref":
             if set(raw) != {"kind"} or archive_revision is None:
                 raise ValueError(

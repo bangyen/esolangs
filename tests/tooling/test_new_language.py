@@ -85,6 +85,15 @@ def test_scaffold_refuses_overwrite(root: Path) -> None:
     target.write_text("owned")
     with pytest.raises(FileExistsError, match="refusing to overwrite"):
         new_language.scaffold("Tiny", "other")
+    # A removed language is refused too: readmission reverses a ruling.
+    (root / "docs").mkdir()
+    (root / "docs/limitations.md").write_text(
+        "### Removed languages\n\n| Ground | Languages |\n|---|---|\n"
+        "| spec | Gone (a note), Other; deferred: Later |\n\nMore.\n"
+    )
+    for name in ("Gone", "later"):
+        with pytest.raises(ValueError, match="removed on 'spec' grounds"):
+            new_language.scaffold(name, "other")
 
 
 def test_scaffold_refuses_an_existing_namespace_module(root: Path) -> None:
