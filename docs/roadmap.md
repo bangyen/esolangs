@@ -67,8 +67,8 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki candidates, in admission order.** All five subset probes passed
-  16,952 generated cases in the screening recheck. No qualifying public
+- **Wiki candidates, in admission order.** Six subset probes passed
+  27,202 generated cases in the screening recheck. No qualifying public
   implementation surfaced for these dialects.
     1. [Ser2](https://esolangs.org/wiki/Ser2) (rev. 70987): eager rewrite
        selection and linear I/O, 5,146 cases. Escaped names, wildcard
@@ -91,6 +91,10 @@ history at `f35aa4023`.
        shared graph and message stream have an O(T) character bound.
        The probe uses line framing and serial literal deletion on
        positive-weight arcs.
+    6. [Moar cheese :3](https://esolangs.org/wiki/Moar_cheese_:3) (rev. 201115):
+       dequeued input bytes execute branch bodies redefined at each node.
+       The probe embeds the input and returns the final queue, passing
+       10,250 cases. At arity 10 it emits 13,342 characters.
   - *Admission:* check public implementations, fixed core semantics and
     an executed loop-less O(T) Boolean construction under
     [curation](limitations.md#curation).
