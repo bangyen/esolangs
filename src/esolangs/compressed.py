@@ -213,7 +213,10 @@ class CompressedText:
         count = 0
         has_newline = False
         tail = ""
-        with gzip.GzipFile(fileobj=output, mode="wb", filename="", mtime=0) as stream:
+        # Python 3.15 defaults to level 6. Keep the existing archive bytes.
+        with gzip.GzipFile(
+            fileobj=output, mode="wb", filename="", mtime=0, compresslevel=9
+        ) as stream:
             for text in chunks:
                 if not _has_backing_type(text, str):
                     # ``[b"x"]`` raised AttributeError from ``.encode``.

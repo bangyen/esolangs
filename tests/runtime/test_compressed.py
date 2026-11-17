@@ -22,6 +22,7 @@ def test_streaming_text_round_trip_and_size(tmp_path: Path, monkeypatch) -> None
     program = CompressedText.from_chunks((source[:65535], source[65535:]))
     assert str(program) == source
     assert len(program) == len(source)
+    assert program.to_gzip()[8] == 2  # Gzip XFL marks maximum compression.
     assert source_units(program) == len(source)
     assert text_source(program.to_gzip()) == source
     path = tmp_path / "source.gz"
