@@ -72,22 +72,38 @@ history at `f35aa4023`.
   417 passed triage. Manual review covered the highest-ranked specs and
   selected lower-ranked and prefiltered specs with distinct execution
   models.
+  - The combined shortlist review screened 29 candidates. Eight advance
+    to admission checks and 21 remain on hold.
   - *Advance to admission checks, in order:*
     1. [OBrainfuck](https://esolangs.org/wiki/OBrainfuck) (rev. 163644):
        ordinal brackets select a Boolean arm, 3,080 subset runs and 64
        independent C-lowering checks. The pinned spec leaves EOF open.
        The repo's EOF-error convention passed on truncated input.
        No public interpreter surfaced in the targeted search.
-    2. [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841): the
+    2. [Bruijndejx](https://esolangs.org/wiki/Bruijndejx) (rev. 139554):
+       one native read selects the zero, one or EOF continuation. The
+       subset passed 5,146 runs. Check lambda and declaration semantics.
+    3. [Hopscotch (Asa-z)](https://esolangs.org/wiki/Hopscotch_(Asa-z))
+       (rev. 193077): a relative jump loads the destination's predecessor
+       literal. The subset passed 5,144 runs. Pin EOF and recheck the WIP
+       implementation.
+    4. [Bytemap](https://esolangs.org/wiki/Bytemap) (rev. 169841): the
        two-operand grid comparison selects independent jump targets,
        3,610 subset runs. The greeting works with an unreachable padding
        row under the even-row rule. Pin console EOF.
-    3. [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
+    5. [Ser2](https://esolangs.org/wiki/Ser2) (rev. 70987): eager rewrites
+       select the most specific input pattern and return the original
+       I/O object. The subset passed 5,146 runs and selected zero, one
+       and EOF in both rule orders. Check full grammar and execution.
+    6. [Flipscript](https://esolangs.org/wiki/Flipscript) (rev. 188418):
        direction reversal and relative line jumps, 3,610 subset runs.
        Pin numeric input framing and line-offset range.
-    4. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo-selected
+    7. [Tubes](https://esolangs.org/wiki/Tubes) (rev. 78300): modulo-selected
        exits in a Unicode grid, 3,616 subset runs. Pin EOF and ignored-symbol
        handling for the numeric stream. Check the reported C interpreter.
+    8. [NOR Machine](https://esolangs.org/wiki/NOR_Machine) (rev. 154406):
+       indexed bit input and final-stack output, 2,680 subset runs. Pin
+       input framing and check implementation coverage for this dialect.
   - *Hold pending evidence:*
     - [Beetle](https://esolangs.org/wiki/Beetle) (rev. 156896): 7,220 subset
       runs. The greeting fixes output order. The byte relay distinguishes
@@ -110,6 +126,11 @@ history at `f35aa4023`.
     - [Bit-ter lang](https://esolangs.org/wiki/Bit-ter_lang) (rev. 177676):
       3,610 expression-tree runs. Resolve whether slot references read or
       print, and distinguish the route from existing eager generators.
+    - *bfuck, ArtState, GTF, Mepytaruon, Slink, Stackish, Tables,
+      Wow, labels are variables now!, and XBF need execution or I/O rules
+      pinned, or a full Boolean construction.
+    - Optimism, Portable Minsky Machine Notation, Shifted brainfuck,
+      Sugueziume, and \BV need a comparison with collected routes.
   - *Parked in this pass:* Irregular Expression (input and result semantics)
     and Godencode (input framing and linear source construction).
   - The 2026-11-12 shortlist admitted Bifunge, BracketOnly, Help.,
