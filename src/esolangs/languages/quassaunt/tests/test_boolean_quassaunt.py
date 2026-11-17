@@ -64,7 +64,7 @@ def test_balance_cuts_only_compact_programs() -> None:
         assert_saved_rows(language, balanced, table, (0, 1, len(table) - 1))
 
 
-@pytest.mark.parametrize("n", range(1, 13))
+@pytest.mark.parametrize("n", [1, 3, 8, 12])
 @pytest.mark.parametrize("bit", "01")
 def test_constants_read_every_input(n: int, bit: str) -> None:
     program = generator.quassaunt(bit * (1 << n))

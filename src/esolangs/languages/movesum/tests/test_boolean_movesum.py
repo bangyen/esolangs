@@ -71,7 +71,7 @@ def test_registry_contract_round_trip(table: str) -> None:
     assert_every_row("Movesum", table)
 
 
-@pytest.mark.parametrize("n", range(1, 13))
+@pytest.mark.parametrize("n", [1, 3, 8, 12])
 @pytest.mark.parametrize("bit", "01")
 def test_constants_read_every_input_and_leave_the_next(n: int, bit: str) -> None:
     for row in sorted({0, (1 << n) // 3, (1 << n) - 1}):

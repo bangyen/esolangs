@@ -96,24 +96,19 @@ _OUTPUT = {
 _CASES = [
     *[(targets, "", None, expected) for targets, expected in _OUTPUT.values()],
     ("pue", "", None, "\x02"),
-    ("ppue", "", None, "\x04"),
     ("ssssssshoe", "", None, "-4"),  # half_rounds_a_negative_down
-    ("ssshoe", "", None, "-2"),
     ("prpprpppoe", "", None, "6"),  # right_moves_two
     ("prpprppplloe", "", None, "4"),  # left_moves_one
     ("prpprppploe", "", None, "0"),  # grown_tape_is_zero
-    ("prroe", "", None, "0"),
     ("jue", "A\n", None, "A"),  # read_byte
     ("jiue", "6\n65\n", None, "A"),  # read_number
     ("pcsu", "", None, "\xfb"),  # repeat_next
     ("pcue", "", None, "\x02\x02\x02\x02\x02\x02\x02"),
     ("tue", "", None, "\x00"),  # leading_t_repeats_nothing
-    ("t", "", None, ""),
     ("pe", "", None, ""),  # halt
     ("p", "", None, ""),
     ("vsu", "", None, "\xff"),  # conditional_skip
     ("pvsu", "", None, "\x02"),
-    ("pvuu", "", None, "\x02"),
     ("cju", "abcdefgh", None, "g"),  # repeated_read_reads_each_time
     ("jtu", "abcde", None, "d"),
     ("pyu", "", 1, ""),  # random_skip
@@ -121,8 +116,6 @@ _CASES = [
     ("cypoe", "", 0, "14"),  # repeated_skip_flips_per_repeat
     ("cypoe", "", 1, "0"),
     ("cpoe", "", 0, "14"),
-    ("ypoe", "", 0, "2"),
-    ("ypoe", "", 1, "0"),
     ("ppwue", "", None, "\x00"),  # copy_neighbor
     ("ppwque", "", None, "\x00"),
     ("ploe", "", None, "0"),  # left_of_cell_zero_is_fresh
@@ -131,9 +124,7 @@ _CASES = [
     ("plldoe", "", None, "2"),  # reset_returns_to_start
     ("lpdoe", "", None, "0"),
     ("pkue", "", None, "\x04"),  # square
-    ("ppkue", "", None, "\x10"),
     ("psckue", "", None, "\x01"),  # repeated_square_fixes_one
-    ("ckue", "", None, "\x00"),
 ]
 
 

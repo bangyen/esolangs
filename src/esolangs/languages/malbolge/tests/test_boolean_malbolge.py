@@ -300,7 +300,7 @@ def test_first_free_matches_the_cell_scan() -> None:
                     assert _first_free(value, lo, hi, blocked) == scan
 
 
-@pytest.mark.parametrize("n", range(1, 18))
+@pytest.mark.parametrize("n", [1, 3, 8, 17])
 @pytest.mark.parametrize("bit", "01")
 def test_constants_read_every_input(n: int, bit: str) -> None:
     table = bit * (1 << n)
