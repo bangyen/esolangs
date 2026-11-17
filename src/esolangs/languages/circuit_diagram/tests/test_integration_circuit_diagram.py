@@ -1,6 +1,6 @@
 """Circuit Diagram through the shared API, CLI and machinery."""
 
-import functools
+from time import sleep
 
 import pytest
 
@@ -59,7 +59,7 @@ class TestAFailedRowSaysWhichRow:
     def test_the_note_names_the_row_and_the_inputs(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Failure forced at a chosen row, since a real one lands on row 0."""
+        """Failure forced at a chosen row to check the partial answers."""
         real_run = execution.run_observed
 
         def fail_on_the_sixth(
@@ -89,11 +89,13 @@ class TestAFailedRowSaysWhichRow:
         from esolangs.languages.circuit_diagram import interpreter as circuit_diagram
 
         table = dense(9)
-        # A warm compile cache (another test, same worker) beats 5 ms a row.
-        # A fresh cache, not cache_clear(): freeing the worker's cached
-        # circuits took a 1 ms Circuit Diagram test to 3.19 s on CI.
-        cold = functools.lru_cache(maxsize=16)(circuit_diagram._compile.__wrapped__)
-        monkeypatch.setattr(circuit_diagram, "_compile", cold)
+        compile_circuit = circuit_diagram._compile
+
+        def delayed_compile(*args, **kwargs):
+            sleep(0.02)
+            return compile_circuit(*args, **kwargs)
+
+        monkeypatch.setattr(circuit_diagram, "_compile", delayed_compile)
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
             evaluate_generated("Circuit Diagram", table, timeout=0.005)
         note = "\n".join(getattr(caught.value, "__notes__", []))

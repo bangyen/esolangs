@@ -492,6 +492,34 @@ def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None
     with pytest.raises(esolangs.UnknownLanguageError):
         esolangs.run(scoped.name, program)
 
+    ordinary = owner.generate("01")
+    owner.to_file(ordinary, path)
+    for foreign_name, identifier in (
+        (owner.name + "++", ""),
+        ("++" + owner.name, "distinct_language"),
+    ):
+        distinct = replace(original, name=foreign_name, id=identifier, aliases=())
+        foreign = esolangs.Catalog([distinct]).bind(foreign_name)
+        for operation in (
+            lambda foreign=foreign, ordinary=ordinary: foreign.prepare(ordinary),
+            lambda foreign=foreign, ordinary=ordinary: foreign.from_json(
+                owner.to_json(ordinary)
+            ),
+            lambda foreign=foreign: foreign.from_file(path),
+        ):
+            with pytest.raises(esolangs.ProgramError):
+                operation()
+
+    for stored, requested in (
+        ("Cafe noir", "Café noir"),
+        ("Private!+", "Private+!"),
+    ):
+        claimed = replace(original, name=requested, id="distinct_language", aliases=())
+        foreign = esolangs.Catalog([claimed]).bind(requested)
+        retained = esolangs.ProgramArtifact(ordinary.source, stored)
+        with pytest.raises(esolangs.ProgramError):
+            foreign.prepare(retained)
+
     local = replace(original, name=owner.name.swapcase())
     scoped = esolangs.Catalog([local]).bind(local.name)
     program = scoped.generate("01", scale=2)

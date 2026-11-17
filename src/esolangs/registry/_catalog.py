@@ -145,13 +145,19 @@ class Catalog:
         match = self._by_folded.get(_folded_spelling(name))
         if match is not None:
             return match
-        match = self._by_id.get(canonical_id(name))
+        slug = canonical_id(name)
+        match = self._by_id.get(slug)
         if match is not None:
             own = _symbols(match, *self.languages[match].aliases)
             if not _symbols(name) - own:
                 return match
-        if (match := resolve_origin(name, catalog=self)) is not None:
-            return match
+        candidates = tuple(
+            owner
+            for owner in self._by_origin_slug.get(slug, ())
+            if not (_symbols(name) - _symbols(owner))
+        )
+        if len(candidates) == 1:
+            return candidates[0]
         close = self._close_ids(name, SUGGESTION_CUTOFF)
         if not close:
             # A head of a long name is too far for difflib: "lol" scores 0.18
@@ -195,14 +201,26 @@ def _symbols(*names: str) -> Counter[str]:
     return counts
 
 
-def _matches_origin_slug(origin: str, owner: str, *, slug: str | None = None) -> bool:
-    """Match an owner's canonical slug without accepting foreign punctuation."""
-    slug = canonical_id(origin) if slug is None else slug
-    return (
-        bool(slug)
-        and slug == canonical_id(owner)
-        and not (_symbols(origin) - _symbols(owner))
-    )
+def _origin_spelling(spelling: str) -> str:
+    """Keep symbols and accents while treating word separators alike."""
+    folded = _folded_spelling(spelling)
+    separated = "".join(" " if _separator(c) else c for c in folded)
+    return " ".join(separated.split())
+
+
+def _same_origin_spelling(origin: str, owner: str) -> bool:
+    """Match stored ownership without dropping or moving punctuation."""
+    if _folded_spelling(origin) == _folded_spelling(owner):
+        return True
+    key = _origin_spelling(origin)
+    return bool(key) and key == _origin_spelling(owner)
+
+
+def _same_legacy_origin(origin: str, owner: str) -> bool:
+    """Accept saved slugs that omit parenthetical or terminal punctuation."""
+    # Keep the positions of inner separators (CV(N)(C) uses cv_n_c).
+    lexical_owner = owner.rstrip("!.").translate(str.maketrans("()", "  "))
+    return bool(canonical_id(origin)) and _same_origin_spelling(origin, lexical_owner)
 
 
 def _separator(c: str) -> bool:
@@ -233,9 +251,10 @@ def resolve_origin(origin: str, *, catalog: Catalog) -> str | None:
         return owner
     slug = canonical_id(origin)
     # IDs can differ from display slugs or point to unrelated languages.
-    owners = tuple(
-        owner
-        for owner in catalog._by_origin_slug.get(slug, ())  # noqa: SLF001
-        if _matches_origin_slug(origin, owner, slug=slug)
-    )
-    return owners[0] if len(owners) == 1 else None
+    owners = catalog._by_origin_slug.get(slug, ())  # noqa: SLF001
+    matches = tuple(owner for owner in owners if _same_origin_spelling(origin, owner))
+    if matches:
+        return matches[0] if len(matches) == 1 else None
+    if len(owners) == 1 and _same_legacy_origin(origin, owners[0]):
+        return owners[0]
+    return None

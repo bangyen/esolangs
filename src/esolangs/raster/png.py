@@ -869,9 +869,9 @@ def _retained_owner(
     if catalog is None:
         if requested is None or requested == owner:
             return owner
-        from esolangs.registry._catalog import _folded_spelling
+        from esolangs.registry._catalog import _same_origin_spelling
 
-        if _folded_spelling(owner) == _folded_spelling(requested):
+        if _same_origin_spelling(owner, requested):
             return owner
     else:
         from esolangs.registry._catalog import resolve_origin
