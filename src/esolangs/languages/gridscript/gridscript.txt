@@ -1,0 +1,12 @@
+#B.
+@width 2
+@height 1
+(1,1):START
+(2,1):SPLIT '0 0 0 1'
+(2,1):INPUT
+(2,1):INPUT a
+(2,1):MULTIPLY BY 2
+(2,1):INCREMENT BY a
+(2,1):REMOVE THIS POSITION
+(2,1):PRINT
+

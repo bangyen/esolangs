@@ -256,10 +256,11 @@ def _counts() -> dict[str, int]:
             for spellings, prefixes in owned
             if not path.startswith(prefixes)
             for spelling in spellings
-            # Some language IDs are common words or argument names. Their
-            # module imports and attributes still count as coupling.
+            # Some language IDs are common words or argument names, and
+            # FALSE is also GridScript's BOOL literal. Their module imports
+            # and attributes still count as coupling.
             if spelling.startswith(".")
-            or spelling not in {"line", "eval", "false", "between", "help"}
+            or spelling not in {"line", "eval", "false", "FALSE", "between", "help"}
         )
         if total:
             counts[path] = total

@@ -296,7 +296,7 @@ and every 128th row at fifteen and sixteen in the weekly run.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 131 languages.
+The collection has 132 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -333,7 +333,9 @@ date as `admitted` in `[curation]`, and a known outside implementation as
 `outside_implementation`; `tests/tooling/test_language_toml.py` refuses a
 member whose outside implementation predates its admission. A first
 implementation also needs a generator: interpreter-only is the fame
-route's alone.
+route's alone. Its inputs must arrive as the Boolean contract's fixed
+per-bit strings: Tamerlane, whose rewrites need driver-built queries, was
+screened out on 2026-11-17.
 
 A route admits a language only when its specification fixes the core
 semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how

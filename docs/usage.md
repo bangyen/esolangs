@@ -362,6 +362,7 @@ Build language-specific stdin for a generated Boolean program with
 | Forþ | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Freestajlo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |
+| GridScript | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | HQ9+ with headers | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Inject | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Interprogck8 | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |

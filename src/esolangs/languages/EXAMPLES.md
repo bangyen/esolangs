@@ -79,6 +79,7 @@ don't edit by hand.
 | `fractran/fractran.txt` | FRACTRAN | `0001` | `01` | embedded 01 | '1' |
 | `freestajlo/freestajlo.txt` | Freestajlo | `0001` | `01` | 0 1 | '0' |
 | `grapheme/grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
+| `gridscript/gridscript.txt` | GridScript | `0001` | `01` | 0 1 | '0' |
 | `help/help..txt` | Help. | `0001` | `01` | 01 | '0' |
 | `home_row/home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `hot/hot.txt` | Hot | `0001` | `01` | 01 | '0' |

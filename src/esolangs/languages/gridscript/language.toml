@@ -1,0 +1,105 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+# Wiki rev. 42260 and the author's linked specification (Google Docs); 6
+# backlinks on 2026-11-17, redirects and all namespaces included. No revision
+# of the page tags or links an implementation.
+backlinks = 6
+admitted = 2026-11-17T21:00:00-05:00
+
+[proof_status]
+labels = ["linear lookup"]
+qualification = "one pass over collocated nodes: the table read at its essential inputs is split onto the buffer as decimal chunks of 2^m bits (m <= 4, the shortest of five builds); the high inputs double an index in the dataspace, REMOVE THIS POSITION loads its chunk, each low input divides it by 1 + bit(2^w - 1), and v - 2floor(v/2) is printed"
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = [
+    "src/esolangs/languages/gridscript/tests/test_gridscript.py::test_the_pages_sample_programs",
+    "src/esolangs/languages/gridscript/tests/test_gridscript.py::test_a_node_holds_the_tracer_only_strictly_inside",
+]
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 297
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.gridscript.generator:gridscript_request"
+
+[[evidence.anchors]]
+arity = 10
+rule = "random"
+seed = 1847
+size = 1097
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.gridscript.generator:gridscript_request"
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.gridscript.generator:gridscript_request"
+
+[resource_evidence.execution]
+# Two moves; SPLIT, a read, the index's 3 commands an input, REMOVE and
+# PRINT (3n + 3); a low input adds at most one command and the remainder 4.
+expression = "3n + 11"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "commands"
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.workspace]
+# The buffer, 8 bits a one-bit chunk at worst; pending and held node sets
+# over at most 4n + 9 nodes; the index in the dataspace; tracer floats,
+# three variables and the input cursor.
+expression = "8T + 2(4n+9)bl(4n+9) + 2bl(2n) + n + 400"
+exact = false
+arities = [1, 2, 3, 6]
+first = 1
+unit = "bits"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+
+[resource_evidence.scaling]
+# The one-bit-chunk build, never beaten by less: 2T - 1 chunk characters,
+# 55 an input and 46 fixed; the 16-bit build measures 0.42T at n = 14.
+expression = "2T + 55n + 45"
+exact = false
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
+unit = "characters"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the table split onto the buffer" }
+
+[catalogue]
+folding_constant_local = "essential_inputs"  # no kept input: read, then print the constant
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.packed_lookup_20261117]
+kind = "measurement"
+witness = { arity = 10, rule = "random", seed = 1847 }
+source = { value = 1097, unit = "chars" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-17
+construction = "esolangs.languages.gridscript.generator:gridscript_request"
+notes = "Shipped (16-bit chunks split onto the buffer, indexed by the inputs): 1,097 chars; the screening probe's PUSH-per-bit buffer emits 14,020 and its SELECT-call tree 148,793 (32 sampled rows correct each; notes/worktrees/gridscript/ablations/gs_probe_compare.py)."
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 226 }
+"00001100" = { commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10, "4" = 10, "5" = 10, "6" = 10, "7" = 10 }, source_units = 177 }
+"00110110" = { commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 226 }
+"0110" = { commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9 }, source_units = 163 }
+"01101001" = { commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 226 }
+"0110100110010110" = { commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 297 }
+"1101001101101101" = { commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15, "4" = 15, "5" = 15, "6" = 15, "7" = 15, "8" = 15, "9" = 15, "10" = 15, "11" = 15, "12" = 15, "13" = 15, "14" = 15, "15" = 15 }, source_units = 297 }
+"11111110" = { commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 226 }

@@ -67,14 +67,3 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki candidate.** A subset probe passed 4,468 generated runs in the
-  screening recheck. No page revision links or tags a public implementation.
-    1. [GridScript](https://esolangs.org/wiki/GridScript) (rev. 42260):
-       collocated nodes execute in source order in a fixed 8 by 1 layout.
-       A subroutine selects between two buffer entries at each node of
-       a loop-less O(T) Boolean tree.
-       Verify stdin framing and the rest of the tracer semantics at admission.
-  - *Admission:* check public implementations, fixed core semantics and
-    an executed loop-less O(T) Boolean construction under
-    [curation](limitations.md#curation). Its input must arrive as the
-    contract's fixed per-bit strings, not driver-built queries.

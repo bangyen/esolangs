@@ -21,6 +21,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [EGL](https://esolangs.org/wiki/EGL) ([code](../src/esolangs/languages/egl/interpreter.py))
 - [Fish](https://esolangs.org/wiki/Fish) ([code](../src/esolangs/languages/fish/interpreter.py))
 - [Flowchart](https://esolangs.org/wiki/Flowchart) ([code](../src/esolangs/languages/flowchart/interpreter.py))
+- [GridScript](https://esolangs.org/wiki/GridScript) ([code](../src/esolangs/languages/gridscript/interpreter.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](../src/esolangs/languages/laserfuck/interpreter.py))
 - [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](../src/esolangs/languages/streetcode/interpreter/__init__.py))
 - [Super SNUSP](https://esolangs.org/wiki/Super_SNUSP) ([code](../src/esolangs/languages/super_snusp/interpreter.py))

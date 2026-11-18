@@ -1,0 +1,11 @@
+[[spec_triggers]]
+program = "#T.\n@width 3\n@height 1\n(1,1):START\n(2,1):SHUFFLE"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: malformed source or metadata, a missing or repeated START, a node outside the program space, RETURN in the main program, an unknown subroutine, or a construct no example exercises (see Decisions); raised as ValueError."
+
+[[spec_triggers]]
+program = "#T.\n@width 3\n@height 1\n(1,1):START\n(2,1):DIVIDE BY 0"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: a value that cannot be cast for arithmetic or a direction, division by zero, a 32-bit INT overflow, a subroutine INPUT past its arguments, equidistant GOTO targets, or more moves than ``@steps``."
