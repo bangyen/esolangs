@@ -44,7 +44,8 @@ definitions, size baseline, construction witnesses, deep proofs and exception
 leaks run in CI, not in `just test` or `test-full`; run one locally with
 `uv run python scripts/verify/gate.py --only "<step>"`. Delete unused helpers or move test-only
 helpers under `tests/`. Tests enforce a 1,200-line file cap, fewer than
-10,000 non-contract cases, and test code below its source: `tests/` +
+3,000 shared non-contract cases, language-package cases averaging at most 60
+per language (400 in any one), and test code below its source: `tests/` +
 `src/**/tests` < `src`, `tests/tooling` < `scripts`. Per-language oracle and
 accounting modules count apart under a ceiling that only drops.
 

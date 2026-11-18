@@ -82,12 +82,19 @@ def test_tests_stay_below_their_sources() -> None:
     )
 
 
-#: Collected tests outside the registry contracts (user budget, 2026-10-05).
-MAX_TESTS = 10_000
+#: Shared tests outside the registry contracts (user budget 10,000 on
+#: 2026-10-05; split on 2026-11-18, when 2,501 of the 9,999 were shared).
+MAX_SHARED_TESTS = 3_000
+#: Each language's own ``src/**/tests`` cases, averaged over the registry: a
+#: language brings its tests, but the mean may not drift (56.8 on 2026-11-18).
+MAX_PACKAGE_TESTS_PER_LANGUAGE = 60
+#: No one package may hold more (Line had 352 on 2026-11-18).
+MAX_PACKAGE_TESTS = 400
 #: A test function whose cases name this many languages is a registry
 #: contract: it grows by one case per language by design, so the budget
 #: leaves it out.  The narrowest contract sweep names 11.
 CONTRACT_LANGUAGES = 10
+_PACKAGE = re.compile(r"src/esolangs/languages/([^/]+)/tests/")
 
 
 def _spelling(spellings: set[str]) -> re.Pattern[str]:
@@ -125,9 +132,32 @@ def test_the_contract_rule_exempts_only_sweeps_over_languages() -> None:
     assert _uncounted(ids, spelling) == 50 + CONTRACT_LANGUAGES - 1 + 1
 
 
+def _budgets(
+    node_ids: list[str], spelling: re.Pattern[str]
+) -> tuple[int, dict[str, int]]:
+    """Return the shared count and each language package's count, contracts out."""
+    packages: dict[str, list[str]] = defaultdict(list)
+    shared = []
+    for node_id in node_ids:
+        match = _PACKAGE.match(node_id)
+        (packages[match.group(1)] if match else shared).append(node_id)
+    return _uncounted(shared, spelling), {
+        name: _uncounted(ids, spelling) for name, ids in packages.items()
+    }
+
+
+def test_the_budgets_split_shared_from_package_tests() -> None:
+    """Positive control: a package's cases leave the shared count, by package."""
+    spelling = _spelling({"L"})
+    ids = ["tests/t.py::test_a[0]", "tests/t.py::test_a[1]"]
+    ids += [f"src/esolangs/languages/x/tests/t.py::test_b[{n}]" for n in range(3)]
+    ids.append("src/esolangs/languages/y/tests/t.py::test_c")
+    assert _budgets(ids, spelling) == (2, {"x": 3, "y": 1})
+
+
 @pytest.mark.medium
 def test_the_suite_stays_under_its_test_budget() -> None:
-    """Fewer, sharper tests: a sweep that pushes past the budget is a blocker."""
+    """Fewer, sharper tests: a sweep that pushes past a budget is a blocker."""
     # 2026-10-16: 12,170 collected, 3,277 in 38 contract functions.
     node_ids = collect_ids("")
     assert len(node_ids) > 1000, "collection came back nearly empty"
@@ -136,7 +166,16 @@ def test_the_suite_stays_under_its_test_budget() -> None:
         for language in LANGUAGES.values()
         for spelling in (language.name, language.id, *language.aliases)
     }
-    count = _uncounted(node_ids, _spelling(spellings))
-    assert count < MAX_TESTS, (
-        f"{count} non-contract tests, budget {MAX_TESTS}: prune, don't re-tag"
+    shared, packages = _budgets(node_ids, _spelling(spellings))
+    assert len(packages) > 100, "language package tests were not found"
+    assert shared < MAX_SHARED_TESTS, (
+        f"{shared} shared non-contract tests, budget {MAX_SHARED_TESTS}: "
+        "prune, don't re-tag"
     )
+    total, cap = sum(packages.values()), MAX_PACKAGE_TESTS_PER_LANGUAGE * len(LANGUAGES)
+    assert total <= cap, (
+        f"{total} language package tests, budget {cap} "
+        f"({MAX_PACKAGE_TESTS_PER_LANGUAGE} per language): prune, don't re-tag"
+    )
+    over = {name: n for name, n in packages.items() if n > MAX_PACKAGE_TESTS}
+    assert not over, f"over {MAX_PACKAGE_TESTS} tests in one package: {over}"
