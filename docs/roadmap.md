@@ -149,6 +149,25 @@ history at `f35aa4023`.
         (rev. 132519): `入`, `倘…为` tree. Open: indentation blocks.
     28. [诗(PSTF)](https://esolangs.org/wiki/%E8%AF%97(PSTF)) (rev. 178708):
         line-length brainfuck; the truth machine traces. Open: `next_digit`.
+  - *Ambiguous only off the generator's path:* subset interpreters
+    reproduce each page's examples and pass every table to n=3 (scratch).
+    29. [You wait here](https://esolangs.org/wiki/You_wait_here) (rev. 131213):
+        `input`, `if[0][…] if[1][rewind …]`, `print end`; linear. Open:
+        `repeat` count, `split`, `define`.
+    30. [XMLfuck](https://esolangs.org/wiki/XMLfuck) (rev. 139269): brainfuck
+        in tags with a flag cell; `T log T`. Open: `tape` attributes, EOF.
+    31. [AmogusScript](https://esolangs.org/wiki/AmogusScript) (rev. 163932):
+        one `if … is … and …: b` line per row; `T log T`. Open: `sussify`
+        (its stated 1.111152 fits no reading of the formula).
+    32. [AEAV](https://esolangs.org/wiki/AEAV) (rev. 132134): index by `if x =
+        1` / `idx = [idx] add 2^i`, then `if idx = r` / `ans = 1`. Open: `>`,
+        `<`, `!`, `&` conditions.
+    33. [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish) (rev.
+        190958): `[/\]([x = b])` tree with `->` blocks, as in the truth
+        machine. Open: `yes:`/`no:` form, loops.
+    34. [StupLANG](https://esolangs.org/wiki/StupLANG) (rev. 202316): `//(x =
+        1)` with `!:`/`?:` blocks, as in Disan count. Open: the "level up"
+        skip form; Fibonacci has no base case.
   - *Admission:* a subset prototype per language -- every table to n=4,
     random to n=10, size measured against T, a mutant that fires -- then
     `/new-language`. Build a decimal table from chunks: one T-bit decimal
