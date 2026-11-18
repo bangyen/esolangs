@@ -114,6 +114,41 @@ history at `f35aa4023`.
         terminator and elif form; int/int `kipisi` type.
     14. [C!](https://esolangs.org/wiki/C!) (rev. 197732): table string read by
         `L[x,n]`. Open: `^`/`V` precedence; `D` has no call syntax.
+  - *From the novelty-gated holds and marginals (same screen):*
+    15. [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks)) (rev.
+        180732): `%` integers, `?` against a literal, `:[)…]` as an if. Open:
+        `+text` literal extent, pop on a skipped `[`, `|` (calculator only).
+    16. [NoGolfersLand](https://esolangs.org/wiki/NoGolfersLand) (rev. 203842):
+        `&` integers, `()()` tree; tests peek, so pop through a box. WIP page.
+    17. [TOPLWARLNTMIHTACAFFTPLAIHTASTNBIHTMAIAIU](https://esolangs.org/wiki/TOPLWARLNTMIHTACAFFTPLAIHTASTNBIHTMAIAIU)
+        (rev. 163776): nested `if(B:Equal(…))`. Open: Hello World adds strings
+        as code points (72+32+4 = 108); its `N:One` is `Num:One`.
+    18. [Sakana](https://esolangs.org/wiki/Sakana) (rev. 149414): `読`, 48 `減`,
+        `問`, one function per node. Open: the truth machine prints 0s for 1
+        under a literal `魚`; `繰`/`壊` scope.
+    19. [Brainfive](https://esolangs.org/wiki/Brainfive) (rev. 155674):
+        brainfuck construction. Open: Hello World's comments run `x` and `v`.
+    20. [Assembly](https://esolangs.org/wiki/Assembly) (rev. 190253): `ipt`,
+        `psv`, `jeq n %lbl` tree; [Assemble](https://esolangs.org/wiki/Assemble)
+        is its expansion, so at most one. Open: `jgq`, `div` order.
+    21. [Tech Support Scam](https://esolangs.org/wiki/Tech_Support_Scam) (rev.
+        192665): `does … is 1?` + goto tree. Open: float print format.
+    22. [Dan](https://esolangs.org/wiki/Dan) (rev. 164441): `SET x INP`,
+        `JNZ`/`JZR` tree. Open: BOOL input and print format.
+    23. [~-=+:;@!_](https://esolangs.org/wiki/~-%3D%2B:;@!) (rev. 182913): index
+        by `:`/`+`, `@` per true row. Open: whether `@` pops.
+    24. [kxgxyo](https://esolangs.org/wiki/Kxgxyo) (rev. 201297): `a`, `k -48
+        x`, `z…r` as an if. Open: signed `k` literal.
+    25. [QuakeScript](https://esolangs.org/wiki/QuakeScript) (rev. 163420):
+        `input`, `jze #l` tree. Open: `getkey` and console toggles raise;
+        numeric strings.
+    26. [ASCII @](https://esolangs.org/wiki/ASCII_@) (rev. 191774): nested
+        `?n…`. Open: the program's value is printed (Hello World `h`); `$`
+        raises.
+    27. [EmojiLang in Chinese](https://esolangs.org/wiki/EmojiLang_in_Chinese)
+        (rev. 132519): `入`, `倘…为` tree. Open: indentation blocks.
+    28. [诗(PSTF)](https://esolangs.org/wiki/%E8%AF%97(PSTF)) (rev. 178708):
+        line-length brainfuck; the truth machine traces. Open: `next_digit`.
   - *Admission:* a subset prototype per language -- every table to n=4,
     random to n=10, size measured against T, a mutant that fires -- then
     `/new-language`. Build a decimal table from chunks: one T-bit decimal
