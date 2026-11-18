@@ -213,6 +213,8 @@ def test_executed_artifact_and_provenance() -> None:
     assert all(row["artifact_sha256"] == b.artifact_hash(p) for row in r["executions"])
     assert len(r["provenance"]["commit"]) == 40
     assert isinstance(r["provenance"]["dirty"], bool)
+    # Matches timings across runners that share a platform() string.
+    assert r["provenance"]["cpu"] == b.cpu_model() != ""
     assert b.artifact_hash("é") == hashlib.sha256(b"text\0" + "é".encode()).hexdigest()
     pixel = (0, 0, 0)
     assert b.artifact_hash(esolangs.Raster(((pixel, pixel),))) != b.artifact_hash(

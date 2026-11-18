@@ -22,6 +22,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import fields, is_dataclass
 from fractions import Fraction
+from functools import cache
 from itertools import chain, compress
 from operator import is_not
 from pathlib import Path
@@ -120,6 +121,33 @@ def source_identity(timeout: float = 60) -> dict[str, Any]:
         ).hexdigest(),
         "checkout": str(root),
     }
+
+
+@cache
+def cpu_model() -> str | None:
+    """Return the CPU's model name, or None where the OS does not say.
+
+    Two Azure runners on one kernel image timed the sweep 1.45x apart (weekly
+    runs 43873428417 and 44358705555) where a local old-vs-new sweep matched
+    to 1.00; platform() cannot tell such runners apart.
+    """
+    try:
+        with open("/proc/cpuinfo", encoding="utf-8") as cpuinfo:
+            for line in cpuinfo:
+                key, _, value = line.partition(":")
+                if key.strip() == "model name":
+                    return value.strip()
+    except OSError:
+        pass
+    try:
+        brand = run_bounded(
+            ["sysctl", "-n", "machdep.cpu.brand_string"],
+            capture_output=True,
+            timeout=5,
+        ).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return brand or None
 
 
 _WORKER: ContextVar[Worker | None] = ContextVar("benchmark_worker", default=None)
@@ -571,6 +599,7 @@ def _measure(
             "python": sys.version,
             "platform": platform.platform(),
             "machine": platform.machine(),
+            "cpu": cpu_model(),
             "harness": 1,
             "generated_artifact_sha256": digest,
         },
