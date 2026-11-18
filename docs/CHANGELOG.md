@@ -5,6 +5,25 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 2.3.0
+
+- Add artppeice, Bruijndejx, Bytemap, Flipscript, GridScript,
+  moar cheese :3, oBrainfuck, Q-BAL, and Tubes.
+- The truth-table harness rejects a loaded artifact whose retained input
+  arity differs from the table's before running any row.
+- Painfuck stores its tape sparsely, so a long repeated move no longer
+  exhausts memory.
+- The debugger shows cell values for Movesum, Help., BracketOnly and
+  Onecode (Fergusq), and accepts an empty-tuple instruction breakpoint.
+- Gzip exports keep the same bytes on Python 3.15, whose default
+  compression level changed.
+- PNG export reports an invalid RGB shape or pixel as a program error.
+- Malbolge's input-cap refusal explains its conditional arity.
+- Retained artifact ownership keeps accents and meaningful punctuation
+  distinct.
+- Replayed input rejections keep their cause, and the CLI's malformed
+  UTF-8 offset counts already decoded input.
+
 ## 2.2.0
 
 - **Compatibility:** Historical artifact pickle payloads that rely on removed
