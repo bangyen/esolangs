@@ -227,6 +227,8 @@ def test_every_qualified_reference_resolves() -> None:
 
 
 _LINK = re.compile(r"(?<!!)\[[^]]*\]\(([^ )]+)(?:\s+[^)]*)?\)")
+#: Code is not a link: roadmap.md quotes ASCIIgibberish's `[/\]([x = b])`.
+_CODE = re.compile(r"^[ \t]*```.*?^[ \t]*```|`[^`]+`", re.MULTILINE | re.DOTALL)
 _DOCUMENTS = (
     ROOT / "README.md",
     *sorted((ROOT / "docs").rglob("*.md")),
@@ -238,7 +240,8 @@ def test_every_local_markdown_link_resolves() -> None:
     """Check shipped documentation, including package example guides."""
     missing: list[str] = []
     for document in _DOCUMENTS:
-        for target in _LINK.findall(document.read_text(encoding="utf-8")):
+        text = _CODE.sub("", document.read_text(encoding="utf-8"))
+        for target in _LINK.findall(text):
             path, _, _fragment = unquote(target).partition("#")
             if not path or "://" in path or path.startswith("mailto:"):
                 continue
