@@ -14,7 +14,7 @@ Commands:
 
 Errors:
     ProgramError: a malformed instruction, a missing separator, or a
-        character outside printable ASCII.
+        character outside printable ASCII and newline.
 
 Decisions:
     * A call runs the body as it stood when the call began, then returns
@@ -22,9 +22,12 @@ Decisions:
       code.  The cyclic-tag encoding ``l(... l) l`` needs no other reading.
       A call in tail position replaces its frame, so that loop runs in
       constant space.
-    * Instructions are separated by runs of spaces, as in every example.
-      ``(0)(1)`` is an error, not two enqueues.  A final newline is
-      allowed.
+    * Instructions are separated by runs of spaces or newlines.  The page
+      says space-separated and every example is one line; a newline only
+      turns an error into a separator, so every program it accepted runs
+      the same, and a balanced layout can fold between instructions.
+      ``(0)(1)`` is an error, not two enqueues, and so is ``(`` newline
+      ``)``.
     * ``(()`` and ``())`` are errors.  Neither appears on the page, and
       either would unbalance a body's parentheses.
     * Names are printable ASCII other than space and parentheses.  ``(c)``
@@ -61,10 +64,12 @@ def _error(message: str) -> ValueError:
     )
 
 
+_SEPARATORS = " \n"
+
+
 def _parse(code: str) -> tuple[tuple[_Op, ...], ...]:
     """Return every body's instructions; body 0 is the program."""
-    code = code.removesuffix("\n")
-    if bad := next((c for c in code if not " " <= c <= "~"), None):
+    if bad := next((c for c in code if not " " <= c <= "~" and c != "\n"), None):
         raise _error(f"{bad!r} is not printable ASCII")
     bodies: list[tuple[_Op, ...]] = [()]
 
@@ -72,16 +77,16 @@ def _parse(code: str) -> tuple[tuple[_Op, ...], ...]:
         ops: list[_Op] = []
         i = start
         while i < stop:
-            if code[i] == " ":
+            if code[i] in _SEPARATORS:
                 i += 1
                 continue
-            if ops and code[i - 1] != " ":
+            if ops and code[i - 1] not in _SEPARATORS:
                 raise _error(f"no space before column {i + 1}")
             if code.startswith("()", i):
                 ops.append(("deq", ""))
                 i += 2
             elif code[i] == "(":
-                if i + 2 >= stop or code[i + 2] != ")" or code[i + 1] in "()":
+                if i + 2 >= stop or code[i + 2] != ")" or code[i + 1] in "()\n":
                     raise _error(f"bad enqueue at column {i + 1}")
                 ops.append(("enq", code[i + 1]))
                 i += 3

@@ -25,7 +25,7 @@ def _backend() -> BackendDefinition:
         layout_width=False,
         # Input bits filter a queued table; no tree of residuals.
         shape=Shape.LOOKUP,
-        no_wrap="instructions are separated by spaces and a newline is not one",
+        no_wrap="a break inside ( ) or an input slot's ( ) changes it; balance folds",
         template=TemplateSpec(pair=PAIR),
         balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.moar_cheese_3.generator",

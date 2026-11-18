@@ -36,6 +36,8 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import InputSlot, TemplateLayout, layout_fragments
+from esolangs.generation.token_balance import balanced_token_width
+from esolangs.generation.wrap import balance_score
 
 _SLOT = InputSlot(1)
 #: Names the doubling dequeues may use: none of the fixed ones, ``$`` or
@@ -127,8 +129,35 @@ def moar_cheese_3_request(request: GenerationRequest) -> TemplateLayout:
     return _layout(request.table)
 
 
+def _fold(source: str, breaks: list[int], width: int) -> str:
+    """Turn the last fitting separator of each over-wide line into a newline."""
+    chars = list(source)
+    start, last = 0, None
+    for stop in [*breaks, len(source)]:
+        if stop - start > width and last is not None:
+            chars[last] = "\n"
+            start = last + 1
+        last = stop
+    return "".join(chars)
+
+
 def moar_cheese_3_balance_request(request: BalanceRequest) -> TemplateLayout:
-    """Keep the default: a program is one line, with no break to move."""
-    if not isinstance(request.source, TemplateLayout):
+    """Fold at separators, or keep the line if that is squarer.
+
+    A newline replaces a space one for one, so every slot keeps its offset;
+    the space inside ``( )`` is a byte, not a separator.
+    """
+    layout = request.source
+    if not isinstance(layout, TemplateLayout):
         raise TypeError("moar cheese :3 balancing needs a rendered template")
-    return request.source
+    source = layout.source
+    breaks = [
+        i for i, c in enumerate(source) if c == " " and source[i - 1 : i + 2] != "( )"
+    ]
+    words = [
+        source[a + 1 : b]
+        for a, b in zip([-1, *breaks], [*breaks, len(source)], strict=True)
+    ]
+    width = balanced_token_width(words, " ")
+    folded = TemplateLayout(_fold(source, breaks, width), layout.spans)
+    return min(layout, folded, key=lambda candidate: balance_score(candidate.source))

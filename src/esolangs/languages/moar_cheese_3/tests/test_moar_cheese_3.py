@@ -2,6 +2,7 @@
 
 import pytest
 
+import esolangs
 from esolangs.exceptions import ProgramError
 from esolangs.languages.moar_cheese_3.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -65,6 +66,8 @@ def test_the_cyclic_tag_encoding(data: str, rules: list[str]) -> None:
         # A dequeued byte runs as an instruction.
         ("(a) (b) a((c) ()) () (d)", "cd"),
         ("  (a)   (b)  \n", "ab"),
+        # A newline separates like a space, inside a body too.
+        ("(a)\n(b)\nc(\n(c)\n( )) c", "abc "),
     ],
 )
 def test_rulings(code: str, expected: str) -> None:
@@ -86,8 +89,25 @@ def test_a_tail_call_loop_keeps_one_frame() -> None:
         ("(0)(1)", "no space"),
         ("(()", "bad enqueue"),
         ("(é)", "printable"),
+        # A newline is a separator, never an enqueued byte.
+        ("(\n)", "bad enqueue"),
     ],
 )
 def test_errors(code: str, message: str) -> None:
     with pytest.raises(ProgramError, match=message):
         _out(code)
+
+
+@pytest.mark.medium
+def test_a_balanced_program_folds_between_instructions() -> None:
+    """Every row still computes once ``balance`` breaks the one line."""
+    table = "0110100110010111"
+    artifact = esolangs.generate("moar cheese :3", table, balance=True)
+    assert "\n" in str(artifact.source)
+    rows = [
+        esolangs.evaluate(
+            "moar cheese :3", artifact, [r >> 3 & 1, r >> 2 & 1, r >> 1 & 1, r & 1]
+        ).answer
+        for r in range(16)
+    ]
+    assert "".join(rows) == table

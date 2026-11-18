@@ -99,9 +99,6 @@ first = 1
 unit = "characters"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
-[balance_growth]
-wall = "a program is one line: only a final newline is allowed and any other is not printable ASCII (interpreter.py _parse); a character carries O(1) bits, so T table bits need L >= c*T characters on that line and area >= c*T**2 (measured T**1.93 from n=10 to 12, 2026-11-18)"
-
 [catalogue]
 folding_constant_local = "input_weights"  # no essential input: the answer byte and bare inputs
 
