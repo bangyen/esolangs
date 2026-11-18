@@ -32,6 +32,7 @@ class LanguageInfo:
     generator_shape: GeneratorShape | None
     boolean_generator: bool
     generator_scaling: str | None
+    well_known: bool
     generator_max_inputs: int | None
     generator_restrictions: str | None
     parameterized: bool

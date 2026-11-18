@@ -14,6 +14,7 @@ import shlex
 import typing
 
 import esolangs
+from docs.curation import update_well_known, well_known
 from docs.proof_status import splice, update_catalogue, update_docs
 from docs.writing import write_if_changed as _write_if_changed
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
@@ -139,13 +140,29 @@ def _source_link(name: str) -> str:
 
 
 def render_languages_section() -> str:
-    """Render the README's Implemented Languages section between the markers.
+    """Render the catalog's language list between the markers.
 
-    Each language with an in-repo interpreter is grouped by the interpreter's
-    category, sorted by display name, and linked to both its esolangs wiki
-    page and the interpreter's source file.
+    Well-known languages come first, then every other language with an in-repo
+    interpreter grouped by the interpreter's category; each is sorted by display
+    name and linked to both its esolangs wiki page and the interpreter's source.
     """
-    out: list[str] = []
+    known = [
+        name
+        for name in well_known()
+        if name in LANGUAGES and LANGUAGES[name].runtime.interpreter is not None
+    ]
+    out = [
+        "## Well-known languages",
+        "",
+        "At least 50 pages on the esolangs wiki link to each.",
+        "",
+        *(_catalog_line(name) for name in known),
+        "",
+        "## More languages",
+        "",
+        "Most are the first implementation of a language.",
+        "",
+    ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
     for name, lang in LANGUAGES.items():
         if lang.runtime.interpreter is None:
@@ -156,7 +173,8 @@ def render_languages_section() -> str:
                 f"{name}'s interpreter category {category!r} has no README "
                 "heading; add one to _README_HEADINGS in scripts/docs/generate.py"
             )
-        groups[category].append(name)
+        if name not in known:
+            groups[category].append(name)
 
     for prefix, heading, description in _README_HEADINGS:
         out.append(f"### {heading}")
@@ -165,15 +183,28 @@ def render_languages_section() -> str:
         out.append("")
         # Separate README and describe slugs once duplicated the same escaping
         # bug; use the registry's URL builder for both.
-        for name in sorted(groups[prefix]):
-            tier = (
-                "" if LANGUAGES[name].backend is not None else " *(interpreter-only)*"
-            )
-            out.append(
-                f"- [{name}]({wiki_url(name)}) ([code]({_source_link(name)})){tier}"
-            )
+        out.extend(_catalog_line(name) for name in sorted(groups[prefix]))
         out.append("")
     return "\n".join(out).rstrip()
+
+
+def _catalog_line(name: str) -> str:
+    """Return the catalog bullet linking ``name``'s wiki page and source."""
+    tier = "" if LANGUAGES[name].backend is not None else " *(interpreter-only)*"
+    return f"- [{name}]({wiki_url(name)}) ([code]({_source_link(name)})){tier}"
+
+
+def render_well_known_section() -> str:
+    """Render the README's inline list of well-known languages."""
+    links = [f"[{name}]({wiki_url(name)})" for name in well_known()]
+    return "\n".join(
+        [
+            f"The {len(links)} best known, by esolangs wiki backlinks:",
+            *(f"{link}," for link in links[:-2]),
+            f"{links[-2]} and",
+            f"{links[-1]}.",
+        ]
+    )
 
 
 def render_examples_section() -> str:
@@ -412,6 +443,7 @@ def update_readme(root: pathlib.Path = ROOT) -> bool:
         ("EXAMPLES", render_examples_section),
         ("BOOLEAN-COUNT", render_boolean_count_section),
         ("XOR-EXAMPLE", render_xor_section),
+        ("WELL-KNOWN", render_well_known_section),
     ):
         text = splice(text, name, render())
     changed = _write_if_changed(path, text)
@@ -440,6 +472,10 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
     report(
         "updated the packaged scaling catalogue",
         changed=update_catalogue(output_root),
+    )
+    report(
+        "updated the packaged well-known list",
+        changed=update_well_known(output_root),
     )
     report(
         "updated the generated sections of README.md",

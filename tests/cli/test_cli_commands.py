@@ -91,11 +91,13 @@ class TestJsonOutput:
         text, _err = call_both(["list", "--details"], capsys)
         lines = text.splitlines()[1:]  # the legend header
         assert len(lines) == len(rows)
+        rows.sort(key=lambda row: not row["well_known"])  # text: well-known first
         for line, row in zip(lines, rows, strict=True):
             marks = line[len(row["name"]) :].split()
             assert ("gen" in marks) == row["boolean_generator"]
             assert ("tmpl" in marks) == row["parameterized"]
             assert ("ex" in marks) == bool(row["examples"])
+            assert ("known" in marks) == row["well_known"]
 
     def test_both_commands_still_reject_a_stray_argument(
         self, capsys: pytest.CaptureFixture[str]

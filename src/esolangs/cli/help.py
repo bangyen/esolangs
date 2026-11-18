@@ -135,7 +135,8 @@ example:
                      [--source-kind KIND] [--input-shape SHAPE]
                      [--answer-mode MODE] [--inputs N]
 
-List matching languages, one per line. Filters combine with AND; filter on
+List matching languages, one per line, well-known first (`--json` keeps
+registry order). Filters combine with AND; filter on
 other facts with `list --json --details | jq`.
 
 options:
@@ -146,6 +147,7 @@ options:
                 ex     a committed program beside its language modules
                 int    interpreter-only: a classic kept for coverage, with
                        no generator, so `generate` refuses it
+                known  well-known: at least 50 esolangs wiki backlinks
               then `max-inputs=N` and any table-dependent restriction
   --json      print a JSON array: names, or capability records with --details
   --generator restrict to languages with a Boolean generator

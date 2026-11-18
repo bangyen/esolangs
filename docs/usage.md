@@ -13,7 +13,7 @@ hides this using [`describe`](#describe) metadata.
 | `run` | run a program through its interpreter |
 | `encode-inputs` | print the stdin that feeds a bit string |
 | `read-answer` | print the answer bit a program's output carries |
-| `list` | list the languages; `--details` adds the generator, template and example markers; `--json --details` gives a record of `describe` fields per language to filter with `jq` |
+| `list` | list the languages, well-known first; `--details` adds the generator, template, example and well-known markers; `--json --details` gives a record of `describe` fields per language to filter with `jq` |
 | `describe` | how one language reads input and where its answer lands |
 
 See each command’s `--help` for option details.

@@ -2,6 +2,39 @@
 
 <!-- IMPLEMENTED:START -->
 
+## Well-known languages
+
+At least 50 pages on the esolangs wiki link to each.
+
+- [///](https://esolangs.org/wiki/%2F%2F%2F) ([code](../src/esolangs/languages/slashes/interpreter.py))
+- [Befunge](https://esolangs.org/wiki/Befunge) ([code](../src/esolangs/languages/befunge/interpreter.py))
+- [Bitwise Cyclic Tag](https://esolangs.org/wiki/Bitwise_Cyclic_Tag) ([code](../src/esolangs/languages/bitwise_cyclic_tag/interpreter.py))
+- [Boolfuck](https://esolangs.org/wiki/Boolfuck) ([code](../src/esolangs/languages/boolfuck/interpreter.py))
+- [Chicken](https://esolangs.org/wiki/Chicken) ([code](../src/esolangs/languages/chicken/interpreter.py))
+- [Cyclic tag](https://esolangs.org/wiki/Cyclic_tag) ([code](../src/esolangs/languages/cyclic_tag/interpreter.py))
+- [Deadfish](https://esolangs.org/wiki/Deadfish) ([code](../src/esolangs/languages/deadfish/interpreter.py)) *(interpreter-only)*
+- [FALSE](https://esolangs.org/wiki/FALSE) ([code](../src/esolangs/languages/false/interpreter.py))
+- [FRACTRAN](https://esolangs.org/wiki/FRACTRAN) ([code](../src/esolangs/languages/fractran/interpreter/__init__.py))
+- [Fish](https://esolangs.org/wiki/Fish) ([code](../src/esolangs/languages/fish/interpreter.py))
+- [HQ9+](https://esolangs.org/wiki/HQ9+) ([code](../src/esolangs/languages/hq9/interpreter.py)) *(interpreter-only)*
+- [INTERCAL](https://esolangs.org/wiki/INTERCAL) ([code](../src/esolangs/languages/intercal/interpreter/__init__.py))
+- [Malbolge](https://esolangs.org/wiki/Malbolge) ([code](../src/esolangs/languages/malbolge/interpreter.py))
+- [Nope.](https://esolangs.org/wiki/Nope.) ([code](../src/esolangs/languages/nope/interpreter.py)) *(interpreter-only)*
+- [Piet](https://esolangs.org/wiki/Piet) ([code](../src/esolangs/languages/piet/interpreter.py))
+- [Shakespeare](https://esolangs.org/wiki/Shakespeare) ([code](../src/esolangs/languages/shakespeare/interpreter.py))
+- [Smallfuck](https://esolangs.org/wiki/Smallfuck) ([code](../src/esolangs/languages/smallfuck/interpreter.py))
+- [Subleq](https://esolangs.org/wiki/Subleq) ([code](../src/esolangs/languages/subleq/interpreter.py))
+- [Thue](https://esolangs.org/wiki/Thue) ([code](../src/esolangs/languages/thue/interpreter.py))
+- [Unary](https://esolangs.org/wiki/Unary) ([code](../src/esolangs/languages/unary/interpreter.py))
+- [Underload](https://esolangs.org/wiki/Underload) ([code](../src/esolangs/languages/underload/interpreter.py))
+- [Unlambda](https://esolangs.org/wiki/Unlambda) ([code](../src/esolangs/languages/unlambda/interpreter.py))
+- [Whitespace](https://esolangs.org/wiki/Whitespace) ([code](../src/esolangs/languages/whitespace/interpreter.py))
+- [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](../src/esolangs/languages/brainfuck/interpreter.py))
+
+## More languages
+
+Most are the first implementation of a language.
+
 ### Grid-based Languages
 
 Languages that move a pointer or beam across a 2D grid.
@@ -12,14 +45,12 @@ Languages that move a pointer or beam across a 2D grid.
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](../src/esolangs/languages/arrowqueue/interpreter.py))
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](../src/esolangs/languages/b_tapemark/interpreter.py))
 - [Balik](https://esolangs.org/wiki/Balik) ([code](../src/esolangs/languages/balik/interpreter.py))
-- [Befunge](https://esolangs.org/wiki/Befunge) ([code](../src/esolangs/languages/befunge/interpreter.py))
 - [Bifunge](https://esolangs.org/wiki/Bifunge) ([code](../src/esolangs/languages/bifunge/interpreter.py))
 - [Bytemap](https://esolangs.org/wiki/Bytemap) ([code](../src/esolangs/languages/bytemap/interpreter.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](../src/esolangs/languages/circuit_diagram/interpreter/__init__.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](../src/esolangs/languages/clockwise/interpreter.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](../src/esolangs/languages/dig/interpreter.py))
 - [EGL](https://esolangs.org/wiki/EGL) ([code](../src/esolangs/languages/egl/interpreter.py))
-- [Fish](https://esolangs.org/wiki/Fish) ([code](../src/esolangs/languages/fish/interpreter.py))
 - [Flowchart](https://esolangs.org/wiki/Flowchart) ([code](../src/esolangs/languages/flowchart/interpreter.py))
 - [GridScript](https://esolangs.org/wiki/GridScript) ([code](../src/esolangs/languages/gridscript/interpreter.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](../src/esolangs/languages/laserfuck/interpreter.py))
@@ -38,32 +69,24 @@ Languages that use a stack for data manipulation.
 - [Ascenic](https://esolangs.org/wiki/Ascenic) ([code](../src/esolangs/languages/ascenic/interpreter.py))
 - [BFStack](https://esolangs.org/wiki/BFStack) ([code](../src/esolangs/languages/bfstack/interpreter.py))
 - [Caballo](https://esolangs.org/wiki/Caballo) ([code](../src/esolangs/languages/caballo/interpreter.py))
-- [Chicken](https://esolangs.org/wiki/Chicken) ([code](../src/esolangs/languages/chicken/interpreter.py))
 - [Eval](https://esolangs.org/wiki/Eval) ([code](../src/esolangs/languages/eval/interpreter.py))
-- [FALSE](https://esolangs.org/wiki/FALSE) ([code](../src/esolangs/languages/false/interpreter.py))
 - [Fackward](https://esolangs.org/wiki/Fackward) ([code](../src/esolangs/languages/fackward/interpreter.py))
 - [Forþ](https://esolangs.org/wiki/For%C3%BE) ([code](../src/esolangs/languages/for_thorn/interpreter.py))
 - [Freestajlo](https://esolangs.org/wiki/Freestajlo) ([code](../src/esolangs/languages/freestajlo/interpreter.py))
 - [Grapheme](https://esolangs.org/wiki/Grapheme) ([code](../src/esolangs/languages/grapheme/interpreter.py))
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](../src/esolangs/languages/modulous/interpreter.py))
 - [Nybbleist](https://esolangs.org/wiki/Nybbleist) ([code](../src/esolangs/languages/nybbleist/interpreter.py))
-- [Piet](https://esolangs.org/wiki/Piet) ([code](../src/esolangs/languages/piet/interpreter.py))
 - [Pilas](https://esolangs.org/wiki/Pilas) ([code](../src/esolangs/languages/pilas/interpreter.py))
 - [Quassaunt](https://esolangs.org/wiki/Quassaunt) ([code](../src/esolangs/languages/quassaunt/interpreter.py))
 - [SStack](https://esolangs.org/wiki/SStack) ([code](../src/esolangs/languages/sstack/interpreter.py))
-- [Shakespeare](https://esolangs.org/wiki/Shakespeare) ([code](../src/esolangs/languages/shakespeare/interpreter.py))
 - [Smu](https://esolangs.org/wiki/Smu) ([code](../src/esolangs/languages/smu/interpreter.py))
-- [Underload](https://esolangs.org/wiki/Underload) ([code](../src/esolangs/languages/underload/interpreter.py))
 - [Unsquare](https://esolangs.org/wiki/Unsquare) ([code](../src/esolangs/languages/unsquare/interpreter.py))
-- [Whitespace](https://esolangs.org/wiki/Whitespace) ([code](../src/esolangs/languages/whitespace/interpreter.py))
 
 ### Queue-based Languages
 
 Languages whose primary data structure is a queue or deque.
 
 - [Bitdeque](https://esolangs.org/wiki/Bitdeque) ([code](../src/esolangs/languages/bitdeque/interpreter.py))
-- [Bitwise Cyclic Tag](https://esolangs.org/wiki/Bitwise_Cyclic_Tag) ([code](../src/esolangs/languages/bitwise_cyclic_tag/interpreter.py))
-- [Cyclic tag](https://esolangs.org/wiki/Cyclic_tag) ([code](../src/esolangs/languages/cyclic_tag/interpreter.py))
 - [NOR machine](https://esolangs.org/wiki/NOR_machine) ([code](../src/esolangs/languages/nor_machine/interpreter.py))
 - [NQ](https://esolangs.org/wiki/NQ) ([code](../src/esolangs/languages/nq/interpreter.py))
 - [Q-BAL](https://esolangs.org/wiki/Q-BAL) ([code](../src/esolangs/languages/q_bal/interpreter.py))
@@ -79,7 +102,6 @@ Languages that operate on a tape (similar to Turing machines).
 - [6-5](https://esolangs.org/wiki/6-5) ([code](../src/esolangs/languages/six_five/interpreter.py))
 - [Back](https://esolangs.org/wiki/Back) ([code](../src/esolangs/languages/back/interpreter.py))
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck) ([code](../src/esolangs/languages/basicfuck/interpreter.py))
-- [Boolfuck](https://esolangs.org/wiki/Boolfuck) ([code](../src/esolangs/languages/boolfuck/interpreter.py))
 - [BrainIf](https://esolangs.org/wiki/BrainIf) ([code](../src/esolangs/languages/brainif/interpreter.py))
 - [Circlefuck](https://esolangs.org/wiki/Circlefuck) ([code](../src/esolangs/languages/circlefuck/interpreter.py))
 - [Dimensional](https://esolangs.org/wiki/Dimensional) ([code](../src/esolangs/languages/dimensional/interpreter.py))
@@ -94,13 +116,9 @@ Languages that operate on a tape (similar to Turing machines).
 - [Retrograde](https://esolangs.org/wiki/Retrograde) ([code](../src/esolangs/languages/retrograde/interpreter.py))
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](../src/esolangs/languages/s_bleq/interpreter.py))
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](../src/esolangs/languages/slow_acv_mammalian/interpreter.py))
-- [Smallfuck](https://esolangs.org/wiki/Smallfuck) ([code](../src/esolangs/languages/smallfuck/interpreter.py))
-- [Subleq](https://esolangs.org/wiki/Subleq) ([code](../src/esolangs/languages/subleq/interpreter.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](../src/esolangs/languages/suffolk/interpreter.py))
-- [Unary](https://esolangs.org/wiki/Unary) ([code](../src/esolangs/languages/unary/interpreter.py))
 - [What!?](https://esolangs.org/wiki/What!%3F) ([code](../src/esolangs/languages/what/interpreter.py))
 - [bit~](https://esolangs.org/wiki/bit~) ([code](../src/esolangs/languages/bit_tilde/interpreter.py))
-- [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](../src/esolangs/languages/brainfuck/interpreter.py))
 - [oBrainfuck](https://esolangs.org/wiki/oBrainfuck) ([code](../src/esolangs/languages/obrainfuck/interpreter.py))
 
 ### Register-based Languages
@@ -113,10 +131,7 @@ Languages that use registers to store and manipulate data.
 - [CARP](https://esolangs.org/wiki/CARP) ([code](../src/esolangs/languages/carp/interpreter.py))
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse) ([code](../src/esolangs/languages/collatz_multiverse/interpreter.py))
 - [CreativeScript v2](https://esolangs.org/wiki/CreativeScript_v2) ([code](../src/esolangs/languages/creativescript_v2/interpreter.py))
-- [Deadfish](https://esolangs.org/wiki/Deadfish) ([code](../src/esolangs/languages/deadfish/interpreter.py)) *(interpreter-only)*
 - [Decleq](https://esolangs.org/wiki/Decleq) ([code](../src/esolangs/languages/decleq/interpreter.py))
-- [FRACTRAN](https://esolangs.org/wiki/FRACTRAN) ([code](../src/esolangs/languages/fractran/interpreter/__init__.py))
-- [HQ9+](https://esolangs.org/wiki/HQ9+) ([code](../src/esolangs/languages/hq9/interpreter.py)) *(interpreter-only)*
 - [Help.](https://esolangs.org/wiki/Help.) ([code](../src/esolangs/languages/help/interpreter.py))
 - [IEBEL](https://esolangs.org/wiki/IEBEL) ([code](../src/esolangs/languages/iebel/interpreter.py))
 - [Interprogck8](https://esolangs.org/wiki/Interprogck8) ([code](../src/esolangs/languages/interprogck8/interpreter.py))
@@ -130,13 +145,10 @@ Languages that use registers to store and manipulate data.
 
 Languages whose data is the program itself, rewritten as it runs.
 
-- [///](https://esolangs.org/wiki/%2F%2F%2F) ([code](../src/esolangs/languages/slashes/interpreter.py))
 - [BASICER](https://esolangs.org/wiki/BASICER) ([code](../src/esolangs/languages/basicer/interpreter.py))
 - [Crement](https://esolangs.org/wiki/Crement) ([code](../src/esolangs/languages/crement/interpreter.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](../src/esolangs/languages/inject/interpreter.py))
-- [Malbolge](https://esolangs.org/wiki/Malbolge) ([code](../src/esolangs/languages/malbolge/interpreter.py))
 - [Sonata](https://esolangs.org/wiki/Sonata) ([code](../src/esolangs/languages/sonata/interpreter.py))
-- [Thue](https://esolangs.org/wiki/Thue) ([code](../src/esolangs/languages/thue/interpreter.py))
 
 ### Variable-based Languages
 
@@ -145,7 +157,6 @@ Languages that store data in named variables the program declares.
 - [Algebraic Programming Language](https://esolangs.org/wiki/Algebraic_Programming_Language) ([code](../src/esolangs/languages/algebraic_programming_language/interpreter/__init__.py))
 - [Container](https://esolangs.org/wiki/Container) ([code](../src/esolangs/languages/container/interpreter.py))
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](../src/esolangs/languages/forbin/interpreter/__init__.py))
-- [INTERCAL](https://esolangs.org/wiki/INTERCAL) ([code](../src/esolangs/languages/intercal/interpreter/__init__.py))
 - [NB](https://esolangs.org/wiki/NB) ([code](../src/esolangs/languages/nb/interpreter.py))
 - [Onecode (Fergusq)](https://esolangs.org/wiki/Onecode_(Fergusq)) ([code](../src/esolangs/languages/onecode_fergusq/interpreter.py))
 - [Packlang](https://esolangs.org/wiki/Packlang) ([code](../src/esolangs/languages/packlang/interpreter/__init__.py))
@@ -167,11 +178,9 @@ Languages that don't fit into the above categories.
 - [HQ9+ with headers](https://esolangs.org/wiki/HQ9+_with_headers) ([code](../src/esolangs/languages/hq9_with_headers/interpreter.py))
 - [Hot](https://esolangs.org/wiki/Hot) ([code](../src/esolangs/languages/hot/interpreter.py))
 - [Kiss](https://esolangs.org/wiki/Kiss) ([code](../src/esolangs/languages/kiss/interpreter.py))
-- [Nope.](https://esolangs.org/wiki/Nope.) ([code](../src/esolangs/languages/nope/interpreter.py)) *(interpreter-only)*
 - [Object disoriented](https://esolangs.org/wiki/Object_disoriented) ([code](../src/esolangs/languages/object_disoriented/interpreter.py))
 - [Parenthesys](https://esolangs.org/wiki/Parenthesys) ([code](../src/esolangs/languages/parenthesys/interpreter.py))
 - [SendStuff](https://esolangs.org/wiki/SendStuff) ([code](../src/esolangs/languages/sendstuff/interpreter.py))
 - [Stisp](https://esolangs.org/wiki/Stisp) ([code](../src/esolangs/languages/stisp/interpreter.py))
-- [Unlambda](https://esolangs.org/wiki/Unlambda) ([code](../src/esolangs/languages/unlambda/interpreter.py))
 
 <!-- IMPLEMENTED:END -->

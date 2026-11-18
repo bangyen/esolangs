@@ -139,6 +139,7 @@ class TestPackageSurface:
             "spec",
             "state_model",
             "steppable_to_answer",
+            "well_known",
             "width_effect",
             "wiki_url",
         ]

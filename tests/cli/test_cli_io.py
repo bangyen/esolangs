@@ -1011,8 +1011,8 @@ class TestAClosedPipeIsNotAnError:
         )
         assert listed.returncode == 0, listed.stderr
         selectors = listed.stdout.decode("ascii").splitlines()
-        assert [esolangs.Language(label).name for label in selectors] == (
-            esolangs.list_languages()
+        assert [esolangs.Language(label).name for label in selectors] == sorted(
+            esolangs.list_languages(), key=lambda n: not esolangs.describe(n).well_known
         )
 
         class Writer:

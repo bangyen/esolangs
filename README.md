@@ -50,8 +50,9 @@ esolangs generate Suffolk 0110 > program.txt
 printf '01' | esolangs run Suffolk program.txt
 ```
 
-- `list` shows every language; `list --details` marks which have a
-  generator (`gen`), a template (`tmpl`) and committed examples (`ex`).
+- `list` shows every language, well-known ones first; `list --details`
+  marks which have a generator (`gen`), a template (`tmpl`), committed
+  examples (`ex`) and at least 50 wiki backlinks (`known`).
 - Run a program under its own language. Suffolk programs look like
   brainfuck, but brainfuck rejects or misreads them.
 
@@ -117,12 +118,36 @@ each language's [directory](https://github.com/bangyen/esolangs/tree/main/src/es
 
 ## Languages
 
-Familiar ones include
-[brainfuck](https://esolangs.org/wiki/brainfuck),
+<!-- WELL-KNOWN:START -->
+
+The 24 best known, by esolangs wiki backlinks:
+[///](https://esolangs.org/wiki/%2F%2F%2F),
 [Befunge](https://esolangs.org/wiki/Befunge),
+[Bitwise Cyclic Tag](https://esolangs.org/wiki/Bitwise_Cyclic_Tag),
+[Boolfuck](https://esolangs.org/wiki/Boolfuck),
+[Chicken](https://esolangs.org/wiki/Chicken),
+[Cyclic tag](https://esolangs.org/wiki/Cyclic_tag),
+[Deadfish](https://esolangs.org/wiki/Deadfish),
+[FALSE](https://esolangs.org/wiki/FALSE),
+[FRACTRAN](https://esolangs.org/wiki/FRACTRAN),
+[Fish](https://esolangs.org/wiki/Fish),
+[HQ9+](https://esolangs.org/wiki/HQ9+),
+[INTERCAL](https://esolangs.org/wiki/INTERCAL),
+[Malbolge](https://esolangs.org/wiki/Malbolge),
+[Nope.](https://esolangs.org/wiki/Nope.),
 [Piet](https://esolangs.org/wiki/Piet),
-[INTERCAL](https://esolangs.org/wiki/INTERCAL) and
-[Malbolge](https://esolangs.org/wiki/Malbolge).
+[Shakespeare](https://esolangs.org/wiki/Shakespeare),
+[Smallfuck](https://esolangs.org/wiki/Smallfuck),
+[Subleq](https://esolangs.org/wiki/Subleq),
+[Thue](https://esolangs.org/wiki/Thue),
+[Unary](https://esolangs.org/wiki/Unary),
+[Underload](https://esolangs.org/wiki/Underload),
+[Unlambda](https://esolangs.org/wiki/Unlambda),
+[Whitespace](https://esolangs.org/wiki/Whitespace) and
+[brainfuck](https://esolangs.org/wiki/brainfuck).
+
+<!-- WELL-KNOWN:END -->
+
 The [catalog](https://github.com/bangyen/esolangs/blob/main/docs/languages.md)
 lists all of them.
 

@@ -5,12 +5,14 @@ A package with no file or no ``[curation]`` section is skipped.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .fragments import AggregateKey, aggregate, registry, section, sections
+from .writing import write_if_changed
 
 if TYPE_CHECKING:
     from esolangs.registry import LanguageDeclaration
@@ -96,3 +98,21 @@ def fragment_row(path: Path) -> dict[str, Any]:
 def rows(root: Path = ROOT) -> dict[str, dict[str, Any]]:
     """Return every language's curation row, keyed by name."""
     return aggregate_fragments(root / "src/esolangs/languages", registry())
+
+
+def well_known(root: Path = ROOT) -> list[str]:
+    """Return the names with at least FAME_BACKLINKS wiki backlinks, sorted."""
+    return sorted(
+        name
+        for name, row in rows(root).items()
+        if row.get("backlinks", 0) >= FAME_BACKLINKS
+    )
+
+
+def update_well_known(output_root: Path) -> bool:
+    """Package the well-known ids, which ``esolangs list`` shows first."""
+    from esolangs.registry import LANGUAGES
+
+    ids = sorted(LANGUAGES[name].id for name in well_known())
+    path = output_root / "src/esolangs/registry/well_known.json"
+    return write_if_changed(path, json.dumps(ids, indent=2) + "\n")

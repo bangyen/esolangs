@@ -198,13 +198,16 @@ def test_catalog_commands_are_copyable_with_ascii_stdout(
     spec = call(*command[1:])
     assert spec == call("describe", "--spec", language)
 
-    names = esolangs.list_languages()
+    # The text listing shows the well-known languages first.
+    names = sorted(
+        esolangs.list_languages(), key=lambda n: not esolangs.describe(n).well_known
+    )
     index = names.index(api.name)
     selector = call("list").decode("ascii").splitlines()[index]
     assert selector == api.describe().id
     details = call("list", "--details").decode("ascii").splitlines()
     assert details[index + 1].split()[0] == selector
-    assert json.loads(call("list", "--json")) == names
+    assert json.loads(call("list", "--json")) == esolangs.list_languages()
 
     program = api.generate("01")
     path = tmp_path / "program"
@@ -301,7 +304,8 @@ def test_filters_match_in_every_output_format(capsys) -> None:
     names = _names(filters, capsys)
     assert names == languages(boolean_generator=False, source_kind="text")
     text, error = call_both(["list", *filters], capsys)
-    assert (text.splitlines(), error) == (names, "")
+    shown = sorted(names, key=lambda n: not esolangs.describe(n).well_known)
+    assert (text.splitlines(), error) == (shown, "")
     text, error = call_both(["list", *filters, "--details"], capsys)
     rows = _names([*filters, "--details"], capsys)
     assert len(text.splitlines()) == 1 + len(rows)
@@ -372,6 +376,7 @@ _DETAILED = {
     "generator_max_inputs",
     "generator_restrictions",
     "generator_scaling",
+    "well_known",
 }
 
 
@@ -422,7 +427,8 @@ def test_templates_and_combined_filters(capsys):
     rows = _names([*filters, "--details"], capsys)
     assert [row["name"] for row in rows] == names
     text, error = call_both(["list", *filters], capsys)
-    assert (text.splitlines(), error) == (names, "")
+    shown = sorted(names, key=lambda n: not esolangs.describe(n).well_known)
+    assert (text.splitlines(), error) == (shown, "")
 
     capped = next(
         (name, esolangs.describe(name).generator_max_inputs)
@@ -432,3 +438,13 @@ def test_templates_and_combined_filters(capsys):
     name, cap = capped
     assert name in _names(["--inputs", str(cap)], capsys)
     assert name not in _names(["--inputs", str(cap + 1)], capsys)
+
+
+def test_text_list_shows_the_well_known_languages_first(capsys) -> None:
+    output, error = call_both(["list"], capsys)
+    assert error == ""
+    shown = [esolangs.describe(line).name for line in output.splitlines()]
+    known = [name for name in shown if esolangs.describe(name).well_known]
+    assert 0 < len(known) < len(shown)
+    assert shown[: len(known)] == known
+    assert sorted(shown) == sorted(_names([], capsys))

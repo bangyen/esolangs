@@ -33,6 +33,14 @@ _SCALING: dict[str, str] = json.loads(
     object_pairs_hook=unique_object,
 )
 
+#: Ids with at least 50 esolangs wiki backlinks, from the curation rows by
+#: ``just docs``; ``esolangs list`` shows them first.
+_WELL_KNOWN: frozenset[str] = frozenset(
+    json.loads(
+        pathlib.Path(__file__).with_name("well_known.json").read_text(encoding="utf-8")
+    )
+)
+
 #: The committed examples, inside the package so the wheel ships them.
 _LANGUAGES_DIR = pathlib.Path(__file__).resolve().parents[1] / "languages"
 
@@ -65,6 +73,7 @@ class _CatalogFacts(TypedDict):
 
     name: str
     generator_scaling: str | None
+    well_known: bool
     source_kind: SourceForm
     state_model: StateModel
     generator_shape: GeneratorShape | None
@@ -82,6 +91,16 @@ class _CatalogFacts(TypedDict):
 def _reads_input(lang: LanguageDeclaration) -> bool:
     """Whether Boolean inputs belong on stdin."""
     return lang.runtime.reads_stdin and not lang.parameterized
+
+
+def _well_known(lang: LanguageDeclaration) -> bool:
+    """Whether the installed ``lang`` has at least 50 esolangs wiki backlinks."""
+    from esolangs.registry._table import LANGUAGES
+
+    installed = LANGUAGES.get(lang.name)
+    # Unlike _catalog_facts, never touches the backend: a plain `list` must
+    # not fail on a disabled generator provider.
+    return installed is not None and lang.id == installed.id and lang.id in _WELL_KNOWN
 
 
 def _catalog_facts(lang: LanguageDeclaration, *, catalog: Catalog) -> _CatalogFacts:
@@ -112,6 +131,7 @@ def _catalog_facts(lang: LanguageDeclaration, *, catalog: Catalog) -> _CatalogFa
     return {
         "name": lang.name,
         "generator_scaling": _SCALING.get(lang.id) if packaged else None,
+        "well_known": _well_known(lang),
         "source_kind": lang.runtime.source_kind.value,
         "state_model": _STATE_MODELS.get(lang.runtime.category, "other"),
         "generator_shape": backend.shape.value if backend is not None else None,
@@ -165,6 +185,7 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
         - Machine traits (:func:`~esolangs.vm.machine_traits`): ``self_halts``,
           ``dumps_on_the_post_halt_step``, ``steppable_to_answer``,
           ``eof_is_a_value``; ``random`` (fixed by ``run(seed=...)``).
+        - ``well_known``: at least 50 esolangs wiki pages link to it.
         - ``examples``: the committed programs as POSIX paths relative to the
           package (``importlib.resources.files("esolangs") / path``);
           ``languages/EXAMPLES.md`` says what each computes.

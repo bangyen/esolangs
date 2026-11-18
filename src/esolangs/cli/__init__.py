@@ -109,7 +109,12 @@ from esolangs.operations.boolean_io import (
 from esolangs.raster import png
 from esolangs.registry import Catalog, LanguageDeclaration, SourceKind, get_catalog
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
-from esolangs.registry._describe import _catalog_facts, _spec, _width_effect
+from esolangs.registry._describe import (
+    _catalog_facts,
+    _spec,
+    _well_known,
+    _width_effect,
+)
 from esolangs.runtime._json import record_dumps
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import native_file_terminator
@@ -263,6 +268,10 @@ def _list(rest: list[str]) -> None:
     _check_count("list", rest, 0, catalog=catalog)
     with _errors():
         names = _catalog_names(options, flags, catalog=catalog)
+    if not as_json:
+        # Well-known first, so a newcomer meets brainfuck before the 100-odd
+        # first implementations; JSON keeps registry order for scripts.
+        names.sort(key=lambda name: not _well_known(catalog.languages[name]))
     if not details:
         if as_json:
             _write_output(json.dumps(names, indent=2) + "\n")
@@ -302,7 +311,7 @@ def _list(rest: list[str]) -> None:
     # unexplained for anyone who ran the thing before reading about it.
     _display(
         f"{'language'.ljust(width)}  gen=generator tmpl=template ex=example "
-        f"int=interpreter-only; then any generator cap"
+        f"int=interpreter-only known=well-known; then any generator cap"
     )
     for facts in records:
         name = displayed[facts["name"]]
@@ -313,6 +322,7 @@ def _list(rest: list[str]) -> None:
                     "gen" if facts["boolean_generator"] else "int",
                     "tmpl" if facts["parameterized"] else "",
                     "ex" if facts["examples"] else "",
+                    "known" if facts["well_known"] else "",
                 ),
             )
         )
