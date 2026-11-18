@@ -37,6 +37,7 @@ def test_false_tests_the_low_bit_and_splits_every_node() -> None:
     assert sum(len(false(f"{value:08b}")) for value in range(256)) == 7523
 
 
+@pytest.mark.medium
 def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
     """The reduced diagram cuts both totals and lengthens no table."""
 
