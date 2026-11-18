@@ -67,3 +67,54 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
+- **Wiki candidates (2026-11-18).** Re-screened after the stale novelty
+  rule left `CONTRIBUTING.md` (`e4c52ad73`).
+  No page revision, backlink, subpage, creator page or same-name GitHub account
+  shows a public implementation; none is a token substitution of a member.
+  Each construction has a proved-linear analogue in the collection, but none
+  is prototyped.
+    1. [CRAZYLANG](https://esolangs.org/wiki/CRAZYLANG) (rev. 197061): table
+       integer built from fixed-size chunks; skip-next multiplies in 2^(2^i).
+       Open: integer division.
+    2. [Teacher](https://esolangs.org/wiki/Teacher) (rev. 195882): nested `IF
+       … OR ELSE … NOW SHOW ME YOUR GRADE` tree reusing one variable. Open:
+       loop exit rule.
+    3. [Calculation](https://esolangs.org/wiki/Calculation) (rev. 155994):
+       nested `?` blocks reusing one variable. Open: input framing; jumps are
+       1-based in both examples.
+    4. [干！](https://esolangs.org/wiki/%E5%B9%B2%EF%BC%81) (rev. 166203):
+       branch-free: table by doubling, row by `X^Y`, floor division and mod.
+       Open: assignment direction.
+    5. [Duzitdo?](https://esolangs.org/wiki/Duzitdo%3F) (rev. 203847):
+       chunk-built table integer, `DIV`/`REM` by 2^row. Open: `ASK` framing;
+       `DEF` bodies skipped in flow.
+    6. [GotoScript](https://esolangs.org/wiki/GotoScript) (rev. 149969): one
+       `PRINT` indexing a T-character table string. Open: `INPUT` typing;
+       `GOTO WHEN`/`ONCE` raise.
+    7. [1-866-025-4037](https://esolangs.org/wiki/1-866-025-4037) (rev.
+       201974): `?`-read bit tree (Bruijndejx's shape). Open: when an
+       unapplied I/O combinator fires (its truth machine needs it); EOF.
+    8. [My cat predicted a rain of ash and
+       dust](https://esolangs.org/wiki/My_cat_predicted_a_rain_of_ash_and_dust)
+       (rev. 201869): as 1-866-025-4037, D2 K' R** W** basis. Open: same I/O
+       call.
+    9. [Methylmercury](https://esolangs.org/wiki/Methylmercury) (rev. 201813):
+       Lazy K I/O, K ф Θ combinator tree. Open: none beyond Lazy K.
+    10. [Helo PkmnQ](https://esolangs.org/wiki/Helo_PkmnQ) (rev. 203900): Lazy
+        K I/O combinator tree;
+        [Psychologist](https://esolangs.org/wiki/Psychologist) (rev. 203875)
+        is its renamed PKN subset, so at most one. Open: syntax from examples.
+    11. [FastBrain](https://esolangs.org/wiki/FastBrain) (rev. 134496):
+        brainfuck construction on a 15-D tape. Open: EOF, cell width.
+    12. [Brаinfuck](https://esolangs.org/wiki/Br%D0%B0infuck) (rev. 202557):
+        brainfuck construction (Cyrillic а; adds `&`, `0`-`9`, `@`, `;`).
+        Open: `&` at the tape edge.
+    13. [Sonjalang](https://esolangs.org/wiki/Sonjalang) (rev. 165968): table
+        string indexed by `kipisi X lon Y`. Open: FizzBuzz breaks the `.`
+        terminator and elif form; int/int `kipisi` type.
+    14. [C!](https://esolangs.org/wiki/C!) (rev. 197732): table string read by
+        `L[x,n]`. Open: `^`/`V` precedence; `D` has no call syntax.
+  - *Admission:* a subset prototype per language -- every table to n=4,
+    random to n=10, size measured against T, a mutant that fires -- then
+    `/new-language`. Build a decimal table from chunks: one T-bit decimal
+    literal converts in superlinear time (2^22 bits: 373 ms decimal, 1 ms hex).
