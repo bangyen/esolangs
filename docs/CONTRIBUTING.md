@@ -65,29 +65,12 @@ installation with and without the image extra.
 
 ## What makes a candidate worth adding
 
-A candidate that meets the criteria below is eligible for admission if and
-only if it meets the [fame threshold](limitations.md#how-a-language-is-admitted)
-or the repo would provide its first implementation. For the second route,
-the language must have no qualifying public implementation at admission.
-The curation rules define what counts as a public implementation.
-
-A new language must add an uncovered construction, branch mechanism, answer
-convention or input interface:
-
-| Axis | Examples |
-| --- | --- |
-| Construction | decision tree, minterm sum, ANF/XOR-of-products, grid walk |
-| Branch | conditional, value-testable jump, skip guard, comparator, pointer displacement |
-| Answer | printed bit, landing colour, position, termination |
-| Input | read-and-route, bit-addressable index, parameterized embed |
-
-- BFStack uses a minterm sum.
-- Fargo uses ANF/XOR-of-products and a bit-addressable input index.
-- LaserFuck uses a grid walk.
-- A Painter Ant uses a grid walk and answers by landing colour.
-- Streetcode uses a grid walk.
-- ArrowQueue answers by termination.
-- Crement answers by termination.
+A candidate is admitted through the [fame threshold](limitations.md#how-a-language-is-admitted)
+or as the repo's first implementation (no qualifying public implementation
+at admission). Its spec must fix the core semantics, it must not be a token
+substitution of a collected language, and, on the second route, it needs a
+linear generator. Those are the only grounds; resemblance to a collected
+construction or branch mechanism is not one (user ruling, 2026-10-29).
 
 A spec that precludes generation qualifies only through the fame threshold
 under Curation in [limitations](limitations.md). Interpreter-only entries
