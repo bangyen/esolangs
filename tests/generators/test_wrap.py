@@ -648,19 +648,14 @@ def test_wrappers_refuse_input_they_do_not_recognize() -> None:
 
 @pytest.mark.parametrize(
     "name",
+    # Derived, not listed: a hand list missed moar cheese :3's guard, which the
+    # weekly deadcode scan then reported as unreached (2026-11-18).
     [
-        "///",
-        "ArrowQueue",
-        "Back",
-        "Bitdeque",
-        "Crement",
-        "FRACTRAN",
-        "INTERCAL",
-        "Minsky Swap",
-        "RAM0",
-        "REFRACTRAN",
-        "Smallfuck",
-        "Underload",
+        name
+        for name, lang in LANGUAGES.items()
+        if (backend := lang.backend) is not None
+        and backend.template is not None
+        and backend.balance is not None
     ],
 )
 def test_slot_balancer_rejects_plain_text(name: str) -> None:

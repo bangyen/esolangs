@@ -119,11 +119,6 @@ def _layout(truth_table: str) -> TemplateLayout:
     return min(candidates, key=lambda layout: len(layout.source))
 
 
-def moar_cheese_3(truth_table: str) -> str:
-    """Build a template whose final queue is ``truth_table[row]``."""
-    return _layout(truth_table).source
-
-
 def moar_cheese_3_request(request: GenerationRequest) -> TemplateLayout:
     """Emit the template through the declared generation request interface."""
     return _layout(request.table)
@@ -149,7 +144,7 @@ def moar_cheese_3_balance_request(request: BalanceRequest) -> TemplateLayout:
     """
     layout = request.source
     if not isinstance(layout, TemplateLayout):
-        raise TypeError("moar cheese :3 balancing needs a rendered template")
+        raise TypeError("balancing needs a rendered template with slots")
     source = layout.source
     breaks = [
         i for i, c in enumerate(source) if c == " " and source[i - 1 : i + 2] != "( )"

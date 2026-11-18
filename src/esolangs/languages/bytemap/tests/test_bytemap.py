@@ -1,5 +1,7 @@
 """Tests for the Bytemap interpreter."""
 
+import random
+
 import pytest
 
 from esolangs import ExecutionLimits, Language, ProgramError
@@ -116,3 +118,20 @@ def _check_retry_and_line_endings(monkeypatch: pytest.MonkeyPatch) -> None:
             assert debugger.ip == (0, 0)
             assert debugger.observation == expected.observation
         assert debugger.observation.input_position == len(prefix) + 1
+
+
+@pytest.mark.medium
+def test_sixteen_essential_inputs_split_row_zero_and_page_the_return() -> None:
+    # Reading code needs two row-0 segments from 13 essential inputs and a
+    # paged return along row 1 from 16, where it spans 266 cells against a
+    # jump's 255; the weekly deadcode scan found both unreached.  16 sampled
+    # rows of 65,536.
+    rng = random.Random(16)
+    n = 16
+    table = "".join(rng.choice("01") for _ in range(2**n))
+    api = Language("Bytemap")
+    program = api.generate(table)
+    for row in [0, 2**n - 1, *rng.sample(range(2**n), 14)]:
+        bits = [int(bit) for bit in f"{row:0{n}b}"]
+        output = api.run(program, stdin=api.encode_inputs(bits)).output
+        assert api.read_answer(output) == table[row], row
