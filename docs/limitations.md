@@ -343,7 +343,11 @@ a linear source places blocks in the grid or what the generation pointer
 does, so its interpreter invented the core, the invented semantics the
 大白话 deferral rules out. Transistor (2) was built and dropped on
 2026-10-07 for the same reason: its page gives no grammar and no I/O, and
-its one loop example calls an undefined `or`.
+its one loop example calls an undefined `or`. A page that defers its core
+to a general-purpose host (renamed Python, C++, Java, Lua, Batch or BASIC;
+LOLScript, AggressionAplo) or to other languages' runtimes (Basilisk)
+fixes nothing of its own and fails the same way (user, 2026-11-18; no
+member is affected).
 
 Nor does the first-implementation route admit a token substitution of a
 collected language: a fixed bijection between command tokens (whitespace
