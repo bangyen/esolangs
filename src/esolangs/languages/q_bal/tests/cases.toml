@@ -1,0 +1,23 @@
+[[spec_triggers]]
+program = "~f -> out"
+stdin = ""
+expect = "ProgramError"
+claim = "ProgramError: a malformed statement, an unterminated or nested ``F`` block, or a construct the page names but never exercises (see Decisions); raised as ValueError."
+
+[[spec_triggers]]
+program = "Q x\nin -> x"
+stdin = ""
+expect = "InputExhaustedError"
+claim = "InputExhaustedError: a read of ``in`` or ``'in`` at EOF; raised as EOFError."
+
+[[spec_triggers]]
+program = "Q x\nin -> x"
+stdin = "1.5\n"
+expect = "ArgumentError"
+claim = "ArgumentError: an ``in`` line that is not a decimal integer."
+
+[[spec_triggers]]
+program = "1 / 0 -> out"
+stdin = ""
+expect = "HaltError"
+claim = "HaltError: an undeclared name, an empty queue in arithmetic, a value of the wrong queue type, division or remainder by zero, a negative exponent, writing to ``in``, reading ``out``, a line number below 1, or a non-character sent to ``'out``."

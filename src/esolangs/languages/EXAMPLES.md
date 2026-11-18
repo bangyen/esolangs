@@ -112,6 +112,7 @@ don't edit by hand.
 | `piet/piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
 | `pilas/pilas.txt` | Pilas | `0001` | `01` | 01 | '0' |
 | `pointless/pointless.txt` | Pointless | `0001` | `01` | 01 | '0' |
+| `q_bal/q-bal.txt` | Q-BAL | `0001` | `01` | 0 1 | '0\n' |
 | `qoibl/qoibl.txt` | Qoibl | `0001` | `01` | 01 | '0' |
 | `qrain/qrain.txt` | Qrain | `0001` | `01` | 01 | '0' |
 | `quassaunt/quassaunt.txt` | Quassaunt | `0001` | `01` | 01 | '0' |

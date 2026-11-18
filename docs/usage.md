@@ -373,6 +373,7 @@ Build language-specific stdin for a generated Boolean program with
 | Painfuck | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Parenthesys | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Piet | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Q-BAL | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Shakespeare | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Thue | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Tubes | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |

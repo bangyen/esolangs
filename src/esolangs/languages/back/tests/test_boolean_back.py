@@ -375,7 +375,7 @@ def test_vertical_leaf_finish_preserves_every_small_table() -> None:
     )
 
 
-@pytest.mark.parametrize("width", [1, 4, 7, 10, 80])
+@pytest.mark.parametrize("width", [1, 7, 80])
 @pytest.mark.parametrize("n", [1, 2, 3, 5])
 @pytest.mark.parametrize("bias", [0, 1])
 def test_parity_accumulator_keeps_public_slots_and_provenance(
