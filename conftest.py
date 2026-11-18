@@ -21,6 +21,9 @@ from tests.support.duration_policy import (
 
 _COST_CHECKS = pytest.StashKey[bool]()
 
+# The thread timeout cannot stop a GIL-held operation; this backstop can.
+pytest_plugins = ["tests.support.gil_watchdog"]
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Keep performance checks explicit and separate from correctness runs."""
