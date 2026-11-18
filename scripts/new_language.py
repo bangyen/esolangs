@@ -608,6 +608,13 @@ def quick_tests(name: str) -> list[str]:
         "tests/runtime/test_lifecycle.py"
         "::test_every_runtime_declares_preparation_and_capabilities",
         "tests/api/test_language_coupling.py::test_no_file_cites_another_language",
+        # ~4 s; these three first failed in finish's 655 s pytest (Q-BAL,
+        # GridScript, 2026-11-17).
+        "tests/api/test_language_coupling.py::test_no_file_names_another_language",
+        "tests/tooling/test_source_conventions.py"
+        "::test_the_complexity_excuses_only_go_down",
+        "tests/runtime/test_vm_protocol.py::TestEveryLanguageHonoursTheProtocol"
+        f"::test_execution_and_post_halt_state[{name}]",
         "tests/api/test_catalog_contracts.py::TestTheSpecIsReachable",
         "tests/interpreters/test_transition_purity.py"
         f"::test_interpreter_core_is_pure_for_its_sample[{name}]",
@@ -674,6 +681,17 @@ def quick_tests(name: str) -> list[str]:
         f"test_execution_and_workspace_formulas_hold[{name}-{n}]"
         for n in sorted(arities)
     ]
+    # Size formulas at the same arities: an exact claim no table reached
+    # first failed in finish (Q-BAL at n = 2, 2026-11-17).
+    scaling = importlib.import_module("tests.proofs.test_scaling_formulas").FORMULAS
+    if name in scaling:
+        declared = scaling[name][2]
+        sizes = {n for n in declared if n <= 2}
+        sizes |= {min((n for n in declared if n > 2), default=min(declared))}
+        nodes += [
+            f"tests/proofs/test_scaling_formulas.py::test_size_formulas_hold[{name}-{n}]"
+            for n in sorted(sizes)
+        ]
     return _escaped(nodes)
 
 

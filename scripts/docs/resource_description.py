@@ -64,7 +64,10 @@ def _growth(column: str, value: object) -> str:
         "workspace": WORKSPACE_CLASSES,
     }[column]
     if not isinstance(value, str) or value not in classes:
-        raise ValueError("invalid resource growth class")
+        raise ValueError(
+            f"invalid resource growth class {value!r} for {column}: "
+            f"one of {', '.join(map(repr, sorted(classes)))}"
+        )
     return value
 
 
