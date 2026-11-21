@@ -95,10 +95,7 @@ history at `f35aa4023`.
 
 ## Wiki candidate backlog
 
-The follow-up probes moved eight candidates into reserve. The working
-shortlist keeps the six builds with exhaustive arity-four results.
-
-### Reserve (18)
+### Reserve (19)
 
 - [AEAV](https://esolangs.org/wiki/AEAV)
 - [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
@@ -112,19 +109,15 @@ shortlist keeps the six builds with exhaustive arity-four results.
 - [CRAZYLANG](https://esolangs.org/wiki/CRAZYLANG)
 - [kxgxyo](https://esolangs.org/wiki/Kxgxyo)
 - [Tech Support Scam](https://esolangs.org/wiki/Tech_Support_Scam)
+- [ASCII @](https://esolangs.org/wiki/ASCII_@). The translated subset ran
+  on public `@`, which rejects raw ASCII source and differs on negative
+  fractions. Refresh the search for a public ASCII runner at admission.
 - [Dan](https://esolangs.org/wiki/Dan)
 - [Helo PkmnQ](https://esolangs.org/wiki/Helo_PkmnQ)
 - [GotoScript](https://esolangs.org/wiki/GotoScript)
 - [Sonjalang](https://esolangs.org/wiki/Sonjalang)
 - [诗(PSTF)](https://esolangs.org/wiki/%E8%AF%97(PSTF))
 - [NoGolfersLand](https://esolangs.org/wiki/NoGolfersLand)
-
-### Active follow-up
-
-- [ASCII @](https://esolangs.org/wiki/ASCII_@). Search for a public ASCII
-  front end. Check any runner against the dialect's opcode table and the
-  negative-fraction output case. The public `@` runner truncates there,
-  which differs from the ASCII `o` rule.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
