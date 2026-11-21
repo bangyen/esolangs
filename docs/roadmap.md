@@ -95,9 +95,16 @@ history at `f35aa4023`.
 
 ## Wiki candidate backlog
 
-### Reserve (10)
+The follow-up probes moved eight candidates into reserve. The working
+shortlist keeps the six builds with exhaustive arity-four results.
 
+### Reserve (18)
+
+- [AEAV](https://esolangs.org/wiki/AEAV)
+- [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
+- [StupLANG](https://esolangs.org/wiki/StupLANG)
 - [XMLfuck](https://esolangs.org/wiki/XMLfuck)
+- [AmogusScript](https://esolangs.org/wiki/AmogusScript)
 - [Methylmercury](https://esolangs.org/wiki/Methylmercury)
 - [Brainfive](https://esolangs.org/wiki/Brainfive)
 - [TOPLWARLNTMIHTACAFFTPLAIHTASTNBIHTMAIAIU](https://esolangs.org/wiki/TOPLWARLNTMIHTACAFFTPLAIHTASTNBIHTMAIAIU)
@@ -105,29 +112,25 @@ history at `f35aa4023`.
 - [CRAZYLANG](https://esolangs.org/wiki/CRAZYLANG)
 - [kxgxyo](https://esolangs.org/wiki/Kxgxyo)
 - [Tech Support Scam](https://esolangs.org/wiki/Tech_Support_Scam)
-- [Helo PkmnQ](https://esolangs.org/wiki/Helo_PkmnQ)
-- [NoGolfersLand](https://esolangs.org/wiki/NoGolfersLand)
-
-### Needs follow-up (18)
-
-- [AEAV](https://esolangs.org/wiki/AEAV)
-- [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
-- [StupLANG](https://esolangs.org/wiki/StupLANG)
-- [AmogusScript](https://esolangs.org/wiki/AmogusScript)
-- [Assembly](https://esolangs.org/wiki/Assembly)
-- [QuakeScript](https://esolangs.org/wiki/QuakeScript)
-- [~-=+:;@!_](https://esolangs.org/wiki/~-%3D%2B:;@!)
 - [Dan](https://esolangs.org/wiki/Dan)
-- [ASCII @](https://esolangs.org/wiki/ASCII_@)
-- [EmojiLang in Chinese](https://esolangs.org/wiki/EmojiLang_in_Chinese)
-- [1-866-025-4037](https://esolangs.org/wiki/1-866-025-4037)
-- [My cat predicted a rain of ash and dust](https://esolangs.org/wiki/My_cat_predicted_a_rain_of_ash_and_dust)
-- [Calculation](https://esolangs.org/wiki/Calculation)
+- [Helo PkmnQ](https://esolangs.org/wiki/Helo_PkmnQ)
 - [GotoScript](https://esolangs.org/wiki/GotoScript)
 - [Sonjalang](https://esolangs.org/wiki/Sonjalang)
-- [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks))
-- [Sakana](https://esolangs.org/wiki/Sakana)
 - [诗(PSTF)](https://esolangs.org/wiki/%E8%AF%97(PSTF))
+- [NoGolfersLand](https://esolangs.org/wiki/NoGolfersLand)
+
+### Needs follow-up (10)
+
+- [Assembly](https://esolangs.org/wiki/Assembly) — Numeric input type for the shared jump tree.
+- [QuakeScript](https://esolangs.org/wiki/QuakeScript) — String-to-number coercion in `mod`.
+- [~-=+:;@!_](https://esolangs.org/wiki/~-%3D%2B:;@!) — Address width and equality operand consumption.
+- [ASCII @](https://esolangs.org/wiki/ASCII_@) — Public ASCII front end or whole-dialect equivalence to `@`.
+- [EmojiLang in Chinese](https://esolangs.org/wiki/EmojiLang_in_Chinese) — Boolean conversion for input and assignments.
+- [1-866-025-4037](https://esolangs.org/wiki/1-866-025-4037) — When a bare output combinator fires.
+- [My cat predicted a rain of ash and dust](https://esolangs.org/wiki/My_cat_predicted_a_rain_of_ash_and_dust) — Bare-output behavior inherited from 1-866-025-4037.
+- [Calculation](https://esolangs.org/wiki/Calculation) — Whether bracketed conditionals can nest.
+- [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks)) — Comparison and control-stack effects in general programs.
+- [Sakana](https://esolangs.org/wiki/Sakana) — The truth-machine trace and the finite function-name pool.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
