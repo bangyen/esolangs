@@ -119,18 +119,12 @@ shortlist keeps the six builds with exhaustive arity-four results.
 - [诗(PSTF)](https://esolangs.org/wiki/%E8%AF%97(PSTF))
 - [NoGolfersLand](https://esolangs.org/wiki/NoGolfersLand)
 
-### Needs follow-up (10)
+### Active follow-up
 
-- [Assembly](https://esolangs.org/wiki/Assembly) — Numeric input type for the shared jump tree.
-- [QuakeScript](https://esolangs.org/wiki/QuakeScript) — String-to-number coercion in `mod`.
-- [~-=+:;@!_](https://esolangs.org/wiki/~-%3D%2B:;@!) — Address width and equality operand consumption.
-- [ASCII @](https://esolangs.org/wiki/ASCII_@) — Public ASCII front end or whole-dialect equivalence to `@`.
-- [EmojiLang in Chinese](https://esolangs.org/wiki/EmojiLang_in_Chinese) — Boolean conversion for input and assignments.
-- [1-866-025-4037](https://esolangs.org/wiki/1-866-025-4037) — When a bare output combinator fires.
-- [My cat predicted a rain of ash and dust](https://esolangs.org/wiki/My_cat_predicted_a_rain_of_ash_and_dust) — Bare-output behavior inherited from 1-866-025-4037.
-- [Calculation](https://esolangs.org/wiki/Calculation) — Whether bracketed conditionals can nest.
-- [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks)) — Comparison and control-stack effects in general programs.
-- [Sakana](https://esolangs.org/wiki/Sakana) — The truth-machine trace and the finite function-name pool.
+- [ASCII @](https://esolangs.org/wiki/ASCII_@). Search for a public ASCII
+  front end. Check any runner against the dialect's opcode table and the
+  negative-fraction output case. The public `@` runner truncates there,
+  which differs from the ASCII `o` rule.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
