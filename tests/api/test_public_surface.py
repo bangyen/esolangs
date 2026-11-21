@@ -3,7 +3,7 @@
 import ast
 import inspect
 import re
-from dataclasses import FrozenInstanceError, fields, replace
+from dataclasses import FrozenInstanceError, fields
 from importlib.resources import files
 from pathlib import Path
 
@@ -144,17 +144,17 @@ class TestPackageSurface:
             "wiki_url",
         ]
 
-    def test_language_info_accepts_the_released_slot_layout(self) -> None:
+    def test_language_info_requires_the_current_slot_layout(self) -> None:
         import pickle
 
         info = esolangs.describe(REFERENCE)
         assert info.well_known
         legacy = [getattr(info, slot.name) for slot in fields(info)[:-1]]
-        expected = replace(info, well_known=False)
-        assert esolangs.LanguageInfo(*legacy) == expected
+        with pytest.raises(TypeError, match="well_known"):
+            esolangs.LanguageInfo(*legacy)
         restored = esolangs.LanguageInfo.__new__(esolangs.LanguageInfo)
-        restored.__setstate__(legacy)
-        assert restored == expected
+        with pytest.raises(ValueError, match="shorter"):
+            restored.__setstate__(legacy)
         assert pickle.loads(pickle.dumps(info)) == info
 
     def test_every_exit_status_is_documented(self) -> None:

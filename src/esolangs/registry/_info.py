@@ -1,6 +1,6 @@
 """Public catalog result schema without runtime or compiler imports."""
 
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, fields
 from reprlib import recursive_repr
 
 from esolangs.registry._contracts import (
@@ -50,14 +50,11 @@ class LanguageInfo:
     random: bool
     examples: tuple[str, ...]
     wiki_url: str
-    well_known: bool = field(default=False, kw_only=True)
+    well_known: bool
 
     def __setstate__(self, state: list[object]) -> None:
-        """Restore records pickled before the curation field was added."""
-        slots = fields(self)
-        if len(state) == len(slots) - 1:
-            state = [*state, False]
-        for slot, value in zip(slots, state, strict=True):
+        """Restore pickles with the current field count."""
+        for slot, value in zip(fields(self), state, strict=True):
             object.__setattr__(self, slot.name, value)
 
     @recursive_repr()
