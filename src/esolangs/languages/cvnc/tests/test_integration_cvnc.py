@@ -76,10 +76,11 @@ def test_the_override_name_specifically(name: str) -> None:
     expected = artifact.evaluate([1])
     assert expected.answer == expected.observation.output == "1"
     for settings in (None, api.settings()):
-        tagged = replace(artifact, language="cv_n_c", settings=settings)
+        tagged = replace(artifact, language=" cv(n)(c) ", settings=settings)
         assert tagged.evaluate([1]) == api.prepare(tagged).evaluate([1]) == expected
         restored = esolangs.from_json("cv_n_c", api.to_json(tagged))
         assert restored.language == api.name
         assert restored.evaluate([1]) == expected
-    with pytest.raises(esolangs.ProgramError, match="generated for"):
-        api.run(replace(artifact, language="cvnc"))
+    for slug in ("cvnc", "cv_n_c"):
+        with pytest.raises(esolangs.ProgramError, match="generated for"):
+            api.run(replace(artifact, language=slug))

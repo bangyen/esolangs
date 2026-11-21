@@ -1,6 +1,7 @@
 """Immutable artifacts retain bindings, execution and persistence metadata."""
 
 import io
+import json
 import os
 import pickle
 import stat
@@ -71,13 +72,12 @@ def _check_template_width_pickle(template: esolangs.TemplateArtifact) -> None:
                 ],
             )
 
-    restored = pickle.loads(pickle.dumps(labeled))
-    assert restored == labeled
-    assert restored.generation_width == labeled.generation_width
-    legacy = pickle.loads(pickle.dumps(PreWidth()))
-    assert legacy == replace(labeled, generation_width=None)
-    assert legacy.label == labeled.label
-    assert legacy.generation_width is None
+    for artifact in (labeled, replace(labeled, generation_width=None)):
+        restored = pickle.loads(pickle.dumps(artifact))
+        assert restored == artifact
+        assert restored.generation_width == artifact.generation_width
+    with pytest.raises(ValueError, match="shorter"):
+        pickle.loads(pickle.dumps(PreWidth()))
 
 
 @pytest.mark.medium
@@ -541,6 +541,25 @@ def test_retained_settings_accept_lexical_owner_spelling(language: str) -> None:
         assert api.catalog.resolve(foreign) == api.name
         with pytest.raises(esolangs.ArgumentError, match="settings belong to"):
             replace(generated, language=foreign, settings=settings)
+
+
+def test_saved_owner_must_keep_its_punctuation() -> None:
+    declaration = esolangs.Language(REFERENCE).catalog.languages[REFERENCE]
+    for name in ("Scoped (Runtime)", "Scoped Runtime!"):
+        owner = replace(declaration, name=name, id="")
+        catalog = esolangs.Catalog([owner])
+        slug = "scoped_runtime"
+        assert catalog.resolve(slug) == name
+        api = catalog.bind(name)
+        artifact = api.from_source("+.", settings=api.settings())
+        document = api.to_json(artifact)
+        assert api.run(api.from_json(document)).output == "\x01"
+        with pytest.raises(esolangs.ArgumentError, match="settings belong to"):
+            replace(artifact, language=slug)
+        saved = json.loads(document)
+        saved["language"] = slug
+        with pytest.raises(esolangs.ProgramError, match="program language must be"):
+            api.from_json(json.dumps(saved))
 
 
 @pytest.mark.skipif(os.name != "posix", reason="requires POSIX symlink traversal")

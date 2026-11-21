@@ -480,17 +480,15 @@ def _load_template(
         for pair in pairs
     ):
         raise ValueError("setters must be pairs of strings")
-    spans = None
-    if "spans" in value:
-        raw = value["spans"]
-        if not isinstance(raw, list) or any(
-            not isinstance(span, list)
-            or len(span) != 2
-            or any(type(offset) is not int for offset in span)
-            for span in raw
-        ):
-            raise ValueError("template spans must be pairs of offsets")
-        spans = tuple((start, end) for start, end in raw)
+    raw = value["spans"]
+    if not isinstance(raw, list) or any(
+        not isinstance(span, list)
+        or len(span) != 2
+        or any(type(offset) is not int for offset in span)
+        for span in raw
+    ):
+        raise ValueError("template spans must be pairs of offsets")
+    spans = tuple((start, end) for start, end in raw)
     return TemplateArtifact(
         value["source"],
         name,
@@ -552,9 +550,9 @@ def from_json(
         if kind == "png" and "scale" in value:
             fields.add("scale")
         if kind == "template":
-            fields |= {"char", "setters"}
-            # Early version-1 writers relied on the template's inferred spans.
-            fields |= value.keys() & {"spans", "generation_width"}
+            fields |= {"char", "setters", "spans"}
+            if "generation_width" in value:
+                fields.add("generation_width")
         elif "input_arity" in value:
             fields.add("input_arity")
         if set(value) != fields:

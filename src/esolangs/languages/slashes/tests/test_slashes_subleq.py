@@ -120,15 +120,18 @@ def test_slashes_literal_dollar_and_serialized_template() -> None:
         '"version":1}'
     )
     api = esolangs.Language("///")
-    artifact = api.from_json(legacy)
+    with pytest.raises(esolangs.ProgramError, match="unexpected or missing fields"):
+        api.from_json(legacy)
+    value = json.loads(legacy)
+    start = value["source"].index("$")
+    value["spans"] = [[start, start + 1]]
+    artifact = api.from_json(json.dumps(value))
     assert isinstance(artifact, esolangs.TemplateArtifact)
-    start = artifact.source.index("$")
     assert artifact.spans == ((start, start + 1),)
     for bit in (0, 1):
         assert api.run(artifact.fill([bit])).output == str(bit)
     canonical = api.to_json(artifact)
-    value = json.loads(canonical)
-    assert value == {**json.loads(legacy), "spans": [[start, start + 1]]}
+    assert json.loads(canonical) == value
     assert api.to_json(api.from_json(canonical)) == canonical
     for spans in (None, [], [[True, start + 1]], [[start + 1, start + 2]]):
         with pytest.raises(esolangs.ProgramError, match="span"):

@@ -10,7 +10,6 @@ from collections.abc import Iterable, Iterator
 from dataclasses import KW_ONLY, dataclass, field
 from inspect import getattr_static
 from os import PathLike
-from typing import ClassVar
 
 from esolangs.exceptions import ArgumentError, GeneratorCapError, ProgramError
 from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failures
@@ -121,8 +120,8 @@ class CompressedText:
     _: KW_ONLY
     limits: TextLimits | None = None
     _size: int = field(init=False, repr=False)
-    _has_newline: ClassVar[bool | None] = None
-    _tail: ClassVar[str | None] = None
+    _has_newline: bool = field(init=False, repr=False, compare=False)
+    _tail: str = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         """Validate the stream and measure its expanded characters."""
@@ -145,6 +144,19 @@ class CompressedText:
         object.__setattr__(self, "_size", size)
         object.__setattr__(self, "_has_newline", has_newline)
         object.__setattr__(self, "_tail", tail)
+
+    def __setstate__(
+        self, state: dict[str, object] | tuple[dict[str, object], dict[str, object]]
+    ) -> None:
+        """Restore measured text and any subclass slots."""
+        attributes, slots = state if isinstance(state, tuple) else (state, {})
+        if type(attributes.get("_has_newline")) is not bool or not isinstance(
+            attributes.get("_tail"), str
+        ):
+            raise ValueError("compressed text pickle requires measured line metadata")
+        vars(self).update(attributes)
+        for name, value in slots.items():
+            object.__setattr__(self, name, value)
 
     def chunks(self) -> Iterator[str]:
         """Yield decoded text in bounded chunks, validating gzip and UTF-8."""
@@ -251,8 +263,8 @@ class CompressedText:
         size: int,
         limits: TextLimits | None,
         *,
-        has_newline: bool | None,
-        tail: str | None,
+        has_newline: bool,
+        tail: str,
     ) -> CompressedText:
         """Build from a stream already known valid and ``size`` characters long.
 
@@ -268,22 +280,12 @@ class CompressedText:
         return text
 
     def _is_multiline(self) -> bool:
-        """Use the newline measured at creation, with a fallback for old pickles."""
-        known = self._has_newline
-        return (
-            any("\n" in chunk for chunk in CompressedText.chunks(self))
-            if known is None
-            else known
-        )
+        """Return whether the measured text contains a newline."""
+        return self._has_newline
 
     def _last_character(self) -> str:
-        """Return the decoded tail, inspecting old records only if needed."""
-        tail = self._tail
-        if tail is None:
-            tail = ""
-            for chunk in CompressedText.chunks(self):
-                tail = chunk[-1:] or tail
-        return tail
+        """Return the measured trailing character, or empty for empty text."""
+        return self._tail
 
     def _inherit_limits(self, original: TextLimits | None) -> CompressedText:
         """Apply both versions' caps to the stored stream and measured length."""

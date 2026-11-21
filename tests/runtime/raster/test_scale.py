@@ -313,7 +313,7 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
     api = catalog.bind(owner.name)
     raster = Raster((((1, 2, 3),),))
     path = tmp_path / "source.png"
-    for spelling in (" SCOPED-DRAWING ", " scoped_drawing! "):
+    for spelling in (" SCOPED-DRAWING! ", " scoped_drawing! "):
         tagged = png.write_metadata(
             raster.to_png(), {"version": 1, "language": spelling, "settings": {}}
         )
@@ -325,13 +325,12 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
         )
         path.write_bytes(tagged)
         assert api.from_file(path) == api.from_source(raster, settings=api.settings())
-    path.write_bytes(
-        png.write_metadata(
-            raster.to_png(), {"version": 1, "language": "Scoped Drawing?"}
+    for spelling in (" SCOPED-DRAWING ", "Scoped Drawing?"):
+        path.write_bytes(
+            png.write_metadata(raster.to_png(), {"version": 1, "language": spelling})
         )
-    )
-    with pytest.raises(esolangs.ProgramError, match="generated for"):
-        api.from_file(path)
+        with pytest.raises(esolangs.ProgramError, match="generated for"):
+            api.from_file(path)
 
     owner = replace(declaration, name="Café drawing!", id="")
     api = esolangs.Catalog([owner]).bind(owner.name)

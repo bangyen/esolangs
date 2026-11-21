@@ -26,7 +26,7 @@
   "Debugger.watch_stack": "(self, slot: 'int') -> 'list[object]'",
   "DialectSchema.__init__": "(self, language: 'str', choices: 'Mapping[str, tuple[Scalar, ...]]', defaults: 'Mapping[str, Scalar]') -> 'None'",
   "DialectSchema.validate": "(self, choices: 'Mapping[str, Scalar]') -> 'dict[str, Scalar]'",
-  "DialectSettings.__init__": "(self, schema: 'DialectSchema | None' = None, /, **choices: 'Scalar | DialectSchema') -> 'None'",
+  "DialectSettings.__init__": "(self, schema: 'DialectSchema', /, **choices: 'Scalar') -> 'None'",
   "DialectSettings.options": "(self) -> 'dict[str, Scalar]'",
   "ExecutionLimits.__init__": "(self, *, preparation_timeout: float | None = None, execution_timeout: float | None = None, total_timeout: float | None = None, max_steps: int | None = None, max_output: int | None = None, max_memory: int | None = None) -> None",
   "ExecutionOutcome.__init__": "(self, status: 'OutcomeStatus', observation: 'ExecutionResult', *, error: 'EsolangError | None' = None) -> None",

@@ -216,13 +216,6 @@ def _same_origin_spelling(origin: str, owner: str) -> bool:
     return bool(key) and key == _origin_spelling(owner)
 
 
-def _same_legacy_origin(origin: str, owner: str) -> bool:
-    """Accept saved slugs that omit parenthetical or terminal punctuation."""
-    # Keep the positions of inner separators (CV(N)(C) uses cv_n_c).
-    lexical_owner = owner.rstrip("!.").translate(str.maketrans("()", "  "))
-    return bool(canonical_id(origin)) and _same_origin_spelling(origin, lexical_owner)
-
-
 def _separator(c: str) -> bool:
     # Whitespace and every dash: ``'\tfor_thorn\n'``, ``'Super\xa0SNUSP'`` and
     # ``'6\u20135'`` resolved before the symbol rule and must still.
@@ -253,8 +246,4 @@ def resolve_origin(origin: str, *, catalog: Catalog) -> str | None:
     # IDs can differ from display slugs or point to unrelated languages.
     owners = catalog._by_origin_slug.get(slug, ())  # noqa: SLF001
     matches = tuple(owner for owner in owners if _same_origin_spelling(origin, owner))
-    if matches:
-        return matches[0] if len(matches) == 1 else None
-    if len(owners) == 1 and _same_legacy_origin(origin, owners[0]):
-        return owners[0]
-    return None
+    return matches[0] if len(matches) == 1 else None

@@ -342,7 +342,8 @@ def test_dialect_keys_survive_binding_and_round_trips(tmp_path: Path) -> None:
     settings = bound.settings(**choices)
     assert settings.options() == choices
     assert DialectSettings(schema, **choices) == settings
-    assert DialectSettings(schema=schema, self=2) == bound.settings(self=2)
+    with pytest.raises(TypeError, match="schema"):
+        DialectSettings(schema=schema, self=2)
     assert eval(repr(settings), {"Language": bound.catalog.bind}) == settings
     artifact = bound.from_source("+.", settings=settings)
     document = bound.to_json(artifact)
@@ -375,7 +376,10 @@ def test_dialect_keys_survive_binding_and_round_trips(tmp_path: Path) -> None:
     envelope = json.loads(document)
     for payload, message in (
         ({"kind": "gzip", "limits": None, "source": "!"}, "base64"),
-        ({"kind": "template", "char": "?", "setters": []}, "input templates"),
+        (
+            {"kind": "template", "char": "?", "setters": [], "spans": []},
+            "input templates",
+        ),
     ):
         validations.clear()
         with pytest.raises(esolangs.ProgramError, match=message):

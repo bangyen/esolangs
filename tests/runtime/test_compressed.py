@@ -2,6 +2,7 @@
 
 import gzip
 import os
+import pickle
 import stat
 from os import fspath
 from pathlib import Path
@@ -15,6 +16,19 @@ from esolangs.runtime._files import explicit_path, write_staged
 from esolangs.runtime._source import text_source
 from scripts.source_units import source_units
 from tests.support.reference import REFERENCE
+
+
+def test_pickles_require_measured_line_metadata() -> None:
+    program = CompressedText.from_chunks(("a\nb",))
+    restored = pickle.loads(pickle.dumps(program))
+    assert restored.to_gzip() == program.to_gzip()
+    assert restored._is_multiline()
+    assert restored._last_character() == "b"
+    for field in ("_has_newline", "_tail"):
+        incomplete = pickle.loads(pickle.dumps(program))
+        object.__delattr__(incomplete, field)
+        with pytest.raises(ValueError, match="requires measured line metadata"):
+            pickle.loads(pickle.dumps(incomplete))
 
 
 def test_streaming_text_round_trip_and_size(tmp_path: Path, monkeypatch) -> None:

@@ -96,15 +96,9 @@ def _origin(
     schema = settings._schema  # noqa: SLF001
     owner = schema.language
     if owner != language:
-        from esolangs.registry._catalog import (
-            _same_legacy_origin,
-            _same_origin_spelling,
-        )
+        from esolangs.registry._catalog import _same_origin_spelling
 
-        if not (
-            _same_origin_spelling(language, owner)
-            or _same_legacy_origin(language, owner)
-        ):
+        if not _same_origin_spelling(language, owner):
             raise ArgumentError(f"dialect settings belong to {owner}, not {language}")
     if type(settings) is DialectSettings:
         settings.options()
@@ -250,9 +244,11 @@ def _freeze_span(span: tuple[int, int]) -> tuple[int, int]:
 
 
 def _template_pickle_fields(artifact: TemplateArtifact) -> tuple[str, ...]:
-    return tuple(
+    """Place width after the other fields, including subclass fields."""
+    names = tuple(
         item.name for item in fields(artifact) if item.name != "generation_width"
     )
+    return (*names, "generation_width")
 
 
 @dataclass(frozen=True, slots=True)
@@ -318,23 +314,13 @@ class TemplateArtifact:
         object.__setattr__(self, "generation_width", width)
 
     def __getstate__(self) -> list[object]:
-        """Keep the old slot layout and append a width only when present."""
-        state = [getattr(self, name) for name in _template_pickle_fields(self)]
-        if self.generation_width is not None:
-            state.append(self.generation_width)
-        return state
+        """Serialize every field, including an unset width."""
+        return [getattr(self, name) for name in _template_pickle_fields(self)]
 
     def __setstate__(self, state: list[object]) -> None:
-        """Restore the template fields and an optional layout width."""
-        names = _template_pickle_fields(self)
-        width = None
-        if len(state) == len(names) + 1:
-            width = check_width(state[-1])
-            if width is None:
-                raise ValueError("invalid retained generation width")
-            state = state[:-1]
-        _restore_artifact_slots(self, state, names=names)
-        object.__setattr__(self, "generation_width", width)
+        """Restore a complete template and validate its layout width."""
+        _restore_artifact_slots(self, state, names=_template_pickle_fields(self))
+        object.__setattr__(self, "generation_width", check_width(self.generation_width))
 
     def evaluate(
         self,

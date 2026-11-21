@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from difflib import get_close_matches
 from keyword import iskeyword
-from typing import cast, overload
 from unicodedata import normalize
 
 from esolangs.exceptions import ArgumentError
@@ -135,25 +134,12 @@ class DialectSettings:
     _schema: DialectSchema
     _items: tuple[tuple[str, Scalar], ...]
 
-    @overload
-    def __init__(self, schema: DialectSchema, /, **choices: Scalar) -> None: ...
-
-    @overload
-    def __init__(self, /, *, schema: DialectSchema, **choices: Scalar) -> None: ...
-
-    def __init__(
-        self,
-        schema: DialectSchema | None = None,
-        /,
-        **choices: Scalar | DialectSchema,
-    ) -> None:
+    def __init__(self, schema: DialectSchema, /, **choices: Scalar) -> None:
         """Freeze choices against an explicit schema; use Language.settings."""
-        # Keep the keyword constructor working when no positional schema was supplied.
-        declared = choices.pop("schema", None) if schema is None else schema
-        if not _has_backing_type(declared, DialectSchema):
+        if not _has_backing_type(schema, DialectSchema):
             raise ArgumentError("dialect settings require a language schema")
-        checked = declared.validate(cast("dict[str, Scalar]", choices))
-        object.__setattr__(self, "_schema", declared)
+        checked = schema.validate(choices)
+        object.__setattr__(self, "_schema", schema)
         object.__setattr__(self, "_items", tuple(sorted(checked.items())))
 
     def __setstate__(self, state: list[object]) -> None:
