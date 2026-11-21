@@ -72,7 +72,6 @@ history at `f35aa4023`.
   on all 16 inputs, plus sampled inputs through arity ten. Each emitter has
   O(T) generation time and source size. Order favors direct constructions
   using documented operations with few open questions on the generator's path.
-  The full candidate inventory is in `5f3bcddf3:docs/roadmap.md`.
     1. [You wait here](https://esolangs.org/wiki/You_wait_here) (rev. 131213).
        A counter reset and two conditional blocks select each branch.
        `repeat`, `split` and `define` remain open outside this subset.
@@ -93,3 +92,42 @@ history at `f35aa4023`.
   - *Admission:* refresh the public-implementation check and apply the
     [curation rules](limitations.md#curation). Verify the complete
     interpreter and generator before adding each language.
+
+## Wiki candidate backlog
+
+### Reserve (10)
+
+- [XMLfuck](https://esolangs.org/wiki/XMLfuck)
+- [Methylmercury](https://esolangs.org/wiki/Methylmercury)
+- [Brainfive](https://esolangs.org/wiki/Brainfive)
+- [TOPLWARLNTMIHTACAFFTPLAIHTASTNBIHTMAIAIU](https://esolangs.org/wiki/TOPLWARLNTMIHTACAFFTPLAIHTASTNBIHTMAIAIU)
+- [FastBrain](https://esolangs.org/wiki/FastBrain)
+- [CRAZYLANG](https://esolangs.org/wiki/CRAZYLANG)
+- [kxgxyo](https://esolangs.org/wiki/Kxgxyo)
+- [Tech Support Scam](https://esolangs.org/wiki/Tech_Support_Scam)
+- [Helo PkmnQ](https://esolangs.org/wiki/Helo_PkmnQ)
+- [NoGolfersLand](https://esolangs.org/wiki/NoGolfersLand)
+
+### Needs follow-up (18)
+
+- [AEAV](https://esolangs.org/wiki/AEAV)
+- [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
+- [StupLANG](https://esolangs.org/wiki/StupLANG)
+- [AmogusScript](https://esolangs.org/wiki/AmogusScript)
+- [Assembly](https://esolangs.org/wiki/Assembly)
+- [QuakeScript](https://esolangs.org/wiki/QuakeScript)
+- [~-=+:;@!_](https://esolangs.org/wiki/~-%3D%2B:;@!)
+- [Dan](https://esolangs.org/wiki/Dan)
+- [ASCII @](https://esolangs.org/wiki/ASCII_@)
+- [EmojiLang in Chinese](https://esolangs.org/wiki/EmojiLang_in_Chinese)
+- [1-866-025-4037](https://esolangs.org/wiki/1-866-025-4037)
+- [My cat predicted a rain of ash and dust](https://esolangs.org/wiki/My_cat_predicted_a_rain_of_ash_and_dust)
+- [Calculation](https://esolangs.org/wiki/Calculation)
+- [GotoScript](https://esolangs.org/wiki/GotoScript)
+- [Sonjalang](https://esolangs.org/wiki/Sonjalang)
+- [4s (Four Stacks)](https://esolangs.org/wiki/4s_(Four_Stacks))
+- [Sakana](https://esolangs.org/wiki/Sakana)
+- [诗(PSTF)](https://esolangs.org/wiki/%E8%AF%97(PSTF))
+
+The original revision pins and screening sketches are in
+`5f3bcddf3:docs/roadmap.md`.
