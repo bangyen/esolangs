@@ -83,6 +83,12 @@ def test_a_tail_call_loop_keeps_one_frame() -> None:
     assert max(depths) <= 2
 
 
+def test_nested_definitions_do_not_use_python_recursion() -> None:
+    depth = 1200
+    code = "a(" * depth + "(x)" + ")" * depth + " a" * depth
+    assert _out(code) == "x"
+
+
 @pytest.mark.parametrize(
     ("code", "message"),
     [

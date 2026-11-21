@@ -24,6 +24,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
+from esolangs.runtime.memory import format_integer
 
 
 def q_bal(truth_table: str) -> str:
@@ -37,7 +38,8 @@ def q_bal(truth_table: str) -> str:
     terms = [
         "in" if weight.get(i) == 1 else f"in\\{weight.get(i, 0)}" for i in range(n)
     ]
-    return f"{int(table[::-1], 2)}/2^({'+'.join(terms)})|2->out"
+    number = format_integer(int(table[::-1], 2))
+    return f"{number}/2^({'+'.join(terms)})|2->out"
 
 
 def q_bal_request(request: GenerationRequest) -> Program:

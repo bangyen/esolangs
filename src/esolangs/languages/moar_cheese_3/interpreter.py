@@ -1,8 +1,8 @@
 """Interpreter for moar cheese :3.
 
-A program is a space-separated list of instructions run left to right
-over a queue of bytes, initially empty.  At halt the queue prints as a
-string.  There is no input.
+A program is a list of instructions separated by spaces or newlines, run
+left to right over an initially empty queue of bytes.  At halt the queue
+prints as a string.  There is no input.
 
 Commands:
     ``c(code)``  (re)define the instruction ``c``, one ASCII character, to
@@ -59,7 +59,7 @@ type _Op = tuple[Any, ...]
 def _error(message: str) -> ValueError:
     return syntax_error(
         message,
-        "write c(code), (c), () or c, separated by spaces",
+        "write c(code), (c), () or c, separated by spaces or newlines",
         error_type=ProgramError,
     )
 
@@ -71,46 +71,53 @@ def _parse(code: str) -> tuple[tuple[_Op, ...], ...]:
     """Return every body's instructions; body 0 is the program."""
     if bad := next((c for c in code if not " " <= c <= "~" and c != "\n"), None):
         raise _error(f"{bad!r} is not printable ASCII")
-    bodies: list[tuple[_Op, ...]] = [()]
+    # Find body ends once so nested definitions neither recurse nor rescan.
+    opens: list[int] = []
+    closes: dict[int, int] = {}
+    for i, char in enumerate(code):
+        if char == "(":
+            opens.append(i)
+        elif char == ")" and opens:
+            closes[opens.pop()] = i
 
-    def body(start: int, stop: int) -> tuple[_Op, ...]:
-        ops: list[_Op] = []
-        i = start
-        while i < stop:
-            if code[i] in _SEPARATORS:
-                i += 1
-                continue
-            if ops and code[i - 1] not in _SEPARATORS:
-                raise _error(f"no space before column {i + 1}")
-            if code.startswith("()", i):
-                ops.append(("deq", ""))
-                i += 2
-            elif code[i] == "(":
-                if i + 2 >= stop or code[i + 2] != ")" or code[i + 1] in "()\n":
-                    raise _error(f"bad enqueue at column {i + 1}")
-                ops.append(("enq", code[i + 1]))
-                i += 3
-            elif code[i] == ")":
-                raise _error(f"unmatched ) at column {i + 1}")
-            elif i + 1 < stop and code[i + 1] == "(":
-                depth, j = 1, i + 2
-                while depth:
-                    if j >= stop:
-                        raise _error(f"unclosed body at column {i + 2}")
-                    depth += {"(": 1, ")": -1}.get(code[j], 0)
-                    j += 1
-                bodies.append(())
-                index = len(bodies) - 1
-                bodies[index] = body(i + 2, j - 1)
-                ops.append(("def", code[i], index))
-                i = j
-            else:
-                ops.append(("call", code[i]))
-                i += 1
-        return tuple(ops)
-
-    bodies[0] = body(0, len(code))
-    return tuple(bodies)
+    bodies: list[list[_Op]] = [[]]
+    stack = [(0, len(code))]
+    i = 0
+    while stack:
+        index, stop = stack[-1]
+        if i >= stop:
+            stack.pop()
+            i = stop + 1
+            continue
+        if code[i] in _SEPARATORS:
+            i += 1
+            continue
+        ops = bodies[index]
+        if ops and code[i - 1] not in _SEPARATORS:
+            raise _error(f"no space before column {i + 1}")
+        if code.startswith("()", i):
+            ops.append(("deq", ""))
+            i += 2
+        elif code[i] == "(":
+            if i + 2 >= stop or code[i + 2] != ")" or code[i + 1] in "()\n":
+                raise _error(f"bad enqueue at column {i + 1}")
+            ops.append(("enq", code[i + 1]))
+            i += 3
+        elif code[i] == ")":
+            raise _error(f"unmatched ) at column {i + 1}")
+        elif i + 1 < stop and code[i + 1] == "(":
+            end = closes.get(i + 1)
+            if end is None:
+                raise _error(f"unclosed body at column {i + 2}")
+            target = len(bodies)
+            bodies.append([])
+            stack.append((target, end))
+            ops.append(("def", code[i], target))
+            i += 2
+        else:
+            ops.append(("call", code[i]))
+            i += 1
+    return tuple(map(tuple, bodies))
 
 
 def _advance(

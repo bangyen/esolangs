@@ -77,7 +77,7 @@ Decisions:
 import re
 from collections import deque
 from collections.abc import Mapping
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 
 from esolangs.exceptions import ArgumentError, HaltError, ProgramError
 from esolangs.languages.q_bal.lifecycle import CAPABILITIES
@@ -89,6 +89,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer, parse_integer, repr_value
 from esolangs.runtime.source_hints import syntax_error
 
 _TOKEN = re.compile(
@@ -228,9 +229,9 @@ def _literal(kind: str, tok: str) -> _Lit:
         return _Lit(tuple(map(ord, tok[1:-1])))
     inner = tok[1:-1].strip()
     parts = [p.strip() for p in inner.split(",")] if inner else []
-    if not all(p.isdigit() for p in parts):
+    if not all(p.isdecimal() for p in parts):
         raise _bad(tok, "a literal queue holds numbers: {1,4,9}")
-    return _Lit(tuple(map(int, parts)))
+    return _Lit(tuple(map(parse_integer, parts)))
 
 
 def _ref(toks: list[tuple[str, str]], pos: int, text: str) -> tuple[_Ref, int]:
@@ -262,7 +263,7 @@ def _expr(toks: list[tuple[str, str]], text: str) -> _Expr:
                 ops.append(tok)
                 pos += 1
             elif kind == "num":
-                out.append(int(tok))
+                out.append(parse_integer(tok))
                 pos += 1
                 want = False
             elif kind in ("str", "lit"):
@@ -528,12 +529,14 @@ def _apply(op: str, a: int, b: int) -> int:
         return a * b
     if op in ("/", "|"):
         if b == 0:
-            raise HaltError(f"{a} {op} 0 divides by zero")
+            raise HaltError(f"{format_integer(a)} {op} 0 divides by zero")
         q = abs(a) // abs(b) * (1 if (a < 0) == (b < 0) else -1)
         return q if op == "/" else a - b * q
     if op == "^":
         if b < 0:
-            raise HaltError(f"{a} ^ {b} is not an integer")
+            raise HaltError(
+                f"{format_integer(a)} ^ {format_integer(b)} is not an integer"
+            )
         return int(a**b)
     return int(
         {
@@ -553,7 +556,8 @@ def _text(codes: tuple[object, ...]) -> str:
     chars = []
     for code in codes:
         if not isinstance(code, int) or not 0 <= code <= 0x10FFFF:
-            raise HaltError(f"{code!r} is not a character code")
+            number = repr_value(code, format_large_int=format_integer)
+            raise HaltError(f"{number} is not a character code")
         chars.append(chr(code))
     return "".join(chars)
 
@@ -667,7 +671,7 @@ def _attach(
     if kind == "out":
         if whole or any(not isinstance(v, int) for v in values):
             raise HaltError("out prints numbers")
-        return "".join(f"{v}\n" for v in values), call
+        return "".join(f"{format_integer(v)}\n" for v in cast(list[int], values)), call
     if kind == "'out":
         if whole and typ == "QQ":
             return "".join(_text(v) + "\n" for v in values), call  # type: ignore[arg-type]
@@ -763,7 +767,7 @@ class _Machine:
         if kind == "line":
             return kind, tuple(map(ord, raw))
         if _NUMBER.fullmatch(raw.strip()):
-            return kind, int(raw.strip())
+            return kind, parse_integer(raw)
         error = ArgumentError(f"in input {raw!r} is not a decimal integer")
         self._rejected.remember(error)
         raise error
@@ -804,7 +808,9 @@ class _Machine:
         line = self.heap[frame.pc][0]
         assert isinstance(line, int)
         if line < 1:
-            raise HaltError(f"line {line} does not exist; lines count from 1")
+            raise HaltError(
+                f"line {format_integer(line)} does not exist; lines count from 1"
+            )
         stmt = self.bodies[frame.body][line - 1]
         while True:
             try:
@@ -814,6 +820,9 @@ class _Machine:
                 break
             except _NeedInputError as need:
                 self.inbox.append(self._read(need.kind))
+        # A partial write retries the statement against the same input and queues.
+        if effect.out:
+            self._writer.write(self.io, effect.out)
         for _ in range(effect.used):
             self.inbox.popleft()
         for qid, count in effect.pops:
@@ -824,8 +833,6 @@ class _Machine:
             self.heap[qid] = deque(items)
         for qid, value in effect.pushes:
             self.heap[qid].append(value)
-        if effect.out:
-            self._writer.write(self.io, effect.out)
         if effect.declare is not None:
             self._declare(frame, stmt.body, *effect.declare)
         pc = self.heap[frame.pc]

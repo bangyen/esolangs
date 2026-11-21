@@ -86,6 +86,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime.io import IO, _BufferedOutput
+from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
 _NODE = re.compile(r"\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)\s*:(.*)")
@@ -163,6 +164,10 @@ def _bad(text: str, hint: str) -> ValueError:
     return syntax_error(f"cannot parse {text!r}", hint, error_type=ProgramError)
 
 
+def _bad_node(x: int, y: int, hint: str) -> ValueError:
+    return _bad(f"({format_integer(x)},{format_integer(y)})", hint)
+
+
 def _unsupported(what: str) -> ValueError:
     return syntax_error(
         f"{what} is not implemented",
@@ -178,7 +183,7 @@ def _literal(tok: str) -> _Arg:
     if tok[:1] in ("'", '"') and len(tok) >= 2 and tok[-1] == tok[0]:
         return tok[1:-1]
     if _INT.fullmatch(tok):
-        return _int(int(tok))
+        return _int(parse_integer(tok))
     if _FLOAT.fullmatch(tok):
         return _Float(_f32(float(tok)))
     if tok in ("TRUE", "FALSE"):
@@ -194,7 +199,7 @@ def _literal(tok: str) -> _Arg:
 
 def _int(value: int) -> int:
     if not _INT_MIN <= value <= _INT_MAX:
-        raise HaltError(f"{value} overflows a 32-bit INT")
+        raise HaltError(f"{format_integer(value)} overflows a 32-bit INT")
     return value
 
 
@@ -210,7 +215,7 @@ def _number(value: _Value) -> int | _Float | None:
     if not text:
         return 0
     if _INT.fullmatch(text):
-        number = int(text)
+        number = parse_integer(text)
         return number if _INT_MIN <= number <= _INT_MAX else None
     if _FLOAT.fullmatch(text):
         return _Float(_f32(float(text)))
@@ -396,7 +401,7 @@ def _split(rest: list[str], _text: str) -> _Cmd | None:
 
 def _checkpoint(rest: list[str], _text: str) -> _Cmd | None:
     if len(rest) == 1 and rest[0].isdigit():
-        return _Cmd("CHECKPOINT", (int(rest[0]),))
+        return _Cmd("CHECKPOINT", (parse_integer(rest[0]),))
     return None
 
 
@@ -528,9 +533,10 @@ def _metadata(line: str, meta: dict[str, int]) -> None:
         if value not in ("true", "false", "auto"):
             raise _bad(line, "@debug is true, false or auto")
         return
-    if not _INT.fullmatch(value) or int(value) < 1:
+    number = parse_integer(value) if _INT.fullmatch(value) else 0
+    if number < 1:
         raise _bad(line, f"@{key} needs a positive integer")
-    meta[key] = int(value)
+    meta[key] = number
 
 
 def _parse(code: str) -> tuple[_Body, ...]:
@@ -545,7 +551,9 @@ def _parse(code: str) -> tuple[_Body, ...]:
             if line.startswith("@"):
                 _metadata(line, own)
             elif m := _NODE.fullmatch(line):
-                nodes.append((int(m[1]), int(m[2]), _command(m[3].strip())))
+                nodes.append(
+                    (parse_integer(m[1]), parse_integer(m[2]), _command(m[3].strip()))
+                )
             else:
                 raise _bad(line, "a line is @key value or (x,y):COMMAND")
         meta |= own
@@ -561,9 +569,9 @@ def _parse(code: str) -> tuple[_Body, ...]:
         cells: dict[tuple[int, int], list[int]] = {}
         for i, (x, y, cmd) in enumerate(nodes):
             if not (1 <= x <= width and 1 <= y <= height):
-                raise _bad(f"({x},{y})", "a node lies outside the program space")
+                raise _bad_node(x, y, "a node lies outside the program space")
             if cmd.verb == "RETURN" and index == 0:
-                raise _bad(f"({x},{y})", "RETURN is only supported in subroutines")
+                raise _bad_node(x, y, "RETURN is only supported in subroutines")
             cells.setdefault((x, y), []).append(i)
         checkpoints = tuple(
             (int(cmd.args[0]), x, y)  # type: ignore[call-overload]
@@ -584,7 +592,7 @@ def _parse(code: str) -> tuple[_Body, ...]:
     for body in bodies:
         for x, y, cmd in body.nodes:
             if cmd.verb == "CALL" and cmd.args[0] not in names:
-                raise _bad(f"({x},{y})", f"no subroutine named {cmd.args[0]}")
+                raise _bad_node(x, y, f"no subroutine named {cmd.args[0]}")
     return tuple(bodies)
 
 
@@ -891,12 +899,12 @@ class _Machine:
         )
 
     @property
-    def ip(self) -> tuple[int, float, float] | None:
-        """The running body and its tracer's position; None once halted."""
+    def ip(self) -> tuple[int, int, int, int, int] | None:
+        """Return the body and the tracer coordinates as exact integer ratios."""
         if not self.frames:
             return None
         f = self.frames[-1]
-        return (f.body, f.x, f.y)
+        return (f.body, *f.x.as_integer_ratio(), *f.y.as_integer_ratio())
 
     def _state(self) -> tuple[object, ...]:
         return tuple(
@@ -962,7 +970,7 @@ class _Machine:
             self._move(frame)
             return
         body = self.bodies[frame.body]
-        cmd = body.nodes[frame.pending.popleft()][2]
+        cmd = body.nodes[frame.pending[0]][2]
         read = self._read(frame) if cmd.verb == "INPUT" else None
         effect = _advance(
             cmd,
@@ -977,15 +985,16 @@ class _Machine:
             read,
         )
         self._apply(frame, effect)
+        frame.pending.popleft()
 
     def _move(self, frame: _Frame) -> None:
-        self.moves += 1
-        if self.steps is not None and self.moves > self.steps:
-            raise HaltError(f"more than @steps {self.steps} moves")
+        if self.steps is not None and self.moves >= self.steps:
+            raise HaltError(f"more than @steps {format_integer(self.steps)} moves")
         body = self.bodies[frame.body]
         (x, y), held = _advance_move(
             (frame.x, frame.y), frame.heading, frame.radius, body.cells
         )
+        self.moves += 1
         frame.x, frame.y = x, y
         if not (1 <= x <= frame.width and 1 <= y <= frame.height):
             self._finish(None)

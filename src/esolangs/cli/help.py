@@ -136,7 +136,7 @@ example:
                      [--answer-mode MODE] [--inputs N]
 
 List matching languages, one per line, well-known first (`--json` keeps
-registry order). Filters combine with AND; filter on
+the Python API's name order). Filters combine with AND; filter on
 other facts with `list --json --details | jq`.
 
 options:

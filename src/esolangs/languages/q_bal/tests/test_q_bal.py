@@ -1,9 +1,12 @@
 """Tests for the Q-BAL interpreter, against the specification's examples."""
 
+import sys
+
 import pytest
 
+from esolangs import Language
 from esolangs.exceptions import HaltError, ProgramError
-from esolangs.languages.q_bal.interpreter import run
+from esolangs.languages.q_bal.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
 
 _STRINGS = (
@@ -82,6 +85,53 @@ def test_a_function_returns_and_can_end_the_program() -> None:
     assert _out(code) == ""
     code = "F f\n; ->\n5 -> out\nF\n-> f\n9 -> out"
     assert _out(code) == "9\n"
+
+
+def test_integers_ignore_pythons_decimal_limit() -> None:
+    language = Language("Q-BAL")
+    number = "1" + "0" * 1000
+    previous = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        assert language.run(f"{number} -> out").output == number + "\n"
+        assert language.run(f"Q x = {{{number}}}\nx -> out").output == number + "\n"
+        assert language.run("in -> out", stdin=f"-{number}\n").output == f"-{number}\n"
+        assert language.run("10 ^ 1000 -> out").output == number + "\n"
+        with pytest.raises(HaltError, match="divides by zero"):
+            language.run(f"{number} / 0 -> out")
+        with pytest.raises(ProgramError, match="literal queue holds numbers"):
+            language.run("Q x = {²}")
+
+        table = "0" * (2**14 - 1) + "1"
+        artifact = language.generate(table)
+        assert language.evaluate(artifact, [0] * 14).answer == "0"
+        assert language.evaluate(artifact, [1] * 14).answer == "1"
+    finally:
+        sys.set_int_max_str_digits(previous)
+
+
+def test_output_retry_uses_the_same_number() -> None:
+    class InterruptedOutput(ScriptedIO):
+        def print_str(self, text: str) -> None:
+            if not self.getvalue():
+                super().print_str(text[:1])
+                raise HaltError("output interrupted")
+            super().print_str(text)
+
+    for source, stdin, setup_steps, reads in (
+        ("in -> out", "123\n456\n", 0, 1),
+        ("Q x = {123,456}\nx -> out", "", 1, 0),
+    ):
+        io = InterruptedOutput(stdin)
+        machine = _Machine(source, io)
+        for _ in range(setup_steps):
+            machine.step()
+        with pytest.raises(HaltError, match="output interrupted"):
+            machine.step()
+        assert (io.getvalue(), io.reads) == ("1", reads)
+        machine.step()
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == ("123\n", reads)
 
 
 @pytest.mark.parametrize(

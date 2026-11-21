@@ -598,7 +598,7 @@ unsupported stepping is distinct from a cap or timeout.
 
 `describe(language)` returns the language’s API metadata.
 `esolangs describe --json <language>` prints it; `esolangs list --details`
-shows the `gen`, `tmpl`, and `ex` markers. Fields include:
+shows the `gen`, `tmpl`, `ex`, `int`, and `known` markers. Fields include:
 
 | Field | Meaning |
 | --- | --- |
@@ -611,6 +611,7 @@ shows the `gen`, `tmpl`, and `ex` markers. Fields include:
 | `parameterized` | `generate` returns a template for `instantiate` |
 | `reads_input` | Boolean rows use the language's stdin encoding |
 | `random` | the interpreter draws at random, so `run(seed=...)` applies |
+| `well_known` | at least 50 esolangs wiki pages link to the language |
 
 `help(esolangs.describe)` lists every field. `name` is the display name
 (`///`); `id` is the same language as an identifier (`slashes`), accepted

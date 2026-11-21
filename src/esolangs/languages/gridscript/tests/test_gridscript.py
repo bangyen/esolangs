@@ -1,10 +1,12 @@
 """Tests for the GridScript interpreter, against the page's sample programs."""
 
 import re
+import sys
 from pathlib import Path
 
 import pytest
 
+from esolangs import Language
 from esolangs.exceptions import HaltError, ProgramError
 from esolangs.languages.gridscript.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
@@ -122,6 +124,65 @@ def test_values_casts_and_the_buffer() -> None:
     leave = "##F.\n(1,1):START\n(2,1):STORE 4\n"
     code = _HEAD + "(2,1):CALL F GIVING r\n(2,1):PRINT r\n(2,1):PRINT 5\n\n" + leave
     assert _out(code) == "5"  # leaving the space returns nothing: r is NULL
+
+
+def test_decimal_operands_ignore_pythons_digit_limit() -> None:
+    language = Language("GridScript")
+    wide = "9" * 4301
+    padded = "\N{ARABIC-INDIC DIGIT ZERO}" * 4301
+    source = (
+        _HEAD + f"@steps {wide}\n(2,1):CHECKPOINT {wide}\n"
+        f"({padded}\N{ARABIC-INDIC DIGIT TWO},1):INPUT INT TO a\n(2,1):PRINT a\n"
+        f"(2,1):PRINT +{padded}\N{ARABIC-INDIC DIGIT ONE}"
+    )
+    previous = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        for isolated in (False, True):
+            assert language.run(source, stdin=wide, isolated=isolated).output == "1"
+            with pytest.raises(HaltError, match="overflows a 32-bit INT"):
+                language.run(_HEAD + f"(2,1):PRINT {wide}", isolated=isolated)
+            with pytest.raises(ProgramError, match="a node lies outside"):
+                language.run(_HEAD + f"({wide},1):PRINT 1", isolated=isolated)
+    finally:
+        sys.set_int_max_str_digits(previous)
+
+
+def test_fractional_tracer_positions_can_be_breakpoints() -> None:
+    language = Language("GridScript")
+    code = _HEAD.replace("@height 1", "@height 3") + "(2,1):GO 45"
+    observer = language.make_debugger(code)
+    for _ in range(3):
+        observer.step()
+    assert observer.ip == (0, 693, 256, 437, 256)
+
+    debugger = language.make_debugger(code)
+    debugger.break_at(observer.ip)
+    assert debugger.run() == "breakpoint"
+    assert debugger.ip == observer.ip
+
+
+@pytest.mark.parametrize(
+    ("body", "message", "output"),
+    [
+        (
+            "(2,1):PRINT 'prefix'\n(2,1):DIVIDE BY 0\n(2,1):PRINT 'suffix'",
+            "DIVIDE by zero",
+            "prefix",
+        ),
+        ("@steps 1\n(2,1):GO EAST", "more than @steps 1 moves", ""),
+    ],
+)
+def test_failed_steps_remain_pending(body: str, message: str, output: str) -> None:
+    debugger = Language("GridScript").make_debugger(_HEAD + body)
+    with pytest.raises(HaltError, match=message):
+        debugger.run()
+    snapshot = debugger.snapshot()
+    for _ in range(2):
+        with pytest.raises(HaltError, match=message):
+            debugger.step()
+        assert debugger.snapshot() == snapshot
+        assert debugger.output == output
 
 
 def test_errors() -> None:

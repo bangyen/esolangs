@@ -3,7 +3,7 @@
 import ast
 import inspect
 import re
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, fields, replace
 from importlib.resources import files
 from pathlib import Path
 
@@ -143,6 +143,19 @@ class TestPackageSurface:
             "width_effect",
             "wiki_url",
         ]
+
+    def test_language_info_accepts_the_released_slot_layout(self) -> None:
+        import pickle
+
+        info = esolangs.describe(REFERENCE)
+        assert info.well_known
+        legacy = [getattr(info, slot.name) for slot in fields(info)[:-1]]
+        expected = replace(info, well_known=False)
+        assert esolangs.LanguageInfo(*legacy) == expected
+        restored = esolangs.LanguageInfo.__new__(esolangs.LanguageInfo)
+        restored.__setstate__(legacy)
+        assert restored == expected
+        assert pickle.loads(pickle.dumps(info)) == info
 
     def test_every_exit_status_is_documented(self) -> None:
         """70 and 120 were raised by ``main`` but listed in no help text.

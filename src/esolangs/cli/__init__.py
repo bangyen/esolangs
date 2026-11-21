@@ -270,7 +270,7 @@ def _list(rest: list[str]) -> None:
         names = _catalog_names(options, flags, catalog=catalog)
     if not as_json:
         # Well-known first, so a newcomer meets brainfuck before the 100-odd
-        # first implementations; JSON keeps registry order for scripts.
+        # first implementations; JSON keeps list_languages() order for scripts.
         names.sort(key=lambda name: not _well_known(catalog.languages[name]))
     if not details:
         if as_json:
