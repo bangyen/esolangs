@@ -2,6 +2,7 @@
 
 import pytest
 
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import (
     ArgumentError,
     HaltError,
@@ -83,6 +84,7 @@ def test_the_array_example_fills_ten_cells() -> None:
         ("start(0)\nflip(1==0&&1==0||1==1)\noutput(1)", "", ""),
         ("start(0)\noutput(0-7%3,new,7/2,new,1/4)", "", "2\n3.5\n0.25"),
         ('start(0)\nstring S = input\noutput(S,"|")', " a b \r\n", " a b |"),
+        ("start(0)\nstring S = input\noutput(S)", "A\r\r\n", "A\r"),
         ("start(0)\nnum N = input\noutput(N+1)", " -1.5 \n", "-0.5"),
         ("start(0)\n\n   \nstop\noutput(1)", "", ""),
         ("start(0)\nnum N(1+1) = 5\noutput(N(2))", "", "5"),
@@ -120,6 +122,22 @@ def test_rulings(code: str, stdin: str, expected: str) -> None:
 def test_errors(code: str, stdin: str, error: type[Exception]) -> None:
     with pytest.raises(error):
         _out(code, stdin)
+
+
+def test_rejected_assignment_retries_keep_the_first_read() -> None:
+    api = Language("Flipscript")
+    code = "start(0)\nnum X = 1\nstring X = input"
+    stdin = "first\nsecond\n"
+    limits = ExecutionLimits(max_steps=10)
+    first = api.execute(code, stdin=stdin, limits=limits)
+    assert first.status == "fault"
+    assert first.observation.input_position == len("first\n")
+
+    debugger = api.make_debugger(code, stdin=stdin)
+    for resume in (lambda: debugger.run(limits=limits), debugger.step, debugger.step):
+        with pytest.raises(HaltError, match="X is already a num"):
+            resume()
+        assert debugger.observation == first.observation
 
 
 def test_a_jump_past_the_file_halts() -> None:

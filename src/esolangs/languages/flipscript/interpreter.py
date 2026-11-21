@@ -535,9 +535,14 @@ class _Machine:
         state = (self.way, self.ind)
         typ = _reads(state, self.lines, self.env, self.decays)
         read = None if typ is None else self._read(typ)
-        (self.way, ind), out, store, left = _advance(
-            state, self.lines, self.env, self.decays, read
-        )
+        try:
+            (self.way, ind), out, store, left = _advance(
+                state, self.lines, self.env, self.decays, read
+            )
+        except (HaltError, ValueError) as error:
+            if read is not None:
+                self._rejected.remember(error)
+            raise
         if out:
             self._writer.write(self.io, out)
         if store is not None:
@@ -547,7 +552,7 @@ class _Machine:
         self.ind = ind
 
     def _read(self, typ: str) -> _Value:
-        raw = self._rejected.read(self.io, self.io.input_str).removesuffix("\r")
+        raw = self._rejected.read(self.io, self.io.input_str)
         if typ == "string":
             return raw
         text = raw.strip()

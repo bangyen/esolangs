@@ -60,6 +60,7 @@ def test_the_pages_sample_programs() -> None:
     # "halts when either 0 or the empty string is given"
     assert _out(cat, "ab\ncd\n0\nef\n") == "abcd"
     assert _out(cat, "ab\n\n") == "ab"
+    assert _out(cat, "ab\r\r\n\n") == "ab\r"
     assert _out(_TRUTH, "0\n") == "0"
     assert _prefix(_TRUTH, 200, "1\n") == "1" * 12
     assert _out(_FACTORIAL, "5\n") == "120"

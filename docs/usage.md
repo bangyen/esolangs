@@ -46,6 +46,9 @@ See each command’s `--help` for option details.
 | `--inputs N` | list | declared generator cap permits N; table restrictions still apply |
 | `--spec` | describe | print the interpreter's own description of the language |
 
+`list --json --details` uses the filter's `input_shape` value. Template
+languages show `"template"` in the list and `None` in `describe()`.
+
 `encode-inputs` and `read-answer` wrap `run` for one input row:
 
 - LaserFuck:
@@ -665,8 +668,8 @@ generated program text, debugger presentation, internal modules, and private
 `_` names may change without deprecation; generated programs retain
 behaviour, not spelling or size.
 
-From 2.0, a breaking public change requires a major release; until then a
-minor release may break any of the above.
-[CHANGELOG.md](CHANGELOG.md) lists every break first. Coexisting replacements
-are documented for at least one minor release.
+A breaking public change requires a major release. Before 2.0, minor
+releases could break any of the above. [CHANGELOG.md](CHANGELOG.md) lists
+breaks first, including the exceptions in 2.1.0. Coexisting replacements are
+documented for at least one minor release.
 Security and correctness fixes may reject input accepted by mistake.

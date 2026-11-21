@@ -34,6 +34,7 @@ def test_the_specifications_examples() -> None:
     # "will get input repeatedly until the number 0 is entered"
     assert _out("Q x\nin -> x\n; - 2 \\ (x != 0) -> ;\n9 -> out", "3\n5\n0\n") == "9\n"
     assert _out("Q x\nx = 'in\n'out = x", "hi there\n") == "hi there\n"
+    assert _out("Q x\nx = 'in\n'out = x", "A\r\r\n") == "A\r\n"
     assert _out(_SQUARE + "7 -> square\nsquare -> out") == "49\n"
 
 

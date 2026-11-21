@@ -42,6 +42,28 @@ def test_the_cat_rereads_each_pass_until_eof() -> None:
     assert io.getvalue() == "one twothree"
 
 
+def test_quit_retries_partial_output_before_advancing() -> None:
+    class InterruptedOutput(ScriptedIO):
+        def print_str(self, text: str) -> None:
+            if not self.getvalue():
+                super().print_str(text[:1])
+                raise HaltError("output interrupted")
+            super().print_str(text)
+
+    io = InterruptedOutput()
+    machine = _Machine(_HELLO, io)
+    machine.step()
+    with pytest.raises(HaltError, match="output interrupted"):
+        machine.step()
+    assert machine.ind == 1
+    assert io.getvalue() == "H"
+    machine.step()
+    assert "hello" not in machine.queues
+    machine.step()
+    assert machine.halted
+    assert io.getvalue() == "Hello, world!"
+
+
 @pytest.mark.parametrize(
     ("bits", "rules"),
     [("1 1 0", ["1 0", "0", ""])],

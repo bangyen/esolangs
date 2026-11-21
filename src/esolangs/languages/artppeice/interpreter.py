@@ -186,12 +186,11 @@ class _Machine:
             return
         line = None
         if _reads(self.ind, self.ops, self.queues):
-            line = self.io.input_str().removesuffix("\r")
-        self.ind, effect, out, self.halted = _advance(
-            self.ind, self.ops, self.queues, line
-        )
+            line = self.io.input_str()
+        ind, effect, out, halted = _advance(self.ind, self.ops, self.queues, line)
         if out:
             self._writer.write(self.io, out)
+        self.ind, self.halted = ind, halted
         if effect is None:
             return
         if effect[0] == "create":

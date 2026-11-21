@@ -763,7 +763,7 @@ class _Machine:
     def _read(self, kind: str) -> tuple[str, object]:
         if kind == "char":
             return kind, self.io.input_char()
-        raw = self._rejected.read(self.io, self.io.input_str).removesuffix("\r")
+        raw = self._rejected.read(self.io, self.io.input_str)
         if kind == "line":
             return kind, tuple(map(ord, raw))
         if _NUMBER.fullmatch(raw.strip()):

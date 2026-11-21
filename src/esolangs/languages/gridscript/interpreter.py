@@ -957,7 +957,7 @@ class _Machine:
                 raise HaltError("a subroutine INPUT has no argument left")
             return frame.args[0]
         try:
-            return self.io.input_str().removesuffix("\r")
+            return self.io.input_str()
         except EOFError:
             return NULL
 
