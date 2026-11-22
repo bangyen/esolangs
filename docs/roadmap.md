@@ -78,10 +78,10 @@ history at `f35aa4023`.
     2. [StrML](https://esolangs.org/wiki/StrML) (rev. 179266).
        A quoted source header carries the fixed base. One grouped test per
        immutable input bit selects the result. The artifact is `8T` characters.
-    3. [Turing Code](https://esolangs.org/wiki/Turing_Code) (rev. 204341).
-       An acyclic `!!DTM` decision graph shares suffix states to keep
-       source linear, including state names. Exactly `n+1` transitions
-       leave one string bit on the trimmed tape.
+    3. [Numlist](https://esolangs.org/wiki/Numlist) (rev. 138564).
+       Each input binds one contiguous block of relative jumps. Shared
+       suffix states keep the decimal source linear. One forward pass
+       prints the selected bit and exits past the instruction list.
     4. [Thing of Shock](https://esolangs.org/wiki/Thing_of_Shock) (rev. 204327).
        An acyclic graph binds each input bit to one initial counter.
        Shared suffix graphs keep the serialized source linear. Read the
@@ -98,7 +98,7 @@ history at `f35aa4023`.
 
 ## Wiki candidate backlog
 
-### Reserve (27)
+### Reserve (28)
 
 - [AEAV](https://esolangs.org/wiki/AEAV)
 - [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
@@ -122,9 +122,10 @@ history at `f35aa4023`.
 - [诗(PSTF)](https://esolangs.org/wiki/%E8%AF%97(PSTF))
 - [NoGolfersLand](https://esolangs.org/wiki/NoGolfersLand)
 - [C!](https://esolangs.org/wiki/C!) (rev. 197732). The paired guards passed
-  the full sweep. Check nested `Q` parsing independently.
+  the full sweep with an independent nested `Q` parser.
 - [Brаinfuck](https://esolangs.org/wiki/Br%D0%B0infuck) (rev. 202557). The
-  two-cell generator passed the full sweep. Check `&` at the tape edge.
+  two-cell generator passed the full sweep. The tape-edge rule for `&`
+  remains unspecified.
 - [Gridify](https://esolangs.org/wiki/Gridify) (rev. 201532). Numeric I/O and
   `G` lookup passed the full sweep. Both the stack index and grid width grow
   with the table length.
@@ -142,6 +143,9 @@ history at `f35aa4023`.
 - [Globe](https://esolangs.org/wiki/Globe) (rev. 165023). State-dependent
   parity filters table symbols per embedded input bit. The last transition
   prints the remaining bit.
+- [Turing Code](https://esolangs.org/wiki/Turing_Code) (rev. 204341).
+  An acyclic `!!DTM` graph leaves one string bit on the trimmed tape in
+  `n+1` transitions. The printed tape format remains open.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
