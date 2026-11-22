@@ -22,6 +22,57 @@ from tests.support.reference import REFERENCE
 RASTER = languages(source_kind="raster", boolean_generator=True)
 
 
+@pytest.mark.parametrize("arity", [None, False, True, 0, -1, 1.0, "1"])
+def test_bad_native_arity_is_refused_before_decoding(arity, monkeypatch) -> None:
+    language = RASTER[0]
+    api = esolangs.Language(language)
+    raster = esolangs.Raster((((1, 2, 3),),))
+    document = json.loads(api.to_json(raster))
+    tagged = png.write_metadata(
+        raster.to_png(),
+        {
+            "version": 1,
+            "language": language,
+            "settings": None,
+            "scale": None,
+            "input_arity": arity,
+        },
+    )
+    document["source"] = b64encode(tagged).decode("ascii")
+    monkeypatch.setattr(png, "Image", None)
+    for load in (
+        lambda: read_png_artifact(language, tagged),
+        lambda: api.from_json(json.dumps(document)),
+    ):
+        with pytest.raises(
+            esolangs.ProgramError, match="input_arity must be a positive integer"
+        ):
+            load()
+
+
+def test_source_png_requires_all_metadata_fields_when_tagged() -> None:
+    api = esolangs.Language(RASTER[0])
+    raster = esolangs.Raster((((1, 2, 3),),))
+    data = raster.to_png()
+    assert read_png_artifact(api.name, data).source == raster
+    document = json.loads(api.to_json(raster))
+    complete = {"version": 1, "language": api.name, "settings": None, "scale": None}
+    for field in ("language", "settings", "scale"):
+        tagged = png.write_metadata(
+            data, {key: value for key, value in complete.items() if key != field}
+        )
+        document["source"] = b64encode(tagged).decode("ascii")
+        for load in (
+            lambda tagged=tagged: read_png_artifact(api.name, tagged),
+            lambda: api.from_json(json.dumps(document)),
+            lambda tagged=tagged: png.attach_source_metadata(tagged, api.name, None, 1),
+        ):
+            with pytest.raises(
+                esolangs.ProgramError, match="requires language, settings and scale"
+            ):
+                load()
+
+
 @pytest.mark.medium
 def test_isolation_preserves_scale_beyond_the_decimal_limit() -> None:
     api = esolangs.Language(RASTER[0])
@@ -219,7 +270,12 @@ def test_native_png_checks_explicit_settings_before_pillow(
     invalid.write_bytes(
         png.write_metadata(
             pixels,
-            {"version": 1, "language": name, "settings": {"level": True}},
+            {
+                "version": 1,
+                "language": name,
+                "settings": {"level": True},
+                "scale": None,
+            },
         )
     )
     once = True
@@ -251,7 +307,8 @@ def test_native_png_checks_explicit_settings_before_pillow(
             {
                 "version": 1,
                 "language": name,
-                "settings": {"level": 0},
+                "settings": {"level": {"integer": "0x0"}},
+                "scale": None,
                 "input_arity": arity,
             },
         )
@@ -315,7 +372,8 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
     path = tmp_path / "source.png"
     for spelling in (" SCOPED-DRAWING! ", " scoped_drawing! "):
         tagged = png.write_metadata(
-            raster.to_png(), {"version": 1, "language": spelling, "settings": {}}
+            raster.to_png(),
+            {"version": 1, "language": spelling, "settings": {}, "scale": None},
         )
         assert (
             png.attach_source_metadata(
@@ -327,7 +385,10 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
         assert api.from_file(path) == api.from_source(raster, settings=api.settings())
     for spelling in (" SCOPED-DRAWING ", "Scoped Drawing?"):
         path.write_bytes(
-            png.write_metadata(raster.to_png(), {"version": 1, "language": spelling})
+            png.write_metadata(
+                raster.to_png(),
+                {"version": 1, "language": spelling, "settings": None, "scale": None},
+            )
         )
         with pytest.raises(esolangs.ProgramError, match="generated for"):
             api.from_file(path)
@@ -455,20 +516,27 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
         validations.clear()
         write()
         assert validations == [{}]
-    legacy = png.write_metadata(
+    encoded = png.write_metadata(
         raw,
-        {"version": 1, "language": name, "settings": {"mode": 1}},
+        {
+            "version": 1,
+            "language": name,
+            "settings": {"mode": {"integer": "0x1"}},
+            "scale": None,
+        },
     )
     matching = scoped.settings(mode=1)
     validations.clear()
     assert (
-        png.attach_source_metadata(legacy, name, matching, None, catalog=scoped.catalog)
-        is legacy
+        png.attach_source_metadata(
+            encoded, name, matching, None, catalog=scoped.catalog
+        )
+        is encoded
     )
     assert validations == [{"mode": 1}]
     with pytest.raises(esolangs.ProgramError, match="conflicting PNG settings"):
         png.attach_source_metadata(
-            legacy, name, scoped.settings(mode=0), None, catalog=scoped.catalog
+            encoded, name, scoped.settings(mode=0), None, catalog=scoped.catalog
         )
 
     retained = png.write_metadata(
@@ -550,6 +618,7 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
         ({"input_arity": False}, "input_arity must be a positive integer"),
         ({"scale": 0}, "scale must be a positive integer"),
         ({"settings": {"mode": False}}, "invalid value for dialect setting"),
+        ({"settings": {"mode": 1}}, "integer settings need a hexadecimal string"),
     ):
         data = png.write_metadata(raw, claims | changes)
         malformed.write_bytes(data)
@@ -568,7 +637,11 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
         ({"input_arity": False}, "input_arity must be a positive integer"),
         ({"input_arity": 2}, "conflicting PNG and document input_arity"),
         ({"scale": 3}, "conflicting PNG and document scale"),
-        ({"settings": {"mode": 1}}, "conflicting PNG and document settings"),
+        ({"settings": {"mode": 1}}, "integer settings need a hexadecimal string"),
+        (
+            {"settings": {"mode": {"integer": "0x1"}}},
+            "conflicting PNG and document settings",
+        ),
         ({"kind": "unknown"}, "unknown source kind"),
     ):
         validations.clear()

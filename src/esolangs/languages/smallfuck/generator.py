@@ -21,7 +21,6 @@ Decisions:
 from collections.abc import Callable, Sequence
 from functools import partial
 from itertools import pairwise
-from typing import Any
 
 from esolangs.generation.algebraic import affine_form
 from esolangs.generation.anf import anf_coefficients
@@ -30,7 +29,6 @@ from esolangs.generation.helpers import (
     constant_span_test,
     in_input_order,
     move_text,
-    same_up_to_wrapping,
     subtree_ids,
 )
 from esolangs.generation.lookup import constant_output
@@ -819,12 +817,9 @@ def _closed(
     return layout, cost + len(tail)
 
 
-def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
-    """Newlines carry no commands: compare the narrow layouts without them."""
-    for width in (1, 4):
-        if template.replace("\n", "") == str(layout(width)).replace("\n", ""):
-            return True
-    return same_up_to_wrapping(template, plain)
+def _same_layout(template: str, plain: str, _layout: object) -> bool:
+    """Compare commands after removing layout newlines."""
+    return template.replace("\n", "") == plain.replace("\n", "")
 
 
 def smallfuck_request(request: GenerationRequest) -> TemplateLayout:

@@ -25,10 +25,9 @@ Decisions:
     construction ([ablations.trick_prototype_20261102_preset_named]).
 """
 
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from itertools import pairwise
 from math import isqrt
-from typing import Any
 
 from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.decision import reduced_diagram
@@ -36,9 +35,6 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     grid_width,
-    layout_width,
-    same_tokens,
-    same_up_to_wrapping,
     symmetric_weights,
 )
 from esolangs.generation.lookup import constant_output
@@ -272,15 +268,6 @@ def _packed(default: str) -> Iterator[str]:
     k0 = isqrt(2 * len(lines) ** 2 // total)
     for k in range(max(2, k0 - 1), min(k0 + 2, len(lines))):
         yield "\n".join(" ".join(lines[i : i + k]) for i in range(0, len(lines), k))
-
-
-def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
-    """Tokens on whitespace; short setters coexist with fitting layouts."""
-    return (
-        same_tokens(template, layout(1))
-        or same_tokens(template, layout(layout_width(template)))
-        or same_up_to_wrapping(template, plain)
-    )
 
 
 def crement_request(request: GenerationRequest) -> TemplateLayout:

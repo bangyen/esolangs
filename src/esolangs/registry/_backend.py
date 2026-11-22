@@ -79,8 +79,7 @@ class BooleanBackend:
     wrap_balance: Callable[[str], str] | None = None
     #: Why ``wrap`` is absent, when a break would change the program.
     no_wrap: str = ""
-    #: Whether a template matches a ``layout(width)`` of the default build;
-    #: default: equal up to wrapping newlines.
+    #: Whether two rendered templates have equivalent source layout.
     same_layout: Callable[[str, str, Callable[[int], str]], bool] | None = None
     #: ``balance(table, default)``: the squarest layout a reflow cannot find.
     balance: OperationRef[BalanceRequest, GeneratedProgram] | Balancer | None = None

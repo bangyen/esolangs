@@ -130,15 +130,9 @@ def test_short_selectors_keep_public_provenance_and_uniform_width(monkeypatch) -
 
         from esolangs.languages.underload.generator import _same_layout
 
-        plain = underload(table)
-        assert _same_layout(
-            template.source, plain, lambda width, table=table: underload(table, width)
-        )
-        assert not _same_layout(
-            template.source + "+",
-            plain,
-            lambda width, table=table: underload(table, width),
-        )
+        layout = underload(table, width)
+        assert _same_layout(template.source, layout, None)
+        assert not _same_layout(template.source + "+", layout, None)
 
     _check_scoped_portable_bindings(monkeypatch)
 

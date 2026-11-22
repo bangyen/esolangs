@@ -17,8 +17,7 @@ Decisions:
     A zero leaf may leave scratch at 2; the answer is still the second register.
 """
 
-from collections.abc import Callable, Sequence
-from typing import Any
+from collections.abc import Sequence
 
 from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.helpers import (
@@ -227,11 +226,9 @@ def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     return (pair,) * n
 
 
-def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
-    """Match whole 1-, 10- and 15-wide representation switches."""
-    return template in (layout(1), layout(10), layout(15)) or same_up_to_wrapping(
-        template, plain
-    )
+def _same_layout(template: str, plain: str, _layout: object) -> bool:
+    """Compare the supplied representation up to wrapping."""
+    return same_up_to_wrapping(template, plain)
 
 
 def minsky_swap_request(request: GenerationRequest) -> TemplateLayout:

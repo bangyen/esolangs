@@ -18,10 +18,10 @@ Decisions:
 """
 
 import re
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from math import isqrt
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 from esolangs.generation.decision import DecisionNode as _Node
 from esolangs.generation.decision import reduced_diagram
@@ -449,12 +449,9 @@ def _polite(statements: list[_Statement]) -> TemplateLayout:
     return layout_fragments(parts(), char=descriptor.TEMPLATE_CHAR)
 
 
-def _same_layout(template: str, _plain: str, layout: Callable[[int], Any]) -> bool:
-    """Equivalent statement syntax: every layout shares the narrowest one's tokens."""
-    narrow = layout(1)
-    return isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
-        narrow
-    )
+def _same_layout(template: str, plain: str, _layout: object) -> bool:
+    """Compare whole statements in the supplied layout."""
+    return _intercal_tokens(template) == _intercal_tokens(plain)
 
 
 def intercal_request(request: GenerationRequest) -> TemplateLayout:

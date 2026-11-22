@@ -826,10 +826,10 @@ def test_portable_raster_applies_claims_not_set_in_png(tmp_path: Path) -> None:
     record = api.generate("01", settings=api.settings(), scale=2)
     document = json.loads(api.to_json(record))
     document["scale"] = 2
-    metadata = {"version": 1, "language": api.name, "input_arity": 1}
+    metadata = {"version": 1, "language": api.name, "settings": None, "input_arity": 1}
     bare = record.source.to_png()
     path = tmp_path / "source.png"
-    for claims in ({"scale": 2}, {"scale": None, "settings": None}):
+    for claims in ({"scale": 2}, {"scale": None}):
         previous = png.write_metadata(bare, metadata | claims)
         path.write_bytes(previous)
         assert api.from_file(path) == replace(

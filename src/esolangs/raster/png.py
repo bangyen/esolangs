@@ -749,6 +749,12 @@ def _check_version(metadata: dict[str, Any]) -> None:
         raise ValueError("unsupported esolangs PNG metadata version")
 
 
+def check_source_fields(metadata: dict[str, Any]) -> None:
+    """Require the claims present on every source tag, including null values."""
+    if not {"language", "settings", "scale"} <= metadata.keys():
+        raise ValueError("esolangs PNG metadata requires language, settings and scale")
+
+
 def read_metadata(data: Buffer) -> dict[str, Any] | None:
     """Read bounded UTF-8 version-one source metadata."""
     found: dict[str, Any] | None = None
@@ -959,6 +965,7 @@ def _attach_metadata(
         try:
             stored = _decode_metadata(body)
             _check_version(stored)
+            check_source_fields(stored)
             additions = _missing_claims(stored, metadata, catalog=catalog)
         except ProgramError:
             raise

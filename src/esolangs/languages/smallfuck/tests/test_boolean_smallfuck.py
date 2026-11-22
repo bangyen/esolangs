@@ -163,9 +163,9 @@ def test_narrow_smallfuck_preserves_fitting_and_large_execution() -> None:
 def test_smallfuck_matches_a_narrow_layout_without_its_newlines() -> None:
     same_layout = LANGUAGES["Smallfuck"].backend.same_layout
     assert same_layout is not None
-    narrow = {1: "*\n<", 4: "*>\n*"}
-    assert same_layout("*>*", "*>*<", lambda width: narrow[width])
-    assert same_layout("*>\n*<", "*>*<", lambda width: narrow[width])
+    assert same_layout("*>*", "*>\n*", None)
+    assert not same_layout("*>*", "*>*<", None)
+    assert same_layout("*>\n*<", "*>*<", None)
 
 
 @pytest.mark.medium

@@ -364,6 +364,8 @@ def _decode_settings_choices(value: Any) -> dict[str, Any]:
         raise ValueError("settings must be an object or null")
     choices: dict[str, Any] = {}
     for key, saved in value.items():
+        if type(saved) is int:
+            raise ValueError("integer settings need a hexadecimal string")
         item = saved
         if isinstance(item, dict):
             if set(item) != {"integer"} or not isinstance(item["integer"], str):

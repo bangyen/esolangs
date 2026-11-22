@@ -31,7 +31,7 @@ def _backend() -> BackendDefinition:
         same_layout=FunctionRef(
             "esolangs.languages.intercal.generator",
             "_same_layout",
-            ("template", "_plain", "layout"),
+            ("template", "plain", "_layout"),
         ),
         balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.intercal.generator", "intercal_balance_request"

@@ -24,13 +24,12 @@ Decisions:
 """
 
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any
 
 from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.generation.decision import DecisionLayers, decision_layers
-from esolangs.generation.helpers import _validate_truth_table, same_tokens
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import (
     InputSlot,
@@ -228,11 +227,6 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> list[Template
     end = len(prelude) + load_len + len(tree) + 1
     prelude[3] = f"GOTO {end}"
     return [*prelude, *load, *tree]
-
-
-def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
-    """Commands tokenize on whitespace, which its wrapper turns to newlines."""
-    return same_tokens(template, layout(1)) or same_tokens(template, plain)
 
 
 def _bitdeque(program: str, width: int) -> str:

@@ -26,7 +26,7 @@ def _backend() -> BackendDefinition:
         same_layout=FunctionRef(
             "esolangs.languages.minsky_swap.generator",
             "_same_layout",
-            ("template", "plain", "layout"),
+            ("template", "plain", "_layout"),
         ),
         # Each input adds its weight; a ``~`` cascade picks one of two leaves.
         shape=Shape.LOOKUP,

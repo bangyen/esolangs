@@ -27,9 +27,9 @@ def _backend() -> BackendDefinition:
         ),
         layout_width=True,
         same_layout=FunctionRef(
-            "esolangs.languages.fractran.generator",
-            "_same_layout",
-            ("template", "plain", "layout"),
+            "esolangs.generation.helpers",
+            "same_token_layout",
+            ("template", "plain", "_layout"),
         ),
         # Whitespace- or comma-separated tokens, and a break inside one would
         # change a number.

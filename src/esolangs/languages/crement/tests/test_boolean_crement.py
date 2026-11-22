@@ -290,8 +290,10 @@ def test_balanced_packed_template_instantiates_for_its_table() -> None:
         assert api.evaluate(restored, bits).answer == table[2 * bits[0] + bits[1]]
 
     altered = replace(restored, source=restored.source + "\n+J @ 1")
-    with pytest.raises(esolangs.GeneratorCapError) as caught:
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
         api.instantiate(altered, [0, 0], truth_table=table)
+    with pytest.raises(esolangs.GeneratorCapError) as caught:
+        api.instantiate(altered, [0, 0], truth_table=table, width=1)
     assert caught.value is cap
 
 

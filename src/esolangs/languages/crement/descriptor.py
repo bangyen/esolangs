@@ -24,9 +24,9 @@ def _backend() -> BackendDefinition:
         ),
         layout_width=True,
         same_layout=FunctionRef(
-            "esolangs.languages.crement.generator",
-            "_same_layout",
-            ("template", "plain", "layout"),
+            "esolangs.generation.helpers",
+            "same_token_layout",
+            ("template", "plain", "_layout"),
         ),
         balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.crement.generator", "crement_balance_request"

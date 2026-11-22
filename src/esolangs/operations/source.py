@@ -136,15 +136,16 @@ def read_png_metadata(
         metadata = png.read_metadata(data)
         if metadata is None:
             return None, None, None
-        origin = metadata.get("language")
+        png.check_source_fields(metadata)
+        origin = metadata["language"]
         if origin is not None and not isinstance(origin, str):
             raise ValueError("PNG language must be a string")
         check_origin(name, origin, catalog=catalog)
-        scale = metadata.get("scale")
+        scale = metadata["scale"]
         scale = None if scale is None else check_scale(scale)
         arity = positive_metadata_field(metadata, "input_arity")
         settings = _decode_settings(
-            metadata.get("settings"),
+            metadata["settings"],
             None if origin is None else name,
             catalog=catalog,
             checked_settings=checked_settings,

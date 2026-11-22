@@ -15,18 +15,14 @@ Size:
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import islice
-from typing import Any
 
 from esolangs.factor_primes import prime_segments
 from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.fraction_templates import fraction_template, wrap_fractions
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    layout_width,
-    same_tokens,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import TemplateLayout
@@ -175,14 +171,6 @@ def _layout(truth_table: str, width: int | None) -> TemplateLayout:
         if _widest(narrow.source) < floor:
             layout = narrow
     return wrap_fractions(layout, width)
-
-
-def _same_layout(template: str, plain: str, layout: Callable[[int], Any]) -> bool:
-    """Fractions tokenize on whitespace; short setters keep the old pair."""
-    return any(
-        same_tokens(template, program)
-        for program in (layout(1), layout(layout_width(template)), plain)
-    )
 
 
 def fractran_request(request: GenerationRequest) -> TemplateLayout:

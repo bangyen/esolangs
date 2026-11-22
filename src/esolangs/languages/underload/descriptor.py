@@ -25,7 +25,7 @@ def _backend() -> BackendDefinition:
         same_layout=FunctionRef(
             "esolangs.languages.underload.generator",
             "_same_layout",
-            ("template", "plain", "layout"),
+            ("template", "plain", "_layout"),
         ),
         balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.underload.generator", "underload_balance_request"

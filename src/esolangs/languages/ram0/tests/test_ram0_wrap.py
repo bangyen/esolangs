@@ -63,6 +63,20 @@ def test_unary_address_cost_is_bounded_to_small_arities() -> None:
     assert ram0(table, 1) == wrap_space_delimited(ram0(table), 1)
 
 
+def test_checked_template_replay_requires_its_narrow_width() -> None:
+    api = esolangs.Language("RAM0")
+    table = "01"
+    wrapped = api.generate(table, width=1)
+    document = json.loads(api.to_json(wrapped))
+    del document["generation_width"]
+    unsized = api.from_json(json.dumps(document))
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        api.instantiate(unsized, [1], truth_table=table)
+    for template, width in ((wrapped, None), (unsized, 1)):
+        program = api.instantiate(template, [1], truth_table=table, width=width)
+        assert api.read_answer(api.run(program).output) == "1"
+
+
 def test_one_column_corpus_size() -> None:
     assert len(ram0("0110", 1)) == 735
     assert sum(len(ram0(format(value, "08b"), 1)) for value in range(256)) == 309490

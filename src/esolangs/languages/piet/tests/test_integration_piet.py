@@ -123,7 +123,9 @@ def test_piet_explicit_scale_resolves_ambiguous_image(tmp_path, monkeypatch) -> 
         assert (result.stdout, result.stderr) == (output, b"")
 
     path.write_bytes(
-        png.write_metadata(pixels, {"version": 1, "language": "Piet", "scale": False})
+        png.write_metadata(
+            pixels, {"version": 1, "language": "Piet", "settings": None, "scale": False}
+        )
     )
     rejected = subprocess.run(
         command, input=b"", capture_output=True, check=False, timeout=5

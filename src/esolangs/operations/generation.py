@@ -564,24 +564,6 @@ def _balance_template(
     return replace(template, source=balanced.source, spans=balanced.spans)
 
 
-def _matches_width_layout(
-    text: str, layout: Callable[[int], str], width: int | None
-) -> bool:
-    """Compare a requested width and bounded candidates inferred from source."""
-    if width is not None and text == layout(width):
-        return True
-    # A narrow layout or the widest stored line can fall outside the backend's
-    # width domain, so an inferred width's rejection does not rule out balance.
-    widest = max(map(len, text.splitlines()), default=0)
-    for inferred_width in (1, widest) if widest > 1 else (1,):
-        try:
-            if text == layout(inferred_width):
-                return True
-        except (ArgumentError, GeneratorCapError):
-            continue
-    return False
-
-
 def _template_text(template: TemplateArtifact, char: str) -> str | None:
     """Put the stored slots in the generator's spelling for comparison."""
     if template.bindings.char == char:
@@ -610,20 +592,32 @@ def _same_generated_template(
     )
 
 
-def _matches_retained_width(
-    template: TemplateArtifact,
+def _check_source_layout(
+    matcher: Callable[[str, str, Callable[[int], str]], bool],
     text: str,
-    render: Callable[[int], Artifact],
-    width: int | None,
+    candidate: str,
+    layout: Callable[[int], str],
+    name: str,
 ) -> bool:
-    if width is None:
-        return False
+    matches: object = call_backend(matcher, text, candidate, layout)
+    if type(matches) is not bool:
+        raise ProgramError(f"{name}'s layout matcher did not return a boolean")
+    return matches
+
+
+def _render_checked_width(
+    render: Callable[[int], Artifact], width: int | None, retained: int | None
+) -> Artifact | None:
+    declared = width if width is not None else retained
+    if declared is None:
+        return None
     try:
-        rendered = render(width)
+        return render(declared)
     except (ArgumentError, GeneratorCapError):
-        # This catalog can have a replacement renderer for the same owner.
-        return False
-    return _same_generated_template(rendered, template, text)
+        # A replacement catalog may no longer render a saved width.
+        if width is not None:
+            raise
+        return None
 
 
 def _is_template_for(
@@ -683,11 +677,10 @@ def _is_template_for(
     ):
         return False
     plain = canonical.source
-    if not default_available and retained is not None:
+    if not default_available:
         return _same_generated_template(canonical, template, text)
-    matches_canonical = text == plain
-    if matches_canonical or not default_available:
-        return matches_canonical
+    if text == plain:
+        return True
     assert backend is not None  # _generate above refuses absent backends
     assert canonical.spans is not None
     canonical_layout = TemplateLayout(plain, canonical.spans)
@@ -701,11 +694,12 @@ def _is_template_for(
             raise TemplateError("template layouts must return text")
         return source
 
-    if width_aware and (
-        _matches_retained_width(template, text, render, retained)
-        or _matches_width_layout(text, layout, width)
-    ):
-        return True
+    candidates = [plain]
+    sized = _render_checked_width(render, width, retained) if width_aware else None
+    if isinstance(sized, TemplateArtifact):
+        if _same_generated_template(sized, template, text):
+            return True
+        candidates.append(sized.source)
 
     def matches_balance() -> bool:
         if backend.balance is None and (
@@ -719,18 +713,18 @@ def _is_template_for(
             return False
         return _same_generated_template(balanced, template, text)
 
-    if backend.same_layout is not None:
+    matcher = backend.same_layout
+    if matcher is not None:
         try:
-            matches: object = call_backend(backend.same_layout, text, plain, layout)
+            if any(
+                _check_source_layout(matcher, text, candidate, layout, name)
+                for candidate in candidates
+            ):
+                return True
         except (ArgumentError, GeneratorCapError):
-            # An unavailable layout probe cannot disprove an exact balanced render.
             if matches_balance():
                 return True
             raise
-        if type(matches) is not bool:
-            raise ProgramError(f"{name}'s layout matcher did not return a boolean")
-        if matches:
-            return True
     return matches_balance()
 
 
@@ -788,7 +782,7 @@ def instantiate(
     Args:
         template: The TemplateArtifact returned by :func:`generate` or portable loading.
         bits: One integer 0 or 1 per input.
-        width: As for :func:`generate`. Checked replay can use the retained
+        width: As for :func:`generate`. Checked replay uses the retained
             generation width if no width is supplied.
         truth_table: Check whether the layout and setters match that table's
             generated template. The placeholder marker may be relabeled.

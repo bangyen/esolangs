@@ -23,9 +23,9 @@ def _backend() -> BackendDefinition:
         ),
         layout_width=True,
         same_layout=FunctionRef(
-            "esolangs.languages.bitdeque.generator",
-            "_same_layout",
-            ("template", "plain", "layout"),
+            "esolangs.generation.helpers",
+            "same_token_layout",
+            ("template", "plain", "_layout"),
         ),
         # Space-delimited, but ``GOTO`` and its target must stay on one line.
         wrap=FunctionRef(

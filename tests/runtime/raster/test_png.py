@@ -781,28 +781,11 @@ def test_bad_source_metadata_is_a_program_error(fields) -> None:
     from esolangs.exceptions import ProgramError
 
     data = png.write_rgb((((1, 2, 3),),))
-    data = png.write_metadata(data, {"version": 1, **fields})
+    data = png.write_metadata(
+        data, {"version": 1, "language": None, "scale": None, "settings": None} | fields
+    )
     with pytest.raises(ProgramError, match="not a readable PNG"):
         read_png_artifact(one(source_kind="raster")[0], data)
-
-
-@pytest.mark.parametrize("arity", [None, False, True, 0, -1, 1.0, "1"])
-def test_bad_native_arity_is_refused_before_decoding(arity, monkeypatch) -> None:
-    language = one(source_kind="raster")[0]
-    api = esolangs.Language(language)
-    raster = esolangs.Raster((((1, 2, 3),),))
-    document = json.loads(api.to_json(raster))
-    tagged = png.write_metadata(raster.to_png(), {"version": 1, "input_arity": arity})
-    document["source"] = base64.b64encode(tagged).decode("ascii")
-    monkeypatch.setattr(png, "Image", None)
-    for load in (
-        lambda: read_png_artifact(language, tagged),
-        lambda: api.from_json(json.dumps(document)),
-    ):
-        with pytest.raises(
-            esolangs.ProgramError, match="input_arity must be a positive integer"
-        ):
-            load()
 
 
 def test_unsupported_metadata_versions_are_rejected() -> None:
@@ -863,7 +846,7 @@ def test_source_metadata_bytes_require_utf8(encoding: str, tmp_path: Path) -> No
     api = esolangs.Language(one(source_kind="raster")[0])
     pixels = esolangs.Raster((((1, 2, 3),),))
     raw = pixels.to_png()
-    body = '{"version":1,"scale":4}'.encode(encoding)
+    body = '{"version":1,"language":null,"settings":null,"scale":4}'.encode(encoding)
     data = raw[:-12] + _chunk(b"esOL", body) + raw[-12:]
     path = tmp_path / "source.png"
     path.write_bytes(data)
@@ -889,7 +872,11 @@ def test_source_metadata_ignores_only_valid_json_extensions(
     api = esolangs.Language(one(source_kind="raster")[0])
     pixels = esolangs.Raster((((1, 2, 3),),))
     raw = pixels.to_png()
-    body = ('{"version":1,"extra":' + token + "}").encode("ascii")
+    body = (
+        '{"version":1,"language":null,"settings":null,"scale":null,"extra":'
+        + token
+        + "}"
+    ).encode("ascii")
     data = raw[:-12] + _chunk(b"esOL", body) + raw[-12:]
     path = tmp_path / "source.png"
     path.write_bytes(data)

@@ -26,7 +26,7 @@ def _backend() -> BackendDefinition:
         same_layout=FunctionRef(
             "esolangs.languages.smallfuck.generator",
             "_same_layout",
-            ("template", "plain", "layout"),
+            ("template", "plain", "_layout"),
         ),
         wrap=wrap_chars,
         balance=OperationRef[BalanceRequest, TemplateLayout](

@@ -949,8 +949,10 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
         [replace(original, backend=replace(backend, entrypoint=replacement_emit))]
     ).bind(REFERENCE)
     migrated = replacement.from_json(api.to_json(restored))
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        replacement.instantiate(migrated, [1], truth_table="01")
     for bit in (0, 1):
-        filled = replacement.instantiate(migrated, [bit], truth_table="01")
+        filled = replacement.instantiate(migrated, [bit], truth_table="01", width=7)
         assert replacement.run(filled).output == str(bit)
     with pytest.raises(esolangs.ArgumentError) as caught:
         replacement.instantiate(migrated, [1], truth_table="01", width=8)
