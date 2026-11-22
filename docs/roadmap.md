@@ -84,18 +84,19 @@ history at `f35aa4023`.
     4. [干！](https://esolangs.org/wiki/%E5%B9%B2%EF%BC%81) (rev. 166203).
        A numeric read and explicit if/else select each branch. Leaves print
        literal text. The tree avoids assignment direction and division.
-    5. [Teacher](https://esolangs.org/wiki/Teacher) (rev. 195882).
-       Nested grade tests reuse one variable. The loop exit rule remains open.
-    6. [Duzitdo?](https://esolangs.org/wiki/Duzitdo%3F) (rev. 203847).
-       Postorder arithmetic selects the result with small integers.
-       `ASK` follows the numeric input in the calculator example.
+    5. [1nteger](https://esolangs.org/wiki/1nteger) (rev. 180816).
+       An `IF` tree reads one byte per decision and uses only byte values.
+       `PNT` emits the selected bit. Source is exactly `28T−21` characters.
+    6. [Pd.NA](https://esolangs.org/wiki/Pd.NA) (rev. 147169).
+       One tape cell selects branches and emits the bit. An EOF witness
+       exercised the NA catch path. Source is exactly `11T−7` characters.
   - *Admission:* refresh the public-implementation check and apply the
     [curation rules](limitations.md#curation). Verify the complete
     interpreter and generator before adding each language.
 
 ## Wiki candidate backlog
 
-### Reserve (22)
+### Reserve (24)
 
 - [AEAV](https://esolangs.org/wiki/AEAV)
 - [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
@@ -125,6 +126,11 @@ history at `f35aa4023`.
 - [Gridify](https://esolangs.org/wiki/Gridify) (rev. 201532). Numeric I/O and
   `G` lookup passed the full sweep. Both the stack index and grid width grow
   with the table length.
+- [Teacher](https://esolangs.org/wiki/Teacher) (rev. 195882). Nested grade
+  tests reuse one variable. The loop exit rule remains open.
+- [Duzitdo?](https://esolangs.org/wiki/Duzitdo%3F) (rev. 203847). Postorder
+  arithmetic selects the result with small integers. `ASK` follows the
+  numeric input in the calculator example.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
