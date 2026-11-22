@@ -64,12 +64,13 @@ class TestASuggestionIsWorthLessThanSilence:
         assert self._score(0.7)[0] < shipped[0]
 
     def test_a_name_head_is_suggested_never_resolved(self) -> None:
-        """The longest name's head is too far for difflib to suggest."""
+        """A distinctive prefix is suggested without becoming an alias."""
         longest = max(esolangs.list_languages(), key=len)
+        catalog = esolangs.Catalog([CATALOG.languages[longest]])
         key = canonical_id(longest).replace("_", "")
         for head in (key[:3], key[: len(key) // 3]):
             with pytest.raises(esolangs.UnknownLanguageError) as caught:
-                esolangs.describe(head)
+                catalog.resolve(head)
             assert longest in caught.value.suggestions, head
 
     def test_api_and_cli_withhold_guesses_for_junk(self) -> None:

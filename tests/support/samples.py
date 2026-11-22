@@ -108,8 +108,6 @@ def bits_of(value: int) -> str:
 # any more cheaply than the import does.
 DUMPS_ON_THE_POST_HALT_STEP = frozenset(
     {
-        "Minsky Swap",
-        "RAM0",
         "Smallfuck",
         "Bitdeque",
         "Bitwise Cyclic Tag",
@@ -192,7 +190,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "FALSE": ("'A,", ""),
     "Fargo": ("$", "0\n"),
     "Flowchart": (FLOWCHART_TRUTH_MACHINE, "0\n"),
-    "Forbin": ("main { x = 1; }", ""),
     "Forþ": ("65.", ""),
     # Conway's two-fraction addition, which halts once no 2 is left.
     "FRACTRAN": ("2^3*3 3/2", ""),
@@ -206,15 +203,8 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "INTERCAL": ("PLEASE .1 <- #4\nDO READ OUT .1\nDO GIVE UP", ""),
     "LaserFuck": ("ÿ   x\n    +\n    o", ""),
     "Malbolge": ("Q", ""),
-    "Minsky Swap": ("+", ""),
     "Modulous": ("[PSH INT 5][DUP][PRT INT]", ""),
-    "Packlang": (
-        "Package : IO {\n  Integer main {\n    charPut(65);\n    0;\n  }\n} p;",
-        "",
-    ),
     "Painfuck": ("pp", ""),
-    "Qoibl": ("we y we yyeeee we\ntt qe y qe tt", ""),
-    "RAM0": ("ZA", ""),
     "ROTfuck": (".", ""),
     "S*bleq": ("-3 11 3", ""),
     "SLOW ACV MAMMALIAN": ("SEED SEED SEED CONSUME PRONOUNCE", ""),

@@ -69,8 +69,11 @@ A candidate is admitted through the [fame threshold](limitations.md#how-a-langua
 or as the repo's first implementation (no qualifying public implementation
 at admission). Its spec must fix the core semantics, it must not be a token
 substitution of a collected language, and, on the second route, it needs a
-linear generator. Those are the only grounds; resemblance to a collected
-construction or branch mechanism is not one (user ruling, 2026-10-29).
+linear generator and a semantic constraint that changes how an algorithm is
+constructed. Check a worked example: spelling, operand order, register widths,
+and directly translatable script or register-machine commands are insufficient.
+A shared construction or branch mechanism alone does not disqualify a
+language (user ruling, 2026-10-29).
 
 A spec that precludes generation qualifies only through the fame threshold
 under Curation in [limitations](limitations.md). Interpreter-only entries

@@ -101,7 +101,6 @@ Languages that operate on a tape (similar to Turing machines).
 
 - [6-5](https://esolangs.org/wiki/6-5) ([code](../src/esolangs/languages/six_five/interpreter.py))
 - [Back](https://esolangs.org/wiki/Back) ([code](../src/esolangs/languages/back/interpreter.py))
-- [Basicfuck](https://esolangs.org/wiki/Basicfuck) ([code](../src/esolangs/languages/basicfuck/interpreter.py))
 - [BrainIf](https://esolangs.org/wiki/BrainIf) ([code](../src/esolangs/languages/brainif/interpreter.py))
 - [Circlefuck](https://esolangs.org/wiki/Circlefuck) ([code](../src/esolangs/languages/circlefuck/interpreter.py))
 - [Dimensional](https://esolangs.org/wiki/Dimensional) ([code](../src/esolangs/languages/dimensional/interpreter.py))
@@ -126,18 +125,10 @@ Languages that operate on a tape (similar to Turing machines).
 Languages that use registers to store and manipulate data.
 
 - [AddSubJump](https://esolangs.org/wiki/AddSubJump) ([code](../src/esolangs/languages/addsubjump/interpreter.py))
-- [Between](https://esolangs.org/wiki/Between) ([code](../src/esolangs/languages/between/interpreter.py))
 - [Blindfolded Arithmetic](https://esolangs.org/wiki/Blindfolded_Arithmetic) ([code](../src/esolangs/languages/blindfolded_arithmetic/interpreter.py))
-- [CARP](https://esolangs.org/wiki/CARP) ([code](../src/esolangs/languages/carp/interpreter.py))
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse) ([code](../src/esolangs/languages/collatz_multiverse/interpreter.py))
-- [CreativeScript v2](https://esolangs.org/wiki/CreativeScript_v2) ([code](../src/esolangs/languages/creativescript_v2/interpreter.py))
 - [Decleq](https://esolangs.org/wiki/Decleq) ([code](../src/esolangs/languages/decleq/interpreter.py))
-- [Help.](https://esolangs.org/wiki/Help.) ([code](../src/esolangs/languages/help/interpreter.py))
-- [IEBEL](https://esolangs.org/wiki/IEBEL) ([code](../src/esolangs/languages/iebel/interpreter.py))
 - [Interprogck8](https://esolangs.org/wiki/Interprogck8) ([code](../src/esolangs/languages/interprogck8/interpreter.py))
-- [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap) ([code](../src/esolangs/languages/minsky_swap/interpreter.py))
-- [Qoibl](https://esolangs.org/wiki/Qoibl) ([code](../src/esolangs/languages/qoibl/interpreter.py))
-- [RAM0](https://esolangs.org/wiki/RAM0) ([code](../src/esolangs/languages/ram0/interpreter.py))
 - [REFRACTRAN](https://esolangs.org/wiki/REFRACTRAN) ([code](../src/esolangs/languages/refractran/interpreter.py))
 - [Rubic](https://esolangs.org/wiki/Rubic) ([code](../src/esolangs/languages/rubic/interpreter.py))
 
@@ -145,7 +136,6 @@ Languages that use registers to store and manipulate data.
 
 Languages whose data is the program itself, rewritten as it runs.
 
-- [BASICER](https://esolangs.org/wiki/BASICER) ([code](../src/esolangs/languages/basicer/interpreter.py))
 - [Crement](https://esolangs.org/wiki/Crement) ([code](../src/esolangs/languages/crement/interpreter.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](../src/esolangs/languages/inject/interpreter.py))
 - [Sonata](https://esolangs.org/wiki/Sonata) ([code](../src/esolangs/languages/sonata/interpreter.py))
@@ -157,12 +147,7 @@ Languages that store data in named variables the program declares.
 
 - [Algebraic Programming Language](https://esolangs.org/wiki/Algebraic_Programming_Language) ([code](../src/esolangs/languages/algebraic_programming_language/interpreter/__init__.py))
 - [Container](https://esolangs.org/wiki/Container) ([code](../src/esolangs/languages/container/interpreter.py))
-- [Forbin](https://esolangs.org/wiki/Forbin) ([code](../src/esolangs/languages/forbin/interpreter/__init__.py))
-- [NB](https://esolangs.org/wiki/NB) ([code](../src/esolangs/languages/nb/interpreter.py))
 - [Onecode (Fergusq)](https://esolangs.org/wiki/Onecode_(Fergusq)) ([code](../src/esolangs/languages/onecode_fergusq/interpreter.py))
-- [Packlang](https://esolangs.org/wiki/Packlang) ([code](../src/esolangs/languages/packlang/interpreter/__init__.py))
-- [SwitchCase](https://esolangs.org/wiki/SwitchCase) ([code](../src/esolangs/languages/switchcase/interpreter.py))
-- [lol waht i cant edit talk pages](https://esolangs.org/wiki/lol_waht_i_cant_edit_talk_pages) ([code](../src/esolangs/languages/lol_waht_i_cant_edit_talk_pages/interpreter.py))
 
 ### Other Languages
 
@@ -173,7 +158,6 @@ Languages that don't fit into the above categories.
 - [Bruijndejx](https://esolangs.org/wiki/Bruijndejx) ([code](../src/esolangs/languages/bruijndejx/interpreter.py))
 - [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C)) ([code](../src/esolangs/languages/cvnc/interpreter.py))
 - [Codesick](https://esolangs.org/wiki/Codesick) ([code](../src/esolangs/languages/codesick/interpreter.py))
-- [DINAC](https://esolangs.org/wiki/DINAC) ([code](../src/esolangs/languages/dinac/interpreter.py))
 - [Fargo](https://esolangs.org/wiki/Fargo) ([code](../src/esolangs/languages/fargo/interpreter.py))
 - [Flipscript](https://esolangs.org/wiki/Flipscript) ([code](../src/esolangs/languages/flipscript/interpreter.py))
 - [HQ9+ with headers](https://esolangs.org/wiki/HQ9+_with_headers) ([code](../src/esolangs/languages/hq9_with_headers/interpreter.py))

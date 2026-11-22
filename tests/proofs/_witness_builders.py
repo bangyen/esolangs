@@ -64,19 +64,6 @@ def _sbleq_worst(n: int) -> str:
     return "".join(bits) + "1" * rest
 
 
-# language-owners: ["Forbin"]
-def _forbin_worst(n: int) -> str:
-    """The b = 7 build's worst: 2^(n-7) distinct nonconstant 128-entry blocks.
-
-    Block j is j + 1 in binary; the race reaches it only at n = 12, 13.
-
-    Below n = 7 the one-hot table: the whole table is one nonconstant block.
-    """
-    if n < 7:
-        return "0" * ((1 << n) - 1) + "1"
-    return "".join(format(j + 1, "0128b") for j in range(1 << (n - 7)))
-
-
 # language-owners: ["Suffolk"]
 def _suffolk_worst(n: int) -> str:
     """Alternating first half, a second half with one equal adjacent pair."""
@@ -226,13 +213,6 @@ def _befunge_worst(n: int) -> str:
     """Projection to six, top-ten parity at eleven/twelve, full parity elsewhere."""
     k = 1 if n <= 6 else 10 if n in (11, 12) else n
     return "".join(str((i >> (n - k)).bit_count() & 1) for i in range(1 << n))
-
-
-# language-owners: ["SwitchCase"]
-def _switchcase_worst(n: int) -> str:
-    """Top-half ones except the last: a full-depth path reaches answer one."""
-    t = 1 << n
-    return "".join("1" if t // 2 <= r < t - 1 else "0" for r in range(t))
 
 
 # language-owners: ["Circlefuck", "Modulous"]

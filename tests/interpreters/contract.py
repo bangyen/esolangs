@@ -179,10 +179,8 @@ class StateViewContract:
 
     machine: ClassVar[Any]
 
-    # language-owners: ["RAM0", "Unsquare"]
-    #: The names to read off the machine.  Per file, because each language
-    #: spells its own state -- ``acc``/``jumps`` in Unsquare, ``z``/``n`` in
-    #: RAM0 -- and a name absent here is simply not part of that view.
+    # language-owners: ["Unsquare"]
+    #: Names exposed by the machine state view.
     state_views: ClassVar[tuple[str, ...]]
 
     #: A program that moves every name in :attr:`state_views` except those

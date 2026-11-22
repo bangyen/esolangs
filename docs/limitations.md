@@ -32,7 +32,6 @@ Exceptions and per-language notes:
 - Unsquare uses Unicode character codes where input framing is unspecified.
 - Decleq uses Unicode character codes where input framing is unspecified;
   optional memory-mapped I/O is enabled.
-- Forbin expression calls retain their documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
   specifies only a two-road choice.
 
@@ -296,7 +295,7 @@ and every 128th row at fifteen and sixteen in the weekly run.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 133 languages.
+The collection has 117 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -359,6 +358,13 @@ pairs found none among collected languages, each refuted by a run
 counterexample (S\*bleq reads 0 at EOF where Subleq raises; Piet++ has 32
 commands to Piet's 17). Fame admissions are never excluded.
 
+First implementations must have a semantic constraint that changes how an
+algorithm is constructed. Trace a worked example. IEBEL's AND discards the
+assignment on each comparison branch, leaving an ordinary decision tree.
+Blindfolded Arithmetic qualifies because its fixed cycle forces termination
+to be encoded as a zero divisor. Example size is not an admission threshold.
+This rule applies retroactively and exempts fame admissions.
+
 Scaling removes: an uncapped generator whose `O(T)` generation time and
 emitted size are neither proved nor ruled out by a language lower bound
 takes its language with it (Unary and Ascenic keep theirs on proved
@@ -390,6 +396,7 @@ admission records are in each language's `language.toml`.
 |---|---|
 | route | 123, BF-PDA, BIO, Jaune, NoComment, Sophie, Funge-98, Emmental, Prelude, LOLCODE, Brainloller, Braincopter, Turing Paint, Befunk, Factor, Polynomial, Piet++, Tiangou |
 | spec | 3D Brainfuck, Transistor, Pinyin, Self-replicating marbles, Wirefunge, Gifunk, BitCode, PicCode, Minifuck, the Minecraft ports; deferred: 大白话, BOOMOP, Semqain |
+| direct scripting or register-machine translation | RAM0, BASICER, IEBEL, Between, Minsky Swap, SwitchCase, NB, Basicfuck, Forbin, lol waht i cant edit talk pages, CreativeScript v2, Help., DINAC, Qoibl, CARP, Packlang |
 | token substitution | Trivial brainfuck substitution |
 | scaling | Vandevelo, %^2^-1, WII2D, COD, ZTOALC L |
 | no generator | HuePrism (no input), Nopstacle (its blank and `#` spell no input embed) |
@@ -542,10 +549,6 @@ one reading. These are those choices.
   adapt their literals. The same page’s truth machine requires 1 rather than
   the prose’s 10. An unset variable reads as its own name, which the page’s
   variables example (`VARIABL`) requires.
-- Packlang literals default to decimal; `literal_policy="binary_digits"`
-  treats literals containing only `0` and `1` as binary. The same page uses
-  decimal `101` in Hello World and binary digits in PlusOrMinus and dependency
-  examples. Character input preserves newlines; EOF supplies newline to `charGet`.
 - ROTfuck defaults to `rotation="backward"` (`+` turns into `]`): the wiki's
   one-character cat `,[` then echoes; `"forward"` follows the prose (`+` into
   `-`), under which the cat fires an unmatched `]`. A jump seeks its partner

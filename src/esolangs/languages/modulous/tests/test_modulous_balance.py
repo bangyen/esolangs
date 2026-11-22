@@ -1,8 +1,9 @@
 """Modulous balance: the closed-form chunk width against the old sweep."""
 
 import random
+from collections.abc import Iterator, Sequence
 
-from esolangs.generation.token_balance import rendered_side, run_widths
+from esolangs.generation.token_balance import rendered_side
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.modulous.generator import (
     _TABLE_PUSH_OVERHEAD,
@@ -32,6 +33,15 @@ _CHUNK_PUSH_OVERHEAD = 14
 # needs a row of its own, so narrower chunks cannot use the two-rows-per-push
 # layout the row estimate assumes.
 _MIN_CHUNK_WIDTH = 6
+
+
+def _run_widths(lengths: Sequence[int]) -> Iterator[int]:
+    """Yield the single-space joined width of every contiguous token run."""
+    for start in range(len(lengths)):
+        span = -1
+        for length in lengths[start:]:
+            span += length + 1
+            yield span
 
 
 def _height(parts: list[int], columns: int) -> int:
@@ -126,7 +136,7 @@ def test_chunked_columns_match_the_swept_optimum() -> None:
         default = modulous(table)
         size = len(table)
         lengths = list(map(len, _TOKEN.findall(default[size + _TABLE_PUSH_OVERHEAD :])))
-        fits = {span - _CHUNK_TOKEN_EXTRA for span in run_widths(lengths)}
+        fits = {span - _CHUNK_TOKEN_EXTRA for span in _run_widths(lengths)}
         columns = _swept_columns(table, lengths, fits)
         assert columns is not None
         swept += balance_score(modulous(table, columns))[0]

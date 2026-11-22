@@ -186,7 +186,7 @@ def test_actual_branch_workers_retain_the_complete_graph():
             assert model.branching_halted(worker.decision.branches.terminal)
         reached += 1
     assert reached == 2
-    assert refused == 12
+    assert refused == 11
 
 
 def test_wire_steps_match_a_deterministic_proof() -> None:

@@ -172,7 +172,7 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
         same_layout = LANGUAGES[name].backend.same_layout
         if same_layout is not None:
             assert same_layout(wrapped, plain, example.build)
-        elif name in {"FRACTRAN", "RAM0"}:
+        elif name == "FRACTRAN":
             assert wrapped.split() == plain.split()
         else:
             assert wrapped.replace("\n", "") == plain.replace("\n", "")
@@ -198,12 +198,6 @@ def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     # on whitespace runs, so a program with the same token sequence is the
     # same program.
     if _is_grid(name):
-        assert wrapped.split() == plain.split()
-        return
-    # These are multi-line with no structural first line. Their parsers see
-    # whitespace-delimited tokens across the whole source, so flattening and
-    # repacking may move every original line break.
-    if LANGUAGES[name].id in {"qoibl", "forbin"}:
         assert wrapped.split() == plain.split()
         return
     # Structural wrappers preserve the first line while reflowing commands.
@@ -456,16 +450,7 @@ def test_wrap_space_delimited_never_splits_a_token(tmp_path: Path) -> None:
 
 
 def _check_text_balancer_accepts_compressed_source(tmp_path: Path) -> None:
-    declaration = next(
-        language
-        for language in LANGUAGES.values()
-        if (backend := language.backend) is not None
-        and backend.wrap is wrap_space_delimited
-        and backend.wrap_multiline
-        and backend.balance is not None
-        and not language.runtime.compressed_source
-        and not language.parameterized
-    )
+    declaration = LANGUAGES["Thue"]
     stock = esolangs.Language(declaration.name)
     backend = declaration.backend
     original = stock.generate(TABLE).source

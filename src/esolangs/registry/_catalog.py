@@ -160,8 +160,8 @@ class Catalog:
             return candidates[0]
         close = self._close_ids(name, SUGGESTION_CUTOFF)
         if not close:
-            # A head of a long name is too far for difflib: "lol" scores 0.18
-            # against lol_waht_i_cant_edit_talk_pages.  Suggest, never resolve:
+            # A short prefix of a long name can fall below the fuzzy cutoff.
+            # Suggest it without resolving it:
             # a head unique today turns ambiguous when a language is added.
             head = canonical_id(name).replace("_", "")
             starts = [i for i in self._by_id if i.replace("_", "").startswith(head)]

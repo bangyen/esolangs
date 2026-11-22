@@ -260,7 +260,7 @@ def _counts() -> dict[str, int]:
             # FALSE is also GridScript's BOOL literal. Their module imports
             # and attributes still count as coupling.
             if spelling.startswith(".")
-            or spelling not in {"line", "eval", "false", "FALSE", "between", "help"}
+            or spelling not in {"line", "eval", "false", "FALSE"}
         )
         if total:
             counts[path] = total

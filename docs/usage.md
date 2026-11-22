@@ -157,8 +157,6 @@ These language-owned plans retain parsed source:
 - Subleq: initial memory image.
 - Decleq: initial memory image.
 - S*bleq: initial memory image.
-- IEBEL: validated instructions and source lines.
-- CreativeScript v2: commands, source offsets and variable slots.
 - Freestajlo: resolved instructions and source end.
 - Thue: rewrite rules and initial text.
 - Befunge: validated initial playfield.
@@ -168,16 +166,10 @@ These language-owned plans retain parsed source:
 - Bitwise Cyclic Tag: program bits, initial data and source offsets.
 - Cyclic tag: productions, initial queue and source offsets.
 - NQ: instructions with guard targets compiled for the selected dialect.
-- BASICER: numbered instructions and line index.
-- Basicfuck: compiled operations and tape bounds.
-- Between: instructions and nested operands.
-- CARP: validated register instructions.
 - SStack: operations and resolved bracket targets.
-- SwitchCase: cases and read-only arm maps.
 - Crement: initial instructions, copied on self-modification.
 - Fackward: persistent source stack and nested blocks.
 - HQ9+ with headers: compiled instructions and workspace size.
-- lol waht i cant edit talk pages: parsed statements.
 - REFRACTRAN: initial integer and fractions.
 - Retrograde: commands and paired braces.
 - Rubic: commands and paired loops.
@@ -347,17 +339,13 @@ Build language-specific stdin for a generated Boolean program with
 | 3x | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Algebraic Programming Language | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Ascenic | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
-| BASICER | `line_per_bit` | `1`/`2` | `'2\n1\n2\n'` |
 | Balik | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
-| Between | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Blindfolded Arithmetic | `row_number` | `0`/`1` | `'6\n'` |
-| CARP | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | CV(N)(C) | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Caballo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Clockwise | `char_stream_cyclic` | `0`/`1` | `'101'` |
 | Collatz Multiverse | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
-| CreativeScript v2 | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Dig | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Dimensional | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Fargo | `row_index` | `0`/`1` | `'5\n'` |
@@ -372,7 +360,6 @@ Build language-specific stdin for a generated Boolean program with
 | Line | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Modulous | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Movesum | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
-| NB | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | NOR machine | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Painfuck | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Parenthesys | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
@@ -385,10 +372,9 @@ Build language-specific stdin for a generated Boolean program with
 | What!? | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Whitespace | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | artppeice | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
-| lol waht i cant edit talk pages | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
-The other 66 that read stdin take one `0`/`1` character per bit -- `'101'`.
-The remaining 21 embed their inputs and read no stdin: `instantiate` fills them.
+The other 58 that read stdin take one `0`/`1` character per bit -- `'101'`.
+The remaining 19 embed their inputs and read no stdin: `instantiate` fills them.
 The 3 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.
 

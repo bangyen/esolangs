@@ -143,7 +143,7 @@ def _check_store_sampling(monkeypatch) -> None:
         and esolangs.describe(name).steppable_to_answer
         and esolangs.describe(name).answer_mode != "termination"
     ]
-    assert len(cohort) == 9
+    assert len(cohort) == 7
     completion_gains = active_gains = 0
     for name in cohort:
         program = esolangs.generate(name, "01")

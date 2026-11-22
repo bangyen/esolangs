@@ -469,16 +469,6 @@ def move_text(start: int, target: int, right: str, left: str) -> str:
     return right * delta if delta >= 0 else left * -delta
 
 
-def same_up_to_wrapping(template: str, plain: str) -> bool:
-    """Whether ``template`` is ``plain``, or ``plain`` broken by newlines.
-
-    The default ``same_layout`` of a ``Language``.
-    """
-    return template == plain or (
-        "\n" not in plain and template.replace("\n", "") == plain
-    )
-
-
 def same_tokens(template: str, program: object) -> bool:
     """Whether the two hold the same whitespace-separated tokens."""
     return isinstance(program, str) and template.split() == program.split()
@@ -487,11 +477,6 @@ def same_tokens(template: str, program: object) -> bool:
 def same_token_layout(template: str, plain: str, _layout: object) -> bool:
     """Compare whitespace-separated tokens: ``same_layout`` for token languages."""
     return same_tokens(template, plain)
-
-
-def same_ignoring_whitespace(template: str, plain: str, _layout: object) -> bool:
-    """Compare with whitespace removed: ``same_layout`` for languages ignoring it."""
-    return "".join(template.split()) == "".join(plain.split())
 
 
 def reflected_table(table: str, n: int) -> str:

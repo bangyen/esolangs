@@ -1,6 +1,5 @@
 """Balance of whole-token row fits: a closed-form width, within 5% of the best side."""
 
-from collections.abc import Iterator, Sequence
 from math import isqrt, sqrt
 
 #: Columns per row that render square: a monospace cell is about twice as
@@ -15,15 +14,6 @@ def rendered_side(width: int, height: int) -> int:
     longer program loses to a compact one that fits a smaller square.
     """
     return max(width, CELL_ASPECT * height)
-
-
-def run_widths(lengths: Sequence[int]) -> Iterator[int]:
-    """Yield the single-space joined width of every contiguous token run."""
-    for start in range(len(lengths)):
-        span = -1
-        for length in lengths[start:]:
-            span += length + 1
-            yield span
 
 
 def balanced_token_width(

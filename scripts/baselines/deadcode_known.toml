@@ -12,11 +12,6 @@
     "arm: case _Split(zero, one): -> <exit>",
 ]
 
-# itertools.count() never exhausts; consumers close the name generator.
-"forbin/generator.py" = [
-    "arm: for candidate in count(): -> <exit>",
-]
-
 # count(1) never exhausts. Owned tests exhaust shorter products and skip main.
 "object_disoriented/generator.py" = [
     "arm: for size in count(1): -> <exit>",

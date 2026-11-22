@@ -32,10 +32,7 @@ don't edit by hand.
 | `b_tapemark/b-tapemark.txt` | B-tapemark | `0001` | `01` | 01 | '0' |
 | `back/back.txt` | Back | `0001` | `01` | embedded 01 | '1 0 0' |
 | `balik/balik.txt` | Balik | `0001` | `01` | 0 1 | '0' |
-| `basicer/basicer.txt` | BASICER | `0001` | `01` | 1 2 | '0\n' |
-| `basicfuck/basicfuck.txt` | Basicfuck | `0001` | `01` | 01 | '0' |
 | `befunge/befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |
-| `between/between.txt` | Between | `0001` | `01` | 0 1 | '0' |
 | `bfstack/bfstack.txt` | BFStack | `0001` | `01` | 01 | '0' |
 | `bifunge/bifunge.txt` | Bifunge | `0001` | `01` | 01 | '0' |
 | `bitdeque/bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
@@ -50,7 +47,6 @@ don't edit by hand.
 | `bruijndejx/bruijndejx.txt` | Bruijndejx | `0001` | `01` | 01 | '0' |
 | `bytemap/bytemap.txt` | Bytemap | `0001` | `01` | 01 | '0' |
 | `caballo/caballo.txt` | Caballo | `0001` | `01` | 0 1 | '[]' |
-| `carp/carp.txt` | CARP | `0001` | `01` | 0 1 | '0' |
 | `chicken/chicken.txt` | Chicken | `0001` | `01` | 01 | '0' |
 | `circlefuck/circlefuck.txt` | Circlefuck | `0001` | `01` | 01 | '0' |
 | `circuit_diagram/circuit-diagram.txt` | Circuit Diagram | `0001` | `01` | 01 | '0' |
@@ -58,14 +54,12 @@ don't edit by hand.
 | `codesick/codesick.txt` | Codesick | `0001` | `01` | 01 | '0' |
 | `collatz_multiverse/collatz-multiverse.txt` | Collatz Multiverse | `0001` | `01` | 0 1 | '0' |
 | `container/container.txt` | Container | `0001` | `01` | 01 | '0' |
-| `creativescript_v2/creativescript-v2.txt` | CreativeScript v2 | `0001` | `01` | 0 1 | '0' |
 | `crement/crement.txt` | Crement | `0001` | `01` | embedded 01 | (nothing) |
 | `cvnc/cvnc.txt` | CV(N)(C) | `0001` | `01` | 0 1 | '0' |
 | `cyclic_tag/cyclic-tag.txt` | Cyclic tag | `0001` | `01` | embedded 01 | '0' |
 | `decleq/decleq.txt` | Decleq | `0001` | `01` | 01 | '0' |
 | `dig/dig.txt` | Dig | `0001` | `01` | 0 1 | '0' |
 | `dimensional/dimensional.txt` | Dimensional | `0001` | `01` | 0 1 | '0' |
-| `dinac/dinac.txt` | DINAC | `0001` | `01` | 01 | '0' |
 | `egl/egl.txt` | EGL | `0001` | `01` | 01 | '0' |
 | `eval/eval.txt` | Eval | `0001` | `01` | embedded 01 | '0' |
 | `fackward/fackward.txt` | Fackward | `0001` | `01` | 01 | '0' |
@@ -74,32 +68,26 @@ don't edit by hand.
 | `fish/fish.txt` | Fish | `0001` | `01` | 01 | '0' |
 | `flipscript/flipscript.txt` | Flipscript | `0001` | `01` | 0 1 | '0' |
 | `flowchart/flowchart.txt` | Flowchart | `0001` | `01` | 01 | '0' |
-| `forbin/forbin.txt` | Forbin | `0001` | `01` | 01 | '0' |
 | `for_thorn/forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |
 | `fractran/fractran.txt` | FRACTRAN | `0001` | `01` | embedded 01 | '1' |
 | `freestajlo/freestajlo.txt` | Freestajlo | `0001` | `01` | 0 1 | '0' |
 | `grapheme/grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `gridscript/gridscript.txt` | GridScript | `0001` | `01` | 0 1 | '0' |
-| `help/help..txt` | Help. | `0001` | `01` | 01 | '0' |
 | `home_row/home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `hot/hot.txt` | Hot | `0001` | `01` | 01 | '0' |
 | `hq9_with_headers/hq9-with-headers.txt` | HQ9+ with headers | `0001` | `01` | 0 1 | '0' |
-| `iebel/iebel.txt` | IEBEL | `0001` | `01` | 01 | '0' |
 | `inject/inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `intercal/intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '_\n\n' |
 | `interprogck8/interprogck8.txt` | Interprogck8 | `0001` | `01` | 0 1 | '0' |
 | `kiss/kiss.txt` | Kiss | `0001` | `01` | 01 | '0' |
 | `laserfuck/laserfuck.txt` | LaserFuck | `0001` | `01` | 01 | '0' |
 | `line/line.png` | Line | `0001` | `01` | 0 1 | '0' |
-| `lol_waht_i_cant_edit_talk_pages/lol-waht-i-cant-edit-talk-pages.txt` | lol waht i cant edit talk pages | `0001` | `01` | 0 1 | '0' |
 | `malbolge/malbolge.txt` | Malbolge | `0001` | `01` | 01 | '0' |
-| `minsky_swap/minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '1 0' |
 | `moar_cheese_3/moar-cheese-3.txt` | moar cheese :3 | `0001` | `01` | embedded 01 | '0' |
 | `modulous/modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
 | `monotonic_boolfuck/monotonic-boolfuck.txt` | Monotonic Boolfuck | `0001` | `01` | 01 | '0' |
 | `movesum/movesum.txt` | Movesum | `0001` | `01` | 0 1 | '0 0' |
 | `nandypants/nandypants.txt` | Nandypants | `0001` | `01` | 01 | '0' |
-| `nb/nb.txt` | NB | `0001` | `01` | 0 1 | '0' |
 | `nor_machine/nor-machine.txt` | NOR machine | `0001` | `01` | 0 1 | '0' |
 | `nq/nq.txt` | NQ | `0001` | `01` | 01 | ' ' |
 | `nybbleist/nybbleist.txt` | Nybbleist | `0001` | `01` | 01 | '0' |
@@ -107,17 +95,14 @@ don't edit by hand.
 | `obrainfuck/obrainfuck.txt` | oBrainfuck | `0001` | `01` | 01 | '0' |
 | `one_i/one-i.txt` | 1 + i | `0001` | `01` | 0 1 | '0' |
 | `onecode_fergusq/onecode-fergusq.txt` | Onecode (Fergusq) | `0001` | `01` | 01 | '0' |
-| `packlang/packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |
 | `painfuck/painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
 | `parenthesys/parenthesys.txt` | Parenthesys | `0001` | `01` | 0 1 | '0' |
 | `piet/piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
 | `pilas/pilas.txt` | Pilas | `0001` | `01` | 01 | '0' |
 | `pointless/pointless.txt` | Pointless | `0001` | `01` | 01 | '0' |
 | `q_bal/q-bal.txt` | Q-BAL | `0001` | `01` | 0 1 | '0\n' |
-| `qoibl/qoibl.txt` | Qoibl | `0001` | `01` | 01 | '0' |
 | `qrain/qrain.txt` | Qrain | `0001` | `01` | 01 | '0' |
 | `quassaunt/quassaunt.txt` | Quassaunt | `0001` | `01` | 01 | '0' |
-| `ram0/ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
 | `refractran/refractran.txt` | REFRACTRAN | `0001` | `01` | embedded 01 | not the answer -- see note |
 | `retrograde/retrograde.txt` | Retrograde | `0001` | `01` | embedded 01 | '0' |
 | `rotfuck/rotfuck.txt` | ROTfuck | `0001` | `01` | 01 | '0' |
@@ -136,7 +121,6 @@ don't edit by hand.
 | `subleq/subleq.txt` | Subleq | `0001` | `01` | 01 | '0' |
 | `suffolk/suffolk.txt` | Suffolk | `0001` | `01` | 01 | '0' |
 | `super_snusp/super-snusp.txt` | Super SNUSP | `0001` | `01` | 01 | '0' |
-| `switchcase/switchcase.txt` | SwitchCase | `0001` | `01` | 01 | '0' |
 | `taglate/taglate.txt` | Taglate | `0001` | `01` | 01 | '0' |
 | `thisthat/thisthat.txt` | thisthat | `0001` | `01` | 01 | '0' |
 | `thue/thue.txt` | Thue | `0001` | `01` | 0 1 | '0' |
@@ -171,13 +155,11 @@ don't edit by hand.
 - **intercal** -- INTERCAL READ OUT prints a lone overbar for zero and I for one
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **malbolge** -- the answer is one character and is printed with no newline
-- **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
 - **moar-cheese-3** -- Inputs are embedded as n or y; the final queue is the answer.
 - **nq** -- The whole output is a space for false or # for true.
 - **nybbleist** -- Each input digit is one byte, read high nybble first.
 - **object-disoriented** -- Object disoriented reads input bits most significant first, so a program keeps each input byte's eighth bit and drops the seven before it
 - **piet** -- the committed example is drawn at 80 pixels per codel; generate draws 1 unless --scale says otherwise
-- **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **refractran** -- Inputs are ordered prime exponents in the initial integer; the final binary state ends in the answer bit.
 - **retrograde** -- Inputs are ordered one-instruction setters; the final current tape bit is the whole answer dump.
 - **slashes** -- Inputs fill the binary row index before unary selection; constant tables parse the input letters as a nonmatching rule pattern.
