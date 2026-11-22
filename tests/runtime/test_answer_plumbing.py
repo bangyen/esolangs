@@ -116,7 +116,9 @@ class TestATemplateCarriesItsSetters:
     def test_standalone_bindings_validate_source_and_spans(self) -> None:
         bindings = esolangs.TemplateBindings(setters=(("+", "-"),))
         assert bindings.fill("a$b", [1], spans=[(1, 2)]) == "a-b"
-        for source, spans in (("abc", None), ("abc", ((1, 2),)), ("a$b", ())):
+        with pytest.raises(TypeError, match="spans"):
+            bindings.fill("a$b", [1])
+        for source, spans in (("a$b", None), ("abc", ((1, 2),)), ("a$b", ())):
             with pytest.raises(esolangs.TemplateError):
                 bindings.fill(source, [1], spans=spans)
 

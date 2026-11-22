@@ -118,20 +118,23 @@ def fill_runs(
     char: str,
     setters: Setters,
     bits: Sequence[int],
-    *,
-    spans: Sequence[tuple[int, int]] | None = None,
 ) -> str:
-    """Fill runs; supplied spans must already be validated for this source."""
+    """Find and fill the runs in a raw template."""
     if len(bits) != len(setters):
         raise ValueError(f"expected {len(setters)} bits, got {len(bits)}")
+    return fill_spans(text, setters, bits, runs(text, char, setters))
+
+
+def fill_spans(
+    text: str,
+    setters: Setters,
+    bits: Sequence[int],
+    spans: Sequence[tuple[int, int]],
+) -> str:
+    """Fill spans already validated for this source."""
     out: list[str] = []
     position = 0
-    for (start, end), (zero, one), bit in zip(
-        runs(text, char, setters) if spans is None else spans,
-        setters,
-        bits,
-        strict=True,
-    ):
+    for (start, end), (zero, one), bit in zip(spans, setters, bits, strict=True):
         out.append(text[position:start])
         out.append(one if bit else zero)
         position = end

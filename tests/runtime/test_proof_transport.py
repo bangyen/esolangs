@@ -302,7 +302,12 @@ def test_wire_decisions_require_proof_and_matching_counts():
         (_state_wire((0, (0,), None)), "invalid branching transition"),
         (_state_wire((0, ((0, 1),), None)), "invalid branching transition"),
         (
-            {"tuple": [{"ref": 0}, {"define": [0, {"tuple": []}]}, None]},
+            {
+                "define": [
+                    0,
+                    {"tuple": [{"ref": 1}, {"define": [1, {"tuple": []}]}, None]},
+                ]
+            },
             "snapshot reference needs a completed definition",
         ),
     ):

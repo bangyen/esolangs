@@ -23,7 +23,7 @@ def test_a_large_integer_cycle_retains_declared_record_types():
     assert native.decision.cycle.state.program[0].data == 10**5000
     assert termination_result_isolated("Crement", source, "", 5) == native
 
-    encoded["cycle"]["state"]["record"]["name"] = "_Machine"
+    encoded["cycle"]["state"]["define"][1]["record"]["name"] = "_Machine"
     with pytest.raises(ValueError, match="undeclared immutable snapshot record"):
         decode_decision(encoded)
 

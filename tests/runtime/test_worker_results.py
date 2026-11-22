@@ -85,7 +85,7 @@ def _assert_catalog_snapshot_round_trips(result, interpreter_only_samples):
                 debugger.step()
 
 
-def test_snapshot_references_preserve_aliases_and_legacy_tree_bytes(
+def test_snapshot_definitions_preserve_aliases_and_distinct_nodes(
     monkeypatch,
 ) -> None:
     from typing import NamedTuple
@@ -97,12 +97,24 @@ def test_snapshot_references_preserve_aliases_and_legacy_tree_bytes(
     second = tuple(iter(first))
     assert first is not second
     legacy = {"tuple": [{"tuple": [8]}, {"tuple": [8]}]}
-    assert worker_dumps(_state_wire((first, second))) == json.dumps(legacy)
-    assert _state_from_wire(legacy) == (first, second)
+    with pytest.raises(ValueError, match="without snapshot definition"):
+        _state_from_wire(legacy)
+    distinct = _state_from_wire(_state_wire((first, second)))
+    assert distinct == (first, second)
+    assert distinct[0] is not distinct[1]
 
     state = (first, (first,), first)
     expected = {
-        "tuple": [{"define": [0, {"tuple": [8]}]}, {"tuple": [{"ref": 0}]}, {"ref": 0}]
+        "define": [
+            0,
+            {
+                "tuple": [
+                    {"define": [1, {"tuple": [8]}]},
+                    {"define": [2, {"tuple": [{"ref": 1}]}]},
+                    {"ref": 1},
+                ]
+            },
+        ]
     }
     wire = worker_dumps(_state_wire(state))
     assert wire == json.dumps(expected)
@@ -118,10 +130,12 @@ def test_snapshot_references_preserve_aliases_and_legacy_tree_bytes(
         pytest.fail("unregistered snapshot named a module to import")
 
     monkeypatch.setattr(_result_wire, "import_module", refuse_import)
-    plain = {"tuple": [8]}
+    plain = {"define": [0, {"tuple": [8]}]}
     assert _state_wire(Unowned(8)) == plain
     assert type(_state_from_wire(plain)) is tuple
-    forged = {"owned": {"module": __name__, "name": "Unowned", "value": plain}}
+    forged = {
+        "define": [0, {"owned": {"module": __name__, "name": "Unowned", "value": 8}}]
+    }
     with pytest.raises(ValueError, match="unregistered snapshot codec module"):
         _state_from_wire(forged)
 
@@ -135,21 +149,27 @@ def test_snapshot_references_preserve_aliases_and_legacy_tree_bytes(
         {"define": [0, 1]},
         {"define": [0, {"ref": 0}]},
         {"define": [False, {"tuple": [1]}]},
-        {"define": [0, {"tuple": [1]}]},
+        {"define": [1, {"tuple": [1]}]},
         {"define": [0, {"tuple": [{"ref": 0}]}]},
-        {"tuple": [{"ref": 0}, {"define": [0, {"tuple": [1]}]}]},
+        {"define": [0, {"tuple": [{"ref": 1}, {"define": [1, {"tuple": [1]}]}]}]},
         {
-            "tuple": [
-                {"define": [0, {"tuple": [1]}]},
-                {"define": [0, {"tuple": [2]}]},
-                {"ref": 0},
+            "define": [
+                0,
+                {
+                    "tuple": [
+                        {"define": [1, {"tuple": [1]}]},
+                        {"define": [1, {"tuple": [2]}]},
+                        {"ref": 1},
+                    ]
+                },
             ]
         },
-        {"define": [0, {"tuple": [{"define": [0, {"tuple": [1]}]}, {"ref": 0}]}]},
+        {"define": [0, {"tuple": [{"define": [0, {"tuple": [1]}]}]}]},
+        {"define": [0, {"tuple": [{"tuple": [1]}]}]},
     ],
 )
 def test_snapshot_references_reject_malformed_graphs_and_keep_output(state) -> None:
-    with pytest.raises(ValueError, match="snapshot reference"):
+    with pytest.raises(ValueError, match=r"snapshot (reference|definition)"):
         _state_from_wire(state)
     cycle = BoundaryCycle((1,), 0, 1, 1)
     completed = ExecutionResult(
@@ -254,12 +274,15 @@ def test_immutable_cycle_state_survives_json(interpreter_only_samples):
                 replace(result, completion=CompletionReport(Completion.PERIODIC, cycle))
             )
         broken = copy.deepcopy(metadata)
-        broken["completion"]["cycle"]["state"] = {"tuple": [invalid]}
+        broken["completion"]["cycle"]["state"] = {"define": [0, {"tuple": [invalid]}]}
         refuses(broken, "non-finite")
     for state_tag in (
         *({"bytes": value} for value in ("AA", "aa bb", "00\n")),
         *({"int": value} for value in ("0x01", "0x0_1", "-0x0", "0xA", "0x1 ")),
-        *({"frozenset": value} for value in ([1, 1], [1, True], [1, 1.0])),
+        *(
+            {"define": [0, {"frozenset": value}]}
+            for value in ([1, 1], [1, True], [1, 1.0])
+        ),
     ):
         broken = copy.deepcopy(metadata)
         broken["completion"]["cycle"]["state"] = state_tag
@@ -288,7 +311,7 @@ def test_immutable_cycle_state_survives_json(interpreter_only_samples):
     for key, invalid in (
         ("module", "fractions"),
         ("name", "_Machine"),
-        ("value", {"tuple": []}),
+        ("value", None),
     ):
         broken = copy.deepcopy(metadata)
         record_at(broken, "owned")[key] = invalid
@@ -309,15 +332,25 @@ def test_immutable_cycle_state_survives_json(interpreter_only_samples):
         {"bytes": "AA"},
         {"int": "0xA"},
         {"fraction": ["0x2", "0x4"]},
-        {"frozenset": [1, True]},
-        {"frozenset": [1, 1.0]},
+        {"define": [1100, {"frozenset": [1, True]}]},
+        {"define": [1100, {"frozenset": [1, 1.0]}]},
         float("nan"),
-        {"record": {"module": "fractions", "name": "Fraction", "fields": {}}},
-        {"owned": {"module": "fractions", "name": "Fraction", "value": {"tuple": []}}},
+        {
+            "define": [
+                1100,
+                {"record": {"module": "fractions", "name": "Fraction", "fields": {}}},
+            ]
+        },
+        {
+            "define": [
+                1100,
+                {"owned": {"module": "fractions", "name": "Fraction", "value": None}},
+            ]
+        },
     ):
         nested = malformed
-        for _ in range(1100):
-            nested = {"tuple": [nested]}
+        for reference in reversed(range(1100)):
+            nested = {"define": [reference, {"tuple": [nested]}]}
         broken = copy.copy(metadata)
         broken["completion"] = copy.copy(metadata["completion"])
         broken["completion"]["cycle"] = copy.copy(metadata["completion"]["cycle"])

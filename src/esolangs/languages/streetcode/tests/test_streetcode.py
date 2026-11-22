@@ -82,15 +82,16 @@ def _check_cycle_transport(code: list[str]) -> None:
     assert stored.latches.merge.new_heading == "W"
     assert stored.latches.merge.crossing is True
 
-    record = _state_wire(stored)["owned"]
-    forbidden = {
-        **record,
-        "module": record["module"].replace(".geometry", ".validation"),
-    }
+    packet = _state_wire(stored)
+    record = packet["define"][1]["owned"]
+    module = record["module"]
+    record["module"] = module.replace(".geometry", ".validation")
     with pytest.raises(ValueError, match="unregistered snapshot codec module"):
-        _state_from_wire({"owned": forbidden})
+        _state_from_wire(packet)
+    record["module"] = module
+    record["name"] = "_Car"
     with pytest.raises(ValueError, match="undeclared snapshot codec"):
-        _state_from_wire({"owned": {**record, "name": "_Car"}})
+        _state_from_wire(packet)
 
 
 class TestStreetcodeSingleCommands:

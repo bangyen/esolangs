@@ -58,16 +58,25 @@ def _check_template_width_pickle(template: esolangs.TemplateArtifact) -> None:
     )
 
     class FormerOrder:
-        def __init__(self, state):
+        def __init__(self, cls, state):
+            self.cls = cls
             self.state = state
 
         def __reduce__(self):
-            return (object.__new__, (_TemplateWithLabel,), self.state)
+            return (object.__new__, (self.cls,), self.state)
 
-    for artifact in (labeled, replace(labeled, generation_width=None)):
-        restored = pickle.loads(pickle.dumps(artifact))
-        assert restored == artifact
-        assert restored.generation_width == artifact.generation_width
+    for base in (template, labeled):
+        for artifact in (base, replace(base, generation_width=None)):
+            assert isinstance(artifact.__getstate__(), dict)
+            restored = pickle.loads(pickle.dumps(artifact))
+            assert restored == artifact
+            assert restored.generation_width == artifact.generation_width
+        with pytest.raises(ValueError, match="requires all named fields"):
+            pickle.loads(
+                pickle.dumps(
+                    FormerOrder(type(base), list(base.__getstate__().values()))
+                )
+            )
     former = [
         labeled.source,
         labeled.language,
@@ -78,7 +87,7 @@ def _check_template_width_pickle(template: esolangs.TemplateArtifact) -> None:
     ]
     for state in (former, [*former, labeled.generation_width]):
         with pytest.raises(ValueError, match="requires all named fields"):
-            pickle.loads(pickle.dumps(FormerOrder(state)))
+            pickle.loads(pickle.dumps(FormerOrder(_TemplateWithLabel, state)))
 
 
 @pytest.mark.medium
@@ -161,7 +170,9 @@ def test_text_generation_returns_an_immutable_record(language: str) -> None:
         artifact.language = "other"
     if isinstance(artifact, TemplateArtifact):
         filled = artifact.fill([0, 1])
-        assert filled.source == artifact.bindings.fill(artifact.source, [0, 1])
+        assert filled.source == artifact.bindings.fill(
+            artifact.source, [0, 1], spans=artifact.spans
+        )
         assert esolangs.run(language, filled).output == "1"
     else:
         assert isinstance(artifact, ProgramArtifact)
@@ -176,7 +187,7 @@ def test_template_record_refuses_invalid_bindings(bits: list[int]) -> None:
         spans=((0, 1), (1, 2)),
     )
     with pytest.raises((esolangs.TemplateError, esolangs.ArgumentError)):
-        template.bindings.fill(template.source, bits)
+        template.bindings.fill(template.source, bits, spans=template.spans)
 
 
 @pytest.mark.parametrize(
@@ -236,7 +247,7 @@ def test_template_bindings_require_ordered_pairs() -> None:
             return iter(("0", "1"))
 
     bindings = TemplateBindings(setters=[OrderedPair()])
-    assert bindings.fill("$", [1]) == "1"
+    assert bindings.fill("$", [1], spans=((0, 1),)) == "1"
 
     class Offset(int):
         def __int__(self):
@@ -348,7 +359,7 @@ def test_template_record_copies_bindings_and_retains_settings() -> None:
         spans=((0, 1),),
     )
     pairs[0][1] = "changed"
-    assert template.bindings.fill(template.source, [1]) == "1"
+    assert template.bindings.fill(template.source, [1], spans=template.spans) == "1"
     assert template.language == REFERENCE
     assert template.settings is settings
     _check_wrapped_template_width()

@@ -13,7 +13,7 @@ from esolangs._bindings import (
     Setters,
     _stored_items,
     check_setters,
-    fill_runs,
+    fill_spans,
     validate_spans,
 )
 from esolangs.compressed import CompressedText, _freeze_compressed
@@ -203,7 +203,7 @@ class TemplateBindings:
         source: str,
         bits: list[int] | tuple[int, ...],
         *,
-        spans: Sequence[tuple[int, int]] | None = None,
+        spans: Sequence[tuple[int, int]],
     ) -> str:
         """Bind integer bits in source, refusing missing or stray runs."""
         inputs = len(self.setters)
@@ -213,10 +213,9 @@ class TemplateBindings:
             raise TemplateError("template source must be text")
         source = str.__str__(source)
         try:
-            if spans is not None:
-                spans = tuple(_freeze_span(span) for span in _stored_items(spans))
-                validate_spans(source, self.char, self.setters, spans)
-            return fill_runs(source, self.char, self.setters, bits, spans=spans)
+            frozen = tuple(_freeze_span(span) for span in _stored_items(spans))
+            validate_spans(source, self.char, self.setters, frozen)
+            return fill_spans(source, self.setters, bits, frozen)
         except EsolangError:
             raise
         except (TypeError, ValueError) as error:
@@ -296,24 +295,18 @@ class TemplateArtifact:
         width = check_width(self.generation_width)
         object.__setattr__(self, "generation_width", width)
 
-    def __getstate__(self) -> list[object] | dict[str, object]:
-        """Store subclass fields by name so each value has an explicit owner."""
-        values = {item.name: getattr(self, item.name) for item in fields(self)}
-        return list(values.values()) if type(self) is TemplateArtifact else values
+    def __getstate__(self) -> dict[str, object]:
+        """Store template fields by name."""
+        return {item.name: getattr(self, item.name) for item in fields(self)}
 
-    def __setstate__(self, state: list[object] | dict[str, object]) -> None:
+    def __setstate__(self, state: dict[str, object]) -> None:
         """Restore exactly the fields of the template being unpickled."""
-        if type(self) is TemplateArtifact:
-            if not isinstance(state, list):
-                raise ValueError("template pickle requires positional fields")
-            _restore_artifact_slots(self, state)
-        else:
-            if not isinstance(state, dict) or state.keys() != {
-                f.name for f in fields(self)
-            }:
-                raise ValueError("template subclass pickle requires all named fields")
-            for name, value in state.items():
-                object.__setattr__(self, name, value)
+        if not isinstance(state, dict) or state.keys() != {
+            item.name for item in fields(self)
+        }:
+            raise ValueError("template pickle requires all named fields")
+        for name, value in state.items():
+            object.__setattr__(self, name, value)
         object.__setattr__(self, "generation_width", check_width(self.generation_width))
 
     def evaluate(
@@ -338,13 +331,7 @@ class TemplateArtifact:
         bits = check_bits(bits, "bits", allow_empty=inputs == 0)
         check_bit_count(bits, inputs, f"{self.language} template")
         return ProgramArtifact(
-            fill_runs(
-                self.source,
-                self.bindings.char,
-                self.bindings.setters,
-                bits,
-                spans=self.spans,
-            ),
+            fill_spans(self.source, self.bindings.setters, bits, self.spans),
             self.language,
             settings=self.settings,
         )

@@ -409,7 +409,10 @@ def test_explicit_zero_input_template_can_be_filled_after_reload(language: str) 
     assert isinstance(restored, esolangs.TemplateArtifact)
     assert restored == record
     for bits in ([], ()):
-        assert restored.bindings.fill(restored.source, bits) == filled.source
+        assert (
+            restored.bindings.fill(restored.source, bits, spans=restored.spans)
+            == filled.source
+        )
         assert restored.fill(bits) == api.instantiate(restored, bits) == filled
         assert (
             restored.evaluate(bits).answer == api.evaluate(restored, bits).answer == "0"

@@ -20,6 +20,7 @@ from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
+from tests.support.worker_response import owned_snapshot_with_payload
 
 #: The wiki's Hello world: a left-nested chain of prints, newline first.
 #: Spelled from its atoms rather than by hand, because ``n`` atoms need
@@ -311,9 +312,8 @@ def test_snapshots_compare_continuations_by_their_frames() -> None:
     kont = runs[0].state[1]
     assert kont is not None
     for payload in ((), (1,)):
-        packet = _state_wire(kont)
-        packet["owned"]["value"] = _state_wire(payload)
-        with pytest.raises(ValueError, match="snapshot"):
+        packet = owned_snapshot_with_payload(kont, payload)
+        with pytest.raises(ValueError, match="invalid owned snapshot payload"):
             _state_from_wire(packet)
     assert kont != kont.rest
     assert kont != kont.frames()

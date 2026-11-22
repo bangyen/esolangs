@@ -8,6 +8,7 @@ from esolangs.runtime._result_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.vm_support import assert_rejected_output_retry
+from tests.support.worker_response import owned_snapshot_with_payload
 
 
 def execute(source: str, stdin: str = "") -> str:
@@ -124,9 +125,10 @@ class TestTheGridIsAMapOfPoints:
             frozenset({((0, 0), "a"), ((0, 0), "b")}),
             frozenset({((True, 0), "a")}),
         ):
-            packet = _state_wire(grid)
-            packet["owned"]["value"] = _state_wire(payload)
-            with pytest.raises(ValueError, match="snapshot"):
+            packet = owned_snapshot_with_payload(grid, payload)
+            with pytest.raises(
+                ValueError, match=r"(invalid|noncanonical) owned snapshot"
+            ):
                 _state_from_wire(packet)
         assert grid.marked((0, 0), "Z") != restored
         assert grid.at((0, 0)) == "A"

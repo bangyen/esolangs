@@ -23,6 +23,7 @@ from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program as _run_program
 from tests.support.execution import termination_observed
 from tests.support.vm_support import assert_rejected_output_retry
+from tests.support.worker_response import owned_snapshot_with_payload
 
 run_program = partial(_run_program, run, suppress_eof=False)
 
@@ -271,9 +272,8 @@ def test_workspace_scope_values_survive_backing_root_moves():
     assert restored == first_table
     assert hash(restored) == hash(first_table)
     for payload in ((), frozenset({(1, "a"), (1, "b")}), frozenset({(True, "a")})):
-        packet = _state_wire(first_table)
-        packet["owned"]["value"] = _state_wire(payload)
-        with pytest.raises(ValueError, match="snapshot"):
+        packet = owned_snapshot_with_payload(first_table, payload)
+        with pytest.raises(ValueError, match=r"(invalid|noncanonical) owned snapshot"):
             _state_from_wire(packet)
     retained = {saved}
     for _ in range(4):

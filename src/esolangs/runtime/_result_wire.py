@@ -100,23 +100,21 @@ class _DecodeTask(NamedTuple):
     items: Any
     parent: Any
     key: str | int
-    identity: int | None
+    reference: int | None
 
 
 def _state_wire(state: Hashable) -> Any:
-    """Tag immutable snapshots, referring back to completed shared nodes."""
+    """Define each compound snapshot node once and refer back to it by ID."""
     result: list[Any] = [None]
     pending: list[_EncodeTask] = [_EncodeTask("visit", state, result, 0, None)]
     active: set[int] = set()
-    completed: dict[int, _EncodeTask] = {}
-    references: dict[int, int] = {}
+    # Keep the nodes alive so temporary codec payloads cannot reuse their IDs.
+    references: dict[int, tuple[Hashable, int]] = {}
     while pending:
         task = pending.pop()
         action, node, parent, key, attribute = task
         if action == "finish":
             active.remove(id(node))
-            # Keep a strong reference and its first wire slot until the walk ends.
-            completed[id(node)] = task
             continue
         assert key is not None
         if attribute is not None:
@@ -136,20 +134,16 @@ def _state_wire(state: Hashable) -> Any:
             identity = id(node)
             if identity in active:
                 raise ValueError("cyclic cycle state")
-            first = completed.get(identity)
+            first = references.get(identity)
             if first is not None:
-                reference = references.get(identity)
-                if reference is None:
-                    reference = len(references)
-                    references[identity] = reference
-                    assert first.key is not None
-                    first.parent[first.key] = {
-                        "define": [reference, first.parent[first.key]]
-                    }
-                parent[key] = {"ref": reference}
+                parent[key] = {"ref": first[1]}
                 continue
+            reference = len(references)
+            references[identity] = (node, reference)
+            definition: list[Any] = [reference, None]
+            parent[key] = {"define": definition}
             active.add(identity)
-            pending.append(_EncodeTask("finish", node, parent, key, None))
+            pending.append(_EncodeTask("finish", node, None, None, None))
             cls = type(node)
             codec = (
                 _tuple_owned_codec(cls)
@@ -159,7 +153,7 @@ def _state_wire(state: Hashable) -> Any:
             if codec is None and isinstance(node, (tuple, frozenset)):
                 values = [value for value in node]  # noqa: C416 - preserve iteration without length hints
                 items: list[Any] = [None] * len(values)
-                parent[key] = {
+                definition[1] = {
                     "tuple" if isinstance(node, tuple) else "frozenset": items
                 }
                 pending.extend(
@@ -172,7 +166,7 @@ def _state_wire(state: Hashable) -> Any:
                 values_by_name: dict[str, Any] = {
                     field.name: None for field in declared
                 }
-                parent[key] = {
+                definition[1] = {
                     "record": {
                         "module": cls.__module__,
                         "name": cls.__qualname__,
@@ -191,7 +185,7 @@ def _state_wire(state: Hashable) -> Any:
                     "name": codec.cls.__qualname__,
                     "value": None,
                 }
-                parent[key] = {"owned": owned}
+                definition[1] = {"owned": owned}
                 pending.append(
                     _EncodeTask("visit", codec.encode(node), owned, "value", None)
                 )
@@ -238,7 +232,11 @@ def _reference_id(value: Any) -> int:
 
 
 def _schedule_compound(
-    node: dict[str, Any], parent: Any, key: str | int, pending: list[_DecodeTask]
+    node: dict[str, Any],
+    parent: Any,
+    key: str | int,
+    reference: int,
+    pending: list[_DecodeTask],
 ) -> None:
     """Validate a compound and queue its children before building it."""
     if "owned" in node:
@@ -252,7 +250,7 @@ def _schedule_compound(
             raise ValueError("invalid owned snapshot")
         codec = _owned_codec(owned["module"], owned["name"])
         payload: list[Any] = [None]
-        pending.append(_DecodeTask("owned", codec, payload, parent, key, id(node)))
+        pending.append(_DecodeTask("owned", codec, payload, parent, key, reference))
         pending.append(_DecodeTask("visit", owned["value"], None, payload, 0, None))
     elif "record" in node:
         record = node["record"]
@@ -269,7 +267,7 @@ def _schedule_compound(
         if record["fields"].keys() != set(names):
             raise ValueError("invalid snapshot record fields")
         arguments: dict[str, Any] = dict.fromkeys(names)
-        pending.append(_DecodeTask("record", cls, arguments, parent, key, id(node)))
+        pending.append(_DecodeTask("record", cls, arguments, parent, key, reference))
         pending.extend(
             _DecodeTask("visit", record["fields"][name], None, arguments, name, None)
             for name in reversed(names)
@@ -279,7 +277,7 @@ def _schedule_compound(
         if tag not in ("tuple", "frozenset") or not isinstance(node[tag], list):
             raise ValueError("invalid cycle state tag")
         decoded_values: list[Any] = [None] * len(node[tag])
-        pending.append(_DecodeTask(tag, None, decoded_values, parent, key, id(node)))
+        pending.append(_DecodeTask(tag, None, decoded_values, parent, key, reference))
         pending.extend(
             _DecodeTask("visit", node[tag][index], None, decoded_values, index, None)
             for index in reversed(range(len(node[tag])))
@@ -290,26 +288,21 @@ def _state_from_wire(value: Any) -> Hashable:
     """Restore tagged immutable snapshots with an explicit build stack."""
     result: list[Any] = [None]
     pending: list[_DecodeTask] = [_DecodeTask("visit", value, None, result, 0, None)]
-    active: set[int] = set()
-    declared: set[int] = set()
+    next_reference = 0
     definitions: dict[int, Hashable] = {}
-    used: set[int] = set()
     while pending:
-        action, node, items, parent, key, identity = pending.pop()
+        action, node, items, parent, key, reference = pending.pop()
         if action != "visit":
-            assert identity is not None
-            if action == "define":
-                definitions[node] = parent[key] = items[0]
-            elif action == "record":
-                parent[key] = node(**items)
+            assert reference is not None
+            if action == "record":
+                decoded = node(**items)
             elif action == "owned":
-                parent[key] = _owned_from_wire(node, items[0])
+                decoded = _owned_from_wire(node, items[0])
             else:
-                decoded_items = tuple(items) if action == "tuple" else frozenset(items)
-                if len(decoded_items) != len(items):
+                decoded = tuple(items) if action == "tuple" else frozenset(items)
+                if len(decoded) != len(items):
                     raise ValueError("duplicate cycle state member")
-                parent[key] = decoded_items
-            active.remove(identity)
+            definitions[reference] = parent[key] = decoded
             continue
         if type(node) is float and (not isfinite(node)):
             raise ValueError("non-finite cycle state")
@@ -323,43 +316,30 @@ def _state_from_wire(value: Any) -> Hashable:
             if reference not in definitions:
                 raise ValueError("snapshot reference needs a completed definition")
             parent[key] = definitions[reference]
-            used.add(reference)
         elif "bytes" in node and isinstance(node["bytes"], str):
             parent[key] = _bytes_from_wire(node["bytes"])
         elif "int" in node:
             parent[key] = canonical_integer(node["int"])
         elif "fraction" in node:
             parent[key] = _fraction_from_wire(node["fraction"])
+        elif "define" in node:
+            definition = node["define"]
+            if (
+                not isinstance(definition, list)
+                or len(definition) != 2
+                or not isinstance(definition[1], dict)
+                or len(definition[1]) != 1
+                or next(iter(definition[1]))
+                not in ("tuple", "frozenset", "record", "owned")
+            ):
+                raise ValueError("invalid snapshot reference definition")
+            reference = _reference_id(definition[0])
+            if reference != next_reference:
+                raise ValueError("out-of-order snapshot reference definition")
+            next_reference += 1
+            _schedule_compound(definition[1], parent, key, reference, pending)
         else:
-            if id(node) in active:
-                raise ValueError("cyclic cycle state")
-            active.add(id(node))
-            if "define" in node:
-                definition = node["define"]
-                if (
-                    not isinstance(definition, list)
-                    or len(definition) != 2
-                    or not isinstance(definition[1], dict)
-                    or len(definition[1]) != 1
-                    or next(iter(definition[1]))
-                    not in ("tuple", "frozenset", "record", "owned")
-                ):
-                    raise ValueError("invalid snapshot reference definition")
-                reference = _reference_id(definition[0])
-                if reference in declared:
-                    raise ValueError("duplicate snapshot reference definition")
-                declared.add(reference)
-                shared: list[Any] = [None]
-                pending.append(
-                    _DecodeTask("define", reference, shared, parent, key, id(node))
-                )
-                pending.append(
-                    _DecodeTask("visit", definition[1], None, shared, 0, None)
-                )
-            else:
-                _schedule_compound(node, parent, key, pending)
-    if declared != used:
-        raise ValueError("unused snapshot reference definition")
+            raise ValueError("invalid cycle state tag without snapshot definition")
     return cast("Hashable", result[0])
 
 

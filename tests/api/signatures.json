@@ -68,7 +68,7 @@
   "TemplateArtifact.evaluate": "(self, bits: 'list[int] | tuple[int, ...]', *, limits: 'ExecutionLimits | None' = None, catalog: 'esolangs.Catalog | None' = None) -> 'BooleanEvaluation'",
   "TemplateArtifact.fill": "(self, bits: 'list[int] | tuple[int, ...]') -> 'ProgramArtifact[str]'",
   "TemplateBindings.__init__": "(self, *, char: 'str' = '$', setters: 'Setters' = ()) -> None",
-  "TemplateBindings.fill": "(self, source: 'str', bits: 'list[int] | tuple[int, ...]', *, spans: 'Sequence[tuple[int, int]] | None' = None) -> 'str'",
+  "TemplateBindings.fill": "(self, source: 'str', bits: 'list[int] | tuple[int, ...]', *, spans: 'Sequence[tuple[int, int]]') -> 'str'",
   "TextLimits.__init__": "(self, *, plain_chars: 'int', generation_chars: 'int', gzip_bytes: 'int') -> None",
   "esolangs.debugger.make_debugger": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', seed: 'int | None' = None, settings: 'DialectSettings | None' = None, scale: 'int | None' = None, catalog: 'Catalog | None' = None) -> 'Debugger'",
   "esolangs.debugger.make_vm": "(language: 'str', program: 'ProgramSource', *, stdin: 'InputSource' = '', seed: 'int | None' = None, settings: 'DialectSettings | None' = None, scale: 'int | None' = None, catalog: 'Catalog | None' = None) -> 'VM'",
