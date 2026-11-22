@@ -67,7 +67,7 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki shortlist.** Three screened candidates advance to the next
+- **Wiki shortlist.** Six screened candidates advance to the next
   implementation pass. Each subset probe passed all 65,536 arity-four tables
   on all 16 inputs, plus sampled inputs through arity ten. Each emitter has
   O(T) generation time and source size. Order favors direct constructions
@@ -82,6 +82,16 @@ history at `f35aa4023`.
     3. [Pd.NA](https://esolangs.org/wiki/Pd.NA) (rev. 147169).
        One tape cell selects branches and emits the bit. An EOF witness
        exercised the NA catch path. Source is exactly `11T−7` characters.
+    4. [Thing of Shock](https://esolangs.org/wiki/Thing_of_Shock) (rev. 204327).
+       An acyclic graph binds each input bit to one initial counter.
+       Shared suffix graphs keep the serialized source linear. Read the
+       designated counter at tick `4n+3` for `n` input bits.
+    5. [Globe](https://esolangs.org/wiki/Globe) (rev. 165023). State-dependent
+       parity filters table symbols per embedded input bit. The last transition
+       prints the remaining bit.
+    6. [Turing Code](https://esolangs.org/wiki/Turing_Code) (rev. 204341).
+       An acyclic `!!DTM` graph leaves one string bit on the trimmed tape in
+       `n+1` transitions. The printed tape format remains open.
   - *Semantic screen:* StrML edits a base string through separate base and
     input cursors. Numlist prints the magnitude of an underflowing jump, so
     character output depends on instruction placement. Pd.NA propagates
@@ -92,7 +102,7 @@ history at `f35aa4023`.
 
 ## Wiki candidate backlog
 
-### Reserve (15)
+### Reserve (12)
 
 - [XMLfuck](https://esolangs.org/wiki/XMLfuck)
 - [Methylmercury](https://esolangs.org/wiki/Methylmercury)
@@ -114,16 +124,6 @@ history at `f35aa4023`.
 - [You wait here](https://esolangs.org/wiki/You_wait_here) (rev. 131213).
   A counter reset and two conditional blocks select each branch.
   `repeat`, `split` and `define` remain open outside this subset.
-- [Globe](https://esolangs.org/wiki/Globe) (rev. 165023). State-dependent
-  parity filters table symbols per embedded input bit. The last transition
-  prints the remaining bit.
-- [Turing Code](https://esolangs.org/wiki/Turing_Code) (rev. 204341).
-  An acyclic `!!DTM` graph leaves one string bit on the trimmed tape in
-  `n+1` transitions. The printed tape format remains open.
-- [Thing of Shock](https://esolangs.org/wiki/Thing_of_Shock) (rev. 204327).
-  An acyclic graph binds each input bit to one initial counter.
-  Shared suffix graphs keep the serialized source linear. Read the
-  designated counter at tick `4n+3` for `n` input bits.
 
 The first-implementation screen dropped QuakeScript and 1nteger from the
 shortlist. Their selectors use an accumulator, ordinary tests and jumps or
