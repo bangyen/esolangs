@@ -75,9 +75,9 @@ history at `f35aa4023`.
     1. [Trml](https://esolangs.org/wiki/Trml) (rev. 140496).
        Three rules select a truth-table leaf by rewriting a single root.
        The result is the final term.
-    2. [Globe](https://esolangs.org/wiki/Globe) (rev. 165023).
-       State-dependent parity filters alternate table symbols per input bit.
-       The last transition prints the remaining bit.
+    2. [StrML](https://esolangs.org/wiki/StrML) (rev. 179266).
+       A quoted source header carries the fixed base. One grouped test per
+       immutable input bit selects the result. The artifact is `8T` characters.
     3. [Turing Code](https://esolangs.org/wiki/Turing_Code) (rev. 204341).
        An acyclic `!!DTM` decision graph shares suffix states to keep
        source linear, including state names. Exactly `n+1` transitions
@@ -98,7 +98,7 @@ history at `f35aa4023`.
 
 ## Wiki candidate backlog
 
-### Reserve (26)
+### Reserve (27)
 
 - [AEAV](https://esolangs.org/wiki/AEAV)
 - [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
@@ -139,6 +139,9 @@ history at `f35aa4023`.
 - [干！](https://esolangs.org/wiki/%E5%B9%B2%EF%BC%81) (rev. 166203).
   A numeric read and if/else select each branch. Assignment direction
   and division remain open outside the tested selector.
+- [Globe](https://esolangs.org/wiki/Globe) (rev. 165023). State-dependent
+  parity filters table symbols per embedded input bit. The last transition
+  prints the remaining bit.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
