@@ -82,10 +82,9 @@ history at `f35aa4023`.
        Each input binds one contiguous block of relative jumps. Shared
        suffix states keep the decimal source linear. One forward pass
        prints the selected bit and exits past the instruction list.
-    4. [Thing of Shock](https://esolangs.org/wiki/Thing_of_Shock) (rev. 204327).
-       An acyclic graph binds each input bit to one initial counter.
-       Shared suffix graphs keep the serialized source linear. Read the
-       designated counter at tick `4n+3` for `n` input bits.
+    4. [QuakeScript](https://esolangs.org/wiki/QuakeScript) (rev. 163420).
+       Division by one converts prompt input to a number. Shared suffix
+       states keep the jump selector linear. A leaf prints one bit and quits.
     5. [1nteger](https://esolangs.org/wiki/1nteger) (rev. 180816).
        An `IF` tree reads one byte per decision and uses only byte values.
        `PNT` emits the selected bit. Source is exactly `28T−21` characters.
@@ -98,7 +97,7 @@ history at `f35aa4023`.
 
 ## Wiki candidate backlog
 
-### Reserve (28)
+### Reserve (29)
 
 - [AEAV](https://esolangs.org/wiki/AEAV)
 - [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
@@ -146,6 +145,11 @@ history at `f35aa4023`.
 - [Turing Code](https://esolangs.org/wiki/Turing_Code) (rev. 204341).
   An acyclic `!!DTM` graph leaves one string bit on the trimmed tape in
   `n+1` transitions. The printed tape format remains open.
+
+- [Thing of Shock](https://esolangs.org/wiki/Thing_of_Shock) (rev. 204327).
+  An acyclic graph binds each input bit to one initial counter.
+  Shared suffix graphs keep the serialized source linear. Read the
+  designated counter at tick `4n+3` for `n` input bits.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
