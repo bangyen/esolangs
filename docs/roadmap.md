@@ -67,35 +67,35 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki shortlist.** Six of 34 screened candidates advance to the next
+- **Wiki shortlist.** Six screened candidates advance to the next
   implementation pass. Each subset probe passed all 65,536 arity-four tables
   on all 16 inputs, plus sampled inputs through arity ten. Each emitter has
   O(T) generation time and source size. Order favors direct constructions
   using documented operations with few open questions on the generator's path.
-    1. [You wait here](https://esolangs.org/wiki/You_wait_here) (rev. 131213).
+    1. [Trml](https://esolangs.org/wiki/Trml) (rev. 140496).
+       Three rules select a truth-table leaf by rewriting a single root.
+       The result is the final term.
+    2. [Globe](https://esolangs.org/wiki/Globe) (rev. 165023).
+       State-dependent parity filters alternate table symbols per input bit.
+       The last transition prints the remaining bit.
+    3. [You wait here](https://esolangs.org/wiki/You_wait_here) (rev. 131213).
        A counter reset and two conditional blocks select each branch.
        `repeat`, `split` and `define` remain open outside this subset.
-    2. [干！](https://esolangs.org/wiki/%E5%B9%B2%EF%BC%81) (rev. 166203).
+    4. [干！](https://esolangs.org/wiki/%E5%B9%B2%EF%BC%81) (rev. 166203).
        A numeric read and explicit if/else select each branch. Leaves print
        literal text. The tree avoids assignment direction and division.
-    3. [Teacher](https://esolangs.org/wiki/Teacher) (rev. 195882).
+    5. [Teacher](https://esolangs.org/wiki/Teacher) (rev. 195882).
        Nested grade tests reuse one variable. The loop exit rule remains open.
-    4. [C!](https://esolangs.org/wiki/C!) (rev. 197732).
-       Paired `Q` guards use one input variable per depth, with short names
-       near the leaves. The tree avoids boolean precedence and string indexing.
-    5. [Duzitdo?](https://esolangs.org/wiki/Duzitdo%3F) (rev. 203847).
+    6. [Duzitdo?](https://esolangs.org/wiki/Duzitdo%3F) (rev. 203847).
        Postorder arithmetic selects the result with small integers.
        `ASK` follows the numeric input in the calculator example.
-    6. [Brаinfuck](https://esolangs.org/wiki/Br%D0%B0infuck) (rev. 202557).
-       A two-cell tree uses bounded counters and byte I/O. The behavior of
-       `&` at the tape edge remains open.
   - *Admission:* refresh the public-implementation check and apply the
     [curation rules](limitations.md#curation). Verify the complete
     interpreter and generator before adding each language.
 
 ## Wiki candidate backlog
 
-### Reserve (19)
+### Reserve (22)
 
 - [AEAV](https://esolangs.org/wiki/AEAV)
 - [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
@@ -118,6 +118,13 @@ history at `f35aa4023`.
 - [Sonjalang](https://esolangs.org/wiki/Sonjalang)
 - [诗(PSTF)](https://esolangs.org/wiki/%E8%AF%97(PSTF))
 - [NoGolfersLand](https://esolangs.org/wiki/NoGolfersLand)
+- [C!](https://esolangs.org/wiki/C!) (rev. 197732). The paired guards passed
+  the full sweep. Check nested `Q` parsing independently.
+- [Brаinfuck](https://esolangs.org/wiki/Br%D0%B0infuck) (rev. 202557). The
+  two-cell generator passed the full sweep. Check `&` at the tape edge.
+- [Gridify](https://esolangs.org/wiki/Gridify) (rev. 201532). Numeric I/O and
+  `G` lookup passed the full sweep. Both the stack index and grid width grow
+  with the table length.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
