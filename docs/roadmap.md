@@ -67,7 +67,7 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki shortlist.** Five screened candidates advance to the next
+- **Wiki shortlist.** Three screened candidates advance to the next
   implementation pass. Each subset probe passed all 65,536 arity-four tables
   on all 16 inputs, plus sampled inputs through arity ten. Each emitter has
   O(T) generation time and source size. Order favors direct constructions
@@ -79,74 +79,57 @@ history at `f35aa4023`.
        Each input binds one contiguous block of relative jumps. Shared
        suffix states keep the decimal source linear. One forward pass
        prints the selected bit and exits past the instruction list.
-    3. [QuakeScript](https://esolangs.org/wiki/QuakeScript) (rev. 163420).
-       Division by one converts prompt input to a number. Shared suffix
-       states keep the jump selector linear. A leaf prints one bit and quits.
-    4. [1nteger](https://esolangs.org/wiki/1nteger) (rev. 180816).
-       An `IF` tree reads one byte per decision and uses only byte values.
-       `PNT` emits the selected bit. Source is exactly `28T−21` characters.
-    5. [Pd.NA](https://esolangs.org/wiki/Pd.NA) (rev. 147169).
+    3. [Pd.NA](https://esolangs.org/wiki/Pd.NA) (rev. 147169).
        One tape cell selects branches and emits the bit. An EOF witness
        exercised the NA catch path. Source is exactly `11T−7` characters.
+  - *Semantic screen:* StrML edits a base string through separate base and
+    input cursors. Numlist prints the magnitude of an underflowing jump, so
+    character output depends on instruction placement. Pd.NA propagates
+    missing tape values and catches them at control boundaries.
   - *Admission:* refresh the public-implementation check and apply the
     [curation rules](limitations.md#curation). Verify the complete
     interpreter and generator before adding each language.
 
 ## Wiki candidate backlog
 
-### Reserve (29)
+### Reserve (15)
 
-- [AEAV](https://esolangs.org/wiki/AEAV)
-- [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
-- [StupLANG](https://esolangs.org/wiki/StupLANG)
 - [XMLfuck](https://esolangs.org/wiki/XMLfuck)
-- [AmogusScript](https://esolangs.org/wiki/AmogusScript)
 - [Methylmercury](https://esolangs.org/wiki/Methylmercury)
 - [Brainfive](https://esolangs.org/wiki/Brainfive)
-- [TOPLWARLNTMIHTACAFFTPLAIHTASTNBIHTMAIAIU](https://esolangs.org/wiki/TOPLWARLNTMIHTACAFFTPLAIHTASTNBIHTMAIAIU)
 - [FastBrain](https://esolangs.org/wiki/FastBrain)
-- [CRAZYLANG](https://esolangs.org/wiki/CRAZYLANG)
 - [kxgxyo](https://esolangs.org/wiki/Kxgxyo)
-- [Tech Support Scam](https://esolangs.org/wiki/Tech_Support_Scam)
 - [ASCII @](https://esolangs.org/wiki/ASCII_@). The translated subset ran
   on public `@`, which rejects raw ASCII source and differs on negative
   fractions. Refresh the search for a public ASCII runner at admission.
-- [Dan](https://esolangs.org/wiki/Dan)
 - [Helo PkmnQ](https://esolangs.org/wiki/Helo_PkmnQ)
-- [GotoScript](https://esolangs.org/wiki/GotoScript)
-- [Sonjalang](https://esolangs.org/wiki/Sonjalang)
 - [诗(PSTF)](https://esolangs.org/wiki/%E8%AF%97(PSTF))
 - [NoGolfersLand](https://esolangs.org/wiki/NoGolfersLand)
-- [C!](https://esolangs.org/wiki/C!) (rev. 197732). The paired guards passed
-  the full sweep with an independent nested `Q` parser.
 - [Brаinfuck](https://esolangs.org/wiki/Br%D0%B0infuck) (rev. 202557). The
   two-cell generator passed the full sweep. The tape-edge rule for `&`
   remains unspecified.
 - [Gridify](https://esolangs.org/wiki/Gridify) (rev. 201532). Numeric I/O and
   `G` lookup passed the full sweep. Both the stack index and grid width grow
   with the table length.
-- [Teacher](https://esolangs.org/wiki/Teacher) (rev. 195882). Nested grade
-  tests reuse one variable. The loop exit rule remains open.
-- [Duzitdo?](https://esolangs.org/wiki/Duzitdo%3F) (rev. 203847). Postorder
-  arithmetic selects the result with small integers. `ASK` follows the
-  numeric input in the calculator example.
 - [You wait here](https://esolangs.org/wiki/You_wait_here) (rev. 131213).
   A counter reset and two conditional blocks select each branch.
   `repeat`, `split` and `define` remain open outside this subset.
-- [干！](https://esolangs.org/wiki/%E5%B9%B2%EF%BC%81) (rev. 166203).
-  A numeric read and if/else select each branch. Assignment direction
-  and division remain open outside the tested selector.
 - [Globe](https://esolangs.org/wiki/Globe) (rev. 165023). State-dependent
   parity filters table symbols per embedded input bit. The last transition
   prints the remaining bit.
 - [Turing Code](https://esolangs.org/wiki/Turing_Code) (rev. 204341).
   An acyclic `!!DTM` graph leaves one string bit on the trimmed tape in
   `n+1` transitions. The printed tape format remains open.
-
 - [Thing of Shock](https://esolangs.org/wiki/Thing_of_Shock) (rev. 204327).
   An acyclic graph binds each input bit to one initial counter.
   Shared suffix graphs keep the serialized source linear. Read the
   designated counter at tick `4n+3` for `n` input bits.
+
+The first-implementation screen dropped QuakeScript and 1nteger from the
+shortlist. Their selectors use an accumulator, ordinary tests and jumps or
+blocks. Fourteen reserve candidates likewise offered direct scripting
+constructions. Reserve entries still need a worked example demonstrating
+their semantic constraint before promotion.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
