@@ -124,6 +124,7 @@ SwitchCase,yes,owned-adapter,switchcase-v1
 Taglate,yes,owned-adapter,taglate-v1
 thisthat,yes,owned-adapter,thisthat-v1
 Thue,yes,owned-adapter,thue-v1
+Trml,yes,owned-adapter,trml-v1
 Tubes,yes,owned-adapter,tubes-v1
 Unary,yes,inherited-adapter,brainfuck-v1
 Underload,yes,owned-adapter,underload-v1

@@ -67,28 +67,25 @@ history at `f35aa4023`.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki shortlist.** Six screened candidates advance to the next
+- **Wiki shortlist.** Five screened candidates advance to the next
   implementation pass. Each subset probe passed all 65,536 arity-four tables
   on all 16 inputs, plus sampled inputs through arity ten. Each emitter has
   O(T) generation time and source size. Order favors direct constructions
   using documented operations with few open questions on the generator's path.
-    1. [Trml](https://esolangs.org/wiki/Trml) (rev. 140496).
-       Three rules select a truth-table leaf by rewriting a single root.
-       The result is the final term.
-    2. [StrML](https://esolangs.org/wiki/StrML) (rev. 179266).
+    1. [StrML](https://esolangs.org/wiki/StrML) (rev. 179266).
        A quoted source header carries the fixed base. One grouped test per
        immutable input bit selects the result. The artifact is `8T` characters.
-    3. [Numlist](https://esolangs.org/wiki/Numlist) (rev. 138564).
+    2. [Numlist](https://esolangs.org/wiki/Numlist) (rev. 138564).
        Each input binds one contiguous block of relative jumps. Shared
        suffix states keep the decimal source linear. One forward pass
        prints the selected bit and exits past the instruction list.
-    4. [QuakeScript](https://esolangs.org/wiki/QuakeScript) (rev. 163420).
+    3. [QuakeScript](https://esolangs.org/wiki/QuakeScript) (rev. 163420).
        Division by one converts prompt input to a number. Shared suffix
        states keep the jump selector linear. A leaf prints one bit and quits.
-    5. [1nteger](https://esolangs.org/wiki/1nteger) (rev. 180816).
+    4. [1nteger](https://esolangs.org/wiki/1nteger) (rev. 180816).
        An `IF` tree reads one byte per decision and uses only byte values.
        `PNT` emits the selected bit. Source is exactly `28T−21` characters.
-    6. [Pd.NA](https://esolangs.org/wiki/Pd.NA) (rev. 147169).
+    5. [Pd.NA](https://esolangs.org/wiki/Pd.NA) (rev. 147169).
        One tape cell selects branches and emits the bit. An EOF witness
        exercised the NA catch path. Source is exactly `11T−7` characters.
   - *Admission:* refresh the public-implementation check and apply the

@@ -1,0 +1,86 @@
+# Language-owned data, one section per dataset; aggregators read
+# only their own section and skip this file when it is absent.
+
+[curation]
+backlinks = 1
+admitted = 2026-11-22T08:26:21-05:00
+
+[catalogue]
+sharing_exempt = "a literal prefix tree has no named term references; each selected branch is a substring"
+
+[proof_status]
+labels = ["tree"]
+qualification = "A fixed rule header selects the prefix-tree child named by each bound bit, strips the empty-input wrapper and prints the leaf."
+
+[semantic_evidence]
+version = 1
+kind = "examples"
+contract = "interpreter.py"
+tests = ["src/esolangs/languages/trml/tests/test_trml.py::test_rewrite"]
+
+[evidence]
+version = 1
+
+[[evidence.anchors]]
+arity = 4
+rule = "parity"
+size = 186
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.trml.generator:trml_request"
+
+[ablations]
+version = 1
+archive_context = {}
+
+[ablations.prefix_tree]
+kind = "measurement"
+witness = { arity = 4, rule = "parity" }
+source = { value = 186, unit = "chars" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-22
+construction = "esolangs.languages.trml.generator:trml_request"
+notes = "The fixed rule header adds no table-dependent bytes; each binary node and leaf is one character."
+
+[resource_evidence]
+version = 2
+construction = "esolangs.languages.trml.generator:trml_request"
+
+[resource_evidence.execution]
+expression = "n+2"
+exact = true
+arities = [1, 2, 3, 4, 6]
+first = 1
+unit = "steps"
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} steps; one rewrite per bit, one wrapper removal and one final output step" }
+
+[resource_evidence.scaling]
+expression = "146+2T+2n"
+exact = true
+arities = [1, 2, 3, 4, 6, 10]
+first = 1
+unit = "characters"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} characters; fixed header, cons input and full prefix tree" }
+
+[resource_evidence.workspace]
+expression = "16T+16n+9"
+exact = false
+arities = [1, 2, 3, 4]
+first = 1
+unit = "bits"
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} bits; object string and halt flag at step boundaries" }
+
+[audits]
+blind_reimplementation = 2026-11-22
+
+[generator_sizes]
+"00000001" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 160 }
+"00001100" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 158 }
+"00110110" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 164 }
+"0110" = { commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4 }, source_units = 158 }
+"01101001" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 168 }
+"0110100110010110" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 186 }
+"1101001101101101" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 178 }
+"11111110" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 160 }

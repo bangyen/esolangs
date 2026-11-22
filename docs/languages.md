@@ -149,6 +149,7 @@ Languages whose data is the program itself, rewritten as it runs.
 - [Crement](https://esolangs.org/wiki/Crement) ([code](../src/esolangs/languages/crement/interpreter.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](../src/esolangs/languages/inject/interpreter.py))
 - [Sonata](https://esolangs.org/wiki/Sonata) ([code](../src/esolangs/languages/sonata/interpreter.py))
+- [Trml](https://esolangs.org/wiki/Trml) ([code](../src/esolangs/languages/trml/interpreter.py))
 
 ### Variable-based Languages
 

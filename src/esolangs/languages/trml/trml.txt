@@ -1,0 +1,9 @@
+0;1;N;C(b)(r);D(b)
+(r);P(a)(b);Z(r)(t
+);ZC0(r)P(a)(b):Z(
+r)(a);ZC1(r)P(a)(b
+):Z(r)(b);ZD(b)(r)
+(t):Z(r)(t);ZC(b)(
+r)0:Z(r)0;ZC(b)(r)
+1:Z(r)1;ZN(a):(a);
+$ZC0C1NP0P01
