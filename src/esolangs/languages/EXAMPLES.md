@@ -21,7 +21,6 @@ don't edit by hand.
 | `three_x/3x.txt` | 3x | `0001` | `01` | 0 1 | '0' |
 | `six_five/6-5.txt` | 6-5 | `0001` | `01` | 01 | '0' |
 | `a_painter_ant/a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '....\n####\n.o.#' |
-| `abcdirection/abcdirection.txt` | ABCDirection | `0001` | `01` | 01 | '0' |
 | `addsubjump/addsubjump.txt` | AddSubJump | `0001` | `01` | 01 | '0' |
 | `algebraic_programming_language/algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | `01` | 0 1 | '0\n' |
 | `alight/alight.txt` | Alight | `0001` | `01` | 01 | '0' |
@@ -58,7 +57,6 @@ don't edit by hand.
 | `cvnc/cvnc.txt` | CV(N)(C) | `0001` | `01` | 0 1 | '0' |
 | `cyclic_tag/cyclic-tag.txt` | Cyclic tag | `0001` | `01` | embedded 01 | '0' |
 | `decleq/decleq.txt` | Decleq | `0001` | `01` | 01 | '0' |
-| `dig/dig.txt` | Dig | `0001` | `01` | 0 1 | '0' |
 | `dimensional/dimensional.txt` | Dimensional | `0001` | `01` | 0 1 | '0' |
 | `egl/egl.txt` | EGL | `0001` | `01` | 01 | '0' |
 | `eval/eval.txt` | Eval | `0001` | `01` | embedded 01 | '0' |

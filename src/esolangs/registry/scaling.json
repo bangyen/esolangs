@@ -1,6 +1,5 @@
 {
   "a_painter_ant": "linear: worst 13T/2 + 3n - 2 characters",
-  "abcdirection": "linear: worst 10T+45n+50+10\u2308(n+3-5\u230a(n+3)/5\u230b)/3\u2309+5max(0,8n+35-T) cells: five rows",
   "addsubjump": "linear: worst min(P,R) characters. P packed, R shared tree, exact n=6..9",
   "algebraic_programming_language": "linear: at most 10T+4n+6 (n=2..14), 21T/2+4n+6 (n\u226515) characters",
   "alight": "linear: worst T+16n+38+digits(48(T-1)) characters: one literal",
@@ -37,7 +36,6 @@
   "cvnc": "linear: at most 17T/2 + 13 characters: pair 12, node 5, prologue 18",
   "cyclic_tag": "linear: worst 3T + 2n + 1 characters, weighted padding",
   "decleq": "linear: at most 2(3\u2308(n+18)/3\u2309)+17n+12residuals_without_constants(n)+16+digits(3\u2308(n+18)/3\u2309)+2digits(n+17)+(2residuals_without_constants(n)+5)max(2,digits(3\u2308(n+18)/3\u2309+6n+6residuals_without_constants(n)+9)) characters: six cells per distinct subtree",
-  "dig": "linear: worst ((56-20(n-2\u230an/2\u230b))\u00b72^\u230a(n-7)/2\u230b-1)((36-8(n-2\u230an/2\u230b))\u00b72^\u230a(n-7)/2\u230b-1) cells past n = 6: the dense table",
   "dimensional": "linear: worst 2T + 20n + 42 characters: two per entry",
   "egl": "linear: worst 3T+25n+digits(T)+8 (n=1..3), 2T+2^\u230a(n+3)/2\u230b+5\u00b72^(n-\u230a(n+3)/2\u230b)+25n+digits(2^\u230a(n+3)/2\u230b)+digits(3\u00b72^(n-\u230a(n+3)/2\u230b))+1 (n\u22654) characters: T-1 painted ones",
   "eval": "linear: worst 2T+7n (n=4..5), 7T/4+9n+1 (n\u22656) characters, unwrapped",

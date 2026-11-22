@@ -67,7 +67,7 @@ UNWRAPPABLE = {
     if lang.backend is not None and lang.backend.no_wrap
 }
 
-# language-owners: ["Dig", "LaserFuck", "Streetcode"]
+# language-owners: ["LaserFuck", "Streetcode"]
 # These are 2D too, and wrap_program must not touch them either -- but each
 # honours a width itself by *laying its program out* to fit rather than by
 # ignoring it, so they belong here rather than in UNWRAPPABLE.  LaserFuck's
@@ -75,12 +75,6 @@ UNWRAPPABLE = {
 # wider than the width is re-emitted as the (foldable) linear form.
 #
 # Derived from declared options, checked against the callable parameters.
-# It omitted Streetcode, which really does take a width. And it named Dig,
-# which took only a truth table and returned the same program at every width
-# -- the 2-input table below was inside 80 columns either way, which is
-# what let it pass.  Dig has since grown a real one, so that entry would be
-# right today for a reason the table never had; a derived table cannot make
-# either mistake without failing the declaration check.
 WIDTH_HONOURING = sorted(
     lang.id
     for lang in LANGUAGES.values()

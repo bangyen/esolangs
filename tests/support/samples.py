@@ -74,6 +74,10 @@ CIRCUIT_PRIME_TESTER = "\n".join(
 )
 
 
+# Catch one character EOF, then halt without using a fabricated input byte.
+CAUGHT_EOF = ("Circlefuck", ",@")
+
+
 def bits_of(value: int) -> str:
     """Return ``value`` as four input lines, most significant bit first."""
     return "\n".join(format(value, "04b")) + "\n"
@@ -183,7 +187,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "Nope.": ("", ""),
     "Unary": ("0" * 108, "Z"),
     "Decleq": ("-2 5 9 9 9 65 0 0", ""),
-    "Dig": (">$5:\n 2 ", ""),
     "Dimensional": ("+.+.+.", ""),
     "EGL": ("1,1:+=", ""),
     "Eval": ("0+.", ""),

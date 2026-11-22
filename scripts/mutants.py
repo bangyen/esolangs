@@ -1,6 +1,6 @@
 """Seeded token mutants of a generator, run against its tests.
 
-Takes package directories (``abcdirection``), prices one baseline
+Takes package directories (``alight``), prices one baseline
 run each, then applies ``--per-language`` seeded mutants one at a time:
 operator swaps (``+``/``-``, ``<``/``<=``, ``and``/``or``, ...) and integer
 constants plus one, in generator source only.  Each runs the package's tests

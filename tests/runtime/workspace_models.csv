@@ -4,7 +4,6 @@ language,boolean_backend,workspace,workspace_model
 3x,yes,owned-adapter,three-x-v1
 6-5,yes,owned-adapter,six-five-v1
 A Painter Ant,yes,owned-adapter,a-painter-ant-v2
-ABCDirection,yes,owned-adapter,abcdirection-v1
 AddSubJump,yes,owned-adapter,addsubjump-v1
 Algebraic Programming Language,yes,owned-adapter,algebraic-programming-language-v1
 Alight,yes,owned-adapter,alight-v1
@@ -42,7 +41,6 @@ CV(N)(C),yes,owned-adapter,cvnc-v1
 Cyclic tag,yes,owned-adapter,cyclic-tag-v1
 Deadfish,no,owned-adapter,deadfish-v1
 Decleq,yes,owned-adapter,decleq-v1
-Dig,yes,owned-adapter,dig-v2
 Dimensional,yes,owned-adapter,dimensional-v1
 EGL,yes,owned-adapter,egl-v1
 Eval,yes,owned-adapter,eval-v1

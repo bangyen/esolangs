@@ -95,7 +95,6 @@ DFS; test-only oracles may.
 The removed screen script recorded permuted tables, not admissible reorders
 under a fixed template and fill mapping.
 
-- Dig must read in order.
 - Flowchart must read in order.
 - BrainIf must read in order.
 - SLOW ACV MAMMALIAN must read in order.
@@ -240,11 +239,8 @@ compare complete layouts by emitted area. Their standalone proofs describe
 the constructions and witnesses
 ([Line](proofs/line-sharing.md), [Circuit Diagram](proofs/circuit-diagram-sharing.md)).
 
-thisthat, Back and Dig have construction exemptions supported by their
-admission tests. Dig's shared pool uses 2–10 distinct 64-row classes, indexed
-by a decimal digit. A layout that crosses another class's lane arrow or
-branch falls back to an unshared layout. At n=12 the indexed leaf decoder
-was 11–22 times smaller in area than the shared layouts measured there.
+thisthat and Back have construction exemptions supported by their
+admission tests.
 Home Row, ROTfuck and Dimensional use lookups without decision-tree nodes.
 
 #### Ignored inputs and constants
@@ -295,7 +291,7 @@ and every 128th row at fifteen and sixteen in the weekly run.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 117 languages.
+The collection has 115 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -394,12 +390,21 @@ admission records are in each language's `language.toml`.
 
 | Ground | Languages |
 |---|---|
-| route | 123, BF-PDA, BIO, Jaune, NoComment, Sophie, Funge-98, Emmental, Prelude, LOLCODE, Brainloller, Braincopter, Turing Paint, Befunk, Factor, Polynomial, Piet++, Tiangou |
-| spec | 3D Brainfuck, Transistor, Pinyin, Self-replicating marbles, Wirefunge, Gifunk, BitCode, PicCode, Minifuck, the Minecraft ports; deferred: 大白话, BOOMOP, Semqain |
+| route | Dig, 123, BF-PDA, BIO, Jaune, NoComment, Sophie, Funge-98, Emmental, Prelude, LOLCODE, Brainloller, Braincopter, Turing Paint, Befunk, Factor, Polynomial, Piet++, Tiangou |
+| spec | ABCDirection, 3D Brainfuck, Transistor, Pinyin, Self-replicating marbles, Wirefunge, Gifunk, BitCode, PicCode, Minifuck, the Minecraft ports; deferred: 大白话, BOOMOP, Semqain |
 | direct scripting or register-machine translation | RAM0, BASICER, IEBEL, Between, Minsky Swap, SwitchCase, NB, Basicfuck, Forbin, lol waht i cant edit talk pages, CreativeScript v2, Help., DINAC, Qoibl, CARP, Packlang |
 | token substitution | Trivial brainfuck substitution |
 | scaling | Vandevelo, %^2^-1, WII2D, COD, ZTOALC L |
 | no generator | HuePrism (no input), Nopstacle (its blank and `#` spell no input embed) |
+
+ABCDirection's specification leaves grid edges and queue startup undefined.
+With a zero tape and an empty queue that reads as zero, the downward tracer
+cannot reach any input without crossing the left edge.
+
+Dig's [Lua interpreter](https://github.com/DeybisMelendez/Dig.lua/commit/6287c495605aeffba33813ec2cac763dfdfa6cbb)
+was pushed publicly at 02:30:33 UTC on 2020-07-09, before this repository's
+[first implementation](https://github.com/bangyen/esolangs/commit/6bce16af6dc7e9677982d098d5d7d012baa644eb)
+at 04:59:11 UTC (GH Archive push events 12854612852 and 12855358140).
 
 Bytemap, removed on 2026-09-27 for undefined byte order, division faults
 and 8bpp images, was readmitted on 2026-11-17: no example depends on byte

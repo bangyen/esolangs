@@ -40,7 +40,6 @@ Most are the first implementation of a language.
 Languages that move a pointer or beam across a 2D grid.
 
 - [A Painter Ant](https://esolangs.org/wiki/A_Painter_Ant) ([code](../src/esolangs/languages/a_painter_ant/interpreter.py))
-- [ABCDirection](https://esolangs.org/wiki/ABCDirection) ([code](../src/esolangs/languages/abcdirection/interpreter.py))
 - [Alight](https://esolangs.org/wiki/Alight) ([code](../src/esolangs/languages/alight/interpreter/__init__.py))
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](../src/esolangs/languages/arrowqueue/interpreter.py))
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](../src/esolangs/languages/b_tapemark/interpreter.py))
@@ -49,7 +48,6 @@ Languages that move a pointer or beam across a 2D grid.
 - [Bytemap](https://esolangs.org/wiki/Bytemap) ([code](../src/esolangs/languages/bytemap/interpreter.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](../src/esolangs/languages/circuit_diagram/interpreter/__init__.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](../src/esolangs/languages/clockwise/interpreter.py))
-- [Dig](https://esolangs.org/wiki/Dig) ([code](../src/esolangs/languages/dig/interpreter.py))
 - [EGL](https://esolangs.org/wiki/EGL) ([code](../src/esolangs/languages/egl/interpreter.py))
 - [Flowchart](https://esolangs.org/wiki/Flowchart) ([code](../src/esolangs/languages/flowchart/interpreter.py))
 - [GridScript](https://esolangs.org/wiki/GridScript) ([code](../src/esolangs/languages/gridscript/interpreter.py))

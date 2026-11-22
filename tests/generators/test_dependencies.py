@@ -7,8 +7,17 @@ from types import MappingProxyType
 from esolangs.generation import helpers
 from esolangs.generation.algebraic import AffineForm, affine_form, parity_bias
 from esolangs.generation.decision import decision_layers, reduced_diagram
-from esolangs.generation.lookup import binary_weights
 from tests.support.witness_tables import witnesses
+
+
+def _binary_weights(live: list[bool]) -> list[int]:
+    """Return MSB-first row weights, assigning ignored inputs zero."""
+    remaining = sum(live)
+    weights = []
+    for kept in live:
+        remaining -= kept
+        weights.append(1 << remaining if kept else 0)
+    return weights
 
 
 def _oracle(table: str, n: int) -> list[int]:
@@ -56,7 +65,7 @@ def test_dependencies_exhaustive() -> None:
             lookup = helpers.input_weights(table, n)
             assert isinstance(lookup, helpers.WeightedLookup)
             assert (
-                tuple(binary_weights([i in dependencies for i in range(n)]))
+                tuple(_binary_weights([i in dependencies for i in range(n)]))
                 == lookup.weights
             )
             for row, bit in zip(product((0, 1), repeat=n), table, strict=True):

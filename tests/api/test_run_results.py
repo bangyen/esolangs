@@ -13,8 +13,9 @@ from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime.io import ScriptedIO
 from tests.support.certification_barrier import guarded_worker
 from tests.support.execution import run_observed
-from tests.support.pick import first, one_where
+from tests.support.pick import one_where
 from tests.support.reference import REFERENCE
+from tests.support.samples import CAUGHT_EOF
 
 pytestmark = pytest.mark.medium
 _ROUTES = [
@@ -53,14 +54,7 @@ def test_result_counts_unicode_characters_and_preserves_unread_input(route):
 
 @pytest.mark.parametrize("route", _ROUTES)
 def test_result_retains_a_caught_eof(route):
-    name = first(
-        boolean_generator=True,
-        parameterized=False,
-        eof_is_a_value=True,
-        source_kind="text",
-        input_shape="char_stream",
-    )
-    source = esolangs.generate(name, "01")
+    name, source = CAUGHT_EOF
     attempts = []
 
     class ObservedIO(ScriptedIO):
