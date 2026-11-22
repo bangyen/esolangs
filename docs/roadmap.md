@@ -82,9 +82,10 @@ history at `f35aa4023`.
        An acyclic `!!DTM` decision graph shares suffix states to keep
        source linear, including state names. Exactly `n+1` transitions
        leave one string bit on the trimmed tape.
-    4. [干！](https://esolangs.org/wiki/%E5%B9%B2%EF%BC%81) (rev. 166203).
-       A numeric read and explicit if/else select each branch. Leaves print
-       literal text. The tree avoids assignment direction and division.
+    4. [Thing of Shock](https://esolangs.org/wiki/Thing_of_Shock) (rev. 204327).
+       An acyclic graph binds each input bit to one initial counter.
+       Shared suffix graphs keep the serialized source linear. Read the
+       designated counter at tick `4n+3` for `n` input bits.
     5. [1nteger](https://esolangs.org/wiki/1nteger) (rev. 180816).
        An `IF` tree reads one byte per decision and uses only byte values.
        `PNT` emits the selected bit. Source is exactly `28T−21` characters.
@@ -97,7 +98,7 @@ history at `f35aa4023`.
 
 ## Wiki candidate backlog
 
-### Reserve (25)
+### Reserve (26)
 
 - [AEAV](https://esolangs.org/wiki/AEAV)
 - [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
@@ -135,6 +136,9 @@ history at `f35aa4023`.
 - [You wait here](https://esolangs.org/wiki/You_wait_here) (rev. 131213).
   A counter reset and two conditional blocks select each branch.
   `repeat`, `split` and `define` remain open outside this subset.
+- [干！](https://esolangs.org/wiki/%E5%B9%B2%EF%BC%81) (rev. 166203).
+  A numeric read and if/else select each branch. Assignment direction
+  and division remain open outside the tested selector.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
