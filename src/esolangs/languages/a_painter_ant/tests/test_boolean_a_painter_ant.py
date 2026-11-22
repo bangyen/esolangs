@@ -40,7 +40,12 @@ def _check_bound_uses_significant_characters() -> None:
 def _instantiate_apa(template: str, bits: list[int]) -> str:
     """Bind native source with explicitly declared setters."""
     bindings = esolangs.TemplateBindings(setters=(PAIR,) * len(bits))
-    artifact = esolangs.TemplateArtifact(template, "A Painter Ant", bindings)
+    artifact = esolangs.TemplateArtifact(
+        template,
+        "A Painter Ant",
+        bindings,
+        spans=tuple(runs(template, bindings.char, bindings.setters)),
+    )
     return esolangs.instantiate("A Painter Ant", artifact, bits).source
 
 

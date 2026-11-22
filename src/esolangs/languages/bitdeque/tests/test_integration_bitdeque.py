@@ -16,7 +16,9 @@ def test_provenance_reports_invalid_layout_as_template_error() -> None:
     bindings = esolangs.TemplateBindings(
         setters=(("0000", "1111"), ("000000", "111111"))
     )
-    malformed = esolangs.TemplateArtifact("$$$$ $$$$$$", api.name, bindings)
+    malformed = esolangs.TemplateArtifact(
+        "$$$$ $$$$$$", api.name, bindings, spans=((0, 4), (5, 11))
+    )
     with pytest.raises(esolangs.TemplateError, match="is not the template"):
         api.instantiate(malformed, [0, 1], truth_table="0110")
 
@@ -61,7 +63,7 @@ def test_settings_through_explicit_template_and_override() -> None:
     template = esolangs.generate("Bitdeque", "0110", settings=settings)
     assert not hasattr(template.source, "settings")
     explicit = esolangs.TemplateArtifact(
-        template.source, template.language, template.bindings
+        template.source, template.language, template.bindings, spans=template.spans
     )
     filled = esolangs.instantiate("Bitdeque", explicit, [1, 0], settings=settings)
     assert filled.settings is settings

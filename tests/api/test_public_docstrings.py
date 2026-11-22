@@ -235,7 +235,10 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         lambda: esolangs.evaluate(
             R,
             esolangs.TemplateArtifact(
-                "$", R, esolangs.TemplateBindings(setters=((".", "."),))
+                "$",
+                R,
+                esolangs.TemplateBindings(setters=((".", "."),)),
+                spans=((0, 1),),
             ),
             [0],
         ),

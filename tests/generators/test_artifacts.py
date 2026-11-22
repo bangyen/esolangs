@@ -57,27 +57,28 @@ def _check_template_width_pickle(template: esolangs.TemplateArtifact) -> None:
         generation_width=template.generation_width,
     )
 
-    class PreWidth:
+    class FormerOrder:
+        def __init__(self, state):
+            self.state = state
+
         def __reduce__(self):
-            return (
-                object.__new__,
-                (_TemplateWithLabel,),
-                [
-                    labeled.source,
-                    labeled.language,
-                    labeled.bindings,
-                    labeled.settings,
-                    labeled.spans,
-                    labeled.label,
-                ],
-            )
+            return (object.__new__, (_TemplateWithLabel,), self.state)
 
     for artifact in (labeled, replace(labeled, generation_width=None)):
         restored = pickle.loads(pickle.dumps(artifact))
         assert restored == artifact
         assert restored.generation_width == artifact.generation_width
-    with pytest.raises(ValueError, match="shorter"):
-        pickle.loads(pickle.dumps(PreWidth()))
+    former = [
+        labeled.source,
+        labeled.language,
+        labeled.bindings,
+        labeled.settings,
+        labeled.spans,
+        labeled.label,
+    ]
+    for state in (former, [*former, labeled.generation_width]):
+        with pytest.raises(ValueError, match="requires all named fields"):
+            pickle.loads(pickle.dumps(FormerOrder(state)))
 
 
 @pytest.mark.medium
@@ -169,19 +170,36 @@ def test_text_generation_returns_an_immutable_record(language: str) -> None:
 @pytest.mark.parametrize("bits", [[0], [0, 1, 0], [0, True], [0, 2]])
 def test_template_record_refuses_invalid_bindings(bits: list[int]) -> None:
     template = TemplateArtifact(
-        "$$", REFERENCE, TemplateBindings(setters=(("0", "1"),) * 2)
+        "$$",
+        REFERENCE,
+        TemplateBindings(setters=(("0", "1"),) * 2),
+        spans=((0, 1), (1, 2)),
     )
     with pytest.raises((esolangs.TemplateError, esolangs.ArgumentError)):
         template.bindings.fill(template.source, bits)
 
 
 @pytest.mark.parametrize(
-    ("source", "setters"),
-    [("$", (("0", "11"),)), ("$$", (("0", "1"),)), ("x", (("0", "1"),))],
+    ("source", "setters", "message"),
+    [
+        ("$", (("0", "11"),), "width"),
+        ("$$", (("0", "1"),), "unbound placeholder"),
+        ("x", (("0", "1"),), "invalid template span"),
+    ],
 )
-def test_template_record_refuses_invalid_shape(source, setters) -> None:
-    with pytest.raises(ValueError, match=r"width|belongs to no input|run"):
-        TemplateArtifact(source, REFERENCE, TemplateBindings(setters=setters))
+def test_template_record_refuses_invalid_shape(source, setters, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        TemplateArtifact(
+            source, REFERENCE, TemplateBindings(setters=setters), spans=((0, 1),)
+        )
+
+
+def test_template_record_requires_explicit_spans() -> None:
+    bindings = TemplateBindings(setters=(("0", "1"),))
+    with pytest.raises(TypeError, match="spans"):
+        TemplateArtifact("$", REFERENCE, bindings)
+    with pytest.raises(esolangs.TemplateError, match="one span per input"):
+        TemplateArtifact("$", REFERENCE, bindings, spans=None)
 
 
 def test_template_bindings_require_ordered_pairs() -> None:
@@ -207,7 +225,7 @@ def test_template_bindings_require_ordered_pairs() -> None:
     with pytest.raises(esolangs.TemplateError, match="char must be one character"):
         TemplateBindings(char=ReportedString())
     with pytest.raises(esolangs.TemplateError, match="template needs text source"):
-        TemplateArtifact(ReportedString(), REFERENCE, TemplateBindings())
+        TemplateArtifact(ReportedString(), REFERENCE, TemplateBindings(), spans=())
 
     class OrderedPair:
         @property
@@ -323,7 +341,11 @@ def test_template_record_copies_bindings_and_retains_settings() -> None:
     settings = esolangs.Language("brainfuck").settings()
     pairs = [["0", "1"]]
     template = TemplateArtifact(
-        "$", REFERENCE, TemplateBindings(setters=pairs), settings=settings
+        "$",
+        REFERENCE,
+        TemplateBindings(setters=pairs),
+        settings=settings,
+        spans=((0, 1),),
     )
     pairs[0][1] = "changed"
     assert template.bindings.fill(template.source, [1]) == "1"
@@ -403,7 +425,6 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
     language, monkeypatch
 ):
     import esolangs._bindings as bindings
-    import esolangs.artifacts as artifacts
 
     choices = esolangs.Language(language).settings()
     artifact = esolangs.generate(language, "0110", settings=choices)
@@ -414,7 +435,6 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
         raise AssertionError("rescanned a validated template")
 
     monkeypatch.setattr(bindings, "runs", refuse_rescan)
-    monkeypatch.setattr(artifacts, "runs", refuse_rescan)
     for bits, answer in [([0, 0], "0"), ([0, 1], "1"), ([1, 0], "1"), ([1, 1], "0")]:
         filled = artifact.fill(bits)
         assert isinstance(filled, ProgramArtifact)
@@ -469,7 +489,7 @@ def test_public_records_canonicalize_and_validate_metadata():
         ProgramArtifact("+.", REFERENCE, settings={})
     with pytest.raises(esolangs.TemplateError):
         TemplateBindings(char="")
-    template = TemplateArtifact("", REFERENCE.upper(), TemplateBindings())
+    template = TemplateArtifact("", REFERENCE.upper(), TemplateBindings(), spans=())
     with pytest.raises(esolangs.TemplateError):
         esolangs.run(REFERENCE, template)
     with pytest.raises(esolangs.TemplateError, match="fill the template"):

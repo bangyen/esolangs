@@ -43,7 +43,12 @@ class TestParameterizedBack:
         from esolangs.languages.back.descriptor import PAIR
 
         bindings = esolangs.TemplateBindings(setters=(PAIR,) * len(bits))
-        template = esolangs.TemplateArtifact(tpl, "Back", bindings)
+        template = esolangs.TemplateArtifact(
+            tpl,
+            "Back",
+            bindings,
+            spans=tuple(runs(tpl, bindings.char, bindings.setters)),
+        )
         return esolangs.instantiate("Back", template, bits).source
 
     @pytest.mark.medium
@@ -424,7 +429,12 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
         )
         program = back(table)
         assert len(program) - len(back(inner)) == cost
-        template = esolangs.TemplateArtifact(program, "Back", bindings)
+        template = esolangs.TemplateArtifact(
+            program,
+            "Back",
+            bindings,
+            spans=tuple(runs(program, bindings.char, bindings.setters)),
+        )
         assert _evaluate("Back", template, inputs=n + 1) == table
 
 

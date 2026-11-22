@@ -20,7 +20,12 @@ from tests.support.witness_tables import row_bits
 def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
     """Bind native source with explicitly declared setters."""
     bindings = esolangs.TemplateBindings(setters=(PAIR,) * len(bits))
-    artifact = esolangs.TemplateArtifact(template, "ArrowQueue", bindings)
+    artifact = esolangs.TemplateArtifact(
+        template,
+        "ArrowQueue",
+        bindings,
+        spans=tuple(runs(template, bindings.char, bindings.setters)),
+    )
     return esolangs.instantiate("ArrowQueue", artifact, bits).source
 
 

@@ -62,7 +62,12 @@ def _plain(table: str, perm: tuple[int, ...]) -> str:
 def instantiate_crement(template: str, bits: list[int]) -> str:
     """Bind native source with explicitly declared setters."""
     bindings = esolangs.TemplateBindings(setters=crement_setters(template, len(bits)))
-    artifact = esolangs.TemplateArtifact(template, "Crement", bindings)
+    artifact = esolangs.TemplateArtifact(
+        template,
+        "Crement",
+        bindings,
+        spans=tuple(runs(template, bindings.char, bindings.setters)),
+    )
     return esolangs.instantiate("Crement", artifact, bits).source
 
 

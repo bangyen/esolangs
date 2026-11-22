@@ -188,7 +188,7 @@ def test_template_kind_requires_parameterized_language() -> None:
     with pytest.raises(esolangs.ProgramError, match="does not support input templates"):
         esolangs.from_json("Brainfuck", json.dumps(document))
     bindings = esolangs.TemplateBindings(char="@", setters=(("+", "-"),))
-    explicit = esolangs.TemplateArtifact("@", REFERENCE, bindings)
+    explicit = esolangs.TemplateArtifact("@", REFERENCE, bindings, spans=((0, 1),))
     with pytest.raises(esolangs.ProgramError, match="does not support input templates"):
         esolangs.to_json(REFERENCE, explicit)
 
@@ -403,6 +403,7 @@ def test_explicit_zero_input_template_can_be_filled_after_reload(language: str) 
         language,
         esolangs.TemplateBindings(char=generated.bindings.char),
         settings=filled.settings,
+        spans=(),
     )
     restored = api.from_json(api.to_json(record))
     assert isinstance(restored, esolangs.TemplateArtifact)

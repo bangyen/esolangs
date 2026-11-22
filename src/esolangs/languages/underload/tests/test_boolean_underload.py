@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
-from esolangs._bindings import TEMPLATE_CHAR
+from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.generation.helpers import _validate_truth_table, constant_span_test
 from esolangs.languages.underload import interpreter
 from esolangs.languages.underload.generator import PAIR, underload, underload_setters
@@ -210,14 +210,12 @@ def test_short_selector_floor_and_actual_narrow_corpus() -> None:
 
 def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
     template = esolangs.generate("Underload", "0000", width=1)
+    source = template.source.replace("(0)", "(0\n)")
+    spans = tuple(runs(source, template.bindings.char, template.bindings.setters))
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         esolangs.instantiate(
             "Underload",
-            replace(
-                template,
-                source=template.source.replace("(0)", "(0\n)"),
-                spans=None,
-            ),
+            replace(template, source=source, spans=spans),
             [0, 1],
             truth_table="0000",
         )

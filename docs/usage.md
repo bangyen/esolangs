@@ -630,9 +630,9 @@ Interpreter specs come from docstrings. Python's `-OO` strips them, so
 Version 2.0 changes the default return types: `generate` and `from_json`
 return `ProgramArtifact | TemplateArtifact`, `instantiate` returns a runnable
 `ProgramArtifact`, and `run` returns `ExecutionResult`. `Language` methods use
-these same defaults. Portable template records require `spans`. Checked replay
-uses a supplied or retained width to match width-specific builds. Saved integer
-dialect settings use tagged hexadecimal values. Gzip records require `limits`
+these same defaults. Template constructors and portable records require `spans`.
+Checked replay uses a supplied or retained width to match width-specific builds.
+Saved integer dialect settings use tagged hexadecimal values. Gzip records require `limits`
 (which may be null). Version-1 PNG source tags require `language`, `settings`,
 and `scale` keys, which may hold null values. Version 1 is the supported tag version.
 

@@ -14,7 +14,6 @@ from esolangs._bindings import (
     _stored_items,
     check_setters,
     fill_runs,
-    runs,
     validate_spans,
 )
 from esolangs.compressed import CompressedText, _freeze_compressed
@@ -107,13 +106,9 @@ def _origin(
     return owner, settings
 
 
-def _restore_artifact_slots(
-    artifact: Artifact, state: list[object], *, names: Sequence[str] | None = None
-) -> None:
-    if names is None:
-        names = tuple(item.name for item in fields(artifact))
-    for name, value in zip(names, state, strict=True):
-        object.__setattr__(artifact, name, value)
+def _restore_artifact_slots(artifact: Artifact, state: list[object]) -> None:
+    for item, value in zip(fields(artifact), state, strict=True):
+        object.__setattr__(artifact, item.name, value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,14 +238,6 @@ def _freeze_span(span: tuple[int, int]) -> tuple[int, int]:
     )
 
 
-def _template_pickle_fields(artifact: TemplateArtifact) -> tuple[str, ...]:
-    """Place width after the other fields, including subclass fields."""
-    names = tuple(
-        item.name for item in fields(artifact) if item.name != "generation_width"
-    )
-    return (*names, "generation_width")
-
-
 @dataclass(frozen=True, slots=True)
 class TemplateArtifact:
     """Text with explicit input bindings; never runnable source.
@@ -262,13 +249,13 @@ class TemplateArtifact:
     language: str
     bindings: TemplateBindings
     settings: DialectSettings | None = field(default=None, kw_only=True)
-    spans: tuple[tuple[int, int], ...] | None = field(default=None, kw_only=True)
+    spans: tuple[tuple[int, int], ...] = field(kw_only=True)
     generation_width: int | None = field(
         default=None, kw_only=True, repr=False, compare=False
     )
 
     def __init_subclass__(cls, **kwargs: object) -> None:
-        """Retain the pickle layout for frozen slotted dataclass subclasses."""
+        """Use named pickle state for frozen slotted dataclass subclasses."""
         super(TemplateArtifact, cls).__init_subclass__(**kwargs)
         methods = ("__getstate__", "__setstate__")
         # Frozen slots dataclasses otherwise replace inherited pickle hooks.
@@ -296,15 +283,11 @@ class TemplateArtifact:
             bindings = TemplateBindings(char=bindings.char, setters=bindings.setters)
             object.__setattr__(self, "bindings", bindings)
         try:
-            if self.spans is None:
-                spans = tuple(runs(self.source, bindings.char, bindings.setters))
-                object.__setattr__(self, "spans", spans)
-            else:
-                if not _has_backing_type(self.spans, tuple):
-                    raise ValueError("template needs one span per input")
-                spans = tuple(_freeze_span(span) for span in tuple.__iter__(self.spans))
-                validate_spans(self.source, bindings.char, bindings.setters, spans)
-                object.__setattr__(self, "spans", spans)
+            if not _has_backing_type(self.spans, tuple):
+                raise ValueError("template needs one span per input")
+            spans = tuple(_freeze_span(span) for span in tuple.__iter__(self.spans))
+            validate_spans(self.source, bindings.char, bindings.setters, spans)
+            object.__setattr__(self, "spans", spans)
         except EsolangError:
             raise
         except (TypeError, ValueError) as error:
@@ -313,13 +296,24 @@ class TemplateArtifact:
         width = check_width(self.generation_width)
         object.__setattr__(self, "generation_width", width)
 
-    def __getstate__(self) -> list[object]:
-        """Serialize every field, including an unset width."""
-        return [getattr(self, name) for name in _template_pickle_fields(self)]
+    def __getstate__(self) -> list[object] | dict[str, object]:
+        """Store subclass fields by name so each value has an explicit owner."""
+        values = {item.name: getattr(self, item.name) for item in fields(self)}
+        return list(values.values()) if type(self) is TemplateArtifact else values
 
-    def __setstate__(self, state: list[object]) -> None:
-        """Restore a complete template and validate its layout width."""
-        _restore_artifact_slots(self, state, names=_template_pickle_fields(self))
+    def __setstate__(self, state: list[object] | dict[str, object]) -> None:
+        """Restore exactly the fields of the template being unpickled."""
+        if type(self) is TemplateArtifact:
+            if not isinstance(state, list):
+                raise ValueError("template pickle requires positional fields")
+            _restore_artifact_slots(self, state)
+        else:
+            if not isinstance(state, dict) or state.keys() != {
+                f.name for f in fields(self)
+            }:
+                raise ValueError("template subclass pickle requires all named fields")
+            for name, value in state.items():
+                object.__setattr__(self, name, value)
         object.__setattr__(self, "generation_width", check_width(self.generation_width))
 
     def evaluate(

@@ -38,7 +38,12 @@ class TestParameterizedMinskySwap:
         bindings = esolangs.TemplateBindings(
             setters=minsky_swap_setters(tpl, len(bits))
         )
-        template = esolangs.TemplateArtifact(tpl, "Minsky Swap", bindings)
+        template = esolangs.TemplateArtifact(
+            tpl,
+            "Minsky Swap",
+            bindings,
+            spans=tuple(runs(tpl, bindings.char, bindings.setters)),
+        )
         return esolangs.instantiate("Minsky Swap", template, bits).source
 
     @pytest.mark.parametrize("width", [1, 10, 15, 40, 80])

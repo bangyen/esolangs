@@ -78,25 +78,33 @@ class TestATemplateCarriesItsSetters:
     def test_unequal_widths_are_refused(self) -> None:
         with pytest.raises(ValueError, match="differ in width"):
             esolangs.TemplateArtifact(
-                "$", TEMPLATED, esolangs.TemplateBindings(setters=[("x", "xx")])
+                "$",
+                TEMPLATED,
+                esolangs.TemplateBindings(setters=[("x", "xx")]),
+                spans=((0, 1),),
             )
 
     def test_runs_that_do_not_fit_the_setters_are_refused(self) -> None:
-        with pytest.raises(ValueError, match="shorter than its setter width"):
+        with pytest.raises(ValueError, match="invalid template span"):
             esolangs.TemplateArtifact(
                 "a$b$$",
                 TEMPLATED,
                 esolangs.TemplateBindings(setters=[("aa", "bb"), ("c", "d")]),
+                spans=((1, 2), (3, 4)),
             )
-        with pytest.raises(ValueError, match="belongs to no input"):
+        with pytest.raises(ValueError, match="unbound placeholder"):
             esolangs.TemplateArtifact(
-                "a$$b$", TEMPLATED, esolangs.TemplateBindings(setters=[("aa", "bb")])
+                "a$$b$",
+                TEMPLATED,
+                esolangs.TemplateBindings(setters=[("aa", "bb")]),
+                spans=((1, 3),),
             )
-        with pytest.raises(ValueError, match="1 run"):
+        with pytest.raises(ValueError, match="one span per input"):
             esolangs.TemplateArtifact(
                 "a$$b",
                 TEMPLATED,
                 esolangs.TemplateBindings(setters=[("aa", "bb"), ("c", "d")]),
+                spans=((1, 3),),
             )
 
     def test_a_fill_with_the_wrong_number_of_bits_is_refused(self) -> None:
@@ -136,7 +144,10 @@ class TestATemplateCarriesItsSetters:
             Text("$"), TEMPLATED, bindings, spans=spans
         )
         plain = esolangs.TemplateArtifact(
-            "$", TEMPLATED, esolangs.TemplateBindings(setters=(("+", "-"),))
+            "$",
+            TEMPLATED,
+            esolangs.TemplateBindings(setters=(("+", "-"),)),
+            spans=((0, 1),),
         )
         assert template == plain
         assert hash(template) == hash(plain)
@@ -159,6 +170,7 @@ class TestATemplateCarriesItsSetters:
             "a$$$b",
             TEMPLATED,
             esolangs.TemplateBindings(setters=[("xx", "yy"), ("p", "q")]),
+            spans=((1, 3), (3, 4)),
         )
         assert template.fill([1, 0]).source == "ayypb"
         assert template.fill([0, 1]).source == "axxqb"
@@ -319,7 +331,9 @@ class TestInstantiateCanCheckProvenance:
         source = "hello " + bindings.char * sum(
             len(zero) for zero, _ in bindings.setters
         )
-        handwritten = esolangs.TemplateArtifact(source, TEMPLATED, bindings)
+        handwritten = esolangs.TemplateArtifact(
+            source, TEMPLATED, bindings, spans=((len("hello "), len(source)),)
+        )
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
             esolangs.instantiate(TEMPLATED, handwritten, [1], truth_table="01")
         forged = esolangs.TemplateArtifact(
@@ -329,6 +343,7 @@ class TestInstantiateCanCheckProvenance:
                 char=bindings.char,
                 setters=tuple((one, zero) for zero, one in bindings.setters),
             ),
+            spans=original.spans,
         )
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
             esolangs.instantiate(TEMPLATED, forged, [1], truth_table="01")

@@ -110,8 +110,9 @@ ordinary execution do not import certification modules.
 | Record | `ablations`, `interpreter_ablations` | pinned historical records or measured replays; source cites `[ablations.<key>]` rather than duplicating figures (tested) |
 
 Generator audits use `kind = "measurement"` for a first witness or `"replay"`
-for a pinned baseline comparison. Declare rows, seed, units, scale and budget;
-retirements also measure balanced output. Historical `archive_refs` lists
+for a pinned baseline comparison. Replay baselines use `to_json` with the current
+portable format. Declare rows, seed, units, scale and budget. Retirements also
+measure balanced output. Historical `archive_refs` lists
 load unchanged payloads from their group's pinned `archive_revision`; context
 and source citations remain checked.
 

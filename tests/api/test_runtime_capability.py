@@ -232,7 +232,7 @@ for backend in (None, BackendTrap()):
         assert api.execute('$io', **options).unwrap().output == '1\n'
     assert complete_vm(api.prepare('$io').make_vm()) == '1\n'
     template = esolangs.TemplateArtifact('$', record.name,
-        esolangs.TemplateBindings(setters=(('i', 's'),)))
+        esolangs.TemplateBindings(setters=(('i', 's'),)), spans=((0, 1),))
     outcome = api.execute(template, stdin=Unread())
     assert outcome.status == 'rejected'
     assert isinstance(outcome.error, esolangs.TemplateError)

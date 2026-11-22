@@ -479,7 +479,7 @@ def _generate_balanced(
         return replace(default, source=result)
     if balancer is not None:
         balance_source: GeneratedProgram = source
-        if isinstance(default, TemplateArtifact) and default.spans is not None:
+        if isinstance(default, TemplateArtifact):
             balance_source = TemplateLayout(default.source, default.spans)
         text = call_backend(
             balancer,
@@ -550,7 +550,7 @@ def _balance_template(
     wrapper: Callable[[str, int], str] | None,
 ) -> TemplateArtifact:
     """Balance source by moving positional slots with a slot-aware wrapper."""
-    layout = TemplateLayout(template.source, template.spans or ())
+    layout = TemplateLayout(template.source, template.spans)
     if not _can_balance_template(layout, wrapper):
         raise ProgramError(f"{name} requires a slot-aware balancer")
     if isinstance(wrapper, TokenWrapper):
@@ -569,8 +569,6 @@ def _template_text(template: TemplateArtifact, char: str) -> str | None:
     if template.bindings.char == char:
         return template.source
     spans = template.spans
-    if spans is None:
-        return None
     text = layout_fragments(
         TemplateLayout(template.source, spans).fragments(), char=char
     ).source
@@ -682,7 +680,6 @@ def _is_template_for(
     if text == plain:
         return True
     assert backend is not None  # _generate above refuses absent backends
-    assert canonical.spans is not None
     canonical_layout = TemplateLayout(plain, canonical.spans)
     width_aware = backend.layout_width or _can_wrap_template(
         canonical_layout, backend.wrap

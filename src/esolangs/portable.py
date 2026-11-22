@@ -314,27 +314,6 @@ def to_json(
     return record_dumps(document, sort_keys=True)
 
 
-def decode_settings(
-    value: Any,
-    language: str | None,
-    *,
-    catalog: Catalog | None = None,
-    checked_settings: DialectSettings | None = None,
-) -> DialectSettings | None:
-    """Restore and validate saved choices outside a source envelope."""
-    from esolangs.registry._catalog import get_catalog
-
-    if value is None:
-        return None
-    catalog = get_catalog(catalog)
-    settings = _decode_settings(
-        value, language, catalog=catalog, checked_settings=checked_settings
-    )
-    if settings is not None and settings is not checked_settings:
-        dialect_options(settings.language, settings, catalog=catalog)
-    return settings
-
-
 def _decode_settings(
     value: Any,
     language: str | None,

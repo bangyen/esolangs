@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs._bindings import runs
 from esolangs.runtime.io import ScriptedIO
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.witness_tables import row_bits
@@ -51,7 +52,12 @@ class TestParameterizedHomeRow:
         from esolangs.languages.home_row.descriptor import HOME_ROW_PAIR
 
         bindings = esolangs.TemplateBindings(setters=(HOME_ROW_PAIR,) * len(bits))
-        template = esolangs.TemplateArtifact(tpl, "Home Row", bindings)
+        template = esolangs.TemplateArtifact(
+            tpl,
+            "Home Row",
+            bindings,
+            spans=tuple(runs(tpl, bindings.char, bindings.setters)),
+        )
         return esolangs.instantiate("Home Row", template, bits).source
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
@@ -85,7 +91,6 @@ class TestParameterizedHomeRow:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
-        from esolangs._bindings import runs
         from esolangs.languages.home_row import generator as generators
         from esolangs.languages.home_row.descriptor import HOME_ROW_PAIR
 

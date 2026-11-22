@@ -33,7 +33,7 @@ values = [
     esolangs.Raster((((0, 0, 0),),)),
     esolangs.CompressedText.from_chunks(['x']),
     esolangs.TemplateArtifact('$', 'detached_scope',
-        esolangs.TemplateBindings(setters=(('0','1'),))),
+        esolangs.TemplateBindings(setters=(('0','1'),)), spans=((0,1),)),
 ]
 assert values[-1].fill([1]).source == '1'
 for value in values:

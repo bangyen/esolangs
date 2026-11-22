@@ -166,7 +166,10 @@ def _check_marked_paths() -> None:
         assert layout is not None
         text = layout.source
         template = esolangs.TemplateArtifact(
-            text, "REFRACTRAN", esolangs.TemplateBindings(setters=(("0", "1"),) * n)
+            text,
+            "REFRACTRAN",
+            esolangs.TemplateBindings(setters=(("0", "1"),) * n),
+            spans=layout.spans,
         )
         for row, bits in enumerate(product((0, 1), repeat=n)):
             program = template.fill(bits)
@@ -202,7 +205,10 @@ def _check_marked_paths() -> None:
     assert layout is not None
     broken = layout.source
     template = esolangs.TemplateArtifact(
-        broken, "REFRACTRAN", esolangs.TemplateBindings(setters=(("0", "1"),) * 3)
+        broken,
+        "REFRACTRAN",
+        esolangs.TemplateBindings(setters=(("0", "1"),) * 3),
+        spans=layout.spans,
     )
     caught = False
     for row, bits in enumerate(product((0, 1), repeat=3)):

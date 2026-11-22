@@ -31,7 +31,7 @@ def test_saved_templates_preserve_exact_provenance(
         raise AssertionError("structured layout rediscovered its slots")
 
     with monkeypatch.context() as patch:
-        patch.setattr("esolangs.artifacts.runs", unexpected_scan)
+        patch.setattr("esolangs._bindings.runs", unexpected_scan)
         original = esolangs.generate("RAM0", table, width=width)
         balanced = esolangs.generate("RAM0", table, balance=True)
         document = esolangs.to_json("RAM0", original)

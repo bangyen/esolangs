@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 import esolangs
+from esolangs._bindings import runs
 from esolangs.runtime._lifecycle import HALTED_REPORT, Completion
 from esolangs.runtime.io import ScriptedIO
 from tests.support.cli_support import _program, call_both, call_main
@@ -84,7 +85,12 @@ def test_unsupported_stepping_candidate_is_bounded() -> None:
         ("nn$", [0], 0.02, (1, 0)),
         ("N$", [1], 0.5, (0, 0)),
     ):
-        template = esolangs.TemplateArtifact(source, "a_painter_ant", bindings)
+        template = esolangs.TemplateArtifact(
+            source,
+            "a_painter_ant",
+            bindings,
+            spans=tuple(runs(source, bindings.char, bindings.setters)),
+        )
         assert _worst("a_painter_ant", template, "00", rows, bound) == expected
 
 

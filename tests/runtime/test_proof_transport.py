@@ -147,7 +147,10 @@ def test_actual_termination_workers_retain_every_halt_and_cycle():
         assert len(list(pool.map(check_worker, cases))) == len(cases)
 
     template = esolangs.TemplateArtifact(
-        "$", REFERENCE, esolangs.TemplateBindings(setters=((">", "<"),))
+        "$",
+        REFERENCE,
+        esolangs.TemplateBindings(setters=((">", "<"),)),
+        spans=((0, 1),),
     )
     with pytest.raises(esolangs.TemplateError, match="fill the template"):
         termination_result_isolated(REFERENCE, template, "", 5)

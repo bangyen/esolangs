@@ -41,7 +41,7 @@ def test_crement_data_only_setters_survive_saved_template(monkeypatch) -> None:
     def unexpected_scan(*_args):
         raise AssertionError("structured layout rediscovered its slots")
 
-    monkeypatch.setattr("esolangs.artifacts.runs", unexpected_scan)
+    monkeypatch.setattr("esolangs._bindings.runs", unexpected_scan)
     template = esolangs.generate("Crement", "0110", width=1)
     template = esolangs.from_json("Crement", esolangs.to_json("Crement", template))
     balanced = esolangs.generate("Crement", "00110110", balance=True)

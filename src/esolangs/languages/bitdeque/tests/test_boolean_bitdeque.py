@@ -34,7 +34,12 @@ class TestParameterizedBitdeque:
         from esolangs.languages.bitdeque.generator import bitdeque_setters
 
         bindings = esolangs.TemplateBindings(setters=bitdeque_setters(tpl, len(bits)))
-        template = esolangs.TemplateArtifact(tpl, "Bitdeque", bindings)
+        template = esolangs.TemplateArtifact(
+            tpl,
+            "Bitdeque",
+            bindings,
+            spans=tuple(runs(tpl, bindings.char, bindings.setters)),
+        )
         return esolangs.instantiate("Bitdeque", template, bits).source
 
     def test_template_is_input_independent(self) -> None:

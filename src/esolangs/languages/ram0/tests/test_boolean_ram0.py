@@ -38,7 +38,12 @@ class TestParameterizedRam0:
         from esolangs.languages.ram0.descriptor import PAIR
 
         bindings = esolangs.TemplateBindings(setters=(PAIR,) * len(bits))
-        template = esolangs.TemplateArtifact(tpl, "RAM0", bindings)
+        template = esolangs.TemplateArtifact(
+            tpl,
+            "RAM0",
+            bindings,
+            spans=tuple(runs(tpl, bindings.char, bindings.setters)),
+        )
         return esolangs.instantiate("RAM0", template, bits).source
 
     def test_template_is_input_independent(

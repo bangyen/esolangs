@@ -34,7 +34,10 @@ def test_debug_and_proof_repr_preserve_large_crement_values() -> None:
     digits = "1" + "0" * 5000
     spelling = hex(10**5000)
     template = TemplateArtifact(
-        "+J 0 " + digits, api.name, TemplateBindings(setters=(("", ""),))
+        "+J 0 " + digits,
+        api.name,
+        TemplateBindings(setters=(("", ""),)),
+        spans=((0, 0),),
     )
     local = api.evaluate(template, [0], limits=ExecutionLimits(max_steps=2))
     worker = api.evaluate(

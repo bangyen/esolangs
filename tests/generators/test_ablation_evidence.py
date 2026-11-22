@@ -19,6 +19,7 @@ from esolangs.registry import LANGUAGES
 from scripts.docs import ablation_replay, ablations
 from tests.support.reference import REFERENCE
 
+_BASELINE = "f7b3e290cf5e6fc555bdeb87a9570d76ef9d4fd7"
 _PILOTS = {
     next(name for name, lang in LANGUAGES.items() if lang.backend and predicate(lang))
     for predicate in (
@@ -149,7 +150,7 @@ def _controls(tmp_path, monkeypatch):
     retired["control"]["retirement"]["balanced"] = [0, 8]
     with pytest.raises(ValueError, match="source anchor"):
         ablations.parse_audits(REFERENCE, "ablations", retired)
-    revision = "aecd35024334b3c9f83c6703d83f4c7d6a366a5f"
+    revision = _BASELINE
     source = esolangs.generate(REFERENCE, "0110").source
     balanced = esolangs.generate(REFERENCE, "0110", balance=True).source
     generate = LANGUAGES[REFERENCE].backend.generate
@@ -257,7 +258,7 @@ def _pilot(language, tmp_path):
         "audited": date(2026, 11, 5),
         "construction": f"{generate.__module__}:{generate.__name__}",
         "witness": {"arity": 1, "rule": "parity"},
-        "baseline_revision": "aecd35024334b3c9f83c6703d83f4c7d6a366a5f",
+        "baseline_revision": _BASELINE,
         "source": {"unit": unit, "before": 1, "after": _units(candidate, unit)},
         "scale": 1,
         "budget": 5,
