@@ -78,9 +78,10 @@ history at `f35aa4023`.
     2. [Globe](https://esolangs.org/wiki/Globe) (rev. 165023).
        State-dependent parity filters alternate table symbols per input bit.
        The last transition prints the remaining bit.
-    3. [You wait here](https://esolangs.org/wiki/You_wait_here) (rev. 131213).
-       A counter reset and two conditional blocks select each branch.
-       `repeat`, `split` and `define` remain open outside this subset.
+    3. [Turing Code](https://esolangs.org/wiki/Turing_Code) (rev. 204341).
+       An acyclic `!!DTM` decision graph shares suffix states to keep
+       source linear, including state names. Exactly `n+1` transitions
+       leave one string bit on the trimmed tape.
     4. [干！](https://esolangs.org/wiki/%E5%B9%B2%EF%BC%81) (rev. 166203).
        A numeric read and explicit if/else select each branch. Leaves print
        literal text. The tree avoids assignment direction and division.
@@ -96,7 +97,7 @@ history at `f35aa4023`.
 
 ## Wiki candidate backlog
 
-### Reserve (24)
+### Reserve (25)
 
 - [AEAV](https://esolangs.org/wiki/AEAV)
 - [ASCIIgibberish](https://esolangs.org/wiki/ASCIIgibberish)
@@ -131,6 +132,9 @@ history at `f35aa4023`.
 - [Duzitdo?](https://esolangs.org/wiki/Duzitdo%3F) (rev. 203847). Postorder
   arithmetic selects the result with small integers. `ASK` follows the
   numeric input in the calculator example.
+- [You wait here](https://esolangs.org/wiki/You_wait_here) (rev. 131213).
+  A counter reset and two conditional blocks select each branch.
+  `repeat`, `split` and `define` remain open outside this subset.
 
 The original revision pins and screening sketches are in
 `5f3bcddf3:docs/roadmap.md`.
