@@ -7,14 +7,13 @@ to the selected one, its widest levels by loop.
 Whole constants use one read chain and only their own output tail.
 
 Size:
-    O(T) lines for the lookup; n=10 parity: 1,628 chars, n=10 random 1847:
-    12,407 chars; n=8 or: 598 chars. Constants: 22n+483 chars for zero,
-    22n+11 for one;
-    n=8 zero: 659 chars.
+    O(T) lines for the lookup; n=10 parity: 1,645 chars, n=10 random 1847:
+    12,424 chars; n=8 or: 615 chars. Constants: 28n+770 chars for zero,
+    28n+11 for one;
+    n=8 zero: 994 chars.
 
 Decisions:
-    The DAG and constant paths cut the three-input total from 310,116 to
-    265,396 characters and steps from 130,888 to 69,509. The looped levels follow
+    The DAG shares equal residuals at each read depth. The looped levels follow
     a cost model (:func:`_top_level`), not a fixed count.  The DAG places a
     node before one of its children (:func:`_chains`), dropping that goto.
 """
@@ -37,8 +36,8 @@ from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.runtime._program import Program
 
 
-def _resolve(lines: list[str], width: int | None = None) -> str:
-    """Resolve zero-width ``@label`` markers and shorten commands for width."""
+def _resolve(lines: list[str]) -> str:
+    """Resolve zero-width labels and keep all destinations on real lines."""
     labels: dict[str, int] = {}
     emitted: list[str] = []
     for line in lines:
@@ -46,17 +45,17 @@ def _resolve(lines: list[str], width: int | None = None) -> str:
             labels[line[1:]] = len(emitted) + 1
         else:
             emitted.append(line)
+    after = len(emitted) + 1
+    needs_landing = False
     for i, line in enumerate(emitted):
         if "goto @" in line:
             head, label = line.split("goto @")
-            emitted[i] = f"{head}goto {labels[label]}"
-    if width is not None and any(len(line) > width for line in emitted):
-        emitted = [
-            line.replace("increment", "inc")
-            .replace("move right", "right")
-            .replace("move left", "left")
-            for line in emitted
-        ]
+            target = labels[label]
+            needs_landing |= target == after
+            emitted[i] = f"{head}goto {target}"
+    if needs_landing:
+        # Exit routes carry a printed ASCII bit or a cleared cell here.
+        emitted.append("if 255 increment")
     return "\n".join(emitted)
 
 
@@ -95,19 +94,19 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         # Normalize the previous digit before each next read; no branch is needed.
-        reads = ["if 0 input"] + ["if 48 inc", "if 49 input"] * (n - 1)
+        reads = ["if 0 input"] + ["if 48 increment", "if 49 input"] * (n - 1)
         tail = (
-            ["if 49 right", *_climb("inc"), "if 48 output"]
+            ["if 49 move right", *_climb(), "if 48 output"]
             if truth_table[0] == "0"
-            else ["if 48 inc", "if 49 output"]
+            else ["if 48 increment", "if 49 output"]
         )
-        return _resolve(reads + tail, width)
+        return _resolve(reads + tail)
     if width is not None:
-        plain = _brainif_tree(truth_table, width)
+        plain = _brainif_tree(truth_table)
         if len(essential_inputs(truth_table, n)) > _TREE_LEVELS:
             # The lookup is the narrow fallback; where the tree fits it is
             # 25-59% shorter at n=3..14 ([ablations.wide_tree_race]).
-            tree = _resolve(_brainif_tree_entries(truth_table, n, prune=True), width)
+            tree = _resolve(_brainif_tree_entries(truth_table, n, prune=True))
             if grid_width(tree) <= width and len(tree) < len(plain):
                 return tree
         if n <= 2 and grid_width(plain) > width:
@@ -117,9 +116,9 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     return _brainif_dag(truth_table)
 
 
-def _climb(verb: str) -> list[str]:
+def _climb() -> list[str]:
     """Return the lines that raise a zero cell to the byte ``'0'``."""
-    return [f"if {value} {verb}" for value in range(_ASCII_ZERO)]
+    return [f"if {value} increment" for value in range(_ASCII_ZERO)]
 
 
 def _zero_jump_tree(
@@ -135,9 +134,9 @@ def _zero_jump_tree(
     out.extend(
         [
             "if 0 input",
-            f"if {_ASCII_ONE} left",
+            f"if {_ASCII_ONE} move left",
             f"if 0 goto @{label}",
-            f"if {_ASCII_ZERO} left",
+            f"if {_ASCII_ZERO} move left",
         ]
     )
     middle = (start + end) // 2
@@ -155,34 +154,33 @@ def _brainif_zero_jumps(table: str) -> str:
     # the final zero landing, and input cells lie above it. Two-input
     # addresses fit two digits; larger arities retain the scalable build
     # rather than O(T log T) jump text.
-    out.extend(["if 0 right", "if 0 goto @init"])
+    out.extend(["if 0 move right", "if 0 goto @init"])
     out.mark("zero")
     out.extend(
         [
-            "if 0 left",
+            "if 0 move left",
             f"if {_ASCII_ZERO} output",
-            f"if {_ASCII_ZERO} left",
+            f"if {_ASCII_ZERO} move left",
             "if 0 goto @done",
         ]
     )
     out.mark("one")
     out.extend(
         [
-            "if 0 left",
-            f"if {_ASCII_ZERO} inc",
+            "if 0 move left",
+            f"if {_ASCII_ZERO} increment",
             f"if {_ASCII_ONE} output",
-            f"if {_ASCII_ONE} left",
+            f"if {_ASCII_ONE} move left",
             "if 0 goto @done",
         ]
     )
     out.mark("init")
-    out.extend(_climb("inc"))
-    out.add(f"if {_ASCII_ZERO} right")
-    out.extend("if 0 right" for _ in range(n))
+    out.extend(_climb())
+    out.add(f"if {_ASCII_ZERO} move right")
+    out.extend("if 0 move right" for _ in range(n))
 
     _zero_jump_tree(out, table, n, 0, len(table), 0)
     out.mark("done")
-    out.add("")
     return _resolve(out.lines)
 
 
@@ -241,7 +239,7 @@ def _brainif_dag(table: str) -> str:
         blocks["out_0"] = [
             "@out_0",
             f"if {_ASCII_ONE} move right",
-            *_climb("increment"),
+            *_climb(),
             f"if {_ASCII_ZERO} output",
             f"if {_ASCII_ZERO} goto @done",
         ]
@@ -392,7 +390,7 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[str]
     """Emit symbolic tree entries with one shared output tail."""
     # The answer byte goes on cell 0 and the inputs above it, read from the
     # far end back down.
-    entries = _climb("increment")
+    entries = _climb()
     entries.append(f"if {_ASCII_ZERO} move right")
     entries += ["if 0 move right" for _ in range(n - 1)]
 
@@ -408,7 +406,7 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[str]
     return entries
 
 
-def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) -> str:
+def _brainif_tree(truth_table: str, *, prune: bool = True) -> str:
     """Build the tree/spatial candidate computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
@@ -433,7 +431,7 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
             return _brainif_linear(projected, weights)
         return _brainif_linear(truth_table)
     entries = _brainif_tree_entries(truth_table, n, prune=prune)
-    return _resolve(entries, width)
+    return _resolve(entries)
 
 
 def _top_level(n: int) -> int:
@@ -547,9 +545,9 @@ def _emit_strip_cells(out: _Lines, strip: _Strip, size: int) -> None:
     # since the walk starts there.
     for index in range(size):
         value = strip.at(index)
-        out.extend(f"if {passed} inc" for passed in range(value))
+        out.extend(f"if {passed} increment" for passed in range(value))
         if index + 1 < size:
-            out.add(f"if {value} right")
+            out.add(f"if {value} move right")
 
 
 def _emit_linear_read(
@@ -562,19 +560,19 @@ def _emit_linear_read(
     known = next((w for w in reversed(weights[:i]) if w), None)
     _emit_guarded(out, strip, size - 1 - i, known, "input")
     if not weights[i]:
-        out.add(f"if {_ASCII_ZERO} left")
-        out.add(f"if {_ASCII_ONE} left")
+        out.add(f"if {_ASCII_ZERO} move left")
+        out.add(f"if {_ASCII_ONE} move left")
         return
     out.add(f"if {_ASCII_ZERO} goto @{far}")
-    out.add(f"if {_ASCII_ONE} left")
+    out.add(f"if {_ASCII_ONE} move left")
     _emit_guarded(out, strip, size - 2 - i, known, f"goto @{after}")
     out.mark(far)
-    out.add(f"if {_ASCII_ZERO} left")
+    out.add(f"if {_ASCII_ZERO} move left")
     if i in strip.levels:
         _emit_loop(out.lines, strip, i, size)
     else:
         for k in range(weights[i]):
-            _emit_guarded(out, strip, size - 2 - i - k, known, "left")
+            _emit_guarded(out, strip, size - 2 - i - k, known, "move left")
     out.mark(after)
 
 
@@ -586,15 +584,14 @@ def _emit_linear_output(out: _Lines, strip: _Strip) -> None:
     alphabet = strip.alphabet[0] | strip.alphabet[1]
     for value in sorted(v for v in alphabet if v % 2):
         out.add(f"if {value} goto @one_out")
-    out.extend(_climb("inc"))
+    out.extend(_climb())
     out.add(f"if {_ASCII_ZERO} output")
     out.add(f"if {_ASCII_ZERO} goto @done")
     out.mark("one_out")
     for value in range(1, _ASCII_ONE):
-        out.add(f"if {value} inc")
+        out.add(f"if {value} increment")
     out.add(f"if {_ASCII_ONE} output")
     out.mark("done")
-    out.add("")
 
 
 def _brainif_linear(truth_table: str, weights: Sequence[int] | None = None) -> str:
@@ -604,7 +601,7 @@ def _brainif_linear(truth_table: str, weights: Sequence[int] | None = None) -> s
     ``{2, 3}`` odd -- so an emitted step left is two guarded moves, one per
     value the cell it leaves can hold.  The strip stores 0..3 rather than
     ``'0'``/``'1'`` because BrainIf cannot write a constant: a cell climbs by
-    ``if v inc`` lines, so an ASCII digit an entry would be a 48-line climb an
+    ``if v increment`` lines, so an ASCII digit an entry would be a 48-line climb an
     entry, and only the final ``output`` cares what the byte is.
 
     The build runs left to right and the selection right to left, reading the
@@ -618,8 +615,7 @@ def _brainif_linear(truth_table: str, weights: Sequence[int] | None = None) -> s
     ``2*m_i`` and the window is ``m_i`` long, so the window holds one.  That
     trades ``2*m_i`` ``left`` lines for ``2**i`` marker climbs, which only the
     widest levels are worth (:func:`_top_level`) -- level 0 alone is half
-    the crossings and costs one marker.  Commands take the short spellings
-    the interpreter matches by substring.
+    the crossings and costs one marker.  Commands use the published spellings.
 
     ``weights`` gives each input's row weight (see
     :func:`~esolangs.generation.helpers.input_weights`); an ignored input, weight 0,
@@ -660,8 +656,8 @@ def _emit_loop(lines: list[str], strip: _Strip, level: int, size: int) -> None:
     own = {strip.value[level], strip.value[level] + 1}
     crossable = sorted(strip.alphabet[parity] - own)
     lines.append(f"@{name}")
-    lines.extend(f"if {v} left" for v in crossable)
-    lines.extend(f"if {v} left" for v in sorted(strip.alphabet[1 - parity]))
+    lines.extend(f"if {v} move left" for v in crossable)
+    lines.extend(f"if {v} move left" for v in sorted(strip.alphabet[1 - parity]))
     lines.extend(f"if {v} goto @{name}" for v in crossable)
 
 

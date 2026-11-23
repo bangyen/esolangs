@@ -21,7 +21,7 @@
   "boolfuck": "linear: worst 162 (n=3), 35T/2+2n\u00b2+12n-23 (n=4..7), 35T/2+2n\u00b2+12n-11 (n=8), 85T/8+2n\u00b2+10n+39 (n\u22659) characters (n=3 attained)",
   "bracketonly": "linear: at most 316T-180; folding prunes tests and their arms",
   "brainfuck": "linear: at most 35T/2 + 55n + 25 characters: the plain tree",
-  "brainif": "linear: at most 52N+823+A+2digits(4N+54) characters: layered DAG before fall-through",
+  "brainif": "linear: at most max(28n+770,52N+840+A+2digits(4N+54)) characters: layered DAG before fall-through",
   "bruijndejx": "linear: at most 5T + 23 characters",
   "bytemap": "linear: at most 21T/2 + 512 (n=1..59), 20000T (n\u226560) characters characters",
   "caballo": "linear: worst 33T/4 + n - 4 characters past n = 1: parity",

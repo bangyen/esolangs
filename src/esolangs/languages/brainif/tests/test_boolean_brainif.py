@@ -14,7 +14,7 @@ from esolangs.languages.brainif.generator import _brainif_tree, _Strip
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
-from tests.generators.boolean_runners import _runner
+from tests.generators.boolean_runners import _runner, assert_runner_rows
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
@@ -35,7 +35,7 @@ class TestBrainIf:
         for table in ("10", "0110", "11111110", "01101001"):
             assert boolean.brainif(table, width=1000).count("increment") == 49
         assert all(
-            f"if {value} inc" in boolean.brainif("00000000", width=1000)
+            f"if {value} increment" in boolean.brainif("00000000", width=1000)
             for value in range(48)
         )
 
@@ -94,7 +94,7 @@ class TestBrainIf:
             for row in range(2**n):
                 bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
                 assert run_brainif(program, bits) == table[0]
-        assert len(boolean.brainif("0" * 8, width=1000)) == 549
+        assert len(boolean.brainif("0" * 8, width=1000)) == 854
         assert (
             len(boolean.brainif("0" * 32, width=1000)) < 1200
         )  # a 2,864-character lookup before
@@ -139,11 +139,11 @@ class TestBrainIf:
         for n in (1, 2, 3, 4):
             for i in range(0, 1 << (1 << n), 1 if n < 4 else 257):
                 table = format(i, f"0{1 << n}b")
-                unpruned = _brainif_tree(table, None, prune=False)
-                assert len(_brainif_tree(table, None)) <= len(unpruned)
+                unpruned = _brainif_tree(table, prune=False)
+                assert len(_brainif_tree(table)) <= len(unpruned)
         tables = [format(i, "08b") for i in range(256)]
-        assert sum(len(boolean.brainif(t)) for t in tables) == 265_396
-        assert sum(len(_brainif_tree(t, None, prune=False)) for t in tables) == 336_716
+        assert sum(len(boolean.brainif(t)) for t in tables) == 269_986
+        assert sum(len(_brainif_tree(t, prune=False)) for t in tables) == 336_716
 
     def test_spatial_lookup_executes_wide_rows(self) -> None:
         """Fresh scratch cells route sampled six-input rows."""
@@ -184,11 +184,11 @@ def test_brainif_zero_landing_output_floor_and_corpus_size() -> None:
         assert_saved_rows(language, artifact, table, range(len(table)))
 
     program = boolean.brainif("0110", 1)
-    assert max(map(len, program.splitlines())) == 12
-    assert len(program) == 818
+    assert max(map(len, program.splitlines())) == 16
+    assert len(program) == 1198
     assert (
         sum(len(boolean.brainif(format(value, "08b"), 1)) for value in range(256))
-        == 215828
+        == 309_097
     )
     for row, expected in enumerate("0110"):
         assert run_brainif(program, list(format(row, "02b"))) == expected
@@ -224,7 +224,7 @@ def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:
             assert result.observation.input_reads == n
 
     table = "".join(str(row.bit_count() % 2) for row in range(32))
-    program = _brainif_tree(table, 1, prune=False)
+    program = _brainif_tree(table, prune=False)
     for row in [0, 1, 7, 13, 31]:
         assert run_brainif(program, list(format(row, "05b"))) == table[row]
 
@@ -297,7 +297,7 @@ def test_loop_depth_rule_is_within_the_bar_of_the_measured_best(monkeypatch) -> 
             monkeypatch.setattr(
                 generator, "_top_level", lambda m, top=top: min(top, (m - 2) // 2)
             )
-            sizes.append(len(_brainif_tree(table, None)))
+            sizes.append(len(_brainif_tree(table)))
         monkeypatch.undo()
         assert sizes[_top_level(n)] <= 1.04 * min(sizes), (n, sizes)
 
@@ -306,7 +306,7 @@ def test_a_narrow_five_input_lookup_has_an_exact_size() -> None:
     """The single-one table's strip walks every unlooped level's guards in full."""
     table = "0" * 31 + "1"
     program = esolangs.generate("brainif", table, width=1).source
-    assert len(str(program)) == 2731
+    assert len(str(program)) == 3997
     assert _evaluate("BrainIf", program, inputs=5) == table
 
 
@@ -318,7 +318,7 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
         for options in ({}, {"width": 1}, {"balance": True}):
             program = esolangs.generate("BrainIf", bit * (1 << n), **options).source
             if not options:
-                assert len(program) == 22 * n + (483 if bit == "0" else 11)
+                assert len(program) == 28 * n + (770 if bit == "0" else 11)
             rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
             for row in rows:
                 io = ReadFirstIO(format(row, f"0{n}b") + "Q", expected=n)
@@ -345,3 +345,22 @@ def _check_or_zero_entries() -> None:
             assert io.past_end == 0
             assert io.input_char() == ord("Q")
             assert written.bits <= workspace(n, program)
+
+
+@pytest.mark.parametrize("width", [None, 1, 80])
+def test_emitted_spelling_and_targets_match_the_spec(width: int | None) -> None:
+    for table in ("00", "11", "0001", "0" * 31 + "1"):
+        lines = boolean.brainif(table, width).splitlines()
+        for line in lines:
+            _, _, command = line.split(maxsplit=2)
+            if command.startswith("goto "):
+                assert 1 <= int(command.split()[1]) <= len(lines)
+            else:
+                assert command in {
+                    "increment",
+                    "move left",
+                    "move right",
+                    "input",
+                    "output",
+                }
+        assert_runner_rows(run_brainif, "\n".join(lines), table)
