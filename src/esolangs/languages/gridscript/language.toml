@@ -10,7 +10,7 @@ admitted = 2026-11-17T21:00:00-05:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "one pass over collocated nodes: the table read at its essential inputs is split onto the buffer as decimal chunks of 2^m bits (m <= 4, the shortest of five builds); the high inputs double an index in the dataspace, REMOVE THIS POSITION loads its chunk, each low input divides it by 1 + bit(2^w - 1), and v - 2floor(v/2) is printed"
+qualification = "one pass over collocated nodes: the table read at its essential inputs is split onto the buffer as decimal chunks of 2^m bits (m <= 4, shortest among safe indexes); the high inputs double an index in the dataspace, REMOVE THIS POSITION loads its chunk, each low input divides it by 1 + bit(2^w - 1), and v - 2floor(v/2) is printed; wide indexes use a pairwise buffer reduction on Boolean leaves"
 
 [semantic_evidence]
 version = 1
@@ -48,33 +48,44 @@ construction = "esolangs.languages.gridscript.generator:gridscript_request"
 [resource_evidence.execution]
 # Two moves; SPLIT, a read, the index's 3 commands an input, REMOVE and
 # PRINT (3n + 3); a low input adds at most one command and the remainder 4.
-expression = "3n + 11"
+cases = [
+    { through = 31, expression = "3n + 11" },
+    { expression = "7T+3n+11" },
+]
 exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 # The buffer, 8 bits a one-bit chunk at worst; pending and held node sets
 # over at most 4n + 9 nodes; the index in the dataspace; tracer floats,
 # three variables and the input cursor.
-expression = "8T + 2(4n+9)bl(4n+9) + 2bl(2n) + n + 400"
+# The wide tree has up to 7T+n+2 pending nodes and n+2 small variables.
+cases = [
+    { through = 31, expression = "8T + 2(4n+9)bl(4n+9) + 2bl(2n) + n + 400" },
+    { expression = "2(7T+n+5)bl(7T+n+5)+8T+8n(bl(n)+4)+1024" },
+]
 exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 # The one-bit-chunk build, never beaten by less: 2T - 1 chunk characters,
 # 55 an input and 46 fixed; the 16-bit build measures 0.42T at n = 14.
-expression = "2T + 55n + 45"
+# A height-h variable costs at most 1+h letters; T/2^h nodes use it.
+cases = [
+    { through = 31, expression = "2T + 55n + 45" },
+    { expression = "160T+(55+bl(n))n+64" },
+]
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the table split onto the buffer" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: packed buffer or bounded-value tree" }
 
 [catalogue]
 folding_constant_local = "essential_inputs"  # no kept input: read, then print the constant

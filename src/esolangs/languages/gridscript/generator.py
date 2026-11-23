@@ -8,10 +8,13 @@ index in the dataspace by doubling, and ``REMOVE THIS POSITION`` loads that
 chunk.  Each of the (at most four) low inputs then divides it by
 ``1 + bit * (2^w - 1)`` for its weight ``w``, and ``v - 2*floor(v/2)`` leaves
 the answer.  Ignored inputs are read into an unused variable; a constant
-table prints its bit.
+table prints its bit. Packed layouts only race when their index fits a
+signed INT. Wider tables reduce a binary tree on the buffer using its
+input bits and the identity a + bit*(b-a).
 
 Size:
-    Theta(T) text: under 6 characters per 16 table bits, plus O(n) nodes;
+    Theta(T) text. The packed route uses decimal chunks; tree labels are
+    sized by subtree height so their weighted total is linear in T.
     n=4 parity: 297 chars, n=10 random 1847: 1,097 chars.
 
 Decisions:
@@ -36,6 +39,7 @@ from esolangs.runtime._program import Program
 
 #: Table bits per chunk: the largest power of two whose chunks fit an INT.
 _CHUNK_INPUTS = 4
+_INDEX_BITS = 31
 
 
 def _build(n: int, kept: list[int], table: str, low: int) -> list[str]:
@@ -69,6 +73,46 @@ def _build(n: int, kept: list[int], table: str, low: int) -> list[str]:
     return [*cmds, "PRINT"]
 
 
+def _height_name(height: int) -> str:
+    """Name an input by its subtree height, shortest names nearest the leaves."""
+    digits = []
+    while height:
+        height, digit = divmod(height - 1, 26)
+        digits.append(chr(ord("a") + digit))
+    return "x" + "".join(reversed(digits))
+
+
+def _tree(n: int, kept: list[int], table: str) -> list[str]:
+    """Read the bits, then reduce pairs of zero-or-one buffer values."""
+    names = [_height_name(height) for height in range(len(kept), 0, -1)]
+    inputs = dict(zip(kept, names, strict=True))
+    commands = [
+        f"INPUT INT TO {inputs[i]}" if i in inputs else "INPUT z" for i in range(n)
+    ]
+
+    def emit(start: int, width: int, depth: int) -> None:
+        if width == 1:
+            commands.append(f"PUSH {table[start]}")
+            return
+        half = width // 2
+        emit(start, half, depth + 1)
+        emit(start + half, half, depth + 1)
+        commands.extend(
+            (
+                "REMOVE TOP TO b",
+                "REMOVE TOP TO a",
+                "DECREMENT b BY a",
+                f"MULTIPLY b BY {names[depth]}",
+                "INCREMENT b BY a",
+                "PUSH b",
+            )
+        )
+
+    emit(0, len(table), 0)
+    commands.extend(("REMOVE TOP", "PRINT"))
+    return commands
+
+
 def gridscript(truth_table: str) -> str:
     """Build a GridScript program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
@@ -77,13 +121,15 @@ def gridscript(truth_table: str) -> str:
         cmds = ["INPUT z"] * n + [f"PRINT {truth_table[0]}"]
     else:
         table = read_at(truth_table, kept, n)
-        cmds = min(
-            (
-                _build(n, kept, table, low)
-                for low in range(min(len(kept), _CHUNK_INPUTS) + 1)
-            ),
-            key=lambda c: sum(len(cmd) + 7 for cmd in c),  # "(2,1):" and "\n"
-        )
+        least_low = max(0, len(kept) - _INDEX_BITS)
+        most_low = min(len(kept), _CHUNK_INPUTS)
+        if least_low > most_low:
+            cmds = _tree(n, kept, table)
+        else:
+            cmds = min(
+                (_build(n, kept, table, low) for low in range(least_low, most_low + 1)),
+                key=lambda c: sum(len(cmd) + 7 for cmd in c),  # "(2,1):" and "\n"
+            )
     return "#B.\n@width 2\n@height 1\n(1,1):START\n" + "".join(
         f"(2,1):{c}\n" for c in cmds
     )

@@ -282,3 +282,27 @@ def test_errors() -> None:
     for code, error in cases:
         with pytest.raises(error):
             _out(code)
+
+
+def test_boolean_generator_bounds_its_index(monkeypatch: pytest.MonkeyPatch) -> None:
+    from esolangs.languages.gridscript import generator
+
+    monkeypatch.setattr(generator, "_INDEX_BITS", 1)
+    monkeypatch.setattr(generator, "_CHUNK_INPUTS", 1)
+    packed = generator.gridscript("0110")
+    assert "REMOVE THIS POSITION" in packed
+    assert "DIVIDE BY a" in packed
+    assert _out(packed, "1\n1\n") == "0"
+
+    # The leading input is ignored. The other three exceed the two-bit
+    # packed route's reduced budget and select the tree.
+    table = "01000101" * 2
+    source = generator.gridscript(table)
+    assert "REMOVE THIS POSITION" not in source
+    assert "REMOVE TOP TO b" in source
+    for row, answer in enumerate(table):
+        port = ScriptedIO("\n".join(f"{row:04b}Q"))
+        run(source, port)
+        assert port.getvalue() == answer
+        assert port.reads == 4
+        assert port.input_str() == "Q"
