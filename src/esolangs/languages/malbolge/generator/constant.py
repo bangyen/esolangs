@@ -5,11 +5,16 @@ from .isa import _ONE_OPERAND, _ZERO_OPERAND, _char_for, _program, _render
 
 def _constant_program(inputs: int, bit: int) -> str:
     """Return straight-line code printing ``bit`` and reading every input."""
-    # The initial j separates C and D by its source character. Rotate 39
-    # to 13, then p over 80 gives four low 2-trits and six high 1-trits.
-    # A final p over 69 or 71 gives ASCII 48 or 49, independent of input.
+    # Both ASCII output bytes fit in four trits. Crazy merges a 2 over
+    # each of those trits when A is binary there, and makes a 1 above
+    # them when A and the operand both have zero trits.
+    output_trits = 4
+    merged = 3**output_trits - 1
+    # Halve the mask for a printable binary-trit seed and clear its
+    # units trit so rotation puts a zero at the top.
+    rotated = merged // 2 // 3 * 3
+    final = (_ZERO_OPERAND, _ONE_OPERAND)[bit]
     offset = _char_for("j", 0)
-    rotated, merged, final = 39, 80, (_ZERO_OPERAND, _ONE_OPERAND)[bit]
     # The operand bytes decode as i, p, p at these addresses. All are
     # beyond the halt, and the first is past any of the seventeen reads.
     start = _char_for("i", 0) - rotated
