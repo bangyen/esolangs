@@ -1,7 +1,6 @@
 """bfstack generator tests."""
 
 import random
-from unittest.mock import patch
 
 import pytest
 
@@ -86,43 +85,31 @@ class TestBfstack:
 
     @pytest.mark.medium
     def test_the_last_eight_input_row_does_not_wrap_to_zero(self) -> None:
-        """Index 256 previously skipped the decoder's outer loop."""
+        """The largest eight-input index is 255, including on a one row."""
+        from esolangs.languages.bfstack.interpreter import _Machine
+
         language = esolangs.Language("BFStack")
-        for witness in construction_boundaries(language.name)["byte_index_wrap_cutoff"]:
-            n, table = witness.arity, witness.table()
-            start = boolean._start(table)
-            assert start == (1 if n == 7 else 0)
-            with patch.object(boolean, "_start", wraps=boolean._start) as index:
-                artifact = language.generate(table)
-            index.assert_called_once_with(table)
+        for witness in construction_boundaries(language.name)["eight_input_index"]:
+            table = witness.table()
+            artifact = language.generate(table)
             assert_saved_rows(
                 language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
             )
 
-        table = "0" * 255 + "1"
-        assert run_bfstack(boolean.bfstack(table), ["1"] * 8) == "1"
-
-    @pytest.mark.medium
-    @pytest.mark.parametrize("ones", range(4))
-    def test_the_byte_zero_row_is_a_zero_row(self, ones: int) -> None:
-        """An eight-input block starts at the smallest start whose byte-0 row is 0."""
-        rng = random.Random(ones)
-        body = [rng.choice("01") for _ in range(256)]
-        body[0] = "1"
-        for k in range(1, ones + 1):
-            body[256 - k] = "1"
-        body[255 - ones] = "0"
-        table = "".join(body)
-        if ones == 0:
-            with patch.object(boolean, "_start", return_value=0) as corrupted:
-                broken = boolean.bfstack(table)
-                assert run_bfstack(broken, ["0"] * 8) == "0"
-                assert corrupted.called
-        program = boolean.bfstack(table)
-        assert program.startswith(">>" + "+" * (ones + 1) + ",")
-        for row in range(256):
-            bits = [str((row >> i) & 1) for i in range(7, -1, -1)]
-            assert run_bfstack(program, bits) == table[row], row
+        for table in ("1" * 252 + "0110", "0" * 255 + "1", "1" + "0" * 255):
+            source = boolean.bfstack(table)
+            for row in range(256):
+                io = ScriptedIO(f"{row:08b}Q")
+                machine = _Machine(source, io)
+                while not machine.halted:
+                    command = machine.code[machine.ind]
+                    if command == "+":
+                        assert machine.stk[-1] < 255
+                    elif command == "-":
+                        assert machine.stk[-1] > 0
+                    machine.step()
+                assert io.getvalue() == table[row]
+                assert io.input_char() == ord("Q")
 
     def test_generated_structure_and_written_payload(self) -> None:
         """Program shape and the payload used by workspace proofs."""
@@ -130,9 +117,9 @@ class TestBfstack:
         assert_analysis_complement("BFStack", "input_weights", "00010011")
         """Program shape and the payload used by workspace proofs."""
         program = boolean.bfstack("1101")  # asymmetric: the weighted encoder
-        assert program.startswith(">>+,")  # result cell, accumulator, first input
+        assert program.startswith(">" + "+" * 49 + ">,")
         assert program.count(",") == 2  # one read per input
-        assert program.endswith("+" * 48 + ".")  # print 48 + result
+        assert program.endswith("<.")
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.bfstack(table)) <= set("+,-.<>[]"), table
 
@@ -167,10 +154,6 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
     if n == 1 and bit == "0":
         _check_constants()
         _check_identities()
-    if n == 8 and bit == "1":
-        with pytest.raises(StopIteration):
-            boolean._start("1" * 256)
-        assert boolean._start("1" * 255 + "0") == 1
     program = boolean.bfstack(bit * (1 << n))
     assert len(program) == 2 * n + 50 + int(bit)
     for row in range(1 << n):
@@ -179,8 +162,8 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
     assert run("BFStack", program + ",.", stdin=stdin).output == bit + "0"
 
 
-def test_small_tables_do_not_grow_and_execute() -> None:
-    """The n=3 total is 58,899 characters."""
+def test_small_tables_execute_with_the_specialized_route() -> None:
+    """Exercise every small table and pin three-input source size."""
     total = 0
     for n in range(1, 4):
         for value in range(1 << (1 << n)):
@@ -191,7 +174,7 @@ def test_small_tables_do_not_grow_and_execute() -> None:
                 total += len(program)
             for row, expected in enumerate(table):
                 assert run_bfstack(program, list(format(row, f"0{n}b"))) == expected
-    assert total == 58_899
+    assert total == 60_914
 
 
 def _check_identities() -> None:

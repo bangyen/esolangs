@@ -2,11 +2,9 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-byte_index_wrap_cutoff = { tables = [{ arity = 7, rule = "dense" }, { arity = 8, rule = "dense" }], benchmark = false, test = "test_boolean_bfstack.py::TestBfstack::test_the_last_eight_input_row_does_not_wrap_to_zero" }
+eight_input_index = { tables = [{ arity = 7, rule = "dense" }, { arity = 8, rule = "dense" }], benchmark = false, test = "test_boolean_bfstack.py::TestBfstack::test_the_last_eight_input_row_does_not_wrap_to_zero" }
 
 [deep_arities]
-# Dense sizes settle at 5.16 chars an entry from n=10; the odd-parity window
-# 7-9-11 read 4.59 straddling the approach, 4.01 with n=13-14 added.
 linearity = 14
 workspace = 9
 
@@ -17,17 +15,17 @@ bf_derivative = true
 
 [proof_status]
 labels = ["minterms"]
-qualification = "—"
+qualification = "zero-based byte index; a guarded decrement ladder applies answer differences on unwind"
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 211, "1" = 220, "2" = 220, "3" = 229, "4" = 220, "5" = 229, "6" = 229, "7" = 242 }, source_units = 234 }
-"00001100" = { commands_by_row = { "0" = 162, "1" = 162, "2" = 171, "3" = 171, "4" = 185, "5" = 185, "6" = 182, "7" = 182 }, source_units = 183 }
-"00110110" = { commands_by_row = { "0" = 211, "1" = 220, "2" = 241, "3" = 246, "4" = 229, "5" = 248, "6" = 249, "7" = 246 }, source_units = 245 }
-"0110" = { commands_by_row = { "0" = 160, "1" = 178, "2" = 178, "3" = 175 }, source_units = 177 }
-"01101001" = { commands_by_row = { "0" = 211, "1" = 229, "2" = 229, "3" = 226, "4" = 229, "5" = 226, "6" = 226, "7" = 239 }, source_units = 232 }
-"0110100110010110" = { commands_by_row = { "0" = 262, "1" = 285, "2" = 285, "3" = 277, "4" = 285, "5" = 277, "6" = 277, "7" = 295, "8" = 285, "9" = 277, "10" = 277, "11" = 295, "12" = 277, "13" = 295, "14" = 295, "15" = 292 }, source_units = 291 }
-"1101001101101101" = { commands_by_row = { "0" = 299, "1" = 304, "2" = 270, "3" = 310, "4" = 277, "5" = 286, "6" = 313, "7" = 318, "8" = 291, "9" = 316, "10" = 317, "11" = 308, "12" = 319, "13" = 324, "14" = 317, "15" = 330 }, source_units = 318 }
-"11111110" = { commands_by_row = { "0" = 222, "1" = 227, "2" = 227, "3" = 232, "4" = 227, "5" = 232, "6" = 232, "7" = 229 }, source_units = 231 }
+"00000001" = { commands_by_row = { "0" = 206, "1" = 215, "2" = 215, "3" = 224, "4" = 215, "5" = 224, "6" = 224, "7" = 236 }, source_units = 232 }
+"00001100" = { commands_by_row = { "0" = 157, "1" = 157, "2" = 166, "3" = 166, "4" = 174, "5" = 174, "6" = 186, "7" = 186 }, source_units = 183 }
+"00110110" = { commands_by_row = { "0" = 206, "1" = 215, "2" = 223, "3" = 232, "4" = 236, "5" = 248, "6" = 253, "7" = 265 }, source_units = 257 }
+"0110" = { commands_by_row = { "0" = 155, "1" = 167, "2" = 167, "3" = 179 }, source_units = 177 }
+"01101001" = { commands_by_row = { "0" = 206, "1" = 218, "2" = 218, "3" = 230, "4" = 218, "5" = 230, "6" = 230, "7" = 242 }, source_units = 238 }
+"0110100110010110" = { commands_by_row = { "0" = 257, "1" = 269, "2" = 269, "3" = 281, "4" = 269, "5" = 281, "6" = 281, "7" = 293, "8" = 269, "9" = 281, "10" = 281, "11" = 293, "12" = 281, "13" = 293, "14" = 293, "15" = 305 }, source_units = 299 }
+"1101001101101101" = { commands_by_row = { "0" = 258, "1" = 267, "2" = 275, "3" = 287, "4" = 291, "5" = 300, "6" = 308, "7" = 317, "8" = 317, "9" = 329, "10" = 334, "11" = 346, "12" = 350, "13" = 359, "14" = 367, "15" = 379 }, source_units = 362 }
+"11111110" = { commands_by_row = { "0" = 207, "1" = 216, "2" = 216, "3" = 225, "4" = 216, "5" = 225, "6" = 225, "7" = 237 }, source_units = 233 }
 
 [ablations]
 archive_refs = [
@@ -66,7 +64,7 @@ version = 1
 [[evidence.anchors]]
 arity = 10
 rule = "parity"
-size = 633
+size = 665
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bfstack.generator:bfstack_request"
@@ -74,7 +72,7 @@ construction = "esolangs.languages.bfstack.generator:bfstack_request"
 [[evidence.anchors]]
 arity = 10
 rule = "and"
-size = 640
+size = 638
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bfstack.generator:bfstack_request"
@@ -83,7 +81,7 @@ construction = "esolangs.languages.bfstack.generator:bfstack_request"
 arity = 10
 rule = "random"
 seed = 1847
-size = 5211
+size = 7786
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bfstack.generator:bfstack_request"
@@ -95,64 +93,37 @@ witnesses = "esolangs.languages.bfstack.tests.resource_witnesses:resource_tables
 corpus = "esolangs.languages.bfstack.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.execution]
-# The stated execution bound, evaluated for n and the program.
-#
-# A one arm costs 60 commands a wide level (a zero arm 59) over the worst
-# eight-input block's 1,769 commands, one more under a tree (the closing
-# ``<``).
-# A projected identity costs only 2n, with the same branch-only pop.
-cases = [
-    { through = 8, expression = "60n + 1289" },
-    { expression = "60n + 1290" },
-]
-exact = true
+# At most 64 commands per input outside of weight additions and decoding.
+# Weight additions total at most 255. At most 255 decoder decrements
+# execute, each with up to four control commands and three answer updates.
+expression = "64n+2300"
+exact = false
 arities = [8, 9, 10]
 first = 9
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula}" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
-# Past seven inputs the root is a zero arm (stack peak ``n + 6``) or a one
-# arm (loop at position 51: six bits, not ``bl(L)``): never both at full
-# width.  At n = 9 the zero arm's loop sits below 2^11 (a one arm of a
-# 1,510-character block), one bit short.
-#
-# An identity has no loops and at most two six-bit input bytes. Inside a
-# tree it replaces a block of at least eight remaining reads: its twelve
-# data bits plus the ancestor sentinels fit n+6. The cursor and loop
-# positions use the emitted L, so shortening a block preserves the bound.
-# Alone it uses at most 12+bl(n)+bl(L) bits (six data bits when n=1),
-# below this formula also for n<8.
-# At n=9 an identity one arm puts the zero-arm loop below 128; an identity
-# zero arm has no decoder loops, while the one-arm loop stays at 51.
-# Thus the one-bit n=9 correction survives either shortened arm.
-cases = [
-    { through = 7, expression = "n+7+bl(n)+(max(n-8,0)+min(T,255)+2)bl(L)" },
-    { through = 8, expression = "n+6+bl(n)+(max(n-8,0)+min(T,255)+2)bl(L)" },
-    { through = 9, expression = "n+5+bl(n)+(max(n-8,0)+min(T,255)+2)bl(L)" },
-    { expression = "n+6+bl(n)+(max(n-8,0)+min(T,255)+2)bl(L)" },
-]
-exact = [5, 9, 10, 11]
+# Prefix branch sentinels, an ASCII answer, a byte index and the current
+# input are live. Up to 256 decoder loops nest below the prefix branches.
+expression = "2n+32+bl(n)+(n+258)bl(L)"
+exact = false
 arities = [3, 5, 6, 9, 10, 11]
 first = 5
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} (attained at n = 5 and past n = 8)" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula}" }
 
 [resource_evidence.scaling]
-# Past n = 8 a tree of 256-row blocks: one 1,511 (start 1, a one at row 0),
-# the rest 1,510 (start 0, a one past row 1), 62 a split.  A block is the
-# encoder's ``2 + 54*8 + 255``, a cascade over 254 zero rows ending at 255
-# (``255 + 2*254 + 7``) and the printing 50.
-cases = [
-    { through = 7, expression = "4T+54n+57" },
-    { through = 8, expression = "1509" },
-    { expression = "393T/64-61" },
-]
-exact = true
+# For a terminal span of S rows and w remaining inputs the encoder,
+# decoder and print cost at most 54w+7(S-1)+57, at most 64S for w >= 1.
+# Terminal spans are disjoint. Each prefix node costs at most 62 more
+# characters, and each block inside a prefix branch has one final pop.
+expression = "128T"
+exact = false
 arities = [3, 4, 5, 6, 7, 8, 9]
 first = 3
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula}: zero-row walk telescopes" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1

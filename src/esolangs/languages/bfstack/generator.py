@@ -1,27 +1,16 @@
 """BFStack Boolean program generator: byte-indexed row lists under prefix branches.
 
-Up to eight essential inputs are summed into a byte (``1 + row``, or ``row``
-with a zero row wrapping to byte 0) and a nested subtraction cascade lists
-the zero rows; wider tables branch on the leading input into blocks.
+Up to eight essential inputs are summed into a byte starting at zero.
+The decoder tests before each decrement and applies the table's changes
+while unwinding, so neither encoding nor decoding needs wrapping arithmetic.
+Wider tables branch on the leading input into blocks.
 
 Size:
-    O(T) chars; parity and and are linear in n.  n=10 parity: 633 chars,
-    n=10 and: 640 chars, n=10 random 1847: 5,211 chars.
+    O(T) chars; parity and and are linear in n. n=10 parity: 665 chars,
+    n=10 and: 638 chars, n=10 random 1847: 7,786 chars.
     Constants use L=2n+50+b chars/commands, omitting the branch-only final pop;
     written workspace 6+bl(L)+bl(n) bits.
     A projected identity retains its raw input byte: 2n chars/commands.
-
-Decisions:
-    No call or goto (loops nest) and the stack hides all but its top, so a
-    repeated block cannot be reached from a flag.  A node whose four
-    quarters are two distinct blocks once classified its two prefix bits and
-    wrote each block once; it was retired: it paid only on two-block tables
-    ([ablations.two_block_classifier]).  The decoder lists the zero rows
-    rather than folding a run: it has no range test, so each listed row is
-    its own nested loop.  Listing the rarer value instead was retired: it
-    pays only on sparse tables ([ablations.decoder_value_race]).  The eighth
-    input wraps the byte; the row left at byte 0 never enters the decoder, so
-    it must be a zero row ([ablations.eighth_input]).
 """
 
 from collections.abc import Sequence
@@ -38,73 +27,37 @@ from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
 
-def _bfstack_encoder(weights: Sequence[int], start: int = 1) -> str:
-    """BFStack code turning the inputs into ``start + sum(bit*weight)``.
-
-    ``,`` reads, 48 ``-``s normalize, ``[<+w>]`` adds the weight; an ignored
-    input, weight 0, is read and popped.  A start of 1 keeps the result
-    nonzero so the decoder's outer ``[`` always runs.
-    """
-    # Result cell (0) below the accumulator.
-    prog = ">>" + "+" * start
+def _bfstack_encoder(weights: Sequence[int], initial_answer: str) -> str:
+    """Push the answer's ASCII base, then the index in a separate cell."""
+    parts = [">", "+" * (_ASCII_ZERO + int(initial_answer)), ">"]
     for weight in weights:
         if not weight:
-            prog += ",<"
+            parts.append(",<")
             continue
-        prog += "," + "-" * _ASCII_ZERO + "[" + "<" + "+" * weight + ">" + "]" + "<"
-    return prog
+        parts.append("," + "-" * _ASCII_ZERO + "[<" + "+" * weight + ">]<")
+    return "".join(parts)
 
 
-def _bfstack_cascade(rows: list[int], payload: str) -> str:
-    """Nest subtractions over ``rows``, running ``payload`` off the list.
-
-    Reaching zero on a listed row leaves that row's ``[`` unentered, so
-    ``payload`` runs exactly when the encoded number is not in ``rows``.
-    """
-    if not rows:
-        return payload
-    prog = "["
-    prev = 0
-    for row in rows:
-        prog += "-" * (row - prev) + "["
-        prev = row
-    return prog + payload + "]" * (len(rows) + 1)
+#: A zero-based index over eight bits reaches at most 255.
+_BLOCK_INPUTS = 8
 
 
-#: Inputs a block holds with the start at 1: index 1 + 127 fits.  An eighth
-#: wraps the byte; the row at byte 0 then skips the decoder (``_start``).
-_BLOCK_INPUTS = 7
-
-
-def _start(projected: str) -> int:
-    """Return the accumulator's start: the byte is ``start + row``, mod 256.
-
-    Under 256 rows it starts at 1, keeping the outer ``[`` entered.  At 256
-    rows the byte wraps and the row at byte 0 skips the decoder, so it must be
-    a zero row: the rule is the smallest start putting a zero row at byte 0
-    (row 0, then the last rows up).
-    """
-    if len(projected) < 256:
-        return 1
-    if projected[0] == "0":
-        return 0
-    last = projected.rfind("0", 1, 256)
-    if last < 0:
-        raise StopIteration
-    return 256 - last
-
-
-def _bfstack_decoder(truth_table: str, start: int = 1) -> str:
-    """Return the decoder: a cascade listing the zero rows, then ``[<+>]``.
-
-    Listing the rarer value instead (ones, with a preset result cell) was
-    retired ([ablations.decoder_value_race]).  The row whose byte wraps to 0
-    is never listed: the outer ``[`` skips it.
-    """
-    zeros = sorted(
-        v for k, ch in enumerate(truth_table) if ch == "0" and (v := (k + start) % 256)
-    )
-    return _bfstack_cascade(zeros, "[<+>]")
+def _bfstack_decoder(truth_table: str) -> str:
+    """Apply the answer differences at each change point reached by the index."""
+    previous = truth_table[0]
+    unwinds = []
+    last_change = 0
+    for row, answer in enumerate(truth_table[1:], start=1):
+        if answer != previous:
+            unwinds.append("]" * (row - last_change - 1))
+            unwinds.append("<+>]" if answer == "1" else "<->]")
+            previous, last_change = answer, row
+    if not last_change:
+        return ""
+    # Each entered open consumes one index notch. Clear any surplus before
+    # unwinding, so the restored zero exits each open after one pass.
+    # The reversed differences telescope, keeping the ASCII cell in 47..50.
+    return "[-" * last_change + "[-]" + "".join(reversed(unwinds))
 
 
 def _bfstack_small(
@@ -112,7 +65,7 @@ def _bfstack_small(
 ) -> str:
     """Return a byte-indexed decoder over the essential inputs.
 
-    At most ``_BLOCK_INPUTS`` essential inputs; an ignored input weighs nothing.
+    The index covers at most 256 entries; an ignored input weighs nothing.
     """
     weights, projected = build or input_weights(truth_table, n)
     if projected == "01" and weights.count(1) == 1:
@@ -120,14 +73,7 @@ def _bfstack_small(
         # it. Printing after the drain preserves physical input order.
         selected = weights.index(1)
         return ",<" * selected + "," + ",<" * (n - selected - 1) + "."
-    start = _start(projected)
-    return (
-        _bfstack_encoder(weights, start)
-        + _bfstack_decoder(projected, start)
-        + "<"
-        + "+" * _ASCII_ZERO
-        + "."
-    )
+    return _bfstack_encoder(weights, projected[0]) + _bfstack_decoder(projected) + "<."
 
 
 def _constant_leaf(reads: int, bit: str) -> str:
@@ -147,14 +93,16 @@ def bfstack(truth_table: str) -> str:
     if len(set(truth_table)) == 1:
         return _constant_leaf(n, truth_table[0])[:-1]
     symmetric = symmetric_weights(truth_table, n)
-    if symmetric is None or len(symmetric.table) > 255:
+    if symmetric is None or len(symmetric.table) > (1 << _BLOCK_INPUTS):
         return _bfstack_plain(truth_table)
     return _bfstack_small(truth_table, n, symmetric)
 
 
 def _fits(truth_table: str, n: int) -> bool:
     """Whether one byte-indexed block holds the table's essential inputs."""
-    return n <= _BLOCK_INPUTS or 0 < len(essential_inputs(truth_table, n)) <= 8
+    return (
+        n <= _BLOCK_INPUTS or 0 < len(essential_inputs(truth_table, n)) <= _BLOCK_INPUTS
+    )
 
 
 def _bfstack_plain(truth_table: str) -> str:
