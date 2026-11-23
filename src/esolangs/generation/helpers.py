@@ -4,6 +4,7 @@ A valid table has ``2**n`` entries, so ``n`` is recovered from the length
 and the generators take no ``n`` parameter.
 """
 
+from array import array
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from itertools import pairwise
@@ -12,6 +13,7 @@ from typing import NamedTuple
 
 from esolangs.exceptions import TruthTableError
 from esolangs.generation.lookup import prefix_counts as _prefix_counts
+from esolangs.generation.lookup import prefix_totals as _prefix_totals
 from esolangs.generation.lookup import symmetric_outputs as _symmetric_outputs
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.source_hints import with_hint
@@ -59,7 +61,13 @@ def narrowest_grid(*candidates: str) -> str:
 
 def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
     """Return an O(1) test for whether a half-open table span is constant."""
-    ones = _prefix_counts(truth_table, "1")
+    ones: Sequence[int]
+    if len(truth_table) >= 4096:
+        # Large indexes otherwise retain a Python int and a list slot per row.
+        width = "I" if len(truth_table).bit_length() <= 8 * array("I").itemsize else "Q"
+        ones = array(width, _prefix_totals(truth_table, "1"))
+    else:
+        ones = _prefix_counts(truth_table, "1")
 
     def constant(start: int, stop: int) -> bool:
         count = ones[stop] - ones[start]

@@ -20,7 +20,7 @@ import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import fields, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from fractions import Fraction
 from functools import cache, partial
 from itertools import chain, compress
@@ -51,6 +51,7 @@ from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._certification import load as load_certification
 from esolangs.registry._info import LanguageInfo
+from esolangs.runtime._json import record_dumps
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._validate import check_timeout
 from esolangs.runtime._vm_protocol import VM
@@ -81,6 +82,37 @@ def artifact_hash(program: esolangs.Program) -> str:
     else:
         payload = b"rgb\0" + json.dumps(program.rows, separators=(",", ":")).encode()
     return hashlib.sha256(payload).hexdigest()
+
+
+def artifact_digests(artifact: Artifact) -> tuple[str, str]:
+    """Hash source, then bind its digest to the artifact's retained metadata."""
+    digest = artifact_hash(artifact.source)
+    record: dict[str, Any] = {
+        "version": 1,
+        "source_sha256": digest,
+        "language": artifact.language,
+        "settings": None if artifact.settings is None else artifact.settings.options(),
+    }
+    if isinstance(artifact, esolangs.TemplateArtifact):
+        record.update(
+            kind="template",
+            char=artifact.bindings.char,
+            setters=artifact.bindings.setters,
+            spans=artifact.spans,
+            generation_width=artifact.generation_width,
+        )
+    else:
+        record.update(
+            kind="program", scale=artifact.scale, input_arity=artifact.input_arity
+        )
+        if isinstance(artifact.source, esolangs.CompressedText):
+            limits = artifact.source.limits
+            record.update(
+                kind="gzip", limits=None if limits is None else asdict(limits)
+            )
+    return digest, hashlib.sha256(
+        record_dumps(record, sort_keys=True).encode("ascii")
+    ).hexdigest()
 
 
 def source_identity(timeout: float = 60) -> dict[str, Any]:
@@ -425,7 +457,7 @@ def _execute(
     width: int | None = None,
     track_store: bool = False,
     facts: LanguageInfo | None = None,
-    source_digest: str | None = None,
+    digests: tuple[str, str] | None = None,
     prepare: Callable[[], esolangs.PreparedProgram] | None = None,
 ) -> dict[str, Any]:
     if facts is None:
@@ -440,10 +472,12 @@ def _execute(
     supported = facts.steppable_to_answer
     if track_store and facts.answer_mode == "termination":
         raise ValueError("store tracking requires a halting-answer language")
+    source_digest, record_digest = (
+        artifact_digests(source) if digests is None else digests
+    )
     result: dict[str, Any] = {
-        "artifact_sha256": source_digest
-        if source_digest is not None
-        else artifact_hash(source.source),
+        "artifact_sha256": source_digest,
+        "record_sha256": record_digest,
         "row": row,
         "expected_answer": table[row],
         "actual_answer": None,
@@ -596,7 +630,7 @@ def _measure(
             "height": len(source.rows),
             "scale": program.scale,
         }
-    digest = artifact_hash(source)
+    digests = artifact_digests(program)
     rows = range(len(table)) if all_rows else sample_rows or (row,)
     # The first executed row pays for preparation under its existing deadline.
     prepare = (
@@ -618,7 +652,7 @@ def _measure(
             width=width,
             track_store=track_store,
             facts=facts,
-            source_digest=None if facts.parameterized else digest,
+            digests=None if facts.parameterized else digests,
             prepare=prepare,
         )
         executions.append(execution)
@@ -636,7 +670,8 @@ def _measure(
             "machine": platform.machine(),
             "cpu": cpu_model(),
             "harness": 1,
-            "generated_artifact_sha256": digest,
+            "generated_artifact_sha256": digests[0],
+            "generated_record_sha256": digests[1],
         },
         "track_store": track_store,
         "language": facts.name,

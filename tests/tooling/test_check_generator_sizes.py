@@ -1,6 +1,7 @@
 """Tests for the emitted-size and step-count baseline gate."""
 
 import hashlib
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -18,7 +19,7 @@ from checks.check_generator_sizes import (
 )
 from esolangs.registry._certification import load as load_certification
 from scripts import benchmark as b
-from tests.support.pick import spread
+from tests.support.pick import first, one_where, spread
 from tests.support.reference import REFERENCE
 
 RECORD = {
@@ -206,11 +207,15 @@ def test_sweep_checks_and_pins_every_small_table_row(monkeypatch) -> None:
 
 def test_executed_artifact_and_provenance() -> None:
     r = b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=10000, all_rows=True)
-    p = esolangs.generate("Brainfuck", "01").source
+    program = esolangs.generate("Brainfuck", "01")
+    p = program.source
+    _, record_digest = b.artifact_digests(program)
     assert all(row["matches"] for row in r["executions"])
     assert r["schema"] == 6
     assert r["provenance"]["generated_artifact_sha256"] == b.artifact_hash(p)
     assert all(row["artifact_sha256"] == b.artifact_hash(p) for row in r["executions"])
+    assert r["provenance"]["generated_record_sha256"] == record_digest
+    assert all(row["record_sha256"] == record_digest for row in r["executions"])
     assert len(r["provenance"]["commit"]) == 40
     assert isinstance(r["provenance"]["dirty"], bool)
     # Matches timings across runners that share a platform() string.
@@ -220,6 +225,40 @@ def test_executed_artifact_and_provenance() -> None:
     assert b.artifact_hash(esolangs.Raster(((pixel, pixel),))) != b.artifact_hash(
         esolangs.Raster(((pixel,), (pixel,)))
     )
+
+
+def test_artifact_digests_distinguish_execution_metadata() -> None:
+    def distinct_records(before, after):
+        first_source, first_record = b.artifact_digests(before)
+        second_source, second_record = b.artifact_digests(after)
+        assert first_source == second_source
+        assert first_record != second_record
+
+    (name,) = one_where(lambda facts: "rotation" in facts.dialect_settings)
+    language = esolangs.Language(name)
+    source = "+,"
+    forward = language.from_source(
+        source, settings=language.settings(rotation="forward")
+    )
+    backward = language.from_source(
+        source, settings=language.settings(rotation="backward")
+    )
+    distinct_records(forward, backward)
+    assert language.run(forward).output == "\x01"
+    assert language.run(backward).output == ""
+
+    raster = esolangs.generate(
+        first(source_kind="raster", boolean_generator=True), "01"
+    )
+    assert isinstance(raster, esolangs.ProgramArtifact)
+    distinct_records(raster, replace(raster, scale=2))
+    distinct_records(raster, replace(raster, input_arity=2))
+
+    template = esolangs.generate(first(parameterized=True), "01")
+    assert isinstance(template, esolangs.TemplateArtifact)
+    ((zero, one),) = template.bindings.setters
+    bindings = replace(template.bindings, setters=((one, zero),))
+    distinct_records(template, replace(template, bindings=bindings))
 
 
 # One language per artifact route: the measurement path branches on these
@@ -252,6 +291,11 @@ def test_benchmark_uses_artifacts_without_source_facades(language):
     assert record["provenance"]["generated_artifact_sha256"] == b.artifact_hash(
         generated.source
     )
+    assert (
+        record["provenance"]["generated_record_sha256"]
+        == b.artifact_digests(generated)[1]
+    )
+    assert record["record_sha256"] == b.artifact_digests(filled)[1]
     source = generated.source
     if isinstance(source, esolangs.Raster):
         assert isinstance(generated, esolangs.ProgramArtifact)

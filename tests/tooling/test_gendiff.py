@@ -12,13 +12,14 @@ from tests.tooling.script_support import REPO_ROOT, load
 
 gendiff = load(REPO_ROOT / "scripts" / "gendiff.py")
 
-#: Appended to the reference generator: its selected entry point now prefixes a "+".
+#: The two-input change lies outside the exhaustive corpus used below.
 _FUNCTION = LANGUAGES[REFERENCE].backend.generate.__name__
 _MUTATION = f"""
 _unmutated = {_FUNCTION}
 
-def {_FUNCTION}(table, *args, **kwargs):
-    return "+" + _unmutated(table, *args, **kwargs)
+def {_FUNCTION}(request):
+    source = _unmutated(request)
+    return "+" + source if len(request.table) == 4 else source
 """
 
 
@@ -34,7 +35,7 @@ def test_differences_include_a_missing_request() -> None:
 
 
 @pytest.mark.medium  # three generator processes and a copy of src: ~3 s
-def test_an_unchanged_tree_matches_and_a_mutant_is_caught(
+def test_an_unchanged_tree_matches_and_boundary_witnesses_catch_a_mutant(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def snapshot(ref: str, scratch: Path) -> Path:
@@ -54,4 +55,5 @@ def test_an_unchanged_tree_matches_and_a_mutant_is_caught(
     assert gendiff.main(argv) == 0
     out = capsys.readouterr().out
     assert "0 differ from snapshot" in out
-    assert "control: mutant differs on 24" in out
+    assert "construction witnesses beyond n=1: 2" in out.splitlines()
+    assert "control: mutant differs on 2" in out.splitlines()

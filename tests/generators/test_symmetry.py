@@ -26,6 +26,16 @@ def test_prefix_counts_accepts_other_characters_and_empty_tables():
     assert prefix_counts("0é1", "é") == [0, 0, 1, 1]
 
 
+def test_large_constant_span_counts_cover_the_whole_table():
+    half = 1 << 16
+    constant = helpers.constant_span_test("0" * half + "1" * half)
+    assert constant(0, half)
+    assert constant(half, 2 * half)
+    assert constant(2 * half, 2 * half)
+    assert not constant(half - 1, half + 1)
+    assert not constant(0, 2 * half)
+
+
 def test_symmetric_profiles_cover_every_block():
     for n in (10, 11, 12, 16):
         profile = ("01101" * (n // 5 + 1))[: n + 1]

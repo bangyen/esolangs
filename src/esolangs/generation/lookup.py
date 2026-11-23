@@ -1,5 +1,6 @@
 """Boolean row boundaries, counts and popcount lookup profiles."""
 
+from collections.abc import Iterator
 from itertools import accumulate
 
 _PREFIX_MARKS = {
@@ -21,13 +22,15 @@ def change_points(table: str) -> list[int]:
 
 def prefix_counts(table: str, value: str) -> list[int]:
     """Return matching-entry counts for every prefix, including the empty one."""
+    return list(prefix_totals(table, value))
+
+
+def prefix_totals(table: str, value: str) -> Iterator[int]:
+    """Yield matching-entry counts, allowing callers to choose their storage."""
     marks = _PREFIX_MARKS.get(value)
     if marks is not None and str.isascii(table):
-        return list(accumulate(str.encode(table, "ascii").translate(marks), initial=0))
-    counts = [0]
-    for entry in table:
-        counts.append(counts[-1] + (entry == value))
-    return counts
+        return accumulate(str.encode(table, "ascii").translate(marks), initial=0)
+    return accumulate((int(entry == value) for entry in table), initial=0)
 
 
 def symmetric_outputs(table: str, n: int) -> str | None:
