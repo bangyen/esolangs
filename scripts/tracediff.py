@@ -20,20 +20,25 @@ declared nonterminating contract, on a mutant that went unseen, or with
 from __future__ import annotations
 
 import argparse
+import gzip
 import importlib
 import importlib.util
 import itertools
+import marshal
 import math
+import os
 import random
 import re
+import shutil
 import struct
 import subprocess
 import sys
 import tempfile
 import time
 import tomllib
-from collections.abc import Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from contextlib import suppress
+from dataclasses import asdict
 from pathlib import Path
 from types import ModuleType
 from typing import Any, NamedTuple, cast
@@ -41,6 +46,9 @@ from typing import Any, NamedTuple, cast
 ROOT = Path(__file__).resolve().parent.parent
 # tests/ holds the suite samples; run as a script, only scripts/ is on the path.
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from gendiff import _checkout  # noqa: E402
 
 import esolangs  # noqa: E402
 from esolangs.exceptions import GeneratorCapError  # noqa: E402
@@ -53,11 +61,10 @@ from esolangs.runtime._program import RunnerProgram  # noqa: E402
 from esolangs.runtime.io import ScriptedIO  # noqa: E402
 from esolangs.runtime.randomness import Seeded  # noqa: E402
 
-# Imported by name so mypy, which checks scripts/ but not tests/, stops here.
-SAMPLES = importlib.import_module("tests.support.samples").SAMPLES
-
 #: Steps traced per program; past it a run counts as non-halting.
 LIMIT = 400
+_WORKER_TIMEOUT = 120
+_RECORD_SIZE = struct.Struct(">Q")
 RANDOM_PROGRAMS = 3000
 #: The slowdown a refactor may cost before ``--speed`` fails it.
 SLOWDOWN = 0.10
@@ -111,43 +118,6 @@ def _load(path: Path, name: str) -> ModuleType:
     return module
 
 
-def _source_path(module: str, ref: str) -> tuple[Path, str]:
-    """Return the interpreter's file and the name to load other copies under.
-
-    A package's old ``__init__`` is loaded inside the package, so its relative
-    imports reach the current submodules: sound only when it alone changed.
-    """
-    path = Path(importlib.import_module(module).__file__ or "")
-    if path.name != "__init__.py":
-        return path, "tracediff"
-    changed = subprocess.run(
-        ["git", "diff", "--name-only", ref, "--", path.parent.relative_to(ROOT)],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.split()
-    others = [name for name in changed if not name.endswith("/__init__.py")]
-    if others:
-        raise SystemExit(f"{module} changed beyond __init__.py: {others}")
-    return path, f"{module}.tracediff"
-
-
-def _revision(path: Path, ref: str, scratch: Path) -> Path:
-    """Write ``path`` as it is at git ``ref`` into ``scratch``."""
-    relative = path.relative_to(ROOT).as_posix()
-    text = subprocess.run(
-        ["git", "show", f"{ref}:{relative}"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
-    copy = scratch / f"old_{path.name}"
-    copy.write_text(text, encoding="utf-8")
-    return copy
-
-
 def _error(error: BaseException) -> Event:
     return (type(error).__name__, str(error), tuple(getattr(error, "__notes__", ())))
 
@@ -180,7 +150,8 @@ def _repr(value: object) -> str:
 
 
 _SLOTS: dict[type, tuple[str, ...]] = {}
-_NAN_TAG = object()
+# _plain converts every ordinary set to a tuple.
+_NAN_TAG: frozenset[object] = frozenset()
 
 
 def _slots(cls: type) -> tuple[str, ...]:
@@ -202,8 +173,16 @@ def _plain(value: object, memo: dict[int, object]) -> object:
     """
     if isinstance(value, float) and math.isnan(value):
         return (_NAN_TAG, struct.pack("!d", value))
-    if value is None or isinstance(value, int | float | str | bytes):
+    if value is None or type(value) in (bool, int, float, str, bytes):
         return value
+    if isinstance(value, int):
+        return int.__int__(value)
+    if isinstance(value, float):
+        return float.__float__(value)
+    if isinstance(value, str):
+        return str.__str__(value)
+    if isinstance(value, bytes):
+        return bytes.__bytes__(value)
     key = id(value)
     if key in memo:
         return memo[key]
@@ -352,7 +331,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
     """Return the sample, wiki examples, generated rows and random programs."""
     language = LANGUAGES[name]
     programs: list[Program] = []
-    sample = SAMPLES.get(name)
+    sample = importlib.import_module("tests.support.samples").SAMPLES.get(name)
     if sample is not None and isinstance(sample[0], str):
         programs.append((sample[0], sample[1]))
     tests = ROOT / "src/esolangs/languages" / language.id / "tests"
@@ -401,7 +380,7 @@ class _Comparison(NamedTuple):
 
 
 def _first_difference(
-    before: list[Event], after: list[Event]
+    before: list[Event], after: list[Event], *, projected: bool = False
 ) -> tuple[int, Event | None, Event | None] | None:
     if before == after:
         return None
@@ -410,7 +389,8 @@ def _first_difference(
     memo: dict[int, object] = {}
     for step, (first, second) in enumerate(itertools.zip_longest(before, after)):
         if first != second and (
-            first is None
+            projected
+            or first is None
             or second is None
             or _plain(first, memo) != _plain(second, memo)
         ):
@@ -433,6 +413,43 @@ def _repeated_snapshot(events: list[Event]) -> bool:
     return False
 
 
+type Observation = tuple[list[Event], bool]
+
+
+def _observe(
+    module: ModuleType,
+    program: Program,
+    ignored: frozenset[str],
+    *,
+    runtime: RuntimeSpec,
+    allow_cycles: bool,
+) -> Observation:
+    events = trace(module, program, ignored, runtime=runtime)
+    return events, allow_cycles and not _halts(events) and _repeated_snapshot(events)
+
+
+def _summarize(
+    programs: Iterable[Program],
+    pairs: Iterable[tuple[Observation, Observation]],
+    *,
+    projected: bool = False,
+) -> _Comparison:
+    found = []
+    halting = 0
+    witnessed = False
+    for program, ((before, old_cycle), (after, new_cycle)) in zip(
+        programs, pairs, strict=True
+    ):
+        halted = _halts(after)
+        halting += halted
+        difference = _first_difference(before, after, projected=projected)
+        if difference is not None:
+            found.append((program, *difference))
+        elif not witnessed:
+            witnessed = halted or (old_cycle and new_cycle)
+    return _Comparison(found, halting, witnessed)
+
+
 def _compare(
     old: ModuleType,
     new: ModuleType,
@@ -443,24 +460,14 @@ def _compare(
     allow_cycles: bool = False,
 ) -> _Comparison:
     """Collect differences and successful witnesses from the same traces."""
-    found = []
-    halting = 0
-    witnessed = False
-    for program in programs:
-        before = trace(old, program, ignored, runtime=runtime)
-        after = trace(new, program, ignored, runtime=runtime)
-        halted = _halts(after)
-        halting += halted
-        difference = _first_difference(before, after)
-        if difference is not None:
-            found.append((program, *difference))
-        elif not witnessed:
-            witnessed = halted or (
-                allow_cycles
-                and _repeated_snapshot(after)
-                and _repeated_snapshot(before)
-            )
-    return _Comparison(found, halting, witnessed)
+    pairs = (
+        (
+            _observe(old, program, ignored, runtime=runtime, allow_cycles=allow_cycles),
+            _observe(new, program, ignored, runtime=runtime, allow_cycles=allow_cycles),
+        )
+        for program in programs
+    )
+    return _summarize(programs, pairs)
 
 
 def differences(
@@ -520,6 +527,189 @@ def speeds(
     return steps / old_best, steps / new_best
 
 
+def _pack_program(program: Program, artifacts: dict[int, object]) -> tuple[object, str]:
+    """Keep exact source and explicit runtime options across the worker boundary."""
+    code, stdin = program
+    if not isinstance(code, esolangs.ProgramArtifact):
+        return code, stdin
+    key = id(code)
+    if key in artifacts:
+        return artifacts[key], stdin
+    source = code.source
+    payload: object
+    if isinstance(source, esolangs.Raster):
+        kind, payload = "raster", source.rows
+    elif isinstance(source, esolangs.CompressedText):
+        kind = "gzip"
+        payload = (
+            source.data,
+            None if source.limits is None else asdict(source.limits),
+        )
+    else:
+        kind, payload = "text", source
+    settings = None if code.settings is None else code.settings.options()
+    artifacts[key] = (kind, payload, settings, code.scale)
+    return artifacts[key], stdin
+
+
+def _unpack_program(
+    api: esolangs.Language, record: tuple[Any, str], artifacts: dict[int, Any]
+) -> Program:
+    code, stdin = record
+    if isinstance(code, str):
+        return code, stdin
+    key = id(code)
+    if key in artifacts:
+        return artifacts[key], stdin
+    kind, source, choices, scale = code
+    if kind == "raster":
+        source = esolangs.Raster(source)
+    if kind == "gzip":
+        data, limits = source
+        source = esolangs.CompressedText(
+            data, limits=None if limits is None else esolangs.TextLimits(**limits)
+        )
+    settings = None if choices is None else api.settings(**choices)
+    return esolangs.ProgramArtifact(
+        source, api.name, settings=settings, scale=scale
+    ), stdin
+
+
+def _worker(
+    language: str, source: Path, request: Path, output: Path, *, timing: bool
+) -> None:
+    """Trace one revision using its own interpreter and dependencies."""
+    assert esolangs.__file__ is not None
+    if not Path(esolangs.__file__).resolve().is_relative_to(source.resolve()):
+        raise SystemExit("trace worker imported esolangs from the wrong source tree")
+    with request.open("rb") as stream:
+        packed, extra = marshal.load(stream)
+    api = esolangs.Language(language)
+    name = api.name
+    module = importlib.import_module(INTERPRETERS[name])
+    runtime = LANGUAGES[name].runtime
+    _preparation(module, runtime)
+    artifacts: dict[int, Any] = {}
+    if timing:
+        selected, repeats = extra
+        work = [
+            (_unpack_program(api, packed[index], artifacts), steps)
+            for index, steps in selected
+        ]
+        if repeats is None:
+            repeats = max(
+                1, math.ceil(0.2 / max(_lap(module, work, runtime=runtime), 1e-6))
+            )
+        work *= repeats
+        _lap(module, work, runtime=runtime)
+        seconds = min(_lap(module, work, runtime=runtime) for _ in range(5))
+        with output.open("wb") as stream:
+            marshal.dump((sum(steps for _, steps in work) / seconds, repeats), stream)
+        return
+    ignored = frozenset(extra)
+    allow_cycles = not runtime.random and (
+        runtime.capabilities.completion is Completion.PERIODIC
+        or LANGUAGES[name].contract.answer_mode == "termination"
+    )
+    with gzip.open(output, "wb", compresslevel=1) as stream:
+        for record in packed:
+            events, cycle = _observe(
+                module,
+                _unpack_program(api, record, artifacts),
+                ignored,
+                runtime=runtime,
+                allow_cycles=allow_cycles,
+            )
+            # Project private classes before crossing revisions and preserve wide ints.
+            memo: dict[int, object] = {}
+            record_bytes = marshal.dumps(
+                ([_plain(event, memo) for event in events], cycle)
+            )
+            stream.write(_RECORD_SIZE.pack(len(record_bytes)))
+            stream.write(record_bytes)
+
+
+def _run_worker(
+    source: Path, name: str, request: Path, output: Path, *, timing: bool = False
+) -> None:
+    command = [
+        sys.executable,
+        __file__,
+        name,
+        "--worker",
+        str(source),
+        str(request),
+        str(output),
+    ]
+    if timing:
+        command.append("--speed")
+    try:
+        subprocess.run(
+            command,
+            cwd=ROOT,
+            check=True,
+            timeout=_WORKER_TIMEOUT,
+            env=dict(os.environ, PYTHONPATH=str(source), PYTHONHASHSEED="0"),
+        )
+    except subprocess.TimeoutExpired:
+        raise SystemExit(
+            f"trace worker for {name} exceeded {_WORKER_TIMEOUT}s"
+        ) from None
+    except subprocess.CalledProcessError as error:
+        raise SystemExit(f"trace worker for {name} exited {error.returncode}") from None
+
+
+def _observations(path: Path) -> Iterator[Observation]:
+    with gzip.open(path, "rb") as stream:
+        while length := stream.read(_RECORD_SIZE.size):
+            (size,) = _RECORD_SIZE.unpack(length)
+            # Read a whole record before decoding to avoid per-field gzip reads.
+            payload = stream.read(size)
+            if len(payload) != size:
+                raise ValueError("incomplete trace observation")
+            yield marshal.loads(payload)
+
+
+def _worker_speeds(
+    old: Path, new: Path, name: str, packed: list[tuple[object, str]], scratch: Path
+) -> tuple[float, float]:
+    lengths = [
+        (index, len(events))
+        for index, (events, _) in enumerate(_observations(scratch / "new.gz"))
+    ]
+    lengths.sort(key=lambda pair: pair[1], reverse=True)
+    selected = lengths[:40]
+    request, output = scratch / "speed.in", scratch / "speed.out"
+    repeats: int | None = None
+    rates = []
+    for source in (new, old):
+        with request.open("wb") as stream:
+            marshal.dump((packed, (selected, repeats)), stream)
+        _run_worker(source, name, request, output, timing=True)
+        with output.open("rb") as stream:
+            rate, repeats = marshal.load(stream)
+        rates.append(rate)
+    now, was = rates
+    return was, now
+
+
+def _mutant_source(name: str, mutant: Path, target: Path | None, scratch: Path) -> Path:
+    entry = Path(importlib.import_module(INTERPRETERS[name]).__file__ or "")
+    path = entry if target is None else (ROOT / target).resolve()
+    if path != entry and (
+        entry.name != "__init__.py" or not path.is_relative_to(entry.parent)
+    ):
+        raise SystemExit(
+            "mutant target must be the interpreter or one of its package files"
+        )
+    if not path.is_file() or path.suffix != ".py":
+        raise SystemExit("mutant target must be an existing Python source file")
+    source = scratch / "mutant"
+    shutil.copytree(ROOT / "src", source, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(mutant, source / path.relative_to(ROOT / "src"))
+    return source
+
+
 def main(argv: list[str] | None = None) -> int:
     """Print the first differences and the counts; return the exit status."""
     parser = argparse.ArgumentParser(
@@ -531,31 +721,49 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--mutant", type=Path, help="broken copy that must differ")
     parser.add_argument(
+        "--mutant-target", type=Path, help="repo-relative interpreter file to replace"
+    )
+    parser.add_argument("--worker", nargs=3, type=Path, help=argparse.SUPPRESS)
+    parser.add_argument(
         "--ignore-views", default="", help="comma-separated renamed views"
     )
     parser.add_argument("--random", type=int, default=RANDOM_PROGRAMS)
     parser.add_argument("--speed", action="store_true", help="also compare steps/s")
     args = parser.parse_args(argv)
+    if args.worker:
+        _worker(args.language, *args.worker, timing=args.speed)
+        return 0
+    if args.mutant_target is not None and args.mutant is None:
+        parser.error("--mutant-target requires --mutant")
     try:
         name = resolve(args.language)
     except ValueError as exc:
         parser.error(str(exc))
     ignored = frozenset(filter(None, args.ignore_views.split(",")))
-    runtime = LANGUAGES[name].runtime
-    new = importlib.import_module(INTERPRETERS[name])
-    path, prefix = _source_path(INTERPRETERS[name], args.old)
-    with tempfile.TemporaryDirectory() as scratch:
-        old = _load(_revision(path, args.old, Path(scratch)), f"{prefix}_old")
-    _preparation(old, runtime)
-    _preparation(new, runtime)
     programs = corpus(name, args.random)
-    allow_cycles = not runtime.random and (
-        runtime.capabilities.completion is Completion.PERIODIC
-        or LANGUAGES[name].contract.answer_mode == "termination"
-    )
-    found, halting, witnessed = _compare(
-        old, new, programs, ignored, runtime=runtime, allow_cycles=allow_cycles
-    )
+    with tempfile.TemporaryDirectory() as directory:
+        return _compare_revisions(name, programs, ignored, args, Path(directory))
+
+
+def _compare_revisions(
+    name: str,
+    programs: list[Program],
+    ignored: frozenset[str],
+    args: argparse.Namespace,
+    scratch: Path,
+) -> int:
+    old = _checkout(args.old, scratch / "old")
+    new = ROOT / "src"
+    request = scratch / "corpus"
+    before_path, after_path = scratch / "old.gz", scratch / "new.gz"
+    artifacts: dict[int, object] = {}
+    packed = [_pack_program(program, artifacts) for program in programs]
+    with request.open("wb") as stream:
+        marshal.dump((packed, sorted(ignored)), stream)
+    _run_worker(old, name, request, before_path)
+    _run_worker(new, name, request, after_path)
+    pairs = zip(_observations(before_path), _observations(after_path), strict=True)
+    found, halting, witnessed = _summarize(programs, pairs, projected=True)
     for (code, stdin), step, before, after in found[:3]:
         print(f"DIFF {code!r:.60} stdin={stdin[:20]!r} at step {step}")
         print(f"  {args.old}: {before!r:.300}")
@@ -569,13 +777,16 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     failed = bool(found)
     if args.speed:
-        was, now = speeds(old, new, programs, runtime=runtime)
+        was, now = _worker_speeds(old, new, name, packed, scratch)
         change = now / was - 1
         print(f"speed: {was:,.0f} -> {now:,.0f} steps/s ({change:+.0%})")
         failed |= change < -SLOWDOWN
     if args.mutant is not None:
-        mutant = _load(args.mutant, f"{prefix}_mutant")
-        caught = len(differences(old, mutant, programs, ignored, runtime=runtime))
+        mutant = _mutant_source(name, args.mutant, args.mutant_target, scratch)
+        mutant_path = scratch / "mutant.gz"
+        _run_worker(mutant, name, request, mutant_path)
+        pairs = zip(_observations(before_path), _observations(mutant_path), strict=True)
+        caught = len(_summarize(programs, pairs, projected=True).differences)
         print(f"control: mutant differs on {caught}")
         failed |= not caught
     return int(failed)

@@ -120,6 +120,7 @@ class CompressedText:
     _: KW_ONLY
     limits: TextLimits | None = None
     _size: int = field(init=False, repr=False)
+    _utf8_size: int = field(init=False, repr=False, compare=False)
     _has_newline: bool = field(init=False, repr=False, compare=False)
     _has_carriage_return: bool = field(init=False, repr=False, compare=False)
     _tail: str = field(init=False, repr=False, compare=False)
@@ -133,17 +134,19 @@ class CompressedText:
         object.__setattr__(self, "limits", limits)
         if limits is not None:
             _check_gzip(limits, len(self.data))
-        size = 0
+        size = utf8_size = 0
         has_newline = has_carriage_return = False
         tail = ""
-        for chunk in CompressedText.chunks(self):
+        for chunk, byte_count in CompressedText._decoded_chunks(self):
             size += len(chunk)
+            utf8_size += byte_count
             has_newline = has_newline or "\n" in chunk
             has_carriage_return = has_carriage_return or "\r" in chunk
             tail = chunk[-1:] or tail
             if limits is not None:
                 _check_work(limits, size)
         object.__setattr__(self, "_size", size)
+        object.__setattr__(self, "_utf8_size", utf8_size)
         object.__setattr__(self, "_has_newline", has_newline)
         object.__setattr__(self, "_has_carriage_return", has_carriage_return)
         object.__setattr__(self, "_tail", tail)
@@ -162,16 +165,29 @@ class CompressedText:
             and type(attributes["_has_carriage_return"]) is not bool
         ):
             raise ValueError("compressed text pickle requires measured line metadata")
+        utf8_bytes = attributes.get("_utf8_size", 0)
+        if type(utf8_bytes) is not int or utf8_bytes < 0:
+            raise ValueError("compressed text pickle has an invalid byte count")
         vars(self).update(attributes)
         for name, value in slots.items():
             object.__setattr__(self, name, value)
-        # Older pickles contain the archive but lack the carriage-return flag.
-        if "_has_carriage_return" not in attributes:
-            present = any("\r" in chunk for chunk in CompressedText.chunks(self))
+        # Rebuild fields missing from older pickles in a single pass.
+        if "_has_carriage_return" not in attributes or "_utf8_size" not in attributes:
+            present = False
+            utf8_size = 0
+            for chunk, byte_count in CompressedText._decoded_chunks(self):
+                present = present or "\r" in chunk
+                utf8_size += byte_count
             object.__setattr__(self, "_has_carriage_return", present)
+            object.__setattr__(self, "_utf8_size", utf8_size)
 
     def chunks(self) -> Iterator[str]:
         """Yield decoded text in bounded chunks, validating gzip and UTF-8."""
+        for chunk, _ in CompressedText._decoded_chunks(self):
+            yield chunk
+
+    def _decoded_chunks(self) -> Iterator[tuple[str, int]]:
+        """Yield decoded text and the number of newly acquired UTF-8 bytes."""
         if not self.data:
             raise ProgramError("gzip source contains no gzip member")
         expanded_bytes = 0
@@ -191,8 +207,8 @@ class CompressedText:
                     if not block:
                         break
                     expanded_bytes += len(block)
-                    yield decoder.decode(block)
-                yield decoder.decode(b"", final=True)
+                    yield decoder.decode(block), len(block)
+                yield decoder.decode(b"", final=True), 0
         except StreamReadTimeoutError:
             raise
         except UnicodeDecodeError as error:
@@ -234,7 +250,7 @@ class CompressedText:
         if limits is not None:
             _check_gzip(limits, _MIN_GZIP_BYTES)
         output = io.BytesIO()
-        count = 0
+        count = utf8_size = 0
         has_newline = has_carriage_return = False
         tail = ""
         # Python 3.15 defaults to level 6. Keep the existing archive bytes.
@@ -261,6 +277,7 @@ class CompressedText:
                     raise ArgumentError(
                         f"chunks must be valid UTF-8 text: {error}"
                     ) from error
+                utf8_size += len(encoded)
                 stream.write(encoded)
                 if limits is not None:
                     _check_gzip(limits, output.tell())
@@ -271,6 +288,7 @@ class CompressedText:
             data,
             count,
             limits,
+            utf8_size=utf8_size,
             has_newline=has_newline,
             has_carriage_return=has_carriage_return,
             tail=tail,
@@ -283,6 +301,7 @@ class CompressedText:
         size: int,
         limits: TextLimits | None,
         *,
+        utf8_size: int,
         has_newline: bool,
         has_carriage_return: bool,
         tail: str,
@@ -296,6 +315,7 @@ class CompressedText:
         object.__setattr__(text, "data", data)
         object.__setattr__(text, "limits", limits)
         object.__setattr__(text, "_size", size)
+        object.__setattr__(text, "_utf8_size", utf8_size)
         object.__setattr__(text, "_has_newline", has_newline)
         object.__setattr__(text, "_has_carriage_return", has_carriage_return)
         object.__setattr__(text, "_tail", tail)
@@ -333,6 +353,7 @@ class CompressedText:
             self.data,
             self._size,
             combined,
+            utf8_size=self._utf8_size,
             has_newline=self._has_newline,
             has_carriage_return=self._has_carriage_return,
             tail=self._tail,

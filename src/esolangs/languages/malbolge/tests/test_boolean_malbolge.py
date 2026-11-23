@@ -17,7 +17,7 @@ from esolangs.languages.malbolge.generator.isa import _first_free, _g
 from esolangs.languages.malbolge.interpreter import _XLAT1, _initial_memory, run
 from esolangs.languages.malbolge.tests.navigation_checks import check_navigation
 from esolangs.runtime.io import ScriptedIO
-from scripts.docs.evidence import construction_boundaries
+from scripts.docs.evidence import construct_witness, construction_boundaries
 from tests.support.witness_tables import dense, row_bits
 
 
@@ -35,7 +35,7 @@ class _ReadFirstIO(ScriptedIO):
 def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
     """Run the requested rows, requiring every input and leaving the sentinel."""
     n = len(table).bit_length() - 1
-    program = boolean.malbolge(table)
+    program = construct_witness("Malbolge", table, boolean.malbolge)
     outputs = []
     for value in range(1 << n) if rows is None else rows:
         bits = row_bits(value, n)
@@ -195,7 +195,7 @@ def test_unrestricted_digit_cap_executes_sixteen_inputs() -> None:
     rows = (0, 1, len(table) // 2, len(table) - 1)
     assert _rows(table, rows) == [table[row] for row in rows]
     with pytest.raises(GeneratorCapError, match="does neither"):
-        boolean.malbolge(refused.table())
+        construct_witness("Malbolge", refused.table(), boolean.malbolge)
 
 
 @pytest.mark.medium
@@ -226,7 +226,7 @@ def test_seventeen_weight_constant_builds_and_executes() -> None:
         "".join(classes[row.bit_count()] for row in range(1 << admitted.arity)),
     )
     with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
-        boolean.malbolge(refused.table())
+        construct_witness("Malbolge", refused.table(), boolean.malbolge)
     rows = sorted(
         {0, 1, 2, (1 << 16) - 1, 1 << 16, 2**17 - 2, 2**17 - 1}
         | {1 << j for j in range(17)}

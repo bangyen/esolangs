@@ -220,7 +220,7 @@ def _bits(row: int, inputs: int) -> list[int]:
 def _utf8_bits(program: esolangs.Program) -> int | None:
     """Return a text program's UTF-8 size in bits; None for a raster."""
     if isinstance(program, esolangs.CompressedText):
-        return 8 * sum(len(chunk.encode("utf-8")) for chunk in program.chunks())
+        return 8 * program._utf8_size  # noqa: SLF001 - measured during gzip I/O
     if isinstance(program, str):
         return 8 * len(program.encode("utf-8"))
     return None

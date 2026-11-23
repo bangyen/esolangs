@@ -2,6 +2,7 @@
 
 import importlib
 import os
+import shutil
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -335,6 +336,46 @@ def test_declared_completion_finalizes_and_keeps_the_final_state(tmp_path):
             tracediff.trace(flagged, program, frozenset(), runtime=_runtime())[-1][-1]
             == ""
         )
+
+
+@pytest.mark.medium
+def test_cli_compares_each_revisions_nested_parser(tmp_path, monkeypatch, capsys):
+    name, parser = next(
+        (name, path)
+        for name, module in INTERPRETERS.items()
+        if (
+            path := REPO_ROOT / "src" / Path(*module.split(".")) / "_parse.py"
+        ).is_file()
+        and "def _tokens(" in path.read_text()
+    )
+    api = esolangs.Language(name)
+    artifact = api.generate("0110")
+    programs = [(artifact, api.encode_inputs([0, 1]))]
+    monkeypatch.setattr(tracediff, "corpus", lambda *_: programs)
+
+    scratch_parser = tmp_path / "changed_parser.py"
+    scratch_parser.write_text(
+        parser.read_text()
+        + "\ndef _tokens(line):\n    raise ValueError('nested parser control')\n"
+    )
+    relative = parser.relative_to(REPO_ROOT)
+    assert (
+        tracediff.main(
+            [name, "--mutant", str(scratch_parser), "--mutant-target", str(relative)]
+        )
+        == 0
+    )
+    assert "control: mutant differs on 1" in capsys.readouterr().out
+
+    def old_revision(_ref, scratch):
+        source = shutil.copytree(REPO_ROOT / "src", scratch / "src")
+        shutil.copyfile(scratch_parser, scratch / relative)
+        return source
+
+    monkeypatch.setattr(tracediff, "_checkout", old_revision)
+    assert tracediff.main([name]) == 1
+    output = capsys.readouterr().out
+    assert "nested parser control" in output
 
 
 def test_cli_uses_declared_post_halt_policy_for_mutant_controls(

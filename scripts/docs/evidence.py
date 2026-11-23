@@ -107,6 +107,13 @@ class ConstructionBoundary:
         return {"balance": True} if self.balance else {}
 
 
+def construct_witness[T](
+    _language: str, table: str, constructor: Callable[[str], T]
+) -> T:
+    """Exercise a witness through a generator's low-level constructor."""
+    return constructor(table)
+
+
 def construction_boundaries(
     language: str, *, benchmark_only: bool = False
 ) -> dict[str, tuple[TableWitness, ...]]:

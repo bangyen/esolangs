@@ -7,7 +7,7 @@ from esolangs.languages.suffolk import generator as boolean
 from esolangs.languages.suffolk.tests.lookup_support import _suffolk_lookup
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
-from scripts.docs.evidence import construction_boundaries
+from scripts.docs.evidence import construct_witness, construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.witness_tables import row_bits
@@ -151,7 +151,7 @@ def test_countdown_reader_cutoff() -> None:
 
     for witness in construction_boundaries("Suffolk")["stored_inputs_to_countdown"]:
         n, table = witness.arity, witness.table()
-        program = _suffolk_lookup(table)
+        program = construct_witness("Suffolk", table, _suffolk_lookup)
         assert program.index(",") + 1 == (51 if n == 10 else 153)
         records = (0, (1 << n) - 1, (1 << n) // 3)
         machine = _Machine(program, ScriptedIO("".join(f"{r:0{n}b}" for r in records)))
