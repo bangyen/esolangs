@@ -56,7 +56,7 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
 # The buffer, 8 bits a one-bit chunk at worst; pending and held node sets
@@ -71,7 +71,7 @@ exact = false
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "T log T", claim = "at most", template = "{claim} {formula}" }
 
 [resource_evidence.scaling]
 # The one-bit-chunk build, never beaten by less: 2T - 1 chunk characters,
@@ -85,7 +85,7 @@ exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: packed buffer or bounded-value tree" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}: packed buffer or bounded-value tree" }
 
 [catalogue]
 folding_constant_local = "essential_inputs"  # no kept input: read, then print the constant
