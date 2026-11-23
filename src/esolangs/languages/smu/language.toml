@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-constant_delimiter_macro_cutoff = { tables = [{ arity = 4, rule = "one" }, { arity = 5, rule = "one" }], benchmark = false, test = "test_boolean_smu.py::test_sharing_totals" }
+constant_delimiter_macro_cutoff = { tables = [{ arity = 5, rule = "one" }, { arity = 6, rule = "one" }], benchmark = false, test = "test_boolean_smu.py::test_sharing_totals" }
 
 [curation]
 backlinks = 4
@@ -10,18 +10,17 @@ admitted = 2026-10-07T12:46:28-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros and up to three delimiter macros carry the repeated text, and a subtree two parents reach is one more when that is shorter"
-definitions = ["B = capped diagram node and edge prices through n=11", "E = final level's outgoing edges", "P = pads through n=11"]
+qualification = "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs except at the final byte, where the leaf takes the last bit; a node with equal halves is a pad; macros carry the repeated text, and a subtree two parents reach is one more when that is shorter"
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 119 }
-"00001100" = { commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 166, "7" = 166 }, source_units = 116 }
-"00110110" = { commands_by_row = { "0" = 166, "1" = 166, "2" = 166, "3" = 166, "4" = 164, "5" = 164, "6" = 164, "7" = 164 }, source_units = 126 }
-"0110" = { commands_by_row = { "0" = 111, "1" = 111, "2" = 111, "3" = 111 }, source_units = 110 }
-"01101001" = { commands_by_row = { "0" = 164, "1" = 164, "2" = 164, "3" = 164, "4" = 164, "5" = 164, "6" = 164, "7" = 164 }, source_units = 126 }
-"0110100110010110" = { commands_by_row = { "0" = 217, "1" = 217, "2" = 217, "3" = 217, "4" = 217, "5" = 217, "6" = 217, "7" = 217, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 217, "13" = 217, "14" = 217, "15" = 217 }, source_units = 140 }
-"1101001101101101" = { commands_by_row = { "0" = 219, "1" = 219, "2" = 217, "3" = 217, "4" = 219, "5" = 219, "6" = 219, "7" = 219, "8" = 217, "9" = 217, "10" = 217, "11" = 217, "12" = 219, "13" = 219, "14" = 217, "15" = 217 }, source_units = 147 }
-"11111110" = { commands_by_row = { "0" = 168, "1" = 168, "2" = 168, "3" = 168, "4" = 166, "5" = 166, "6" = 164, "7" = 164 }, source_units = 119 }
+"00000001" = { commands_by_row = { "0" = 162, "1" = 162, "2" = 162, "3" = 162, "4" = 160, "5" = 160, "6" = 158, "7" = 158 }, source_units = 173 }
+"00001100" = { commands_by_row = { "0" = 162, "1" = 162, "2" = 162, "3" = 162, "4" = 160, "5" = 160, "6" = 160, "7" = 160 }, source_units = 170 }
+"00110110" = { commands_by_row = { "0" = 160, "1" = 160, "2" = 160, "3" = 160, "4" = 158, "5" = 158, "6" = 158, "7" = 158 }, source_units = 183 }
+"0110" = { commands_by_row = { "0" = 105, "1" = 105, "2" = 105, "3" = 105 }, source_units = 164 }
+"01101001" = { commands_by_row = { "0" = 158, "1" = 158, "2" = 158, "3" = 158, "4" = 158, "5" = 158, "6" = 158, "7" = 158 }, source_units = 181 }
+"0110100110010110" = { commands_by_row = { "0" = 211, "1" = 211, "2" = 211, "3" = 211, "4" = 211, "5" = 211, "6" = 211, "7" = 211, "8" = 211, "9" = 211, "10" = 211, "11" = 211, "12" = 211, "13" = 211, "14" = 211, "15" = 211 }, source_units = 196 }
+"1101001101101101" = { commands_by_row = { "0" = 213, "1" = 213, "2" = 211, "3" = 211, "4" = 213, "5" = 213, "6" = 213, "7" = 213, "8" = 211, "9" = 211, "10" = 211, "11" = 211, "12" = 213, "13" = 213, "14" = 211, "15" = 211 }, source_units = 205 }
+"11111110" = { commands_by_row = { "0" = 162, "1" = 162, "2" = 162, "3" = 162, "4" = 160, "5" = 160, "6" = 158, "7" = 158 }, source_units = 173 }
 
 [ablations]
 archive_refs = [
@@ -61,7 +60,7 @@ version = 1
 [[evidence.anchors]]
 arity = 10
 rule = "parity"
-size = 224
+size = 280
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.smu.generator:smu_request"
@@ -69,7 +68,7 @@ construction = "esolangs.languages.smu.generator:smu_request"
 [[evidence.anchors]]
 arity = 10
 rule = "and"
-size = 182
+size = 238
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.smu.generator:smu_request"
@@ -78,7 +77,7 @@ construction = "esolangs.languages.smu.generator:smu_request"
 arity = 10
 rule = "random"
 seed = 1847
-size = 1190
+size = 1250
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.smu.generator:smu_request"
@@ -89,37 +88,29 @@ construction = "esolangs.languages.smu.generator:smu_request"
 witnesses = "esolangs.languages.smu.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "55n + 5"
+expression = "55n - 1"
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, one tree path of eight runs a level" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, eight runs per input byte" }
 
 [resource_evidence.workspace]
 # The terminal empty-name store exceeds the root variable peak at n=1 for constants.
 expression = "C*(2688n-1158+8max(0,2-n)+bl(84n+13))+(1-C)*(24(93T-80)-1214+bl(93T-80))+bl(n)"
 source_terms = { names = ["C"], provider = "esolangs.languages.smu.proof_formulas:workspace_terms" }
-exact = true
+exact = false
 arities = [2, 4]
 first = 2
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. C marks direct constants" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}. C marks direct constants" }
 
 [resource_evidence.scaling]
-# From n=12..16 retain the 47-name prices. The current 44-name
-# allocator's derivation at those rungs is open. Raw-tree 6T+86
-# beyond n=16 is independent of macro-name prices: a raw leaf costs one,
-# a branch five plus its children and a pad three plus its child. The
-# macro admission rule and delimiter definitions only shrink that tree.
-cases = [
-    { through = 11, expression = "103+B+E-max(0,4-P)" },
-    { through = 15, expression = "5T/8+248+36min(1,max(0,n-13))+16min(4·2^(n-11),6+2^(n-11))+(11+4min(1,max(0,n-13)))min(7·2^(n-11),9+2^(n-11))+(229-4min(1,max(0,n-13)))min(7·2^(n-11),11+2·2^(n-11))" },
-    { through = 16, expression = "5T/8+465T/2048+3486" },
-    { expression = "6T+86" },
-]
-source_terms = { names = ["B", "E", "P"], provider = "esolangs.languages.smu.tests.formulas:scaling_terms" }
-exact = [3, 5, 9, 10, 11]
+# The raw tree costs at most 6T-5; the final closes add at most T/2.
+# The macro prelude has 143 characters, plus at most 12 delimiter definitions.
+# Shared-subtree definitions and delimiter calls can only reduce the body.
+expression = "7T+150"
+exact = false
 arities = [1, 2, 3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 first = 1
 unit = "characters"

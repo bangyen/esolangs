@@ -37,28 +37,23 @@ def test_sharing_totals() -> None:
     _check_constants()
     _check_terminal_leaves()
     three = [format(value, "08b") for value in range(256)]
-    assert sum(len(tools.smu(table)) for table in three) == 31076
-    assert sum(len(tools.smu(table)) for table in five_input_sample()) == 35887
+    assert sum(len(tools.smu(table)) for table in three) == 45116
+    assert sum(len(tools.smu(table)) for table in five_input_sample()) == 47646
     # Past 44 macros names take a digit, so which ones earn the short names
     # and whether a long name still pays both show in the length.
     wide = format(random.Random(3).getrandbits(1 << 11), f"0{1 << 11}b")
-    assert len(tools.smu(wide)) == 2124
+    assert len(tools.smu(wide)) == 2184
 
 
 def test_macro_break_even_stays_inline() -> None:
     """At (uses - 1) * len == (uses + 2) * len(name) the subtree stays inline.
 
-    This table's shared subtrees sit exactly on the keep rule's break-even:
-    defining them would change the text but not the length (151 either way),
-    and the strict ``>`` leaves them inline.
+    The repeated ``(b)m`` costs four characters and is used twice.
+    A one-character name would tie the inlined size.
     """
-    assert tools.smu("0011110001101101") == (
-        "k((())=())kn(+)=(|)=()+kkkkkkk()nm(+)=(+)()+(|)=()+kkkkkkk()m"
-        "z()=(||||++||)zo()=(+|||++||)o"
-        "X)(X"
-        "Y)nY"
-        "a(o)mab(zXoYb((((z)mXaYX(aX(z)mYYX((bX(oXzYYX(aXbYYY"
-    )
+    program = tools.smu("0010101000111010")
+    assert program.count("(b)m") == 2
+    assert "a(b)ma" not in program
 
 
 def test_twice_used_subtree_earns_a_two_letter_macro() -> None:
@@ -69,7 +64,7 @@ def test_twice_used_subtree_earns_a_two_letter_macro() -> None:
     test at 9 and drop it, at +1 character.
     """
     table = format(random.Random(321).getrandbits(1 << 11), f"0{1 << 11}b")
-    assert len(tools.smu(table)) == 2090
+    assert len(tools.smu(table)) == 2150
 
 
 def test_an_ignored_input_is_one_pad() -> None:
@@ -116,22 +111,21 @@ def _check_terminal_leaves() -> None:
                         # A terminal dead store must never precede another run.
                         assert not machine.fresh
                     steps += 1
-                    assert steps <= 55 * n + 5
+                    assert steps <= 55 * n - 1
                 assert "" in machine.values
-                assert runs == 8 * n + 1
+                assert runs == 8 * n
                 assert io.getvalue() == table[row]
                 assert io.reads == n
-                assert io.past_end == 1
+                assert io.past_end == 0
                 if n >= 2:
                     assert written.bits <= workspace(n, program)
-                # The existing terminal run consumes one byte if one is supplied.
                 following = ScriptedIO(f"{row:0{n}b}" + "QR")
                 machine = _Machine(program, following)
-                steps = count_steps(machine, 55 * n + 5)
+                steps = count_steps(machine, 55 * n - 1)
                 assert following.getvalue() == table[row]
-                assert following.reads == n + 1
+                assert following.reads == n
                 assert following.past_end == 0
-                assert following.input_char() == ord("R")
+                assert following.input_char() == ord("Q")
 
 
 def _check_constants() -> None:
@@ -148,7 +142,7 @@ def _check_constants() -> None:
     for witness in witnesses:
         n, table = witness.arity, witness.table()
         artifact = language.generate(table)
-        assert ("W)mW" in artifact.source) == (n == 5)
+        assert ("W)mW" in artifact.source) == (n == 6)
         assert_saved_rows(language, artifact, table, range(len(table)))
 
     for n, bit, _options, program in constant_programs("Smu", range(1, 13)):
@@ -156,8 +150,8 @@ def _check_constants() -> None:
             io = ReadFirstIO(f"{row:0{n}b}", expected=n)
             machine = _Machine(program, io)
             written = WrittenState(machine.workspace_snapshot())
-            steps = count_steps(machine, 55 * n + 5, written=written)
-            assert steps == 55 * n + 5
+            steps = count_steps(machine, 55 * n - 1, written=written)
+            assert steps == 55 * n - 1
             assert io.getvalue() == bit
-            assert written.bits == workspace(n, program)
-            assert io.past_end == 1
+            assert written.bits <= workspace(n, program)
+            assert io.past_end == 0

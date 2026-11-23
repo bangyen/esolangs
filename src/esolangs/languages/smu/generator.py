@@ -6,7 +6,8 @@ the half to run next.  Bytes arrive low bit first, so the input's value is
 the first bit of its byte; seven skip programs ``k`` pushed above the half
 drop the byte's other bits, one run each, and ``()`` is the node's own
 (empty) output.  A leaf ``z``/``o`` drops its bit and outputs the eight bits
-of ``'0'``/``'1'``.  A node whose halves are equal, as at an input the
+of ``'0'``/``'1'``. The final node or pad pushes six skips, so its
+leaf runs on the byte's last bit. A node whose halves are equal, as at an input the
 table ignores, is a pad of its one half; a constant subtree is pads all
 the way down to its leaf.  Source: 3 characters a node, 2 a pad, once
 the delimiter macros pay (below); 5 and 3 otherwise.
@@ -20,9 +21,9 @@ reach is a macro of its own when that is shorter: defined once, named at
 each use.
 
 Size:
-    O(T) worst case, at most 6T+86 chars; O(n) steps, one run per input
-    bit.  n=10 parity: 224 chars, n=10 and: 182 chars, n=10
-    random 1847: 1,190 chars. Constants: n=8: 75 chars; 55n+5 commands.
+    O(T) worst case, at most 7T+150 chars; O(n) steps, one run per input
+    bit.  n=10 parity: 280 chars, n=10 and: 238 chars, n=10
+    random 1847: 1,250 chars. Constants: n=8: 106 chars; 55n-1 commands.
 
 Decisions:
     Inlining a kept macro never saves: its test only gets easier as its
@@ -51,7 +52,10 @@ _PAD = "m(+)=(+)()+(|)=()+kkkkkkk()m"
 # A leaf is terminal, so its discarded input may overwrite the empty name.
 # Skip runs retain their nonempty target: another program follows them.
 _LEAVES = ("z()=(||||++||)z", "o()=(+|||++||)o")
-_MACROS = _SKIP + _NODE + _PAD + "".join(_LEAVES)
+# Leading zero keeps these names outside the shared-subtree allocator.
+_FINAL_NODE = "0u(+)=(|)=()+kkkkkk()0u"
+_FINAL_PAD = "0v(+)=(+)()+(|)=()+kkkkkk()0v"
+_MACROS = _SKIP + _NODE + _PAD + "".join(_LEAVES) + _FINAL_NODE + _FINAL_PAD
 
 #: Delimiter macros, each defined only where its uses pay the 4 characters.
 _DELIMS = {"X": "X)(X", "Y": "Y)nY", "W": "W)mW"}
@@ -72,9 +76,19 @@ def smu(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if truth_table == truth_table[0] * len(truth_table):
         bit = int(truth_table[0])
-        delimiter = _DELIMS["W"] if n > 4 else ""
-        close = "W" if n > 4 else ")m"
-        return _SKIP + _PAD + _LEAVES[bit] + delimiter + "(" * n + "zo"[bit] + close * n
+        delimiter = _DELIMS["W"] if n > 5 else ""
+        close = "W" if n > 5 else ")m"
+        return (
+            _SKIP
+            + _PAD
+            + _FINAL_PAD
+            + _LEAVES[bit]
+            + delimiter
+            + "(" * n
+            + "zo"[bit]
+            + ")0v"
+            + close * (n - 1)
+        )
     diagram = decision_layers(truth_table)
     kids: dict[tuple[int, int], tuple[tuple[int, int], ...]] = {}
     text: dict[tuple[int, int], str] = {}
@@ -104,11 +118,14 @@ def smu(truth_table: str) -> str:
         parts = [_MACROS + "".join(_DELIMS[c] for c in delims)]
         body: dict[tuple[int, int], str] = {}
         for key, pair in kids.items():  # post-order: children are rendered first
+            final = key[0] == n - 1
             if len(pair) == 1:
-                body[key] = f"({body[pair[0]]}{pad}"
+                end = ")0v" if final else pad
+                body[key] = f"({body[pair[0]]}{end}"
             elif pair:
                 zero, one = (body[child] for child in pair)
-                body[key] = f"({zero}{join}{one}{close}"
+                end = ")0u" if final else close
+                body[key] = f"({zero}{join}{one}{end}"
             else:
                 body[key] = text[key]
             name = names.get(key)
