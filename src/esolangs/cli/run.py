@@ -58,7 +58,7 @@ from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._files import _source_directory
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
-from esolangs.runtime._prepared import _runtime_reads_stdin
+from esolangs.runtime._prepared import _artifact_input_frame, _runtime_reads_stdin
 from esolangs.runtime._source import check_scale_for
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import display_label
@@ -202,6 +202,7 @@ def _run(rest: list[str]) -> None:
     except EsolangError as acquisition_error:
         _fail_run(acquisition_error, language, catalog)
     source_elapsed = monotonic() - started
+    frame = _artifact_input_frame(program, catalog)
     _remaining(acquisition, source_elapsed, flag)
     with ExitStack() as notices, _acquisition_started_at(started):
         if reads_stdin:
@@ -230,6 +231,7 @@ def _run(rest: list[str]) -> None:
                     _remaining(remaining, 0, input_flag),
                     _INPUT_HINT,
                     timeout_flag=input_flag,
+                    frame=frame,
                 )
                 if unbounded:
                     notices.enter_context(_unbounded_notice("run"))

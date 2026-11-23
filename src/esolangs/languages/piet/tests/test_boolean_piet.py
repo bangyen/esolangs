@@ -22,6 +22,25 @@ from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import constant_runs
 
 
+def test_layout_cache_evicts_and_passes_through_oversized_images() -> None:
+    from esolangs.languages.piet.generator.cache import LayoutCache
+
+    cache = LayoutCache(900)
+    calls = []
+
+    @cache.memoize
+    def build(key: str) -> Raster:
+        calls.append(key)
+        return Raster((((0, 0, 0),),)).upscaled(32 if key == "large" else 1)
+
+    assert build("a") is build("a")
+    assert build("large") is not build("large")
+    assert calls == ["a", "large", "large"]
+    build("b")
+    build("a")
+    assert calls == ["a", "large", "large", "b", "a"]
+
+
 @pytest.mark.parametrize(
     "truth_table",
     ["01", "0110", "10010110", "0110100110010110"],
@@ -388,7 +407,7 @@ def _check_triples() -> None:
         "triple_strip_essential_arity_cutoff"
     ]:
         n, table = witness.arity, witness.table()
-        boolean._default.cache_clear()
+        boolean._layouts.clear()
         with patch.object(boolean, "_chunks", wraps=boolean._chunks) as chunks:
             artifact = language.generate(table)
         assert chunks.call_count == (2 if n == 4 else 0)

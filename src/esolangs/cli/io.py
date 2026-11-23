@@ -65,6 +65,7 @@ from esolangs.runtime._files import (
     stream_read_deadline,
 )
 from esolangs.runtime._input import (
+    InputFrame,
     _bind_input_reader,
     _unreadable_input,
     input_read_error,
@@ -442,6 +443,8 @@ def _read_buffered_stdin(
     _time_remaining(deadline)
     mode = os.fstat(fd).st_mode
     if stat.S_ISREG(mode):
+        if size == 1:
+            return stream.read1(1)
         return read_snapshot(stream, size=size)
     if not hasattr(select, "poll"):
         if stat.S_ISFIFO(mode):
@@ -524,12 +527,14 @@ def _override_io_method(
             del attributes[name]
 
 
-def _read_stdin_bytes(stream: BinaryIO, deadline: float | None) -> bytes:
-    value = (
-        _read_buffered_stdin(stream, deadline)
-        if isinstance(stream, BufferedReader)
-        else read_snapshot(stream)
-    )
+def _read_stdin_bytes(
+    stream: BinaryIO, deadline: float | None, *, size: int | None = None
+) -> bytes:
+    if isinstance(stream, BufferedReader):
+        if size is None:
+            return _read_buffered_stdin(stream, deadline)
+        return _read_buffered_stdin(stream, deadline, size=size)
+    value = read_snapshot(stream, size=size)
     return _binary_chunk(value)
 
 
@@ -616,9 +621,29 @@ def _custom_text_reader(stdin: TextIOWrapper) -> bool:
     )
 
 
-def _snapshot_stdin(stdin: TextIO, deadline: float | None) -> str:
+def _snapshot_frame(stdin: TextIO, deadline: float | None, frame: InputFrame) -> str:
+    """Read a complete record without waiting for a fresh CLI pipe to close."""
+    if _has_backing_type(stdin, TextIOWrapper) and not _custom_text_reader(stdin):
+        try:
+            TextIOWrapper.reconfigure(stdin, errors=stdin.errors)
+        except UnsupportedOperation:
+            pass  # A prefetched wrapper must keep its decoder state.
+        else:
+            stream = stdin.buffer
+            return frame.read_units(
+                lambda: _read_stdin_bytes(stream, deadline, size=1),
+                encoding="utf-8-sig",
+            )
+    return _managed_stdin_text(read_input(stdin, frame=frame), stdin)
+
+
+def _snapshot_stdin(
+    stdin: TextIO, deadline: float | None, frame: InputFrame | None = None
+) -> str:
     _time_remaining(deadline)
     with stream_read_deadline(deadline):
+        if frame is not None:
+            return _snapshot_frame(stdin, deadline, frame)
         if _has_backing_type(stdin, TextIOWrapper):
             if _custom_text_reader(stdin):
                 # Bypassing this reader can lose text it already decoded.
@@ -664,6 +689,7 @@ def _read_stdin(
     *,
     timeout_flag: str = "",
     terminal_prompt: str | None = None,
+    frame: InputFrame | None = None,
 ) -> str:
     """Return this command's stdin, or exit if it is not text or never comes.
 
@@ -676,12 +702,13 @@ def _read_stdin(
     deadline = None if timeout is None else monotonic() + timeout
 
     def _read_text() -> str:
-        return _snapshot_stdin(stdin, deadline)
+        return _snapshot_stdin(stdin, deadline, frame)
 
     def _on_timeout() -> NoReturn:
         bound = f" ({timeout_flag})" if timeout_flag else ""
+        end = "the end of the input row" if frame is not None else "EOF"
         _fail(
-            f"stdin did not reach EOF within {timeout:g}s{bound}{hint}",
+            f"stdin did not reach {end} within {timeout:g}s{bound}{hint}",
             _TIMEOUT_EXIT,
         )
 

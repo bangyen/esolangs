@@ -8,6 +8,7 @@ _PREFIX_MARKS = {
 }
 _BLOCK_BITS = 10
 _BLOCK_WEIGHTS = bytes(row.bit_count() for row in range(1 << _BLOCK_BITS))
+_PACK_CELLS_PER_BLOCK = 1 << 16
 
 
 def constant_output(table: str) -> str | None:
@@ -65,12 +66,40 @@ def packed_cells(
     """Pack consecutive bits little-endian; the last cell uses only its entries."""
     if bits <= 0:
         raise ValueError("bits must be positive")
+    prefix = ""
+    if (
+        len(table) >= 1024
+        and bits <= 8
+        and type(offset) is int
+        and 0 <= offset <= 256 - (1 << bits)
+        and str.count(table, "0") + str.count(table, "1") == len(table)
+    ):
+        complete = len(table) // bits * bits
+        marks = _PREFIX_MARKS["0" if complement else "1"]
+        shift = bytes((value + offset) & 255 for value in range(256))
+        block = bits * _PACK_CELLS_PER_BLOCK
+        prefix = "".join(
+            _packed_block(table[start : min(start + block, complete)], bits, marks)
+            .translate(shift)
+            .decode("latin-1")
+            for start in range(0, complete, block)
+        )
+        table = table[complete:]
     if complement:
         table = table.translate(str.maketrans("01", "10"))
-    return "".join(
+    return prefix + "".join(
         chr(offset + int(table[start : start + bits][::-1], 2))
         for start in range(0, len(table), bits)
     )
+
+
+def _packed_block(table: str, bits: int, marks: bytes) -> bytes:
+    flags = str.encode(table, "ascii").translate(marks)
+    # Each column contributes one bit per byte, so addition never carries.
+    words = sum(
+        int.from_bytes(flags[bit::bits], "little") << bit for bit in range(bits)
+    )
+    return words.to_bytes(len(table) // bits, "little")
 
 
 def exceptional_row(table: str) -> tuple[int, bool] | None:

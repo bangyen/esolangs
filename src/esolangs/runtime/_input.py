@@ -51,12 +51,20 @@ class InputFrame:
 
     def read(self, bound: _BoundReader) -> str:
         """Read up to the record boundary without taking a byte from its tail."""
-        decoder = getincrementaldecoder("utf-8")()
+        return self.read_units(
+            lambda: read_snapshot(bound.stream, reader=bound.read, size=1)
+        )
+
+    def read_units(
+        self, read: Callable[[], str | bytes], *, encoding: str = "utf-8"
+    ) -> str:
+        """Read single units through the frame using the caller's transport."""
+        decoder = getincrementaldecoder(encoding)()
         remaining = self.units
         parts: list[str] = []
         binary = False
         while remaining:
-            value = read_snapshot(bound.stream, reader=bound.read, size=1)
+            value = read()
             if _has_backing_type(value, str):
                 if binary:
                     raise TypeError("stdin stream changed from bytes to text")

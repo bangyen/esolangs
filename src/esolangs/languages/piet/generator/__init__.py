@@ -13,8 +13,6 @@ Size:
     4+bl(2n+3-b)+bl(2n-1)+bl(n) written bits; packing can reduce the area.
 """
 
-from functools import cache
-
 from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
 from esolangs.generation.lookup import packed_cells
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
@@ -23,6 +21,7 @@ from esolangs.languages.piet.generator.balance import (
     balance,
     folded,
 )
+from esolangs.languages.piet.generator.cache import LayoutCache
 from esolangs.languages.piet.generator.operations import (
     _ADD,
     _DUPLICATE,
@@ -46,8 +45,10 @@ from esolangs.languages.piet.generator.packing import _raster_score, smallest
 from esolangs.raster import Raster
 from esolangs.runtime._program import Program
 
+_layouts = LayoutCache(4 * 1024 * 1024)
 
-@cache
+
+@_layouts.memoize
 def _generate(truth_table: str) -> Raster:
     """Return a Piet raster computing ``truth_table``."""
     inputs = _validate_truth_table(truth_table)
@@ -58,19 +59,13 @@ def _area(image: Raster) -> int:
     return len(image.rows) * len(image.rows[0])
 
 
-@cache
-def _packed(truth_table: str) -> Raster:
-    """Return the least-area packed layout, bounded by the strip."""
-    return smallest(_bounded_operations(truth_table), _generate(truth_table))
-
-
-@cache
 def _smallest(truth_table: str) -> Raster:
     """Return the strip, or the least-area packed layout.
 
     The strip wins a tie; see [ablations.area_default].
     """
-    flat, packed = _generate(truth_table), _packed(truth_table)
+    flat = _generate(truth_table)
+    packed = smallest(_bounded_operations(truth_table), flat)
     return packed if _area(packed) < _area(flat) else flat
 
 
@@ -122,7 +117,7 @@ def _chunks(
     return [*operations, op(_OUT_NUMBER)]
 
 
-@cache
+@_layouts.memoize
 def _default(table: str) -> Raster:
     """Use triple strips past the proved command crossover; retain linear families."""
     inputs = _validate_truth_table(table)

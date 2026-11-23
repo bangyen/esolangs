@@ -26,6 +26,24 @@ def test_prefix_counts_accepts_other_characters_and_empty_tables():
     assert prefix_counts("0é1", "é") == [0, 0, 1, 1]
 
 
+def test_bulk_packing_preserves_complement_offsets_and_short_cells(monkeypatch):
+    from esolangs.generation import lookup
+
+    monkeypatch.setattr(lookup, "_PACK_CELLS_PER_BLOCK", 64)
+    table = "11001010" * 128 + "1"
+    for width, offset, flip in ((3, 0, False), (6, 35, True), (8, 0, True)):
+        assert packed_cells(table, width, offset=offset, complement=flip) == "".join(
+            chr(
+                offset
+                + sum(
+                    (int(bit) ^ flip) << position
+                    for position, bit in enumerate(table[start : start + width])
+                )
+            )
+            for start in range(0, len(table), width)
+        )
+
+
 def test_large_constant_span_counts_cover_the_whole_table():
     half = 1 << 16
     constant = helpers.constant_span_test("0" * half + "1" * half)

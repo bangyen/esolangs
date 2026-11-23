@@ -175,6 +175,18 @@ def test_measure_prepares_once_and_records_first_sample(
     assert record["generation_ns_median"] == 20
 
 
+def test_benchmark_rejects_changed_artifact_across_repeats(monkeypatch) -> None:
+    import esolangs
+    from scripts import benchmark
+
+    first = esolangs.generate("brainfuck", "0000")
+    second = esolangs.generate("brainfuck", "0110")
+    programs = iter([first, second])
+    monkeypatch.setattr(esolangs, "generate", lambda *_args, **_kw: next(programs))
+    with pytest.raises(esolangs.ProgramError, match="generation repeat 2 differs"):
+        benchmark._measure("brainfuck", "0110", repeat=2, row=1, step_cap=500)
+
+
 @pytest.mark.medium
 def test_benchmark_reads_large_truth_table_from_stdin() -> None:
     from scripts import benchmark

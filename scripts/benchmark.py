@@ -598,7 +598,7 @@ def _measure(
     _progress: Callable[[str], None] | None = None,
     _on_row: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
-    """Benchmark the last timed artifact; optionally check every input row."""
+    """Time stable generation and check the selected input rows."""
     if repeat < 1 or step_cap < 1:
         raise ValueError("repeat and step_cap must be positive")
     if not 0 <= row < len(table):
@@ -615,7 +615,8 @@ def _measure(
         _progress("generation")
     timings: list[int] = []
     program: Artifact | None = None
-    for _ in range(repeat):
+    digests: tuple[str, str] | None = None
+    for sample in range(1, repeat + 1):
         started = time.perf_counter_ns()
         program = esolangs.generate(
             language,
@@ -627,7 +628,15 @@ def _measure(
         )
         source_units(program.source)
         timings.append(time.perf_counter_ns() - started)
+        measured = artifact_digests(program)
+        if digests is None:
+            digests = measured
+        elif measured != digests:
+            raise esolangs.ProgramError(
+                f"generation repeat {sample} differs from repeat 1"
+            )
     assert program is not None
+    assert digests is not None
     facts = esolangs.describe(language)
     source = program.source
     raster = None
@@ -638,7 +647,6 @@ def _measure(
             "height": len(source.rows),
             "scale": program.scale,
         }
-    digests = artifact_digests(program)
     rows = range(len(table)) if all_rows else sample_rows or (row,)
     # The first executed row pays for preparation under its existing deadline.
     prepare = (
@@ -849,7 +857,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     except esolangs.ArgumentError as exc:
         parser.error(str(exc))
-    except esolangs.ExecutionTimeoutError as exc:
+    except (esolangs.ExecutionTimeoutError, esolangs.ProgramError) as exc:
         print(exc, file=sys.stderr)
         for note in getattr(exc, "__notes__", ()):
             if note.startswith("[log] "):

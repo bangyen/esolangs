@@ -205,6 +205,46 @@ def test_portable_cli_handles_encoded_source(
         assert esolangs.read_answer(language, output) == str(bit)
 
 
+@pytest.mark.parametrize("flags", [[], ["--isolated"]])
+@pytest.mark.parametrize("shape", ["char_stream", "line_per_bit"])
+def test_portable_cli_executes_a_complete_input_frame_with_stdin_open(
+    tmp_path, flags, shape
+) -> None:
+    name = next(
+        name
+        for name, declaration in LANGUAGES.items()
+        if declaration.contract.frame_stdin
+        and declaration.contract.input_shape == shape
+    )
+    language = esolangs.Language(name)
+    path = tmp_path / "xor.json"
+    path.write_text(language.to_json(language.generate("0110")), encoding="utf-8")
+    row = language.encode_inputs([0, 1]).encode()
+    command = [
+        sys.executable,
+        "-m",
+        "esolangs",
+        "run",
+        *flags,
+        "--artifact",
+        name,
+        str(path),
+    ]
+    with subprocess.Popen(
+        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as child:
+        assert child.stdin is not None
+        assert child.stdout is not None
+        child.stdin.write(row)
+        child.stdin.flush()
+        try:
+            assert child.wait(timeout=5) == 0
+            assert language.read_answer(child.stdout.read().decode()) == "1"
+        finally:
+            if child.poll() is None:
+                child.kill()
+
+
 def test_portable_cli_fills_templates_before_execution(capsys) -> None:
     language = first(parameterized=True, answer_mode="output")
     generate = ["generate", "--artifact", language, "0110"]
