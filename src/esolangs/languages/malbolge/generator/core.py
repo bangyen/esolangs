@@ -47,6 +47,8 @@ _T_STUBS = {"x": "/<v"}
 #: so both of a label's hubs, the value and its 0/1 swap, own two cells of
 #: a block no table cell enters.
 _SEED_CHAIN = "K0 K2 rot rot rot"
+# The hub and its return byte fit below the first fixed all-2 digit.
+_HUB_LOW_TRITS = 2
 #: ``p`` over these cells' values takes ``'0' + x`` to the answer exactly,
 #: trit by trit: a ``p`` over 0 or 1 swaps trit 0's 0 and 1 and over 2
 #: merges them, so ``n`` takes three swaps and ``1`` a merge; over 69..71 and

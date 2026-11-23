@@ -18,10 +18,10 @@ arrives at trit 0 holding exactly the 1 or 2 it needs (:func:`_d_outputs`,
 :func:`_d_inits`).  After five groups
 ``S`` is back in its own alignment: digit ``k`` is input group ``k``.
 
-Each digit misses one of its nine values.  A ``swap12`` on group 4's ``v``
-and on group 1's ``u`` and a final ``swap01`` of the whole word make the top
-digit miss ``(0, 0)`` and digit 1 miss ``(2, 2)``: every readout lies in
-6561..59039, and no cell wraps past 59048. Continuation pages use missing digit blocks.
+Each digit misses one of its nine values.  The top digit must miss ``(0, 0)``
+to leave room for code, and the first fixed hub digit must miss ``(2, 2)``.
+Swapping one gadget trit in each group gives those gaps after the fold.
+Every readout lies in 6561..59039, and continuation pages use missing digit blocks.
 
 Up to fifteen inputs the last group's held reads are chosen so the tables
 pack low (``'1','0','1'`` to thirteen: 6562..13113; fourteen ``'1','0'``:
@@ -63,6 +63,7 @@ from esolangs.languages.malbolge.interpreter import _crazy
 
 from .core import (
     _ANSWER,
+    _HUB_LOW_TRITS,
     _K_CELL,
     _LANE_CHAIN,
     _OPERAND_CHAIN,
@@ -141,9 +142,13 @@ _READ_TRITS = (1, 2, 1)
 _DIGIT = -1
 #: A group's ``(u, v)`` at trits 1, 2 and 3.
 type _Choice = tuple[tuple[int, int], ...]
-#: The groups whose ``v`` and ``u`` are ``swap12``-ed before they are folded in.
-_D_SWAP_V = 4
-_D_SWAP_U = 1
+# The gadget omits (v=2, u=2). At the top, the fold and final swap
+# send v through crazy(v, 1), so replacing 2 by 1 leaves (0, 0) free.
+_D_SWAP_V = _D_GROUPS - 1
+# The first fixed hub digit sits above the variable low trits. Its
+# three later folds cancel modulo 3. Replacing u=2 by u=1 makes its
+# missing upper trit 2 instead of 0, clearing the all-2 hub digit.
+_D_SWAP_U = _HUB_LOW_TRITS // 2
 #: Stubs, hub characters and the navigation's data cells sit at or above
 #: this, the code below: no readout has top digit ``(0, 0)``.
 _D_FLOOR = 3**8
@@ -250,8 +255,7 @@ def _short_layout(arity: int = _SHORT_N) -> _Layout:
         # the hubs and their return bytes. Use the next binary mask
         # bit (trit 2) for zero. K2 K0 and the hub swap keep only seed
         # ones as twos; two rotations lift trit 0 and lower trit 4.
-        hub_trits = 2
-        zero = (1 + 3 ** (hub_trits + 2), "K2 K0 rot rot")
+        zero = (1 + 3 ** (_HUB_LOW_TRITS + 2), "K2 K0 rot rot")
     return _Layout(seeds, {"1": one, "n": negated, "0": zero, "x": identity})
 
 
