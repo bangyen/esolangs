@@ -349,9 +349,11 @@ def test_invalid_filters_are_usage_errors(capsys) -> None:
         (["--source-kind", "grid"], "--source-kind must be one of"),
         (["--answer-mode", "printed"], "--answer-mode must be one of"),
         (["--input-shape", "bits"], "--input-shape must be one of"),
-        (["--inputs", "-1"], "--inputs must be a non-negative integer"),
-        (["--inputs", "1.5"], "--inputs must be a non-negative integer"),
+        (["--inputs", "-1"], "--inputs must be a positive integer"),
+        (["--inputs", "0"], "--inputs must be a positive integer"),
+        (["--inputs", "1.5"], "--inputs must be a positive integer"),
         (["--inputs"], "--inputs needs a value"),
+        (["--all-tables"], "--all-tables requires --inputs"),
         (["--source-kind", "text", "--source-kind", "raster"], "given more than once"),
         (["--", "--generator"], "unexpected argument"),
     ]
@@ -374,6 +376,7 @@ _DETAILED = {
     "boolean_generator",
     "parameterized",
     "generator_max_inputs",
+    "generator_first_restricted_arity",
     "generator_restrictions",
     "generator_scaling",
     "well_known",
@@ -423,7 +426,7 @@ def test_templates_and_combined_filters(capsys):
         assert facts.answer_mode == "output"
         assert facts.boolean_generator
         assert facts.generator_max_inputs is None or facts.generator_max_inputs >= 8
-    assert _names(["--interpreter-only", "--inputs", "0"], capsys) == []
+    assert _names(["--interpreter-only", "--inputs", "1"], capsys) == []
     rows = _names([*filters, "--details"], capsys)
     assert [row["name"] for row in rows] == names
     text, error = call_both(["list", *filters], capsys)
@@ -438,6 +441,24 @@ def test_templates_and_combined_filters(capsys):
     name, cap = capped
     assert name in _names(["--inputs", str(cap)], capsys)
     assert name not in _names(["--inputs", str(cap + 1)], capsys)
+
+
+def test_all_tables_filter_uses_the_restricted_arity(capsys) -> None:
+    restrictions = [
+        (name, backend.restricted_from_inputs)
+        for name, language in LANGUAGES.items()
+        if (backend := language.backend) is not None
+        and backend.restricted_from_inputs is not None
+    ]
+    assert restrictions
+    for name, restricted in restrictions:
+        assert name in _names(["--inputs", str(restricted)], capsys)
+        assert name not in _names(["--inputs", str(restricted), "--all-tables"], capsys)
+        if restricted > 1:
+            assert name in _names(
+                ["--inputs", str(restricted - 1), "--all-tables"], capsys
+            )
+        assert esolangs.describe(name).generator_first_restricted_arity == restricted
 
 
 def test_text_list_shows_the_well_known_languages_first(capsys) -> None:

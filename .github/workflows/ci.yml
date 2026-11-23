@@ -113,12 +113,6 @@ jobs:
       matrix:
         python-version: ["3.12", "3.15"]
         shard: [0, 1]
-    env:
-      CI_SERIAL_NODES: >-
-        src/esolangs/languages/blindfolded_arithmetic/tests/test_blindfolded_arithmetic.py::test_ip_is_the_next_instructions_source_offset
-        tests/proofs/test_workspace_formulas.py::test_execution_and_workspace_formulas_hold[Malbolge-2]
-        src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::test_constant_lookup_reads_without_deque_or_selector[0]
-        src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::test_constant_lookup_reads_without_deque_or_selector[1]
 
     steps:
     - uses: actions/checkout@v7
@@ -138,8 +132,9 @@ jobs:
       run: |
         excluded=()
         if [[ "$TEST_PYTHON" == "3.12" ]]; then
-          read -r -a nodes <<< "$CI_SERIAL_NODES"
-          for node in "${nodes[@]}"; do excluded+=(--exclude-node "$node"); done
+          while IFS= read -r node; do
+            excluded+=(--exclude-node "$node")
+          done < .github/serial-test-nodes.txt
         fi
         uv run python scripts/ci/shard.py shard --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 --manifest notes/ci/test.shard.json "${excluded[@]}" -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
 
@@ -148,7 +143,9 @@ jobs:
     - name: Check Python 3.12 witnesses without competing workers
       if: ${{ !cancelled() && matrix.python-version == '3.12' && matrix.shard == 0 }}
       run: |
-        read -r -a nodes <<< "$CI_SERIAL_NODES"
+        nodes=()
+        while IFS= read -r node; do nodes+=("$node"); done < .github/serial-test-nodes.txt
+        test "${#nodes[@]}" -gt 0
         uv run python -m pytest -q -n 0 -m "" -p scripts.ci.shard --duration-output notes/ci/test-durations-serial.json "${nodes[@]}"
 
     - name: Retain shard selection and completion evidence

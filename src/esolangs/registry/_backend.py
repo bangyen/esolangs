@@ -85,6 +85,8 @@ class BooleanBackend:
     balance: OperationRef[BalanceRequest, GeneratedProgram] | Balancer | None = None
     #: Native arity check, shared with direct generator calls for its diagnostic.
     arity_guard: Callable[[int], None] | None = None
+    #: First arity with table-dependent admission, when known.
+    restricted_from_inputs: int | None = None
 
     @recursive_repr()
     def __repr__(self) -> str:
@@ -101,6 +103,13 @@ class BooleanBackend:
             f"{language} declares max-inputs={_argument_repr(cap)}, "
             f"got {_argument_repr(inputs)} inputs"
         )
+
+    @property
+    def first_restricted_arity(self) -> int | None:
+        """Return the first potentially restricted arity."""
+        if self.restricted_from_inputs is not None:
+            return self.restricted_from_inputs
+        return 1 if self.restrictions else None
 
     @property
     def generate(self) -> Generator:
@@ -120,5 +129,12 @@ class BooleanBackend:
             type(self.max_inputs) is not int or self.max_inputs < 1
         ):
             raise ValueError("max_inputs must be a positive integer")
+        start = self.restricted_from_inputs
+        if start is not None and (
+            type(start) is not int
+            or start < 1
+            or (self.max_inputs is not None and start > self.max_inputs)
+        ):
+            raise ValueError("restricted_from_inputs must be within the generator cap")
         if self.wrap is not None and self.no_wrap:
             raise ValueError("wrap and no_wrap exclude each other")

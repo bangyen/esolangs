@@ -43,7 +43,8 @@ See each command’s `--help` for option details.
 | `--source-kind KIND` | list | text or raster source |
 | `--input-shape SHAPE` | list | stdin interface, or template for embedded inputs |
 | `--answer-mode MODE` | list | output, dump, or termination |
-| `--inputs N` | list | declared generator cap permits N; table restrictions still apply |
+| `--inputs N` | list | declared generator cap permits N (at least one); table restrictions still apply |
+| `--all-tables` | list | with `--inputs N`, require support for every table at that arity |
 | `--spec` | describe | print the interpreter's own description of the language |
 
 `list --json --details` uses the filter's `input_shape` value. Template
@@ -589,6 +590,7 @@ shows the `gen`, `tmpl`, `ex`, `int`, and `known` markers. Fields include:
 | `source_kind` | `"text"`, or `"raster"` for an image |
 | `state_model` | its category: register, tape, stack, grid, queue, program, variables or other |
 | `generator_shape` | its generator’s construction growth: tree, reducing or lookup; None without a generator |
+| `generator_first_restricted_arity` | first input count with possible table restrictions; None when none are declared |
 | `input_shape`, `input_encoding` | how input is fed; None unless `reads_input` |
 | `answer_mode`, `answer_encoding` | where the answer lands (`"output"`, `"dump"` or `"termination"`) and its `(zero, one)` form |
 | `width_effect` | what `width` does: `"layout"`, `"wrap"` or `"none"` |

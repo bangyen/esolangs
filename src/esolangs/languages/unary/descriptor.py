@@ -36,6 +36,7 @@ def _backend() -> BackendDefinition:
         ),
         layout_width=False,
         max_inputs=MAX_INPUTS,
+        restricted_from_inputs=2,
         arity_guard=check_arity,
         restrictions=(
             "raw export 32 Mi characters; generation 256 Mi characters; "

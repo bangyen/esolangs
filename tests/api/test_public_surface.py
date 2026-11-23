@@ -123,6 +123,7 @@ class TestPackageSurface:
             "dumps_on_the_post_halt_step",
             "eof_is_a_value",
             "examples",
+            "generator_first_restricted_arity",
             "generator_max_inputs",
             "generator_restrictions",
             "generator_scaling",
@@ -144,17 +145,21 @@ class TestPackageSurface:
             "wiki_url",
         ]
 
-    def test_language_info_requires_the_current_slot_layout(self) -> None:
+    def test_language_info_loads_the_previous_slot_layout(self) -> None:
         import pickle
 
         info = esolangs.describe(REFERENCE)
         assert info.well_known
-        legacy = [getattr(info, slot.name) for slot in fields(info)[:-1]]
+        positional = [
+            getattr(info, slot.name) for slot in fields(info) if not slot.kw_only
+        ]
         with pytest.raises(TypeError, match="well_known"):
-            esolangs.LanguageInfo(*legacy)
+            esolangs.LanguageInfo(*positional[:-1])
         restored = esolangs.LanguageInfo.__new__(esolangs.LanguageInfo)
         with pytest.raises(ValueError, match="shorter"):
-            restored.__setstate__(legacy)
+            restored.__setstate__(positional[:-1])
+        restored.__setstate__(positional)
+        assert restored == info
         assert pickle.loads(pickle.dumps(info)) == info
 
     def test_every_exit_status_is_documented(self) -> None:

@@ -83,7 +83,7 @@ commands:
   Catalog:
     list [--details] [--json] [--generator | --interpreter-only]
          [--grep REGEX] [--source-kind KIND] [--input-shape SHAPE]
-         [--answer-mode MODE] [--inputs N]
+         [--answer-mode MODE] [--inputs N [--all-tables]]
                                 list languages matching their capabilities
     describe [--json] [--spec] <language>
                                 print how that language reads its input and
@@ -133,7 +133,7 @@ example:
     "list": """usage: esolangs list [--details] [--json]
                      [--generator | --interpreter-only] [--grep REGEX]
                      [--source-kind KIND] [--input-shape SHAPE]
-                     [--answer-mode MODE] [--inputs N]
+                     [--answer-mode MODE] [--inputs N [--all-tables]]
 
 List matching languages, one per line, well-known first (`--json` keeps
 the Python API's name order). Filters combine with AND; filter on
@@ -160,8 +160,10 @@ options:
               (generated programs embed their input bits in source)
   --answer-mode MODE
               output, dump, or termination
-  --inputs N  generators whose declared cap permits N inputs (N >= 0);
+  --inputs N  generators whose declared cap permits N inputs (N >= 1);
               table-dependent restrictions can still refuse generation
+  --all-tables
+              with --inputs, require support for every table at that arity
   --grep REGEX
               select languages whose spec (`describe --spec`) matches,
               case-insensitively

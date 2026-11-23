@@ -105,3 +105,12 @@ def test_arity_refusal_does_not_load_the_entrypoint() -> None:
 def test_arity_caps_are_positive_integers(cap) -> None:
     with pytest.raises(ValueError, match="max_inputs must be a positive integer"):
         BooleanBackend(str, max_inputs=cap)
+
+
+def test_restricted_arity_is_within_the_cap() -> None:
+    for start in (True, 0, -1, "2", 4):
+        with pytest.raises(ValueError, match="restricted_from_inputs"):
+            BooleanBackend(str, max_inputs=3, restricted_from_inputs=start)
+    assert BooleanBackend(str, max_inputs=3).first_restricted_arity is None
+    assert BooleanBackend(str, restrictions="custom").first_restricted_arity == 1
+    assert BooleanBackend(str, restricted_from_inputs=2).first_restricted_arity == 2

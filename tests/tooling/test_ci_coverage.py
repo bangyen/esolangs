@@ -111,9 +111,26 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
         if step.get("name") == "Test one full-suite shard"
     )
     assert '--marker ""' in full_command
-    serial_nodes = full["env"]["CI_SERIAL_NODES"].split()
+    manifest = ".github/serial-test-nodes.txt"
+    serial_nodes = (ROOT / manifest).read_text().splitlines()
+    assert serial_nodes
+    assert len(serial_nodes) == len(set(serial_nodes))
+    assert all("::" in node and node == node.strip() for node in serial_nodes)
     regular = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
-    assert serial_nodes == regular["jobs"]["test"]["env"]["CI_SERIAL_NODES"].split()
+    regular_commands = {
+        step["name"]: step["run"]
+        for step in regular["jobs"]["test"]["steps"]
+        if "name" in step and "run" in step
+    }
+    assert (
+        f"< {manifest}"
+        in regular_commands["Test with pytest (shard ${{ matrix.shard }} of 2)"]
+    )
+    assert (
+        f"< {manifest}"
+        in regular_commands["Check Python 3.12 witnesses without competing workers"]
+    )
+    assert f"< {manifest}" in full_command
     assert '--exclude-node "$node"' in full_command
     assert '"${excluded[@]}"' in full_command
     assert "--shards 2" in full_command
@@ -125,6 +142,7 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
         if step.get("name") == "Check witnesses without competing workers"
     )
     assert serial["if"] == "${{ !cancelled() && matrix.shard == 0 }}"
+    assert f"< {manifest}" in serial["run"]
     assert '-n 0 -m ""' in serial["run"]
     assert 'test-durations-serial.json "${nodes[@]}"' in serial["run"]
     census = jobs["shard-completeness"]

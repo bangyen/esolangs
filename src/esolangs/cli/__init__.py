@@ -184,7 +184,11 @@ def _metadata_json(record: object) -> str:
 
 
 def _catalog_matches(
-    declaration: LanguageDeclaration, options: dict[str, str], inputs: int | None
+    declaration: LanguageDeclaration,
+    options: dict[str, str],
+    inputs: int | None,
+    *,
+    all_tables: bool,
 ) -> bool:
     """Match declared interfaces and arity caps."""
     if "--source-kind" in options and options["--source-kind"] != (
@@ -206,6 +210,9 @@ def _catalog_matches(
             backend.max_inputs is not None and backend.max_inputs < inputs
         ):
             return False
+        restricted = backend.first_restricted_arity
+        if all_tables and restricted is not None and inputs >= restricted:
+            return False
     return True
 
 
@@ -219,13 +226,16 @@ def _catalog_names(
         if option in options and options[option] not in choices:
             _fail(f"{option} must be one of {', '.join(choices)}")
     inputs = None
+    all_tables = "--all-tables" in flags
+    if all_tables and "--inputs" not in options:
+        _fail("--all-tables requires --inputs")
     if "--inputs" in options:
         try:
             inputs = _decimal_integer(options["--inputs"])
         except ValueError:
-            _fail("--inputs must be a non-negative integer")
-        if inputs < 0:
-            _fail("--inputs must be a non-negative integer")
+            _fail("--inputs must be a positive integer")
+        if inputs < 1:
+            _fail("--inputs must be a positive integer")
     pattern = None
     if "--grep" in options:
         try:
@@ -239,7 +249,7 @@ def _catalog_names(
         lang.name
         for lang in declarations
         if all(test(lang) for test in wanted)
-        and _catalog_matches(lang, options, inputs)
+        and _catalog_matches(lang, options, inputs, all_tables=all_tables)
         and (pattern is None or pattern.search(_spec(lang.name, catalog=catalog)))
     ]
 
@@ -258,7 +268,7 @@ def _listed_name(name: str, *, catalog: Catalog, encoding: str) -> str:
 def _list(rest: list[str]) -> None:
     """Print languages matching the requested capabilities."""
     value_options = _VALUE_OPTIONS["list"]
-    flag_options = {"--details", "--json", *_FLAG_FILTERS}
+    flag_options = {"--details", "--json", "--all-tables", *_FLAG_FILTERS}
     rest, options = _pop_options(rest, value_options)
     rest, flags = _pop_flags(rest, flag_options)
     rest = _split_positional(rest, set(), value_options | flag_options)
@@ -327,8 +337,11 @@ def _list(rest: list[str]) -> None:
             )
         )
         limit = facts["generator_max_inputs"]
+        restricted = facts["generator_first_restricted_arity"]
         restriction = facts["generator_restrictions"]
         suffix = f" max-inputs={_argument_repr(limit)}" if limit is not None else ""
+        if restricted is not None:
+            suffix += f" restricted-from={_argument_repr(restricted)}"
         if restriction:
             suffix += f" ({_printable(restriction)})"
         _display(f"{name.ljust(width)}  {marks}{suffix}")
@@ -615,6 +628,9 @@ def _generator_sentence(facts: LanguageInfo) -> str:
         parts.append("reads input bits from stdin")
     if facts.generator_max_inputs is not None:
         parts.append(f"max {_argument_repr(facts.generator_max_inputs)} inputs")
+    restricted = facts.generator_first_restricted_arity
+    if restricted is not None:
+        parts.append(f"table-dependent from arity {_argument_repr(restricted)}")
     if facts.generator_restrictions:
         parts.append(_printable(facts.generator_restrictions))
     return "; ".join(parts)
@@ -643,6 +659,7 @@ _DETAIL_KEYS = (
     "reads_input",
     "width_effect",
     "generator_max_inputs",
+    "generator_first_restricted_arity",
     "generator_restrictions",
     "input_shape",
     "input_encoding",
