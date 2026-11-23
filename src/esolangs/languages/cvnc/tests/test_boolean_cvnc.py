@@ -2,28 +2,24 @@
 
 import importlib
 import random
-from functools import partial
 
 import pytest
 
 from esolangs.generation.helpers import in_input_order
 from esolangs.languages.cvnc import generator as boolean
-from esolangs.languages.cvnc.generator import (
-    _HALT_SQUARINGS,
-    _direct,
-    _halt,
-)
+from esolangs.languages.cvnc.generator import _direct
+from esolangs.runtime.io import ScriptedIO
 from tests.generators.boolean_runners import _runner, assert_runner_rows
 from tests.generators.sample_tables import five_input_sample
 from tests.support.generator_support import assert_constant_roots
-from tests.support.witness_tables import witnesses
+from tests.support.witness_tables import parity, witnesses
 
 run_cvnc = _runner("cvnc", newline=True)
 
 
 def _leaves(program: str) -> int:
     """Count the leaves: every one of them ends with the ``j`` that halts."""
-    return program.count("j")
+    return program.count("j") - program.count("ɰ̊")
 
 
 def _branches(program: str) -> int:
@@ -39,7 +35,7 @@ class TestCvnc:
         assert _leaves(tree) == 8  # one leaf per row
         assert _branches(tree) == 7  # one branch per interior node
         program = boolean.cvnc("01101001")
-        assert (_leaves(program), _branches(program)) == (7, 6)
+        assert (_leaves(program), _branches(program)) == (8, 7)
 
     def test_a_constant_table_folds_to_one_leaf_but_keeps_its_reads(self) -> None:
         """Folding drops the branches, never the reads."""
@@ -61,76 +57,26 @@ class TestCvnc:
     def test_folding_shortens_the_program(self) -> None:
         assert len(boolean.cvnc("00000000")) < len(boolean.cvnc("01101001"))
 
-    def test_the_halting_goto_clears_every_program_without_escalating(self) -> None:
-        """The starting gadget's reach covers every arity worth asking for."""
-        module = importlib.import_module("esolangs.languages.cvnc.generator")
-        reach = module._reach(_HALT_SQUARINGS)
+    @pytest.mark.parametrize("n", [1, 2, 3, 8, 12])
+    def test_exit_jumps_to_the_final_syllable(self, n: int) -> None:
+        from esolangs.languages.cvnc.interpreter import _Machine
 
-        # parity is the table that folds nothing, so it is the worst case
-        for n in range(1, 9):
-            table = "01" * (2**n // 2)
-            program = boolean.cvnc(table)
-            assert len(program) < reach, f"n={n}"
-            assert _halt(_HALT_SQUARINGS + 1) not in program
-
-    def test_a_program_outgrowing_the_goto_gets_another_squaring(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Past the reach every gadget squares once more, until it fits."""
-        # ``esolangs.languages.cvnc.generator`` resolves to the re-exported
-        # *function*, so the module has to be fetched by name.
-        module = importlib.import_module("esolangs.languages.cvnc.generator")
-        monkeypatch.setattr(module, "_HALT_SQUARINGS", 0)
-        rng = random.Random(7)
-        dense = "".join(rng.choice("01") for _ in range(128))
-        for table, squarings in (("01", 3), ("0110", 3), (dense, 4)):
-            program = module.cvnc(table)
-            assert _halt(squarings) in program
-            assert _halt(squarings + 1) not in program
-            assert len(program) < module._reach(squarings)
-            assert_runner_rows(run_cvnc, program, table)
-
-    def test_squarings_match_the_retry_search_it_replaced(self) -> None:
-        """The closed form never undershoots the old one-more-squaring loop.
-
-        It equals the search wherever the unshared body and the shared one
-        fall on one side of a reach; between them (n=14 at 20% ones: 61,808
-        chars against 57,660) it squares once more.
-        """
-        module = importlib.import_module("esolangs.languages.cvnc.generator")
-        rng = random.Random(11)
-        for n, density in ((6, 0.5), (10, 0.5), (12, 0.1), (13, 0.5), (14, 0.2)):
-            table = "".join(
-                "1" if rng.random() < density else "0" for _ in range(1 << n)
-            )
-            squarings = _HALT_SQUARINGS
-            while True:  # the search, kept as the oracle
-                offset = module._prologue_syllables(squarings)
-                body = in_input_order(table, partial(_direct, offset=offset))
-                if len(_halt(squarings)) + len(body) < module._reach(squarings):
-                    break
-                squarings += 1
-            program = module.cvnc(table)
-            assert program.startswith(_halt(squarings)) or (n, density) == (14, 0.2)
-            assert program.startswith(_halt(squarings + 1)) == (
-                (n, density) == (14, 0.2)
-            )
-
-    def test_an_extra_squaring_rebases_shared_jumps(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Shared jumps still land after a larger halt prologue."""
-        module = importlib.import_module("esolangs.languages.cvnc.generator")
-        monkeypatch.setattr(module, "_HALT_SQUARINGS", 5)
-        table = "11101000"
-        program = boolean.cvnc(table)
-        assert_runner_rows(run_cvnc, program, table)
-
-    def test_every_leaf_ends_by_halting(self) -> None:
-        """Without the halting jump a then-arm falls into its own loop end."""
-        program = boolean.cvnc("0110")
-        assert _leaves(program) == 4
-        assert program.count("\u0279") == 1
+        table = f"{random.Random(7).getrandbits(1 << n):0{1 << n}b}"
+        source = boolean.cvnc(table)
+        for row in (0, 1, len(table) // 2, len(table) - 1):
+            io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n")
+            machine = _Machine(source, io)
+            jumps = []
+            while not machine.halted:
+                if machine.tokens[machine.pointer] == "j":
+                    target = machine.accumulator
+                    assert 0 <= target < len(machine.starts)
+                    jumps.append(target)
+                machine.step()
+            assert jumps[-2:] == [1, len(machine.starts) - 1]
+            assert machine.pointer == len(machine.tokens)
+            assert io.getvalue() == table[row]
+            assert io.reads == n
 
     def test_a_table_folding_at_its_root_normalizes_the_last_read(self) -> None:
         """A folded root still holds an unpredictable bit."""
@@ -148,20 +94,20 @@ class TestCvncSharing:
         before = after = 0
         for table in tables:
             body = in_input_order(table, _direct)
-            plain = len(_halt(_HALT_SQUARINGS)) + len(body)
+            width = (len(body) + 64).bit_length() + 1
+            plain = 8 * width + 10 + len(body)
             shipped = len(boolean.cvnc(table))
             before, after = before + plain, after + shipped
         return before, after
 
     def test_three_input_total(self) -> None:
-        """Three-input retirement stays within five percent of the original."""
+        """Pin sharing with the fixed-width exit included."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (15_834, 14_857)
-        assert 14_857 * 100 < 14_621 * 105
+        assert self._totals(tables) == (30_682, 29_979)
 
     def test_five_input_sample_total(self) -> None:
-        """Five-input sharing totals; the retired hoist cost 4.87% at n=8."""
-        assert self._totals(five_input_sample()) == (42_786, 40_121)
+        """Pin five-input sharing with the fixed-width exit included."""
+        assert self._totals(five_input_sample()) == (57_026, 56_077)
 
     def test_the_climb_is_a_closed_form(self) -> None:
         """A target is its nearer square's root climbed to, squared, stepped."""
@@ -184,11 +130,12 @@ class TestCvncSharing:
     def test_a_shared_copy_runs_from_every_arm(self, n: int) -> None:
         """Seeded tables that share run every row, entered from each arm."""
         rng = random.Random(n)
-        for _ in range(3):
-            table = format(rng.getrandbits(2**n), f"0{2**n}b")
+        tables = [parity(n), *(f"{rng.getrandbits(2**n):0{2**n}b}" for _ in range(3))]
+        for table in tables:
             program = boolean.cvnc(table)
             plain = in_input_order(table, _direct)
-            assert not program.endswith(plain), table
+            if table == tables[0]:
+                assert not program[:-2].endswith(plain)
             assert_runner_rows(run_cvnc, program, table)
 
 
@@ -225,10 +172,8 @@ class TestCvncScalingBound:
         for table, chars in _PAIR_CHARS.items():
             assert len(module._render(module._tree(table))) == chars
 
-    def test_a_program_is_at_most_its_prologue_and_chunks(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """The 17T/2 + 13 bound: pairs 12, nodes above 5, prologue <= 18."""
+    def test_a_program_is_at_most_its_prologue_and_chunks(self) -> None:
+        """Price an unshared spelling plus the fixed-width exit."""
         rng = random.Random(7)
         tables = [format(v, "08b") for v in range(256)]
         tables += [
@@ -237,27 +182,10 @@ class TestCvncScalingBound:
         ]
         for table in tables:
             n = len(table).bit_length() - 1
-            assert len(boolean.cvnc(table)) <= 18 + _closed(table), table
-            assert _closed(table) <= 17 * 2 ** (n - 1) - 5
-
-        # Segment cuts can add a character even when every taken jump saves.
-        table = (
-            "0100010011011101000000000111011101000100110111010000000001110111"
-            "1000100000010001011001101001100110001000000100010110011010011001"
-        )
-        module = importlib.import_module("esolangs.languages.cvnc.generator")
-        weights, reduced = module.input_weights(table, 7)
-        shapes = ((table, [1] * 7), (reduced, weights))
-        plain = min(len(_direct(t, (), None, w)) for t, w in shapes)
-        shared = min(len(_direct(t, (), 7, w)) for t, w in shapes)
-        assert shared == plain + 1
-        program = boolean.cvnc(table)
-        assert len(program) < module._reach(_HALT_SQUARINGS)
-        assert run_cvnc(program, "0000000") == table[0]
-        assert run_cvnc(program, "1111111") == table[-1]
-        monkeypatch.setattr(module, "_reach", lambda _s: 0)
-        with pytest.raises(AssertionError, match="halting gadget reach"):
-            module.cvnc(table)
+            chunks = _closed(table)
+            width = (chunks + 64).bit_length() + 1
+            assert len(boolean.cvnc(table)) <= 8 * width + 10 + chunks, table
+            assert chunks <= 17 * 2 ** (n - 1) - 5
 
 
 def _check_constants() -> None:

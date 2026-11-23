@@ -3,8 +3,8 @@
 One read ``s`` and one ``ɰ`` ... ``ʋ`` branch per input (``ɰ`` jumps past ``ʋ``
 on nonzero; one codepoint where the prologue's voiceless ``ɰ̊`` is two).  A leaf
 prints with ``θ`` (the number print, so the output is the digit), leaves the
-accumulator at 1 and ``j``-jumps to syllable 1, where one shared gadget squares
-past the end of the program and halts.  A constant subtree folds to one leaf but
+accumulator at 1 and ``j``-jumps to syllable 1, where a shared gadget loads
+the final syllable address and jumps to it.  A constant subtree folds to one leaf but
 keeps its reads, the last floored by ``ə``.  :func:`_render` spells commands as
 the fewest syllables: a consonant takes the next syllable's coda or opens it.
 Fillers ``c`` and ``u`` are inert (empty function cleared or applied).  ``j``
@@ -12,8 +12,8 @@ also shares a repeated subtree (:class:`_Stream`): a later copy climbs to the
 first copy's syllable with ``i``, ``æ``, ``ə`` and jumps, where shorter.
 
 Size:
-    O(T) for dense tables, near-linear in n for parity; n=10 parity: 317
-    chars, n=10 random 1847: 5,215 chars, n=12 random 1847: 22,086 chars.
+    O(T) for dense tables, near-linear in n for parity; n=10 parity: 551
+    chars, n=10 random 1847: 5,795 chars, n=12 random 1847: 22,370 chars.
     Constants: floor(3n/2) + 2 + 2b chars and commands.
 
 Decisions:
@@ -62,7 +62,6 @@ _INCREMENT = "i"
 # Decrement, floored at 0: sends 0 and 1 both to 0.
 _NORMALIZE = "ə"
 _SQUARE = "æ"
-_GOTO = "ɹ"
 _GOTO_SYLLABLE = "j"
 _IF_ZERO = "ɰ"
 # The prologue's own skip still has to fire on the *zero* accumulator a run
@@ -76,39 +75,15 @@ _END_IF = "ʋ"
 # that is already the landing value costs nothing to leave behind.
 _LANDING = 1
 
-# What the gadget climbs to before it starts squaring.  Two is the cheapest
-# base that grows at all, and each squaring past it costs two characters
-# once, not once per leaf.
-_HALT_BASE = 2
 
-_HALT_SQUARINGS = 4
-
-
-def _halt(squarings: int) -> str:
-    """Return the prologue: skip the gadget, then the gadget itself.
-
-    Syllable 0 is ``ɰ̊u``, which on the initial zero accumulator jumps past
-    the closing ``ʋ``, so the gadget never runs in-line.  Syllable 1 opens
-    the gadget, where every leaf's ``j`` lands: it climbs to
-    :data:`_HALT_BASE`, squares, and ``ɹ`` jumps past the end of the program,
-    which halts.  The ``ʋ`` is the coda of the gadget's last syllable, sound
-    because a body always opens with a consonant.
-    """
-    climb = _FILLER_ONSET + _INCREMENT
-    return (
-        _SKIP
-        + _FILLER_VOWEL
-        + climb * (_HALT_BASE - _LANDING)
-        + (_FILLER_ONSET + _SQUARE) * squarings
-        + _GOTO
-        + _FILLER_VOWEL
-        + _END_IF
-    )
-
-
-def _reach(squarings: int) -> int:
-    """Return the offset the gadget lands on: the longest program it escapes."""
-    return int(_HALT_BASE ** (2**squarings))
+def _halt(target: int, width: int) -> str:
+    """Skip the shared exit on entry; on return, load the last syllable."""
+    address = f"{target:0{width}b}"
+    assert len(address) == width
+    # d b d builds a+a. The first u applies the identity a, the second
+    # leaves a+ alone, and the third doubles the value before c clears it.
+    digits = "".join("dubudu" + ("ci" if bit == "1" else "cu") for bit in address)
+    return _SKIP + "ucə" + digits + "ju" + _END_IF
 
 
 def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
@@ -356,14 +331,6 @@ def _direct(
     return stream.text()
 
 
-def _prologue_syllables(squarings: int) -> int:
-    """Return how many syllables :func:`_halt` spells, where the body starts.
-
-    ``ɰ̊u``, the climb's ``ci``, one ``cæ`` a squaring and ``ɹuʋ``.
-    """
-    return 3 + squarings
-
-
 def cvnc(truth_table: str) -> str:
     """Build a CV(N)(C) program; it reads ``n`` lines, splits in input order."""
     # A tree over the inputs that matter, its ignored reads bare, against the
@@ -377,28 +344,27 @@ def cvnc(truth_table: str) -> str:
     shapes = [(truth_table, (1,) * n)]
     if 1 < len(table) < len(truth_table):
         shapes.append((table, weights))
-    # Price the gadget from the unshared body plus slack. Segment cuts can
-    # make sharing grow despite individually cheaper jumps; the final guard
-    # rejects a body beyond this reach rather than emitting a nonhalting one.
-    unshared = min(
-        len(in_input_order(shape, partial(_direct, offset=None, weights=named)))
-        for shape, named in shapes
-    )
-    # 2**(2**s) > m exactly when 2**s >= m.bit_length().
-    bits = (unshared + 64).bit_length()
-    squarings = max(_HALT_SQUARINGS, (bits - 1).bit_length())
-    offset = _prologue_syllables(squarings)
-    body = min(
+    plain = min(
         (
+            in_input_order(shape, partial(_direct, weights=named))
+            for shape, named in shapes
+        ),
+        key=len,
+    )
+    # Each bit takes four syllables. Twice the plain character size plus
+    # 128 exceeds the syllable address even after adding the prologue.
+    width = (len(plain) + 64).bit_length() + 1
+    offset = 4 * width + 3
+    body = min(
+        plain,
+        *(
             in_input_order(shape, partial(_direct, offset=offset, weights=named))
             for shape, named in shapes
         ),
         key=len,
     )
-    program = _halt(squarings) + body
-    if len(program) >= _reach(squarings):
-        raise AssertionError("program exceeds the halting gadget reach")
-    return program
+    terminal = offset + sum(char in _VOWELS for char in body)
+    return _halt(terminal, width) + body + "cu"
 
 
 def cvnc_request(request: GenerationRequest) -> Program:

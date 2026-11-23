@@ -7,17 +7,17 @@ admitted = 2026-08-30T09:35:25-04:00
 
 [proof_status]
 labels = ["tree"]
-qualification = "the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts, and a subtree already emitted at its level is entered by climbing the accumulator to its syllable and `j`, where shorter"
+qualification = "the shared exit loads the last syllable address in binary, and a subtree already emitted at its level is entered by climbing the accumulator to its syllable and `j`, where shorter"
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 23, "5" = 23, "6" = 24, "7" = 24 }, source_units = 49 }
-"00001100" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 24, "5" = 24, "6" = 23, "7" = 23 }, source_units = 44 }
-"00110110" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 24, "3" = 24, "4" = 24, "5" = 24, "6" = 25, "7" = 25 }, source_units = 64 }
-"0110" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 22, "3" = 22 }, source_units = 43 }
-"01101001" = { commands_by_row = { "0" = 24, "1" = 24, "2" = 26, "3" = 26, "4" = 25, "5" = 25, "6" = 30, "7" = 30 }, source_units = 70 }
-"0110100110010110" = { commands_by_row = { "0" = 27, "1" = 27, "2" = 29, "3" = 29, "4" = 39, "5" = 39, "6" = 36, "7" = 36, "8" = 56, "9" = 56, "10" = 53, "11" = 53, "12" = 33, "13" = 33, "14" = 35, "15" = 35 }, source_units = 103 }
-"1101001101101101" = { commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 28, "7" = 28, "8" = 27, "9" = 27, "10" = 28, "11" = 28, "12" = 33, "13" = 33, "14" = 33, "15" = 33 }, source_units = 101 }
-"11111110" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 25, "5" = 25, "6" = 25, "7" = 25 }, source_units = 52 }
+"00000001" = { commands_by_row = { "0" = 80, "1" = 80, "2" = 80, "3" = 80, "4" = 81, "5" = 81, "6" = 82, "7" = 82 }, source_units = 107 }
+"00001100" = { commands_by_row = { "0" = 80, "1" = 80, "2" = 80, "3" = 80, "4" = 82, "5" = 82, "6" = 81, "7" = 81 }, source_units = 102 }
+"00110110" = { commands_by_row = { "0" = 81, "1" = 81, "2" = 82, "3" = 82, "4" = 82, "5" = 82, "6" = 83, "7" = 83 }, source_units = 122 }
+"0110" = { commands_by_row = { "0" = 79, "1" = 79, "2" = 80, "3" = 80 }, source_units = 101 }
+"01101001" = { commands_by_row = { "0" = 82, "1" = 82, "2" = 83, "3" = 83, "4" = 83, "5" = 83, "6" = 82, "7" = 82 }, source_units = 133 }
+"0110100110010110" = { commands_by_row = { "0" = 93, "1" = 93, "2" = 95, "3" = 95, "4" = 95, "5" = 95, "6" = 94, "7" = 94, "8" = 116, "9" = 116, "10" = 115, "11" = 115, "12" = 113, "13" = 113, "14" = 115, "15" = 115 }, source_units = 193 }
+"1101001101101101" = { commands_by_row = { "0" = 93, "1" = 93, "2" = 93, "3" = 93, "4" = 93, "5" = 93, "6" = 94, "7" = 94, "8" = 93, "9" = 93, "10" = 94, "11" = 94, "12" = 113, "13" = 113, "14" = 113, "15" = 113 }, source_units = 181 }
+"11111110" = { commands_by_row = { "0" = 81, "1" = 81, "2" = 81, "3" = 81, "4" = 83, "5" = 83, "6" = 83, "7" = 83 }, source_units = 110 }
 
 [ablations]
 archive_refs = [
@@ -53,7 +53,7 @@ version = 1
 [[evidence.anchors]]
 arity = 10
 rule = "parity"
-size = 317
+size = 551
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.cvnc.generator:cvnc_request"
@@ -62,7 +62,7 @@ construction = "esolangs.languages.cvnc.generator:cvnc_request"
 arity = 10
 rule = "random"
 seed = 1847
-size = 5215
+size = 5795
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.cvnc.generator:cvnc_request"
@@ -71,7 +71,7 @@ construction = "esolangs.languages.cvnc.generator:cvnc_request"
 arity = 12
 rule = "random"
 seed = 1847
-size = 22086
+size = 22370
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.cvnc.generator:cvnc_request"
@@ -82,7 +82,7 @@ construction = "esolangs.languages.cvnc.generator:cvnc_request"
 
 [resource_evidence.execution]
 # Step counts are integral. Floor the whole nonnegative square-root term.
-expression = "17+4n+3(n-1)+isqrt(2L*(n-1)^2)"
+expression = "17+4n+3(n-1)+isqrt(2L*(n-1)^2)+8(bl(17T/2+59)+1)"
 exact = false
 arities = [1, 2, 3, 5]
 first = 1
@@ -91,20 +91,20 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 
 [resource_evidence.workspace]
 # The stated workspace bound, evaluated for n and the program.
-expression = "17 + bl(2n-1) + bl(L)"
-exact = true
+expression = "64 + bl(2n-1) + 2bl(L)"
+exact = false
 arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, n in 4..13" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: cursor, accumulator and three function tokens" }
 
 [resource_evidence.scaling]
-expression = "17T/2 + 13"
+expression = "17T/2+5+8(bl(17T/2+59)+1)"
 exact = false
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: pair 12, node 5, prologue 18" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: pair 12, node 5, fixed-width binary exit" }
 
 [semantic_evidence]
 version = 1
