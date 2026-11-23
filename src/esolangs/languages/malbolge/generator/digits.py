@@ -682,9 +682,10 @@ def _paginate(
             (radix * top + _STUB_GAP_DIGIT, 4, _STUB_GAP_WIDTH)
             for top in range(3, radix)
         ]
-    elif n in (12, 13, 14):
-        # Tail code starts at the first rotation-aligned address past
-        # all tables, hubs, and stubs. Keep the page within one top band.
+    elif limit == _D_FLOOR + 1:
+        # These held reads put the first table cell against the code
+        # floor. Use the aligned tail past the tables, hubs, and stubs.
+        # Keep the continuation within one top band.
         lane = _LANE_WIDTH
         seed = max(occupied) // lane + 1
         base = seed * lane
