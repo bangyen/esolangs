@@ -13,15 +13,13 @@ group's weight, hence the sixteen's whole weight.  One cell per
 readout -- 20,480 of them, in 6565..59040 -- holds the label for
 its weight's class pair, and the stub reads the last input as
 before.  The fold contract is the positional build's: choices at
-trits 1..3 complete the abstract fold, cell values are searched
-over the gadgets' preimages so all fifteen are distinct, and the
-readouts are computed state by state, never per row.
+trits 1..3 complete the abstract fold, a trit assignment gives
+fifteen distinct cell values, and readouts are computed state by state.
 """
 
 from __future__ import annotations
 
 from functools import cache
-from itertools import product
 from typing import NamedTuple
 
 from esolangs.generation.lookup import symmetric_outputs
@@ -48,7 +46,6 @@ from .digits import (
     _D_SWAP_U,
     _D_SWAP_V,
     _GADGET,
-    _READ_TRITS,
     _DCells,
     _emit_digit_jump,
     _emit_digit_setup,
@@ -56,7 +53,6 @@ from .digits import (
     _fold_state,
     _helper_cells,
     _hubs,
-    _preimages,
     _seed_values,
 )
 from .emitter import _Planner
@@ -122,77 +118,38 @@ _S_OUTPUTS = (
 )
 
 
-def _s_trit_gadget(cells: tuple[int, ...], read: int) -> tuple[int, int]:
-    """Return the four-read gadget's ``(u, v)`` at one trit."""
-    c, a = list(cells), 0
-    for op in _S_GADGET:
-        if op == "/":
-            a = read
-        elif op[0] == "K":
-            a = int(op[1])
-        else:
-            a = c[int(op)] = _crazy(a, c[int(op)]) % 3
-    return c[1], c[2]
-
-
-@cache
-def _s_preimages(read: int) -> dict[tuple[int, int], list[tuple[int, ...]]]:
-    """Return the four-read gadget's output preimages at ``read``."""
-    preimages: dict[tuple[int, int], list[tuple[int, ...]]] = {}
-    for cells in reversed(list(product(range(3), repeat=3))):
-        preimages.setdefault(_s_trit_gadget(cells, read), []).append(cells)
-    return preimages
-
-
 @cache
 def _s_inits() -> tuple[tuple[int, ...], ...]:
-    """Return per group the ``g`` values of its three gadget cells.
+    """Assign distinct printable words to the five triples of gadget cells."""
+    # (2, 1, 2) yields (2, 2) under either read trit of the four-read
+    # gadget. The two outer cells share their middle trits and use slots 0, 1.
+    trits = [((2, 1, 2),) * 3]
+    for first, middle, last in _S_OUTPUTS[1:]:
+        u, v = first
+        low = (2 - u, 2, v)
+        u, _ = middle
+        center = (1 - u if u < 2 else u, 1, int(u == 1))
+        # When the outside outputs agree, lower the first two high
+        # trits to 1 to spread the cells over distinct printable prefixes.
+        high = (1, 1, last[1]) if first == last else (2, 2, last[1])
+        trits.append((low, center, high))
 
-    Mirrors the positional search over preimages and value options
-    (``low``, ``low + 1``, ``low + 81``, ``low + 82`` in 33..126),
-    backtracking over the preimages of :data:`_S_OUTPUTS` until all
-    fifteen values are distinct -- the cycling assignment the
-    positional build uses leaves some of these choices unplaceable.
-    """
-    per_group = []
-    for group, outputs in enumerate(_S_OUTPUTS):
-        gadget_pre = _s_preimages if group == 0 else _preimages
-        lists = []
-        for read, uv in zip(_READ_TRITS, outputs, strict=True):
-            if uv not in gadget_pre(read):
-                raise AssertionError(f"group {group}: no preimage of {uv}")
-            lists.append(gadget_pre(read)[uv])
-        per_group.append(lists)
-
-    def assign(
-        group: int, used: set[int], acc: tuple[tuple[int, ...], ...]
-    ) -> tuple[tuple[int, ...], ...] | None:
-        if group == len(_S_OUTPUTS):
-            return acc
-        for combo in product(*per_group[group]):
-            cells = []
-            taken = set(used)
-            for cell in range(3):
-                low = sum(t[cell] * 3**k for k, t in enumerate(combo, 1))
-                options = [
-                    v
-                    for v in (low, low + 1, low + 81, low + 82)
-                    if 33 <= v <= 126 and v not in taken
-                ]
-                if not options:
-                    break
-                cells.append(options[0])
-                taken.add(options[0])
-            else:
-                got = assign(group + 1, taken, (*acc, tuple(cells)))
-                if got is not None:
-                    return got
-        return None
-
-    inits = assign(0, set(), ())
-    if inits is None:
-        raise AssertionError("no distinct init values for the popcount fold")
-    return inits
+    slots: dict[int, int] = {}
+    inits = []
+    for group in trits:
+        cells = []
+        for t1, t2, t3 in zip(*group, strict=True):
+            prefix = 3 * t1 + 9 * t2 + 27 * t3
+            # Alternate trit 0, then advance trit 4. Prefixes below 33
+            # start with trit 4 set to reach the printable range.
+            slot = slots.get(prefix, 0)
+            upper, bottom = divmod(slot, 2)
+            word = prefix + bottom + 81 * (upper + (prefix < 33))
+            assert 33 <= word <= 126, (prefix, slot)
+            cells.append(word)
+            slots[prefix] = slot + 1
+        inits.append(tuple(cells))
+    return tuple(inits)
 
 
 @cache
