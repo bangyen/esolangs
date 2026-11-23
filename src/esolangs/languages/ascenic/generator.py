@@ -17,7 +17,7 @@ read and pop all but the last bit, then force zero by division or one by LT.
 Size:
     Two lines per change point, whose arguments climb to about 2T; a
     straight line's arguments sum to at least half its line count squared,
-    so O(T^2) characters; at most 6n+2R+7 steps for R change points; n=10
+    so O(T^2) characters; at most 6n+2R+10 steps for R change points; n=10
     parity: 616 chars, n=10 random 1847: 1,176,242 chars.
     Constants use 2n^2+17n-1+6bit chars and 2n+1 steps; n=8 zero: 263 chars.
 
@@ -47,7 +47,7 @@ from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
 _PRINT, _INPUT, _PUSH, _ADD, _SUB, _MUL, _DIV, _MOD = 1, 2, 3, 4, 5, 6, 7, 8
-_POP = 10
+_SWAP, _POP = 9, 10
 _LT, _ADDS, _SUBS, _MULS = 13, 16, 17, 18
 
 
@@ -76,6 +76,12 @@ class _Lines:
         self.add(_PUSH, start + 2)
         self.add(_SUBS)
 
+    def zero_below_top(self) -> None:
+        """Supply the left operand of the first signed input update."""
+        self.add(_PUSH)
+        self.add(_DIV)
+        self.add(_SWAP)
+
     def text(self) -> str:
         return "\n".join("A" * op + "s" * arg for op, arg in self.lines)
 
@@ -102,15 +108,12 @@ def _scan(table: str, n: int, used: list[int], *, mirror: bool) -> str:
             out.negative_two()
             out.add(_MULS)
         out.add(_INPUT, odd=True)
-        if mirror:
+        if mirror and i == 1:
+            out.add(_SUB, 2)
+        if (m - i) % 2 == mirror:
             if i == 1:
-                out.add(_SUB, 2)
-            if (m - i) % 2 == 1:
-                out.add(_SUBS)  # a first bit subtracts from the empty stack's 0
-            elif i > 1:
-                out.add(_ADDS)
-        elif (m - i) % 2 == 0:
-            out.add(_SUBS)  # the first bit subtracts from the empty stack's 0
+                out.zero_below_top()
+            out.add(_SUBS)
         elif i > 1:
             out.add(_ADDS)
     out.negative_two()

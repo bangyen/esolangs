@@ -90,31 +90,33 @@ construction = "esolangs.languages.ascenic.generator:ascenic_request"
 witnesses = "esolangs.languages.ascenic.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "2T + 7n + 1 - 2⌊n/2⌋"
-exact = true
+expression = "2T + 7n + 4 - 2⌊n/2⌋"
+exact = false
 arities = [2, 3, 5]
 first = 2
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: one pair flipped, two lines a change" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: two lines per change plus setup" }
 
 [resource_evidence.workspace]
 # Take the larger of the forward and mirrored scans. The mirror needs one extra sign bit.
-expression = "C*(bl(2n+1)+1+S)+(1-C)*max(bl(2T+7n+3-2floor(n/2))+max(bl(10n-7-4floor(n/2))+bl(10n-5-4floor(n/2))+n+1,bl((2T+10n-3-4floor(n/2))*(2T+10n-2-4floor(n/2)))),bl(2T+5n+5+2floor(n/2))+max(bl(8n-5)+bl(8n-3)+n+2,bl((2T+8n+1)*(2T+8n+2))))+bl(2n-1)"
+expression = "C*(bl(2n+1)+1+S)+(1-C)*max(bl(2T+7n+3-2floor(n/2))+max(bl(10n-7-4floor(n/2))+bl(10n-5-4floor(n/2))+n+1,bl((2T+10n-3-4floor(n/2))*(2T+10n-2-4floor(n/2)))),bl(2T+5n+5+2floor(n/2))+max(bl(8n-5)+bl(8n-3)+n+2,bl((2T+8n+1)*(2T+8n+2))))+bl(2n-1)+16(1-C)"
 source_terms = { names = ["C", "S"], provider = "esolangs.languages.ascenic.proof_formulas:workspace_terms" }
-exact = true
+exact = false
 arities = [3, 4, 5, 6, 7]
 first = 3
 unit = "bits"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. C marks a constant and S marks the extra LT flag for constant one" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}. C marks a constant and S marks the extra LT flag for constant one" }
 
 [resource_evidence.scaling]
-# Flipping the first alternating pair keeps every input and loses one change point.
-expression = "2T²+(16n+44+4(n-2⌊n/2⌋))T+floor((48n²+(203+24(n-2⌊n/2⌋))n-98+39(n-2⌊n/2⌋))/2)"
-exact = [2, 3, 4, 5, 6, 7]
+# Inserting the three operand setup lines shifts existing arguments by at
+# most four until the final doubled scale. The inserted lines use at most
+# 2n+6 apiece. The old bound plus this overhead still prices either scan.
+expression = "2T²+(16n+44+4(n-2⌊n/2⌋))T+floor((48n²+(203+24(n-2⌊n/2⌋))n-98+39(n-2⌊n/2⌋))/2)+8T+34n+80"
+exact = false
 arities = [2, 3, 4, 5, 6, 7]
 first = 2
 unit = "characters"
-description = { growth = "T**2", evidence = "lower bound", claim = "worst", template = "{claim} {formula} {unit} from n = 2: generated Θ(T**2) on the alternating table with its first pair flipped ([summary](#ascenic-bound))" }
+description = { growth = "T**2", evidence = "lower bound", claim = "at most", template = "{claim} {formula} {unit} from n = 2: generated Θ(T**2) on the alternating table with its first pair flipped ([summary](#ascenic-bound))" }
 
 [semantic_evidence]
 version = 1

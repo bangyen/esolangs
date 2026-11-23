@@ -76,4 +76,28 @@ def test_named_tables_read_first_and_leave_the_next_record(n) -> None:
 
 
 def test_three_input_corpus_size() -> None:
-    assert three_input_corpus_size("Ascenic") == 264468
+    assert three_input_corpus_size("Ascenic") == 271_174
+
+
+@pytest.mark.parametrize(("table", "mirror"), [("00000001", False), ("0001", True)])
+def test_first_signed_bit_has_both_stack_operands(table: str, *, mirror: bool) -> None:
+    from esolangs import encode_inputs
+    from esolangs.languages.ascenic.generator import _SUBS, _scan
+    from esolangs.languages.ascenic.interpreter import prepare_machine
+    from esolangs.runtime.io import ScriptedIO
+
+    n = len(table).bit_length() - 1
+    program = _scan(table[::-1] if mirror else table, n, list(range(n)), mirror=mirror)
+    plan = prepare_machine(program, {})
+    for row, expected in enumerate(table):
+        stdin = encode_inputs("Ascenic", list(map(int, f"{row:0{n}b}")))
+        io = ScriptedIO(stdin)
+        machine = plan.machine(io)
+        while not machine.halted:
+            opcode, _, _ = machine.ops[machine.state[0]]
+            stack = machine.state[1]
+            if opcode == _SUBS:
+                assert stack is not None
+                assert stack[1] is not None
+            machine.step()
+        assert io.getvalue() == expected
