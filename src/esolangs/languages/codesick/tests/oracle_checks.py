@@ -99,7 +99,7 @@ def _parse(source, stdin):
     return program, reads
 
 
-def _model(source, stdin):
+def _model(source, stdin, *, indirect_jumps=False):
     try:
         program, reads = _parse(source, stdin)
     except ValueError:
@@ -134,7 +134,7 @@ def _model(source, stdin):
             if found >= 0:
                 memory[a] = text[:found] + text[found + len(needle) :]
                 destination = d  # repo jump/output adapters follow the primary examples
-        pc = labels.get(destination)
+        pc = labels.get(star(destination) if indirect_jumps else destination)
         trace.append(view())
     if pc is None:
         trace.extend([view()] * 3)

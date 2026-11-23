@@ -24,6 +24,18 @@ def test_every_row_prints_its_answer() -> None:
         assert_every_row("Codesick", table, program=program)
 
 
+def test_answer_label_cannot_resolve_to_input() -> None:
+    from esolangs.languages.codesick.tests.oracle_checks import _model
+
+    source = codesick("01")
+    for bit in "01":
+        error, trace = _model(source, bit, indirect_jumps=True)
+        assert error is None
+        _, halted, output, _, _ = trace[-1]
+        assert halted
+        assert output == bit
+
+
 def test_equal_subtables_share_one_node() -> None:
     # Parity: one node per (level, parity), not one per row prefix.
     from esolangs.languages.codesick.interpreter import _load

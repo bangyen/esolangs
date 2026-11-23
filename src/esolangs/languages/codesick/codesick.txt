@@ -1,8 +1,8 @@
 b codesick in b
-1b 0; 1b
+1b 0#; 1b
 codesick in a 0a
-1; 0a codesick
-out 0 * *; 0
+1#; 0a codesick
+out 0 * *; 0#
 codesick out 0 *
-*; 1 codesick
+*; 1# codesick
 out 1 * *;

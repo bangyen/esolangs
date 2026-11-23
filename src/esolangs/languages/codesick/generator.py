@@ -18,7 +18,7 @@ constant on the missed side is jumped to without the delete node.
 Size:
     O(T) size and build time, at most three instructions per diagram node,
     at most 3n - 1 steps; constants: 22 chars and one step.
-    n=10 parity: 1,317 chars, n=10 random 1847: 14,942 chars.
+    n=10 parity: 1,321 chars, n=10 random 1847: 14,978 chars.
 
 Decisions:
     An ignored input keeps a delete node per residual: 0.52x a real one at n=8.
@@ -81,7 +81,8 @@ def codesick(truth_table: str) -> str:
         return f"codesick out {diagram.root} in * *;"
     parents = Counter(c for pair in kids.values() for c in pair)
     names = _names(kids, parents)
-    entry = {0: "0", 1: "1"} | names
+    # Under indirect jumps, a bare bit can resolve to the input variable.
+    entry = {0: "0#", 1: "1#"} | names
     hit: dict[int, int] = {}
     for p, pair in kids.items():
         # The hit side costs a forwarder unless its child has this edge alone
@@ -101,7 +102,7 @@ def codesick(truth_table: str) -> str:
     for p, pair in kids.items():
         b = hit[p]
         h, m = pair[b], pair[1 - b]
-        miss = str(m) if m < 2 else f"{1 - b}{names[p]}"
+        miss = entry[m] if m < 2 else f"{1 - b}{names[p]}"
         lines.append(f"{entry[p]} codesick in {names[p]} {b}{names[p]} {miss};")
         if entry[h] != f"{b}{names[p]}":
             # The hit label forwards, or prints in place of the constant.
@@ -116,7 +117,7 @@ def codesick(truth_table: str) -> str:
             lines.append(
                 f'{1 - b}{names[p]} codesick in "" {1 - b}{names[p]} {entry[m]};'
             )
-    lines += [f"{c} codesick out {c} * *;" for c in sorted(printed)]
+    lines += [f"{entry[c]} codesick out {c} * *;" for c in sorted(printed)]
     # Spaces, not newlines: one line per instruction is too short to wrap.
     return " ".join(lines)
 

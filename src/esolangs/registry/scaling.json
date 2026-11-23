@@ -29,7 +29,7 @@
   "circlefuck": "linear: worst T+52n+10 (n=1..2), T+34n+27+(\u2308n/7\u2309-1)(149(\u2308n/7\u2309-2)+4(n-7\u2308n/7\u2309+79))/2 (n\u22653) characters: table, clamped reads, digit-cell walks",
   "circuit_diagram": "linear: at most ((1176-408(n-2\u230an/2\u230b))\u00b72^(n-4-\u230an/2\u230b)-8n-64)^2 cells past n = 8: H-tree pool caps it",
   "clockwise": "linear: worst 25T + 40n + 20 cells past n = 1",
-  "codesick": "linear: at most (68+10digits(residuals_without_constants(n)+1))residuals_without_constants(n)+43 characters for n>=2: bounded label widths",
+  "codesick": "linear: at most (69+10digits(residuals_without_constants(n)+1))residuals_without_constants(n)+45 characters for n>=2: bounded label widths",
   "collatz_multiverse": "linear: at most 411+31(T/4)+((T/4)-3)min(1,max(0,(T/4)-3))+76min(16,(T/4))+13(min(1,(T/4))+min(5,(T/4))+min(11,(T/4))+min(15,(T/4)))+23n+digits_sum(n)+Q+39max(0,n-3)+2digits_sum(max(0,n-3))+power2_digits_sum(max(1,n-2))-1+2(digits(max(0,n-3))+max(0,3-n)+digits(n-2)+digits(n-1)) characters past n = 2: one line per cell",
   "container": "linear: at most 75+63n+7T+digits_sum(2n+1)+digits_sum(2n)+digits_sum(2n+2)/2+digits(2n-1)+4digits(2n)+power2_digits_sum(n)+digits_sum(T) (n=1), 72+59n+13T/2+digits_sum(2n+1)+digits_sum(2n)+digits_sum(2n+2)/2+digits(2n-1)+4digits(2n)+power2_digits_sum(n)+digits_sum(T) (n\u22652) characters: threshold build",
   "crement": "linear: worst 5+8min(1,n-1)+min(1,max(0,n-2))(3P+2n-10) lines: subtree ids",

@@ -10,14 +10,14 @@ labels = ["tree"]
 qualification = "shared nodes append non-bit ASCII names; a bit-name substring test deletes the last unread bit; frequency buckets assign short names to frequent references"
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 2, "1" = 3, "2" = 2, "3" = 4, "4" = 2, "5" = 3, "6" = 2, "7" = 4 }, source_units = 134 }
-"00001100" = { commands_by_row = { "0" = 5, "1" = 6, "2" = 4, "3" = 5, "4" = 5, "5" = 6, "6" = 4, "7" = 5 }, source_units = 182 }
-"00110110" = { commands_by_row = { "0" = 3, "1" = 6, "2" = 3, "3" = 8, "4" = 3, "5" = 6, "6" = 3, "7" = 8 }, source_units = 274 }
-"0110" = { commands_by_row = { "0" = 3, "1" = 5, "2" = 3, "3" = 5 }, source_units = 181 }
-"01101001" = { commands_by_row = { "0" = 5, "1" = 7, "2" = 6, "3" = 8, "4" = 5, "5" = 7, "6" = 6, "7" = 8 }, source_units = 323 }
-"0110100110010110" = { commands_by_row = { "0" = 7, "1" = 9, "2" = 8, "3" = 10, "4" = 8, "5" = 10, "6" = 9, "7" = 11, "8" = 7, "9" = 9, "10" = 8, "11" = 10, "12" = 8, "13" = 10, "14" = 9, "15" = 11 }, source_units = 465 }
-"1101001101101101" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 8, "3" = 10, "4" = 7, "5" = 8, "6" = 9, "7" = 8, "8" = 6, "9" = 6, "10" = 8, "11" = 10, "12" = 7, "13" = 8, "14" = 9, "15" = 8 }, source_units = 511 }
-"11111110" = { commands_by_row = { "0" = 2, "1" = 3, "2" = 2, "3" = 4, "4" = 2, "5" = 3, "6" = 2, "7" = 4 }, source_units = 134 }
+"00000001" = { commands_by_row = { "0" = 2, "1" = 3, "2" = 2, "3" = 4, "4" = 2, "5" = 3, "6" = 2, "7" = 4 }, source_units = 139 }
+"00001100" = { commands_by_row = { "0" = 5, "1" = 6, "2" = 4, "3" = 5, "4" = 5, "5" = 6, "6" = 4, "7" = 5 }, source_units = 186 }
+"00110110" = { commands_by_row = { "0" = 3, "1" = 6, "2" = 3, "3" = 8, "4" = 3, "5" = 6, "6" = 3, "7" = 8 }, source_units = 279 }
+"0110" = { commands_by_row = { "0" = 3, "1" = 5, "2" = 3, "3" = 5 }, source_units = 185 }
+"01101001" = { commands_by_row = { "0" = 5, "1" = 7, "2" = 6, "3" = 8, "4" = 5, "5" = 7, "6" = 6, "7" = 8 }, source_units = 327 }
+"0110100110010110" = { commands_by_row = { "0" = 7, "1" = 9, "2" = 8, "3" = 10, "4" = 8, "5" = 10, "6" = 9, "7" = 11, "8" = 7, "9" = 9, "10" = 8, "11" = 10, "12" = 8, "13" = 10, "14" = 9, "15" = 11 }, source_units = 469 }
+"1101001101101101" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 8, "3" = 10, "4" = 7, "5" = 8, "6" = 9, "7" = 8, "8" = 6, "9" = 6, "10" = 8, "11" = 10, "12" = 7, "13" = 8, "14" = 9, "15" = 8 }, source_units = 517 }
+"11111110" = { commands_by_row = { "0" = 2, "1" = 3, "2" = 2, "3" = 4, "4" = 2, "5" = 3, "6" = 2, "7" = 4 }, source_units = 139 }
 
 [catalogue]
 folding_ignored_read = "a bit is exposed only by deleting the one read before it, so an ignored one costs a delete node per residual below it"
@@ -55,7 +55,7 @@ version = 1
 [[evidence.anchors]]
 arity = 10
 rule = "parity"
-size = 1317
+size = 1321
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.codesick.generator:codesick_request"
@@ -64,7 +64,7 @@ construction = "esolangs.languages.codesick.generator:codesick_request"
 arity = 10
 rule = "random"
 seed = 1847
-size = 14942
+size = 14978
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.codesick.generator:codesick_request"
@@ -93,8 +93,9 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: the input as key, the unread bits, the ip" }
 
 [resource_evidence.scaling]
-# Each node and up to two forwarders use at most ten label occurrences.
-expression = "(68+10digits(residuals_without_constants(n)+1))residuals_without_constants(n)+43"
+# At most ten label occurrences per node, one extra character on each
+# constant miss and one on each of the two standalone print labels.
+expression = "(69+10digits(residuals_without_constants(n)+1))residuals_without_constants(n)+45"
 exact = false
 arities = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 2
