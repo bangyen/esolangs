@@ -171,8 +171,6 @@ _D_SEEDS = {lab: _seed_g(m) for m, lab in enumerate(_T_HUB_LABELS, 1)}
 #: ``'1','0'`` (tables 6562..19674), 15 holds ``'0'`` (tables 19684..52479;
 #: ``'1'`` would reach 59,039); 16 fills the store.
 _SHORT_MAX = 15
-#: Arities up to this hold the last group's reads at ``_TOP_HELD``.
-_TOP_HELD_N = 14
 
 
 def _low_top_reads() -> tuple[int, int, int]:
@@ -311,7 +309,7 @@ def _longest_stub(n: int) -> int:
 
 
 def _held(n: int, group: int) -> int:
-    """Return how many of ``group``'s leading reads ``n`` inputs hold at ``'0'``.
+    """Return how many of ``group``'s leading reads are held constant.
 
     ``16 - n`` reads are held in all, three per group from the last group.
     """
@@ -324,9 +322,12 @@ def _short(n: int) -> bool:
     return n <= _SHORT_MAX
 
 
-def _held_read(n: int, group: int, index: int) -> int:
-    """Return the value of ``group``'s ``index``-th held read."""
-    if n <= _TOP_HELD_N and group == _D_GROUPS - 1:
+def _held_read(group: int, held: int, index: int) -> int:
+    """Choose the held bit that keeps the top digit's range low."""
+    # Holding only x=1 would allow digit 8 at (x,y,z)=(1,1,0).
+    # Holding x=0 caps it at 7. Once y can also be held at 0, use
+    # the prefix of the lowest digit's preimage.
+    if group == _D_GROUPS - 1 and held > 1:
         return _TOP_HELD[index]
     return 48
 
@@ -512,7 +513,7 @@ def _readouts(n: int) -> tuple[int, ...]:
         for s in states:
             for bits in range(1 << free):
                 reads = iter(
-                    [_held_read(n, group, k) for k in range(held)]
+                    [_held_read(group, held, k) for k in range(held)]
                     + [48 + ((bits >> k) & 1) for k in reversed(range(free))]
                 )
                 following.append(_fold_state(_GADGET, init, reads, group, s))
@@ -775,7 +776,7 @@ def _emit_gadget_reads(
 ) -> None:
     """Emit one group's gadget ops over its three cells.
 
-    A held read is the constant ``'0'`` (:func:`_emit_zero`).  A dropped
+    A held read emits its constant (:func:`_emit_zero`). A dropped
     read (``drop_token``) is a bare ``/`` before that gadget token: it
     consumes one stream input and nothing else, since the token after
     it reloads ``A`` (a read or a constant).
@@ -786,9 +787,8 @@ def _emit_gadget_reads(
         if index == drop_token:
             main.raw("/")
         if op == "/":
-            if held:
-                held -= 1
-                _emit_zero(main, cells, one=_held_read(n, group, taken) == 49)
+            if taken < held:
+                _emit_zero(main, cells, one=_held_read(group, held, taken) == 49)
                 taken += 1
             else:
                 main.raw("/")
