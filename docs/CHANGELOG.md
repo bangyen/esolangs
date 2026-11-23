@@ -5,6 +5,30 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 2.4.0
+
+- **Breaking (minor-release exception):** `DialectSettings` requires a
+  positional schema. `LanguageInfo` requires `well_known`.
+  `TemplateArtifact` and `TemplateBindings.fill` require explicit `spans`.
+- **Breaking:** Older pickles with legacy catalog, template, or compressed
+  text state no longer load. Portable template records require spans,
+  saved integer settings require tagged hexadecimal values, and PNG source
+  tags require the `language`, `settings`, and `scale` keys.
+- **Breaking (curation):** Remove ABCDirection, BASICER, Basicfuck, Between,
+  CARP, CreativeScript v2, DINAC, Dig, Forbin, Help., IEBEL, Interprogck8,
+  lol waht i cant edit talk pages, Minsky Swap, NB, Packlang, Qoibl, RAM0,
+  SwitchCase, and What!?.
+- Add Trml with a source-bound Boolean generator.
+- List well-known languages first and expose that classification in
+  `LanguageInfo`.
+- Frame generated Boolean input to one record for Caballo, Clockwise,
+  Codesick, NOR machine, Sonata, and Suffolk, including on reused streams.
+- Derive Malbolge dispatch tables, stub seeds, and continuation placement
+  from the machine's encoding and trit constraints.
+- Correct native Boolean output for several generators, including BFStack,
+  Bifunge, BrainIf, Codesick, GridScript, and Mammalian, and add a Bytemap
+  fallback for tables beyond the page-header limit.
+
 ## 2.3.0
 
 - Add artppeice, Bruijndejx, Bytemap, Flipscript, GridScript,
