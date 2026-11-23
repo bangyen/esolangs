@@ -232,7 +232,7 @@ class _DelegatingVM:
 
         catalog = get_catalog(catalog)
         self.language = language
-        self._io = _scripted_io(stdin, io_factory)
+        self._io = _scripted_io(stdin, io_factory, frame=program._input_frame)  # noqa: SLF001
         runtime = catalog.languages[language].runtime
         self._runtime = runtime
         self._capabilities = runtime.capabilities

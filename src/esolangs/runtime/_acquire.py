@@ -8,7 +8,13 @@ from time import monotonic
 
 from esolangs.exceptions import ExecutionTimeoutError
 from esolangs.runtime._files import stream_read_deadline
-from esolangs.runtime._input import CheckedInput, InputSource, check_input, read_input
+from esolangs.runtime._input import (
+    CheckedInput,
+    InputFrame,
+    InputSource,
+    check_input,
+    read_input,
+)
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
 
@@ -73,12 +79,12 @@ class PendingInput:
     deadline: float
     context: Context
 
-    def snapshot(self) -> str:
+    def snapshot(self, *, frame: InputFrame | None = None) -> str:
         """Consume the bound input after execution preflight."""
 
         def capture(_stopped: Callable[[], bool]) -> str:
             with stream_read_deadline(self.deadline):
-                return read_input(self.checked)
+                return read_input(self.checked, frame=frame)
 
         return acquire(
             capture,

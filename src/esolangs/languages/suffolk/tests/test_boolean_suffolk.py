@@ -158,3 +158,9 @@ def test_countdown_reader_cutoff() -> None:
         count_steps(machine, 3 * len(program) + program.index(",") + 1)
         assert machine.io.getvalue() == "".join(table[r] for r in records)
         assert machine.io.past_end == 1
+
+
+def test_untagged_source_runs_every_record() -> None:
+    lang = esolangs.Language("Suffolk")
+    source = lang.generate("0001").source
+    assert lang.run(source, stdin="0011").output == "01"

@@ -40,6 +40,7 @@ LANGUAGE = LanguageDeclaration(
     ),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
+        frame_stdin=True,
         answer_mode="dump",
         answer_pattern=r"^(\[\]|\[1\])$",
         answer_values=("[]", "[1]"),

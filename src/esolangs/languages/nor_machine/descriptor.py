@@ -1,6 +1,7 @@
 """Runtime and compiler capabilities for NOR machine."""
 
 from esolangs.languages.nor_machine.lifecycle import CAPABILITIES
+from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import (
     BackendDefinition,
     DeferredBackend,
@@ -39,4 +40,5 @@ LANGUAGE = LanguageDeclaration(
         empty_program="a program with no command loops forever",
     ),
     backend=DeferredBackend(_backend),
+    contract=BooleanContract(frame_stdin=True),
 )

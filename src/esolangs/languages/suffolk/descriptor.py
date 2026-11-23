@@ -43,6 +43,7 @@ LANGUAGE = LanguageDeclaration(
     ),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
+        frame_stdin=True,
         input_shape="char_stream",
     ),
 )

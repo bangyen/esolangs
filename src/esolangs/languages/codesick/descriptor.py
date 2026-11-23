@@ -38,5 +38,5 @@ LANGUAGE = LanguageDeclaration(
         eof="the whole input is read once to replace every `in`; no read meets EOF",
     ),
     backend=DeferredBackend(_backend),
-    contract=BooleanContract(input_shape="char_stream"),
+    contract=BooleanContract(frame_stdin=True, input_shape="char_stream"),
 )

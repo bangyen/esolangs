@@ -15,7 +15,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Never
 
 from esolangs.exceptions import ArgumentError, InputExhaustedError
-from esolangs.runtime._input import CheckedInput, InputSource, read_input
+from esolangs.runtime._input import CheckedInput, InputFrame, InputSource, read_input
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -454,9 +454,14 @@ def _input_exhausted(io: IO, reads: int, supplied: int, *, unit: str) -> Never:
 
 
 def _scripted_io(
-    stdin: CheckedInput, factory: Callable[[InputSource], ScriptedIO]
+    stdin: CheckedInput,
+    factory: Callable[[InputSource], ScriptedIO],
+    *,
+    frame: InputFrame | None = None,
 ) -> ScriptedIO:
     """Use the bound reader for standard I/O and the stream for custom factories."""
+    if frame is not None:
+        return factory(read_input(stdin, frame=frame))
     if isinstance(stdin, str):
         return factory(stdin)
     if factory is ScriptedIO:

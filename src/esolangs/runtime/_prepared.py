@@ -27,7 +27,7 @@ from esolangs.runtime._execution import (
     prepare_call,
     runtime_hook,
 )
-from esolangs.runtime._input import CheckedInput, InputSource
+from esolangs.runtime._input import CheckedInput, InputFrame, InputSource
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import (
     MachineFactory,
@@ -107,6 +107,16 @@ def _scoped_dialect_defaults(
         for key, value in schema.defaults.items()
         if key in built_in and value != built_in[key]
     }
+
+
+def _artifact_input_frame(
+    artifact: ProgramArtifact[Program], catalog: Catalog
+) -> InputFrame | None:
+    """Only explicitly framed languages bind input using their artifact arity."""
+    contract = catalog.languages[artifact.language].contract
+    if contract.frame_stdin and artifact.input_arity is not None:
+        return InputFrame(artifact.input_arity, contract.input_shape == "line_per_bit")
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,6 +226,10 @@ class PreparedProgram:
         """The canonical language owning this program."""
         return self.artifact.language
 
+    @property
+    def _input_frame(self) -> InputFrame | None:
+        return _artifact_input_frame(self.artifact, self.catalog)
+
     def _options(
         self, *, seed: int | None = None, reproducible: bool = False
     ) -> dict[str, Any]:
@@ -292,13 +306,14 @@ class PreparedProgram:
             if isinstance(plan, RandomRuntimePlan):
                 plan = plan.bind(self._options(seed=seed).get("rng"))
             runner = partial(_run_plan, plan)
+        frame = self._input_frame
         if isinstance(stdin, PendingInput):
-            stdin = stdin.snapshot()
+            stdin = stdin.snapshot(frame=frame)
         return execute_prepared(
             self.language,
             runner,
             code,
-            _scripted_io(stdin, io_factory),
+            _scripted_io(stdin, io_factory, frame=frame),
             catalog=self.catalog,
         )
 

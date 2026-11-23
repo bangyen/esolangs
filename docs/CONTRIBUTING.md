@@ -355,7 +355,10 @@ before the next input. `answer_mode` covers state-dump and termination answers.
 
 Contract tests must check answers and consumption together, including asymmetric
 rows that expose input permutations. Fixed-frame readers leave a following record
-untouched; whole-stream readers own stdin, and EOF probes are limited to one.
+untouched. Caballo, Clockwise, Codesick, NOR machine, Sonata and Suffolk
+receive one record when run as artifacts with an input arity. The runtime
+uses the Boolean input encoding to bound the read. Source alone keeps its
+native input behavior. EOF probes are limited to one.
 Crashes and timeouts are failures, never answers; divergence requires a proof
 such as a repeated state.
 Saved text, compressed source and PNGs execute independently of generator caches.

@@ -40,6 +40,7 @@ LANGUAGE = LanguageDeclaration(
     ),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
+        frame_stdin=True,
         input_shape="char_stream",
         answer_mode="dump",
         answer_pattern="=([01])",

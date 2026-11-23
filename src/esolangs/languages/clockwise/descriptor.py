@@ -44,6 +44,7 @@ LANGUAGE = LanguageDeclaration(
     ),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
+        frame_stdin=True,
         input_shape="char_stream_cyclic",
         note="Clockwise reads all its input bits in one go, so they go "
         "on one line -- one character per bit, not a line per bit, and "

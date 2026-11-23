@@ -225,10 +225,13 @@ def _execute_invocation(
             _loaded=_loaded,
         )
     if max_steps is not None:
+        if isinstance(checked, PendingInput):
+            assert prepared is not None
+            checked = checked.snapshot(frame=prepared._input_frame)  # noqa: SLF001
         machine = _make_checked_vm(
             name,
             program,
-            stdin=checked.snapshot() if isinstance(checked, PendingInput) else checked,
+            stdin=checked,
             scale=scale,
             settings=settings,
             seed=seed,

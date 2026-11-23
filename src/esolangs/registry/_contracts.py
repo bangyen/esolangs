@@ -39,6 +39,8 @@ class BooleanContract:
     ignores_whitespace: bool = False
     #: A newline ends the set a program reads; generated programs read one.
     input_sets: bool = False
+    #: Give arity-tagged programs a single record at the input port.
+    frame_stdin: bool = False
 
 
 def answer_pattern_text(name: str, pattern: object) -> str | None:

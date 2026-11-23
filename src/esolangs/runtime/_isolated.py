@@ -387,7 +387,7 @@ def _invoke_worker(
     """Acquire source and enforce phase budgets for execution or proof."""
     from esolangs.operations.source import _check_program
     from esolangs.registry._catalog import get_catalog
-    from esolangs.runtime._prepared import _check_source_options
+    from esolangs.runtime._prepared import _artifact_input_frame, _check_source_options
     from esolangs.runtime._source import anchor_program_source
 
     program = anchor_program_source(program)
@@ -475,7 +475,9 @@ def _invoke_worker(
             )
             if stopped():
                 return None
-            wire["stdin"] = read_input(checked_input)
+            wire["stdin"] = read_input(
+                checked_input, frame=_artifact_input_frame(artifact, catalog)
+            )
         return worker_request(wire, stopped)
 
     def expired() -> exceptions.ExecutionTimeoutError:
