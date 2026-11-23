@@ -432,20 +432,16 @@ def _emit_compressed(program: CompressedText, *, plain: bool, ending: str) -> No
         _write_output(program.to_gzip())
 
 
-def _generation_bits(
-    declaration: LanguageDeclaration, table: str, bits: str | None, *, gzip: bool
-) -> list[int] | None:
-    """Validate requests that can be refused without constructing source."""
+def _check_generation_output(
+    declaration: LanguageDeclaration, bits: str | None, *, gzip: bool
+) -> None:
+    """Reject output options that the language cannot support."""
     raster = declaration.runtime.source_kind is SourceKind.RASTER
-    if not declaration.has_backend or (bits is None and not (gzip and raster)):
-        return None
-    from esolangs.generation.helpers import _validate_truth_table
-
-    inputs = _validate_truth_table(table)
     if bits is None:
-        _fail("gzip export requires text; rasters use PNG")
+        if gzip and raster:
+            _fail("gzip export requires text; rasters use PNG")
+        return
     from esolangs.operations.generation import (
-        _check_template_bits,
         _raster_template_error,
         _stdin_template_error,
     )
@@ -454,9 +450,24 @@ def _generation_bits(
         raise _raster_template_error(
             "raster programs read bits from stdin and cannot be instantiated"
         )
-    name = display_label(declaration.name)
     if not declaration.parameterized:
-        raise _stdin_template_error(name)
+        raise _stdin_template_error(display_label(declaration.name))
+
+
+def _generation_bits(
+    declaration: LanguageDeclaration, table: str, bits: str | None, *, gzip: bool
+) -> list[int] | None:
+    """Check the truth table first when it is already available."""
+    raster = declaration.runtime.source_kind is SourceKind.RASTER
+    if not declaration.has_backend or (bits is None and not (gzip and raster)):
+        return None
+    from esolangs.generation.helpers import _validate_truth_table
+    from esolangs.operations.generation import _check_template_bits
+
+    inputs = _validate_truth_table(table)
+    _check_generation_output(declaration, bits, gzip=gzip)
+    assert bits is not None
+    name = display_label(declaration.name)
     return _check_template_bits(name, [int(bit) for bit in bits], inputs)
 
 
@@ -511,6 +522,7 @@ def _generate(rest: list[str]) -> None:
         declaration = catalog.languages[catalog.resolve(language)]
         settings = _settings_of(settings_arguments, language=language, catalog=catalog)
         if table_operand == "-" and declaration.has_backend:
+            _check_generation_output(declaration, bits, gzip=gzip)
             table = _read_stdin(
                 hint="; finish the truth table or close stdin",
                 terminal_prompt="Enter a truth table, then signal EOF.\n",

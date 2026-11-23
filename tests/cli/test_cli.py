@@ -52,6 +52,27 @@ def test_generate_reads_a_truth_table_from_stdin(capsys) -> None:
     assert "truth table must contain only" in error
 
 
+@pytest.mark.parametrize(
+    ("options", "language", "error"),
+    [
+        (["--bits", "10"], REFERENCE, "there is nothing to instantiate"),
+        (["--gzip"], _RASTER, "gzip export requires text"),
+    ],
+)
+def test_generate_refuses_impossible_options_before_stdin(
+    monkeypatch, capsys, options, language, error
+) -> None:
+    def unread(*_args, **_kwargs):
+        pytest.fail("invalid options reached stdin")
+
+    monkeypatch.setattr("esolangs.cli._read_stdin", unread)
+    output, diagnostic = _failure(["generate", *options, language, "-"], capsys)
+    assert output == ""
+    assert error in diagnostic
+    _, invalid_table = _failure(["generate", *options, language, "x"], capsys)
+    assert "truth table must contain only" in invalid_table
+
+
 def test_template_fill_hint_replays_the_stdin_table(capsys) -> None:
     language = first(parameterized=True, answer_mode="output")
     args = ["generate", "--width=4", language, "-"]

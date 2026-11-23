@@ -51,6 +51,12 @@ def test_bifunge_execution() -> None:
             assert (got.output, got.input_reads) == (answer, n), (table, row)
 
 
+def test_bifunge_reference_model() -> None:
+    from .oracle_checks import check_raw_bifunge
+
+    check_raw_bifunge()
+
+
 @pytest.mark.parametrize("table", ["0101", "01100110", "1111"])
 def test_leading_ignored_input_needs_no_empty_stack_pop(table: str) -> None:
     source = esolangs.generate("Bifunge", table).source
