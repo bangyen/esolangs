@@ -505,6 +505,31 @@ def _note_export_settings(artifact: Artifact, declaration: LanguageDeclaration) 
         _diagnostic(f"note: pass {option} to esolangs run to restore this dialect\n")
 
 
+def _emit_generated(
+    artifact: Artifact,
+    declaration: LanguageDeclaration,
+    flags: set[str],
+    catalog: Catalog,
+) -> None:
+    """Export the generated record or its native source."""
+    if "--artifact" in flags:
+        from esolangs import to_json
+
+        with _errors():
+            _write_output(to_json(artifact.language, artifact, catalog=catalog) + "\n")
+        return
+    program = artifact.source
+    plain, gzip = "--plain" in flags, "--gzip" in flags
+    raster = isinstance(program, Raster)
+    if plain and raster:
+        _diagnostic("note: --plain has no effect on a raster; it is PNG\n")
+    if gzip or raster or (isinstance(program, CompressedText) and not plain):
+        _check_binary_terminal(artifact.language, raster=raster, gzip=gzip)
+    with _errors():  # A raster renders here, and may exceed the pixel limit.
+        _emit(artifact, plain=plain, gzip=gzip, catalog=catalog)
+    _note_export_settings(artifact, declaration)
+
+
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     from esolangs.operations.generation import (
@@ -514,7 +539,7 @@ def _generate(rest: list[str]) -> None:
     )
 
     value_options = _VALUE_OPTIONS["generate"] - {"--set"}
-    flag_options = {"--balance", "--plain", "--gzip"}
+    flag_options = {"--balance", "--artifact", "--plain", "--gzip"}
     before = rest
     rest, width, bare = _pop_width(rest)
     rest, set_pairs = _pop_set_pairs(rest)
@@ -524,6 +549,8 @@ def _generate(rest: list[str]) -> None:
     gzip = "--gzip" in flags
     if gzip and "--plain" in flags:
         _fail("--gzip and --plain are mutually exclusive")
+    if "--artifact" in flags and flags & {"--plain", "--gzip"}:
+        _fail("--artifact is mutually exclusive with --plain and --gzip")
     scale = _scale_of(options)
     if balance and width is not None:
         _fail("--balance and --width are mutually exclusive")
@@ -562,7 +589,7 @@ def _generate(rest: list[str]) -> None:
             _check_generation_output(declaration, bits, gzip=gzip)
             _check_generation_scale(declaration, scale)
             raster = declaration.runtime.source_kind is SourceKind.RASTER
-            if raster or gzip:
+            if "--artifact" not in flags and (raster or gzip):
                 _check_binary_terminal(declaration.name, raster=raster, gzip=gzip)
             table = _read_stdin(
                 hint="; finish the truth table or close stdin",
@@ -609,20 +636,7 @@ def _generate(rest: list[str]) -> None:
             f"{display_label(artifact.language)} -- "
             f"the generator retains its original layout\n"
         )
-    if "--plain" in flags and isinstance(program, Raster):
-        _diagnostic("note: --plain has no effect on a raster; it is PNG\n")
-    binary = (
-        gzip
-        or isinstance(program, Raster)
-        or (isinstance(program, CompressedText) and "--plain" not in flags)
-    )
-    if binary:
-        _check_binary_terminal(
-            artifact.language, raster=isinstance(program, Raster), gzip=gzip
-        )
-    with _errors():  # A raster renders here, and may exceed the pixel limit.
-        _emit(artifact, plain="--plain" in flags, gzip=gzip, catalog=catalog)
-    _note_export_settings(artifact, declaration)
+    _emit_generated(artifact, declaration, flags, catalog)
     if isinstance(artifact, TemplateArtifact):
         original = shlex.join(before)
         fill = "fill them with: esolangs generate --bits <bits>"

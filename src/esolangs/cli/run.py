@@ -117,7 +117,8 @@ def _run(rest: list[str]) -> None:
             options["--max-steps"], "--max-steps", kind="a non-negative integer"
         )
         _nonnegative(max_steps, "--max-steps", options["--max-steps"])
-    rest, flags = _pop_flags(rest, {"--isolated"})
+    flag_options = {"--isolated", "--artifact"}
+    rest, flags = _pop_flags(rest, flag_options)
     isolated = "--isolated" in flags
     max_output = None
     if "--max-output" in options:
@@ -162,7 +163,7 @@ def _run(rest: list[str]) -> None:
         default=(None, ""),
         key=lambda pair: pair[0],
     )
-    rest = _split_positional(rest, set(), value_options | {"--set", "--isolated"})
+    rest = _split_positional(rest, set(), value_options | flag_options | {"--set"})
     seed = _seed_of(options)
     scale = _scale_of(options)
     settings_arguments = _settings_arguments(options, set_pairs)
@@ -206,6 +207,7 @@ def _run(rest: list[str]) -> None:
         settings=settings,
         catalog=catalog,
         _settings_validated=True,
+        portable="--artifact" in flags,
     )
     unbounded = not worker and max_steps is None
     stdin: InputSource = ""

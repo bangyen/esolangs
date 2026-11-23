@@ -279,7 +279,12 @@ def test_checkout_change_invalidates_benchmark(monkeypatch) -> None:
 
 @pytest.mark.parametrize(
     "phase",
-    ["generation", pytest.param("execution", marks=pytest.mark.medium), "startup"],
+    [
+        "generation",
+        pytest.param("execution", marks=pytest.mark.medium),
+        pytest.param("preparation", marks=pytest.mark.medium),
+        "startup",
+    ],
 )
 def test_benchmark_deadline_reaps_workers_with_positive_control(
     tmp_path, monkeypatch, phase
@@ -310,12 +315,17 @@ subprocess.Popen([sys.executable, '-c', {child!r}])
     if phase == "startup":
         setup += "time.sleep(30)"
     else:
+        target = {
+            "generation": "esolangs.generate",
+            "preparation": "esolangs.prepare",
+            "execution": "_execute",
+        }[phase]
         setup += f"""
 sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / "scripts")!r})
 import benchmark
 def hang(*args, **kwargs):
     time.sleep(30)
-benchmark.{"esolangs.generate" if phase == "generation" else "_execute"} = hang
+benchmark.{target} = hang
 benchmark._worker_main()
 """
 
@@ -330,7 +340,7 @@ benchmark._worker_main()
 
     monkeypatch.setattr(b, "Worker", started)
     start = time.monotonic()
-    expected = "execution" if phase == "execution" else "generation"
+    expected = "execution" if phase in {"execution", "preparation"} else "generation"
     with pytest.raises(esolangs.ExecutionTimeoutError, match=f"{expected} deadline"):
         b.measure(
             "Brainfuck",
@@ -340,6 +350,7 @@ benchmark._worker_main()
             step_cap=10000,
             timeout=1,
             generation_timeout=1,
+            all_rows=phase == "preparation",
         )
     # The worker sleeps 30s, so the 1s deadline ending the call well before
     # that is the fact under test.  The bound stays loose because an xdist

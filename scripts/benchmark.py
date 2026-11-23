@@ -22,7 +22,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import fields, is_dataclass
 from fractions import Fraction
-from functools import cache
+from functools import cache, partial
 from itertools import chain, compress
 from operator import is_not
 from pathlib import Path
@@ -426,6 +426,7 @@ def _execute(
     track_store: bool = False,
     facts: LanguageInfo | None = None,
     source_digest: str | None = None,
+    prepare: Callable[[], esolangs.PreparedProgram] | None = None,
 ) -> dict[str, Any]:
     if facts is None:
         facts = esolangs.describe(language)
@@ -462,12 +463,23 @@ def _execute(
     }
 
     def drive(*_args: object) -> None:
+        prepared = None if prepare is None else prepare()
         if not supported:
-            output = esolangs.run(language, source, stdin=stdin).output
+            outcome = (
+                esolangs.run(language, source, stdin=stdin)
+                if prepared is None
+                else prepared.run(stdin=stdin)
+            )
             result["execution_status"] = "halted"
-            result["actual_answer"] = esolangs.read_answer(language, output)
+            result["actual_answer"] = esolangs.read_answer(language, outcome.output)
             return
-        vm = debugger_api.make_vm(language, source, stdin=stdin)
+
+        def make_vm() -> VM:
+            if prepared is None:
+                return debugger_api.make_vm(language, source, stdin=stdin)
+            return prepared.make_vm(stdin=stdin)
+
+        vm = make_vm()
         terminating = facts.answer_mode == "termination"
         if terminating:
             halted = run_until_halt_or_cycle(vm, limit=cap)
@@ -479,7 +491,7 @@ def _execute(
                 return
             # The detector unwraps the VM; replay a halt to retain the
             # baseline's wrapper-step count, excluding its post-halt dump.
-            vm = debugger_api.make_vm(language, source, stdin=stdin)
+            vm = make_vm()
 
         written = WrittenState(_capture_workspace(vm)) if track_store else None
 
@@ -586,6 +598,12 @@ def _measure(
         }
     digest = artifact_hash(source)
     rows = range(len(table)) if all_rows else sample_rows or (row,)
+    # The first executed row pays for preparation under its existing deadline.
+    prepare = (
+        cache(partial(esolangs.prepare, language, program))
+        if len(rows) > 1 and isinstance(program, esolangs.ProgramArtifact)
+        else None
+    )
     executions = []
     for at in rows:
         if _progress is not None:
@@ -601,6 +619,7 @@ def _measure(
             track_store=track_store,
             facts=facts,
             source_digest=None if facts.parameterized else digest,
+            prepare=prepare,
         )
         executions.append(execution)
         if _on_row is not None:

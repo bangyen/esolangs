@@ -32,6 +32,7 @@ from stdin. For example, pipe `esolangs generate --bits 01 Trml 0110` into
 | `--bits BITS` | generate | fill a template's input slots, printing a runnable program |
 | `--plain` | generate | write compressed text as plain text instead of gzip |
 | `--gzip` | generate | compress any text export; excludes `--plain` and raster PNGs |
+| `--artifact` | generate, run | export or load portable JSON with its settings and input metadata |
 | `--scale N` | generate, run | enlarge raster pixels after layout; on `run`, override the detected scale |
 | `-s`, `--settings JSON` | generate, run | dialect overrides as JSON |
 | `--set KEY=VALUE` | generate, run | one dialect override, repeatable, applied after `--settings` |
@@ -109,6 +110,14 @@ for artifacts with inputs embedded in source.
 Use `to_json` and `from_json` to retain settings and template bindings.
 Native exports contain the program and, for PNG, raster metadata.
 Export templates after filling them.
+
+Use `--artifact` to save and run the same portable records from the CLI.
+Generate a runnable template record with `--bits`.
+
+```bash
+esolangs generate --artifact --set expression_syntax=postfix Alight 0110 > xor.json
+esolangs encode-inputs Alight 01 | esolangs run --artifact Alight xor.json
+```
 
 ```python
 from pathlib import Path
@@ -590,6 +599,8 @@ and median include subsequent samples, which can reuse cached work.
 - Use `--width N` or `--balance` to measure a layout, and `--scale N` to
   measure scaled raster source. The request appears in `generation_options`.
 - Read a large table from a file with `just benchmark brainfuck - --row 0 < table.txt`.
+- Multi-row benchmarks prepare shared source once.
+  The first row's timeout covers preparation, and each row uses fresh state.
 - The row timeout defaults to 30 seconds. `--no-timeout` disables the
   signal guard for Windows or worker threads.
 - `just sizes` checks the committed size and step baseline and requires each

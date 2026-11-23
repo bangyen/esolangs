@@ -1,5 +1,11 @@
 """Boolean row boundaries, counts and popcount lookup profiles."""
 
+from itertools import accumulate
+
+_PREFIX_MARKS = {
+    value: bytes(int(code == ord(value)) for code in range(256)) for value in "01"
+}
+
 
 def constant_output(table: str) -> str | None:
     """Return the constant output of a validated nonempty table, or None."""
@@ -13,6 +19,9 @@ def change_points(table: str) -> list[int]:
 
 def prefix_counts(table: str, value: str) -> list[int]:
     """Return matching-entry counts for every prefix, including the empty one."""
+    marks = _PREFIX_MARKS.get(value)
+    if marks is not None and str.isascii(table):
+        return list(accumulate(str.encode(table, "ascii").translate(marks), initial=0))
     counts = [0]
     for entry in table:
         counts.append(counts[-1] + (entry == value))

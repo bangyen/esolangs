@@ -15,6 +15,7 @@ from codecs import IncrementalEncoder, lookup
 from collections.abc import Buffer, Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager, nullcontext, suppress
 from contextvars import ContextVar, copy_context
+from dataclasses import replace
 from encodings.utf_8 import IncrementalDecoder as UTF8Decoder
 from encodings.utf_8_sig import IncrementalDecoder as UTF8SigDecoder
 from errno import EAGAIN
@@ -33,7 +34,7 @@ from math import ceil
 from time import monotonic, sleep
 from typing import BinaryIO, NoReturn, TextIO, cast
 
-from esolangs.artifacts import ProgramArtifact
+from esolangs.artifacts import ProgramArtifact, TemplateArtifact
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _cli_error_text,
@@ -46,6 +47,7 @@ from esolangs.exceptions import (
     EsolangError,
     ExecutionBudgetError,
     ProgramError,
+    TemplateError,
 )
 from esolangs.operations.source import _check_program
 from esolangs.registry import Catalog, get_catalog
@@ -72,7 +74,12 @@ from esolangs.runtime._source import _FileSource, _open_program_path
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
 from esolangs.runtime.source_hints import display_label, source_read_error
-from esolangs.settings import DialectSettings
+from esolangs.settings import (
+    DialectSettings,
+    _check_dialect_conflicts,
+    _merge_settings,
+    dialect_options,
+)
 
 #: How long a blocking stdin read waits before it says that it is waiting.
 #: Shorter than the run notice: a read that has not finished is far more
@@ -144,8 +151,9 @@ def _read_program(
     settings: DialectSettings | None = None,
     catalog: Catalog | None = None,
     _settings_validated: bool = False,
+    portable: bool = False,
 ) -> ProgramArtifact[Program]:
-    """Read a native source snapshot under the acquisition deadline."""
+    """Read native source or a portable record under the acquisition deadline."""
     deadline = None if timeout is None else monotonic() + timeout
     catalog = get_catalog(catalog)
     gzip_native = catalog.languages[language].runtime.compressed_source
@@ -165,6 +173,8 @@ def _read_program(
 
     def decode() -> ProgramArtifact[Program]:
         with nullcontext() if deadline is None else stream_read_deadline(deadline):
+            if portable:
+                return _load_portable_source(language, label, data, settings, catalog)
             return _check_program(
                 language,
                 _FileSource(label, data),
@@ -190,6 +200,39 @@ def _read_program(
         _fail(_timeout_text(exc), _TIMEOUT_EXIT)
     except EsolangError as exc:
         _fail(exc)
+
+
+def _load_portable_source(
+    language: str,
+    label: str,
+    data: bytes,
+    settings: DialectSettings | None,
+    catalog: Catalog,
+) -> ProgramArtifact[Program]:
+    """Restore runnable JSON and combine any explicit compatible choices."""
+    from esolangs import from_json
+
+    try:
+        document = decode_utf8(data)
+    except UnicodeDecodeError as error:
+        raise source_read_error(label, error) from error
+    artifact = from_json(language, document, catalog=catalog)
+    if isinstance(artifact, TemplateArtifact):
+        raise TemplateError(
+            "unfilled portable template; pass --artifact --bits to esolangs generate"
+        )
+    retained = artifact.settings
+    if settings is not None and retained is not None:
+        _check_dialect_conflicts(retained, settings)
+    merged = _merge_settings(language, retained, settings, catalog=catalog)
+    dialect_options(
+        language,
+        merged,
+        catalog=catalog,
+        validate_defaults=True,
+        _sparse_validated=True,
+    )
+    return artifact if merged is retained else replace(artifact, settings=merged)
 
 
 def _note(message: str) -> None:

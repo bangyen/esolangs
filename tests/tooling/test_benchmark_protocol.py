@@ -88,19 +88,25 @@ def test_valid_multiline_protocol_runs_all_rows(monkeypatch, capsys) -> None:
         _check_store_sampling(patch)
 
 
-def test_measure_records_first_sample_and_encodes_rows_without_the_table(
+def test_measure_prepares_once_and_records_first_sample(
     monkeypatch,
 ) -> None:
     import esolangs
     from scripts import benchmark
 
     encode_inputs = esolangs.encode_inputs
+    prepare = esolangs.prepare
     encoded = []
+    prepared = []
 
     def encode(language, bits, *, truth_table=None):
         assert truth_table is None
         encoded.append(bits)
         return encode_inputs(language, bits)
+
+    def prepare_source(language, program):
+        prepared.append(program)
+        return prepare(language, program)
 
     ticks = iter((10, 40, 100, 110, 200, 220))
     with benchmark.evidence_session(), monkeypatch.context() as patch:
@@ -108,10 +114,12 @@ def test_measure_records_first_sample_and_encodes_rows_without_the_table(
             benchmark, "time", SimpleNamespace(perf_counter_ns=ticks.__next__)
         )
         patch.setattr(esolangs, "encode_inputs", encode)
+        patch.setattr(esolangs, "prepare", prepare_source)
         record = benchmark._measure(
             "Brainfuck", "0110", repeat=3, row=3, step_cap=1000, all_rows=True
         )
     assert encoded == [[0, 0], [0, 1], [1, 0], [1, 1]]
+    assert len(prepared) == 1
     assert all(entry["matches"] for entry in record["executions"])
     assert record["generation_ns_first"] == 30
     assert record["generation_ns_best"] == 10

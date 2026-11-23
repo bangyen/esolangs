@@ -65,14 +65,14 @@ USAGE = """usage: esolangs <command> [...]
 commands:
   Generator-made (the API invents source from a truth table):
     generate [--width [N] | --balance] [--bits BITS] [--scale N]
-             [--settings JSON] [--set KEY=VALUE] [--plain | --gzip]
+             [--settings JSON] [--set KEY=VALUE] [--plain | --gzip | --artifact]
              <language> <truth-table>
                                 print a program computing a truth table
                                 (--width wraps it; --bits fills a template)
   Caller-supplied (you supply the program):
     run [--execution-timeout S] [--total-timeout S] [--preparation-timeout S]
         [--isolated] [--max-output N] [--max-memory BYTES] [--max-steps N]
-        [--seed N] [--scale N] [--settings JSON] [--set KEY=VALUE]
+        [--seed N] [--scale N] [--settings JSON] [--set KEY=VALUE] [--artifact]
         <language> <file>
                                 run a program through its interpreter
   Contract adapters (your data in, checked data out):
@@ -176,7 +176,7 @@ examples:
 """,
     "generate": """usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]
-                         [--plain | --gzip] <language> <truth-table>
+                         [--plain | --gzip | --artifact] <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
@@ -208,11 +208,12 @@ options:
   --set KEY=VALUE
                one dialect override without JSON, repeatable and applied
                after --settings. The last value for each key wins.
-  --plain      export compressed text as ordinary source text.  Without it,
-               compressed text is written as gzip.  A raster is always PNG
-               -- binary bytes, so redirect it to a file.
-  --gzip       export any text program as gzip; excludes --plain.
+  --plain      export compressed text as ordinary source text. By default,
+               compressed text is written as gzip and rasters as PNG.
+  --gzip       export any text program as gzip.
                Raster programs retain PNG and reject this option.
+  --artifact   export portable JSON with dialect settings and applicable
+               input metadata. Pass --artifact to run that file.
   --balance    pick the layout fitting the smallest on-screen square: text
                minimizes max(columns, 2 * rows) (a cell is about twice as
                tall as wide), a raster max(width, height). Ties prefer shorter
@@ -237,7 +238,7 @@ examples:
     "run": """usage: esolangs run [--execution-timeout S] [--total-timeout S]
                     [--preparation-timeout S] [--isolated] [--max-output N]
                     [--max-memory BYTES] [--max-steps N] [--seed N]
-                    [--scale N] [--settings JSON] [--set KEY=VALUE]
+                    [--scale N] [--settings JSON] [--set KEY=VALUE] [--artifact]
                     <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
@@ -265,6 +266,7 @@ exit codes: 0 ran, 1 the program broke or its output cannot be encoded,
 ran out (time, steps, output, memory), 130 interrupted.
 
 options:
+  --artifact         load portable JSON from esolangs generate --artifact.
   --isolated         run in a subprocess. The default total is 30 seconds
                      plus any --execution-timeout.
   --max-output N     cap output in Unicode characters (including zero); implies

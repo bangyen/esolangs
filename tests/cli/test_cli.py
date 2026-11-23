@@ -170,6 +170,57 @@ def test_run_dash_obeys_program_stream_size_limit(monkeypatch, capsys) -> None:
     assert "stdin is larger than the 1 KiB program stream limit" in error
 
 
+@pytest.mark.parametrize(("language", "kind"), [(_RASTER, "png"), (_GZIP, "gzip")])
+def test_portable_cli_handles_encoded_source(
+    language, kind, tmp_path, capsys, monkeypatch
+) -> None:
+    with monkeypatch.context() as patch:
+        patch.setattr(sys.stdout, "isatty", lambda: True)
+        document, diagnostic = call_both(
+            ["generate", "--artifact", language, "01"], capsys
+        )
+    assert diagnostic == ""
+    assert json.loads(document)["kind"] == kind
+    path = tmp_path / "artifact.json"
+    path.write_text(document, encoding="utf-8")
+    facts = esolangs.describe(language)
+    terminating = facts.answer_mode == "termination"
+    bit = facts.answer_encoding.index("halts") if terminating else 1
+    output, diagnostic = call_both(
+        ["run", "--artifact", "--max-steps", "10000", language, str(path)],
+        capsys,
+        esolangs.encode_inputs(language, [bit]),
+    )
+    assert diagnostic == ""
+    if terminating:
+        assert output == ""
+    else:
+        assert esolangs.read_answer(language, output) == str(bit)
+
+
+def test_portable_cli_fills_templates_before_execution(capsys) -> None:
+    language = first(parameterized=True, answer_mode="output")
+    generate = ["generate", "--artifact", language, "0110"]
+    template, diagnostic = call_both(generate, capsys)
+    assert isinstance(esolangs.from_json(language, template), esolangs.TemplateArtifact)
+    assert "--artifact" in diagnostic
+    command = ["run", "--artifact", language, "-"]
+    output, diagnostic = _failure(command, capsys, stdin=template)
+    assert not output
+    assert "unfilled portable template" in diagnostic
+    program = call_main([*generate, "--bits", "01"], capsys)
+    output, diagnostic = call_both(command, capsys, program)
+    assert diagnostic == ""
+    assert esolangs.read_answer(language, output) == "1"
+
+
+@pytest.mark.parametrize("flag", ["--plain", "--gzip"])
+def test_artifact_export_refuses_native_format_flags(capsys, flag) -> None:
+    output, error = _failure(["generate", "--artifact", flag, REFERENCE, "-"], capsys)
+    assert not output
+    assert "--artifact is mutually exclusive" in error
+
+
 class TestInProcess:
     def test_generating_a_raster_writes_png_bytes(
         self, capsysbinary: pytest.CaptureFixture[bytes], tmp_path: Path

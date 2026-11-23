@@ -18,6 +18,13 @@ def test_symmetry_is_invariant_under_every_input_permutation():
         _check_permutations(n)
 
 
+def test_prefix_counts_accepts_other_characters_and_empty_tables():
+    assert prefix_counts("", "0") == [0]
+    assert prefix_counts("01x1", "1") == [0, 0, 1, 1, 2]
+    assert prefix_counts("0é1", "1") == [0, 0, 0, 1]
+    assert prefix_counts("0é1", "é") == [0, 0, 1, 1]
+
+
 def _check_permutations(n):
     rows = list(product((0, 1), repeat=n))
     orders = list(permutations(range(n)))
