@@ -585,7 +585,7 @@ class _DCells(NamedTuple):
 
 
 def _allocate_cells(
-    layout: _Layout | None = None,
+    layout: _Layout,
     *,
     inits: tuple[tuple[int, ...], ...] | None = None,
     drain_last: bool = False,
@@ -618,16 +618,12 @@ def _allocate_cells(
         used.add(z_cell)
     else:
         z_cell, to_48 = walked(), walked(69)
-    if layout:
-        seeds = {lab: walked(g) for lab, (g, _) in layout.seeds.items()}
-        builds = _stub_builds(_hubs(layout), layout.stubs)
-    else:
-        seeds = {lab: walked(g) for lab, g in _D_SEEDS.items()}
-        builds = _stub_builds(_hubs())
+    seeds = {lab: walked(g) for lab, (g, _) in layout.seeds.items()}
+    builds = _stub_builds(_hubs(layout), layout.stubs)
     builders = [walked(g) for g, _, _ in builds]
     # Every operand stub shares the middle cell.
     operand = operands["1"][1]
-    to_49 = low(_ONE_CELL_G) if layout else -1
+    to_49 = low(_ONE_CELL_G)
     return _DCells(
         helper,
         gadget,
@@ -719,7 +715,7 @@ def _emit_labels(
     main: _Planner,
     cells: _DCells,
     pointer: dict[int, int],
-    layout: _Layout | None = None,
+    layout: _Layout,
     swap_cell: int | None = None,
 ) -> None:
     """Emit the label cells, the hubs' stub addresses and the middle operand.
@@ -733,14 +729,8 @@ def _emit_labels(
     for p in sorted(_D_LABEL):
         main.op("p", p)
         main.op("p", p)
-    chains = (
-        {lab: chain for lab, (_, chain) in layout.seeds.items()}
-        if layout
-        else dict.fromkeys(_D_SEEDS, _SEED_CHAIN)
-    )
-    _seed_label_chains(
-        main, helper, chains, cells.seeds, _D_LABEL, single=layout is not None
-    )
+    chains = {lab: chain for lab, (_, chain) in layout.seeds.items()}
+    _seed_label_chains(main, helper, chains, cells.seeds, _D_LABEL, single=True)
     _write_hubs(main, helper, pointer, cells.builds, cells.builders, swap_cell)
     _emit_chain(main, cells.operand, _OPERAND_CHAIN, helper)
 
@@ -824,7 +814,7 @@ def _emit_digit_jump(
     main: _Planner,
     cells: _DCells,
     pointer: dict[int, int],
-    layout: _Layout | None = None,
+    layout: _Layout,
     *,
     drain_last: bool = False,
     swap_cell: int | None = None,

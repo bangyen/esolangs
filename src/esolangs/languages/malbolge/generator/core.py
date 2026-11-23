@@ -80,10 +80,6 @@ _BOOTSTRAP_Z0 = _BOOTSTRAP_Z1 - 3
 #: ``g`` either side of the first walked 80.
 _OPERAND_G = {"1": (71, _BOOTSTRAP_W, 71), "n": (70, _BOOTSTRAP_W, 69)}
 _OPERAND_CHAIN = "K0 K2"
-#: Three rotations on ``g = 83 + 3*k`` swap to 361 cells into the
-#: 729-cell run of trits 6, 7 = ``(1, 2)`` that trits 1, 2 pick.
-_LONG_STUB_G = {"1": (83, 86), "n": (89, 92), "0": (98, 101)}
-_LONG_STUB_CHAIN = "rot rot rot"
 # A half-word rotation maps the lane number straight to its base address.
 _LANE_TRITS = _WORD_TRITS // 2
 _LANE_WIDTH = 3**_LANE_TRITS
@@ -313,29 +309,17 @@ type _Build = tuple[int, str, tuple[int, ...]]
 
 
 def _stub_builds(
-    hubs: dict[str, tuple[int, ...]], single: dict[str, tuple[int, str]] | None = None
+    hubs: dict[str, tuple[int, ...]], stubs: dict[str, tuple[int, str]]
 ) -> list[_Build]:
-    """Return each stub-address build: ``g``, chain, and the hubs it writes.
-
-    The chain value ``C`` leaves ``A = C``; the build's hubs, primed to
-    all-1, then take ``s01(C)``, ``C``, ... in turn.  ``single`` gives each
-    label's own ``(g, chain)`` for its one hub.
-    """
-    if single is not None:
-        return [(g, chain, hubs[lab]) for lab, (g, chain) in single.items()]
-    g, chain = _IDENTITY_STUB
-    builds = [(g, chain, hubs["x"])]
-    for lab, gs in _LONG_STUB_G.items():
-        pairs = zip(gs, hubs[lab], strict=True)
-        builds += [(g, _LONG_STUB_CHAIN, (v,)) for g, v in pairs]
-    return builds
+    """Return each stub's seed, chain and hub in layout order."""
+    return [(g, chain, hubs[lab]) for lab, (g, chain) in stubs.items()]
 
 
 def _hub_layout(
     hubs: dict[str, tuple[int, ...]],
     avoid: set[int],
     floor: int,
-    builds: list[_Build] | None = None,
+    builds: list[_Build],
     *,
     packed: bool = False,
     claimed: set[int] | None = None,
@@ -350,7 +334,7 @@ def _hub_layout(
     data: dict[int, int] = {}
     stubs: dict[int, str] = {}
     reserved: list[int] = []
-    for g, chain, vs in _stub_builds(hubs) if builds is None else builds:
+    for g, chain, vs in builds:
         address = _chain(g, chain)
         for v in vs:
             if not packed or chain != _LANE_CHAIN:
