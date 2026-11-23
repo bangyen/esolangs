@@ -2,6 +2,7 @@
 
 import importlib
 import shutil
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -34,6 +35,37 @@ def test_differences_include_a_missing_request() -> None:
     assert gendiff.differences({"a": "x", "b": "y"}, {"a": "x"}) == ["b"]
 
 
+def test_construction_layouts_extend_exhaustive_requests(monkeypatch) -> None:
+    from docs import evidence
+
+    witness = evidence.TableWitness(3, "parity")
+    default = evidence.ConstructionBoundary((witness,), benchmark=False, test=None)
+    narrow = replace(default, width=1)
+    records = {
+        "default": default,
+        "balanced": replace(default, balance=True),
+        "narrow": narrow,
+        "duplicate": narrow,
+    }
+    monkeypatch.setattr(evidence, "construction_records", lambda _: records)
+    cases = gendiff._construction_tables(REFERENCE, 3)
+    assert list(gendiff._requests(0, cases)) == [
+        ("balanced n=3 parity", "01101001", {"balance": True}),
+        ("narrow n=3 parity", "01101001", {"width": 1}),
+    ]
+
+
+def test_matching_errors_without_a_program_fail(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(gendiff, "_checkout", lambda *_: REPO_ROOT / "src")
+    monkeypatch.setattr(
+        gendiff, "_dump", lambda *_: ({"cap": "GeneratorCapError: cap"}, 0.1)
+    )
+    assert gendiff.main([REFERENCE]) == 1
+    captured = capsys.readouterr()
+    assert "0 differ" in captured.out
+    assert "no matching successful generation pairs" in captured.err
+
+
 @pytest.mark.medium  # three generator processes and a copy of src: ~3 s
 def test_an_unchanged_tree_matches_and_boundary_witnesses_catch_a_mutant(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -55,5 +87,5 @@ def test_an_unchanged_tree_matches_and_boundary_witnesses_catch_a_mutant(
     assert gendiff.main(argv) == 0
     out = capsys.readouterr().out
     assert "0 differ from snapshot" in out
-    assert "construction witnesses beyond n=1: 2" in out.splitlines()
+    assert "additional construction witnesses: 2" in out.splitlines()
     assert "control: mutant differs on 2" in out.splitlines()

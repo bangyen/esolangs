@@ -194,6 +194,40 @@ def test_all_rows_can_exceed_one_worker_record() -> None:
 
 
 @pytest.mark.parametrize(
+    "name", one_where(lambda facts: "rotation" in facts.dialect_settings)
+)
+def test_benchmark_applies_cli_dialect_overrides_in_worker(name, capsys) -> None:
+    import esolangs
+    from scripts import benchmark
+
+    language = esolangs.Language(name)
+    program = language.generate("0110", settings=language.settings(rotation="forward"))
+    assert (
+        benchmark.main(
+            [
+                name,
+                "0110",
+                "--all-rows",
+                "--repeat",
+                "1",
+                "-s",
+                '{"rotation":"backward"}',
+                "--set",
+                "rotation=forward",
+            ]
+        )
+        == 0
+    )
+    record = json.loads(capsys.readouterr().out)
+    assert record["settings"] == {"rotation": "forward"}
+    assert (
+        record["provenance"]["generated_record_sha256"]
+        == benchmark.artifact_digests(program)[1]
+    )
+    assert "".join(row["actual_answer"] for row in record["executions"]) == "0110"
+
+
+@pytest.mark.parametrize(
     "language",
     one_where(
         lambda facts: LANGUAGES[facts.name].runtime.capabilities.supports_scale,

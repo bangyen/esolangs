@@ -57,6 +57,22 @@ def test_identity_projection_reuses_the_table() -> None:
     assert read_at(table, [0, 0, 2], 3) == "00111111"
 
 
+def test_contiguous_projection_holds_omitted_bits_at_zero() -> None:
+    from esolangs.generation.helpers import read_at
+
+    n = 7
+    table = format(int("ab3260f7e391c45376b018f5c438b2d9", 16), "0128b")
+    for inputs in ([0, 1, 2], [2, 3, 4], [4, 5, 6]):
+        rows = (
+            sum(
+                bit << (n - 1 - index)
+                for bit, index in zip(row_bits(row, 3), inputs, strict=True)
+            )
+            for row in range(8)
+        )
+        assert read_at(table, inputs, n) == "".join(table[row] for row in rows)
+
+
 def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """``perm`` reaches the emission in exactly one place, and it shows."""
     from itertools import permutations

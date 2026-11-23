@@ -97,6 +97,14 @@ class ConstructionBoundary:
     witnesses: tuple[TableWitness, ...]
     benchmark: bool
     test: str | None
+    width: int | None = None
+    balance: bool = False
+
+    def generation_options(self) -> dict[str, int | bool]:
+        """Return the layout request for each witness in this construction."""
+        if self.width is not None:
+            return {"width": self.width}
+        return {"balance": True} if self.balance else {}
 
 
 def construction_boundaries(
@@ -123,12 +131,26 @@ def construction_records(language: str) -> dict[str, ConstructionBoundary]:
         if (
             not label.isidentifier()
             or not isinstance(record, dict)
-            or set(record) - {"test"} != {"tables", "benchmark"}
+            or set(record) - {"test", "width", "balance"} != {"tables", "benchmark"}
             or type(record["benchmark"]) is not bool
             or not isinstance(record["tables"], list)
             or not record["tables"]
         ):
             raise ValueError(f"{path}: invalid construction boundary {label!r}")
+        width = record.get("width")
+        balance = record.get("balance", False)
+        if (
+            ("width" in record and (type(width) is not int or width < 1))
+            or type(balance) is not bool
+            or (width is not None and balance)
+        ):
+            raise ValueError(
+                f"{path}: invalid layout for construction boundary {label!r}"
+            )
+        if record["benchmark"] and (width is not None or balance):
+            raise ValueError(
+                f"{path}: size baselines use default layouts for {label!r}"
+            )
         test = (
             _owned_boundary_test(path, label, record.get("test"))
             if "test" in record or not record["benchmark"]
@@ -145,7 +167,9 @@ def construction_records(language: str) -> dict[str, ConstructionBoundary]:
             witnesses.append(witness)
         if record["benchmark"]:
             measured.update(witnesses)
-        found[label] = ConstructionBoundary(tuple(witnesses), record["benchmark"], test)
+        found[label] = ConstructionBoundary(
+            tuple(witnesses), record["benchmark"], test, width=width, balance=balance
+        )
     return found
 
 

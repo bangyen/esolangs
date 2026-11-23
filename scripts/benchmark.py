@@ -47,6 +47,7 @@ from verify.process import (
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.artifacts import Artifact
+from esolangs.cli.args import _settings_arguments, _settings_of
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._certification import load as load_certification
@@ -56,6 +57,7 @@ from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._validate import check_timeout
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
+from esolangs.settings import dialect_options
 from esolangs.vm import (
     SnapshotVM,
     _capture_workspace,
@@ -592,6 +594,7 @@ def _measure(
     width: int | None = None,
     balance: bool = False,
     scale: int | None = None,
+    settings: esolangs.DialectSettings | None = None,
     _progress: Callable[[str], None] | None = None,
     _on_row: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
@@ -615,7 +618,12 @@ def _measure(
     for _ in range(repeat):
         started = time.perf_counter_ns()
         program = esolangs.generate(
-            language, table, width=width, balance=balance, scale=scale
+            language,
+            table,
+            width=width,
+            balance=balance,
+            scale=scale,
+            settings=settings,
         )
         source_units(program.source)
         timings.append(time.perf_counter_ns() - started)
@@ -683,6 +691,7 @@ def _measure(
         "source_utf8_bits": _utf8_bits(source),
         "raster": raster,
         "generation_options": {"width": width, "balance": balance, "scale": scale},
+        "settings": None if program.settings is None else program.settings.options(),
         "generation_ns_first": timings[0],
         "generation_ns_best": min(timings),
         "generation_ns_median": int(statistics.median(timings)),
@@ -714,10 +723,12 @@ def measure(
     width: int | None = None,
     balance: bool = False,
     scale: int | None = None,
+    settings: esolangs.DialectSettings | None = None,
 ) -> dict[str, Any]:
     """Bound generation and each execution row in a reusable supervised worker."""
     check_timeout(timeout)
     check_timeout(generation_timeout)
+    choices = None if settings is None else dialect_options(language, settings)
     identity = _EVIDENCE.get() or source_identity()
     worker = _WORKER.get() or Worker()
     arguments = {
@@ -733,6 +744,7 @@ def measure(
         "width": width,
         "balance": balance,
         "scale": scale,
+        "settings": choices,
     }
     try:
         result = worker.measure(arguments, identity, generation_timeout)
@@ -770,6 +782,15 @@ def main(argv: list[str] | None = None) -> int:
     layout.add_argument("--balance", action="store_true", help="balance the layout")
     parser.add_argument("--scale", type=int, help="replicate raster pixels")
     parser.add_argument(
+        "-s", "--settings", action="append", help="dialect overrides as JSON"
+    )
+    parser.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        help="repeatable dialect KEY=VALUE override",
+    )
+    parser.add_argument(
         "--track-store",
         action="store_true",
         help="sample stores; languages with a payload split report integers too",
@@ -782,6 +803,14 @@ def main(argv: list[str] | None = None) -> int:
         args.language = resolve(args.language)
     except ValueError as exc:
         parser.error(str(exc))
+    options: dict[str, str] = {}
+    if args.settings:
+        if len(args.settings) != 1:
+            parser.error("--settings may appear only once")
+        options["--settings"] = args.settings[0]
+    settings = _settings_of(
+        _settings_arguments(options, args.set), language=args.language
+    )
     table = args.truth_table
     if table == "-":
         from esolangs.cli.io import _read_stdin
@@ -811,6 +840,7 @@ def main(argv: list[str] | None = None) -> int:
             width=args.width,
             balance=args.balance,
             scale=args.scale,
+            settings=settings,
         )
     except esolangs.ArgumentError as exc:
         parser.error(str(exc))
@@ -1118,6 +1148,10 @@ def _worker_main() -> None:
             arguments = request["arguments"]
             timeout = arguments["timeout"]
             arguments["timeout"] = None
+            if (choices := arguments.get("settings")) is not None:
+                arguments["settings"] = esolangs.Language(
+                    arguments["language"]
+                ).settings(**choices)
             with contextlib.redirect_stdout(sys.stderr):
                 result = _measure(
                     **arguments,

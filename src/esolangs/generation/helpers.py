@@ -367,6 +367,12 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
         and all(slot == original for slot, original in enumerate(inputs))
     ):
         return truth_table
+    if inputs and len(inputs) < n and all(b == a + 1 for a, b in pairwise(inputs)):
+        # With the omitted bits held at zero, contiguous slots are a stride.
+        stride = 1 << (n - 1 - inputs[-1])
+        last = ((1 << len(inputs)) - 1) * stride
+        if last < len(truth_table):
+            return truth_table[: last + 1 : stride]
 
     # The row indices are built by doubling rather than by re-scattering
     # each row's bits: slot ``k`` is the next-most-significant bit, so
