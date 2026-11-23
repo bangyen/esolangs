@@ -22,7 +22,7 @@ class TestSuffolk:
         for n in (8, 9, 10):
             table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(2**n))
             sizes.append(len(boolean.suffolk(table)))
-        assert sizes == [1612, 2447, 2920]
+        assert sizes == [1829, 2837, 3570]
         assert sizes[2] < 2 * sizes[1]
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
@@ -33,7 +33,7 @@ class TestSuffolk:
 
         for n in range(1, 13):
             for bit in "01":
-                length = 2 * n + 51 + int(bit)
+                length = 2 * n + 158 + 3 * int(bit)
                 for options in ({}, {"width": 1}, {"balance": True}):
                     program = esolangs.generate(
                         "Suffolk", bit * (1 << n), **options
@@ -49,16 +49,16 @@ class TestSuffolk:
                         io = ReadFirstIO(stdin, expected=n)
                         machine = _Machine("".join(program.split()), io)
                         written = WrittenState(machine.workspace_snapshot())
-                        for _ in range(length + 1):
+                        for _ in range(length + (7 if n == 1 else 2)):
                             machine.step()
                             written.sample(machine.workspace_snapshot())
                         assert machine.halted
                         assert io.getvalue() == bit
                         assert (
                             written.bits
-                            == 13 + (length - 1).bit_length() + n.bit_length()
+                            == 15 + (length - 1).bit_length() + n.bit_length()
                         )
-        assert sum(len(boolean.suffolk(f"{v:08b}")) for v in range(256)) == 121196
+        assert sum(len(boolean.suffolk(f"{v:08b}")) for v in range(256)) == 174_297
 
     def test_size_tracks_steps_rather_than_ones(self) -> None:
         """Cost is one op per *step* of a half-table, not per one-row."""
@@ -89,6 +89,25 @@ class TestSuffolk:
             bits = row_bits(combo, n)
             got = run_suffolk(program, [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
+
+
+@pytest.mark.parametrize("table", ["00", "1111", "0001", "01101001"])
+def test_eof_continuation_only_prints_complete_records(table: str) -> None:
+    from esolangs.languages.suffolk.interpreter import _Machine
+
+    n = len(table).bit_length() - 1
+    source = boolean.suffolk(table)
+    rows = (len(table) - 1, 0, 1)
+    io = ScriptedIO("".join(f"{row:0{n}b}" for row in rows) + "1" * (n - 1))
+    machine = _Machine(source, io)
+    for _ in range(len(source) * 6):
+        machine.step()
+        # The published machine clears its accumulator at EOF and reruns.
+        # The scripted runner also stops there. Allow each pass to continue.
+        if machine.halted:
+            machine._exhausted = False
+    assert io.past_end > 1
+    assert io.getvalue() == "".join(table[row] for row in rows)
 
 
 def _check_stored_input_records() -> None:

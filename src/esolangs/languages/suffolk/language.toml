@@ -10,17 +10,17 @@ admitted = 2020-07-13T01:25:59-04:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "workspace-limited NOR cofactors share computed values; fallback stores inputs through n=10 and uses the original countdown beyond"
+qualification = "workspace-limited NOR cofactors share computed values; fallback stores inputs through n=10 and uses a countdown beyond; a flag from the last byte suppresses incomplete records"
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 548, "1" = 548, "2" = 548, "3" = 548, "4" = 548, "5" = 548, "6" = 548, "7" = 548 }, source_units = 489 }
-"00001100" = { commands_by_row = { "0" = 399, "1" = 399, "2" = 399, "3" = 399, "4" = 399, "5" = 399, "6" = 399, "7" = 399 }, source_units = 340 }
-"00110110" = { commands_by_row = { "0" = 550, "1" = 550, "2" = 550, "3" = 550, "4" = 550, "5" = 550, "6" = 550, "7" = 550 }, source_units = 499 }
-"0110" = { commands_by_row = { "0" = 464, "1" = 464, "2" = 464, "3" = 464 }, source_units = 405 }
-"01101001" = { commands_by_row = { "0" = 562, "1" = 562, "2" = 562, "3" = 562, "4" = 562, "5" = 562, "6" = 562, "7" = 562 }, source_units = 511 }
-"0110100110010110" = { commands_by_row = { "0" = 676, "1" = 676, "2" = 676, "3" = 676, "4" = 676, "5" = 676, "6" = 676, "7" = 676, "8" = 676, "9" = 676, "10" = 676, "11" = 676, "12" = 676, "13" = 676, "14" = 676, "15" = 676 }, source_units = 625 }
-"1101001101101101" = { commands_by_row = { "0" = 676, "1" = 676, "2" = 676, "3" = 676, "4" = 676, "5" = 676, "6" = 676, "7" = 676, "8" = 676, "9" = 676, "10" = 676, "11" = 676, "12" = 676, "13" = 676, "14" = 676, "15" = 676 }, source_units = 625 }
-"11111110" = { commands_by_row = { "0" = 550, "1" = 550, "2" = 550, "3" = 550, "4" = 550, "5" = 550, "6" = 550, "7" = 550 }, source_units = 491 }
+"00000001" = { commands_by_row = { "0" = 736, "1" = 736, "2" = 736, "3" = 736, "4" = 736, "5" = 736, "6" = 736, "7" = 736 }, source_units = 685 }
+"00001100" = { commands_by_row = { "0" = 663, "1" = 663, "2" = 663, "3" = 663, "4" = 663, "5" = 663, "6" = 663, "7" = 663 }, source_units = 612 }
+"00110110" = { commands_by_row = { "0" = 745, "1" = 745, "2" = 745, "3" = 745, "4" = 745, "5" = 745, "6" = 745, "7" = 745 }, source_units = 694 }
+"0110" = { commands_by_row = { "0" = 676, "1" = 676, "2" = 676, "3" = 676 }, source_units = 625 }
+"01101001" = { commands_by_row = { "0" = 757, "1" = 757, "2" = 757, "3" = 757, "4" = 757, "5" = 757, "6" = 757, "7" = 757 }, source_units = 706 }
+"0110100110010110" = { commands_by_row = { "0" = 871, "1" = 871, "2" = 871, "3" = 871, "4" = 871, "5" = 871, "6" = 871, "7" = 871, "8" = 871, "9" = 871, "10" = 871, "11" = 871, "12" = 871, "13" = 871, "14" = 871, "15" = 871 }, source_units = 820 }
+"1101001101101101" = { commands_by_row = { "0" = 871, "1" = 871, "2" = 871, "3" = 871, "4" = 871, "5" = 871, "6" = 871, "7" = 871, "8" = 871, "9" = 871, "10" = 871, "11" = 871, "12" = 871, "13" = 871, "14" = 871, "15" = 871 }, source_units = 820 }
+"11111110" = { commands_by_row = { "0" = 743, "1" = 743, "2" = 743, "3" = 743, "4" = 743, "5" = 743, "6" = 743, "7" = 743 }, source_units = 692 }
 
 [ablations]
 archive_refs = [
@@ -59,7 +59,7 @@ version = 1
 [[evidence.anchors]]
 arity = 10
 rule = "and"
-size = 1910
+size = 2476
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.suffolk.generator:suffolk_request"
@@ -67,7 +67,7 @@ construction = "esolangs.languages.suffolk.generator:suffolk_request"
 [[evidence.anchors]]
 arity = 10
 rule = "majority"
-size = 5933
+size = 6184
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.suffolk.generator:suffolk_request"
@@ -76,7 +76,7 @@ construction = "esolangs.languages.suffolk.generator:suffolk_request"
 arity = 10
 rule = "random"
 seed = 1847
-size = 7405
+size = 7656
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.suffolk.generator:suffolk_request"
@@ -98,8 +98,8 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 [resource_evidence.workspace]
 # Old sweep envelope plus binary storage and its pointer growth.
 cases = [
-    { through = 10, expression = "bl(L-1)+max(6,n-1)+max(19,4n-1)+bl(n)+7+max(0,n-6)+bl(max(7,n+1))" },
-    { expression = "bl(L-1)+max(6,n-1)+max(19,4n-1)+bl(n)+4" },
+    { through = 10, expression = "bl(L-1)+max(6,n-1)+max(19,4n-1)+bl(n)+7+max(0,n-6)+bl(max(7,n+1))+8+bl(max(19,4n-1))" },
+    { expression = "bl(L-1)+max(6,n-1)+max(19,4n-1)+bl(n)+12+bl(max(19,4n-1))" },
 ]
 exact = false
 arities = [3, 5, 6]
@@ -125,17 +125,19 @@ description = { growth = "poly n", claim = "at most", template = "{claim} {formu
 # L* - 8.  The next sweeps (two skips in the first half, one in the second,
 # or three in the first) have 3n - 5 nodes against a limit under 3n - 8 -
 # bl(n), so they ship L* - 9, the worst.
+# The EOF flag adds at most 62s+77 characters to either old route at
+# scratch index s. The DAG ledger gives s <= max(17,4n-3).
 cases = [
-    { through = 6, expression = "9T+52n+289+(2n²-max(2,n)(max(2,n)+1))/2" },
-    { through = 10, expression = "289T/32+n²+56n+241" },
-    { through = 12, expression = "(17T+316n+482)/2+37" },
-    { expression = "(17T+316n+482)/2+29" },
+    { through = 6, expression = "9T+52n+289+(2n²-max(2,n)(max(2,n)+1))/2+62max(17,4n-3)+77" },
+    { through = 10, expression = "289T/32+n²+56n+241+62max(17,4n-3)+77" },
+    { through = 12, expression = "(17T+316n+482)/2+37+62max(17,4n-3)+77" },
+    { expression = "(17T+316n+482)/2+29+62max(17,4n-3)+77" },
 ]
-exact = true
+exact = false
 arities = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 first = 4
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1

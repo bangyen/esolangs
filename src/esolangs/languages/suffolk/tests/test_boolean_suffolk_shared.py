@@ -1,4 +1,4 @@
-"""Native NOR circuits, repeated cofactors, and the unchanged Suffolk ledgers."""
+"""Native NOR circuits, repeated cofactors, and the Suffolk resource bounds."""
 
 import random
 
@@ -28,14 +28,14 @@ def _execute(table, program, rows):
     n = len(table).bit_length() - 1
     from scripts.docs.resource_evidence import resource_bounds
 
-    workspace = resource_bounds("Suffolk")["workspace"].formula
-    cap = workspace(n, program)
-    peak = 0
+    bounds = resource_bounds("Suffolk")
+    cap = bounds["workspace"].formula(n, program)
+    commands = bounds["execution"].formula(n, program)
     for row in rows:
         machine = _Machine(program, ScriptedIO(f"{row:0{n}b}"))
         written = WrittenState(machine.workspace_snapshot())
         steps = 0
-        while not machine.halted and steps <= len(program) + 151:
+        while not machine.halted and steps <= commands:
             machine.step()
             written.sample(machine.workspace_snapshot())
             steps += 1
@@ -43,8 +43,7 @@ def _execute(table, program, rows):
         assert machine.io.getvalue() == table[row]
         assert machine.io.progress() == n
         assert written.bits <= cap
-        peak = max(peak, steps)
-    assert peak <= len(program) + 151
+        assert steps == commands
 
 
 def _witness_rows(n):
@@ -60,10 +59,11 @@ def _witness_rows(n):
 @pytest.mark.parametrize("n", [9, 10])
 def test_changed_scaling_controls_execute_witness_rows(n) -> None:
     table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(1 << n))
-    old, new = _suffolk_lookup(table), boolean.suffolk(table)
-    assert len(new) < len(old)
-    _execute(table, old, _witness_rows(n))
-    _execute(table, new, _witness_rows(n))
+    sweep, shared = _suffolk_lookup(table), boolean.shared_dag(table, n)
+    assert shared is not None
+    assert boolean.suffolk(table) == min(sweep, shared, key=len)
+    for program in (sweep, shared):
+        _execute(table, program, _witness_rows(n))
 
 
 @pytest.mark.medium
@@ -73,7 +73,7 @@ def test_shared_parity_executes_both_ignored_input_fills(start) -> None:
     table = core * 256
     program = boolean.shared_dag(table, 16)
     assert program is not None
-    assert len(program) == 2461
+    assert len(program) == 3072
     assert boolean.suffolk(table) == program
     rows = [fill << 8 | row for fill in (0, 255) for row in range(start, start + 32)]
     _execute(table, program, rows)
@@ -111,5 +111,5 @@ def test_dag_at_the_pointer_bit_boundary_stays_shared() -> None:
         for row in range(1 << 10)
     )
     program = boolean.suffolk(table)
-    assert len(program) == 3060
+    assert len(program) == 3731
     _execute(table, program, _witness_rows(10)[:8])

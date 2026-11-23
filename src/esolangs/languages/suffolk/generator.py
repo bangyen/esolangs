@@ -3,13 +3,13 @@
 Returns the shorter of two programs over the essential inputs: a mux DAG of
 NOR gates sharing equal cofactors (admitted only when it fits the workspace
 ledger), and a countdown sweep that counts the table's steps up and down.
-Either prints the answer from the accumulator after reading to exhaustion.
+Each pass reads one record and prints only when the whole record arrived.
 
 Size:
     DAG route O(T) (nodes limited to O(n), rendering O(n**2)); sweep route
-    O(T).  n=10 and: 1,910 chars, n=10 majority: 5,933 chars, n=10 random
-    1847: 7,405 chars. Constants: L=2n+51+b chars, L+1 commands,
-    13+bl(L-1)+bl(n) written bits, b the answer.
+    O(T).  n=10 and: 2,476 chars, n=10 majority: 6,184 chars, n=10 random
+    1847: 7,656 chars. Constants: L=2n+158+3b chars, L+2 commands (L+7 at n=1),
+    15+bl(L-1)+bl(n) written bits, b the answer.
 """
 
 from typing import NamedTuple
@@ -52,6 +52,42 @@ def _one(cell: int) -> str:
     return _read(cell) + _write(cell)
 
 
+def _set(cell: int, value: int) -> str:
+    """Set a cell to a positive constant and clear the accumulator."""
+    return _one(cell) + _write(cell) * (value - 1)
+
+
+def _read_byte(cell: int, *, check_at: int | None = None, used: bool = True) -> str:
+    """Read an input, recording EOF on the last byte."""
+    code = ">" * cell + ",!"
+    if check_at is None:
+        return code
+    if not used:
+        # A discarded bit need not touch its original scratch cell, which
+        # the caller resets before reusing. Test it against a cleared cell.
+        clear = _one(check_at) + _read(check_at) * 2 + _write(check_at)
+        return clear + ">" * check_at + ",!"
+    # The destination started at 48, so it holds 0/1 for an ASCII bit and
+    # 49 on EOF. Clamp 2 minus that value and negate the valid flag.
+    tmp = check_at + 1
+    return code + _one(tmp) + _read(cell) + _write(tmp) + _nor(check_at, tmp)
+
+
+def _checked_output(check_at: int, mask_cell: int, *parts: tuple[int, int]) -> str:
+    """Print the parts' sum minus one, suppressing output on an incomplete row."""
+    one = check_at + 1
+    # Each write keeps its old value on a valid row (subtracting one),
+    # or clears it on EOF (subtracting one plus its maximum value).
+    # The flag is read fifty times. Copy it to the spent low scratch cell
+    # so the output tail does not have to cross the whole circuit for each.
+    copy = _nor(one, check_at) + _nor(mask_cell, one) + _one(one)
+    mask = [
+        _read(one) + _read(mask_cell) * maximum + _write(cell)
+        for cell, maximum in parts
+    ]
+    return copy + "".join(mask) + "".join(_read(cell) for cell, _ in parts) + "."
+
+
 def suffolk(truth_table: str) -> str:
     """Return the smaller of the countdown-sweep and shared-NOR-DAG programs.
 
@@ -77,8 +113,12 @@ def _lookup(truth_table: str, n: int) -> str:
     in half and each half gets its own pair of counters, halving the sweep.
     """
     if (constant := constant_output(truth_table)) is not None:
-        # Reads clamp cell zero to zero; reuse it for the ASCII answer.
-        return ",!" * n + "!" * (_ASCII_ONE + int(constant)) + "<."
+        # Reset the flag before the last read so its write gives zero on
+        # an ASCII bit and one on EOF, even after a partial prefix.
+        flag = _one(0) + _read(0) * 2 + _write(0)
+        reads = "!" + ",!" * (n - 1) + flag + ",!"
+        answer = _ASCII_ONE + int(constant)
+        return reads + _set(1, answer - 1) + "<" * answer + _write(1) + _read(1) + "."
 
     used = essential_inputs(truth_table, n)
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
@@ -87,19 +127,21 @@ def _lookup(truth_table: str, n: int) -> str:
     # Each half's (falling, rising) step counters, in table order.
     (falls0, rises0), (falls1, rises1) = _COUNTS
 
+    check_at = 8 if n >= 11 else max(8, n + 2)
     # [ablations.inputs_first_20261102]: storage loses source from n=11.
     if n >= 11:
         out = [_write(_DOWN) + _one(_DOWN)]  # Reset after a previous print.
 
         for i in range(n):
+            check = check_at if i == n - 1 else None
             if i not in used:
                 # Drain an ignored byte; stale counters are canceled below.
-                out.append(">" * rises0 + ",!")
+                out.append(_read_byte(rises0, check_at=check, used=False))
                 continue
             # Reading adds the byte to the accumulator, so a cell holding 48
             # comes back holding the *negated* bit.
             out.append(_one(falls0) + _write(falls0) * (_ASCII_ZERO - 1))
-            out.append(">" * falls0 + ",!")
+            out.append(_read_byte(falls0, check_at=check))
             input_position = used.index(i)
             if input_position > 0:
                 out.append(_read(_TWO) + _read(falls0) + _write(_TWO))
@@ -124,11 +166,16 @@ def _lookup(truth_table: str, n: int) -> str:
         }
         out = [_write(0)]
         for i in range(n):
+            check = check_at if i == n - 1 else None
             if i not in used:
-                out.append(",!")
+                out.append(_read_byte(0, check_at=check, used=False))
             else:
                 # Cancel old storage: a repeated record must overwrite its bit.
-                out.append(_one(0) + _write(0) * (_ASCII_ZERO - 1) + ",!")
+                out.append(
+                    _one(0)
+                    + _write(0) * (_ASCII_ZERO - 1)
+                    + _read_byte(0, check_at=check)
+                )
                 out.append(_read(slots[i]) + _read(0) + _write(slots[i]))
         out.append(_one(0))
         for j, i in enumerate(used):
@@ -168,7 +215,9 @@ def _lookup(truth_table: str, n: int) -> str:
     out.append(_read(_NEGATED) * 2 + _write(rises1))
     out.append(_one(falls0) + _read(rises0) + _read(rises1))
     out.append(_write(falls0) + _write(_TWO) * (_ASCII_ZERO - 2))
-    return "".join(out) + _read(_TWO) + _read(falls0) + "."
+    return "".join(out) + _checked_output(
+        check_at, _DOWN, (_TWO, _ASCII_ZERO), (falls0, 2)
+    )
 
 
 #: The DAG route's cells: 0-2 are scratch, then the shared zero and one
@@ -227,15 +276,20 @@ def shared_dag(table: str, inputs: int) -> str | None:
         return None
     # The ledger limits nodes to O(n): rendering costs O(n²), hence O(T).
     # Initial ! clears the previous print's accumulator on a repeated pass.
-    # The first read is within 59 commands, preserving the L+151 EOF bound.
     out = [_write(0), _one(_ZERO_CELL)]
     positions = {original: i for i, original in enumerate(used)}
+    check_at = _FIRST_INPUT_CELL + count + len(nodes)
     for original in range(inputs):
+        check = check_at if original == inputs - 1 else None
         position = positions.get(original)
         if position is None:
-            out.append(",!")
+            out.append(_read_byte(0, check_at=check, used=False))
         else:
-            out.append(_one(0) + _write(0) * _ASCII_OFFSET_WRITES + ",!")
+            out.append(
+                _one(0)
+                + _write(0) * _ASCII_OFFSET_WRITES
+                + _read_byte(0, check_at=check)
+            )
             out.append(_nor(1, 0) + _nor(_FIRST_INPUT_CELL + position, 1))
     for depth, zero, one, target in nodes:
         # For complemented children g0/g1, complement of the mux is
@@ -250,10 +304,7 @@ def shared_dag(table: str, inputs: int) -> str | None:
         _nor(1, slots[ids[0][0]])
         + _one(0)
         + _write(0) * _ASCII_OFFSET_WRITES
-        + _read(0)
-        + _read(_ZERO_CELL)
-        + _read(1)
-        + "."
+        + _checked_output(check_at, 2, (0, _ASCII_ZERO), (_ZERO_CELL, 1), (1, 1))
     )
     return "".join(out)
 
