@@ -55,7 +55,6 @@
   "hq9_with_headers": "linear: at most one table literal, one read command per input",
   "inject": "linear: worst T+71n+29+2R+3(max(0,n-49)+max(0,n-2753)+max(0,n-143361))+2(max(0,3n-49)+max(0,3n-2753)+max(0,3n-143361)) characters past n = 4",
   "intercal": "linear: at most 24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4\u230a(n+7)/5\u230b+13 (n=1..15), 5(24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4\u230a(n+7)/5\u230b+13)+\u2308(T+2n-65535)/(1+isqrt(T+2n-65536))\u2309(14+digits((1+isqrt(T+2n-65536))))+digits_sum(\u2308(T+2n-65535)/(1+isqrt(T+2n-65536))\u2309+1)-1 (n\u226516) characters: scalar or spilled",
-  "interprogck8": "linear: worst characters, n=3..10; ceiling beyond: cluster and flight layout costs",
   "kiss": "linear: worst 7T-5 characters: 5 a node, 2 a leaf",
   "laserfuck": "linear: worst max(T,3)(12n+32) (n=1..6), 3(11T+52n+3) (n\u22657) cells; tree then lookup",
   "line": "linear: at most pixels from n=6: Pareto boxes over projected input sets",
@@ -109,6 +108,5 @@
   "underload": "linear: at most 153 (n=4), 5n+31T/4-3 (n\u22655) characters: 241 a five-input half",
   "unlambda": "linear: at most 169T/8 - 21 characters past n = 3: pre-shortcut composition",
   "unsquare": "linear: worst T+T/2^max(0,\u230a(n-3)/2\u230b)+16\u00b72^max(0,\u230a(n-3)/2\u230b)+10(n-max(0,\u230a(n-3)/2\u230b))+10 characters",
-  "what": "T log T: worst 7(T-1)+digits_sum(T)+7n (n=1..15), 2^(n-15)(7(2^15-1)+digits_sum(2^15)+22+n-15)+164+3(n-15) (n\u226516) characters: decimal row addresses and high-block labels",
   "whitespace": "linear: worst 65 (n=1), T+4n+70 (n\u22652) characters, one literal and shared step"
 }

@@ -61,7 +61,6 @@ HQ9+,no,owned-adapter,hq9-v1
 HQ9+ with headers,yes,owned-adapter,hq9-with-headers-v1
 Inject,yes,owned-adapter,inject-v1
 INTERCAL,yes,owned-adapter,intercal-v1
-Interprogck8,yes,owned-adapter,interprogck8-v1
 Kiss,yes,owned-adapter,kiss-v1
 LaserFuck,yes,owned-adapter,laserfuck-v2
 Line,yes,owned-adapter,line-v1
@@ -112,5 +111,4 @@ Unary,yes,inherited-adapter,brainfuck-v1
 Underload,yes,owned-adapter,underload-v1
 Unlambda,yes,owned-adapter,unlambda-v1
 Unsquare,yes,owned-adapter,unsquare-v1
-What!?,yes,owned-adapter,what-v1
 Whitespace,yes,owned-adapter,whitespace-v1

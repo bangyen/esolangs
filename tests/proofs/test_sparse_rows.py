@@ -1,8 +1,7 @@
 """Named-row evidence for exact cells the all-row suites cannot reach.
 
 The execution and workspace suites step every row of every corpus table,
-paying one parse a row; where that price explodes (What!? at n = 16
-would spend ~14 hours parsing alone) their registrations stop, while
+paying one parse a row; where that price explodes, registrations stop while
 the clauses run to every n.  These suites step a fixed set of named rows
 of each witness table instead, one fresh VM a row: every stepped row
 must answer its table bit and stay under the bound, the witness row

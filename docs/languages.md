@@ -114,7 +114,6 @@ Languages that operate on a tape (similar to Turing machines).
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](../src/esolangs/languages/s_bleq/interpreter.py))
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](../src/esolangs/languages/slow_acv_mammalian/interpreter.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](../src/esolangs/languages/suffolk/interpreter.py))
-- [What!?](https://esolangs.org/wiki/What!%3F) ([code](../src/esolangs/languages/what/interpreter.py))
 - [bit~](https://esolangs.org/wiki/bit~) ([code](../src/esolangs/languages/bit_tilde/interpreter.py))
 - [oBrainfuck](https://esolangs.org/wiki/oBrainfuck) ([code](../src/esolangs/languages/obrainfuck/interpreter.py))
 
@@ -126,7 +125,6 @@ Languages that use registers to store and manipulate data.
 - [Blindfolded Arithmetic](https://esolangs.org/wiki/Blindfolded_Arithmetic) ([code](../src/esolangs/languages/blindfolded_arithmetic/interpreter.py))
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse) ([code](../src/esolangs/languages/collatz_multiverse/interpreter.py))
 - [Decleq](https://esolangs.org/wiki/Decleq) ([code](../src/esolangs/languages/decleq/interpreter.py))
-- [Interprogck8](https://esolangs.org/wiki/Interprogck8) ([code](../src/esolangs/languages/interprogck8/interpreter.py))
 - [REFRACTRAN](https://esolangs.org/wiki/REFRACTRAN) ([code](../src/esolangs/languages/refractran/interpreter.py))
 - [Rubic](https://esolangs.org/wiki/Rubic) ([code](../src/esolangs/languages/rubic/interpreter.py))
 

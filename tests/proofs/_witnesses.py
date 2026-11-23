@@ -636,7 +636,6 @@ def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
 
 
 #: (language, n) whose witness build alone passes the fast band, to its band:
-#: Interprogck8's scaling test at 8 runs 0.87 s alone, its steps witness included;
 #: Back's n = 15 and 16 builds take 1.8 s and 3.8 s, n = 17 takes 9 s.
 #: Bleh's ten n = 18 tables take 1.7 s to generate between them, its
 #: ten n = 21 tables 9.4 s, its
@@ -649,11 +648,8 @@ def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
 #: packed witness alone generates in 2.1-28.7 s over the same range).
 #: They run weekly: 19 and 20 already reach the 7-digit chunks per push,
 #: and the chunk width is one rule; n = 25 took 221 s on CI.
-#: What!?'s scaling case at n = 22 runs 9.7 s alone (its corpus tables
-#: past 15 inputs are dominated by the two alternating builds); n = 21
-#: stays in the medium band at 4.8 s.
 #: A case above a language's first per-push arity only backs a ledger
-#: range, so it runs weekly: Back 17, Stisp 20, INTERCAL 18-24, What!? 22.
+#: range, so it runs weekly: Back 17, Stisp 20, INTERCAL 18-24.
 #: INTERCAL's scaling cases at n = 20..23 run 25 s, 47 s, 90 s and
 #: 151 s alone (corpus generations dominate; n = 24 checks the bound).
 #: INTERCAL at n = 14 and 15 measured 9.0 s and 10.8 s on CI (weekly
@@ -664,7 +660,6 @@ def band_marks(band: str | None, case: str) -> list[pytest.MarkDecorator]:
 #: a repeat overrun at that margin is the band, not a flake.
 _WITNESS_BAND = {
     ("Circuit Diagram", 11): "medium",
-    ("Interprogck8", 8): "medium",
     ("Back", 15): "medium",
     ("Back", 16): "medium",
     ("Back", 17): "weekly",
@@ -691,7 +686,6 @@ _WITNESS_BAND = {
     ("S*bleq", 23): "weekly",
     ("S*bleq", 24): "weekly",
     ("S*bleq", 25): "weekly",
-    ("What!?", 22): "weekly",
 }
 
 

@@ -76,7 +76,6 @@ don't edit by hand.
 | `hq9_with_headers/hq9-with-headers.txt` | HQ9+ with headers | `0001` | `01` | 0 1 | '0' |
 | `inject/inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `intercal/intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '_\n\n' |
-| `interprogck8/interprogck8.txt` | Interprogck8 | `0001` | `01` | 0 1 | '0' |
 | `kiss/kiss.txt` | Kiss | `0001` | `01` | 01 | '0' |
 | `laserfuck/laserfuck.txt` | LaserFuck | `0001` | `01` | 01 | '0' |
 | `line/line.png` | Line | `0001` | `01` | 0 1 | '0' |
@@ -128,7 +127,6 @@ don't edit by hand.
 | `underload/underload.txt` | Underload | `0001` | `01` | embedded 01 | '0' |
 | `unlambda/unlambda.txt` | Unlambda | `0001` | `01` | 01 | '0' |
 | `unsquare/unsquare.txt` | Unsquare | `0001` | `01` | 01 | '0' |
-| `what/what.txt` | What!? | `0001` | `01` | 0 1 | '0' |
 | `whitespace/whitespace.txt` | Whitespace | `0001` | `01` | 0 1 | '0' |
 
 ## Notes

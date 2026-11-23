@@ -174,7 +174,6 @@ These language-owned plans retain parsed source:
 - Retrograde: commands and paired braces.
 - Rubic: commands and paired loops.
 - SendStuff: expanded commands and their targets.
-- What!?: linked tokens.
 - ArrowQueue, Back and Balik: padded source grids.
 - Fish: initial codebox with per-run writes.
 - Super SNUSP, thisthat and LaserFuck: grid and entry points.
@@ -354,7 +353,6 @@ Build language-specific stdin for a generated Boolean program with
 | GridScript | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | HQ9+ with headers | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Inject | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
-| Interprogck8 | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Line | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Modulous | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Movesum | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
@@ -367,7 +365,6 @@ Build language-specific stdin for a generated Boolean program with
 | Thue | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Tubes | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Unary | `char_stream` | `\x00`/`ÿ` | `'ÿ\x00ÿ'` |
-| What!? | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Whitespace | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | artppeice | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 

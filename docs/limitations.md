@@ -280,12 +280,6 @@ measurements, witnesses and reopening conditions for the older audits.
   arity-only formulas give conservative ceilings.
 - S*bleq's source bound was attained at n=26–28 in one-off builds. The
   n=28 witness emitted 105,463,455 characters at 3.30 GB peak.
-- What!? built a witness to n=26. At n=22 it executed 8,519,845 steps
-  and used 587 written bits. The parser used 3.15 GB at n=22 and failed
-  at n=23. The current nonconstant construction needs one string of
-  length n-15, so its runtime rejects n>271.
-- Interprogck8 rejects n>40 at generation. Uncapped constructions for
-  Interprogck8 and What!? remain open.
 
 The Malbolge suite executes boundary rows at every arity, all rows at ten,
 and every 128th row at fifteen and sixteen in the weekly run.
@@ -294,7 +288,7 @@ and every 128th row at fifteen and sixteen in the weekly run.
 
 <!-- COLLECTION-SIZE:START -->
 
-The collection has 115 languages.
+The collection has 113 languages.
 
 <!-- COLLECTION-SIZE:END -->
 
@@ -423,7 +417,10 @@ admission. The archive gives those implementations and dates.
 
 Interprogck8 was removed when its generator was blocked on non-nesting
 capture. It returned with a `Theta(T log T)` lane build, then shared window
-rungs made the construction linear.
+rungs made the construction linear within its 40-input cap. It left
+again because that cap remained. What!? left because its nonconstant
+generator needs a string of length n-15, exceeding the runtime limit
+above 271 inputs. Both can return with an uncapped linear construction.
 
 ### Notes on individual languages
 
