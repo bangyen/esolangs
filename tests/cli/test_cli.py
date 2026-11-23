@@ -41,6 +41,33 @@ TEMPLATED = first(parameterized=True)
 TABLE3 = "01101001"
 
 
+def test_generate_reads_a_truth_table_from_stdin(capsys) -> None:
+    expected = call_both(["generate", "--width=4", REFERENCE, "0110"], capsys)
+    assert (
+        call_both(["generate", "--width=4", REFERENCE, "-"], capsys, " \t0110\r\n")
+        == expected
+    )
+    output, error = _failure(["generate", REFERENCE, "-"], capsys, stdin="01\n10")
+    assert output == ""
+    assert "truth table must contain only" in error
+
+
+@pytest.mark.medium
+def test_generate_from_stdin_bypasses_argument_size_limits(tmp_path) -> None:
+    inputs = 20
+    generated = run_cli("generate", REFERENCE, "-", stdin="0" * (1 << inputs) + "\n")
+    assert (generated.returncode, generated.stderr) == (0, "")
+    ran = run_cli(
+        "run",
+        "--max-steps",
+        "1000",
+        REFERENCE,
+        _program(tmp_path, generated.stdout),
+        stdin="0" * inputs,
+    )
+    assert (ran.returncode, ran.stdout, ran.stderr) == (0, "0", "")
+
+
 class TestInProcess:
     def test_generating_a_raster_writes_png_bytes(
         self, capsysbinary: pytest.CaptureFixture[bytes], tmp_path: Path

@@ -7,6 +7,7 @@ import gzip
 import importlib.util
 import io
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -232,14 +233,34 @@ def _smoke_install(package: Path) -> None:
     executable = Path(sys.executable).with_name(
         "esolangs.exe" if sys.platform == "win32" else "esolangs"
     )
-    entrypoint = subprocess.run(
-        [str(executable), "list"],
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=True,
+    _smoke_quickstart(executable)
+
+
+def _smoke_quickstart(executable: Path) -> None:
+    """Execute the README's Bash and compare its documented output."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    quickstart = readme.partition("\n## Try it\n")[2].partition("\n## ")[0]
+    example = re.search(
+        r"^```bash\n(.*?)^```\n\s*^```text\n(.*?)^```$",
+        quickstart,
+        re.MULTILINE | re.DOTALL,
     )
-    assert "brainfuck" in entrypoint.stdout
+    assert example is not None, "README quickstart needs Bash and output blocks"
+    script, expected = example.groups()
+    assert executable.is_file(), executable
+    path = os.pathsep.join((str(executable.parent), os.environ.get("PATH", "")))
+    with tempfile.TemporaryDirectory() as temporary:
+        result = subprocess.run(
+            ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
+            cwd=temporary,
+            env={**os.environ, "PATH": path},
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == expected, (result.stdout, expected)
 
 
 def _smoke_generators(package: Path, *, image_extra: bool) -> None:
@@ -273,7 +294,9 @@ def _smoke_files() -> None:
 
     with tempfile.TemporaryDirectory() as temporary:
         source = Path(temporary) / "xor.txt"
-        source.write_text(_cli(["generate", "brainfuck", "0110"]), encoding="utf-8")
+        source.write_text(
+            _cli(["generate", "brainfuck", "-"], "0110\n"), encoding="utf-8"
+        )
         for row in range(4):
             stdin = esolangs.encode_inputs("brainfuck", [row >> 1, row & 1])
             assert (

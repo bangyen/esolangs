@@ -182,9 +182,11 @@ Print a program in <language> computing <truth-table>.
 
 The table is a binary string of length 2**n indexed by the inputs, most
 significant first, so its length sets the input count: 0110 is two-input
-XOR, 10010110 is three-input.  How the program takes its inputs and
-prints the result depends on the language; `esolangs describe <language>`
-says (one input per line, adjacent bit characters, and so on).
+XOR, 10010110 is three-input.  Use - for <truth-table> to read it from
+stdin as UTF-8 through EOF, ignoring surrounding whitespace.
+
+`esolangs describe <language>` shows how the program takes inputs and
+prints the result.
 
 Some generators embed the inputs in source. They return a *template* with
 one placeholder run per input, as long as its replacement. Fill the template

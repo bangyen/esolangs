@@ -509,6 +509,11 @@ def _generate(rest: list[str]) -> None:
     try:
         declaration = catalog.languages[catalog.resolve(language)]
         settings = _settings_of(settings_arguments, language=language, catalog=catalog)
+        if table == "-" and declaration.has_backend:
+            table = _read_stdin(
+                hint="; finish the truth table or close stdin",
+                terminal_prompt="Enter a truth table, then signal EOF.\n",
+            ).strip()
         row = _generation_bits(declaration, table, bits, gzip=gzip)
         # Widthed at both ends, and that is not a mistake.  ``generate``
         # wraps the template (or hands the width to a *layout* language,

@@ -18,6 +18,10 @@ hides this using [`describe`](#describe) metadata.
 
 See each command’s `--help` for option details.
 
+To read a truth table from a file, run
+`esolangs generate brainfuck - < table.txt`. The `-` operand reads UTF-8
+from stdin through EOF and ignores surrounding whitespace.
+
 | Option | Commands | Does |
 | --- | --- | --- |
 | `--width [N]` | generate | wrap or lay out to N columns (default 80); what it does per language is `describe`'s `width_effect` |
