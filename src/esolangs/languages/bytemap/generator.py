@@ -190,8 +190,9 @@ def _tree(table: str, n: int) -> str:
             grid.put((r, c), _jump((r, c), relay))
             r, c = relay
             remaining -= _TREE_HOP
-        if remaining:
-            grid.put((r, c), _jump((r, c), target))
+        # The 48-cell pitch and entry offsets leave a nonzero last hop.
+        assert remaining > 0
+        grid.put((r, c), _jump((r, c), target))
 
     def vertical_entry(source: _Cell, r: int, c: int) -> None:
         # The read precedes the branch on its row. Approach it on the

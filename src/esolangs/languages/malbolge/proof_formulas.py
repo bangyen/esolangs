@@ -20,7 +20,12 @@ def _full_stub() -> int:
         layout = _full_layout(weight_fold=weight_fold)
         hubs = _hubs(layout)
         _, stubs = _hub_layout(
-            hubs, set(), _D_FLOOR, _stub_builds(hubs, layout.stubs), packed=True
+            hubs,
+            set(),
+            _D_FLOOR,
+            _stub_builds(hubs, layout.stubs),
+            packed=True,
+            claimed=set(),
         )
         start = 0
         for address, op in sorted(stubs.items()):

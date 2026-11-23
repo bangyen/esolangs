@@ -326,7 +326,7 @@ def _hub_layout(
     builds: list[_Build],
     *,
     packed: bool = False,
-    claimed: set[int] | None = None,
+    claimed: set[int],
 ) -> tuple[dict[int, int], dict[int, str]]:
     """Return the hubs' ``j`` characters and the stub code, by label's hubs.
 
@@ -352,8 +352,7 @@ def _hub_layout(
         raise AssertionError("a hub or stub collides")
     if min(reserved) < floor:
         raise AssertionError("a hub or stub sits below the floor")
-    if claimed is not None:
-        claimed.update(reserved)
+    claimed.update(reserved)
     return data, stubs
 
 

@@ -24,8 +24,16 @@ def check_navigation() -> None:
                 None,
             )
             assert index.first(start, floor, cap, None) == expected
-    walked: dict[int, int | None] = {a: _g(a) for a in range(ceiling)}
-    for start, target in ((190, 35), (40, 120), (225, 160), (150, 210)):
+    routes = (
+        (190, 35, _g),
+        (40, 120, _g),
+        (225, 160, _g),
+        (150, 210, _g),
+        # Zeroed cells provide no printable jump back, forcing the reset.
+        (190, 35, lambda _address: 0),
+    )
+    for start, target, value_at in routes:
+        walked: dict[int, int | None] = {a: value_at(a) for a in range(ceiling)}
         planner = _Planner(700, start, walked.copy(), {}, ceiling=ceiling)
         planner.goto(target)
         words = _program(planner.code) | planner.data

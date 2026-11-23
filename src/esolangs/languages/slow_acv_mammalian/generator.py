@@ -252,10 +252,11 @@ def _print_bank(st: _Sums, array: int, digit: int, target: int) -> list[str]:
     # the running sum locally so planting does not rescan the bank.
     while target - rest > 2 * maximum:
         append(_print_chunk_seeds(st.heads[array], step, rest, _MODULUS, st.io_modulus))
-    if target - rest > maximum:
-        exact(target - rest - maximum)
-    if target > rest:
-        exact(target - rest)
+    # The initial gap exceeds twice the byte limit. A bulk append adds
+    # at most one byte, so the remaining gap still exceeds that limit.
+    assert maximum < target - rest <= 2 * maximum
+    exact(target - rest - maximum)
+    exact(maximum)
     cells = st.cells[array]
     pad = len(cells) - 2
     assert pad >= 0
