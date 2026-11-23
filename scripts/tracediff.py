@@ -12,8 +12,9 @@ Baselines and mutants must expose the declared preparation hook.
 ``--speed`` also times both over the longest-running programs: a teaching
 rewrite once cost Deadfish a third of its step rate, unmeasured.
 
-Exits 1 on any difference, on a mutant that went unseen, or with ``--speed``
-on a new copy more than 10% slower (CONTRIBUTING.md's bar).
+Exits 1 on a difference, when no matching run halts cleanly or witnesses a
+declared nonterminating contract, on a mutant that went unseen, or with
+``--speed`` on a new copy more than 10% slower (CONTRIBUTING.md's bar).
 """
 
 from __future__ import annotations
@@ -35,7 +36,7 @@ from collections.abc import Mapping
 from contextlib import suppress
 from pathlib import Path
 from types import ModuleType
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 ROOT = Path(__file__).resolve().parent.parent
 # tests/ holds the suite samples; run as a script, only scripts/ is on the path.
@@ -273,6 +274,9 @@ def trace(
                             io.getvalue(),
                         )
                     )
+                elif len(events) == LIMIT:
+                    # At the last captured event, length alone is ambiguous.
+                    events[-1] = ("halted", *events[-1])
                 break
             machine.step()
     except Exception as error:
@@ -282,7 +286,10 @@ def trace(
 
 def _halts(events: list[Event]) -> bool:
     """Whether a trace ended by halting: no error, and inside the step limit."""
-    return events[-1][0] != "error" and len(events) < LIMIT
+    outcome = events[-1][0]
+    return outcome in ("dumped", "halted") or (
+        outcome != "error" and len(events) < LIMIT
+    )
 
 
 def _cap_digits(code: str, limit: int | None) -> str:
@@ -384,6 +391,78 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
     )
 
 
+type Difference = tuple[Program, int, Event | None, Event | None]
+
+
+class _Comparison(NamedTuple):
+    differences: list[Difference]
+    halting: int
+    witnessed: bool
+
+
+def _first_difference(
+    before: list[Event], after: list[Event]
+) -> tuple[int, Event | None, Event | None] | None:
+    if before == after:
+        return None
+    # Snapshots can contain instances of different copies of the same class.
+    # Compare by fields, keeping both traces alive so the memo's ids stay unique.
+    memo: dict[int, object] = {}
+    for step, (first, second) in enumerate(itertools.zip_longest(before, after)):
+        if first != second and (
+            first is None
+            or second is None
+            or _plain(first, memo) != _plain(second, memo)
+        ):
+            return step, first, second
+    return None
+
+
+def _repeated_snapshot(events: list[Event]) -> bool:
+    """Find an exact-state repeat on a fault-free bounded trace."""
+    if events[-1][0] == "error":
+        return False
+    seen: set[object] = set()
+    try:
+        for _, state, _ in events:
+            if state in seen:
+                return True
+            seen.add(state)
+    except TypeError:
+        return False  # An unhashable snapshot cannot supply a cycle witness.
+    return False
+
+
+def _compare(
+    old: ModuleType,
+    new: ModuleType,
+    programs: list[Program],
+    ignored: frozenset[str],
+    *,
+    runtime: RuntimeSpec,
+    allow_cycles: bool = False,
+) -> _Comparison:
+    """Collect differences and successful witnesses from the same traces."""
+    found = []
+    halting = 0
+    witnessed = False
+    for program in programs:
+        before = trace(old, program, ignored, runtime=runtime)
+        after = trace(new, program, ignored, runtime=runtime)
+        halted = _halts(after)
+        halting += halted
+        difference = _first_difference(before, after)
+        if difference is not None:
+            found.append((program, *difference))
+        elif not witnessed:
+            witnessed = halted or (
+                allow_cycles
+                and _repeated_snapshot(after)
+                and _repeated_snapshot(before)
+            )
+    return _Comparison(found, halting, witnessed)
+
+
 def differences(
     old: ModuleType,
     new: ModuleType,
@@ -391,28 +470,9 @@ def differences(
     ignored: frozenset[str] = frozenset(),
     *,
     runtime: RuntimeSpec,
-) -> list[tuple[Program, int, Event | None, Event | None]]:
+) -> list[Difference]:
     """Return each differing program with its first differing step."""
-    found = []
-    for program in programs:
-        before = trace(old, program, ignored, runtime=runtime)
-        after = trace(new, program, ignored, runtime=runtime)
-        if before == after:
-            continue
-        # A snapshot holding instances (Unlambda's terms and continuations,
-        # FALSE's frames) never equals its twin from the other module copy:
-        # __eq__ wants the same class object.  Such traces compare by fields.
-        # Event by event, so a real difference stops at its first step.
-        memo: dict[int, object] = {}  # both traces stay alive, so ids stay unique
-        for step, (first, second) in enumerate(itertools.zip_longest(before, after)):
-            if first != second and (
-                first is None
-                or second is None
-                or _plain(first, memo) != _plain(second, memo)
-            ):
-                found.append((program, step, first, second))
-                break
-    return found
+    return _compare(old, new, programs, ignored, runtime=runtime).differences
 
 
 def _lap(
@@ -489,17 +549,24 @@ def main(argv: list[str] | None = None) -> int:
     _preparation(old, runtime)
     _preparation(new, runtime)
     programs = corpus(name, args.random)
-    found = differences(old, new, programs, ignored, runtime=runtime)
+    allow_cycles = not runtime.random and (
+        runtime.capabilities.completion is Completion.PERIODIC
+        or LANGUAGES[name].contract.answer_mode == "termination"
+    )
+    found, halting, witnessed = _compare(
+        old, new, programs, ignored, runtime=runtime, allow_cycles=allow_cycles
+    )
     for (code, stdin), step, before, after in found[:3]:
         print(f"DIFF {code!r:.60} stdin={stdin[:20]!r} at step {step}")
         print(f"  {args.old}: {before!r:.300}")
         print(f"  new: {after!r:.300}")
-    # A diff over programs that all fail at once proves nothing: say so.
-    halting = sum(_halts(trace(new, p, ignored, runtime=runtime)) for p in programs)
     print(
         f"{name}: {len(programs)} programs ({halting} halt cleanly), "
         f"{len(found)} differ from {args.old}"
     )
+    if not witnessed:
+        print(f"{name}: no matching clean halt or declared cycle", file=sys.stderr)
+        return 1
     failed = bool(found)
     if args.speed:
         was, now = speeds(old, new, programs, runtime=runtime)

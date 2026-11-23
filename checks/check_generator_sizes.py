@@ -156,7 +156,8 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
                 f"{failed['execution_status']}, expected {failed['expected_answer']}, "
                 f"got {failed['actual_answer']}; reproduce with: uv run python "
                 f"scripts/benchmark.py {shlex.quote(record['language'])} "
-                f"{record['truth_table']} --row {failed.get('row')}"
+                f"{record['truth_table']} --row {failed.get('row')} "
+                f"--step-cap {STEP_CAP} --repeat {repeat}"
             )
     return records
 

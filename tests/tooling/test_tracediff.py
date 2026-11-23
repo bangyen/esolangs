@@ -207,6 +207,54 @@ def test_an_error_records_the_state_it_leaves() -> None:
     assert last[-1][:2] == (1, 0)  # still on the ``,``, pointer unmoved
 
 
+def test_cli_rejects_an_error_only_corpus(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(tracediff, "corpus", lambda *_: [("]", "")])
+    assert tracediff.main([REFERENCE, "--random", "0"]) == 1
+    captured = capsys.readouterr()
+    assert "0 halt cleanly" in captured.out
+    assert "no matching clean halt or declared cycle" in captured.err
+
+
+def test_halt_at_the_last_trace_event_counts(monkeypatch) -> None:
+    monkeypatch.setattr(tracediff, "LIMIT", 2)
+    module = tracediff._load(_INTERPRETER, "boundary_halt")
+    report = tracediff._compare(
+        module, module, [("+", "")], frozenset(), runtime=_runtime()
+    )
+    assert report.differences == []
+    assert report.halting == 1
+    assert report.witnessed
+
+
+def test_comparison_counts_traces_once_and_accepts_an_explicit_cycle(
+    monkeypatch,
+) -> None:
+    trace = tracediff.trace
+    calls = 0
+
+    def counted(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return trace(*args, **kwargs)
+
+    monkeypatch.setattr(tracediff, "trace", counted)
+    module = tracediff._load(_INTERPRETER, "bounded_cycle")
+    programs = [("+[]", "")]
+    for allow_cycles in (False, True):
+        report = tracediff._compare(
+            module,
+            module,
+            programs,
+            frozenset(),
+            runtime=_runtime(),
+            allow_cycles=allow_cycles,
+        )
+        assert report.differences == []
+        assert report.halting == 0
+        assert report.witnessed is allow_cycles
+    assert calls == 4
+
+
 def test_views_include_inherited_properties_and_respect_overrides():
     class Parent:
         @property

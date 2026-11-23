@@ -55,6 +55,20 @@ def test_construction_layouts_extend_exhaustive_requests(monkeypatch) -> None:
     ]
 
 
+@pytest.mark.parametrize(
+    ("arity", "count"),
+    [(4, "131,704"), (5, "8,590,066,296"), (100000, "at least 8,590,066,296")],
+)
+def test_exhaustive_price_is_checked_before_checkout(monkeypatch, capsys, arity, count):
+    monkeypatch.setattr(gendiff, "_checkout", lambda *_: pytest.fail("checkout"))
+    with pytest.raises(SystemExit) as caught:
+        gendiff.main([REFERENCE, "--max-n", str(arity)])
+    assert caught.value.code == 2
+    diagnostic = capsys.readouterr().err
+    assert f"{count} exhaustive requests per pass" in diagnostic
+    assert "Use named construction witnesses" in diagnostic
+
+
 def test_matching_errors_without_a_program_fail(monkeypatch, capsys) -> None:
     monkeypatch.setattr(gendiff, "_checkout", lambda *_: REPO_ROOT / "src")
     monkeypatch.setattr(
@@ -80,8 +94,10 @@ def test_speed_gate_uses_only_generation(monkeypatch, capsys, new_generation, st
         return {"request": "{}"}, timing
 
     monkeypatch.setattr(gendiff, "_dump", dump)
+    monkeypatch.setattr(gendiff, "_construction_tables", lambda *_: {})
     assert gendiff.main([REFERENCE, "--speed"]) == status
     output = capsys.readouterr().out
+    assert "632 generation requests per pass, 3,792 across 6 passes" in output
     assert "speed: generation " in output
     assert "serialization: 1.000s -> 3.000s" in output
 

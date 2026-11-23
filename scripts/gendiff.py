@@ -38,6 +38,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 #: The slowdown a refactor may cost before ``--speed`` fails it.
 SLOWDOWN = 0.10
 _DUMP_TIMEOUT = 60
+_MAX_EXHAUSTIVE_ARITY = 3
 _WITNESS_ROWS = 1 << 20
 type Outputs = dict[str, str]
 type WitnessRequests = dict[str, tuple[str, dict[str, Any]]]
@@ -56,9 +57,28 @@ def _exhaustive_options(n: int) -> list[dict[str, Any]]:
     return [{}, {"width": 8}]
 
 
+def _exhaustive_count(max_n: int) -> int:
+    """Price the sweep before creating tables, bounding even the estimate."""
+    if max_n < 0:
+        raise ValueError("--max-n must be nonnegative")
+    through = min(max_n, _MAX_EXHAUSTIVE_ARITY + 2)
+    count = sum(
+        (1 << (1 << n)) * len(_exhaustive_options(n)) for n in range(1, through + 1)
+    )
+    if max_n > _MAX_EXHAUSTIVE_ARITY:
+        bound = "at least " if through < max_n else ""
+        raise ValueError(
+            f"--max-n {max_n} requires {bound}{count:,} exhaustive requests per pass; "
+            f"the budget allows arities through {_MAX_EXHAUSTIVE_ARITY}. "
+            "Use named construction witnesses for larger arities."
+        )
+    return count
+
+
 def _requests(
     max_n: int, witnesses: WitnessRequests
 ) -> Iterator[tuple[str, str, dict[str, Any]]]:
+    _exhaustive_count(max_n)
     for n in range(1, max_n + 1):
         options = _exhaustive_options(n)
         for table in map("".join, itertools.product("01", repeat=1 << n)):
@@ -200,10 +220,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("language")
     parser.add_argument("--old", default="main", help="git revision (default main)")
     parser.add_argument("--mutant", type=Path, help="broken generator module copy")
-    parser.add_argument("--max-n", type=int, default=3, help="highest exhaustive arity")
+    parser.add_argument(
+        "--max-n",
+        type=int,
+        default=_MAX_EXHAUSTIVE_ARITY,
+        help=f"highest exhaustive arity (0-{_MAX_EXHAUSTIVE_ARITY}); "
+        "larger arities use named witnesses",
+    )
     parser.add_argument("--speed", action="store_true", help="also compare time")
     parser.add_argument("--dump", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    try:
+        exhaustive = _exhaustive_count(args.max_n)
+    except ValueError as error:
+        parser.error(str(error))
     if args.dump:
         witnesses = json.load(sys.stdin)
         dumped, seconds = _timed_outputs(args.language, args.max_n, witnesses)
@@ -217,6 +247,13 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         parser.error(str(exc))
     witnesses = _construction_tables(name, args.max_n)
+    requests = exhaustive + len(witnesses)
+    passes = (6 if args.speed else 2) + (args.mutant is not None)
+    print(
+        f"{name}: {requests:,} generation requests per pass, "
+        f"{requests * passes:,} across {passes} passes",
+        flush=True,
+    )
     with tempfile.TemporaryDirectory() as scratch:
         old_src = _checkout(args.old, Path(scratch) / "old")
         old, old_time = _dump(old_src, name, args.max_n, witnesses)

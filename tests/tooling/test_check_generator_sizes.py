@@ -151,20 +151,23 @@ def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:
 
     monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: [REFERENCE])
     monkeypatch.setattr(sizes, "BOUNDARIES", {})
+    monkeypatch.setattr(sizes, "STEP_CAP", 1)
     for matches in (False, None):
         monkeypatch.setattr(
             sizes,
             "measure",
             lambda *_args, matches=matches, **_kwargs: {
                 **RECORD,
+                "row": 0,
                 "matches": matches,
                 "execution_status": "step_cap",
                 "expected_answer": "1",
                 "actual_answer": None,
             },
         )
-        with pytest.raises(ValueError, match="expected 1, got None"):
-            sizes.sweep()
+        with pytest.raises(ValueError, match="expected 1, got None") as caught:
+            sizes.sweep(repeat=2)
+        assert "--row 0 --step-cap 1 --repeat 2" in str(caught.value)
 
 
 def test_boundary_rows_are_pinned_and_corpus_drift_fails() -> None:
