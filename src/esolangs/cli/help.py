@@ -72,8 +72,7 @@ commands:
   Caller-supplied (you supply the program):
     run [--execution-timeout S] [--total-timeout S] [--preparation-timeout S]
         [--isolated] [--max-output N] [--max-memory BYTES] [--max-steps N]
-        [--seed N] [--scale N] [--settings JSON] [--set KEY=VALUE]
-        [--artifact [--bits BITS]]
+        [--seed N] [--scale N] [--settings JSON] [--set KEY=VALUE] [--artifact]
         <language> <file>
                                 run a program through its interpreter
   Contract adapters (your data in, checked data out):
@@ -191,8 +190,8 @@ prints the result.
 
 Some generators embed the inputs in source. They return a *template* with
 one placeholder run per input, as long as its replacement. Fill the template
-before running it through the Python API. By default the CLI prints literal
-source, which `esolangs run` interprets as written. `esolangs list --details` marks
+before running it through the Python API. The CLI prints literal source,
+which `esolangs run` interprets as written. `esolangs list --details` marks
 these generators `tmpl`. Pass --bits to print the filled program.
 
 For text and gzip output, repeat non-default --settings or --set options on
@@ -239,8 +238,7 @@ examples:
     "run": """usage: esolangs run [--execution-timeout S] [--total-timeout S]
                     [--preparation-timeout S] [--isolated] [--max-output N]
                     [--max-memory BYTES] [--max-steps N] [--seed N]
-                    [--scale N] [--settings JSON] [--set KEY=VALUE]
-                    [--artifact [--bits BITS]]
+                    [--scale N] [--settings JSON] [--set KEY=VALUE] [--artifact]
                     <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
@@ -268,9 +266,7 @@ exit codes: 0 ran, 1 the program broke or its output cannot be encoded,
 ran out (time, steps, output, memory), 130 interrupted.
 
 options:
-  --artifact         load portable JSON from esolangs generate --artifact.
-  --bits BITS        bind a saved template, one bit per input slot.
-                     Requires --artifact and an unfilled template.
+  --artifact         load a runnable portable JSON artifact.
   --isolated         run in a subprocess. The default total is 30 seconds
                      plus any --execution-timeout.
   --max-output N     cap output in Unicode characters (including zero); implies

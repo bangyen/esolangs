@@ -9,7 +9,6 @@ from typing import NoReturn, TextIO, cast
 from esolangs import ExecutionLimits
 from esolangs.cli.args import (
     _VALUE_OPTIONS,
-    _bits_of,
     _check_count,
     _errors,
     _integer,
@@ -121,10 +120,6 @@ def _run(rest: list[str]) -> None:
     flag_options = {"--isolated", "--artifact"}
     rest, flags = _pop_flags(rest, flag_options)
     isolated = "--isolated" in flags
-    portable = "--artifact" in flags
-    bits = _bits_of(options, allow_empty=True)
-    if bits is not None and not portable:
-        _fail("--bits requires --artifact when running a saved template")
     max_output = None
     if "--max-output" in options:
         max_output = _integer(
@@ -212,8 +207,7 @@ def _run(rest: list[str]) -> None:
         settings=settings,
         catalog=catalog,
         _settings_validated=True,
-        portable=portable,
-        bits=bits,
+        portable="--artifact" in flags,
     )
     unbounded = not worker and max_steps is None
     stdin: InputSource = ""

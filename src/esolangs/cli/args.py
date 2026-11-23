@@ -54,7 +54,6 @@ _VALUE_OPTIONS = {
     "generate": {"--bits", "--scale", "--settings", "--set"},
     "list": {"--grep", "--inputs", "--source-kind", "--input-shape", "--answer-mode"},
     "run": {
-        "--bits",
         "--execution-timeout",
         "--total-timeout",
         "--preparation-timeout",
@@ -382,14 +381,6 @@ def _nonnegative(value: int, name: str, shown: object) -> None:
     """Reject negative bounds and cell indices."""
     if value < 0:
         _fail(f"{name} must not be negative, got {shown}")
-
-
-def _bits_of(options: dict[str, str], *, allow_empty: bool = False) -> str | None:
-    """Return the binary input operand, if supplied."""
-    bits = options.get("--bits")
-    if bits is not None and ((not bits and not allow_empty) or set(bits) - {"0", "1"}):
-        _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
-    return bits
 
 
 def _seed_of(options: dict[str, str]) -> int | None:
