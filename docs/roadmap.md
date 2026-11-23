@@ -50,16 +50,14 @@ check or weakening a contract.
 
 ## Engineering
 
-Next experiments; budgets are wall time, not permission for an unpriced search.
-
 | Work | Next experiment | Success criterion | Budget |
 | --- | --- | --- | --- |
-| Unreached code | Triage new gaps from the weekly scan; the current baseline records invariant-backed unreachable arms | Executed witness, invariant, or byte-identical removal; confirm scoped gaps against whole-tree coverage before updating the baseline | 60 s per scoped scan; price whole-tree coverage separately |
-| Timing regressions | Inspect weekly environment-matched timing report | Reproduce persistent increases locally before changing code | Existing weekly sweep; no extra generation runs |
+| Weekly timing comparison | Compare two existing timing artifacts on matching generator cases and runner environments | Replay an identical artifact as a negative control and inject a slowdown to check detection. Keep timings advisory and reproduce a real increase locally before changing code | Existing artifacts and one scoped replay |
+| Malformed-source coverage | Seed the exception-leak sweep with the existing runnable samples for Deadfish, HQ9+, Nope., and Unary, which lack saved programs in the sweep | Valid seeds produce their expected outputs. Each language gets a distinct source mutation, and a fault control proves the sweep detects a raw exception | One scoped exception-leak replay |
+| Weekly branch coverage | Recheck the Bytemap rail hop, Malbolge reset route, and Slow ACV Mammalian tail appends in the next combined report | Confirm the repaired paths are reached or removed. Reproduce new findings with a scoped witness before changing the baseline | Existing weekly coverage and up to 60 s per scoped probe |
 
-A removal must leave the generated corpus byte-identical, including tiled,
-constant and ignored-input tables. The completed constant-table audit is in
-history at `f35aa4023`.
+Generator removals require byte-identical corpus output, including tiled,
+constant, and ignored-input tables.
 
 - **Malbolge navigation, inexpressibility for an algebraic
   signature:** the [bounded-read lower bound](limitations.md#searches)
