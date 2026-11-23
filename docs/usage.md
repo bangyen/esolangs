@@ -21,6 +21,9 @@ See each command’s `--help` for option details.
 To read a truth table from a file, run
 `esolangs generate brainfuck - < table.txt`. The `-` operand reads UTF-8
 from stdin through EOF and ignores surrounding whitespace.
+For interpreters that take no runtime input, `run LANGUAGE -` reads source
+from stdin. For example, pipe `esolangs generate --bits 01 Trml 0110` into
+`esolangs run Trml -`.
 
 | Option | Commands | Does |
 | --- | --- | --- |
@@ -586,6 +589,7 @@ and median include subsequent samples, which can reuse cached work.
 
 - Use `--width N` or `--balance` to measure a layout, and `--scale N` to
   measure scaled raster source. The request appears in `generation_options`.
+- Read a large table from a file with `just benchmark brainfuck - --row 0 < table.txt`.
 - The row timeout defaults to 30 seconds. `--no-timeout` disables the
   signal guard for Windows or worker threads.
 - `just sizes` checks the committed size and step baseline and requires each

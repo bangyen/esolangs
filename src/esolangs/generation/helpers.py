@@ -22,6 +22,7 @@ from esolangs.runtime.source_hints import with_hint
 # of ``+`` or ``-`` reads as a magic number.
 _ASCII_ZERO = 48
 _ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the other branch prints
+_LEAF_BITS = bytes.maketrans(b"01", b"\x00\x01")
 
 
 def short_name(index: int, alphabet: str) -> str:
@@ -78,22 +79,23 @@ def subtree_ids(truth_table: str) -> tuple[tuple[int, ...], ...]:
     quasi-reduced decision diagram, interned rather than searched), in O(T).
     """
     n = _validate_truth_table(truth_table)
-    # The list comprehension avoids resuming a generator for each leaf.
-    level = tuple([1 if bit == "1" else 0 for bit in truth_table])
+    level = tuple(str.encode(truth_table, "ascii").translate(_LEAF_BITS))
     ids = [level]
     fresh = 2
     for _ in range(n):
         seen: dict[tuple[int, int], int] = {}
         above: list[int] = []
         children = iter(level)
-        for zero, one in zip(children, children, strict=True):
+        for pair in zip(children, children, strict=True):
+            zero, one = pair
             if zero == one and zero < 2:  # two equal constants stay one
                 above.append(zero)
                 continue
-            if (zero, one) not in seen:
-                seen[zero, one] = fresh
+            node = seen.get(pair)
+            if node is None:
+                node = seen[pair] = fresh
                 fresh += 1
-            above.append(seen[zero, one])
+            above.append(node)
         level = tuple(above)
         ids.append(level)
     ids.reverse()

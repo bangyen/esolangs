@@ -133,6 +133,43 @@ def test_generate_from_stdin_bypasses_argument_size_limits(tmp_path) -> None:
     assert (ran.returncode, ran.stdout, ran.stderr) == (0, "0", "")
 
 
+@pytest.mark.parametrize("compressed", [False, True])
+def test_run_reads_native_source_from_stdin(compressed) -> None:
+    language = first(parameterized=True, source_kind="text", answer_mode="output")
+    command = [sys.executable, "-m", "esolangs"]
+    flags = ["--gzip"] if compressed else []
+    source = subprocess.check_output(
+        [*command, "generate", *flags, "--bits", "01", language, "0110"], timeout=10
+    )
+    result = subprocess.run(
+        [*command, "run", language, "-"],
+        input=source,
+        capture_output=True,
+        timeout=10,
+        check=True,
+    )
+    assert result.stderr == b""
+    assert esolangs.read_answer(language, result.stdout.decode()) == "1"
+
+
+def test_run_dash_refuses_runtime_input_before_reading(monkeypatch, capsys) -> None:
+    def unread(*_args, **_kwargs):
+        pytest.fail("runtime input conflict reached stdin")
+
+    monkeypatch.setattr("esolangs.cli.io._bounded_source_stdin", unread)
+    out, error = _failure(["run", REFERENCE, "-"], capsys)
+    assert out == ""
+    assert "uses stdin for program input" in error
+
+
+def test_run_dash_obeys_program_stream_size_limit(monkeypatch, capsys) -> None:
+    language = first(parameterized=True)
+    monkeypatch.setattr("esolangs.cli.io._MAX_PROGRAM_BYTES", 1024)
+    out, error = _failure(["run", language, "-"], capsys, stdin=" " * 1025)
+    assert out == ""
+    assert "stdin is larger than the 1 KiB program stream limit" in error
+
+
 class TestInProcess:
     def test_generating_a_raster_writes_png_bytes(
         self, capsysbinary: pytest.CaptureFixture[bytes], tmp_path: Path

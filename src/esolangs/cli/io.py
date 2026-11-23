@@ -149,15 +149,19 @@ def _read_program(
     deadline = None if timeout is None else monotonic() + timeout
     catalog = get_catalog(catalog)
     gzip_native = catalog.languages[language].runtime.compressed_source
-    label = display_label(path)
-    data = _bounded_read(
-        path,
-        timeout,
-        timeout_flag=timeout_flag,
-        directory=directory,
-        deadline=deadline,
-        max_bytes=_MAX_GZIP_NATIVE_PROGRAM_BYTES if gzip_native else _MAX_PROGRAM_BYTES,
-    )
+    label = "stdin" if path == "-" else display_label(path)
+    max_bytes = _MAX_GZIP_NATIVE_PROGRAM_BYTES if gzip_native else _MAX_PROGRAM_BYTES
+    if path == "-":
+        data = _bounded_source_stdin(timeout, timeout_flag, deadline, max_bytes)
+    else:
+        data = _bounded_read(
+            path,
+            timeout,
+            timeout_flag=timeout_flag,
+            directory=directory,
+            deadline=deadline,
+            max_bytes=max_bytes,
+        )
 
     def decode() -> ProgramArtifact[Program]:
         with nullcontext() if deadline is None else stream_read_deadline(deadline):
@@ -342,17 +346,18 @@ def _wait_for_pipe_data(deadline: float | None) -> None:
 
 
 def _read_pipe_without_poll(
-    stream: BufferedReader, fd: int, deadline: float | None
+    stream: BufferedReader, fd: int, deadline: float | None, size: int | None
 ) -> bytes:
     """Drain an anonymous pipe where poll is unavailable, including Windows."""
     blocking = os.get_blocking(fd)
     data = bytearray()
-    while True:
+    while size is None or len(data) < size:
         _time_remaining(deadline)
+        width = _BLOCK if size is None else min(_BLOCK, size - len(data))
         if blocking:
             os.set_blocking(fd, False)
         try:
-            chunk: bytes | None = stream.read(_BLOCK)
+            chunk: bytes | None = stream.read(width)
         except BlockingIOError:
             chunk = None
         finally:
@@ -364,40 +369,44 @@ def _read_pipe_without_poll(
             continue
         chunk = _binary_chunk(chunk)
         if not chunk:
-            return bytes(data)
+            break
         data.extend(chunk)
+    return bytes(data)
 
 
-def _read_buffered_stdin(stream: BufferedReader, deadline: float | None) -> bytes:
+def _read_buffered_stdin(
+    stream: BufferedReader, deadline: float | None, *, size: int | None = None
+) -> bytes:
     """Drain buffered bytes without holding the stdin lock across a pipe wait."""
     _time_remaining(deadline)
     raw = stream.raw
     if not isinstance(raw, FileIO):
-        return read_snapshot(stream)
+        return read_snapshot(stream, size=size)
     _time_remaining(deadline)
     fd = raw.fileno()
     _time_remaining(deadline)
     mode = os.fstat(fd).st_mode
     if stat.S_ISREG(mode):
-        return read_snapshot(stream)
+        return read_snapshot(stream, size=size)
     if not hasattr(select, "poll"):
         if stat.S_ISFIFO(mode):
-            return _read_pipe_without_poll(stream, fd, deadline)
-        return read_snapshot(raw)
+            return _read_pipe_without_poll(stream, fd, deadline, size)
+        return read_snapshot(raw, size=size)
     if not os.get_blocking(fd):
-        return read_snapshot(stream)
+        return read_snapshot(stream, size=size)
     poller = select.poll()
     poller.register(fd, select.POLLIN)
     data = bytearray()
-    while True:
+    while size is None or len(data) < size:
         remaining = _time_remaining(deadline)
         timeout = None if remaining is None else min(ceil(remaining * 1000), 2**31 - 1)
         if not poller.poll(timeout):
             continue
         _time_remaining(deadline)
         # read1 consumes buffered bytes or performs at most one ready read.
+        width = _BLOCK if size is None else min(_BLOCK, size - len(data))
         try:
-            chunk: bytes | None = stream.read1(_BLOCK)
+            chunk: bytes | None = stream.read1(width)
         except BlockingIOError:
             chunk = None
         if chunk is None:
@@ -405,8 +414,44 @@ def _read_buffered_stdin(stream: BufferedReader, deadline: float | None) -> byte
             continue
         chunk = _binary_chunk(chunk)
         if not chunk:
-            return bytes(data)
+            break
         data.extend(chunk)
+    return bytes(data)
+
+
+def _bounded_source_stdin(
+    timeout: float | None, timeout_flag: str, deadline: float | None, max_bytes: int
+) -> bytes:
+    """Read native source bytes from stdin under the program stream bounds."""
+    waited = _READ_DEADLINE if timeout is None else timeout
+    if deadline is None:
+        deadline = monotonic() + waited
+    size = max_bytes + 1
+
+    def read() -> bytes:
+        stdin = sys.stdin
+        if stdin is None:
+            return b""
+        with stream_read_deadline(deadline):
+            _time_remaining(deadline)
+            stream: BinaryIO | None = getattr(stdin, "buffer", None)
+            if isinstance(stream, BufferedReader):
+                return _read_buffered_stdin(stream, deadline, size=size)
+            if stream is not None:
+                return _binary_chunk(read_snapshot(stream, size=size))
+            return read_snapshot(stdin, size=size).encode("utf-8")
+
+    def on_timeout() -> NoReturn:
+        bound = f" ({timeout_flag})" if timeout_flag else ""
+        _fail(f"stdin did not reach EOF within {waited:g}s{bound}", _TIMEOUT_EXIT)
+
+    try:
+        source = _slurp_thread(read, deadline, on_timeout=on_timeout)
+    except (OSError, TypeError, ValueError) as exc:
+        _fail(source_read_error("stdin", exc))
+    if len(source) > max_bytes:
+        _fail(f"stdin is larger than the {max_bytes // 1024} KiB program stream limit")
+    return source
 
 
 @contextmanager

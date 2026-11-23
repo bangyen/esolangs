@@ -169,7 +169,7 @@ def _run(rest: list[str]) -> None:
     catalog = get_catalog()
     _check_count("run", rest, 2, catalog=catalog)
     language, path = rest
-    directory = _source_directory(path) if path else None
+    directory = _source_directory(path) if path and path != "-" else None
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
@@ -188,6 +188,12 @@ def _run(rest: list[str]) -> None:
         # Match execution's order for source options and seed.
         check_scale_for(declaration.name, scale, catalog=catalog)
         check_seed_for(declaration.name, seed, catalog=catalog)
+    reads_stdin = _runtime_reads_stdin(declaration.runtime)
+    if path == "-" and reads_stdin:
+        _fail(
+            "this interpreter uses stdin for program input; "
+            "pass a program file and pipe its input to stdin"
+        )
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
@@ -201,7 +207,6 @@ def _run(rest: list[str]) -> None:
         catalog=catalog,
         _settings_validated=True,
     )
-    reads_stdin = _runtime_reads_stdin(declaration.runtime)
     unbounded = not worker and max_steps is None
     stdin: InputSource = ""
     try:
@@ -245,16 +250,13 @@ def _run(rest: list[str]) -> None:
         # Legal, and almost never what was meant: an empty file is what you
         # get from a redirect that failed or a generate that was never run.
         # Said on stderr, so a pipeline still receives the empty output.
-        _note(
-            f"note: {display_label(path)} contains no source, "
-            "so there was no program to run"
-        )
+        label = "stdin" if path == "-" else display_label(path)
+        _note(f"note: {label} contains no source, so there was no program to run")
     # A program that printed nothing is a legal program, and also what you
     # get from an empty file or the wrong path.  Say so on a terminal, where
     # the alternative is a blank line and no way to tell the two apart; a
     # pipe still receives exactly the empty output.
     if not output and _stdout_is_terminal():
-        _note(
-            f"{display_label(language)}: the program ran and printed nothing"
-            f"{' (the file contains no source)' if empty else ''}"
-        )
+        container = "stdin" if path == "-" else "the file"
+        detail = f" ({container} contains no source)" if empty else ""
+        _note(f"{display_label(language)}: the program ran and printed nothing{detail}")

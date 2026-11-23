@@ -30,6 +30,18 @@ def _oracle(table: str, n: int) -> list[int]:
     ]
 
 
+def test_subtree_ids_follow_first_occurrence_at_each_level() -> None:
+    table = "0110011001011010"
+    assert helpers.subtree_ids(table) == (
+        (9,),
+        (7, 8),
+        (4, 4, 5, 6),
+        (2, 3, 2, 3, 2, 2, 3, 3),
+        tuple(map(int, table)),
+    )
+    assert helpers.subtree_ids("00001111")[1] == (0, 1)
+
+
 def test_dependencies_exhaustive() -> None:
     assert not hasattr(helpers, "_parity_bias")
     assert parity_bias("0") == 0

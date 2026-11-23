@@ -699,7 +699,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("language")
     parser.add_argument(
         "truth_table",
-        help="one output bit per input row, 2**n of them: 0110 is two-input XOR",
+        help="one output bit per input row: 0110 is two-input XOR; '-' reads stdin",
     )
     parser.add_argument("--repeat", type=int, default=3)
     parser.add_argument("--row", type=int)
@@ -726,16 +726,27 @@ def main(argv: list[str] | None = None) -> int:
     # Here, not in the worker: a typo there surfaced as a traceback.
     try:
         args.language = resolve(args.language)
-        _validate_truth_table(args.truth_table)
     except ValueError as exc:
         parser.error(str(exc))
-    row = len(args.truth_table) - 1 if args.row is None else args.row
-    if not 0 <= row < len(args.truth_table):
-        parser.error(f"--row must be in [0, {len(args.truth_table) - 1}]")
+    table = args.truth_table
+    if table == "-":
+        from esolangs.cli.io import _read_stdin
+
+        table = _read_stdin(
+            hint="; finish the truth table or close stdin",
+            terminal_prompt="Enter a truth table, then signal EOF.\n",
+        ).strip()
+    try:
+        _validate_truth_table(table)
+    except ValueError as exc:
+        parser.error(str(exc))
+    row = len(table) - 1 if args.row is None else args.row
+    if not 0 <= row < len(table):
+        parser.error(f"--row must be in [0, {len(table) - 1}]")
     try:
         result = measure(
             args.language,
-            args.truth_table,
+            table,
             repeat=args.repeat,
             row=row,
             step_cap=args.step_cap,

@@ -15,7 +15,7 @@ from esolangs import cli
 from esolangs.cli.help import help_text
 from tests.support.cli_support import _LOOPS, _program, _refused, call_both, call_main
 from tests.support.generator_support import evaluate_generated
-from tests.support.pick import languages
+from tests.support.pick import first, languages
 from tests.support.reference import REFERENCE
 
 _BAD_TIMEOUTS = [
@@ -36,6 +36,37 @@ _BAD_TIMEOUTS = [
 def test_a_bad_timeout_is_refused_with_exit_2(args, message, tmp_path, capsys) -> None:
     refused = _refused(f"run {args} prog:,.", tmp_path, capsys, "1\n")
     assert message in refused
+
+
+@pytest.mark.medium
+def test_run_dash_applies_acquisition_timeout_to_idle_pipe() -> None:
+    language = first(parameterized=True)
+    reader, writer = os.pipe()
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "esolangs",
+                "run",
+                "--execution-timeout",
+                "0.5",
+                language,
+                "-",
+            ],
+            stdin=reader,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    finally:
+        os.close(reader)
+        os.close(writer)
+    assert result.returncode == 124
+    assert result.stdout == ""
+    assert "stdin did not reach EOF" in result.stderr
+    assert "--execution-timeout" in result.stderr
 
 
 @pytest.mark.medium

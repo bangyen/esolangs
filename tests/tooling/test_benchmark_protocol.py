@@ -2,6 +2,7 @@
 
 import json
 import signal
+import subprocess
 import sys
 from types import SimpleNamespace
 
@@ -115,6 +116,34 @@ def test_measure_records_first_sample_and_encodes_rows_without_the_table(
     assert record["generation_ns_first"] == 30
     assert record["generation_ns_best"] == 10
     assert record["generation_ns_median"] == 20
+
+
+@pytest.mark.medium
+def test_benchmark_reads_large_truth_table_from_stdin() -> None:
+    from scripts import benchmark
+
+    table = "0" * (1 << 20)
+    completed = subprocess.run(
+        [
+            sys.executable,
+            benchmark.__file__,
+            "brainfuck",
+            "-",
+            "--row",
+            "0",
+            "--repeat",
+            "1",
+        ],
+        input=f" \t{table}\r\n",
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=True,
+    )
+    record = json.loads(completed.stdout)
+    assert record["truth_table"] == table
+    assert record["row"] == 0
+    assert record["matches"] is True
 
 
 @pytest.mark.medium
