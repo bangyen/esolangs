@@ -57,7 +57,7 @@ from collections.abc import Callable, Iterator
 from functools import cache
 from typing import NamedTuple
 
-from esolangs.generation.helpers import _depends_on, read_at
+from esolangs.generation.helpers import read_at
 from esolangs.languages.malbolge.descriptor import _DIGITS_N as _DIGITS_N
 from esolangs.languages.malbolge.interpreter import _crazy
 
@@ -836,17 +836,20 @@ def _seventeen_program(truth_table: str) -> str | None:
     in the gadget group that would have folded position ``p``.  Returns
     ``None`` when the table uses all seventeen inputs.
     """
-    # Preserve the last ignored stream position when several inputs are unused.
-    ignored = next(
-        (
-            i
-            for i in range(_DIGITS_N, -1, -1)
-            if not _depends_on(truth_table, 1 << (_DIGITS_N - i))
-        ),
-        None,
-    )
-    if ignored is None:
+    packed = int(truth_table, 2)
+    rows = (1 << len(truth_table)) - 1
+    ignored_mask = 0
+    for bit in range(_DIGITS_N + 1):
+        half = 1 << bit
+        # Dividing by 2**half + 1 leaves alternating runs of half ones.
+        # Keep one XOR per pair of rows that differ only in this input.
+        lower = rows // ((1 << half) + 1)
+        equal = not ((packed ^ (packed >> half)) & lower)
+        ignored_mask |= int(equal) << bit
+    if not ignored_mask:
         return None
+    # The low row-index bit is the last input in stream order.
+    ignored = _DIGITS_N + 1 - (ignored_mask & -ignored_mask).bit_length()
     projected = read_at(
         truth_table, [i for i in range(_DIGITS_N + 1) if i != ignored], _DIGITS_N + 1
     )

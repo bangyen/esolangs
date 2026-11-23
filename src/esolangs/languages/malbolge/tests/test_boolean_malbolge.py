@@ -324,3 +324,12 @@ def test_seventeen_last_ignored_input_is_still_consumed(kind: str) -> None:
     table = "".join(bit * 2 for bit in base)
     rows = (*range(16), 65535, 65536, 131070, 131071)
     assert _rows(table, rows) == [table[row] for row in rows]
+
+
+@pytest.mark.medium
+def test_seventeen_projection_prefers_last_ignored_position() -> None:
+    """The first and last inputs are ignored, so use the last-input build."""
+    base = "".join(str(row.bit_count() % 2) for row in range(1 << 15))
+    table = "".join(bit * 2 for bit in base) * 2
+    expected = _digits._render_build(table[::2], _digits._digits(16, drain_last=True))
+    assert boolean.malbolge(table) == expected

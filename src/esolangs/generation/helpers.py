@@ -338,15 +338,6 @@ def essential_inputs(truth_table: str, n: int) -> list[int]:
     return result
 
 
-def _depends_on(truth_table: str, half: int) -> bool:
-    """Whether some block of ``2 * half`` rows has unequal halves."""
-    block = 2 * half
-    return any(
-        truth_table[lo : lo + half] != truth_table[lo + half : lo + block]
-        for lo in range(0, len(truth_table), block)
-    )
-
-
 def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> str:
     """Return the ``len(inputs)``-input table read at the given input positions.
 
