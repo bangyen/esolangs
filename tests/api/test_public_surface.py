@@ -3,7 +3,7 @@
 import ast
 import inspect
 import re
-from dataclasses import FrozenInstanceError, fields
+from dataclasses import FrozenInstanceError, fields, replace
 from importlib.resources import files
 from pathlib import Path
 
@@ -518,11 +518,16 @@ class TestProgramObjectsRefuseMisuse:
     def test_a_portable_setter_surrogate_is_refused(self) -> None:
         import json
 
-        document = json.loads(
-            esolangs.to_json(
-                TEMPLATE_LANGUAGE, esolangs.generate(TEMPLATE_LANGUAGE, "0110")
-            )
+        template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
+        assert isinstance(template, esolangs.TemplateArtifact)
+        (zero, one), *remaining = template.bindings.setters
+        bindings = replace(
+            template.bindings, setters=(("\ud800" + zero[1:], one), *remaining)
         )
+        with pytest.raises(esolangs.ProgramError, match="surrogates"):
+            esolangs.to_json(TEMPLATE_LANGUAGE, replace(template, bindings=bindings))
+
+        document = json.loads(esolangs.to_json(TEMPLATE_LANGUAGE, template))
         document["setters"] = [["\ud800", "\udfff"]] * len(document["setters"])
         with pytest.raises(esolangs.ProgramError):
             esolangs.from_json(TEMPLATE_LANGUAGE, json.dumps(document))

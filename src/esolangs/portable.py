@@ -306,9 +306,7 @@ def to_json(
         else:
             document.update(kind="text", source=str(body))
     try:
-        # The check ``from_json`` makes: a lone surrogate dumped as a
-        # ``\ud800`` escape, which it then refused.
-        record_dumps(document, ensure_ascii=False).encode("utf-8")
+        check_record_utf8(document)
     except UnicodeEncodeError as error:
         raise ProgramError(f"program is not valid UTF-8 text: {error}") from error
     return record_dumps(document, sort_keys=True)

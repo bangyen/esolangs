@@ -162,12 +162,19 @@ def test_run_dash_refuses_runtime_input_before_reading(monkeypatch, capsys) -> N
     assert "uses stdin for program input" in error
 
 
-def test_run_dash_obeys_program_stream_size_limit(monkeypatch, capsys) -> None:
+@pytest.mark.parametrize(
+    ("flags", "filename"), [([], "program"), (["--artifact"], "program.json")]
+)
+def test_run_dash_obeys_program_stream_size_limit(
+    monkeypatch, capsys, flags, filename
+) -> None:
     language = first(parameterized=True)
     monkeypatch.setattr("esolangs.cli.io._MAX_PROGRAM_BYTES", 1024)
-    out, error = _failure(["run", language, "-"], capsys, stdin=" " * 1025)
+    command = ["run", *flags, language]
+    out, error = _failure([*command, "-"], capsys, stdin=" " * 1025)
     assert out == ""
     assert "stdin is larger than the 1 KiB program stream limit" in error
+    assert f"run `{shlex.join(['esolangs', *command, filename])}`" in error
 
 
 @pytest.mark.parametrize(("language", "kind"), [(_RASTER, "png"), (_GZIP, "gzip")])

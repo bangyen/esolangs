@@ -82,14 +82,19 @@ def exceptional_row(table: str) -> tuple[int, bool] | None:
 def majority_bias(table: str, n: int) -> bool | None:
     """Return the inversion of strict majority, or None for another table."""
     invert = table[0] == "1"
-    return (
-        invert
-        if all(
-            (bit == "1") == ((row.bit_count() > n // 2) ^ invert)
-            for row, bit in enumerate(table)
-        )
-        else None
-    )
+    # Keep scalar rejection for the dense tables that fail at the first rows.
+    prefix = table if n <= _BLOCK_BITS else table[:16]
+    if any(
+        (bit == "1") != ((row.bit_count() > n // 2) ^ invert)
+        for row, bit in enumerate(prefix)
+    ):
+        return None
+    if n <= _BLOCK_BITS:
+        return invert
+    zero, one = "10" if invert else "01"
+    cutoff = n // 2 + 1
+    expected = zero * cutoff + one * (n + 1 - cutoff)
+    return invert if symmetric_outputs(table, n) == expected else None
 
 
 def near_unanimity(table: str, n: int) -> bool:

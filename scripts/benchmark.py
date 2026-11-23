@@ -779,6 +779,12 @@ def main(argv: list[str] | None = None) -> int:
         )
     except esolangs.ArgumentError as exc:
         parser.error(str(exc))
+    except esolangs.ExecutionTimeoutError as exc:
+        print(exc, file=sys.stderr)
+        for note in getattr(exc, "__notes__", ()):
+            if note.startswith("[log] "):
+                print(note.partition("\n")[0], file=sys.stderr)
+        return 1
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if all(item["matches"] is True for item in result["executions"]) else 1
 

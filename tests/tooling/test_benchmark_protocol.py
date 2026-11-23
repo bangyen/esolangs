@@ -64,6 +64,28 @@ def test_oversized_record_is_bounded() -> None:
     assert worker.process is None
 
 
+@pytest.mark.parametrize("phase", ["generation", "execution"])
+def test_benchmark_deadline_reports_phase_and_log(monkeypatch, capsys, phase) -> None:
+    import esolangs
+    from scripts import benchmark
+
+    def expired(*_args, **_kwargs):
+        error = esolangs.ExecutionTimeoutError(
+            f"benchmark {phase} deadline exceeded (1s)"
+        )
+        error.add_note("[log] notes/benchmarks/worker.log\nworker diagnostics")
+        raise error
+
+    monkeypatch.setattr(benchmark, "measure", expired)
+    assert benchmark.main(["brainfuck", "01"]) == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err.splitlines() == [
+        f"benchmark {phase} deadline exceeded (1s)",
+        "[log] notes/benchmarks/worker.log",
+    ]
+
+
 def test_valid_multiline_protocol_runs_all_rows(monkeypatch, capsys) -> None:
     from scripts import benchmark
 

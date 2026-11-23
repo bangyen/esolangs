@@ -37,6 +37,7 @@ from typing import BinaryIO, NoReturn, TextIO, cast
 from esolangs.artifacts import ProgramArtifact, TemplateArtifact
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
+    _as_argument,
     _cli_error_text,
     _display_encoding,
     _exit_code,
@@ -161,6 +162,19 @@ def _read_program(
     max_bytes = _MAX_GZIP_NATIVE_PROGRAM_BYTES if gzip_native else _MAX_PROGRAM_BYTES
     if path == "-":
         data = _bounded_source_stdin(timeout, timeout_flag, deadline, max_bytes)
+        if len(data) > max_bytes:
+            hint = "save the program to a file and pass its filename to esolangs run"
+            if (operand := _as_argument(language, catalog=catalog)) is not None:
+                option = " --artifact" if portable else ""
+                filename = "program.json" if portable else "program"
+                hint = (
+                    f"save the program as {filename} and run "
+                    f"`esolangs run{option} {operand} {filename}`"
+                )
+            _fail(
+                f"stdin is larger than the {max_bytes // 1024} KiB program stream limit"
+                f"\nhint: {hint}"
+            )
     else:
         data = _bounded_read(
             path,
@@ -487,12 +501,9 @@ def _bounded_source_stdin(
         _fail(f"stdin did not reach EOF within {waited:g}s{bound}", _TIMEOUT_EXIT)
 
     try:
-        source = _slurp_thread(read, deadline, on_timeout=on_timeout)
+        return _slurp_thread(read, deadline, on_timeout=on_timeout)
     except (OSError, TypeError, ValueError) as exc:
         _fail(source_read_error("stdin", exc))
-    if len(source) > max_bytes:
-        _fail(f"stdin is larger than the {max_bytes // 1024} KiB program stream limit")
-    return source
 
 
 @contextmanager

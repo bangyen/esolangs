@@ -39,16 +39,17 @@ def record_loads(document: str) -> Any:
 
 
 def check_record_utf8(value: Any) -> None:
-    """Check text in a decoded JSON record without re-encoding its numbers."""
+    """Check UTF-8 text in a record without serializing it."""
     pending = [value]
     while pending:
         item = pending.pop()
-        if isinstance(item, str) and _SURROGATES.search(item):
-            item.encode("utf-8")
+        if isinstance(item, str):
+            if not str.isascii(item) and _SURROGATES.search(item):
+                str.encode(item, "utf-8")
         elif isinstance(item, dict):
             pending.extend(item)
             pending.extend(item.values())
-        elif isinstance(item, list):
+        elif isinstance(item, (list, tuple)):
             pending.extend(item)
 
 

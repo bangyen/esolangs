@@ -7,6 +7,7 @@ from esolangs.generation import helpers
 from esolangs.generation.lookup import (
     change_points,
     constant_output,
+    majority_bias,
     packed_cells,
     prefix_counts,
     symmetric_outputs,
@@ -35,6 +36,18 @@ def test_symmetric_profiles_cover_every_block():
                 continue
             flipped = table[:row] + str(1 - int(table[row])) + table[row + 1 :]
             assert symmetric_outputs(flipped, n) is None
+
+
+def test_majority_requires_the_threshold_in_every_block():
+    for n in (10, 11, 12):
+        for inverted in (False, True):
+            table = "".join(
+                str(int((row.bit_count() > n // 2) ^ inverted)) for row in range(1 << n)
+            )
+            assert majority_bias(table, n) is inverted
+            for row in (1, len(table) - 2, len(table) - 1):
+                mismatch = table[:row] + str(1 - int(table[row])) + table[row + 1 :]
+                assert majority_bias(mismatch, n) is None
 
 
 def _check_permutations(n):
