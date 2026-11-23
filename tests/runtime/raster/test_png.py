@@ -522,7 +522,7 @@ def test_png_datastream_requires_an_empty_iend() -> None:
 def test_png_final_idat_may_have_unused_bytes() -> None:
     image = png.write_grey([bytearray([0])])
     data = b"".join(
-        _chunk(kind, body + b"\x00extra" if kind == b"IDAT" else body)
+        _chunk(kind, bytes(body) + b"\x00extra" if kind == b"IDAT" else bytes(body))
         for kind, body in png._chunks(image)
     )
     assert esolangs.Raster.from_png(png._SIGNATURE + data) == esolangs.Raster.from_png(

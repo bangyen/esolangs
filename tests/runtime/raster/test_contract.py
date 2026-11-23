@@ -433,7 +433,7 @@ def test_a_malformed_png_is_a_program_error(language: str, tmp_path: Path) -> No
 
     raster = Raster((((7, 31, 53),),))
     encoded = raster.to_png()
-    chunks = dict(png._chunks(encoded))
+    chunks = {kind: bytes(body) for kind, body in png._chunks(encoded)}
     header, compressed = chunks[b"IHDR"], chunks[b"IDAT"]
 
     def encode_chunk(kind: bytes, body: bytes) -> bytes:
@@ -622,7 +622,7 @@ def test_png_metadata_round_trip_executes(language, scale, native_png) -> None:
 
 
 def test_plain_png_has_no_source_metadata() -> None:
-    from esolangs.operations.source import read_png_metadata
+    from esolangs.operations.source import read_png_source
     from esolangs.runtime._files import StreamReadTimeoutError, stream_read_deadline
 
     source = Raster((((1, 2, 3),),))
@@ -636,7 +636,7 @@ def test_plain_png_has_no_source_metadata() -> None:
         with pytest.raises(StreamReadTimeoutError):
             Raster.from_png(data)
         with pytest.raises(StreamReadTimeoutError):
-            read_png_metadata(RASTER_LANGUAGES[0], data, catalog=CATALOG)
+            read_png_source(RASTER_LANGUAGES[0], data, catalog=CATALOG)
 
     samples = Random(0).randbytes(257 * 512)
     payload = zlib.compress(samples)
@@ -1019,6 +1019,27 @@ def test_scoped_png_writers_resolve_source_aliases_without_settings(
     assert attach(alias, api.catalog) == canonical
     with pytest.raises(esolangs.MissingDependencyError, match="image support"):
         encode(alias, api.catalog)
+
+
+def test_png_loads_reuse_validated_chunks(tmp_path, monkeypatch) -> None:
+    api = esolangs.Language(RASTER_LANGUAGES[0])
+    artifact = api.generate("0110", scale=2)
+    path = tmp_path / "xor.png"
+    api.to_file(artifact, path)
+    document = api.to_json(artifact)
+    chunks = png._chunks
+    traversals = 0
+
+    def counted(data):
+        nonlocal traversals
+        traversals += 1
+        return chunks(data)
+
+    monkeypatch.setattr(png, "_chunks", counted)
+    assert api.from_file(path) == artifact
+    assert traversals == 1
+    assert api.from_json(document) == artifact
+    assert traversals == 2
 
 
 def test_portable_png_checks_record_metadata_before_pillow(monkeypatch) -> None:

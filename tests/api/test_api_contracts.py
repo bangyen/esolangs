@@ -553,7 +553,7 @@ class TestTheArgumentBoundaryRefusesCleanly:
         png = esolangs.Raster((((0, 0, 0),),)).to_png()
         assert esolangs.Raster.from_png(memoryview(png)).rows == ((((0, 0, 0),),))
 
-    def test_png_settings_are_validated_as_a_document_is(self, monkeypatch) -> None:
+    def test_png_settings_are_validated_as_a_document_is(self) -> None:
         """``{"integer": 5}`` said "int() can't convert non-string"."""
         from esolangs.operations.source import read_png_artifact
         from esolangs.raster import png
@@ -565,8 +565,8 @@ class TestTheArgumentBoundaryRefusesCleanly:
             "settings": {"cell_modulus": {"integer": 5}},
             "scale": None,
         }
-        monkeypatch.setattr(png, "read_metadata", lambda _data: bad)
         data = esolangs.Raster((((0, 0, 0),),)).to_png()
+        data = png.write_metadata(data, bad)
         with pytest.raises(ProgramError, match="hexadecimal"):
             read_png_artifact(language, data)
 

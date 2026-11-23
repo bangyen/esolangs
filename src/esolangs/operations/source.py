@@ -90,7 +90,7 @@ def read_png_artifact(
     name = catalog.resolve(language)
     if not _settings_validated:
         dialect_options(name, settings, catalog=catalog)
-    retained, scale, arity = read_png_metadata(
+    scan, (retained, scale, arity) = read_png_source(
         name, data, catalog=catalog, checked_settings=settings
     )
     if retained is not None and retained is not settings:
@@ -100,7 +100,11 @@ def read_png_artifact(
             dialect_options(name, retained, catalog=catalog)
     merged = _merge_settings(name, retained, settings, catalog=catalog)
     return ProgramArtifact(
-        Raster.from_png(data), name, settings=merged, scale=scale, input_arity=arity
+        Raster._from_png(scan),  # noqa: SLF001 - reuse the validated chunk scan
+        name,
+        settings=merged,
+        scale=scale,
+        input_arity=arity,
     )
 
 
@@ -119,13 +123,13 @@ def _png_metadata_errors() -> Iterator[None]:
             ) from error
 
 
-def read_png_metadata(
+def read_png_source(
     name: str,
     data: bytes,
     *,
     catalog: Catalog,
     checked_settings: DialectSettings | None = None,
-) -> tuple[DialectSettings | None, int | None, int | None]:
+) -> tuple[png.PNGScan, tuple[DialectSettings | None, int | None, int | None]]:
     """Validate native claims before opening the image or calling its dialect."""
     from esolangs.portable import _decode_settings
 
@@ -133,9 +137,10 @@ def read_png_metadata(
         raise _text_raster_error(name, "a PNG")
     check_raster_gzip(name, data)
     with _png_metadata_errors():
-        metadata = png.read_metadata(data)
+        scan = png.scan_source(data)
+        metadata = scan.metadata
         if metadata is None:
-            return None, None, None
+            return scan, (None, None, None)
         png.check_source_fields(metadata)
         origin = metadata["language"]
         if origin is not None and not isinstance(origin, str):
@@ -150,7 +155,7 @@ def read_png_metadata(
             catalog=catalog,
             checked_settings=checked_settings,
         )
-        return settings, scale, arity
+        return scan, (settings, scale, arity)
 
 
 def read_artifact(

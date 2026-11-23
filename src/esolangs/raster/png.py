@@ -7,12 +7,13 @@ import re
 import struct
 import sys
 import zlib
-from collections.abc import Buffer, Iterator, Sequence
+from array import array
+from collections.abc import Buffer, Iterable, Iterator, Sequence
 from contextlib import ExitStack
 from json import JSONDecoder
 from json.encoder import encode_basestring_ascii
 from os import fsdecode, fsencode, fspath
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 from esolangs._dialect import DialectSettings
 from esolangs.exceptions import (
@@ -117,7 +118,29 @@ def _chunk_label(kind: bytes) -> str:
     return display_label(kind.decode("ascii", "replace"))
 
 
-def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
+type _Chunk = tuple[bytes, memoryview]
+
+
+class PNGScan(NamedTuple):
+    """Keep the immutable payload, validated chunk lengths, and source tag."""
+
+    data: bytes
+    lengths: array[int]
+    metadata: dict[str, Any] | None
+
+    def chunks(self) -> Iterator[_Chunk]:
+        """Replay validated boundaries without rechecking CRCs."""
+        deadline = _STREAM_DEADLINE.get()
+        view = memoryview(self.data)
+        pos = len(_SIGNATURE)
+        for length in self.lengths:
+            _time_remaining(deadline)
+            end = pos + 8 + length
+            yield self.data[pos + 4 : pos + 8], view[pos + 8 : end]
+            pos = end + 4
+
+
+def _chunks(data: bytes) -> Iterator[_Chunk]:
     """Yield validated chunks through the end of the PNG datastream."""
     deadline = _STREAM_DEADLINE.get()
     _time_remaining(deadline)
@@ -127,11 +150,12 @@ def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
             "export the image as PNG instead of renaming another image format",
         )
     pos = 8
+    view = memoryview(data)
     while pos + 8 <= len(data):
         _time_remaining(deadline)
         (length,) = struct.unpack(">I", data[pos : pos + 4])
         kind = data[pos + 4 : pos + 8]
-        body = data[pos + 8 : pos + 8 + length]
+        body = view[pos + 8 : pos + 8 + length]
         if len(body) != length:
             raise syntax_error(
                 f"truncated {_chunk_label(kind)} chunk",
@@ -143,7 +167,7 @@ def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
                 f"truncated {_chunk_label(kind)} chunk CRC",
                 ("restore or re-export the complete PNG file including its checksums"),
             )
-        if struct.unpack(">I", crc)[0] != zlib.crc32(kind + body) & 0xFFFFFFFF:
+        if struct.unpack(">I", crc)[0] != zlib.crc32(body, zlib.crc32(kind)):
             raise syntax_error(
                 f"invalid {_chunk_label(kind)} chunk CRC",
                 (
@@ -205,14 +229,14 @@ def _expected_stream_size(
 
 
 def _scan_chunks(
-    data: bytes,
+    chunks: Iterable[_Chunk],
 ) -> tuple[tuple[int, ...] | None, bytes | None, bytes]:
     """Collect the header, palette and compressed stream from the chunks."""
     header = None
     palette = None
     idat = bytearray()
     in_image_data = finished_image_data = False
-    for index, (kind, body) in enumerate(_chunks(data)):
+    for index, (kind, body) in enumerate(chunks):
         if index == 0 and kind != b"IHDR":
             raise syntax_error("PNG IHDR must appear first and only once", _REEXPORT)
         if in_image_data and kind != b"IDAT":
@@ -241,7 +265,7 @@ def _scan_chunks(
                     f"(want 3..768, a multiple of 3)",
                     "re-export as an 8-bit RGB PNG with a valid colour palette",
                 )
-            palette = body
+            palette = bytes(body)
         elif kind == b"IDAT":
             if finished_image_data:
                 raise syntax_error("PNG IDAT chunks must be consecutive", _REEXPORT)
@@ -404,12 +428,12 @@ def _check_pixel_limit(width: int, height: int, max_image_pixels: int | None) ->
 
 
 def _validate_png(
-    data: bytes,
+    chunks: Iterable[_Chunk],
     max_image_pixels: int | None,
 ) -> tuple[int, int, int, bytes]:
     """Validate the container and stream before Pillow allocates pixels."""
     deadline = _STREAM_DEADLINE.get()
-    header, palette, idat = _scan_chunks(data)
+    header, palette, idat = _scan_chunks(chunks)
     if header is None:
         raise syntax_error(
             "PNG has no IHDR chunk",
@@ -432,15 +456,20 @@ def _validate_png(
     return width, depth, colour, palette or b""
 
 
-def _read(data: Buffer, mode: str) -> tuple[bytes, int]:
+def _read(data: Buffer | PNGScan, mode: str) -> tuple[bytes, int]:
     deadline = _STREAM_DEADLINE.get()
     _time_remaining(deadline)
-    data = _backing_bytes(data)
+    chunks: Iterable[_Chunk]
+    if _has_backing_type(data, PNGScan):
+        payload, chunks = data.data, data.chunks()
+    else:
+        payload = _backing_bytes(cast("Buffer", data))
+        chunks = _chunks(payload)
     _time_remaining(deadline)
     image = _require_image()
-    width, depth, colour, palette = _validate_png(data, image.MAX_IMAGE_PIXELS)
+    width, depth, colour, palette = _validate_png(chunks, image.MAX_IMAGE_PIXELS)
     _time_remaining(deadline)
-    with image.open(io.BytesIO(data), formats=["PNG"]) as opened:
+    with image.open(io.BytesIO(payload), formats=["PNG"]) as opened:
         _time_remaining(deadline)
         opened.load()
         _time_remaining(deadline)
@@ -471,7 +500,7 @@ def read_grey(data: Buffer) -> list[bytearray]:
 _RGB_RUN = re.compile(rb"(.{3})\1*", re.DOTALL)
 
 
-def _rgb_rows(data: Buffer) -> Rows:
+def _rgb_rows(data: Buffer | PNGScan) -> Rows:
     """Decode immutable RGB rows, reusing up to 1024 pixels and row patterns."""
     deadline = _STREAM_DEADLINE.get()
     raw, width = _read(data, "RGB")
@@ -728,10 +757,10 @@ class SourceMetadataSizeError(ProgramError):
     """Source metadata exceeds the native PNG chunk budget."""
 
 
-def _decode_metadata(body: bytes) -> dict[str, Any]:
+def _decode_metadata(body: bytes | memoryview) -> dict[str, Any]:
     if len(body) > _METADATA_LIMIT:
         raise ValueError("duplicate or oversized esolangs PNG metadata")
-    decoded = record_loads(body.decode("utf-8-sig"))
+    decoded = record_loads(bytes(body).decode("utf-8-sig"))
     if not isinstance(decoded, dict):
         raise ValueError("esolangs PNG metadata must be an object")
     try:
@@ -757,8 +786,24 @@ def check_source_fields(metadata: dict[str, Any]) -> None:
 
 def read_metadata(data: Buffer) -> dict[str, Any] | None:
     """Read bounded UTF-8 version-one source metadata."""
+    return _read_metadata(_chunks(_backing_bytes(data)))
+
+
+def scan_source(data: bytes) -> PNGScan:
+    """Read the source tag and retain validated boundaries for decoding."""
+    data = _backing_bytes(data)
+    lengths = array("I")
+    metadata = _read_metadata(_chunks(data), lengths=lengths)
+    return PNGScan(data, lengths, metadata)
+
+
+def _read_metadata(
+    chunks: Iterable[_Chunk], *, lengths: array[int] | None = None
+) -> dict[str, Any] | None:
     found: dict[str, Any] | None = None
-    for kind, body in _chunks(_backing_bytes(data)):
+    for kind, body in chunks:
+        if lengths is not None:
+            lengths.append(len(body))
         if kind != _METADATA_CHUNK:
             continue
         if found is not None:

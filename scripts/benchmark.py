@@ -80,10 +80,19 @@ def artifact_hash(program: esolangs.Program) -> str:
             digest.update(chunk.encode("utf-8"))
         return digest.hexdigest()
     if isinstance(program, str):
-        payload = b"text\0" + program.encode("utf-8")
-    else:
-        payload = b"rgb\0" + json.dumps(program.rows, separators=(",", ":")).encode()
-    return hashlib.sha256(payload).hexdigest()
+        return hashlib.sha256(b"text\0" + program.encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(b"rgb\0[")
+    previous = None
+    for row in program.rows:
+        if previous is not None:
+            digest.update(b",")
+        # Scaled rasters repeat the same immutable row object.
+        if row is not previous:
+            packed = json.dumps(row, separators=(",", ":")).encode()
+            previous = row
+        digest.update(packed)
+    digest.update(b"]")
+    return digest.hexdigest()
 
 
 def artifact_digests(artifact: Artifact) -> tuple[str, str]:

@@ -245,6 +245,33 @@ def test_portable_cli_executes_a_complete_input_frame_with_stdin_open(
                 child.kill()
 
 
+@pytest.mark.parametrize(
+    ("payload", "offset"),
+    [(b"0\xff", 1), (b"\xef\xbb\xbf0\xff", 4), (b"0\xc3x", 1), (b"0\xc3", 1)],
+)
+def test_portable_cli_reports_framed_utf8_byte_offset(
+    tmp_path, payload, offset
+) -> None:
+    name = next(
+        name
+        for name, declaration in LANGUAGES.items()
+        if declaration.contract.frame_stdin
+        and declaration.contract.input_shape == "char_stream"
+    )
+    language = esolangs.Language(name)
+    path = tmp_path / "xor.json"
+    path.write_text(language.to_json(language.generate("0110")), encoding="utf-8")
+    child = subprocess.run(
+        [sys.executable, "-m", "esolangs", "run", "--artifact", name, str(path)],
+        input=payload,
+        capture_output=True,
+        timeout=5,
+        check=False,
+    )
+    assert child.returncode == 2
+    assert f"invalid UTF-8 at byte {offset})".encode() in child.stderr
+
+
 def test_portable_cli_fills_templates_before_execution(capsys) -> None:
     language = first(parameterized=True, answer_mode="output")
     generate = ["generate", "--artifact", language, "0110"]

@@ -1,6 +1,7 @@
 """Tests for the emitted-size and step-count baseline gate."""
 
 import hashlib
+import json
 from dataclasses import replace
 from typing import Any
 
@@ -225,6 +226,14 @@ def test_executed_artifact_and_provenance() -> None:
     assert b.artifact_hash(esolangs.Raster(((pixel, pixel),))) != b.artifact_hash(
         esolangs.Raster(((pixel,), (pixel,)))
     )
+
+
+def test_raster_artifact_hash_preserves_canonical_rows() -> None:
+    raster = esolangs.Raster(
+        (((0, 1, 2), (10, 20, 30)), ((4, 5, 6), (0, 0, 0)))
+    ).upscaled(3)
+    payload = json.dumps(raster.rows, separators=(",", ":")).encode()
+    assert b.artifact_hash(raster) == hashlib.sha256(b"rgb\0" + payload).hexdigest()
 
 
 def test_artifact_digests_distinguish_execution_metadata() -> None:

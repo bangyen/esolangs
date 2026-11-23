@@ -362,12 +362,14 @@ def _load_png(
     catalog: Catalog,
 ) -> ProgramArtifact[Raster]:
     """Restore a ``png`` document's raster."""
-    from esolangs.operations.source import positive_metadata_field, read_png_metadata
+    from esolangs.operations.source import positive_metadata_field, read_png_source
 
     arity = positive_metadata_field(value, "input_arity")
     scale = positive_metadata_field(value, "scale")
     data = base64.b64decode(value["source"], validate=True)
-    png_settings, png_scale, png_arity = read_png_metadata(name, data, catalog=catalog)
+    scan, (png_settings, png_scale, png_arity) = read_png_source(
+        name, data, catalog=catalog
+    )
     settings = _decode_settings(value["settings"], name, catalog=catalog)
     # Native writers use null for settings and scale they do not supply.
     if png_settings is not None and png_settings != settings:
@@ -382,7 +384,11 @@ def _load_png(
         raise ValueError("conflicting PNG and document input_arity")
     dialect_options(name, settings, catalog=catalog)
     return ProgramArtifact(
-        Raster.from_png(data), name, settings=settings, scale=scale, input_arity=arity
+        Raster._from_png(scan),  # noqa: SLF001 - reuse the validated chunk scan
+        name,
+        settings=settings,
+        scale=scale,
+        input_arity=arity,
     )
 
 

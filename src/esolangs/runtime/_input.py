@@ -63,6 +63,7 @@ class InputFrame:
         remaining = self.units
         parts: list[str] = []
         binary = False
+        consumed = 0
         while remaining:
             value = read()
             if _has_backing_type(value, str):
@@ -72,7 +73,14 @@ class InputFrame:
             elif _has_backing_type(value, bytes):
                 binary = True
                 data = bytes.__bytes__(value)
-                char = decoder.decode(data, final=not data)
+                consumed += len(data)
+                try:
+                    char = decoder.decode(data, final=not data)
+                except UnicodeDecodeError as error:
+                    # The decoder includes any buffered prefix in its error.
+                    raise input_read_error(
+                        error, byte_offset=consumed - len(error.object)
+                    ) from error
                 if data and not char:
                     continue
             else:
@@ -164,10 +172,11 @@ def check_input(source: InputSource) -> CheckedInput:
     return checked
 
 
-def input_read_error(detail: Exception | str) -> ArgumentError:
+def input_read_error(detail: Exception | str, *, byte_offset: int = 0) -> ArgumentError:
     """Build a stdin error with the repair shared by Python and the CLI."""
     if isinstance(detail, UnicodeDecodeError):
-        detail = f"not text (invalid {detail.encoding.upper()} at byte {detail.start})"
+        offset = byte_offset + detail.start
+        detail = f"not text (invalid {detail.encoding.upper()} at byte {offset})"
     return with_hint(
         ArgumentError(f"cannot read stdin: {detail}"),
         ("open the input stream for reading and encode binary input as UTF-8"),
