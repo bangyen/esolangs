@@ -9,7 +9,7 @@ admitted = 2026-11-17T18:00:00-05:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "five-byte prints paged 128 rows by 16 blocks from column 0; row 0 doubles and adds each input character into three counters; a self-written left jump and strip of down jumps land on the print, and page headers compare and carry the page counter"
+qualification = "five-byte prints paged 128 rows by 16 blocks from column 0; row 0 doubles and adds each input character into three counters; a self-written left jump and strip of down jumps land on the print, and page headers compare and carry the page counter; a short-hop binary tree covers page headers wider than eight bytes"
 
 [ablations]
 version = 1
@@ -54,7 +54,12 @@ construction = "esolangs.languages.bytemap.generator:bytemap_request"
 # 3 commands an input (1 for its part's first), 4 fix-ups, 9 a passed page
 # (9/2048 <= 1/200 a row), the chosen page's 16 strip writes and 10 more;
 # a long row 0 adds a copy a segment and two a return hop.
-expression = "4n + T/200 + 40"
+# On the tree, both axis distances sum geometrically; each relay
+# splits a distance into jumps of at most 220.
+cases = [
+    { through = 59, expression = "4n + T/200 + 40" },
+    { expression = "4n+T/200+40+8*2^⌈n/2⌉+10n+16" },
+]
 exact = false
 arities = [1, 2, 3, 6]
 first = 1
@@ -64,7 +69,11 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 [resource_evidence.workspace]
 # Written cells: the counters and their scratch, the chosen page's strip;
 # a passed page zeroes its header, so pages add only a row number's bits.
-expression = "60n + 40"
+# The tree writes one byte at each read site's coordinate.
+cases = [
+    { through = 59, expression = "60n + 40" },
+    { expression = "60n+40+16(n+2)^2+1024" },
+]
 exact = false
 arities = [1, 2, 3, 6]
 first = 1
@@ -74,7 +83,12 @@ description = { growth = "poly n", claim = "at most", template = "{claim} {formu
 [resource_evidence.scaling]
 # 10 chars a table row; ~530 a 2,048-row page; O(n) reading, worst over
 # 21T/2 at n = 11 (276), the first long row 0.
-expression = "21T/2 + 512"
+# The tree lies in a box below 2rx by 2ry bytes. Each byte takes two
+# characters, and rx*ry = 48^2*T.
+cases = [
+    { through = 59, expression = "21T/2 + 512" },
+    { expression = "20000T" },
+]
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1

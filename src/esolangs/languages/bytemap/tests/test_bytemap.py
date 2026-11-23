@@ -135,3 +135,24 @@ def test_sixteen_essential_inputs_split_row_zero_and_page_the_return() -> None:
         bits = [int(bit) for bit in f"{row:0{n}b}"]
         output = api.run(program, stdin=api.encode_inputs(bits)).output
         assert api.read_answer(output) == table[row], row
+
+
+def test_generator_falls_back_when_the_page_header_is_full(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from esolangs.languages.bytemap import generator
+
+    monkeypatch.setattr(generator, "_LO_BITS", 2)
+    monkeypatch.setattr(generator, "_MID_BITS", 1)
+    monkeypatch.setattr(generator, "_MAX_HEADER_BYTES", 2)
+    # Repeating the half adds an ignored leading bit. The fallback must
+    # consume that bit too, even though the table's answer ignores it.
+    table = "0010110010110001" * 2
+    source = generator.bytemap(table)
+    assert source == generator._tree(table, 5)
+    for row, answer in enumerate(table):
+        port = ScriptedIO(f"{row:05b}Q")
+        run(source, port)
+        assert port.getvalue() == answer
+        assert port.reads == 5
+        assert port.input_char() == ord("Q")

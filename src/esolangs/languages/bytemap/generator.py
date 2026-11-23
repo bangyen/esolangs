@@ -9,12 +9,14 @@ chosen page copies ``lo + 1`` into the down jump atop each of its 16
 blocks and ``J - 5 * mid`` into a left jump at column J, which lands on
 block ``mid`` and drops onto the print.  A page header compares ``H`` with
 0, and otherwise writes the counters, ``H`` less one, into the next page's
-header 130 rows down.
+header 130 rows down. A binary tree with short hop relays covers tables
+whose page counters would exceed the eight-byte header.
 
 Size:
-    O(T): at most 21T/2 + 256 chars: 10 a row, a page's header and strip
-    rows about 530 per 2,048 rows, and O(n) reading.  n=4 parity: 367
-    chars, n=10 random 1847: 10,847 chars.  Constant tables: 8n + 10.
+    O(T): paged tables use at most 21T/2 + 512 chars, 10 a row plus headers and strips.
+    Header and strip rows cost about 530 per 2,048 rows. n=4 parity: 367
+    chars, n=10 random 1847: 10,847 chars. Constant tables: 8n + 10.
+    The alternating tree uses at most 20,000T characters.
 
 Decisions:
     A jump reaches 255 cells along one row or column, so a command touches
@@ -47,6 +49,9 @@ type _Cell = tuple[int, int]
 _DOWN, _LEFT, _RIGHT, _UP = 0x52, 0x54, 0x56, 0x58
 _PRINT = ((0x00, 0x54, 0x00, 0x01, 0xFF), (0x00, 0x56, 0x03, 0x01, 0xFF))
 _LO_BITS, _MID_BITS = 7, 4
+_MAX_HEADER_BYTES = 8
+_TREE_PITCH = 48
+_TREE_HOP = 220
 #: Room a segment of row 0 may take, under a jump's reach.
 _SEGMENT = 230
 
@@ -170,14 +175,92 @@ def _units(n: int, part_of: dict[int, str]) -> list[tuple[int, tuple[str, ...]]]
     return units
 
 
+def _tree(table: str, n: int) -> str:
+    """Use alternating rectangular splits and a bounded hop per relay."""
+    grid = _Grid()
+
+    def rail(source: _Cell, target: _Cell) -> None:
+        r, c = source
+        tr, tc = target
+        dr = (tr > r) - (tr < r)
+        dc = (tc > c) - (tc < c)
+        remaining = abs(tr - r) + abs(tc - c)
+        while remaining > _TREE_HOP:
+            relay = (r + _TREE_HOP * dr, c + _TREE_HOP * dc)
+            grid.put((r, c), _jump((r, c), relay))
+            r, c = relay
+            remaining -= _TREE_HOP
+        if remaining:
+            grid.put((r, c), _jump((r, c), target))
+
+    def vertical_entry(source: _Cell, r: int, c: int) -> None:
+        # The read precedes the branch on its row. Approach it on the
+        # adjacent row so this relay cannot overwrite either instruction.
+        adjacent = r - 2 if source[0] < r else r + 2
+        rail(source, (adjacent, c))
+        rail((adjacent, c), (adjacent, c - 4))
+        rail((adjacent, c - 4), (r, c - 4))
+
+    def visit(
+        r: int, c: int, rx: int, ry: int, start: int, size: int, *, vertical: bool
+    ) -> None:
+        entry = (r, c - 4)
+        if size == 1:
+            grid.put(entry, _PRINT[int(table[start])])
+            return
+
+        branch = (r, c)
+        data, zero = (r, c + 10), (r, c + 11)
+        grid.put(entry, [0x1A, *_jump(entry, data), 1])
+        grid.put(data, [0, _ASCII_ZERO])
+        directions = ((-1, 0), (1, 0)) if vertical else ((0, -1), (0, 1))
+        exits = [(r + dr * 8, c + dc * 20) for dr, dc in directions]
+        grid.put(
+            branch,
+            [
+                0xC3,
+                *_jump(branch, data),
+                *_jump(branch, zero),
+                1,
+                *_jump(branch, exits[0]),
+                *_jump(branch, exits[1]),
+            ],
+        )
+        half = size // 2
+        for index, ((dr, dc), exit_) in enumerate(zip(directions, exits, strict=True)):
+            child_r = r + dr * (ry // 2)
+            child_c = c + dc * (rx // 2)
+            if vertical:
+                vertical_entry(exit_, child_r, child_c)
+            else:
+                rail(exit_, (child_r, child_c - 4))
+            visit(
+                child_r,
+                child_c,
+                rx if vertical else rx // 2,
+                ry // 2 if vertical else ry,
+                start + index * half,
+                half,
+                vertical=not vertical,
+            )
+
+    rx = _TREE_PITCH << ((n + 1) // 2)
+    ry = _TREE_PITCH << (n // 2)
+    rail((0, 0), (0, rx))
+    vertical_entry((0, rx), ry, rx)
+    visit(ry, rx, rx, ry, 0, len(table), vertical=False)
+    return grid.render()
+
+
 def bytemap(truth_table: str) -> str:
     """Build a program printing ``truth_table[row]`` after reading every input."""
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
-    table = read_at(truth_table, essential, n)
     if not essential:
         # Each read writes its character over its own, already-run opcode.
-        return "1A540001" * n + "".join(f"{b:02X}" for b in _PRINT[table == "1"])
+        return "1A540001" * n + "".join(
+            f"{b:02X}" for b in _PRINT[truth_table[0] == "1"]
+        )
     m = len(essential)
     lo_bits = min(m, _LO_BITS)
     mid_bits = min(m - lo_bits, _MID_BITS)
@@ -190,7 +273,9 @@ def bytemap(truth_table: str) -> str:
     offset["H"] = offset["lo"] + 1
     k_v = offset["H"] + k_h
     width = {"mid": 1, "lo": 1, "H": k_h}
-    assert k_v <= 8, "a header holds at most 8 counter bytes"
+    if k_v > _MAX_HEADER_BYTES:
+        return _tree(truth_table, n)
+    table = read_at(truth_table, essential, n)
     part_of: dict[int, str] = {}
     for j, i in enumerate(essential):
         part_of[i] = "H" if j < h_bits else "mid" if j < h_bits + mid_bits else "lo"
