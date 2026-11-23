@@ -5,6 +5,8 @@ from itertools import accumulate
 _PREFIX_MARKS = {
     value: bytes(int(code == ord(value)) for code in range(256)) for value in "01"
 }
+_BLOCK_BITS = 10
+_BLOCK_WEIGHTS = bytes(row.bit_count() for row in range(1 << _BLOCK_BITS))
 
 
 def constant_output(table: str) -> str | None:
@@ -31,11 +33,27 @@ def prefix_counts(table: str, value: str) -> list[int]:
 def symmetric_outputs(table: str, n: int) -> str | None:
     """Return outputs by popcount for a validated n-input symmetric table."""
     outputs = "".join(table[(1 << count) - 1] for count in range(n + 1))
-    return (
-        outputs
-        if all(bit == outputs[row.bit_count()] for row, bit in enumerate(table))
-        else None
-    )
+    prefix = table if n <= _BLOCK_BITS else table[:16]
+    if any(bit != outputs[row.bit_count()] for row, bit in enumerate(prefix)):
+        return None
+    if n <= _BLOCK_BITS:
+        return outputs
+
+    # Blocks with the same high-input popcount have identical output words.
+    profile = outputs.encode("ascii")
+    words: dict[int, str] = {}
+    for block, start in enumerate(range(0, len(table), len(_BLOCK_WEIGHTS))):
+        weight = block.bit_count()
+        word = words.get(weight)
+        if word is None:
+            output_by_weight = profile[weight : weight + _BLOCK_BITS + 1]
+            word = _BLOCK_WEIGHTS.translate(output_by_weight.ljust(256, b"\0")).decode(
+                "ascii"
+            )
+            words[weight] = word
+        if not table.startswith(word, start):
+            return None
+    return outputs
 
 
 def packed_cells(

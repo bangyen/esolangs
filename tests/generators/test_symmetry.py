@@ -25,6 +25,18 @@ def test_prefix_counts_accepts_other_characters_and_empty_tables():
     assert prefix_counts("0é1", "é") == [0, 0, 1, 1]
 
 
+def test_symmetric_profiles_cover_every_block():
+    for n in (10, 11, 12, 16):
+        profile = ("01101" * (n // 5 + 1))[: n + 1]
+        table = "".join(profile[row.bit_count()] for row in range(1 << n))
+        assert symmetric_outputs(table, n) == profile
+        for row in (2, 1024 + 3, len(table) - 2):
+            if row >= len(table):
+                continue
+            flipped = table[:row] + str(1 - int(table[row])) + table[row + 1 :]
+            assert symmetric_outputs(flipped, n) is None
+
+
 def _check_permutations(n):
     rows = list(product((0, 1), repeat=n))
     orders = list(permutations(range(n)))

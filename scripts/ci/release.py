@@ -6,6 +6,7 @@ import argparse
 import gzip
 import importlib.util
 import io
+import json
 import os
 import re
 import signal
@@ -13,7 +14,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from itertools import islice
@@ -342,6 +343,52 @@ def _smoke_files() -> None:
             assert diagnostic in result.stderr, result
         source.write_text(",>,<.", encoding="utf-8")
         assert _evaluate("brainfuck", source, timeout=None, inputs=2) == "0011"
+        _smoke_portable_artifact(source.with_suffix(".json"))
+
+
+def _smoke_portable_artifact(target: Path) -> None:
+    """Round-trip a portable program with a nondefault dialect in the CLI."""
+    import esolangs
+
+    def overrides(facts: LanguageInfo) -> Iterator[tuple[str, str | int]]:
+        return (
+            (key, value)
+            for key, setting in facts.dialect_settings.items()
+            for value in setting["choices"]
+            if value != setting["default"]
+        )
+
+    (language,) = _first_languages(
+        lambda facts: (
+            facts.source_kind == "text"
+            and not facts.parameterized
+            and facts.answer_mode == "output"
+            and next(overrides(facts), None) is not None
+        ),
+        1,
+    )
+    key, value = next(overrides(esolangs.describe(language)))
+    table = "0110"
+    document = _cli(
+        [
+            "generate",
+            "--artifact",
+            "--settings",
+            json.dumps({key: value}),
+            language,
+            table,
+        ]
+    )
+    artifact = esolangs.from_json(language, document)
+    assert isinstance(artifact, esolangs.ProgramArtifact)
+    assert artifact.input_arity == 2
+    assert artifact.settings is not None
+    assert artifact.settings.options()[key] == value
+    target.write_text(document, encoding="utf-8")
+    for row, expected in enumerate(table):
+        stdin = esolangs.encode_inputs(language, [row >> 1, row & 1])
+        output = _cli(["run", "--artifact", language, str(target)], stdin)
+        assert esolangs.read_answer(language, output) == expected, (language, row)
 
 
 def _smoke_rasters(*, image_extra: bool) -> None:
