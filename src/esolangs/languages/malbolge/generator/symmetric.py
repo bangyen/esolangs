@@ -200,7 +200,7 @@ def _s_emit_groups(main: _Planner, cells: _DCells) -> None:
     for group, cell in enumerate(cells.gadget):
         for op in _S_GADGETS[group]:
             if op == "/":
-                main.raw("/")
+                main.read()
             elif op[0] == "K":
                 main.op("*", helper[_K_CELL[op]])
             else:

@@ -208,14 +208,6 @@ def _seed_label_chains(
             main.op("p", p)
 
 
-def _t_jump(path: _Planner, readout: int) -> None:
-    """``j`` to the table cell, ``j`` to its pointer, ``j`` to the hub, ``i``."""
-    path.op("j", readout)
-    path.raw("j")
-    path.raw("j")
-    path.raw("i")
-
-
 def _walker(used: set[int], lo: int = 128, hi: int = _ENTRY) -> Callable[..., int]:
     """Return an allocator of the least unused cell in ``lo..hi``.
 

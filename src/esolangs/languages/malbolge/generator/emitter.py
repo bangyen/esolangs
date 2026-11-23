@@ -33,6 +33,11 @@ _LANDING_WIDTHS = (
 )
 
 
+_READ = "/"
+_DISCARD_AND_READ = _READ + _READ
+_DISPATCH = "jjji"
+
+
 class _Landings:
     """Index each upper landing bound by a bit per known source cell."""
 
@@ -195,8 +200,12 @@ class _Planner:
                 return
             reserve = 0
             if self._pages:
-                # Raw reads may advance D by up to two after the operation.
+                # A gadget read can follow a discarded read. Reserve
+                # the transfer from every position through that pair.
                 after = target + 1 if after_hub is None else after_hub
+                offsets = (
+                    range(len(_DISCARD_AND_READ) + 1) if after_hub is None else (0,)
+                )
                 branch = self._pages[0].pointer
                 reserve = 1 + max(
                     len(
@@ -204,9 +213,9 @@ class _Planner:
                             after + offset, branch, route.data, exclude=target
                         ).ops
                     )
-                    for offset in range(3 if after_hub is None else 1)
+                    for offset in offsets
                 )
-            if self.c + len(route.ops) + reserve + 4 <= self._limit:
+            if self.c + len(route.ops) + reserve + len(_DISPATCH) <= self._limit:
                 self._take(route, target)
                 return
             if not self._pages:
@@ -220,6 +229,17 @@ class _Planner:
         """Route D to target and emit the operation."""
         self.goto(target)
         self.raw(op)
+
+    def read(self, *, discard: bool = False) -> None:
+        """Read a gadget input, optionally discarding the preceding byte."""
+        for op in _DISCARD_AND_READ if discard else _READ:
+            self.raw(op)
+
+    def dispatch(self, readout: int) -> None:
+        """Jump through the table, pointer and hub to the answer stub."""
+        self.op(_DISPATCH[0], readout)
+        for op in _DISPATCH[1:]:
+            self.raw(op)
 
     def hub(self, pointer: int, value: int) -> None:
         """Jump through a pointer holding value to the hub at value + 1."""

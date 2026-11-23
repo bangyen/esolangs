@@ -91,7 +91,6 @@ from .core import (
     _seed_g,
     _seed_label_chains,
     _stub_builds,
-    _t_jump,
     _table_char,
     _walker,
     _write_hubs,
@@ -785,14 +784,15 @@ def _emit_gadget_reads(
     helper = cells.helper
     held, taken = _held(n, group), 0
     for index, op in enumerate(_GADGET):
-        if index == drop_token:
-            main.raw("/")
+        discard = index == drop_token
+        if op == "/" and taken == held:
+            main.read(discard=discard)
+            continue
+        if discard:
+            main.read()
         if op == "/":
-            if taken < held:
-                _emit_zero(main, cells, one=_held_read(group, held, taken) == 49)
-                taken += 1
-            else:
-                main.raw("/")
+            _emit_zero(main, cells, one=_held_read(group, held, taken) == 49)
+            taken += 1
         elif op[0] == "K":
             main.op("*", helper[_K_CELL[op]])
         else:
@@ -855,7 +855,7 @@ def _emit_digit_jump(
     if rotate_readout:
         main.op("*", cells.z_cell)
         main.op("*", cells.z_cell)
-    _t_jump(main, cells.z_cell)
+    main.dispatch(cells.z_cell)
 
 
 @cache
