@@ -112,28 +112,26 @@ _READS = 3
 #: the stub's own input when the last group drops it.
 _DROP_TOKEN = {1: 0, 2: 2, 3: 4, 4: 13}
 
-#: The gadget: ``/`` reads an input, ``K`` sets ``A`` to 0 / all-1 / all-2 and
-#: a digit names the cell a ``p`` runs over.  The unique shortest injective
-#: suffix after the wipe prefix (``test_suffix_is_unique_shortest``); cells 1, 2
-#: are ``u = 1+x-y-xyz``, ``v = (2-x)(1-z)+zxy`` mod 3 (trit 0).
-_GADGET = (
-    "/",
-    "0",
-    "/",
-    "1",
-    "K2",
-    "0",
-    "K2",
-    "1",
-    "/",
-    "2",
-    "0",
-    "1",
-    "0",
-    "K1",
-    "0",
-    "2",
-)
+
+def _digit_gadget() -> tuple[str, ...]:
+    """Factor the two output trits into accumulator operations."""
+    x_cell, y_cell, z_cell = "0", "1", "2"
+    # At trit 0 the prefix leaves X = 2(1-x), Y = 2(1-y), Z = 1-z,
+    # with A = Z. Here C(a, b) is crazy modulo 3.
+    prefix = ("/", x_cell, "/", y_cell, "K2", x_cell, "K2", y_cell, "/", z_cell)
+    # F = C(Z, X) = 2(1-x) + xz. Then U = C(F, Y) = 1+x-y-xyz.
+    fold_u = (x_cell, y_cell)
+    # Keep F in x_cell so Q = C(U, F) can recover the other digit.
+    # If x=0, F=2 and U is 0 or 1, so Q=2. If x=1, F=z and
+    # U is 2 for y=0, else 1-z. Thus Q=2 iff x=0 or (z=1 and y=0).
+    # C(1, Q) retains 2 and maps 0 and 1 to 0. Applying C to that
+    # result and Z gives 2-x for z=0 and xy for z=1.
+    fold_v = (x_cell, "K1", x_cell, z_cell)
+    return (*prefix, *fold_u, *fold_v)
+
+
+_GADGET = _digit_gadget()
+
 #: Gadget groups, one digit each.
 _D_GROUPS = 5
 #: Trits 1..3 of the reads ``'0'`` and ``'1'`` (48, 49), which agree there.
