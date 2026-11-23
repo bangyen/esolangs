@@ -164,6 +164,16 @@ class TestWikiExamples:
             "Interprogck8", DICE, native, "_prepare_source", monkeypatch
         )
 
+    def test_two_input_bounds_use_distinct_reads(self) -> None:
+        io = ScriptedIO(".\n:::\n")
+        native.run("[$py $py]\n$ay", io, FirstDraw(5))
+        assert io.getvalue() == ":::"
+
+        io = ScriptedIO(".\n:::\n:::\n")
+        source = "{values/=[$py $py]/=$py/=:::}\ndiv"
+        native.run(source, io, FirstDraw(5))
+        assert io.getvalue() == "Q"
+
     def test_each_dice_face_prints_its_pips(self) -> None:
         for source in (DICE, "[::: .]\n$ay"):
             for face in range(1, 7):
@@ -295,10 +305,13 @@ class TestDownAccLines:
         with pytest.raises(HaltError):
             go("NnNn\n@id\nDownAccLines\nx")
 
-    def test_inside_a_function_is_refused(self) -> None:
-        """A frame index is not a program line, so the jump names nothing."""
-        with pytest.raises(HaltError):
-            go("<\nNnNn\nDownAccLines\n>\nEXE")
+    def test_inside_a_function_skips_body_lines(self) -> None:
+        assert go("<\n@nd\nDownAccLines\ninvalid\nnNnN\ndiv\n>\nEXE") == "A"
+
+    def test_skipping_to_end_of_function_returns_to_caller(self) -> None:
+        assert go("<\n@nd\nDownAccLines\ninvalid\n>\nEXE\nnNnN\ndiv") == "A"
+        with pytest.raises(HaltError, match="not enough lines"):
+            go("<\n@nd\nDownAccLines\n>\nEXE\nnNnN\ndiv")
 
 
 class TestFunctions:

@@ -42,6 +42,32 @@ def test_the_queue_of_queues_program_echoes_lines_then_a_blank() -> None:
     assert _out(_STRINGS, "hello\nworld\n\n") == "hello\nworld\n\n"
 
 
+def test_end_statement_skips_lines_and_can_be_reset() -> None:
+    source = ".P ;+2 -> ;\n1 -> out\n2 -> out\n.P ;+1 -> ;\n3 -> out\n4 -> out"
+    assert _out(source) == "1\n3\n4\n"
+
+
+def test_function_end_statement_is_local() -> None:
+    source = "F f\n.P ;+2 -> ;\n1 -> :out\n2 -> :out\n3 -> :out\nF\n-> f\n4 -> out"
+    assert _out(source) == "1\n3\n4\n"
+
+
+def test_custom_end_statement_runs_after_a_function_returns() -> None:
+    # The body resolves before the custom end statement inspects the result.
+    source = "F f\n1 -> out\nF\n.P ;+f -> ;\n-> f\n.P ;+1 -> ;\n2 -> out"
+    assert _out(source) == "2\n"
+
+
+def test_end_statement_does_not_repeat_line_on_input_error() -> None:
+    machine = _Machine(".P in -> ;\n1 -> out\n2 -> out", io := ScriptedIO())
+    machine.step()
+    assert io.getvalue() == "1\n"
+    for _ in range(2):
+        with pytest.raises(EOFError):
+            machine.step()
+        assert io.getvalue() == "1\n"
+
+
 def test_a_label_saves_and_restores_the_program_counter() -> None:
     code = "Q LABEL\nQ n = {3}\nLABEL = ;\n*n -> out\nn - 1 -> n\nQ c\n*n -> c\n"
     loop = "; = LABEL\n"
@@ -59,6 +85,51 @@ def test_a_label_saves_and_restores_the_program_counter() -> None:
 )
 def test_operator_precedence_follows_the_listed_order(code: str, expected: str) -> None:
     assert _out(code) == expected
+
+
+def test_function_assignment_copies_all_three_queues() -> None:
+    source = (
+        "F f\nin + 1 -> out\nF\nF g\n99 -> out\nF\n"
+        "40 -> &f\n7 -> @f\n2 -> &g\n3 -> @g\ng = f\ng = g\n"
+        "-> g\ng -> out\ng -> out\n-> f\nf -> out\nf -> out"
+    )
+    assert _out(source) == "7\n41\n7\n41\n"
+
+
+def test_function_assignment_changes_later_calls() -> None:
+    source = "F f\n2 -> :out\nF\nF g\n:g = :f\n1 -> :out\nF\n-> g\n-> g"
+    assert _out(source) == "1\n2\n"
+
+
+@pytest.mark.parametrize("assignment", ["f = q", "q = f", "f = {1}"])
+def test_function_assignment_requires_matching_types(assignment: str) -> None:
+    with pytest.raises(HaltError, match="assigned"):
+        _out("F f\nF\nQ q\n" + assignment)
+
+
+def test_instruction_queue_append_and_nested_statements() -> None:
+    source = "F f\n5 -> :out\nF\n[[7 -> :out] -> code] -> ~f\n-> f\n"
+    assert _out(source) == "5\n7\n"
+
+
+def test_function_copy_keeps_independent_instruction_queues() -> None:
+    source = (
+        "F f\n1 -> :out\nF\nF g\n2 -> :out\nF\n"
+        "[3 -> :out] -> ~f\ng = f\n"
+        "~f = [4 -> :out]\n-> f\n-> g"
+    )
+    assert _out(source) == "4\n1\n3\n"
+
+
+def test_main_code_and_instruction_queue_move() -> None:
+    source = "F f\n2 -> out\nF\n~f -> code\n#~f -> out"
+    assert _out(source) == "0\n2\n"
+
+
+def test_instruction_queue_rejects_numeric_items_and_arithmetic() -> None:
+    for source in ("1 -> code", "[1 -> out] + 1 -> out", "Q q\n[1 -> out] -> q"):
+        with pytest.raises(HaltError):
+            _out(source)
 
 
 def test_null_queues_and_override_prefixes() -> None:

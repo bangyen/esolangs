@@ -1,5 +1,5 @@
 [[spec_triggers]]
-program = "~f -> out"
+program = "F f\nQ x"
 stdin = ""
 expect = "ProgramError"
 claim = "ProgramError: a malformed statement, an unterminated or nested ``F`` block, or a construct the page names but never exercises (see Decisions); raised as ValueError."

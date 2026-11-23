@@ -66,17 +66,17 @@ Decisions:
       function (":; -> is required to end execution").
     * ``'in`` and ``'out`` stay stdin and stdout inside a function; the page
       redirects only ``in`` and ``out``.
-    * Raised as never exercised: directives (``.I`` needs a filesystem,
-      ``.M`` and ``.P`` leave their reach unstated), the instruction queue
-      (``~``, ``[...]``, ``code``), variable I/O (``?``, ``FILE``,
-      ``ALLOC``), types other than Q, QQ and F, ``%``, function assignment,
+    * A ``.P`` directive sets the end statement for following lines in its
+      body. Functions inherit it at declaration and can override it locally.
+    * Raised as never exercised: directives ``.I`` and ``.M``, variable I/O
+      (``?``, ``FILE``, ``ALLOC``), types other than Q, QQ and F, ``%``,
       ``&``/``@`` on queues, ``#`` of stdin and multi-number ``in``/``out``
       assignment.
 """
 
 import re
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, NamedTuple, cast
 
 from esolangs.exceptions import ArgumentError, HaltError, ProgramError
@@ -95,22 +95,19 @@ from esolangs.runtime.source_hints import syntax_error
 _TOKEN = re.compile(
     r"\s*(?:(?P<num>\d+)|(?P<str>\"[^\"]*\")|(?P<lit>\{[^}]*\})"
     r"|(?P<name>'?[A-Za-z_]\w*)"
-    r"|(?P<op>->|<-|==|!=|<=|=<|>=|=>|[=<>!+\-/\\|^()*#:&@$;]))"
+    r"|(?P<op>->|<-|==|!=|<=|=<|>=|=>|[=<>!+\-/\\|^()*#:&@$;~\[\]]))"
 )
 _DECL = re.compile(r"([QFX]+)\s+([A-Za-z_]\w*)\s*(?:=(.*))?")
 _NUMBER = re.compile(r"[+-]?\d+")
 #: Binary precedence, tightest highest: the page's "^ \ / | + -", then logic.
 _PREC = {"^": 7, "\\": 6, "/": 5, "|": 4, "+": 3, "-": 2}
 _PREC.update(dict.fromkeys(("==", "!=", "<", ">", "<=", "=<", ">=", "=>"), 1))
-_PREFIXES = frozenset({"", "*", "#", "&", "@", "$", "*$"})
+_PREFIXES = frozenset({"", "*", "#", "&", "@", "$", "*$", "~", "*~", "#~", "$~", "*$~"})
 _UNSUPPORTED = {
-    "~": "the instruction queue",
-    "[": "the instruction queue",
     "?": "variable I/O",
     "%": "the diminish operator",
 }
 _RESERVED = {
-    "code": "the instruction queue",
     "FILE": "variable I/O",
     "ALLOC": "variable I/O",
     "DELETE": "variable I/O",
@@ -132,7 +129,7 @@ class _Lit(NamedTuple):
 
 
 #: Postfix: a number, a literal, a reference, or an operator name.
-type _Item = int | _Lit | _Ref | str
+type _Item = int | _Lit | _Ref | _Stmt | str
 type _Expr = tuple[_Item, ...]
 
 
@@ -140,11 +137,12 @@ class _Stmt(NamedTuple):
     """A parsed statement; ``src``/``dst`` are None on a null side."""
 
     kind: str  # "decl", "attach" or "assign"
-    src: "_Expr | _Ref | _Lit | None" = None
+    src: "_Expr | _Ref | _Lit | _Stmt | None" = None
     dst: _Ref | None = None
     typ: str = ""
     name: str = ""
     body: int = -1
+    end: "_Stmt | None" = None
 
 
 class _Func(NamedTuple):
@@ -181,6 +179,7 @@ class _Effect(NamedTuple):
     out: str
     declare: tuple[str, str, tuple[object, ...]] | None  # name, type, items
     call: _Func | None
+    function_copy: tuple[_Ref, _Func] | None = None
 
 
 class _NeedInputError(Exception):
@@ -206,6 +205,7 @@ def _unsupported(what: str) -> ValueError:
 def _tokens(text: str) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     pos, end = 0, len(text.rstrip())
+    brackets: list[int] = []
     while pos < end:
         m = _TOKEN.match(text, pos)
         if m is None or not m.lastgroup:
@@ -214,13 +214,25 @@ def _tokens(text: str) -> list[tuple[str, str]]:
                 raise _unsupported(_UNSUPPORTED[ch])
             raise _bad(text, f"unexpected {ch!r}")
         kind, tok = m.lastgroup, m.group(m.lastgroup)
-        if kind == "name":
-            if tok in _RESERVED:
-                raise _unsupported(_RESERVED[tok])
-            if tok.startswith("'") and tok not in ("'in", "'out"):
-                raise _bad(text, "only 'in and 'out take a quote")
-        out.append((kind, tok))
+        if brackets or tok in ("[", "]"):
+            if tok == "[":
+                brackets.append(m.start(kind))
+            elif tok == "]":
+                if not brackets:
+                    raise _bad(text, "unexpected ]")
+                start = brackets.pop()
+                if not brackets:
+                    out.append(("stmt", text[start : m.end()]))
+        else:
+            if kind == "name":
+                if tok in _RESERVED:
+                    raise _unsupported(_RESERVED[tok])
+                if tok.startswith("'") and tok not in ("'in", "'out"):
+                    raise _bad(text, "only 'in and 'out take a quote")
+            out.append((kind, tok))
         pos = m.end()
+    if brackets:
+        raise _bad(text, "close the bracketed statement")
     return out
 
 
@@ -237,7 +249,7 @@ def _literal(kind: str, tok: str) -> _Lit:
 def _ref(toks: list[tuple[str, str]], pos: int, text: str) -> tuple[_Ref, int]:
     """Parse prefixes and a name from ``toks[pos]``; return it and the end."""
     prefix, level = "", 0
-    while pos < len(toks) and toks[pos][1] in ("*", "#", ":", "&", "@", "$"):
+    while pos < len(toks) and toks[pos][1] in ("*", "#", ":", "&", "@", "$", "~"):
         if toks[pos][1] == ":":
             level += 1
         else:
@@ -268,6 +280,10 @@ def _expr(toks: list[tuple[str, str]], text: str) -> _Expr:
                 want = False
             elif kind in ("str", "lit"):
                 out.append(_literal(kind, tok))
+                pos += 1
+                want = False
+            elif kind == "stmt":
+                out.append(_quoted_statement(tok))
                 pos += 1
                 want = False
             else:
@@ -315,15 +331,17 @@ def _side(toks: list[tuple[str, str]], text: str) -> _Ref | None:
     return ref
 
 
-def _source(toks: list[tuple[str, str]], text: str) -> _Ref | _Lit | None:
+def _source(toks: list[tuple[str, str]], text: str) -> _Ref | _Lit | _Stmt | None:
     """An assignment source: nothing, a literal, or a plain queue name."""
     if not toks:
         return None
     if len(toks) == 1 and toks[0][0] in ("str", "lit"):
         return _literal(*toks[0])
+    if len(toks) == 1 and toks[0][0] == "stmt":
+        return _quoted_statement(toks[0][1])
     ref = _side(toks, text)
     assert ref is not None
-    if ref.prefix:
+    if ref.prefix not in ("", "~"):
         raise _unsupported(f"the prefix {ref.prefix} in an assignment")
     return ref
 
@@ -333,7 +351,7 @@ def _statement(text: str, body: int = -1) -> _Stmt:
         typ, name, init = m.groups()
         if typ not in ("Q", "QQ", "F"):
             raise _unsupported(f"the type {typ}")
-        if name in ("in", "out") or name in _RESERVED:
+        if name in ("in", "out", "code") or name in _RESERVED:
             raise _bad(text, f"{name} is predefined")
         if typ == "F":
             if init is not None:
@@ -360,16 +378,37 @@ def _statement(text: str, body: int = -1) -> _Stmt:
     return _Stmt("attach", _expr(left, text) if left else None, _side(right, text))
 
 
+def _quoted_statement(text: str) -> _Stmt:
+    stmt = _statement(text[1:-1].strip())
+    if stmt.typ == "F":
+        raise _bad(text, "a function block is not a single statement")
+    return stmt
+
+
+def _code_id(body: int) -> int:
+    return -2 - body
+
+
 def _parse(code: str) -> tuple[tuple[_Stmt, ...], ...]:
     """Split ``code`` into bodies: the main program first, then functions."""
     bodies: list[list[_Stmt]] = [[]]
+    ends: list[_Stmt | None] = [None]
     current = 0
     for raw in code.replace("\r\n", "\n").split("\n"):
         line = raw.split("`", 1)[0].strip()
         if not line:
             continue
         if line.startswith("."):
-            raise _unsupported(f"the directive {line[:2]}")
+            directive, *args = line.split(maxsplit=1)
+            if directive != ".P":
+                raise _unsupported(f"the directive {line[:2]}")
+            if not args:
+                raise _bad(line, ".P requires an end statement")
+            end = _statement(args[0])
+            if end.typ == "F":
+                raise _bad(line, ".P cannot declare a function block")
+            ends[current] = end
+            continue
         if line == "F":
             if current == 0:
                 raise _bad(line, "a lone F closes a function block")
@@ -380,10 +419,16 @@ def _parse(code: str) -> tuple[tuple[_Stmt, ...], ...]:
             if current:
                 raise _unsupported("a function declared inside a function")
             bodies.append([])
-            bodies[0].append(_statement(line, len(bodies) - 1))
+            ends.append(ends[0])
+            stmt = _statement(line, len(bodies) - 1)
+            bodies[0].append(stmt if ends[0] is None else stmt._replace(end=ends[0]))
             current = len(bodies) - 1
             continue
-        bodies[current].append(_statement(line))
+        stmt = _statement(line)
+        current_end = ends[current]
+        bodies[current].append(
+            stmt if current_end is None else stmt._replace(end=current_end)
+        )
     if current:
         raise _bad(code, "close each function with a line holding F")
     return tuple(map(tuple, bodies))
@@ -392,6 +437,17 @@ def _parse(code: str) -> tuple[tuple[_Stmt, ...], ...]:
 class _Eval:
     """One statement's reads: queue offsets popped so far and stdin used."""
 
+    __slots__ = (
+        "bodies",
+        "frame",
+        "heap",
+        "inbox",
+        "main",
+        "main_pc",
+        "offsets",
+        "used",
+    )
+
     def __init__(
         self,
         frame: _Frame,
@@ -399,9 +455,11 @@ class _Eval:
         heap: Mapping[int, deque[object]],
         inbox: tuple[tuple[str, object], ...],
         main_pc: int,
+        bodies: Mapping[int, Sequence[object]],
     ) -> None:
         self.frame, self.main, self.heap, self.inbox = frame, main, heap, inbox
         self.main_pc = main_pc
+        self.bodies = bodies
         self.offsets: dict[int, int] = {}
         self.used = 0
 
@@ -411,6 +469,10 @@ class _Eval:
         if ref.level and self.frame.func is None:
             raise HaltError(f":{ref.name} is used outside a function")
         name = ref.name
+        if "~" in ref.prefix and name in ("code", ";", "in", "out", "'in", "'out"):
+            raise HaltError("~ requires a function")
+        if name == "code":
+            return "code", _code_id(self.frame.body if ref.level == 0 else 0)
         if name == ";":
             return "Q", (self.frame.pc if ref.level == 0 else self.main_pc)
         if name in ("in", "out"):
@@ -426,7 +488,11 @@ class _Eval:
         if obj is None:
             raise HaltError(f"{name} is used before it is declared")
         if isinstance(obj, _Func):
+            if "~" in ref.prefix:
+                return "code", _code_id(obj.body)
             return "F", obj
+        if "~" in ref.prefix:
+            raise HaltError("~ requires a function")
         return obj.typ, obj.qid
 
     def queue(self, ref: _Ref) -> tuple[str, int]:
@@ -452,9 +518,17 @@ class _Eval:
             self.used += 1
         return value
 
-    def take(self, ref: _Ref, *, peek: bool) -> object | None:
+    def contents(self, qid: int) -> Sequence[object]:
+        if qid <= -2:
+            return self.bodies[-2 - qid]
+        # deque supports the size and index operations used here.
+        return self.heap[qid]
+
+    def take(
+        self, ref: _Ref, *, peek: bool, queue: tuple[str, int] | None = None
+    ) -> object | None:
         """Pop (or peek) ``ref``'s top; None when the queue is empty."""
-        kind, qid = self.queue(ref)
+        kind, qid = self.queue(ref) if queue is None else queue
         if kind == "in":
             return self.stdin("num", peek=peek)
         if kind == "'in":
@@ -462,7 +536,7 @@ class _Eval:
         if kind in ("out", "'out"):
             raise HaltError(f"{ref.name} can only be a destination")
         at = self.offsets.get(qid, 0)
-        q = self.heap[qid]
+        q = self.heap[qid] if qid >= 0 else self.bodies[-2 - qid]
         if at >= len(q):
             return None
         if not peek:
@@ -475,7 +549,7 @@ class _Eval:
             raise _unsupported("# of stdin")
         if kind in ("out", "'out"):
             raise HaltError(f"{ref.name} can only be a destination")
-        return len(self.heap[qid]) - self.offsets.get(qid, 0)
+        return len(self.contents(qid)) - self.offsets.get(qid, 0)
 
     def value(self, item: _Item) -> int:
         if isinstance(item, int):
@@ -484,10 +558,12 @@ class _Eval:
             if not item.items:
                 raise HaltError("an empty literal in arithmetic")
             return item.items[0]
+        if isinstance(item, _Stmt):
+            raise HaltError("an instruction cannot be used in arithmetic")
         assert isinstance(item, _Ref)
-        if item.prefix == "#":
+        if item.prefix.startswith("#"):
             return self.count(item)
-        got = self.take(item, peek=item.prefix == "*")
+        got = self.take(item, peek=item.prefix.startswith("*"))
         if got is None:
             raise HaltError(f"{item.name} is empty in arithmetic")
         if not isinstance(got, int):
@@ -517,7 +593,7 @@ class _Eval:
             raise _unsupported("multi-number input by assignment")
         if kind in ("out", "'out"):
             raise HaltError(f"{ref.name} can only be a destination")
-        return kind, tuple(self.heap[qid])[self.offsets.get(qid, 0) :]
+        return kind, tuple(self.contents(qid))[self.offsets.get(qid, 0) :]
 
 
 def _apply(op: str, a: int, b: int) -> int:
@@ -569,14 +645,14 @@ def _advance(
     heap: Mapping[int, deque[object]],
     inbox: tuple[tuple[str, object], ...],
     main_pc: int,
+    bodies: Mapping[int, Sequence[object]],
 ) -> _Effect:
     """Return one statement's effects; the end-of-line statement is the shell's.
 
     Pure: stdin arrives buffered in ``inbox``; reading past it raises
     ``_NeedInputError`` for the shell to fetch one entry and call again.
     """
-    ev = _Eval(frame, main, heap, inbox, main_pc)
-    sets: list[tuple[int, tuple[object, ...]]] = []
+    ev = _Eval(frame, main, heap, inbox, main_pc, bodies)
     pushes: list[tuple[int, object]] = []
     out, declare, call = "", None, None
     if stmt.kind == "decl":
@@ -587,45 +663,71 @@ def _advance(
                 raise HaltError(f"a {stmt.typ} cannot hold a {typ}")
         declare = (stmt.name, stmt.typ, items)
     elif stmt.kind == "assign":
-        typ, items = (
-            ("", ()) if stmt.src is None else _assigned(ev, stmt.src)  # type: ignore[arg-type]
-        )
-        if stmt.dst is not None:
-            kind, qid = _destination(ev, stmt.dst, assign=True)
-            if kind == "'out":
-                if typ not in ("Q", ""):
-                    raise HaltError("'out prints a queue of numbers")
-                out = _text(items) + "\n"
-            else:
-                if typ and typ != kind:
-                    raise HaltError(f"a {kind} cannot hold a {typ}")
-                sets.append((qid, items))
+        return _assignment(ev, stmt)
     else:
         out, call = _attach(ev, stmt, pushes)
     pops = tuple(ev.offsets.items())
-    return _Effect(pops, ev.used, tuple(sets), tuple(pushes), out, declare, call)
+    return _Effect(pops, ev.used, (), tuple(pushes), out, declare, call)
 
 
-def _assigned(ev: _Eval, src: _Ref | _Lit) -> tuple[str, tuple[object, ...]]:
+def _assignment(ev: _Eval, stmt: _Stmt) -> _Effect:
+    """Evaluate an assignment without changing its source."""
+    src, dst = stmt.src, stmt.dst
+    assert src is None or isinstance(src, (_Ref, _Lit, _Stmt))
+    if isinstance(src, _Ref):
+        _, origin = ev.resolve(src)
+        if isinstance(origin, _Func):
+            if dst is None:
+                return _Effect((), 0, (), (), "", None, None)
+            _, target = ev.resolve(dst)
+            if not isinstance(target, _Func) or dst.prefix:
+                raise HaltError("a function can only be assigned to a function")
+            copies = (
+                (target.inp, tuple(ev.heap[origin.inp])),
+                (target.out, tuple(ev.heap[origin.out])),
+            )
+            copy = (dst, target._replace(body=origin.body))
+            return _Effect((), 0, copies, (), "", None, None, copy)
+    typ, items = ("", ()) if src is None else _assigned(ev, src)
+    sets: tuple[tuple[int, tuple[object, ...]], ...] = ()
+    out = ""
+    if dst is not None:
+        kind, qid = _destination(dst, ev.resolve(dst), assign=True)
+        if kind == "'out":
+            if typ not in ("Q", ""):
+                raise HaltError("'out prints a queue of numbers")
+            out = _text(items) + "\n"
+        else:
+            if typ and typ != kind:
+                raise HaltError(f"a {kind} cannot hold a {typ}")
+            sets = ((qid, items),)
+    return _Effect(tuple(ev.offsets.items()), ev.used, sets, (), out, None, None)
+
+
+def _assigned(ev: _Eval, src: _Ref | _Lit | _Stmt) -> tuple[str, tuple[object, ...]]:
     if isinstance(src, _Lit):
         return "Q", src.items
+    if isinstance(src, _Stmt):
+        return "code", (src,)
     if ev.resolve(src)[0] == "F":
-        raise _unsupported("function assignment")
+        return "F", ()
     return ev.items(src)
 
 
-def _destination(ev: _Eval, dst: _Ref, *, assign: bool) -> tuple[str, int]:
-    kind, target = ev.resolve(dst)
+def _destination(
+    dst: _Ref, resolved: tuple[str, object], *, assign: bool
+) -> tuple[str, int]:
+    kind, target = resolved
     if kind == "F":
         if assign:
-            raise _unsupported("function assignment")
+            raise HaltError("a function must be assigned another function")
         assert isinstance(target, _Func)
         return "Q", target.out if "@" in dst.prefix else target.inp
     if kind in ("in", "'in"):
         raise HaltError(f"{dst.name} can only be a source")
     if kind == "out" and assign:
         raise _unsupported("multi-number output by assignment")
-    if dst.prefix:
+    if dst.prefix and dst.prefix != "~":
         if "&" in dst.prefix or "@" in dst.prefix:
             raise _unsupported("& and @ on a queue")
         raise _bad(dst.name, "a destination takes no * # or $")
@@ -636,23 +738,26 @@ def _attach_source(ev: _Eval, src: _Expr | None) -> tuple[list[object], str, boo
     """Return the values an attachment moves, their queue type, and if whole."""
     if src is None:
         return [], "Q", False
-    if len(src) != 1 or not isinstance(item := src[0], (_Ref, _Lit)):
+    if len(src) != 1 or not isinstance(item := src[0], (_Ref, _Lit, _Stmt)):
         return [ev.arithmetic(src)], "Q", False
     if isinstance(item, _Lit):
         return list(item.items[:1]), "Q", False
+    if isinstance(item, _Stmt):
+        return [item], "code", False
     if "$" in item.prefix:
         typ, items = ev.items(item)
         if typ == "QQ":  # one queue of the queue of queues
             items = items[:1]
-        if item.prefix == "$":  # the move empties the source
+        if not item.prefix.startswith("*"):  # the move empties the source
             _, qid = ev.queue(item)
-            if qid >= 0:
+            if qid != -1:
                 ev.offsets[qid] = ev.offsets.get(qid, 0) + len(items)
         return list(items), typ, True
-    if item.prefix == "#":
+    if item.prefix.startswith("#"):
         return [ev.count(item)], "Q", False
-    kind = ev.queue(item)[0]
-    got = ev.take(item, peek=item.prefix == "*")
+    queue = ev.queue(item)
+    kind = queue[0]
+    got = ev.take(item, peek=item.prefix.startswith("*"), queue=queue)
     return [] if got is None else [got], "Q" if kind in ("in", "'in") else kind, False
 
 
@@ -661,12 +766,15 @@ def _attach(
 ) -> tuple[str, _Func | None]:
     """Evaluate an attachment's source, then deliver it; return output and call."""
     src, dst = stmt.src, stmt.dst
-    assert src is None or (isinstance(src, tuple) and not isinstance(src, _Lit))
+    assert src is None or (
+        isinstance(src, tuple) and not isinstance(src, (_Lit, _Stmt))
+    )
     values, typ, whole = _attach_source(ev, src)
     if dst is None:
         return "", None
-    kind, qid = _destination(ev, dst, assign=False)
-    target = ev.resolve(dst)[1]
+    resolved = ev.resolve(dst)
+    kind, qid = _destination(dst, resolved, assign=False)
+    target = resolved[1]
     call = target if isinstance(target, _Func) and not dst.prefix else None
     if kind == "out":
         if whole or any(not isinstance(v, int) for v in values):
@@ -695,12 +803,15 @@ class _Machine:
     ip_shape = "line"
 
     def __init__(self, code: str | tuple[tuple[_Stmt, ...], ...], io: IO) -> None:
-        self.bodies = _parse(code) if isinstance(code, str) else code
+        self.templates = _parse(code) if isinstance(code, str) else code
+        self.bodies: dict[int, Sequence[object]] = dict(enumerate(self.templates))
+        self._next_body = len(self.templates)
         self.io = io
         self.heap: dict[int, deque[object]] = {0: deque([1])}
         self.main: dict[str, _Queue | _Func] = {}
         self.frames: list[_Frame] = [_Frame(0, 0, None, self.main)]
         self.inbox: deque[tuple[str, object]] = deque()
+        self._pending_ends: dict[int, tuple[int, _Stmt]] = {}
         self._next = 1
         self._writer = _BufferedOutput()
         self._rejected = RejectedInput()
@@ -712,21 +823,47 @@ class _Machine:
             return True
         top = pc[0]
         return (
-            len(self.frames) == 1 and isinstance(top, int) and top > len(self.bodies[0])
+            len(self.frames) == 1
+            and 0 not in self._pending_ends
+            and isinstance(top, int)
+            and top > len(self.bodies[0])
         )
 
     @property
     def ind(self) -> int:
         """The current body's next line, counting from 0."""
-        pc = self.heap[self.frames[-1].pc]
+        qid = self.frames[-1].pc
+        pending = self._pending_ends.get(qid)
+        if pending is not None:
+            return pending[0] - 1
+        pc = self.heap[qid]
         return pc[0] - 1 if pc and isinstance(pc[0], int) else 0
+
+    def _set_queue(self, qid: int, items: Sequence[object]) -> deque[object]:
+        queue = deque(items)
+        self.heap[qid] = queue
+        if qid <= -2:
+            self.bodies[-2 - qid] = queue
+        return queue
+
+    def _writable(self, qid: int) -> deque[object]:
+        queue = self.heap.get(qid)
+        if queue is None:
+            queue = self._set_queue(qid, self.bodies[-2 - qid])
+        return queue
 
     def _queues(self) -> tuple[tuple[int, tuple[object, ...]], ...]:
         return tuple((k, tuple(v)) for k, v in sorted(self.heap.items()))
 
     def _frames(self) -> tuple[object, ...]:
         return tuple(
-            (f.body, f.pc, f.func, tuple(sorted(f.names.items())) if f.func else ())
+            (
+                f.body,
+                f.pc,
+                f.func,
+                tuple(sorted(f.names.items())) if f.func else (),
+                *((self._pending_ends[f.pc],) if f.pc in self._pending_ends else ()),
+            )
             for f in self.frames
         )
 
@@ -778,15 +915,34 @@ class _Machine:
         self.heap[qid] = deque(items)
         return qid
 
+    def _discard_body(self, body: int) -> None:
+        """Release an edited body once its last binding and active call are gone."""
+        if _code_id(body) not in self.heap:
+            return
+        if any(frame.body == body for frame in self.frames) or any(
+            isinstance(obj, _Func) and obj.body == body for obj in self.main.values()
+        ):
+            return
+        del self.heap[_code_id(body)]
+        if body >= len(self.templates):
+            del self.bodies[body]
+        else:
+            self.bodies[body] = self.templates[body]
+
     def _declare(
         self, frame: _Frame, body: int, name: str, typ: str, items: tuple[object, ...]
     ) -> None:
         """Bind ``name`` afresh, reusing its old queues when the kind matches."""
         old = frame.names.get(name)
         if typ == "F":
+            if frame.func is not None:
+                raise HaltError("a function cannot declare another function")
+            if self.heap.pop(_code_id(body), None) is not None:
+                self.bodies[body] = self.templates[body]
             if isinstance(old, _Func):
                 self.heap[old.inp], self.heap[old.out] = deque(), deque()
                 frame.names[name] = old._replace(body=body)
+                self._discard_body(old.body)
                 return
             frame.names[name] = _Func(self._alloc(), self._alloc(), body)
         elif isinstance(old, _Queue):
@@ -799,23 +955,14 @@ class _Machine:
             del self.heap[old.qid]
         elif isinstance(old, _Func) and all(f.func != old for f in self.frames):
             del self.heap[old.inp], self.heap[old.out]
+            self._discard_body(old.body)
 
-    def step(self) -> None:
-        """Run the statement at the top of the current ``;``, then ``;+1 -> ;``."""
-        if self.halted:
-            return
-        frame = self.frames[-1]
-        line = self.heap[frame.pc][0]
-        assert isinstance(line, int)
-        if line < 1:
-            raise HaltError(
-                f"line {format_integer(line)} does not exist; lines count from 1"
-            )
-        stmt = self.bodies[frame.body][line - 1]
+    def _apply(self, frame: _Frame, stmt: _Stmt) -> _Func | None:
+        """Commit one statement, preserving the input and output retry boundary."""
         while True:
             try:
                 effect = _advance(
-                    stmt, frame, self.main, self.heap, tuple(self.inbox), 0
+                    stmt, frame, self.main, self.heap, tuple(self.inbox), 0, self.bodies
                 )
                 break
             except _NeedInputError as need:
@@ -826,30 +973,74 @@ class _Machine:
         for _ in range(effect.used):
             self.inbox.popleft()
         for qid, count in effect.pops:
-            q = self.heap[qid]
+            q = self.heap[qid] if qid >= 0 else self._writable(qid)
             for _ in range(count):
                 q.popleft()
         for qid, items in effect.sets:
-            self.heap[qid] = deque(items)
+            self._set_queue(qid, items)
         for qid, value in effect.pushes:
-            self.heap[qid].append(value)
+            queue = self.heap[qid] if qid >= 0 else self._writable(qid)
+            queue.append(value)
         if effect.declare is not None:
             self._declare(frame, stmt.body, *effect.declare)
-        pc = self.heap[frame.pc]
-        if pc:
-            top = pc.popleft()
-            if not isinstance(top, int):
-                raise HaltError("the program counter holds a non-number")
-            pc.append(top + 1)
-        if effect.call is not None:
-            body = effect.call.body
-            self.frames.append(_Frame(body, self._alloc((1,)), effect.call, {}))
+        if effect.function_copy is not None:
+            dst, function = effect.function_copy
+            names = (
+                frame.names if dst.level == 0 and dst.name in frame.names else self.main
+            )
+            old = names[dst.name]
+            assert isinstance(old, _Func)
+            if old.body != function.body:
+                instructions = self.bodies[function.body]
+                body = old.body
+                if any(active.body == body for active in self.frames):
+                    body = self._next_body
+                    self._next_body += 1
+                    self.bodies[body] = ()
+                self._set_queue(_code_id(body), instructions)
+                names[dst.name] = function._replace(body=body)
+        return effect.call
+
+    def step(self) -> None:
+        """Run a line or its pending custom end statement."""
+        if self.halted:
+            return
+        frame = self.frames[-1]
+        pending = self._pending_ends.get(frame.pc)
+        if pending is not None:
+            call = self._apply(frame, pending[1])
+            del self._pending_ends[frame.pc]
+        else:
+            line = self.heap[frame.pc][0]
+            assert isinstance(line, int)
+            if line < 1:
+                raise HaltError(
+                    f"line {format_integer(line)} does not exist; lines count from 1"
+                )
+            stmt = self.bodies[frame.body][line - 1]
+            assert isinstance(stmt, _Stmt)
+            call = self._apply(frame, stmt)
+            pc = self.heap[frame.pc]
+            if pc and stmt.end is not None:
+                self._pending_ends[frame.pc] = (line, stmt.end)
+            elif pc:
+                top = pc.popleft()
+                if not isinstance(top, int):
+                    raise HaltError("the program counter holds a non-number")
+                pc.append(top + 1)
+        if call is not None:
+            self.frames.append(_Frame(call.body, self._alloc((1,)), call, {}))
         while len(self.frames) > 1:
             top_frame = self.frames[-1]
             pc = self.heap[top_frame.pc]
-            if pc and pc[0] <= len(self.bodies[top_frame.body]):  # type: ignore[operator]
+            if pc and (
+                top_frame.pc in self._pending_ends
+                or pc[0] <= len(self.bodies[top_frame.body])  # type: ignore[operator]
+            ):
                 break
             self.frames.pop()
+            self._discard_body(top_frame.body)
+            self._pending_ends.pop(top_frame.pc, None)
             del self.heap[top_frame.pc]
             for obj in top_frame.names.values():
                 if isinstance(obj, _Queue):

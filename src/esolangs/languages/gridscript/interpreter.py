@@ -18,7 +18,7 @@ cell under the data tracer):
     ``SWITCH v|!v|=v|!=v``      turn 90 degrees clockwise if v is true, false,
                                 equal to D or unequal to D
     ``STORE [v] [TO x]``        v (or D) into x (or D)
-    ``INPUT [type] [TO] [x]``   a line of stdin, or the next call argument
+    ``INPUT [type] [TO] [x] [WITH PROMPT value]``   stdin or a call argument
     ``NEXT|PREVIOUS VALUE|ROW``, ``HOME``  move the data tracer, wrapping
     ``PRINT [v|NEWLINE]``       print v (or D) as a string
     ``PUSH [v]``, ``REMOVE [i|THIS POSITION|TOP] [TO [type] x]``, ``PEEK``
@@ -64,20 +64,35 @@ Decisions:
     * A FLOAT prints as the shortest decimal that rounds back to it, with a
       ``.0`` when whole; BOOLs print TRUE or FALSE; NULL prints nothing.
     * Raised as never exercised or not defined: RANDOM in any command,
-      SHUFFLE, REMOVE ANY POSITION, files and images, INPUT WITH PROMPT,
-      MOVE LAST NODE, THE VARIABLE NAMED, and THROW, which the page lists
+      SHUFFLE, REMOVE ANY POSITION, files and images,
+      and THROW, which the page lists
       without a description.
 """
 
 import math
 import re
-import struct
 from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import HaltError, ProgramError
+from esolangs.languages.gridscript._values import (
+    _FLOAT,
+    _INT,
+    NULL,
+    _arith,
+    _cast,
+    _f16,
+    _f32,
+    _Float,
+    _int,
+    _number,
+    _to_bool,
+    _to_int,
+    _to_str,
+    _Value,
+)
 from esolangs.languages.gridscript.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -92,34 +107,12 @@ from esolangs.runtime.source_hints import syntax_error
 _NODE = re.compile(r"\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)\s*:(.*)")
 _TOKEN = re.compile(r"\s*('[^']*'|\"[^\"]*\"|\S+)")
 _NAME = re.compile(r"[a-z_][a-z0-9_]*")
-_INT = re.compile(r"[+-]?\d+")
-_FLOAT = re.compile(r"[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?")
 _TYPES = frozenset({"INT", "FLOAT", "STRING", "BOOL"})
 _HEADINGS = {"EAST": 0, "SOUTH": 90, "WEST": 180, "NORTH": 270}
-_INT_MIN, _INT_MAX = -(2**31), 2**31 - 1
 _META = frozenset(
     {"width", "height", "datawidth", "dataheight", "radius", "steps", "debug"}
 )
 _DEFAULTS = {"datawidth": 64, "dataheight": 64, "radius": 1}
-
-
-class _Null:
-    """GridScript's NULL: unassigned, end of input, a failed cast."""
-
-    def __repr__(self) -> str:
-        return "NULL"
-
-
-NULL = _Null()
-
-
-class _Float(NamedTuple):
-    """A 32-bit FLOAT, kept apart from INT."""
-
-    value: float
-
-
-type _Value = int | _Float | str | bool | _Null
 
 
 class _Var(NamedTuple):
@@ -128,7 +121,14 @@ class _Var(NamedTuple):
     name: str
 
 
-type _Arg = _Value | _Var | None
+class _Named(NamedTuple):
+    """An expression supplying a variable name at execution time."""
+
+    source: "_Arg"
+
+
+type _Arg = _Value | _Var | _Named | None
+_NAMED = "THE VARIABLE NAMED "
 
 
 class _Cmd(NamedTuple):
@@ -147,17 +147,7 @@ class _Body(NamedTuple):
     start: tuple[int, int]
     cells: dict[tuple[int, int], tuple[int, ...]]  # centre -> node indices
     checkpoints: tuple[tuple[int, int, int], ...]  # id, x, y
-
-
-def _f16(value: float) -> float:
-    return float(struct.unpack("e", struct.pack("e", value))[0])
-
-
-def _f32(value: float) -> float:
-    try:
-        return float(struct.unpack("f", struct.pack("f", value))[0])
-    except OverflowError:
-        return math.copysign(math.inf, value)
+    mutable: bool
 
 
 def _bad(text: str, hint: str) -> ValueError:
@@ -180,6 +170,8 @@ def _unsupported(what: str) -> ValueError:
 
 
 def _literal(tok: str) -> _Arg:
+    if tok.startswith(_NAMED):
+        return _Named(_literal(tok[len(_NAMED) :]))
     if tok[:1] in ("'", '"') and len(tok) >= 2 and tok[-1] == tok[0]:
         return tok[1:-1]
     if _INT.fullmatch(tok):
@@ -197,122 +189,6 @@ def _literal(tok: str) -> _Arg:
     )
 
 
-def _int(value: int) -> int:
-    if not _INT_MIN <= value <= _INT_MAX:
-        raise HaltError(f"{format_integer(value)} overflows a 32-bit INT")
-    return value
-
-
-def _number(value: _Value) -> int | _Float | None:
-    """Cast to INT or FLOAT, or None when the value cannot be cast."""
-    if isinstance(value, bool):
-        return int(value)
-    if isinstance(value, (int, _Float)):
-        return value
-    if isinstance(value, _Null):
-        return 0
-    text = value.strip()
-    if not text:
-        return 0
-    if _INT.fullmatch(text):
-        number = parse_integer(text)
-        return number if _INT_MIN <= number <= _INT_MAX else None
-    if _FLOAT.fullmatch(text):
-        return _Float(_f32(float(text)))
-    return None
-
-
-def _to_int(value: _Value) -> int | None:
-    number = _number(value)
-    if number is None:
-        return None
-    if isinstance(number, _Float):
-        if not math.isfinite(number.value):
-            return None
-        number = math.trunc(number.value)
-        return number if _INT_MIN <= number <= _INT_MAX else None
-    return number
-
-
-def _to_bool(value: _Value) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, _Null):
-        return False
-    if isinstance(value, str):
-        return value not in ("", "0")
-    if isinstance(value, _Float):
-        return value.value != 0
-    return value != 0
-
-
-def _show_float(value: float) -> str:
-    if math.isnan(value):
-        return "NaN"
-    if math.isinf(value):
-        return "Infinity" if value > 0 else "-Infinity"
-    for digits in range(1, 10):
-        text = f"{value:.{digits}g}"
-        if _f32(float(text)) == value:
-            break
-    if "e" not in text and "." not in text:
-        text += ".0"
-    return text
-
-
-def _to_str(value: _Value) -> str:
-    if isinstance(value, bool):
-        return "TRUE" if value else "FALSE"
-    if isinstance(value, _Null):
-        return ""
-    if isinstance(value, _Float):
-        return _show_float(value.value)
-    return str(value)
-
-
-def _cast(value: _Value, typ: str) -> _Value:
-    """Cast to a named type; NULL when it cannot be (a silent warning)."""
-    if typ == "STRING":
-        return _to_str(value)
-    if typ == "BOOL":
-        return _to_bool(value)
-    if typ == "INT":
-        got = _to_int(value)
-        return NULL if got is None else got
-    number = _number(value)
-    if number is None:
-        return NULL
-    return number if isinstance(number, _Float) else _Float(_f32(float(number)))
-
-
-def _arith(verb: str, a: _Value, b: _Value) -> int | _Float:
-    x, y = _number(a), _number(b)
-    if x is None or y is None:
-        raise HaltError(f"{verb} needs numbers, got {a!r} and {b!r}")
-    if isinstance(x, int) and isinstance(y, int):
-        if verb == "INCREMENT":
-            return _int(x + y)
-        if verb == "DECREMENT":
-            return _int(x - y)
-        if verb == "MULTIPLY":
-            return _int(x * y)
-        if y == 0:
-            raise HaltError("DIVIDE by zero")
-        q = abs(x) // abs(y)
-        return _int(q if (x < 0) == (y < 0) else -q)
-    fx = x.value if isinstance(x, _Float) else float(x)
-    fy = y.value if isinstance(y, _Float) else float(y)
-    if verb == "INCREMENT":
-        return _Float(_f32(fx + fy))
-    if verb == "DECREMENT":
-        return _Float(_f32(fx - fy))
-    if verb == "MULTIPLY":
-        return _Float(_f32(fx * fy))
-    if fy == 0:
-        raise HaltError("DIVIDE by zero")
-    return _Float(_f32(fx / fy))
-
-
 # --- parsing ----------------------------------------------------------------
 
 
@@ -326,7 +202,28 @@ def _tokens(text: str) -> list[str]:
     return out
 
 
-def _var(tok: str, text: str) -> str:
+def _named_tokens(toks: list[str]) -> list[str]:
+    """Group a dynamic name as one operand, retaining any type or switch."""
+    for i in range(len(toks) - 4, -1, -1):
+        if i + 3 >= len(toks):
+            continue
+        start, kind, named, source = toks[i : i + 4]
+        lead = start.removesuffix("THE")
+        if (
+            start != lead + "THE"
+            or lead not in ("", "!", "=", "!=")
+            or named != "NAMED"
+            or (kind != "VARIABLE" and kind not in _TYPES)
+        ):
+            continue
+        operand = lead + _NAMED + source
+        toks[i : i + 4] = [operand] if kind == "VARIABLE" else [kind, operand]
+    return toks
+
+
+def _var(tok: str, text: str) -> str | _Named:
+    if tok.startswith(_NAMED):
+        return _Named(_literal(tok[len(_NAMED) :]))
     if not _NAME.fullmatch(tok):
         raise _bad(text, "a variable is lowercase letters, digits and _")
     return tok
@@ -368,14 +265,19 @@ def _store(rest: list[str], text: str) -> _Cmd | None:
 
 
 def _input(rest: list[str], text: str) -> _Cmd | None:
+    prompt = None
     if "WITH" in rest:
-        raise _unsupported("INPUT WITH PROMPT")
+        at = rest.index("WITH")
+        tail, rest = rest[at + 1 :], rest[:at]
+        if len(tail) != 2 or tail[0] != "PROMPT":
+            raise _bad(text, "INPUT WITH PROMPT needs one value")
+        prompt = _literal(tail[1])
     typ = rest.pop(0) if rest and rest[0] in _TYPES else None
     if rest and rest[0] == "TO":
         rest = rest[1:]
     if len(rest) > 1:
         return None
-    return _Cmd("INPUT", (typ, _var(rest[0], text) if rest else None))
+    return _Cmd("INPUT", (typ, _var(rest[0], text) if rest else None, prompt))
 
 
 def _print(rest: list[str], _text: str) -> _Cmd | None:
@@ -399,6 +301,12 @@ def _split(rest: list[str], _text: str) -> _Cmd | None:
     return _Cmd("SPLIT", (_literal(rest[0]), _literal(rest[2]) if rest[2:] else None))
 
 
+def _move_last(rest: list[str], _text: str) -> _Cmd | None:
+    if len(rest) == 5 and rest[:2] == ["LAST", "NODE"] and rest[2] in ("TO", "BY"):
+        return _Cmd("MOVE", (rest[2] == "BY", _literal(rest[3]), _literal(rest[4])))
+    return None
+
+
 def _checkpoint(rest: list[str], _text: str) -> _Cmd | None:
     if len(rest) == 1 and rest[0].isdigit():
         return _Cmd("CHECKPOINT", (parse_integer(rest[0]),))
@@ -413,9 +321,9 @@ def _command(text: str) -> _Cmd:
     if "RANDOM" in toks or toks[0] == "SHUFFLE":
         raise _unsupported("randomness")
     if "NAMED" in toks:
-        raise _unsupported("dynamic variable naming")
+        toks = _named_tokens(toks)
     verb, rest = toks[0], toks[1:]
-    if verb in ("LOAD", "MOVE", "THROW"):
+    if verb in ("LOAD", "THROW"):
         raise _unsupported(verb)
     cmd: _Cmd | None = None
     if verb in ("START", "PEEK", "HOME") and not rest:
@@ -497,6 +405,7 @@ _PARSERS: dict[str, Any] = {
     "SWITCH": _switch,
     "STORE": _store,
     "INPUT": _input,
+    "MOVE": _move_last,
     "PRINT": _print,
     "SPLIT": _split,
     "CHECKPOINT": _checkpoint,
@@ -586,6 +495,7 @@ def _parse(code: str) -> tuple[_Body, ...]:
                 starts[0],
                 {k: tuple(v) for k, v in cells.items()},
                 checkpoints,
+                any(cmd.verb == "MOVE" for _, _, cmd in nodes),
             )
         )
     names = {body.name for body in bodies[1:]}
@@ -597,6 +507,19 @@ def _parse(code: str) -> tuple[_Body, ...]:
 
 
 # --- the transition -----------------------------------------------------------
+
+
+@dataclass
+class _ProgramSpace:
+    """The editable program space of a single frame."""
+
+    cells: dict[tuple[int, int], tuple[int, ...]]
+    checkpoints: tuple[tuple[int, int, int], ...]
+    last: int | None = None
+    positions: dict[int, tuple[int, int] | None] = field(default_factory=dict)
+
+    def snapshot(self) -> tuple[object, ...]:
+        return self.last, tuple(sorted(self.positions.items()))
 
 
 @dataclass
@@ -621,6 +544,7 @@ class _Frame:
     buffer: deque[_Value] = field(default_factory=deque)
     args: deque[_Value] | None = None
     giving: tuple[str | None] | None = None  # the caller's target, once called
+    program: _ProgramSpace | None = None
 
 
 class _Effect(NamedTuple):
@@ -637,6 +561,7 @@ class _Effect(NamedTuple):
     call: tuple[str, tuple[_Value, ...], str | None] | None = None
     ret: tuple[_Value] | None = None  # RETURN's value
     arg_used: bool = False
+    move_node: tuple[bool, int, int] | None = None
 
 
 def _value(arg: _Arg, variables: Mapping[str, _Value], cell: int) -> _Value:
@@ -644,7 +569,16 @@ def _value(arg: _Arg, variables: Mapping[str, _Value], cell: int) -> _Value:
         return cell
     if isinstance(arg, _Var):
         return variables.get(arg.name, NULL)
+    if isinstance(arg, _Named):
+        return variables.get(_resolve_name(arg, variables, cell), NULL)
     return arg
+
+
+def _resolve_name(arg: _Named, variables: Mapping[str, _Value], cell: int) -> str:
+    name = _value(arg.source, variables, cell)
+    if not isinstance(name, str) or not _NAME.fullmatch(name):
+        raise HaltError("a dynamic variable name must be a valid variable name string")
+    return name
 
 
 def _cell_value(value: _Value) -> int:
@@ -665,14 +599,20 @@ class _View(NamedTuple):
     checkpoints: tuple[tuple[int, int, int], ...]
     read: _Value | None
 
+    def name(self, arg: object) -> str | None:
+        if isinstance(arg, _Named):
+            return _resolve_name(arg, self.variables, self.cell)
+        assert arg is None or isinstance(arg, str)
+        return arg
+
     def val(self, arg: object) -> _Value:
         return _value(arg, self.variables, self.cell)  # type: ignore[arg-type]
 
 
-def _store_to(target: object, value: _Value, *, arg_used: bool = False) -> _Effect:
+def _store_to(target: str | None, value: _Value, *, arg_used: bool = False) -> _Effect:
     if target is None:
         return _Effect(cell=_cell_value(value), arg_used=arg_used)
-    return _Effect(sets=((target, value),), arg_used=arg_used)  # type: ignore[arg-type]
+    return _Effect(sets=((target, value),), arg_used=arg_used)
 
 
 def _do_go(args: tuple[object, ...], v: _View) -> _Effect:
@@ -712,10 +652,10 @@ def _do_switch(args: tuple[object, ...], v: _View) -> _Effect:
 
 
 def _do_input(args: tuple[object, ...], v: _View) -> _Effect:
-    typ, target = args
+    typ, target, _ = args
     assert v.read is not None
     value = v.read if typ is None else _cast(v.read, typ)  # type: ignore[arg-type]
-    return _store_to(target, value, arg_used=True)
+    return _store_to(v.name(target), value, arg_used=True)
 
 
 def _do_peek(_args: tuple[object, ...], v: _View) -> _Effect:
@@ -726,9 +666,10 @@ def _do_peek(_args: tuple[object, ...], v: _View) -> _Effect:
 def _do_arith(verb: str) -> Any:
     def run(args: tuple[object, ...], v: _View) -> _Effect:
         source, by, giving = args
-        start = v.cell if source is None else v.variables.get(source, NULL)  # type: ignore[call-overload]
+        name = v.name(source)
+        start = v.cell if name is None else v.variables.get(name, NULL)
         result = _arith(verb, start, v.val(by))
-        return _store_to(giving if giving is not None else source, result)
+        return _store_to(v.name(giving) if giving is not None else name, result)
 
     return run
 
@@ -746,7 +687,15 @@ def _do_split(args: tuple[object, ...], v: _View) -> _Effect:
 def _do_call(args: tuple[object, ...], v: _View) -> _Effect:
     name, call_args, giving = args
     values = tuple(v.val(a) for a in call_args)  # type: ignore[attr-defined]
-    return _Effect(call=(name, values, giving))  # type: ignore[arg-type]
+    return _Effect(call=(name, values, v.name(giving)))  # type: ignore[arg-type]
+
+
+def _do_move(args: tuple[object, ...], v: _View) -> _Effect:
+    relative, x_arg, y_arg = args
+    x, y = _to_int(v.val(x_arg)), _to_int(v.val(y_arg))
+    if x is None or y is None:
+        raise HaltError("MOVE LAST NODE needs integer coordinates")
+    return _Effect(move_node=(bool(relative), x, y))
 
 
 def _do_cursor(verb: str) -> Any:
@@ -760,12 +709,15 @@ _DO: dict[str, Any] = {
     "GO": _do_go,
     "GOTO": _do_goto,
     "SWITCH": _do_switch,
-    "STORE": lambda args, v: _store_to(args[1], v.val(args[0])),
+    "STORE": lambda args, v: _store_to(v.name(args[1]), v.val(args[0])),
     "INPUT": _do_input,
+    "MOVE": _do_move,
     "PRINT NEWLINE": lambda _a, _v: _Effect(out="\n"),
     "PRINT": lambda args, v: _Effect(out=_to_str(v.val(args[0]))),
     "PUSH": lambda args, v: _Effect(pushes=(v.val(args[0]),)),
-    "REMOVE": lambda args, v: _remove_effect(args, v.buffer, v.cell, v.val),
+    "REMOVE": lambda args, v: _remove_effect(
+        (*args[:2], v.name(args[2])), v.buffer, v.cell, v.val
+    ),
     "PEEK": _do_peek,
     "SPLIT": _do_split,
     "CALL": _do_call,
@@ -896,6 +848,7 @@ class _Machine:
             meta["dataheight"],
             meta["radius"],
             args=args,
+            program=_ProgramSpace(dict(b.cells), b.checkpoints) if b.mutable else None,
         )
 
     @property
@@ -922,6 +875,7 @@ class _Machine:
                 tuple(f.buffer),
                 None if f.args is None else tuple(f.args),
                 f.giving,
+                *((f.program.snapshot(),) if f.program is not None else ()),
             )
             for f in self.frames
         )
@@ -930,7 +884,17 @@ class _Machine:
         """Capture semantic components independently of cycle grouping."""
         accepted = self._writer.accepted
         frames = tuple(
-            (f.body, f.x, f.y, f.heading, f.inside, f.moved, tuple(f.pending), f.cursor)
+            (
+                f.body,
+                f.x,
+                f.y,
+                f.heading,
+                f.inside,
+                f.moved,
+                tuple(f.pending),
+                f.cursor,
+                *((f.program.snapshot(),) if f.program is not None else ()),
+            )
             for f in self.frames
         )
         return _WORKSPACE_MODEL.capture(
@@ -951,13 +915,16 @@ class _Machine:
         accepted = self._writer.accepted
         return (*boundary, accepted) if accepted else boundary
 
-    def _read(self, frame: _Frame) -> _Value:
+    def _read(self, frame: _Frame, prompt: object) -> _Value:
         if frame.args is not None:
             if not frame.args:
                 raise HaltError("a subroutine INPUT has no argument left")
             return frame.args[0]
         try:
-            return self.io.input_str()
+            if prompt is None:
+                return self.io.input_str()
+            value = _value(prompt, frame.variables, frame.data.get(frame.cursor, 0))  # type: ignore[arg-type]
+            return self.io.input_str(_to_str(value))
         except EOFError:
             return NULL
 
@@ -970,8 +937,9 @@ class _Machine:
             self._move(frame)
             return
         body = self.bodies[frame.body]
-        cmd = body.nodes[frame.pending[0]][2]
-        read = self._read(frame) if cmd.verb == "INPUT" else None
+        index = frame.pending[0]
+        cmd = body.nodes[index][2]
+        read = self._read(frame, cmd.args[2]) if cmd.verb == "INPUT" else None
         effect = _advance(
             cmd,
             frame.variables,
@@ -981,18 +949,23 @@ class _Machine:
             frame.heading,
             (frame.x, frame.y),
             frame.buffer,
-            body.checkpoints,
+            body.checkpoints if frame.program is None else frame.program.checkpoints,
             read,
         )
         self._apply(frame, effect)
         frame.pending.popleft()
+        if frame.program is not None:
+            frame.program.last = index
 
     def _move(self, frame: _Frame) -> None:
         if self.steps is not None and self.moves >= self.steps:
             raise HaltError(f"more than @steps {format_integer(self.steps)} moves")
         body = self.bodies[frame.body]
         (x, y), held = _advance_move(
-            (frame.x, frame.y), frame.heading, frame.radius, body.cells
+            (frame.x, frame.y),
+            frame.heading,
+            frame.radius,
+            body.cells if frame.program is None else frame.program.cells,
         )
         self.moves += 1
         frame.x, frame.y = x, y
@@ -1017,6 +990,43 @@ class _Machine:
         elif value is not None:
             caller.data[caller.cursor] = _cell_value(value[0])
 
+    def _relocate_node(self, frame: _Frame, move: tuple[bool, int, int]) -> None:
+        relative, x, y = move
+        program = frame.program
+        assert program is not None
+        index = program.last
+        if index is None:
+            return
+        body = self.bodies[frame.body]
+        old_x, old_y, node = body.nodes[index]
+        old = program.positions.get(index, (old_x, old_y))
+        if old is None:
+            return
+        target = (old[0] + x, old[1] + y) if relative else (x, y)
+        if target == old:
+            return
+        remaining = tuple(i for i in program.cells[old] if i != index)
+        if remaining:
+            program.cells[old] = remaining
+        else:
+            del program.cells[old]
+        frame.inside -= {index}
+        if 1 <= target[0] <= frame.width and 1 <= target[1] <= frame.height:
+            program.cells[target] = (*program.cells.get(target, ()), index)
+            if target == (old_x, old_y):
+                program.positions.pop(index, None)
+            else:
+                program.positions[index] = target
+        else:
+            program.positions[index] = None
+        if node.verb == "CHECKPOINT":
+            checkpoints = []
+            for i, (cx, cy, cmd) in enumerate(body.nodes):
+                pos = program.positions.get(i, (cx, cy))
+                if cmd.verb == "CHECKPOINT" and pos is not None:
+                    checkpoints.append((int(cmd.args[0]), *pos))  # type: ignore[call-overload]
+            program.checkpoints = tuple(checkpoints)
+
     def _apply(self, frame: _Frame, effect: _Effect) -> None:
         for name, value in effect.sets:
             frame.variables[name] = value
@@ -1034,6 +1044,8 @@ class _Machine:
         if isinstance(effect.take, int):
             del frame.buffer[effect.take]
         frame.buffer.extend(effect.pushes)
+        if effect.move_node is not None:
+            self._relocate_node(frame, effect.move_node)
         if effect.out:
             self._writer.write(self.io, effect.out)
         if effect.arg_used and frame.args is not None:

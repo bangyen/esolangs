@@ -36,7 +36,7 @@ Decisions:
       truth-machine compares the input with itself twice and a literal, so a
       reading needing three distinct values could never fire its ``IFQ``.
     * ``DownAccLines`` lands on ``ip + 1 + acc``, so an accumulator of 0 is a
-      plain fall-through.
+      plain fall-through. Inside a function it counts body lines.
     * ``<`` encountered in ordinary execution *captures* the lines up to its
       ``>`` into the slot and jumps past them; the wiki's cat example only
       echoes rather than running its body twice under that reading.  The
@@ -60,7 +60,7 @@ Decisions:
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from functools import cache, lru_cache
 from typing import Any, cast
@@ -136,7 +136,7 @@ class _State:
 # exhausted, so the cat example's trailing ``EXE`` recurses at constant depth
 # and its state repeats: the cycle detector can prove the truth-machine's
 # ``1`` branch loops.
-def _advance_cursor(state: _State, acc: int | None = None) -> _State:
+def _advance_cursor(state: _State, acc: int | None = None, *, skip: int = 0) -> _State:
     """Move past the line just executed, popping every finished frame.
 
     Popping eagerly keeps a tail-recursive function at constant stack
@@ -150,11 +150,11 @@ def _advance_cursor(state: _State, acc: int | None = None) -> _State:
         acc %= 256
     if state.frames:
         body, index = state.frames[-1]
-        frames = (*state.frames[:-1], (body, index + 1))
+        frames = (*state.frames[:-1], (body, index + 1 + skip))
         while frames and frames[-1][1] >= len(frames[-1][0]):
             frames = frames[:-1]
         return _State(state.lines, state.ip, acc, state.slot, frames)
-    return _State(state.lines, state.ip + 1, acc, state.slot, state.frames)
+    return _State(state.lines, state.ip + 1 + skip, acc, state.slot, state.frames)
 
 
 def _call(state: _State) -> _State:
@@ -250,7 +250,7 @@ def _compile_range(spec: str) -> _Range:
     return _Range(spec, tuple(_compile_bound(part) for part in parts))
 
 
-def _range_bounds(compiled: _Range, acc: int, byte: int | None) -> tuple[int, int]:
+def _range_bounds(compiled: _Range, acc: int, reads: Iterator[int]) -> tuple[int, int]:
     """Validate both bounds in their original evaluation order."""
     if compiled.malformed:
         raise HaltError(f"malformed random range: {compiled.spec!r}")
@@ -259,6 +259,7 @@ def _range_bounds(compiled: _Range, acc: int, byte: int | None) -> tuple[int, in
         if bound.kind == "acc":
             bounds.append(acc)
         elif bound.kind == "byte":
+            byte = next(reads, None)
             if byte is None:
                 raise HaltError("$py inside a range read nothing")
             bounds.append(byte)
@@ -271,67 +272,60 @@ def _range_bounds(compiled: _Range, acc: int, byte: int | None) -> tuple[int, in
 
 
 def _run_range(
-    compiled: _Range, acc: int, rng: Randomness | None, byte: int | None
+    compiled: _Range, acc: int, rng: Randomness | None, reads: Iterator[int]
 ) -> int:
     """Evaluate a compiled bracket, which never writes the accumulator.
 
-    An omitted bound is the accumulator; ``$py`` is the byte the shell
-    read.  A reversed range is normalised rather than refused -- the spec
-    says "between a and b inclusive" and names no order.
+    An omitted bound is the accumulator. Each ``$py`` consumes its own input.
+    Normalize reversed bounds because the spec names no order.
     """
-    low, high = _range_bounds(compiled, acc, byte)
+    low, high = _range_bounds(compiled, acc, reads)
     return low + draw(rng, high - low + 1)
 
 
 def _roll(spec: str, acc: int, rng: Randomness | None, byte: int | None) -> int:
     """Evaluate a ``[a b]`` bracket, which never writes the accumulator."""
-    return _run_range(_compile_range(spec), acc, rng, byte)
+    return _run_range(
+        _compile_range(spec), acc, rng, iter(() if byte is None else (byte,))
+    )
 
 
 @dataclass(frozen=True, slots=True)
 class _Arg:
-    """One compiled ``{values...}`` argument.
-
-    ``consumes`` is whether the shell hands this argument a read byte:
-    exactly the arguments :func:`_arg_kinds` reports reads for, one byte
-    each however many reads the argument names (the shipped quirk a
-    two-``$py`` range pins).  ``text`` carries a ``byte`` argument's own
-    spelling for its error, and a ``badlit`` argument's deferred error.
-    """
+    """One compiled ``{values...}`` argument with deferred errors."""
 
     kind: str  # "acc", "byte", "lit", "badlit" or "range"
     value: int = 0
     text: str = ""
     range: _Range | None = None
-    consumes: bool = False
 
 
 @cache
 def _compile_arg(arg: str) -> _Arg:
     """Compile one ``{values...}`` argument once; errors stay deferred."""
-    consumes = bool(_arg_kinds(arg))
     if arg == "":
-        return _Arg("acc", consumes=consumes)
+        return _Arg("acc")
     if arg in ("$py", "u"):
-        return _Arg("byte", text=arg, consumes=consumes)
+        return _Arg("byte", text=arg)
     if arg.startswith("[") and arg.endswith("]"):
-        return _Arg("range", range=_compile_range(arg), consumes=consumes)
+        return _Arg("range", range=_compile_range(arg))
     try:
-        return _Arg("lit", _pips(arg), consumes=consumes)
+        return _Arg("lit", _pips(arg))
     except HaltError:
-        return _Arg("badlit", text=arg, consumes=consumes)
+        return _Arg("badlit", text=arg)
 
 
-def _run_arg(arg: _Arg, acc: int, rng: Randomness | None, byte: int | None) -> int:
+def _run_arg(arg: _Arg, acc: int, rng: Randomness | None, reads: Iterator[int]) -> int:
     """Evaluate one compiled ``{values...}`` argument, accumulator untouched."""
     if arg.kind == "acc":
         return acc
     if arg.kind == "byte":
+        byte = next(reads, None)
         if byte is None:
             raise HaltError(f"{arg.text} inside a comparison read nothing")
         return byte
     if arg.kind == "range":
-        return _run_range(cast("_Range", arg.range), acc, rng, byte)
+        return _run_range(cast("_Range", arg.range), acc, rng, reads)
     if arg.kind == "lit":
         return arg.value
     raise HaltError(f"not a dice literal: {arg.text!r}")
@@ -339,7 +333,7 @@ def _run_arg(arg: _Arg, acc: int, rng: Randomness | None, byte: int | None) -> i
 
 def _value(arg: str, acc: int, rng: Randomness | None, byte: int | None) -> int:
     """Evaluate one ``{values...}`` argument without touching the accumulator."""
-    return _run_arg(_compile_arg(arg), acc, rng, byte)
+    return _run_arg(_compile_arg(arg), acc, rng, iter(() if byte is None else (byte,)))
 
 
 @cache
@@ -457,17 +451,12 @@ def _execute(
         return reads[0], None
     if op == "range":
         return (
-            _run_range(
-                cast("_Range", instr.range), acc, rng, reads[0] if reads else None
-            ),
+            _run_range(cast("_Range", instr.range), acc, rng, iter(reads)),
             None,
         )
     if op == "values":
         taken = iter(reads)
-        values = [
-            _run_arg(a, acc, rng, next(taken, None) if a.consumes else None)
-            for a in instr.args
-        ]
+        values = [_run_arg(a, acc, rng, taken) for a in instr.args]
         return (_FALSE if values[0] == values[1] == values[2] else _TRUE), None
     raise HaltError(f"unknown instruction: {instr.line!r}")
 
@@ -490,14 +479,10 @@ def _advance(
     acc = state.acc
     op = instr.op
     if op == "skip":
-        if state.frames:
-            # The pointer inside a function body is a frame index, not a
-            # program line, so "skip down N lines" names nothing.
-            raise HaltError("DownAccLines inside a function body")
-        nxt = state.ip + 1 + acc
-        if nxt > len(state.lines):
+        body, cursor = state.frames[-1] if state.frames else (state.lines, state.ip)
+        if cursor + 1 + acc > len(body):
             raise HaltError("EOFError: not enough lines to skip down")
-        return _State(state.lines, nxt, acc, state.slot, state.frames), None
+        return _advance_cursor(state, skip=acc), None
     if op == "capture":
         return _capture(state), None
     if op == "call":
@@ -545,8 +530,8 @@ def _branch_state(state: object) -> _State:
 def _argument_bounds(arg: _Arg, acc: int) -> tuple[int, int]:
     """Return a no-input argument's closed interval, retaining deferred errors."""
     if arg.kind == "range":
-        return _range_bounds(cast("_Range", arg.range), acc, None)
-    value = _run_arg(arg, acc, None, None)
+        return _range_bounds(cast("_Range", arg.range), acc, iter(()))
+    value = _run_arg(arg, acc, None, iter(()))
     return value, value
 
 
@@ -554,7 +539,7 @@ def _outcomes(state: _State, limit: int) -> tuple[_State, ...] | None:
     """Materialize every distinct next state only when the complete set fits."""
     instr = _compile(state.current)
     if instr.op == "range":
-        low, high = _range_bounds(cast("_Range", instr.range), state.acc, None)
+        low, high = _range_bounds(cast("_Range", instr.range), state.acc, iter(()))
         count = min(high - low + 1, 256)
         if count > limit:
             return None

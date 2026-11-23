@@ -79,12 +79,12 @@ def _basic(command, acc, port):
     raise ArithmeticError("instruction")
 
 
-def _after(ip, frames):
+def _after(ip, frames, skip=0):
     if not frames:
-        return ip + 1, []
+        return ip + 1 + skip, []
     frames = list(frames)
     body, index = frames[-1]
-    frames[-1] = body, index + 1
+    frames[-1] = body, index + 1 + skip
     while frames and frames[-1][1] == len(frames[-1][0]):
         frames.pop()
     return ip, frames
@@ -105,10 +105,11 @@ def _control(command, lines, ip, acc, slot, frames):
             raise ArithmeticError("unclosed capture")
         return lines, end + 1, acc, lines[ip + 1 : end], []
     if command == "DownAccLines":
-        target = ip + 1 + acc
-        if frames or target > len(lines):
+        body, index = frames[-1] if frames else (lines, ip)
+        if index + 1 + acc > len(body):
             raise ArithmeticError("skip")
-        return lines, target, acc, slot, frames
+        ip, frames = _after(ip, frames, acc)
+        return lines, ip, acc, slot, frames
     should_call = (
         command == "EXE"
         or (command == "IFT" and acc == 84)

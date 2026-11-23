@@ -49,6 +49,92 @@ _ACK = (
 )
 
 
+def _east(*commands: str) -> str:
+    body = "".join(f"({2 * i + 3},1):{cmd}\n" for i, cmd in enumerate(commands))
+    return _HEAD.replace("@width 3", f"@width {2 * len(commands) + 1}") + body
+
+
+def test_dynamic_variable_names_resolve_at_execution_time() -> None:
+    source = _east(
+        "INPUT STRING key",
+        "STORE 17 TO THE VARIABLE NAMED key",
+        "STORE 23 TO y",
+        "INCREMENT THE VARIABLE NAMED key BY 2 GIVING THE VARIABLE NAMED 'result'",
+        "PRINT result",
+        "PRINT THE VARIABLE NAMED key",
+    )
+    assert _out(source, "x\n") == "1917"
+    assert _out(source, "y\n") == "2523"
+    with pytest.raises(HaltError, match="valid variable name"):
+        _out(source, "not a name\n")
+
+
+def test_nested_name_expressions_use_the_indirect_value() -> None:
+    source = _east(
+        "STORE 'which' TO alias",
+        "STORE 'x' TO which",
+        "STORE 17 TO x",
+        "PRINT THE VARIABLE NAMED THE VARIABLE NAMED alias",
+    )
+    assert _out(source) == "17"
+
+
+def test_input_passes_prompt_and_accepts_a_typed_dynamic_target() -> None:
+    prompts: list[str] = []
+
+    class PromptIO(ScriptedIO):
+        def _read(self, prompt: str) -> str:
+            prompts.append(prompt)
+            return super()._read(prompt)
+
+    source = _east(
+        "STORE 'Number? ' TO message",
+        "INPUT THE INT NAMED 'value' WITH PROMPT message",
+        "PRINT value",
+    )
+    io = PromptIO("17\n")
+    run(source, io)
+    assert prompts == ["Number? "]
+    assert io.getvalue() == "17"
+
+
+def test_subroutine_input_does_not_evaluate_prompt() -> None:
+    source = _east(
+        "CALL F WITH ARGUMENTS 17 GIVING THE VARIABLE NAMED 'result'", "PRINT result"
+    )
+    function = _east(
+        "INPUT INT x WITH PROMPT THE VARIABLE NAMED 'INVALID NAME'",
+        "RETURN x",
+    ).replace("#T.", "##F.", 1)
+    assert _out(source + function) == "17"
+
+
+@pytest.mark.parametrize("move", ["TO 7 1", "BY 4 0"])
+def test_move_last_node_relocates_a_node_in_this_run(move: str) -> None:
+    source = _east("PRINT 7", f"MOVE LAST NODE {move}", "PRINT 8")
+    program = Language("GridScript").prepare(source)
+    for _ in range(2):
+        assert program.run().output == "778"
+
+
+def test_move_outside_the_program_removes_the_node() -> None:
+    source = _east("PRINT 7", "MOVE LAST NODE TO 99 1", "GO WEST")
+    assert _out(source) == "7"
+
+
+def test_subroutine_calls_have_separate_program_spaces() -> None:
+    main = _east("CALL F", "CALL F")
+    body = _east("PRINT 7", "MOVE LAST NODE BY 4 0", "PRINT 8")
+    assert _out(main + body.replace("#T.", "##F.", 1)) == "778778"
+
+
+def test_goto_follows_a_relocated_checkpoint() -> None:
+    source = _east(
+        "CHECKPOINT 1", "MOVE LAST NODE TO 9 1", "GOTO 1", "PRINT 8", "PRINT 9"
+    )
+    assert _out(source) == "9"
+
+
 def test_the_pages_sample_programs() -> None:
     assert _out(_HEAD.replace("START\n", "START\n(3,1):PRINT 'Hello World'\n")) == (
         "Hello World"
