@@ -282,7 +282,10 @@ measurements, witnesses and reopening conditions for the older audits.
   n=28 witness emitted 105,463,455 characters at 3.30 GB peak.
 - What!? built a witness to n=26. At n=22 it executed 8,519,845 steps
   and used 587 written bits. The parser used 3.15 GB at n=22 and failed
-  at n=23. A leaner parse would extend the executable range.
+  at n=23. The current nonconstant construction needs one string of
+  length n-15, so its runtime rejects n>271.
+- Interprogck8 rejects n>40 at generation. Uncapped constructions for
+  Interprogck8 and What!? remain open.
 
 The Malbolge suite executes boundary rows at every arity, all rows at ten,
 and every 128th row at fifteen and sixteen in the weekly run.
