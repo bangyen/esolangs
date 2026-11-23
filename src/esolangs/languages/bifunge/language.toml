@@ -54,6 +54,7 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [resource_evidence.workspace]
 # Coordinates and cursor, n+7 stack bits, two partial bytes, heading and halt flag.
+# A leading ignored digit leaves at most the one slot it had under empty-pop semantics.
 expression = "n+bl(2*2^⌊n/2⌋-1)+bl(15n+34*2^⌈n/2⌉-1)+bl(n)+40"
 exact = false
 arities = [1, 2, 3, 4]

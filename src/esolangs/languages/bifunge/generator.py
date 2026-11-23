@@ -1,7 +1,8 @@
 """Bifunge Boolean generator with an alternating horizontal and vertical tree.
 
 XOR-fold each essential ASCII digit and AND-fold each ignored digit to zero.
-OR discards that zero without changing the previous bit. The stack routes
+OR discards that zero without changing the previous bit. A leading ignored
+digit leaves its explicit zero below the routing bits. The stack routes
 the IP through the tree from the last input to the first. Each leaf writes
 its answer byte and halts. Alternating midpoint splits leave each subtree
 in its own rectangle. The tree area is O(T), and the reader adds O(n√T)
@@ -53,6 +54,10 @@ def bifunge(truth_table: str) -> str:
     reader = bytearray(
         command for weight in weights for command in (_READ if weight else _DISCARD)
     )
+    if not weights[0]:
+        # No previous bit exists. Keep the explicit zero and the reader
+        # length, which fixes the locations and distances of the branches.
+        reader[len(_DISCARD) - 1] = Command.NOP
     n = len(table).bit_length() - 1
     if not n:
         reader.extend((_DIGITS[int(table[0])], *_TAIL))

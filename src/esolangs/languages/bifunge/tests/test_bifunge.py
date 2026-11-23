@@ -4,7 +4,8 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import ExecutionBudgetError
-from esolangs.languages.bifunge.interpreter import run
+from esolangs.languages.bifunge._commands import Command
+from esolangs.languages.bifunge.interpreter import _Machine, _parse, run
 from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import SMALL_TABLES, row_bits, witnesses
 
@@ -48,3 +49,30 @@ def test_bifunge_execution() -> None:
             stdin = esolangs.encode_inputs("Bifunge", row_bits(row, n))
             got = program.run(stdin=stdin)
             assert (got.output, got.input_reads) == (answer, n), (table, row)
+
+
+@pytest.mark.parametrize("table", ["0101", "01100110", "1111"])
+def test_leading_ignored_input_needs_no_empty_stack_pop(table: str) -> None:
+    source = esolangs.generate("Bifunge", table).source
+    grid = _parse(source.splitlines())
+    n = len(table).bit_length() - 1
+    for row, answer in enumerate(table):
+        stdin = esolangs.encode_inputs("Bifunge", row_bits(row, n))
+        io = ScriptedIO(stdin)
+        machine = _Machine(grid, io)
+        for _ in range(500):
+            if machine.halted:
+                break
+            command = grid[machine.y][machine.x]
+            if command in (Command.AND, Command.OR, Command.XOR):
+                assert len(machine.stack) >= 2
+            elif command in (
+                Command.NOT,
+                Command.HORIZONTAL,
+                Command.VERTICAL,
+                Command.OUTPUT,
+            ):
+                assert machine.stack
+            machine.step()
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (answer, n)
