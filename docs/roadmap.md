@@ -50,14 +50,18 @@ check or weakening a contract.
 
 ## Engineering
 
-| Work | Next experiment | Success criterion | Budget |
-| --- | --- | --- | --- |
-| Weekly timing comparison | Compare two existing timing artifacts on matching generator cases and runner environments | Replay an identical artifact as a negative control and inject a slowdown to check detection. Keep timings advisory and reproduce a real increase locally before changing code | Existing artifacts and one scoped replay |
-| Malformed-source coverage | Seed the exception-leak sweep with the existing runnable samples for Deadfish, HQ9+, Nope., and Unary, which lack saved programs in the sweep | Valid seeds produce their expected outputs. Each language gets a distinct source mutation, and a fault control proves the sweep detects a raw exception | One scoped exception-leak replay |
-| Weekly branch coverage | Recheck the Bytemap rail hop, Malbolge reset route, and Slow ACV Mammalian tail appends in the next combined report | Confirm the repaired paths are reached or removed. Reproduce new findings with a scoped witness before changing the baseline | Existing weekly coverage and up to 60 s per scoped probe |
-
-Generator removals require byte-identical corpus output, including tiled,
-constant, and ignored-input tables.
+- **Streaming DFA generator.** Pilot Brainfuck and 6-5. Emit one fixed
+  program for an arbitrary binary DFA, then run it on a terminator-ended
+  stream and report acceptance. Start with the two-state parity witness,
+  then use a DFA with at least three states and distinct transitions on both
+  bits. Compare empty and long inputs against a reference DFA and account
+  for source size in states and execution steps in stream length. Use the
+  two backends to settle the input and output contract before expanding.
+- **Malbolge read-only decoder placement.** Reuse the 20-target control
+  with four late frames. The 21-target layout needs a fifth. Derive a frame
+  placement or shorten the writer to free one, then run the resulting
+  installer and replay the 7,112 queries with zero writes to the packed
+  table. Price the replay under the existing Malbolge budget.
 
 - **Malbolge navigation, inexpressibility for an algebraic
   signature:** the [bounded-read lower bound](limitations.md#searches)
@@ -65,8 +69,9 @@ constant, and ignored-input tables.
   signature can compute the optimal first step. The classified invariant
   relations give no separation. Reopen with a separating non-product or
   non-uniform relation, or a term computing the step.
-- **Wiki shortlist.** Six screened candidates advance to the next
-  implementation pass. Each subset probe passed all 65,536 arity-four tables
+## Wiki shortlist
+
+- Six screened candidates advance to the next implementation pass. Each subset probe passed all 65,536 arity-four tables
   on all 16 inputs, plus sampled inputs through arity ten. Each emitter has
   O(T) generation time and source size. Order favors direct constructions
   using documented operations with few open questions on the generator's path.
