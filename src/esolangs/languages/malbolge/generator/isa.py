@@ -67,5 +67,15 @@ def _first_free(value: int, lo: int, hi: int, blocked: Container[int] = ()) -> i
     raise AssertionError(f"no address for value {value}")
 
 
+def _printable_slot(prefix: int, slots: dict[int, int]) -> int:
+    """Assign trits 0 and 4 to the next cell sharing trits 1 through 3."""
+    slot = slots.get(prefix, 0)
+    upper, bottom = divmod(slot, 2)
+    word = prefix + bottom + 81 * (upper + (prefix < 33))
+    assert 33 <= word <= 126, (prefix, slot)
+    slots[prefix] = slot + 1
+    return word
+
+
 def _rot(value: int) -> int:
     return value // 3 + (value % 3) * _ROTATE

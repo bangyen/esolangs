@@ -56,7 +56,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from functools import cache
-from itertools import product
 from typing import NamedTuple
 
 from esolangs.generation.helpers import _depends_on, read_at
@@ -96,6 +95,7 @@ from .emitter import _Planner, _valid_chars
 from .isa import (
     _CONSTS,
     _WORDS,
+    _printable_slot,
     _program,
     _render,
     _rot,
@@ -266,19 +266,6 @@ def _swap12(value: int) -> int:
     return _crazy(2, value)
 
 
-def _trit_gadget(cells: tuple[int, ...], read: int) -> tuple[int, int]:
-    """Return ``(u, v)`` at one trit from the cells' trits and the reads' trit."""
-    c, a = list(cells), 0
-    for op in _GADGET:
-        if op == "/":
-            a = read
-        elif op[0] == "K":
-            a = int(op[1])
-        else:
-            a = c[int(op)] = _crazy(a, c[int(op)]) % 3
-    return c[1], c[2]
-
-
 def _fold(s: tuple[int, ...], choice: _Choice, group: int) -> tuple[int, ...] | None:
     """Return ``S``'s trits after ``group`` folds in, or ``None`` if it fails.
 
@@ -365,13 +352,26 @@ def _helper_cells(used: set[int]) -> dict[str, int]:
     return helper
 
 
-@cache
-def _preimages(read: int) -> dict[tuple[int, int], list[tuple[int, ...]]]:
-    """Return each gadget output's cell trit triples at ``read``, descending."""
-    preimages: dict[tuple[int, int], list[tuple[int, ...]]] = {}
-    for cells in reversed(list(product(range(3), repeat=3))):
-        preimages.setdefault(_trit_gadget(cells, read), []).append(cells)
-    return preimages
+def _gadget_preimage(
+    read: int, output: tuple[int, int], occurrence: int
+) -> tuple[int, int, int]:
+    """Invert the gadget on the output pairs used by the positional fold."""
+    u, v = output
+    if read == 1:
+        if u == 1:
+            # Cell 2 must be 2; cells 0 and 1 give six free choices.
+            outer, inner = divmod(occurrence % 6, 3)
+            return 1 - outer, 2 - inner, 2
+        return 2, 2, v
+
+    if u == 0:
+        return 1, 1, 0
+    if u == 1:
+        return 2, 2, 2
+    if v == 0:
+        return 1, 2, 0
+    # The two occurrences of (2, 1) swap the last two cells.
+    return 2, 2 - occurrence, 1 + occurrence
 
 
 @cache
@@ -383,8 +383,7 @@ def _d_inits() -> tuple[tuple[int, ...], ...]:
     cells share trits 1..3.  Trit 0 is 0 or 1, since a 2 lets two reads
     collide, and any such triple misses ``(2, 2)`` as the swaps need.  A
     cell's slot, the count of earlier cells sharing its trits 1..3, picks
-    trit 0 and then trit 4 inside 33..126.  The least-address-sum triples
-    took 2.8-4.7% fewer steps, but only by search.
+    trit 0 and then trit 4 inside 33..126.
     """
     uses: dict[tuple[int, tuple[int, int]], int] = {}
     slots: dict[int, int] = {}
@@ -392,15 +391,12 @@ def _d_inits() -> tuple[tuple[int, ...], ...]:
     for outputs in _d_outputs():
         trits = []
         for read, uv in zip(_READ_TRITS, outputs, strict=True):
-            preimages, j = _preimages(read)[uv], uses.get((read, uv), 0)
-            trits.append(preimages[j % len(preimages)])
+            j = uses.get((read, uv), 0)
+            trits.append(_gadget_preimage(read, uv, j))
             uses[read, uv] = j + 1
         group = []
-        for cell in range(_READS):
-            low = sum(t[cell] * 3**k for k, t in enumerate(trits, 1))
-            values = [v for v in (low, low + 1, low + 81, low + 82) if 33 <= v <= 126]
-            group.append(values[slots.get(low, 0)])
-            slots[low] = slots.get(low, 0) + 1
+        for t1, t2, t3 in zip(*trits, strict=True):
+            group.append(_printable_slot(3 * t1 + 9 * t2 + 27 * t3, slots))
         inits.append(tuple(group))
     return tuple(inits)
 

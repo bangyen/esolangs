@@ -56,7 +56,7 @@ from .digits import (
     _seed_values,
 )
 from .emitter import _Planner
-from .isa import _WORDS, _program, _render
+from .isa import _WORDS, _printable_slot, _program, _render
 
 #: The four-read gadget: the positional gadget's first two read
 #: blocks, a suffix folding in the fourth input, and a closing block
@@ -139,15 +139,7 @@ def _s_inits() -> tuple[tuple[int, ...], ...]:
     for group in trits:
         cells = []
         for t1, t2, t3 in zip(*group, strict=True):
-            prefix = 3 * t1 + 9 * t2 + 27 * t3
-            # Alternate trit 0, then advance trit 4. Prefixes below 33
-            # start with trit 4 set to reach the printable range.
-            slot = slots.get(prefix, 0)
-            upper, bottom = divmod(slot, 2)
-            word = prefix + bottom + 81 * (upper + (prefix < 33))
-            assert 33 <= word <= 126, (prefix, slot)
-            cells.append(word)
-            slots[prefix] = slot + 1
+            cells.append(_printable_slot(3 * t1 + 9 * t2 + 27 * t3, slots))
         inits.append(tuple(cells))
     return tuple(inits)
 
