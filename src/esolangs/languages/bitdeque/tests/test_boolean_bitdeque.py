@@ -15,6 +15,29 @@ from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import witnesses
 
 
+@pytest.mark.parametrize("width", [None, 9])
+def test_exit_jump_lands_on_an_operation(width: int | None) -> None:
+    from esolangs.languages.bitdeque.interpreter import _Machine
+
+    table = "0001"
+    language = esolangs.Language("Bitdeque")
+    template = language.generate(table, width=width)
+    for row, answer in enumerate(table):
+        program = language.instantiate(template, list(map(int, f"{row:02b}")))
+        machine = _Machine(program.source, ScriptedIO())
+        destinations = []
+        while not machine.halted:
+            token = machine.tokens[machine.ind]
+            if machine.reg and token.startswith("GOTO "):
+                destination = int(token[5:])
+                assert 1 <= destination <= machine.size
+                destinations.append(destination)
+            machine.step()
+        assert destinations[-1] == machine.size - 1
+        assert machine.deq == (int(answer),)
+        assert machine.reg == 1
+
+
 class TestParameterizedBitdeque:
     """Input-by-substitution boolean generator for the no-input language Bitdeque."""
 
@@ -107,7 +130,7 @@ def test_bitdeque_short_load_floor_and_rendered_total() -> None:
             len(esolangs.generate("Bitdeque", format(value, "08b"), width=1).source)
             for value in range(256)
         )
-        == 115963
+        == 119_547
     )
 
 
@@ -118,7 +141,7 @@ def test_bitdeque_width_eleven_is_the_normal_load() -> None:
         len(esolangs.generate("Bitdeque", "0110", width=width).source)
         for width in (10, 11)
     ]
-    assert sizes == [308, 140]
+    assert sizes == [322, 154]
 
 
 @pytest.mark.parametrize("width", [1, 9, 40, 80])
@@ -208,4 +231,4 @@ def test_constant_native_and_short_loads_keep_all_slots() -> None:
                     if not options:
                         assert steps + 1 == 3 * n + 3 + int(bit)
                         assert written.bits == workspace(n, template.source)
-    assert three_input_corpus_size("Bitdeque") == 51358
+    assert three_input_corpus_size("Bitdeque") == 54_914

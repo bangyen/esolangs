@@ -4,7 +4,8 @@ The default load pushes each bit as the fixed pair ``PUSH INVERT`` / ``INVERT
 PUSH`` (``2n`` commands); narrow short loads use 15n commands with jumps.
 Each node pops one bit and
 ``GOTO``s its one-subtree, and a leaf drains the deque, pushes the answer and
-halts through a low-address trampoline.  The split order is input order
+returns through a low-address trampoline to two final inversions. Split order
+is input order
 (a greedy reorder saved 0.9% at n=8, 60 random tables); rotations happen
 inside the tree, so the load is byte-identical under every order.  Constant
 subtrees are one leaf and a repeated subtree at its level is reached by
@@ -12,8 +13,8 @@ subtrees are one leaf and a repeated subtree at its level is reached by
 
 Size:
     O(n) for parity and and, O(T) for dense tables;
-    n=8 zero: 136 chars; n=10 parity: 580 chars,
-    n=10 and: 441 chars, n=10 random 1847: 5,470 chars.
+    n=8 zero: 136 chars; n=10 parity: 594 chars,
+    n=10 and: 455 chars, n=10 random 1847: 5,484 chars.
 
 Decisions:
     A deque's ``EJECT``/``INJECT`` work the head, so any bit reaches an end at
@@ -226,7 +227,8 @@ def _bitdeque_ordered(truth_table: str, *, short: bool = False) -> list[Template
     tree = builder.build(len(prelude) + load_len + 1)
     end = len(prelude) + load_len + len(tree) + 1
     prelude[3] = f"GOTO {end}"
-    return [*prelude, *load, *tree]
+    # Land on real commands, restoring the register before falling through.
+    return [*prelude, *load, *tree, "INVERT", "INVERT"]
 
 
 def _bitdeque(program: str, width: int) -> str:

@@ -14,7 +14,7 @@
   "bfstack": "linear: at most 128T",
   "bifunge": "linear: worst 8*2^\u230an/2\u230b*(15n+34*2^\u2308n/2\u2309) text cells; one rectangular tree and an input strip",
   "bit_tilde": "linear: worst 3T+19n+115 characters past n = 3: minority planting",
-  "bitdeque": "linear: at most 79+20n+digits(4n+26+2S)+2max(37,23+2digits(4n+26+2S))+(13+digits(4n+26+2S))S characters: shared-tree token bound",
+  "bitdeque": "linear: at most 93+20n+digits(4n+26+2S)+2max(37,23+2digits(4n+26+2S))+(13+digits(4n+26+2S))S characters: shared-tree token bound",
   "bitwise_cyclic_tag": "linear: worst 13T/2+2n+3 characters: seven per two-row cell, reads six a unit",
   "bleh": "linear: worst B-A-P-R characters, n=3..23; at most beyond",
   "blindfolded_arithmetic": "linear: worst 3T + 6\u2308T/3\u2309 + 48n + 47 characters: six an instruction",

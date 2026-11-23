@@ -11,14 +11,14 @@ qualification = "head/tail discards leave the indexed entry in the deque"
 definitions = ["S = nodes and repeated zero-edge pointers before the final level"]
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 23, "5" = 23, "6" = 21, "7" = 19 }, source_units = 164 }
-"00001100" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 23, "5" = 23, "6" = 25, "7" = 25 }, source_units = 184 }
-"00110110" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 27, "5" = 25, "6" = 27, "7" = 25 }, source_units = 237 }
-"0110" = { commands_by_row = { "0" = 18, "1" = 16, "2" = 15, "3" = 17 }, source_units = 140 }
-"01101001" = { commands_by_row = { "0" = 21, "1" = 19, "2" = 20, "3" = 22, "4" = 20, "5" = 22, "6" = 23, "7" = 21 }, source_units = 195 }
-"0110100110010110" = { commands_by_row = { "0" = 28, "1" = 26, "2" = 23, "3" = 25, "4" = 23, "5" = 25, "6" = 26, "7" = 24, "8" = 23, "9" = 25, "10" = 26, "11" = 24, "12" = 30, "13" = 28, "14" = 25, "15" = 27 }, source_units = 250 }
-"1101001101101101" = { commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 32, "4" = 28, "5" = 28, "6" = 28, "7" = 28, "8" = 32, "9" = 34, "10" = 30, "11" = 32, "12" = 32, "13" = 32, "14" = 32, "15" = 34 }, source_units = 344 }
-"11111110" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 23, "5" = 23, "6" = 20, "7" = 22 }, source_units = 171 }
+"00000001" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 25, "5" = 25, "6" = 23, "7" = 21 }, source_units = 178 }
+"00001100" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 25, "5" = 25, "6" = 27, "7" = 27 }, source_units = 198 }
+"00110110" = { commands_by_row = { "0" = 25, "1" = 25, "2" = 25, "3" = 25, "4" = 29, "5" = 27, "6" = 29, "7" = 27 }, source_units = 251 }
+"0110" = { commands_by_row = { "0" = 20, "1" = 18, "2" = 17, "3" = 19 }, source_units = 154 }
+"01101001" = { commands_by_row = { "0" = 23, "1" = 21, "2" = 22, "3" = 24, "4" = 22, "5" = 24, "6" = 25, "7" = 23 }, source_units = 209 }
+"0110100110010110" = { commands_by_row = { "0" = 30, "1" = 28, "2" = 25, "3" = 27, "4" = 25, "5" = 27, "6" = 28, "7" = 26, "8" = 25, "9" = 27, "10" = 28, "11" = 26, "12" = 32, "13" = 30, "14" = 27, "15" = 29 }, source_units = 264 }
+"1101001101101101" = { commands_by_row = { "0" = 32, "1" = 32, "2" = 32, "3" = 34, "4" = 30, "5" = 30, "6" = 30, "7" = 30, "8" = 34, "9" = 36, "10" = 32, "11" = 34, "12" = 34, "13" = 34, "14" = 34, "15" = 36 }, source_units = 358 }
+"11111110" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 25, "5" = 25, "6" = 22, "7" = 24 }, source_units = 185 }
 
 [ablations]
 archive_refs = [
@@ -54,7 +54,7 @@ version = 1
 [[evidence.anchors]]
 arity = 10
 rule = "parity"
-size = 580
+size = 594
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bitdeque.generator:bitdeque_request"
@@ -62,7 +62,7 @@ construction = "esolangs.languages.bitdeque.generator:bitdeque_request"
 [[evidence.anchors]]
 arity = 10
 rule = "and"
-size = 441
+size = 455
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bitdeque.generator:bitdeque_request"
@@ -71,7 +71,7 @@ construction = "esolangs.languages.bitdeque.generator:bitdeque_request"
 arity = 10
 rule = "random"
 seed = 1847
-size = 5470
+size = 5484
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bitdeque.generator:bitdeque_request"
@@ -90,16 +90,16 @@ construction = "esolangs.languages.bitdeque.generator:bitdeque_request"
 witnesses = "esolangs.languages.bitdeque.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "7n + 8"
+expression = "7n + 10"
 exact = true
 arities = [5, 6]
 first = 3
 unit = "commands"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: prelude, load 2n, four a level, leaf n + 6" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: prelude, load 2n, four a level, leaf n + 8" }
 
 [resource_evidence.workspace]
 # The post-halt dump and register add two bits to the deque and token cursor.
-expression = "n+2+bl(C*(3n+2+I)+(1-C)*(4n+25+2S))"
+expression = "n+2+bl(C*(3n+2+I)+(1-C)*(4n+27+2S))"
 source_terms = { names = ["C", "I", "S"], provider = "esolangs.languages.bitdeque.proof_formulas:workspace_terms" }
 exact = true
 arities = [3, 4, 5, 6]
@@ -110,7 +110,7 @@ description = { growth = "poly n", claim = "worst", template = "{claim} {formula
 [resource_evidence.scaling]
 # S counts the general nodes and repeated zero-edge pointers.
 # The largest GOTO operand fits the digit width of 4n+26+2S.
-expression = "79+20n+digits(4n+26+2S)+2max(37,23+2digits(4n+26+2S))+(13+digits(4n+26+2S))S"
+expression = "93+20n+digits(4n+26+2S)+2max(37,23+2digits(4n+26+2S))+(13+digits(4n+26+2S))S"
 source_terms = { names = ["S"], provider = "esolangs.languages.bitdeque.proof_formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7]
