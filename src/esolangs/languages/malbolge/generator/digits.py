@@ -99,7 +99,9 @@ from .core import (
 from .emitter import _Page, _Planner, _valid_chars
 from .isa import (
     _CONSTS,
+    _ONE_OPERAND,
     _WORDS,
+    _ZERO_OPERAND,
     _printable_slot,
     _program,
     _render,
@@ -186,8 +188,6 @@ def _low_top_reads() -> tuple[int, int, int]:
 
 
 _TOP_HELD = _low_top_reads()
-#: ``p`` under ``A = all-2`` swaps 71 and 49 as it does 69 and 48.
-_ONE_CELL_G = 71
 
 
 class _Layout(NamedTuple):
@@ -611,19 +611,19 @@ def _allocate_cells(
     two = low(38)
     # ``p`` under ``A = all-2`` swaps 69 and 48.
     if drain_last:
-        to_48 = walked(69)
+        to_48 = walked(_ZERO_OPERAND)
         # Restoring the saved byte can step straight into the readout.
         z_cell = to_48 + 1
         assert z_cell not in used
         used.add(z_cell)
     else:
-        z_cell, to_48 = walked(), walked(69)
+        z_cell, to_48 = walked(), walked(_ZERO_OPERAND)
     seeds = {lab: walked(g) for lab, (g, _) in layout.seeds.items()}
     builds = _stub_builds(_hubs(layout), layout.stubs)
     builders = [walked(g) for g, _, _ in builds]
     # Every operand stub shares the middle cell.
     operand = operands["1"][1]
-    to_49 = low(_ONE_CELL_G)
+    to_49 = low(_ONE_OPERAND)
     return _DCells(
         helper,
         gadget,
@@ -747,7 +747,7 @@ def _emit_zero(main: _Planner, cells: _DCells, *, one: bool = False) -> None:
 
     One ``p`` while it holds 69 (71), two once it holds 48 (49).
     """
-    cell, fresh = (cells.to_49, 71) if one else (cells.to_48, 69)
+    cell, fresh = (cells.to_49, _ONE_OPERAND) if one else (cells.to_48, _ZERO_OPERAND)
     for _ in range(1 if main.mem[cell] == fresh else 2):
         main.op("*", cells.helper["all2"])
         main.op("p", cell)

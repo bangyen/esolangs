@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2
+from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2, _crazy
 
 _WORD_TRITS = 10
 _WORDS: int = 3**_WORD_TRITS
@@ -14,6 +14,9 @@ _ROTATE = _WORDS // 3
 _ALL1 = 29524
 _ALL2 = 59048
 _CONSTS = (0, _ALL1, _ALL2)
+# With A = all-2, crazy fixes 0 and swaps 1 and 2 on each operand trit.
+_ZERO_OPERAND = _crazy(_ALL2, ord("0"))
+_ONE_OPERAND = _crazy(_ALL2, ord("1"))
 #: The eight instructions a source cell can hold.
 _ACTIVE = "ji*p</vo"
 

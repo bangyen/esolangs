@@ -28,8 +28,10 @@ from .isa import (
     _ALL1,
     _ALL2,
     _CONSTS,
+    _ONE_OPERAND,
     _ROTATE,
     _WORD_TRITS,
+    _ZERO_OPERAND,
     _char_for,
     _first_free,
     _g,
@@ -72,13 +74,15 @@ _BOOTSTRAP_Z1 = _BOOTSTRAP_W // 2
 # Distinguish the two binary-trit seeds by clearing the lowest
 # non-unit trit. The constant-building operations accept either bit.
 _BOOTSTRAP_Z0 = _BOOTSTRAP_Z1 - 3
-#: ``p`` over these cells' values takes ``'0' + x`` to the answer exactly,
-#: trit by trit: a ``p`` over 0 or 1 swaps trit 0's 0 and 1 and over 2
-#: merges them, so ``n`` takes three swaps and ``1`` a merge; over 69..71 and
-#: 59008 every other trit of 48 comes back.  59008 is ``K0 K2`` on 80 (four
-#: 2-trits); the others are unwritten walked cells, the nearest of their
-#: ``g`` either side of the first walked 80.
-_OPERAND_G = {"1": (71, _BOOTSTRAP_W, 71), "n": (70, _BOOTSTRAP_W, 69)}
+# Use the ASCII inverse's upper trits to preserve the input's upper
+# trits across the middle operand. At the units trit, 2 merges both
+# inputs to 2, then the middle unit 1 keeps 2 and the final 2 makes 1.
+# For negation all three units are binary and each flips the input.
+# Place unit 1 before the middle and unit 0 after it.
+_OPERAND_G = {
+    "1": (_ONE_OPERAND, _ONE_OPERAND),
+    "n": (_ZERO_OPERAND + 1, _ZERO_OPERAND),
+}
 _OPERAND_CHAIN = "K0 K2"
 # A half-word rotation maps the lane number straight to its base address.
 _LANE_TRITS = _WORD_TRITS // 2
@@ -287,7 +291,7 @@ def _operand_cells() -> dict[str, tuple[int, ...]]:
             middle,
             _progression(above, middle + 1, _ENTRY)[0],
         )
-        for lab, (below, _, above) in _OPERAND_G.items()
+        for lab, (below, above) in _OPERAND_G.items()
     }
     # ``p`` over 1's last and n's last cell sends '0' and '1' alike to '0'.
     return {"0": (cells["1"][2], cells["n"][2]), **cells}
