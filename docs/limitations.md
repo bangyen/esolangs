@@ -128,7 +128,9 @@ measurements for the other trials.
 
 Malbolge routes the data pointer through fixed landing intervals. Each
 interval is read from cumulative bit masks indexed by landing, and the
-lowest eligible source bit gives the jump. A fixed reset handles
+lowest eligible source bit gives the jump. The largest gap between legal
+encodings supplies the initial walk budget. Successive intervals halve it
+until it fits within the reset's alignment walk, then try the exact landing. A fixed reset handles
 backward walks. Continuation pages occupy gaps between readout blocks.
 The earlier scan-greedy router and its fixed-probe lower bounds are
 recorded in the history of this section.

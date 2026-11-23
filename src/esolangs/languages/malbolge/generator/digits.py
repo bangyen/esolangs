@@ -507,7 +507,7 @@ def _digits(
         raise AssertionError("readouts collide or wrap")
     short = _short(n)
     layout = _short_layout(max(n, _SHORT_N)) if short else _full_layout()
-    cells = _allocate_cells(layout)
+    cells = _allocate_cells(layout, drain_last=drain_last)
     _, pointer = _pointers(_D_LABEL, _seed_values(layout).items(), single=True)
     occupied = set(tables)
     claimed: set[int] = set()
@@ -522,6 +522,9 @@ def _digits(
 
     main, _ = _main_planner(data)
     _emit_digit_setup(main, cells)
+    if drain_last:
+        # Prepare the recovery operand while the data pointer is near it.
+        _emit_zero(main, cells)
     walked = _continuation_cells(cells)
     _paginate(main, cells, walked, n, min(tables), claimed | occupied)
     _emit_digit_groups(main, n, cells, drop)
@@ -556,6 +559,7 @@ def _allocate_cells(
     layout: _Layout | None = None,
     *,
     inits: tuple[tuple[int, ...], ...] | None = None,
+    drain_last: bool = False,
 ) -> _DCells:
     """Allocate the working cells, each the least free one of its ``g`` value.
 
@@ -573,11 +577,18 @@ def _allocate_cells(
     gadget = [
         [low(v) for v in init] for init in (_d_inits() if inits is None else inits)
     ]
-    s_cell, z_cell = low(), walked()
+    s_cell = low()
     # ``p`` under ``A = all-1`` takes 38 to 2 and keeps 2.
     two = low(38)
     # ``p`` under ``A = all-2`` swaps 69 and 48.
-    to_48 = walked(69)
+    if drain_last:
+        to_48 = walked(69)
+        # Restoring the saved byte can step straight into the readout.
+        z_cell = to_48 + 1
+        assert z_cell not in used
+        used.add(z_cell)
+    else:
+        z_cell, to_48 = walked(), walked(69)
     if layout:
         seeds = {lab: walked(g) for lab, (g, _) in layout.seeds.items()}
         builds = _stub_builds(_hubs(layout), layout.stubs)
@@ -780,24 +791,22 @@ def _emit_digit_jump(
     """Emit the finish: the readout, the labels, then the jump to the row's stub."""
     main.op("p", cells.z_cell)
     _emit_labels(main, cells, pointer, layout, swap_cell)
-    _emit_zero(main, cells)
     if drain_last:
-        # An unlabelled boot cell is dead. Save the final essential read there;
-        # two all-2 swaps restore it after the discarded byte, then all-1
-        # undoes the initial save. Stubs now receive A instead of reading it.
+        # Label setup is finished with all-1. Save the essential read
+        # there across the ignored byte. Stubs receive A directly.
         helper = cells.helper
-        scratch = cells.two
-        main.op("*", helper["all1"])
+        scratch = helper["all1"]
+        main.op("/", scratch - 1)
+        main.raw("p")
+        main.op("/", helper["all2"] - 1)
+        main.raw("*")
         main.op("p", scratch)
-        main.op("p", scratch)
-        main.raw("/")
-        main.op("p", scratch)
-        main.raw("/")
-        main.op("*", helper["all2"])
-        main.op("p", scratch)
-        main.op("*", helper["all2"])
-        main.op("p", scratch)
-        main.op("p", helper["all1"])
+        # After the all-2 operation the low trit is 2 for zero and 0
+        # for one. Crazy over ASCII 48 maps those to 0 and 1 and
+        # restores the fixed upper trits of the input byte.
+        main.op("p", cells.to_48)
+    else:
+        _emit_zero(main, cells)
     if rotate_readout:
         main.op("*", cells.z_cell)
         main.op("*", cells.z_cell)

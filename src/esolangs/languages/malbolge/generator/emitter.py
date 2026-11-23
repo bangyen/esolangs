@@ -10,6 +10,28 @@ from esolangs.languages.malbolge.interpreter import _crazy
 
 from .isa import _ACTIVE, _char_for, _rot
 
+# Holding a source byte fixed, the legal addresses repeat every 94
+# cells. The largest cyclic gap bounds the cost of walking to a legal
+# encoding and taking its jump (at most gap - 1 walks and one jump).
+_ENCODING_PERIOD = 94
+_ENCODING_OFFSETS = sorted(_char_for(op, 0) - 33 for op in _ACTIVE)
+_ENCODING_GAP = max(
+    right - left
+    for left, right in zip(
+        _ENCODING_OFFSETS,
+        [*_ENCODING_OFFSETS[1:], _ENCODING_OFFSETS[0] + _ENCODING_PERIOD],
+        strict=True,
+    )
+)
+_RESET_OFFSET = _ENCODING_OFFSETS[0]
+# Halve the walk budget, rounding up, until it fits within the reset's
+# alignment walk. At that scale, go straight to the exact-landing tier.
+_NARROWINGS = ((_ENCODING_GAP - 1) // _RESET_OFFSET).bit_length()
+_LANDING_WIDTHS = (
+    *(1 + ((_ENCODING_GAP - 1) >> shift) for shift in range(_NARROWINGS + 1)),
+    0,
+)
+
 
 class _Landings:
     """Index each upper landing bound by a bit per known source cell."""
@@ -145,14 +167,14 @@ class _Planner:
                 pos = value + 1
 
         if target >= 128:
-            tier(16, target)
-        for width in (24, 12, 6, 0):
+            tier(_ENCODING_GAP, target)
+        for width in _LANDING_WIDTHS:
             tier(width, min(127, target))
 
         if pos > target:
-            # The walked region ends on a 94-cell boundary. Six cells later
-            # byte 33 is a legal source character and jumps back to 34.
-            reset = self.ceiling + 6
+            # The walked region ends on an encoding-period boundary.
+            # The first legal site for byte 33 jumps back to 34.
+            reset = self.ceiling + _RESET_OFFSET
             ops.append("o" * (reset - pos))
             pos = data_jump(reset, 33)
             assert pos == 34
