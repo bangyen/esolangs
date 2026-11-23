@@ -22,7 +22,7 @@ def _packed_steps(n: int, cells: list[int]) -> int | None:
     then a target cell an instruction and the negated chunks.  A row costs its
     reads (eleven an essential input, two an ignored one), the chunk walk
     7 * idx + 5 * (idx // m) + 1, the select's seven, the divide and the
-    print-and-halt five; a chunk's worst row is its last, so the program's
+    print-and-halt six; a chunk's worst row is its last, so the program's
     worst is the best chunk-end total.
     """
     for at in range(len(cells) - 15):
@@ -36,18 +36,18 @@ def _packed_steps(n: int, cells: list[int]) -> int | None:
             and cells[at + 10 : at + 15] == [0, 0, 0, 0, 0]
             and cells[at + 15] == 48
             and at == 3 * (2 * n + 9 * m + 45)
-            and len(cells) - (at + 16 + at // 3) == -(-(1 << m) // m)
+            and len(cells) - (at + 16 + at // 3 + 3) == -(-(1 << m) // m)
         ):
             break
     else:
         return None
-    chunks = cells[at + 16 + at // 3 :]
+    chunks = cells[at + 16 + at // 3 : -3]
     worst = 0
     for q, cell in enumerate(chunks):
         size = m if q < len(chunks) - 1 else (1 << m) - q * m
         idx = q * m + size - 1
         worst = max(worst, 7 * idx + 5 * q + _divide_steps(-cell, size - 1))
-    return 2 * n + 9 * m + 13 + worst
+    return 2 * n + 9 * m + 14 + worst
 
 
 def execution_terms(n: int, program: str) -> dict[str, int]:

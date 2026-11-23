@@ -5,8 +5,8 @@ larger ones also build the packed decoder and keep the shorter.  A constant
 consumes all inputs before printing.
 
 Size:
-    n=10 random 1847: 2,974 chars, n=10 parity: 461 chars,
-    n=10 and: 312 chars. Constants use 7n+7 chars,
+    n=10 random 1847: 2,987 chars, n=10 parity: 477 chars,
+    n=10 and: 322 chars. Constants use 7n+7 chars,
     n+1 commands and bl(3n+3)+bl(n) written bits.
 """
 
@@ -68,17 +68,16 @@ def _tree(truth_table: str) -> str:
 
 
 def _compact_tree(program: str, n: int) -> str:
-    """Remove inert cells; halt through the immutable -49 test literal.
+    """Remove inert cells and send both print routes to one final instruction.
 
     The entry subtracts cell zero from itself before jumping, so zero
     remains the relay cell. All value cells stay below contiguous code.
     """
     cells = list(map(int, program.split()))
     code = cells[6]
-    # Shared hoisted layout: cell9 is immutable -49, usable as a halt target.
-    for at in range(code, len(cells), 3):
-        if cells[at : at + 3] == [0, 0, 3]:
-            cells[at + 2] = 9
+    exits = [
+        at + 2 for at in range(code, len(cells), 3) if cells[at : at + 3] == [0, 0, 3]
+    ]
     referenced = set(cells[code:])
     data = [6, *(at for at in range(9, code) if at in referenced)]
     relocated = {old: new for new, old in enumerate(data, 3)}
@@ -91,9 +90,14 @@ def _compact_tree(program: str, n: int) -> str:
     values = [
         address(cells[at]) if at == 6 or at >= 13 + n else cells[at] for at in data
     ]
-    return " ".join(
-        map(str, [0, 0, relocated[6], *values, *map(address, cells[code:])])
-    )
+    image = [0, 0, relocated[6], *values, *map(address, cells[code:])]
+    target_cell = len(image)
+    for exit_operand in exits:
+        image[exit_operand + delta] = target_cell
+    # The code pointer in cell 3 is positive and subtraction of zero makes
+    # the last instruction fall through, leaving its target unused.
+    image.extend((target_cell + 1, 3, 0, target_cell))
+    return " ".join(map(str, image))
 
 
 def _tree_min_chars(truth_table: str, n: int) -> int:

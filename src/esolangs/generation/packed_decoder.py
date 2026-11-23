@@ -113,6 +113,12 @@ def packed_decoder(
         memory[chunk_base + index] = value
     del chunks
     _patch_loads(memory, loads, direct=direct)
+    if not direct:
+        # The last assembled instruction branches through its own target
+        # cell. Send it to a positive subtraction after the packed data.
+        target_cell = memory[3 * len(asm.instructions) - 1]
+        memory[target_cell] = len(memory)
+        memory.extend((address["ONE"], address["ZERO"], target_cell))
     return _render(memory)
 
 

@@ -14,14 +14,14 @@ qualification = "packed chunks decoded after the hoisted read block, against a h
 definitions = ["B = the program cells' bits, a sign one more", "A = extra decimal address widths of the packed decoder"]
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 122 }
-"00001100" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 8, "7" = 8 }, source_units = 103 }
-"00110110" = { commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 10, "5" = 9, "6" = 10, "7" = 9 }, source_units = 144 }
-"0110" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 8, "3" = 7 }, source_units = 106 }
-"01101001" = { commands_by_row = { "0" = 9, "1" = 9, "2" = 10, "3" = 9, "4" = 11, "5" = 10, "6" = 9, "7" = 9 }, source_units = 147 }
-"0110100110010110" = { commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 11, "4" = 13, "5" = 12, "6" = 11, "7" = 11, "8" = 14, "9" = 13, "10" = 12, "11" = 12, "12" = 11, "13" = 11, "14" = 12, "15" = 11 }, source_units = 190 }
-"1101001101101101" = { commands_by_row = { "0" = 10, "1" = 10, "2" = 11, "3" = 11, "4" = 11, "5" = 11, "6" = 10, "7" = 10, "8" = 12, "9" = 12, "10" = 12, "11" = 11, "12" = 10, "13" = 10, "14" = 11, "15" = 11 }, source_units = 197 }
-"11111110" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 9 }, source_units = 122 }
+"00000001" = { commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 9, "5" = 9, "6" = 10, "7" = 10 }, source_units = 129 }
+"00001100" = { commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 9, "5" = 9, "6" = 9, "7" = 9 }, source_units = 115 }
+"00110110" = { commands_by_row = { "0" = 9, "1" = 9, "2" = 9, "3" = 9, "4" = 11, "5" = 10, "6" = 11, "7" = 10 }, source_units = 156 }
+"0110" = { commands_by_row = { "0" = 8, "1" = 8, "2" = 9, "3" = 8 }, source_units = 118 }
+"01101001" = { commands_by_row = { "0" = 10, "1" = 10, "2" = 11, "3" = 10, "4" = 12, "5" = 11, "6" = 10, "7" = 10 }, source_units = 159 }
+"0110100110010110" = { commands_by_row = { "0" = 12, "1" = 12, "2" = 13, "3" = 12, "4" = 14, "5" = 13, "6" = 12, "7" = 12, "8" = 15, "9" = 14, "10" = 13, "11" = 13, "12" = 12, "13" = 12, "14" = 13, "15" = 12 }, source_units = 202 }
+"1101001101101101" = { commands_by_row = { "0" = 11, "1" = 11, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 11, "7" = 11, "8" = 13, "9" = 13, "10" = 13, "11" = 12, "12" = 11, "13" = 11, "14" = 12, "15" = 12 }, source_units = 209 }
+"11111110" = { commands_by_row = { "0" = 8, "1" = 8, "2" = 8, "3" = 8, "4" = 9, "5" = 9, "6" = 10, "7" = 10 }, source_units = 129 }
 
 [ablations]
 archive_refs = [
@@ -67,7 +67,7 @@ version = 1
 arity = 10
 rule = "random"
 seed = 1847
-size = 2974
+size = 2987
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
@@ -75,7 +75,7 @@ construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
 [[evidence.anchors]]
 arity = 10
 rule = "parity"
-size = 461
+size = 477
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
@@ -83,7 +83,7 @@ construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
 [[evidence.anchors]]
 arity = 10
 rule = "and"
-size = 312
+size = 322
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.s_bleq.generator:s_bleq_request"
@@ -103,8 +103,8 @@ bands = { "21" = "slow", "22" = "weekly", "23" = "weekly", "24" = "weekly", "25"
 
 [resource_evidence.execution]
 # Tree: an entry jump, n reads and at most n tests and n-1 relays, then print and halt.
-# Packed global envelope: 8T+(7n+5)(⌊T/n⌋-1)+26n-8, attained with the last full chunk all ones.
-expression = "E+(1-K)*(3n+2)"
+# Packed global envelope: 8T+(7n+5)(⌊T/n⌋-1)+26n-7, attained with the last full chunk all ones.
+expression = "E+(1-K)*(3n+3)"
 source_terms = { names = ["K", "E"], provider = "esolangs.languages.s_bleq.proof_formulas:execution_terms" }
 exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]

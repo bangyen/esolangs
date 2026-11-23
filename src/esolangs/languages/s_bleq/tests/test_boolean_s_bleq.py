@@ -58,7 +58,7 @@ class TestSbleq:
         """XOR's second test reaches the leaves already emitted for the first."""
         shared = boolean.s_bleq("0110").split()
         # Four leaves, two distinct: each output is emitted once, then jumped to.
-        assert shared[-3:-1] == ["0", "0"]
+        assert shared[-3:-1] == ["3", "0"]
         assert shared.count("-3") == 2
 
     def test_shared_tree_executes_wide_rows(self) -> None:
@@ -167,7 +167,7 @@ def _check_compacted_trees() -> None:
             old = hoisted_tree(table, tuple(range(n)), flip=flip)
             program = _compact_tree(old, n)
             initial = list(map(int, program.split()))
-            literal = initial.index(-49)
+            literals = [i for i, value in enumerate(initial) if value == -49]
             assert len(program) < len(old)
             for row in range(1 << n):
                 io = event_io.ReadFirstIO(f"{row:0{n}b}!", expected=n)
@@ -175,12 +175,29 @@ def _check_compacted_trees() -> None:
                 steps = 0
                 while not machine.halted:
                     machine.step()
-                    assert machine.mem[literal] == -49
+                    assert all(machine.mem[i] == -49 for i in literals)
                     steps += 1
-                    assert steps <= 3 * n + 2
+                    assert steps <= 3 * n + 3
                 assert io.getvalue() == table[row]
                 assert io.past_end == 0
                 assert io.input_char() == ord("!")
+
+
+@pytest.mark.parametrize("build", [boolean._tree, packed_decoder])
+def test_answer_routes_jump_to_loaded_instructions(build) -> None:
+    table = "00110110"
+    source = build(table)
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:03b}")
+        machine = _Machine(source, io)
+        while not machine.halted:
+            cursor = machine.ip
+            machine.step()
+            if machine.ip != cursor + 3:
+                assert 0 <= machine.ip <= len(machine.mem) - 3
+        assert machine.ip == len(machine.mem)
+        assert io.getvalue() == expected
+        assert io.reads == 3
 
 
 def test_packed_execution_bound_recognizes_the_emitted_cells() -> None:

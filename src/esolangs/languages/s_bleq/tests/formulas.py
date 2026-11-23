@@ -41,6 +41,11 @@ def _extra(n: int) -> int:
     for offset, label in _BRANCHES:
         extra += _wide(3 * (11 * n + label), 3 * (11 * n + label))
         extra -= _wide(3 * (11 * n + offset + 1), 3 * (11 * n + offset + 1))
+    last_target = base + 15 + code
+    terminal = last_target + 1 - (-(1 << n) // n)
+    # New target replaces the two characters of -1, then a final triple.
+    extra += len(str(terminal)) - 2
+    extra += sum(len(str(value)) + 1 for value in (base + 1, base, last_target))
     return extra + _wide(3 * (11 * n + 14) + 1, 3 * (11 * n + 14) + 1)
 
 
@@ -64,7 +69,8 @@ def tree_chars(n: int, _: str = "") -> int:
     cb = 13 + 2 * n + tg
     pre = 9 + 8 + len(str(cb))
     data = 9 + 3 + n + n * len(str(cb + 3 * n)) + tg * len(str(cb + 3 * ins))
-    return pre + data + 4 + 2 * n + tg + 3 * ins * (len(str(cb)) + 1)
+    tail = 4 * (len(str(cb + 3 * ins + 1)) + 1)
+    return pre + data + 4 + 2 * n + tg + 3 * ins * (len(str(cb)) + 1) + tail
 
 
 def scaling_terms(n: int, _: str) -> dict[str, int]:
