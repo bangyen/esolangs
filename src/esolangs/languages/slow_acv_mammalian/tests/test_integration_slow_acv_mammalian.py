@@ -109,7 +109,7 @@ def test_partial_overrides_merge_and_validate(
     generated, diagnostic = call_both(
         ["generate", "-s", json.dumps(full.options()), language.name, "01"], capsys
     )
-    assert diagnostic == ""
+    assert '--settings={"cell_modulus":255,"io_modulus":256}' in diagnostic
     assert (
         scope.run(generated, stdin=scope.encode_inputs([1]), settings=full).output
         == "1"

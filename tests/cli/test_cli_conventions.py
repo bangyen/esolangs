@@ -274,8 +274,13 @@ def test_set_accepts_null_as_a_declared_string_choice(
     )
     monkeypatch.setattr(_table, "CATALOG", scope)
     command = ["generate", REFERENCE, "01"]
-    set_source = call_main([*command, "--set", "mode=null"], capsys)
-    json_source = call_main([*command, "--settings", '{"mode":"null"}'], capsys)
+    set_source, note = call_both([*command, "--set", "mode=null"], capsys)
+    json_source, json_note = call_both(
+        [*command, "--settings", '{"mode":"null"}'], capsys
+    )
+    assert note == json_note
+    options = note.removeprefix("note: pass ").split(" to esolangs run", 1)[0]
+    assert shlex.split(options) == ['--settings={"mode":"null"}']
     assert set_source == json_source == native
     path = tmp_path / "program"
     esolangs.to_file(REFERENCE, set_source, path, normalize=True, catalog=scope)
@@ -320,6 +325,7 @@ def test_set_accepts_null_as_a_declared_string_choice(
 
     result = esolangs.run(REFERENCE, set_source, stdin="1")
     assert esolangs.read_answer(REFERENCE, result.output) == "1"
+    assert call_both([*command, "--set", "mode=plain"], capsys) == (native, "")
 
 
 class TestExamplesShipWithThePackage:

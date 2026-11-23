@@ -141,16 +141,21 @@ def test_foreign_language_guard_precedes_retained_choices() -> None:
         run("Brainfuck", source)
 
 
-def test_short_settings_flag(capsys) -> None:
+def test_short_settings_flag(capsys, tmp_path) -> None:
     settings = '{"expression_syntax":"postfix"}'
     output, error = call_both(["generate", "-s", settings, "Alight", "0110"], capsys)
-    assert error == ""
+    assert f"'--settings={settings}'" in error
     expected = esolangs.generate(
         "Alight",
         "0110",
         settings=esolangs.Language("Alight").settings(expression_syntax="postfix"),
     )
     assert output.rstrip("\n") == expected.source
+    path = tmp_path / "xor.txt"
+    path.write_text(output)
+    assert call_both(
+        ["run", f"--settings={settings}", "Alight", str(path)], capsys, stdin="01"
+    ) == ("1", "")
 
 
 class TestBreakAtChecksTheKindOfPosition:

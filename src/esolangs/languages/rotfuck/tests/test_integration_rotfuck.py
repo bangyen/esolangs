@@ -1,5 +1,7 @@
 """ROTfuck through the shared API, CLI and machinery."""
 
+import shlex
+
 import pytest
 
 import esolangs
@@ -65,7 +67,9 @@ def _check_cli_text_dialect_settings(api, capsys, tmp_path) -> None:
     settings = ["--set", "rotation=forward"]
     source, diagnostics = call_both(["generate", *settings, api.name, "01"], capsys)
     assert source
-    assert not diagnostics
+    option = diagnostics.removeprefix("note: pass ").split(" to esolangs run", 1)[0]
+    run_settings = shlex.split(option)
+    assert run_settings == ['--settings={"rotation":"forward"}']
     path = _program(tmp_path, source)
     for bit in "01":
         stdin = api.encode_inputs([int(bit)])
@@ -74,7 +78,9 @@ def _check_cli_text_dialect_settings(api, capsys, tmp_path) -> None:
         )
         assert output == ""
         assert "read past the end of input" in diagnostic
-        assert call_both(["run", *settings, api.name, path], capsys, stdin=stdin) == (
+        assert call_both(
+            ["run", *run_settings, api.name, path], capsys, stdin=stdin
+        ) == (
             bit,
             "",
         )

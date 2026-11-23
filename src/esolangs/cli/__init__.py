@@ -121,6 +121,7 @@ from esolangs.runtime._source import native_file_terminator
 from esolangs.runtime._validate import _argument_repr
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import can_render_argument, display_label, is_option
+from esolangs.settings import DialectSettings
 
 
 def describe(language: str, *, catalog: Catalog | None = None) -> LanguageInfo:
@@ -484,6 +485,26 @@ def _check_binary_terminal(language: str, *, raster: bool, gzip: bool) -> None:
     )
 
 
+def _note_export_settings(artifact: Artifact, declaration: LanguageDeclaration) -> None:
+    """Print the settings needed to run native text with its generation dialect."""
+    schema = declaration.runtime.dialect_schema
+    if (
+        isinstance(artifact.source, Raster)
+        or schema is None
+        or artifact.settings is None
+    ):
+        return
+    defaults = schema.defaults
+    overrides = {
+        key: value
+        for key, value in DialectSettings.options(artifact.settings).items()
+        if value != defaults[key]
+    }
+    if overrides:
+        option = shlex.quote(f"--settings={record_dumps(overrides)}")
+        _diagnostic(f"note: pass {option} to esolangs run to restore this dialect\n")
+
+
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     from esolangs.operations.generation import (
@@ -491,7 +512,6 @@ def _generate(rest: list[str]) -> None:
         _fill_checked_template,
         _generate_checked,
     )
-    from esolangs.settings import DialectSettings
 
     value_options = _VALUE_OPTIONS["generate"] - {"--set"}
     flag_options = {"--balance", "--plain", "--gzip"}
@@ -602,6 +622,7 @@ def _generate(rest: list[str]) -> None:
         )
     with _errors():  # A raster renders here, and may exceed the pixel limit.
         _emit(artifact, plain="--plain" in flags, gzip=gzip, catalog=catalog)
+    _note_export_settings(artifact, declaration)
     if isinstance(artifact, TemplateArtifact):
         original = shlex.join(before)
         fill = "fill them with: esolangs generate --bits <bits>"

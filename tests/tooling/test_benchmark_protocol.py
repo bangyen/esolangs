@@ -23,6 +23,18 @@ from tests.support.pick import one_where
             {"phase": "execution", "index": 0},
         ],
         [{"phase": "generation"}, {"phase": "execution", "index": 1}],
+        [
+            {"phase": "generation"},
+            {"phase": "execution", "index": 0},
+            {"execution": {"row": 1}},
+        ],
+        [
+            {"phase": "generation"},
+            {"phase": "execution", "index": 0},
+            {"execution": {"row": 0}},
+            {"phase": "execution", "index": 1},
+            {"result": {}},
+        ],
         [{"result": {}}],
         [[]],
         [{"error": {"message": "bad"}}],
@@ -103,6 +115,23 @@ def test_measure_records_first_sample_and_encodes_rows_without_the_table(
     assert record["generation_ns_first"] == 30
     assert record["generation_ns_best"] == 10
     assert record["generation_ns_median"] == 20
+
+
+@pytest.mark.medium
+def test_all_rows_can_exceed_one_worker_record() -> None:
+    from scripts import benchmark
+
+    table = "0" * 4096
+    record = benchmark.measure(
+        "brainfuck", table, repeat=1, row=2047, step_cap=500, all_rows=True
+    )
+    rows = record["executions"]
+    assert record["truth_table"] == table
+    assert [entry["row"] for entry in rows] == list(range(len(table)))
+    assert all(entry["matches"] for entry in rows)
+    assert record["row"] == 2047
+    assert record["commands"] == rows[2047]["commands"]
+    assert len(json.dumps({"result": record})) > MAX_RECORD_CHARS
 
 
 @pytest.mark.parametrize(

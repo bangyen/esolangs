@@ -547,6 +547,7 @@ def _measure(
     balance: bool = False,
     scale: int | None = None,
     _progress: Callable[[str], None] | None = None,
+    _on_row: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Benchmark the last timed artifact; optionally check every input row."""
     if repeat < 1 or step_cap < 1:
@@ -589,20 +590,21 @@ def _measure(
     for at in rows:
         if _progress is not None:
             _progress("execution")
-        executions.append(
-            _execute(
-                language,
-                program,
-                table,
-                at,
-                step_cap,
-                timeout,
-                width=width,
-                track_store=track_store,
-                facts=facts,
-                source_digest=None if facts.parameterized else digest,
-            )
+        execution = _execute(
+            language,
+            program,
+            table,
+            at,
+            step_cap,
+            timeout,
+            width=width,
+            track_store=track_store,
+            facts=facts,
+            source_digest=None if facts.parameterized else digest,
         )
+        executions.append(execution)
+        if _on_row is not None:
+            _on_row(execution)
     selected = next(item for item in executions if item["row"] == row)
     if _EVIDENCE.get() is None and source_identity() != identity:
         raise RuntimeError("checkout changed during benchmark")
@@ -767,6 +769,24 @@ def _post(
             pass
 
 
+def _worker_error(message: dict[str, Any]) -> Exception:
+    """Recover the exception class from a worker error record."""
+    error = message["error"]
+    if (
+        set(message) != {"error"}
+        or not isinstance(error, dict)
+        or set(error) != {"type", "message"}
+        or not all(isinstance(value, str) for value in error.values())
+    ):
+        return RuntimeError("invalid benchmark worker error")
+    cls = getattr(
+        esolangs, error["type"], getattr(builtins, error["type"], RuntimeError)
+    )
+    if not isinstance(cls, type) or not issubclass(cls, Exception):
+        cls = RuntimeError
+    return cls(error["message"])
+
+
 class Worker:
     """Reuse one interpreter across a sweep; kill the tree on any deadline."""
 
@@ -894,11 +914,12 @@ class Worker:
         deadline = None if limit is None else time.monotonic() + limit
         generated = False
         executed = 0
-        expected = (
-            len(arguments.get("table", ""))
+        rows = (
+            range(len(arguments.get("table", "")))
             if arguments.get("all_rows")
-            else len(arguments.get("sample_rows") or (0,))
+            else arguments.get("sample_rows") or (arguments.get("row", 0),)
         )
+        executions: list[dict[str, Any]] = []
         try:
             messages, stopped = self.messages, self.stopped
 
@@ -946,7 +967,7 @@ class Worker:
                     elif (
                         next_phase == "execution"
                         and generated
-                        and executed < expected
+                        and executed == len(executions) < len(rows)
                         and type(message.get("index")) is int
                         and message["index"] == executed
                         and set(message) == {"phase", "index"}
@@ -957,34 +978,36 @@ class Worker:
                         deadline = None if limit is None else time.monotonic() + limit
                     else:
                         raise RuntimeError("invalid benchmark worker phase transition")
+                elif "execution" in message:
+                    entry = message["execution"]
+                    if (
+                        set(message) != {"execution"}
+                        or executed != len(executions) + 1
+                        or not isinstance(entry, dict)
+                        or type(entry.get("row")) is not int
+                        or entry["row"] != rows[len(executions)]
+                    ):
+                        raise RuntimeError("unexpected benchmark worker row")
+                    executions.append(entry)
                 elif "result" in message:
+                    result = message["result"]
                     if (
                         not generated
-                        or executed != expected
+                        or len(executions) != len(rows)
                         or set(message) != {"result"}
-                        or not isinstance(message["result"], dict)
+                        or not isinstance(result, dict)
+                        or {"executions", "truth_table"} & result.keys()
                     ):
                         raise RuntimeError(
                             "premature or invalid benchmark worker result"
                         )
-                    return dict(message["result"])
+                    return {
+                        **result,
+                        "executions": executions,
+                        "truth_table": arguments["table"],
+                    }
                 elif "error" in message:
-                    error = message["error"]
-                    if (
-                        set(message) != {"error"}
-                        or not isinstance(error, dict)
-                        or set(error) != {"type", "message"}
-                        or not all(isinstance(value, str) for value in error.values())
-                    ):
-                        raise RuntimeError("invalid benchmark worker error")
-                    cls = getattr(
-                        esolangs,
-                        error["type"],
-                        getattr(builtins, error["type"], RuntimeError),
-                    )
-                    if not isinstance(cls, type) or not issubclass(cls, Exception):
-                        cls = RuntimeError
-                    raise cls(error["message"])
+                    raise _worker_error(message)
                 else:
                     raise RuntimeError("invalid benchmark worker record")
         except BaseException as error:
@@ -1005,13 +1028,16 @@ def _worker_main() -> None:
 
     execution = 0
 
+    def send(message: dict[str, Any]) -> None:
+        print(json.dumps(message), file=protocol, flush=True)
+
     def progress(phase: str) -> None:
         nonlocal execution
         message: dict[str, str | int] = {"phase": phase}
         if phase == "execution":
             message["index"] = execution
             execution += 1
-        print(json.dumps(message), file=protocol, flush=True)
+        send(message)
 
     for line in sys.stdin:
         execution = 0
@@ -1022,14 +1048,20 @@ def _worker_main() -> None:
             timeout = arguments["timeout"]
             arguments["timeout"] = None
             with contextlib.redirect_stdout(sys.stderr):
-                result = _measure(**arguments, _progress=progress)
+                result = _measure(
+                    **arguments,
+                    _progress=progress,
+                    _on_row=lambda row: send({"execution": row}),
+                )
+            # Rows travel as they finish. The parent already has the table.
+            del result["executions"], result["truth_table"]
             result["timeout"] = timeout
             message = {"result": result}
         except Exception as error:
             message = {"error": {"type": type(error).__name__, "message": str(error)}}
         finally:
             _EVIDENCE.reset(token)
-        print(json.dumps(message), file=protocol, flush=True)
+        send(message)
 
 
 if __name__ == "__main__":

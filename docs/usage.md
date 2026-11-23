@@ -431,6 +431,8 @@ defaults. Create overrides with
 `esolangs.Language("Alight").settings(expression_syntax="postfix")`, then pass
 them as `settings=` to `generate`, `run` or `make_debugger`. On the CLI, use
 `--settings JSON` or the repeatable `--set KEY=VALUE`.
+When exporting native text with overrides, `generate` prints the matching
+`run` option on stderr.
 
 Generated artifacts retain dialect defaults and overrides. Explicit
 `settings=` can add choices. A conflicting choice raises `ProgramError`.

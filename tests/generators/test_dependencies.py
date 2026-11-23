@@ -126,6 +126,20 @@ def test_dependencies_late_witnesses_and_ignored_inputs() -> None:
             assert helpers.essential_inputs(table, n) == _oracle(table, n)
 
 
+def test_affine_blocks_with_ignored_low_and_high_inputs() -> None:
+    n = 13
+    mask = 0b101_0010110101
+    coefficients = tuple((mask >> bit) & 1 for bit in reversed(range(n)))
+    for bias in (0, 1):
+        table = "".join(
+            str(bias ^ ((row & mask).bit_count() & 1)) for row in range(1 << n)
+        )
+        assert affine_form(table, n) == AffineForm(bias, coefficients)
+        for at in (1023, 1024, 1025, len(table) - 1):
+            flipped = table[:at] + ("0" if table[at] == "1" else "1") + table[at + 1 :]
+            assert affine_form(flipped, n) is None
+
+
 def test_dependency_fallback_has_positive_control(monkeypatch) -> None:
     original = helpers._residual_ids
     diagram = original("1010", 2)

@@ -481,4 +481,4 @@ def same_token_layout(template: str, plain: str, _layout: object) -> bool:
 
 def reflected_table(table: str, n: int) -> str:
     """Reorder rows by bit-reversed index, so the last input is tested first."""
-    return "".join(table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(1 << n))
+    return read_at(table, tuple(range(n - 1, -1, -1)), n)

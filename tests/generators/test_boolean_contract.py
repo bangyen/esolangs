@@ -33,9 +33,9 @@ def test_boolean_index_lists_all_declared_backends() -> None:
 
 def test_reorder_permutation_preserves_the_function() -> None:
     """Permuting the table renames the inputs without changing the function."""
-    from esolangs.generation.helpers import permute_truth_table
+    from esolangs.generation.helpers import permute_truth_table, reflected_table
 
-    table = "01101001"
+    table = "00101101"
     n = 3
     for perm in [(0, 1, 2), (2, 0, 1), (2, 1, 0)]:
         permuted = permute_truth_table(table, perm)
@@ -43,6 +43,7 @@ def test_reorder_permutation_preserves_the_function() -> None:
             bits = row_bits(row, n)
             original = sum(bits[level] << (n - 1 - i) for level, i in enumerate(perm))
             assert permuted[row] == table[original]
+    assert reflected_table(table, n) == "01100101"
 
 
 def test_identity_projection_reuses_the_table() -> None:
