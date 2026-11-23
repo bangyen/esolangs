@@ -42,6 +42,7 @@ from esolangs.generation.wrap import (
 )
 from esolangs.raster import Raster
 from esolangs.registry import (
+    LanguageDeclaration,
     SourceKind,
     render_template,
     template_setters,
@@ -208,6 +209,28 @@ class _TemplateProbes:
         return supplied.setters == checked.setters
 
 
+def _check_generation_scale(
+    language: LanguageDeclaration, scale: int | None
+) -> int | None:
+    """Validate a generator's scale without rendering its source."""
+    if scale is None:
+        return None
+    scale = check_scale(scale)
+    if scale == 1:
+        return scale
+    if language.runtime.source_kind is not SourceKind.RASTER:
+        raise with_hint(
+            ArgumentError("scale is only supported for raster generators"),
+            "omit scale for text languages; apply it only to raster source",
+        )
+    if not language.runtime.capabilities.supports_scale:
+        raise with_hint(
+            ArgumentError(f"{language.name} does not support raster scaling"),
+            "omit scale or use scale=1 to keep the native size",
+        )
+    return scale
+
+
 def _generate(
     resolved: str,
     truth_table: str,
@@ -224,19 +247,8 @@ def _generate(
     lang = catalog.languages[resolved]
     schema = lang.runtime.dialect_schema
     check_flag(balance, "balance")
-    if scale is not None:
-        scale = check_scale(scale)
+    scale = _check_generation_scale(lang, scale)
     if scale not in (None, 1):
-        if lang.runtime.source_kind is not SourceKind.RASTER:
-            raise with_hint(
-                ArgumentError("scale is only supported for raster generators"),
-                "omit scale for text languages; apply it only to raster source",
-            )
-        if not lang.runtime.capabilities.supports_scale:
-            raise with_hint(
-                ArgumentError(f"{resolved} does not support raster scaling"),
-                "omit scale or use scale=1 to keep the native size",
-            )
         artifact = cast(
             ProgramArtifact[Raster],
             _generate(

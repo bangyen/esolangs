@@ -73,6 +73,27 @@ def test_generate_refuses_impossible_options_before_stdin(
     assert "truth table must contain only" in invalid_table
 
 
+@pytest.mark.parametrize(
+    ("args", "is_terminal", "error"),
+    [
+        (["--scale", "2", REFERENCE], False, "scale is only supported for raster"),
+        ([_RASTER], True, "generates a PNG"),
+        (["--gzip", REFERENCE], True, "generates gzip"),
+    ],
+)
+def test_generate_checks_scale_and_terminal_before_stdin(
+    monkeypatch, capsys, args, is_terminal, error
+) -> None:
+    def unread(*_args, **_kwargs):
+        pytest.fail("invalid output settings reached stdin")
+
+    monkeypatch.setattr("esolangs.cli._read_stdin", unread)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: is_terminal)
+    output, diagnostic = _failure(["generate", *args, "-"], capsys)
+    assert output == ""
+    assert error in diagnostic
+
+
 def test_template_fill_hint_replays_the_stdin_table(capsys) -> None:
     language = first(parameterized=True, answer_mode="output")
     args = ["generate", "--width=4", language, "-"]

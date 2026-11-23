@@ -471,9 +471,26 @@ def _generation_bits(
     return _check_template_bits(name, [int(bit) for bit in bits], inputs)
 
 
+def _check_binary_terminal(language: str, *, raster: bool, gzip: bool) -> None:
+    """Refuse to write PNG or gzip bytes directly to a terminal."""
+    if not _stdout_is_terminal():
+        return
+    alternative = ""
+    if not raster:
+        alternative = " or replace --gzip with --plain" if gzip else " or pass --plain"
+    _fail(
+        f"{display_label(language)} generates "
+        f"{'a PNG' if raster else 'gzip'}; redirect stdout to a file{alternative}"
+    )
+
+
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
-    from esolangs.operations.generation import _fill_checked_template, _generate_checked
+    from esolangs.operations.generation import (
+        _check_generation_scale,
+        _fill_checked_template,
+        _generate_checked,
+    )
     from esolangs.settings import DialectSettings
 
     value_options = _VALUE_OPTIONS["generate"] - {"--set"}
@@ -523,6 +540,10 @@ def _generate(rest: list[str]) -> None:
         settings = _settings_of(settings_arguments, language=language, catalog=catalog)
         if table_operand == "-" and declaration.has_backend:
             _check_generation_output(declaration, bits, gzip=gzip)
+            _check_generation_scale(declaration, scale)
+            raster = declaration.runtime.source_kind is SourceKind.RASTER
+            if raster or gzip:
+                _check_binary_terminal(declaration.name, raster=raster, gzip=gzip)
             table = _read_stdin(
                 hint="; finish the truth table or close stdin",
                 terminal_prompt="Enter a truth table, then signal EOF.\n",
@@ -575,17 +596,9 @@ def _generate(rest: list[str]) -> None:
         or isinstance(program, Raster)
         or (isinstance(program, CompressedText) and "--plain" not in flags)
     )
-    if binary and _stdout_is_terminal():
-        # Unary's gzip once landed on a terminal unannounced.
-        alternative = ""
-        if not isinstance(program, Raster):
-            alternative = (
-                " or replace --gzip with --plain" if gzip else " or pass --plain"
-            )
-        _fail(
-            f"{display_label(artifact.language)} generates "
-            f"{'a PNG' if isinstance(program, Raster) else 'gzip'}; "
-            f"redirect stdout to a file{alternative}"
+    if binary:
+        _check_binary_terminal(
+            artifact.language, raster=isinstance(program, Raster), gzip=gzip
         )
     with _errors():  # A raster renders here, and may exceed the pixel limit.
         _emit(artifact, plain="--plain" in flags, gzip=gzip, catalog=catalog)

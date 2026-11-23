@@ -9,6 +9,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import textwrap
 from functools import cache
 from urllib.parse import unquote
 
@@ -158,6 +159,31 @@ def test_documented_pipeline_reports_an_upstream_failure(
     result = _run_command("esolangs list --json --detials | cat", tmp_path)
     assert result.returncode == 2
     assert "unknown option: --detials" in result.stderr
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("relative", ["README.md", "docs/usage.md"])
+def test_documented_python_runs_in_order(relative: str, tmp_path: pathlib.Path) -> None:
+    path = ROOT / relative
+    text = path.read_text(encoding="utf-8")
+    blocks = re.finditer(
+        r"^( *)```python\n(.*?)^\1``` *$", text, re.MULTILINE | re.DOTALL
+    )
+    commands = []
+    for block in blocks:
+        prefix = "\n" * text.count("\n", 0, block.start(2))
+        code = prefix + textwrap.dedent(block[2])
+        commands.append(f"exec(compile({code!r}, {str(path)!r}, 'exec'))")
+    assert commands, f"{relative} contains no Python examples"
+    result = subprocess.run(
+        [sys.executable, "-c", "\n".join(commands)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_the_documents_really_do_contain_commands() -> None:

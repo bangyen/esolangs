@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import os
 import shlex
+import signal
 import subprocess
 import sys
 import tempfile
@@ -28,6 +29,8 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Lock
+from types import FrameType
+from typing import NoReturn
 
 ROOT = Path(__file__).resolve().parents[2]
 # scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
@@ -805,6 +808,24 @@ def main() -> int:
     return 0
 
 
+def _terminate(signum: int, _frame: FrameType | None) -> NoReturn:
+    """Unwind active checks with the shell's signal exit status."""
+    raise SystemExit(128 + signum)
+
+
+@contextmanager
+def _handle_sigterm() -> Iterator[None]:
+    """Let the POSIX gate run its cleanup when its PID receives SIGTERM."""
+    if os.name != "posix":
+        yield
+        return
+    previous = signal.signal(signal.SIGTERM, _terminate)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
 def cli() -> int:
     """Run the gate and bind its acceptance receipt to the measured inputs."""
     global _ACTIVE_ACCEPTANCE  # noqa: PLW0603
@@ -815,7 +836,8 @@ def cli() -> int:
     )
     _ACTIVE_ACCEPTANCE = receipt
     try:
-        returncode = main()
+        with _handle_sigterm():
+            returncode = main()
     except KeyboardInterrupt:
         print("verification interrupted", file=sys.stderr)
         returncode = 130

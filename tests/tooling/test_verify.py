@@ -21,7 +21,7 @@ import pytest
 from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec
-from tests.tooling.receipt_support import check_receipt_controls
+from tests.tooling.receipt_support import _checkout, check_receipt_controls
 from tests.tooling.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -556,27 +556,32 @@ def test_companion_checks_share_one_serial_lane(monkeypatch) -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.skipif(os.name != "posix", reason="deliver Ctrl-C to the gate PID")
-def test_interrupt_reaps_parallel_checks_before_shutdown(tmp_path) -> None:
+@pytest.mark.skipif(os.name != "posix", reason="deliver signals to the gate PID")
+@pytest.mark.parametrize("signum", [signal.SIGINT, signal.SIGTERM])
+def test_interrupt_reaps_parallel_checks_before_shutdown(tmp_path, signum) -> None:
+    checkout = _checkout(tmp_path / "checkout")
     driver = f"""
 import sys
 from pathlib import Path
 sys.path.insert(0, {str(SCRIPT.parents[1])!r})
 from verify import gate
-gate.ROOT = Path({str(tmp_path)!r})
+gate.ROOT = Path({str(checkout)!r})
+markers = Path({str(tmp_path)!r})
 child = '''import os, sys, time
 from pathlib import Path
 Path(sys.argv[1]).write_text(str(os.getpid()))
 time.sleep(60)
 '''
 steps = [
-    (name, [sys.executable, "-c", child, str(gate.ROOT / name)], {{}})
+    (name, [sys.executable, "-c", child, str(markers / name)], {{}})
     for name in ("pytest", "shadow", "queued")
 ]
-try:
+def main():
     gate._run_steps(steps, stream=False)
-except KeyboardInterrupt:
-    sys.exit(130)
+    return 0
+
+gate.main = main
+sys.exit(gate.cli())
 """
     markers = [tmp_path / name for name in ("pytest", "shadow", "queued")]
     with subprocess.Popen(
@@ -592,9 +597,9 @@ except KeyboardInterrupt:
             ):
                 time.sleep(0.01)
             pids = [int(marker.read_text()) for marker in markers[:2]]
-            gate.send_signal(signal.SIGINT)
+            gate.send_signal(signum)
             output, _ = gate.communicate(timeout=2)
-            assert gate.returncode == 130, output
+            assert gate.returncode == 128 + signum, output
             assert not markers[-1].exists()
             for pid in pids:
                 with pytest.raises(ProcessLookupError):
