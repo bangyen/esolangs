@@ -152,6 +152,7 @@ def _read_program(
     catalog: Catalog | None = None,
     _settings_validated: bool = False,
     portable: bool = False,
+    bits: str | None = None,
 ) -> ProgramArtifact[Program]:
     """Read native source or a portable record under the acquisition deadline."""
     deadline = None if timeout is None else monotonic() + timeout
@@ -174,7 +175,9 @@ def _read_program(
     def decode() -> ProgramArtifact[Program]:
         with nullcontext() if deadline is None else stream_read_deadline(deadline):
             if portable:
-                return _load_portable_source(language, label, data, settings, catalog)
+                return _load_portable_source(
+                    language, label, data, settings, catalog, bits
+                )
             return _check_program(
                 language,
                 _FileSource(label, data),
@@ -208,6 +211,7 @@ def _load_portable_source(
     data: bytes,
     settings: DialectSettings | None,
     catalog: Catalog,
+    bits: str | None,
 ) -> ProgramArtifact[Program]:
     """Restore runnable JSON and combine any explicit compatible choices."""
     from esolangs import from_json
@@ -218,9 +222,13 @@ def _load_portable_source(
         raise source_read_error(label, error) from error
     artifact = from_json(language, document, catalog=catalog)
     if isinstance(artifact, TemplateArtifact):
-        raise TemplateError(
-            "unfilled portable template; pass --artifact --bits to esolangs generate"
-        )
+        if bits is None:
+            raise TemplateError(
+                "unfilled portable template; pass --bits to esolangs run --artifact"
+            )
+        artifact = artifact.fill([int(bit) for bit in bits])
+    elif bits is not None:
+        raise ArgumentError("--bits requires an unfilled portable template")
     retained = artifact.settings
     if settings is not None and retained is not None:
         _check_dialect_conflicts(retained, settings)

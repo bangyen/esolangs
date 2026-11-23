@@ -198,20 +198,45 @@ def test_portable_cli_handles_encoded_source(
         assert esolangs.read_answer(language, output) == str(bit)
 
 
-def test_portable_cli_fills_templates_before_execution(capsys) -> None:
+def test_portable_cli_fills_templates_before_execution(capsys, tmp_path) -> None:
     language = first(parameterized=True, answer_mode="output")
     generate = ["generate", "--artifact", language, "0110"]
     template, diagnostic = call_both(generate, capsys)
     assert isinstance(esolangs.from_json(language, template), esolangs.TemplateArtifact)
-    assert "--artifact" in diagnostic
+    assert "esolangs run --artifact --bits" in diagnostic
     command = ["run", "--artifact", language, "-"]
     output, diagnostic = _failure(command, capsys, stdin=template)
     assert not output
     assert "unfilled portable template" in diagnostic
+    path = tmp_path / "template.json"
+    path.write_text(template, encoding="utf-8")
+    for row, expected in enumerate("0110"):
+        bits = f"{row:02b}"
+        assert call_both([*command, "--bits", bits], capsys, template) == (expected, "")
+        assert call_both([*command[:-1], str(path), "--bits", bits], capsys) == (
+            expected,
+            "",
+        )
+    for invalid, reason in (
+        ("0", "2 inputs, but 1 bit"),
+        ("x", "--bits must be a string of 0s and 1s"),
+        ("", "bits must not be empty"),
+    ):
+        output, diagnostic = _failure(
+            [*command, "--bits", invalid], capsys, stdin=template
+        )
+        assert not output
+        assert reason in diagnostic
     program = call_main([*generate, "--bits", "01"], capsys)
     output, diagnostic = call_both(command, capsys, program)
     assert diagnostic == ""
     assert esolangs.read_answer(language, output) == "1"
+    output, diagnostic = _failure([*command, "--bits", "00"], capsys, stdin=program)
+    assert not output
+    assert "--bits requires an unfilled portable template" in diagnostic
+    output, diagnostic = _failure(["run", "--bits", "00", language, "-"], capsys)
+    assert not output
+    assert "--bits requires --artifact" in diagnostic
 
 
 @pytest.mark.parametrize("flag", ["--plain", "--gzip"])

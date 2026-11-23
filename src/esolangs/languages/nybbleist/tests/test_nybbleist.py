@@ -2,6 +2,7 @@
 
 import esolangs
 from esolangs.languages.nybbleist.interpreter import run
+from esolangs.languages.nybbleist.tests.oracle_checks import check_raw_nybbleist
 from esolangs.runtime.io import ScriptedIO
 from tests.support.witness_tables import SMALL_TABLES, row_bits, witnesses
 
@@ -29,3 +30,7 @@ def test_nybbleist_execution() -> None:
                 n,
                 n,
             ), (table, row)
+
+
+def test_nybbleist_model() -> None:
+    check_raw_nybbleist()

@@ -52,6 +52,7 @@ from esolangs import (
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli.args import (
     _VALUE_OPTIONS,
+    _bits_of,
     _check_count,
     _copyable_generation_options,
     _decimal_integer,
@@ -554,9 +555,7 @@ def _generate(rest: list[str]) -> None:
     scale = _scale_of(options)
     if balance and width is not None:
         _fail("--balance and --width are mutually exclusive")
-    bits = options.get("--bits")
-    if bits is not None and (not bits or set(bits) - {"0", "1"}):
-        _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
+    bits = _bits_of(options)
     rest = _split_positional(
         rest,
         set(),
@@ -638,6 +637,11 @@ def _generate(rest: list[str]) -> None:
         )
     _emit_generated(artifact, declaration, flags, catalog)
     if isinstance(artifact, TemplateArtifact):
+        if "--artifact" in flags:
+            _diagnostic(
+                "note: fill the saved input slots with esolangs run --artifact --bits\n"
+            )
+            return
         original = shlex.join(before)
         fill = "fill them with: esolangs generate --bits <bits>"
         stdin_hint = (

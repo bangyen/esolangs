@@ -289,7 +289,7 @@ class ResidualDiagram(NamedTuple):
 def _residual_ids(truth_table: str, n: int) -> ResidualDiagram:
     """Canonical residual IDs, children and constant values in O(T) RAM work."""
     levels: list[tuple[int, ...]] = [()] * (n + 1)
-    ids = [1 if bit == "1" else 0 for bit in truth_table]
+    ids: Sequence[int] = str.encode(truth_table, "ascii").translate(_LEAF_BITS)
     levels[n] = tuple(dict.fromkeys(ids))
     children: dict[int, tuple[int, int]] = {}
     constants: dict[int, int | None] = {0: 0, 1: 1}
@@ -297,16 +297,18 @@ def _residual_ids(truth_table: str, n: int) -> ResidualDiagram:
     for k in range(n - 1, -1, -1):
         names: dict[tuple[int, int], int] = {}
         parents = []
-        for zero, one in zip(ids[::2], ids[1::2], strict=True):
-            pair = (zero, one)
-            if pair not in names:
-                names[pair] = serial
-                children[serial] = pair
-                constants[serial] = (
+        layer = iter(ids)
+        for pair in zip(layer, layer, strict=True):
+            node = names.get(pair)
+            if node is None:
+                node = names[pair] = serial
+                children[node] = pair
+                zero, one = pair
+                constants[node] = (
                     constants[zero] if constants[zero] == constants[one] else None
                 )
                 serial += 1
-            parents.append(names[pair])
+            parents.append(node)
         levels[k] = tuple(names.values())
         ids = parents
     return ResidualDiagram(
