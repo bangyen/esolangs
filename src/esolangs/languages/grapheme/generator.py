@@ -68,18 +68,16 @@ def _grapheme_table(table: str) -> int:
     """Pack entry ``i`` at bit ``len(table) - 1 - i``, lifted to lead with 1."""
     span = 1 << len(table)
     value = int(table, 2)
-    # The minimal leading-1 lift: scan the bands [10^j, 2*10^j) upward for
-    # the first member of value's residue class. The old fixed target
-    # 10^(d+1) overshot it by a fixed ~2 letters a program on every corpus
-    # measured (candidate 32). The band at span's digit count is wider
-    # than span, so a member always lands there and the scan ends.
-    band = 1
-    while True:
-        base = max(value, band)
-        lifted = base + (value - base) % span
-        if lifted < 2 * band:
-            return lifted
-        band *= 10
+    if format_integer(value).startswith("1"):
+        return value
+    first_lift = value + span
+    band = int(10 ** (len(format_integer(first_lift)) - 1))
+    if first_lift < 2 * band:
+        return first_lift
+    # The next leading-1 band is wider than span. Its first congruent
+    # integer is therefore the smallest remaining possible lift.
+    band *= 10
+    return band + (value - band) % span
 
 
 def grapheme(
