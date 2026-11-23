@@ -349,6 +349,13 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
     essential inputs (holding an ignored one at 0 cannot change the answer).
     ``n`` is passed because the projected result is narrower than its input.
     """
+    if (
+        len(inputs) == n
+        and len(truth_table) == 1 << n
+        and all(slot == original for slot, original in enumerate(inputs))
+    ):
+        return truth_table
+
     # The row indices are built by doubling rather than by re-scattering
     # each row's bits: slot ``k`` is the next-most-significant bit, so
     # appending ``o | mask`` after ``o`` extends the list in row order.

@@ -3,10 +3,13 @@
 import json
 import signal
 import sys
+from types import SimpleNamespace
 
 import pytest
 
+from esolangs.registry import LANGUAGES
 from scripts.benchmark import MAX_RECORD_CHARS, Worker
+from tests.support.pick import one_where
 
 
 @pytest.mark.parametrize(
@@ -72,13 +75,88 @@ def test_valid_multiline_protocol_runs_all_rows(monkeypatch, capsys) -> None:
         _check_store_sampling(patch)
 
 
+def test_measure_records_first_sample_and_encodes_rows_without_the_table(
+    monkeypatch,
+) -> None:
+    import esolangs
+    from scripts import benchmark
+
+    encode_inputs = esolangs.encode_inputs
+    encoded = []
+
+    def encode(language, bits, *, truth_table=None):
+        assert truth_table is None
+        encoded.append(bits)
+        return encode_inputs(language, bits)
+
+    ticks = iter((10, 40, 100, 110, 200, 220))
+    with benchmark.evidence_session(), monkeypatch.context() as patch:
+        patch.setattr(
+            benchmark, "time", SimpleNamespace(perf_counter_ns=ticks.__next__)
+        )
+        patch.setattr(esolangs, "encode_inputs", encode)
+        record = benchmark._measure(
+            "Brainfuck", "0110", repeat=3, row=3, step_cap=1000, all_rows=True
+        )
+    assert encoded == [[0, 0], [0, 1], [1, 0], [1, 1]]
+    assert all(entry["matches"] for entry in record["executions"])
+    assert record["generation_ns_first"] == 30
+    assert record["generation_ns_best"] == 10
+    assert record["generation_ns_median"] == 20
+
+
+@pytest.mark.parametrize(
+    "language",
+    one_where(
+        lambda facts: LANGUAGES[facts.name].runtime.capabilities.supports_scale,
+        boolean_generator=True,
+        source_kind="raster",
+        width_effect="layout",
+    ),
+)
+@pytest.mark.parametrize(
+    ("options", "flags"),
+    [
+        ({"balance": True}, ["--balance"]),
+        ({"width": 10, "scale": 3}, ["--width", "10", "--scale", "3"]),
+    ],
+)
+def test_benchmark_cli_measures_requested_raster(
+    language, options, flags, capsys
+) -> None:
+    import esolangs
+    from scripts import benchmark
+
+    program = esolangs.generate(language, "0110", **options)
+    assert isinstance(program.source, esolangs.Raster)
+    assert isinstance(program, esolangs.ProgramArtifact)
+    assert (
+        benchmark.main([language, "0110", "--repeat", "1", "--all-rows", *flags]) == 0
+    )
+    record = json.loads(capsys.readouterr().out)
+    assert record["generation_options"] == {
+        "width": None,
+        "balance": False,
+        "scale": None,
+        **options,
+    }
+    assert record["raster"] == {
+        "height": len(program.source.rows),
+        "width": len(program.source.rows[0]),
+        "scale": program.scale,
+    }
+    assert record["provenance"]["generated_artifact_sha256"] == benchmark.artifact_hash(
+        program.source
+    )
+    assert all(entry["matches"] for entry in record["executions"])
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize("directory", [".", "notes/ci"])
 def test_timing_journal_is_scratch_but_source_edits_change_identity(
     tmp_path, monkeypatch, directory
 ) -> None:
     import subprocess
-    from types import SimpleNamespace
 
     from scripts import benchmark
     from scripts.ci.shard import Recorder

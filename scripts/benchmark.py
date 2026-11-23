@@ -422,6 +422,7 @@ def _execute(
     cap: int,
     timeout: float | None,
     *,
+    width: int | None = None,
     track_store: bool = False,
     facts: LanguageInfo | None = None,
     source_digest: str | None = None,
@@ -431,12 +432,10 @@ def _execute(
     bits = _bits(row, len(table).bit_length() - 1)
     source: esolangs.ProgramArtifact[esolangs.Program]
     if isinstance(program, esolangs.TemplateArtifact):
-        source, stdin = esolangs.instantiate(language, program, bits), ""
+        source, stdin = esolangs.instantiate(language, program, bits, width=width), ""
     else:
-        source, stdin = (
-            program,
-            esolangs.encode_inputs(language, bits, truth_table=table),
-        )
+        # Generation validated the table, and the row uses exactly its arity.
+        source, stdin = program, esolangs.encode_inputs(language, bits)
     supported = facts.steppable_to_answer
     if track_store and facts.answer_mode == "termination":
         raise ValueError("store tracking requires a halting-answer language")
@@ -544,6 +543,9 @@ def _measure(
     sample_rows: tuple[int, ...] | None = None,
     timeout: float | None = 30.0,
     track_store: bool = False,
+    width: int | None = None,
+    balance: bool = False,
+    scale: int | None = None,
     _progress: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Benchmark the last timed artifact; optionally check every input row."""
@@ -565,7 +567,9 @@ def _measure(
     program: Artifact | None = None
     for _ in range(repeat):
         started = time.perf_counter_ns()
-        program = esolangs.generate(language, table)
+        program = esolangs.generate(
+            language, table, width=width, balance=balance, scale=scale
+        )
         source_units(program.source)
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
@@ -593,6 +597,7 @@ def _measure(
                 at,
                 step_cap,
                 timeout,
+                width=width,
                 track_store=track_store,
                 facts=facts,
                 source_digest=None if facts.parameterized else digest,
@@ -621,6 +626,8 @@ def _measure(
         "source_unit": "pixels" if raster is not None else "characters",
         "source_utf8_bits": _utf8_bits(source),
         "raster": raster,
+        "generation_options": {"width": width, "balance": balance, "scale": scale},
+        "generation_ns_first": timings[0],
         "generation_ns_best": min(timings),
         "generation_ns_median": int(statistics.median(timings)),
         "step_cap": step_cap,
@@ -648,6 +655,9 @@ def measure(
     timeout: float | None = 30.0,
     track_store: bool = False,
     generation_timeout: float | None = 30.0,
+    width: int | None = None,
+    balance: bool = False,
+    scale: int | None = None,
 ) -> dict[str, Any]:
     """Bound generation and each execution row in a reusable supervised worker."""
     check_timeout(timeout)
@@ -664,6 +674,9 @@ def measure(
         "sample_rows": sample_rows,
         "timeout": timeout,
         "track_store": track_store,
+        "width": width,
+        "balance": balance,
+        "scale": scale,
     }
     try:
         result = worker.measure(arguments, identity, generation_timeout)
@@ -696,6 +709,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--generation-timeout", type=float, default=30.0)
     parser.add_argument("--all-rows", action="store_true")
+    layout = parser.add_mutually_exclusive_group()
+    layout.add_argument("--width", type=int, help="request a column width")
+    layout.add_argument("--balance", action="store_true", help="balance the layout")
+    parser.add_argument("--scale", type=int, help="replicate raster pixels")
     parser.add_argument(
         "--track-store",
         action="store_true",
@@ -713,17 +730,23 @@ def main(argv: list[str] | None = None) -> int:
     row = len(args.truth_table) - 1 if args.row is None else args.row
     if not 0 <= row < len(args.truth_table):
         parser.error(f"--row must be in [0, {len(args.truth_table) - 1}]")
-    result = measure(
-        args.language,
-        args.truth_table,
-        repeat=args.repeat,
-        row=row,
-        step_cap=args.step_cap,
-        all_rows=args.all_rows,
-        timeout=args.timeout,
-        generation_timeout=args.generation_timeout,
-        track_store=args.track_store,
-    )
+    try:
+        result = measure(
+            args.language,
+            args.truth_table,
+            repeat=args.repeat,
+            row=row,
+            step_cap=args.step_cap,
+            all_rows=args.all_rows,
+            timeout=args.timeout,
+            generation_timeout=args.generation_timeout,
+            track_store=args.track_store,
+            width=args.width,
+            balance=args.balance,
+            scale=args.scale,
+        )
+    except esolangs.ArgumentError as exc:
+        parser.error(str(exc))
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if all(item["matches"] is True for item in result["executions"]) else 1
 

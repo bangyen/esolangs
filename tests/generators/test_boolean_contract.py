@@ -45,6 +45,17 @@ def test_reorder_permutation_preserves_the_function() -> None:
             assert permuted[row] == table[original]
 
 
+def test_identity_projection_reuses_the_table() -> None:
+    from esolangs.generation.helpers import read_at
+
+    table = "00101101"
+    assert read_at(table, (0, 1, 2), 3) is table
+    assert read_at(table, [0, 1, 2], 3) is table
+    assert read_at(table, [0, 1], 3) == "0110"
+    assert read_at(table, [0, 1], 2) == "0010"
+    assert read_at(table, [0, 0, 2], 3) == "00111111"
+
+
 def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """``perm`` reaches the emission in exactly one place, and it shows."""
     from itertools import permutations

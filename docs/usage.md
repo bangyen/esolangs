@@ -579,7 +579,11 @@ and actual answers, and execution status. Wrong or undecided rows fail;
 unsupported stepping is distinct from a cap or timeout.
 `source_unit` labels `source_units` as characters or pixels. Raster records
 also give the image's pixel width and height and its declared scale in `raster`.
+`generation_ns_first` records the first sample in the worker request. Best
+and median include subsequent samples, which can reuse cached work.
 
+- Use `--width N` or `--balance` to measure a layout, and `--scale N` to
+  measure scaled raster source. The request appears in `generation_options`.
 - The row timeout defaults to 30 seconds. `--no-timeout` disables the
   signal guard for Windows or worker threads.
 - `just sizes` checks the committed size and step baseline and requires each
