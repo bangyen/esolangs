@@ -162,7 +162,7 @@ _D_LABEL = {t + 34: lab for t, lab in enumerate(_T_LABELS) if lab in "01xn"}
 #: Each label's seed ``g`` (:func:`~.core._seed_g`).
 _D_SEEDS = {lab: _seed_g(m) for m, lab in enumerate(_T_HUB_LABELS, 1)}
 
-#: Up to ``_SHORT_N`` inputs share one short layout: the last group's three
+#: Up to thirteen inputs share one short layout: the last group's three
 #: held reads are ``'1','0','1'`` (49, 48, 49), which puts every table in
 #: 6562..13113.  Each label has one hub (pointer value ``s01(chain(g))``, all
 #: its cells equal) at 13122..13130; its stub sits in the table-free run
@@ -170,7 +170,6 @@ _D_SEEDS = {lab: _seed_g(m) for m, lab in enumerate(_T_HUB_LABELS, 1)}
 #: ``_SHORT_MAX`` get their own layout over their own tables: 14 holds
 #: ``'1','0'`` (tables 6562..19674), 15 holds ``'0'`` (tables 19684..52479;
 #: ``'1'`` would reach 59,039); 16 fills the store.
-_SHORT_N = 13
 _SHORT_MAX = 15
 #: Arities up to this hold the last group's reads at ``_TOP_HELD``.
 _TOP_HELD_N = 14
@@ -217,9 +216,13 @@ def _block_mid_stub(block: int) -> tuple[int, str]:
 
 
 @cache
-def _short_layout(arity: int = _SHORT_N) -> _Layout:
-    """Place four hubs and their stubs in the held-read layout's gaps."""
-    if arity == 14:
+def _short_layout(first_table: int, last_table: int) -> _Layout:
+    """Place four hubs and their stubs around the held-read table bands."""
+    first_band = (first_table - 1) // _D_FLOOR
+    last_band = (last_table - 1) // _D_FLOOR
+    hub_band = 2
+    tables_in_hub_band = first_band <= hub_band <= last_band
+    if tables_in_hub_band:
         # K0 K2 makes 2 except at input trits set to 2, which make 0.
         # Keep n just below block 21, then vary the low two trits of
         # the three other hubs immediately below 3**9.
@@ -248,11 +251,11 @@ def _short_layout(arity: int = _SHORT_N) -> _Layout:
     # The two long stubs and the three-character identity fit at the
     # three lane centers. Reserve another lane or block for zero.
     identity = _lane_mid_stub(lane + 2)
-    if arity == 15:
-        # With top digits 0..2 unoccupied, the next lane is free too.
+    if first_band > 1:
+        # The first stub band is table-free, including the next lane.
         zero, identity = identity, _lane_mid_stub(lane + 3)
-    elif arity == 14:
-        zero = _block_mid_stub(2 * 9 + missing)
+    elif tables_in_hub_band:
+        zero = _block_mid_stub(hub_band * 9 + missing)
     else:
         # The tables stop before top digit 2. Its low two trits hold
         # the hubs and their return bytes. Use the next binary mask
@@ -298,7 +301,8 @@ def _longest_stub(n: int) -> int:
 
     A ``1`` or ``n`` stub runs every character; ``0`` and ``x`` run three.
     """
-    hubs = _hubs(_short_layout(max(n, _SHORT_N)))
+    readouts = _readouts(n)
+    hubs = _hubs(_short_layout(min(readouts) + 1, max(readouts) + 1))
     cells = _operand_cells()
     return max(
         len(_operand_stub(min(_valid_chars(hubs[lab][0] + 2)) + 1, cells[lab]))
@@ -538,10 +542,11 @@ def _digits(
     table cell, or if the readouts are not distinct.
     """
     tables = _readouts_cells() if n == _DIGITS_N else tuple(s + 1 for s in _readouts(n))
-    if len(set(tables)) != len(tables) or max(tables) >= _WORDS:
+    first_table, last_table = min(tables), max(tables)
+    if len(set(tables)) != len(tables) or last_table >= _WORDS:
         raise AssertionError("readouts collide or wrap")
     short = _short(n)
-    layout = _short_layout(max(n, _SHORT_N)) if short else _full_layout()
+    layout = _short_layout(first_table, last_table) if short else _full_layout()
     cells = _allocate_cells(layout, drain_last=drain_last)
     _, pointer = _pointers(_D_LABEL, _seed_values(layout).items(), single=True)
     occupied = set(tables)
@@ -561,7 +566,7 @@ def _digits(
         # Prepare the recovery operand while the data pointer is near it.
         _emit_zero(main, cells)
     walked = _continuation_cells(cells)
-    _paginate(main, cells, walked, n, min(tables), claimed | occupied)
+    _paginate(main, cells, walked, n, first_table, claimed | occupied)
     _emit_digit_groups(main, n, cells, drop)
     swap_cell = None if short else walked()
     _emit_digit_jump(
@@ -570,7 +575,7 @@ def _digits(
     if drain_last:
         stubs = {a: "o" if op == "/" else op for a, op in stubs.items()}
     code = _merge_code(main.code, stubs, data, occupied, claimed)
-    words = max(*code, *data, *tables) + 1 if short else _WORDS
+    words = max(*code, *data, last_table) + 1 if short else _WORDS
     return _Digits(code, data, tables, words)
 
 

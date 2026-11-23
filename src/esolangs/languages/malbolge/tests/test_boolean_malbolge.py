@@ -107,7 +107,8 @@ def test_hub_cells_pair_under_the_all_one_reswap(n: int) -> None:
     """Seeds without 0 trits let ``p`` under all-1 re-swap the hub cells.
     n=14 hubs at 19,687 read 0 on alternate pointers; random rows 28/29 missed stubs.
     """
-    layout = _digits._short_layout(n)
+    tables = _digits._digits(n).tables
+    layout = _digits._short_layout(min(tables), max(tables))
     for seed in _digits._seed_values(layout).values():
         assert _digits._crazy(29524, seed) == _digits._s01(seed)
 
