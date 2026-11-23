@@ -65,7 +65,6 @@ from esolangs.languages.malbolge.interpreter import _crazy
 
 from .core import (
     _ANSWER,
-    _ENTRY,
     _K_CELL,
     _OPERAND_CHAIN,
     _SEED_CHAIN,
@@ -73,7 +72,6 @@ from .core import (
     _T_HUB_LABELS,
     _T_LABELS,
     _T_LOW,
-    _T_STUBS,
     _Build,
     _build_constants,
     _chain,
@@ -98,7 +96,6 @@ from .emitter import _Planner, _valid_chars
 from .isa import (
     _CONSTS,
     _WORDS,
-    _first_free,
     _program,
     _render,
     _rot,
@@ -171,12 +168,6 @@ _TOP_HELD_N = 14
 _TOP_HELD = (49, 48, 49)
 #: ``p`` under ``A = all-2`` swaps 71 and 49 as it does 69 and 48.
 _ONE_CELL_G = 71
-#: Short layout: seeds and stubs are chains of at most this many ops on a
-#: pointer-region ``g`` (:func:`_short_layout`).
-_SHORT_DEPTH = 5
-_SHORT_G = range(33, 127)
-#: Stubs sit in the table-free run 11664..12392 (3**6 cells) or past the tables.
-_SHORT_STUB_FLOOR = 11664
 
 
 class _Layout(NamedTuple):
@@ -186,141 +177,54 @@ class _Layout(NamedTuple):
     stubs: dict[str, tuple[int, str]]
 
 
-#: The per-trit maps of the three ``K`` ops: ``Kk`` is ``crazy`` with the
-#: constant whose trits are all ``k``, and ``crazy`` works trit by trit, so
-#: trit 0 of the result names the map (``K0 = [1, 1, 2]``, ``K1 = [0, 0, 2]``,
-#: ``K2 = [0, 2, 1]``, the images of 0, 1, 2).
-_K_MAPS: dict[str, tuple[int, int, int]] = {
-    op: (_crazy(const, 0) % 3, _crazy(const, 1) % 3, _crazy(const, 2) % 3)
-    for op, const in zip(("K0", "K1", "K2"), _CONSTS, strict=True)
-}
-
-
-def _k_action(word: tuple[str, ...]) -> tuple[int, int, int]:
-    """Return the per-trit map ``F`` the ``K`` ops of ``word`` compose to."""
-    action = (0, 1, 2)
-    for op in word:
-        kmap = _K_MAPS[op]
-        action = (kmap[action[0]], kmap[action[1]], kmap[action[2]])
-    return action
-
-
-def _canonical_chains() -> tuple[str, ...]:
-    """Return one shortest chain per chain action, 59 in all.
-
-    A chain's action on a pointer-region value is fully determined by
-    ``(r, F)``: ``r`` its number of ``rot`` ops and ``F`` the composition
-    of its ``K`` ops' per-trit maps in string order -- a trit travelling
-    through the chain meets the ``K`` ops in that order wherever the
-    ``rot`` ops sit, and lands at the position ``r`` below its start.  So
-    a chain's landing ``s01(chain(g))`` depends only on its action and
-    ``g``, and the 1,365 chains of at most ``_SHORT_DEPTH`` ops collapse
-    to 59 actions.  For each of the 17 maps ``F`` composable from
-    ``K0, K1, K2`` this takes its shortest word over those ops (in every
-    case unique; the enumeration is in increasing length and in
-    lexicographic order, so the first word met for an ``F`` is the
-    lexicographically least shortest one), followed by ``r >= 0``
-    ``rot`` ops with total length at most ``_SHORT_DEPTH``, and never
-    the empty chain: the identity action at ``r = 0``, whose shortest
-    chain is empty, is carried by ``K2 K2``, its shortest non-empty
-    chain (``K2`` composed with itself is the identity map).
-    """
-    words: dict[tuple[int, int, int], str] = {}
-    for length in range(_SHORT_DEPTH + 1):
-        for word in product(("K0", "K1", "K2"), repeat=length):
-            words.setdefault(_k_action(word), " ".join(word))
-    chains = set()
-    for k_word in words.values():
-        k = len(k_word.split()) if k_word else 0
-        for r in range(_SHORT_DEPTH - k + 1):
-            parts = ([k_word] if k_word else []) + ["rot"] * r
-            if parts:
-                chains.add(" ".join(parts))
-    chains.add("K2 K2")
-    return tuple(sorted(chains))
-
-
-def _seedable(address: int) -> bool:
-    """Return whether ``address`` is seedable: every trit of it is 0 or 2.
-
-    A label's second cell is re-swapped by ``p`` under ``A = all-1``,
-    which is ``s01`` only if the chain value ``v = s01(address)`` has no
-    0 trit.  ``s01`` swaps 0 and 1 trits, so that is exactly the trits
-    of ``address`` lying in {0, 2} -- a form that names no chain.
-    """
-    while address:
-        if address % 3 == 1:
-            return False
-        address //= 3
-    return True
+def _rotated_stub(address: int, rotations: int) -> tuple[int, str]:
+    """Undo the hub's 0/1 swap and rotations to get its stub builder."""
+    scale = 3**rotations
+    high, low = divmod(_s01(address), _WORDS // scale)
+    return low * scale + high, " ".join(["rot"] * rotations)
 
 
 @cache
 def _short_layout(arity: int = _SHORT_N) -> _Layout:
-    """Return the seeds and stubs for ``arity`` inputs (``n <= 13`` share 13's).
+    """Place four hubs and their stubs in the held-read layout's gaps."""
+    if arity == 14:
+        # K0 K2 makes 2 except at input trits set to 2, which make 0.
+        # Keep n just below block 21, then vary the low two trits of
+        # the three other hubs immediately below 3**9.
+        seeds = {"n": (2 + 3 + 2 * 3**2 + 2 * 3**3, "K0 K2 rot rot rot")}
+        for slot, label in enumerate("01x"):
+            g = 3**3 + 2 + 6 * (not slot & 1) + 18 * (not slot & 2)
+            seeds[label] = g, "K0 K2 rot"
+    else:
+        # K0 keeps just the 2s after the hub swap. Rotate trit 0 to
+        # position 8, and place the slot's two bits at positions 0, 1.
+        seeds = {
+            label: (
+                3**3 + 3**2 + 3 + 2 + 9 * (slot & 1) + 27 * (slot >> 1),
+                "K0 rot rot",
+            )
+            for slot, label in enumerate(_T_HUB_LABELS)
+        }
 
-    A construction over the canonical chains of :func:`_canonical_chains`,
-    not a search over all chains of at most five ops: because a chain's
-    landing depends only on its action ``(r, F)`` and the canonical set
-    holds a chain of every action any such chain realises, its landing
-    set over ``g`` in 33..126 equals the full reach (939 addresses on
-    both sides), and feasibility of an address depends only on the
-    address and the picks before it, never on which chain reaches it --
-    so the lowest feasible address over the canonical chains is the
-    lowest over all chains, in every pick state.
-
-    Greedy, hubs in ``n01x`` order then stubs in ``1n0x``: each takes the
-    lowest address that clears the tables and the picks before it, by the
-    shortest chain, then the ``g`` whose walked cell is nearest the first: each
-    op walks to its cell, and the main code must end below the lowest table
-    cell (6548 against 6562).  A hub is any seedable address (every trit
-    0 or 2, :func:`_seedable`) whose two data cells are free, below the
-    top table cell too (14's land in its gaps).
-    """
-    tables = {s + 1 for s in _readouts(arity)}
-    reach: dict[int, list[tuple[int, str, int]]] = {}
-    for chain in _canonical_chains():
-        n_ops = len(chain.split())
-        for g in _SHORT_G:
-            reach.setdefault(_s01(_chain(g, chain)), []).append((n_ops, chain, g))
-    addresses = sorted(reach)
-    taken: set[int] = set()
-    at: dict[tuple[str, str], int] = {}
-    for lab in _T_HUB_LABELS:
-        hub = next(
-            a
-            for a in addresses
-            if a > _D_FLOOR and _seedable(a) and not {a + 1, a + 2} & (tables | taken)
-        )
-        at["seed", lab] = hub
-        taken |= {hub + 1, hub + 2}
-    operands = _operand_cells()
-    for lab in "1n0x":
-        hub = at["seed", lab]
-        stub = _T_STUBS.get(lab) or _operand_stub(
-            min(_valid_chars(hub + 2)) + 1, operands[lab]
-        )
-        busy = tables | taken
-        address = next(
-            a
-            for a in addresses
-            if a >= _SHORT_STUB_FLOOR and busy.isdisjoint(range(a, a + 1 + len(stub)))
-        )
-        at["stub", lab] = address
-        taken |= set(range(address, address + 1 + len(stub)))
-
-    def pick(address: int) -> tuple[int, str]:
-        """Return the ``(g, chain)``: fewest ops, then the nearest walked cell."""
-        _, ops, g = min(
-            reach[address],
-            key=lambda c: (c[0], _first_free(c[2], 128, _ENTRY, set()), c[1]),
-        )
-        return g, ops
-
-    return _Layout(
-        {lab: pick(at["seed", lab]) for lab in _T_HUB_LABELS},
-        {lab: pick(at["stub", lab]) for lab in "1n0x"},
-    )
+    # The missing digit at trits 6, 7 leaves block 16 free. Its three
+    # lanes fit a stub each. Rotating five times gives the lane center;
+    # rotating three times puts the middle stub four cells earlier.
+    lane = 3**5
+    gap = 16 * 3**6
+    midpoint = (lane - 1) // 2
+    one = _rotated_stub(gap + midpoint, 5)
+    negated = _rotated_stub(gap + lane + midpoint - 4, 3)
+    identity = _rotated_stub(gap + 2 * lane + midpoint, 5)
+    if arity == 15:
+        # The tables start beyond the next lane as well.
+        zero, identity = identity, _rotated_stub(gap + 3 * lane + midpoint, 5)
+    elif arity == 14:
+        zero = _rotated_stub(25 * 3**6 + (3**6 - 1) // 2 - 4, 3)
+    else:
+        # K2 K0 retains only the 1s after the hub swap, placing the
+        # fourth stub just above the top table and the four hubs.
+        zero = (3**4 + 1, "K2 K0 rot rot")
+    return _Layout(seeds, {"1": one, "n": negated, "0": zero, "x": identity})
 
 
 def _longest_stub(n: int) -> int:
@@ -638,7 +542,7 @@ def _allocate_cells(layout: _Layout | None = None) -> _DCells:
     through an unwritten cell lands, so a back jump is a short walk.  ``g``
     has period 94, so a value has one cell there.  The rest take walked
     cells ``128..``, past the operand cells.  With every cell walked the
-    main line would end past the tables. Its closing ``i`` is at 6,548
+    main line would end past the tables. Its closing ``i`` is at 6,530
     for n=1 and 5,753 for n=16.
     """
     operands = _operand_cells()

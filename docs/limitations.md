@@ -128,8 +128,8 @@ measurements for the other trials.
 
 Malbolge's table-independent navigation (`emitter.py`'s `goto`) scans the
 next 32 cells and weighs jumps against walking, using pointer chains, cycle
-follows and bounded second-jump scans. Its main line ends at cell 6,548 for
-one input, below the 6,561 boundary. On the recorded memory states, the
+follows and bounded second-jump scans. Its main line ends at cell 6,530 for
+one input, below the 6,561 boundary. On the previously recorded memory states, the
 cheapest paths with at most three jumps per `goto` end at 6,607, and
 allowing four jumps brings the end to 6,558.
 
@@ -144,12 +144,9 @@ with arbitrary constant equality and random access excluded) remains
 open for terms of any size. The classified invariant relations gave no
 separating product relation.
 
-Short-layout seeds and stubs through fifteen inputs use canonical actions.
-Rotation count and the composed per-trit map reduce 1,365 chains of up to
-five operations to 59 actions, preserving all 939 reachable addresses.
-Placement selects the lowest-cost feasible action. Hub addresses need
-trits in {0, 2}, and their two data cells must clear tables and earlier
-placements.
+Short-layout hubs use ternary masks, and stubs use the gaps left by
+held reads. The hub and stub layout checks every occupied cell against the
+readout set.
 
 ### Largest input counts
 
