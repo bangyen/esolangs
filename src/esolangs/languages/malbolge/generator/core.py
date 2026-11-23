@@ -23,7 +23,17 @@ from collections.abc import Callable, Iterable
 from esolangs.languages.malbolge.interpreter import _XLAT1, _crazy
 
 from .emitter import _Planner, _valid_chars
-from .isa import _ACTIVE, _ALL1, _CONSTS, _char_for, _first_free, _g, _progression, _rot
+from .isa import (
+    _ACTIVE,
+    _ALL1,
+    _CONSTS,
+    _WORD_TRITS,
+    _char_for,
+    _first_free,
+    _g,
+    _progression,
+    _rot,
+)
 
 _ENCODING_PERIOD = len(_XLAT1)
 #: The labels in seed order (:func:`_seed_g`).
@@ -49,13 +59,24 @@ _T_STUBS = {"x": "/<v"}
 _SEED_CHAIN = "K0 K2 rot rot rot"
 # The hub and its return byte fit below the first fixed all-2 digit.
 _HUB_LOW_TRITS = 2
+# Fill the word from three adjacent blocks. Put the remainder in the
+# low block, and shift the reusable seed one trit up so its first
+# rotation run lands it at the high end.
+_BOOTSTRAP_BLOCK_TRITS, _BOOTSTRAP_REMAINDER = divmod(_WORD_TRITS, 3)
+_BOOTSTRAP_LOW_TRITS = _BOOTSTRAP_BLOCK_TRITS + _BOOTSTRAP_REMAINDER
+_BOOTSTRAP_W = 3**_BOOTSTRAP_LOW_TRITS - 1
+_BOOTSTRAP_V = 3 * (3**_BOOTSTRAP_BLOCK_TRITS - 1)
+_BOOTSTRAP_Z1 = _BOOTSTRAP_W // 2
+# Distinguish the two binary-trit seeds by clearing the lowest
+# non-unit trit. The constant-building operations accept either bit.
+_BOOTSTRAP_Z0 = _BOOTSTRAP_Z1 - 3
 #: ``p`` over these cells' values takes ``'0' + x`` to the answer exactly,
 #: trit by trit: a ``p`` over 0 or 1 swaps trit 0's 0 and 1 and over 2
 #: merges them, so ``n`` takes three swaps and ``1`` a merge; over 69..71 and
 #: 59008 every other trit of 48 comes back.  59008 is ``K0 K2`` on 80 (four
 #: 2-trits); the others are unwritten walked cells, the nearest of their
 #: ``g`` either side of the first walked 80.
-_OPERAND_G = {"1": (71, 80, 71), "n": (70, 80, 69)}
+_OPERAND_G = {"1": (71, _BOOTSTRAP_W, 71), "n": (70, _BOOTSTRAP_W, 69)}
 _OPERAND_CHAIN = "K0 K2"
 #: Stub address chains.  ``rot K2`` on ``g`` = 108 + 3 + ``g0`` (trits ``g0``,
 #: 1, 0, 1, 1) is ``(2, 0, 2, 2, 0, .., 0, s)`` with ``s`` 2 or 1: it and its
@@ -85,7 +106,12 @@ _ENTRY = (_LAST_REQUIRED // _ENCODING_PERIOD + 1) * _ENCODING_PERIOD
 _START_D = _char_for("j", _ENTRY) + 1
 #: ``g`` values of the constant-building cells; only ``z0`` (``K0``) is read
 #: after the setup.
-_T_HELPERS = {"z1": 40, "z0": 37, "w": 80, "v": 78}
+_T_HELPERS = {
+    "z1": _BOOTSTRAP_Z1,
+    "z0": _BOOTSTRAP_Z0,
+    "w": _BOOTSTRAP_W,
+    "v": _BOOTSTRAP_V,
+}
 #: The helper cell each chain constant (0, all-1, all-2) names.
 _K_CELL = {"K0": "z0", "K1": "all1", "K2": "all2"}
 _CHAIN_A = dict(zip(_K_CELL, _CONSTS, strict=True))
@@ -106,17 +132,17 @@ def _build_constants(main: _Planner, helper: dict[str, int]) -> None:
     """Run the op chain the build opens with.
 
     ``A`` starts at 0, so a ``{0,1}``-trit cell becomes all-1 and the next
-    one 0; all-2 is two rotated 2-blocks folded into ``op(0, 80)``.  The
-    closing ``*`` leaves ``A`` at all-1, from which ``p`` twice maps any
+    one 0. Two rotation runs fill the middle and high blocks of all-2.
+    The closing ``*`` leaves ``A`` at all-1, from which ``p`` twice maps any
     walked value to all-1.
     """
     main.op("p", helper["z1"])
     main.op("p", helper["z0"])
     main.op("p", helper["w"])
-    for _ in range(4):
+    for _ in range(_BOOTSTRAP_LOW_TRITS):
         main.op("*", helper["v"])
     main.op("p", helper["w"])
-    for _ in range(3):
+    for _ in range(_BOOTSTRAP_BLOCK_TRITS):
         main.op("*", helper["v"])
     main.op("p", helper["w"])
     main.op("*", helper["z1"])
@@ -244,7 +270,7 @@ def _seed_g(m: int) -> int:
 
 def _operand_cells() -> dict[str, tuple[int, ...]]:
     """Return the cells each operand stub ``p``s over, in address order."""
-    middle = _progression(80, 128, _ENTRY)[0]
+    middle = _progression(_BOOTSTRAP_W, _WALKED_START, _ENTRY)[0]
     cells = {
         lab: (
             _progression(below, 128, middle)[-1],

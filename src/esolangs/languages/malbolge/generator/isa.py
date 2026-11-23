@@ -6,9 +6,10 @@ from collections.abc import Iterable
 
 from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2
 
-_WORDS = 3**10
+_WORD_TRITS = 10
+_WORDS: int = 3**_WORD_TRITS
 #: Weight of the top trit, which ``_rot`` moves the low trit to.
-_ROTATE = 3**9
+_ROTATE = _WORDS // 3
 #: The all-1 and all-2 words, and the constants cells 5..7 hold: 0, all-1, all-2.
 _ALL1 = 29524
 _ALL2 = 59048
