@@ -78,7 +78,7 @@ class TestSixFive:
         assert program.endswith("A0")
         # The right half is NOT of the last input, with nothing left to
         # read: a node, whose leaves add 18 to the 31 and 16 to the 32.
-        assert boolean.six_five("0110").endswith("7V83666A04655A")
+        assert boolean.six_five("0110").endswith("7V83666A04655A0")
 
         from esolangs.generation.helpers import input_weights, stored_inputs
 
@@ -244,7 +244,7 @@ class TestSixFive:
         program = boolean.six_five(table)
         assert _six_five_markers(subtree_ids(table)) > 35
         assert _markers(program) <= 35
-        assert len(program) < len(_six_five_walk(table).removesuffix("0"))
+        assert len(program) < len(_six_five_walk(table))
         for row in range(128):
             feed = iter(format(row, "07b"))
             assert run_six_five_from(program, feed) == table[row]
@@ -254,7 +254,7 @@ class TestSixFive:
         """A table past the shared budget goes on the tape instead."""
         table = _dense(8)
         program = boolean.six_five(table)
-        assert program == _six_five_walk(table).removesuffix("0")
+        assert program == _six_five_walk(table)
         assert _markers(program) == 9
         for combo in range(0, 256, 3):
             got = run_six_five(program, list(format(combo, "08b")))
@@ -274,8 +274,8 @@ class TestSixFive:
                 dense7[row >> (low + 1) << low | row & ((1 << low) - 1)]
                 for row in range(256)
             )
-            program = _six_five_walk(table).removesuffix("0")
-            assert len(program) - len(_six_five_walk(dense7).removesuffix("0")) == 3, at
+            program = _six_five_walk(table)
+            assert len(program) - len(_six_five_walk(dense7)) == 3, at
             assert _markers(program) == 8
             for combo in range(0, 256, 3):
                 bits = [str((combo >> (7 - i)) & 1) for i in range(8)]
@@ -286,7 +286,7 @@ class TestSixFive:
         dense10 = _dense(10)
         program = boolean.six_five(dense10)
         assert _markers(program) == 11
-        assert len(program) == 3252
+        assert len(program) == 3253
         for combo in (0, 1, 512, 1023, *range(7, 1024, 128)):
             bits = [(combo >> (9 - i)) & 1 for i in range(10)]
             feed = iter([str(b) for b in bits])
@@ -329,8 +329,7 @@ class TestSixFive:
         for value in range(256):
             table = format(value, "08b")
             dispatched = len(boolean.six_five(table))
-            # The dispatch drops a trailing ``0``; compare like with like.
-            identity = len(_identity(table).removesuffix("0"))
+            identity = len(_identity(table))
             assert dispatched <= identity, table
             improved += dispatched < identity
         # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
@@ -346,7 +345,7 @@ class TestSixFive:
         # winner's raw-copy re-emission retired (candidate #11), down
         # from 219: its and/or-shaped wins now tie the stream build; 198
         # once the copy node retired; 200 after native constants lose one move.
-        assert improved == 200  # the rest tie, keeping the old emission
+        assert improved == 204  # Both candidates keep their explicit halt.
 
     def test_the_guarded_walk_has_linear_source(self) -> None:
         for n in range(1, 13):
@@ -384,7 +383,7 @@ class TestSixFiveSharing:
     def test_a_left_leaf_is_one_copy(self) -> None:
         """AND's 0 leaves are one: each later test jumps to the first."""
         program = boolean.six_five("0" * 15 + "1")
-        assert program.count("665A0") == 1
+        assert program.count("665A04") == 1
         assert _markers(program) == 2
         _check_and_label_boundary()
 
@@ -395,7 +394,7 @@ def _check_and_label_boundary() -> None:
 
     for n in (1, 7, 8, 35, 36, 64):
         source = _six_five_and(n)
-        assert len(source) == 11 * n + 7 + (n > 1)
+        assert len(source) == 11 * n + 8 + (n > 1)
         assert _markers(source) == min(n, 2)
         for bits in (
             "1" * n,
@@ -422,7 +421,7 @@ def test_the_walk_carries_a_table_when_no_tree_order_fits(
 
     monkeypatch.setattr(module, "_six_five_hoisted", over_budget)
     program = boolean.six_five(table)
-    assert program == _six_five_walk(table).removesuffix("0")
+    assert program == _six_five_walk(table)
     for row in range(8):
         assert run_six_five(program, list(format(row, "03b"))) == table[row]
 
@@ -519,6 +518,23 @@ def test_internal_route_budget_is_not_a_generator_restriction() -> None:
         assert_saved_rows(
             language, replace(artifact, source=program), table, range(len(table))
         )
+
+
+@pytest.mark.parametrize("table", ["0000", "1111", "0001", "0110"])
+def test_generated_routes_execute_halt(table: str) -> None:
+    from esolangs.languages.six_five.interpreter import _Machine
+
+    source = boolean.six_five(table)
+    for row, answer in enumerate(table):
+        stream = ScriptedIO(f"{row:02b}Q")
+        machine = _Machine(source, stream)
+        last = ""
+        while not machine.halted:
+            last = machine.toks[machine.ind]
+            machine.step()
+        assert last == "0"
+        assert stream.getvalue() == answer
+        assert stream.input_char() == ord("Q")
 
 
 def _check_constants() -> None:

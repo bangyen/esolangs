@@ -6,11 +6,12 @@ jumps to its repeated subtrees where that is shorter, shares duplicates
 past the label budget (35), falls back to a positional walk
 (:func:`_six_five_walk`) when the distinct subtrees overflow, and past 35
 inputs uses conditional strides (:func:`_six_five_guarded`), so it is total.
+Every route ends at an explicit halt.
 
 Size:
     O(T) worst case, small for structured tables; n=10 parity: 207 chars,
-    n=10 and: 118 chars, n=10 random 1847: 3,236 chars.
-    Constants: n + 10/11 chars and commands.
+    n=10 and: 119 chars, n=10 random 1847: 3,237 chars.
+    Constants: n + 11/12 chars and commands.
 
 Decisions:
     The positional walk spends ``n`` labels plus its home loop's.
@@ -90,7 +91,10 @@ def six_five(truth_table: str) -> str:
     ones = truth_table.count("1")
     if ones in (0, len(truth_table)):
         return (
-            "B" * n + "1" + ("66666666" if truth_table[0] == "0" else "666655555") + "A"
+            "B" * n
+            + "1"
+            + ("66666666" if truth_table[0] == "0" else "666655555")
+            + "A0"
         )
     if ones == 1 and truth_table[-1] == "1":
         return _six_five_and(n)
@@ -103,8 +107,7 @@ def six_five(truth_table: str) -> str:
         # spends labels per *input* rather than per subtree, so it always
         # fits at these widths.
         best = _six_five_walk(truth_table)
-    # The last leaf ends the program, which halts at its end anyway.
-    return best.removesuffix("0")
+    return best
 
 
 def _six_five_and(n: int) -> str:
@@ -116,7 +119,9 @@ def _six_five_and(n: int) -> str:
     """
     # Jump operand 2, then the shared zero marker; n=1 needs only label 1.
     root = "24" if n > 1 else "1"
-    return "B13" * (n - 1) + "B9927V8" + root + "665A04" + "39927W81" * (n - 1) + "665A"
+    return (
+        "B13" * (n - 1) + "B9927V8" + root + "665A04" + "39927W81" * (n - 1) + "665A0"
+    )
 
 
 def _six_five_orders(truth_table: str) -> dict[tuple[int, ...], None]:
@@ -156,7 +161,7 @@ def _six_five_walk(truth_table: str) -> str:
     jumps past them; both share one more stride, so after ``n`` bits the
     pointer is at the indexed row and the leaf adds 48 and prints.  The
     shared stride keeps every ``B`` behind the final cell.  Dense n == 10:
-    11 labels, 3252 chars.
+    11 labels, 3253 chars.
 
     An ignored input is ``B1``, its shared stride alone, and the table is
     laid out at the rest.  It has no ``4``, so labels count essential inputs:

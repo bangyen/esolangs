@@ -13,14 +13,14 @@ labels = ["finite lookup"]
 qualification = "shared trees within the label budget, positional or guarded walks otherwise; AND has one shared zero exit"
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 17, "1" = 23, "2" = 17, "3" = 28, "4" = 17, "5" = 23, "6" = 17, "7" = 26 }, source_units = 41 }
-"00001100" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 17, "3" = 17, "4" = 23, "5" = 23, "6" = 17, "7" = 17 }, source_units = 39 }
-"00110110" = { commands_by_row = { "0" = 25, "1" = 28, "2" = 25, "3" = 28, "4" = 25, "5" = 28, "6" = 25, "7" = 28 }, source_units = 66 }
-"0110" = { commands_by_row = { "0" = 18, "1" = 19, "2" = 19, "3" = 19 }, source_units = 46 }
+"00000001" = { commands_by_row = { "0" = 17, "1" = 23, "2" = 17, "3" = 28, "4" = 17, "5" = 23, "6" = 17, "7" = 27 }, source_units = 42 }
+"00001100" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 18, "3" = 18, "4" = 23, "5" = 23, "6" = 18, "7" = 18 }, source_units = 40 }
+"00110110" = { commands_by_row = { "0" = 25, "1" = 28, "2" = 25, "3" = 28, "4" = 25, "5" = 28, "6" = 25, "7" = 29 }, source_units = 67 }
+"0110" = { commands_by_row = { "0" = 18, "1" = 19, "2" = 19, "3" = 20 }, source_units = 47 }
 "01101001" = { commands_by_row = { "0" = 27, "1" = 28, "2" = 27, "3" = 28, "4" = 28, "5" = 29, "6" = 28, "7" = 29 }, source_units = 67 }
 "0110100110010110" = { commands_by_row = { "0" = 36, "1" = 37, "2" = 36, "3" = 37, "4" = 36, "5" = 37, "6" = 36, "7" = 37, "8" = 37, "9" = 38, "10" = 37, "11" = 38, "12" = 37, "13" = 38, "14" = 37, "15" = 38 }, source_units = 87 }
 "1101001101101101" = { commands_by_row = { "0" = 36, "1" = 34, "2" = 36, "3" = 38, "4" = 35, "5" = 36, "6" = 37, "7" = 35, "8" = 36, "9" = 34, "10" = 37, "11" = 38, "12" = 36, "13" = 37, "14" = 37, "15" = 35 }, source_units = 100 }
-"11111110" = { commands_by_row = { "0" = 17, "1" = 23, "2" = 17, "3" = 29, "4" = 17, "5" = 23, "6" = 17, "7" = 28 }, source_units = 47 }
+"11111110" = { commands_by_row = { "0" = 17, "1" = 23, "2" = 17, "3" = 29, "4" = 17, "5" = 23, "6" = 17, "7" = 29 }, source_units = 48 }
 
 [ablations]
 archive_refs = [
@@ -67,7 +67,7 @@ construction = "esolangs.languages.six_five.generator:six_five_request"
 [[evidence.anchors]]
 arity = 10
 rule = "and"
-size = 118
+size = 119
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.six_five.generator:six_five_request"
@@ -76,7 +76,7 @@ construction = "esolangs.languages.six_five.generator:six_five_request"
 arity = 10
 rule = "random"
 seed = 1847
-size = 3236
+size = 3237
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.six_five.generator:six_five_request"
@@ -106,10 +106,10 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 # before the final level, and at most min(T/2,2n-2) final-level names.
 # From six inputs, at most 35 shared nodes compete with the walk.
 cases = [
-    { through = 1, expression = "19" },
-    { through = 5, expression = "min(11T+6n-9,6n+18+(n+4)T/2+(n+6)min(T/2,2n-2))" },
-    { through = 35, expression = "max(6T+17n+3,41n+459)" },
-    { expression = "7T+4n+11" },
+    { through = 1, expression = "20" },
+    { through = 5, expression = "min(11T+6n-8,6n+19+(n+4)T/2+(n+6)min(T/2,2n-2))" },
+    { through = 35, expression = "max(6T+17n+4,41n+460)" },
+    { expression = "7T+4n+12" },
 ]
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -129,9 +129,9 @@ tests = [
 kind = "measurement"
 audited = 2026-11-05
 witness = { arity = 3, rule = "random", seed = 1847 }
-source = { unit = "chars", value = 39 }
+source = { unit = "chars", value = 40 }
 scale = 1
 budget = 10
 band = "fast"
 construction = "esolangs.languages.six_five.generator:six_five_request"
-notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Plain trees now reject labels above 35 instead of clamping silently. Shared probe/final text still clamps while counting, then the existing marker gate discards an over-budget candidate. Valid builds, proof bounds, pins and Size anchors stay unchanged."
+notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Plain trees now reject labels above 35 instead of clamping silently. Shared probe/final text still clamps while counting, then the existing marker gate discards an over-budget candidate. The current replay includes the explicit halt."

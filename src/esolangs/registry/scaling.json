@@ -86,7 +86,7 @@
   "s_bleq": "linear: worst 175n+717+2(digits(n)-1)+A+\u230aT/n\u230b(2+digits(T-1))+min(1,T%n)(2+digits(2^(T%n)-1)) (n\u226511) characters; through n=28",
   "sendstuff": "linear: at most 113+2digits(n)+digits(H)+A+J characters: distinct subtables and references",
   "shakespeare": "linear: at most 16T + 7n^2 + 180n + 300 characters",
-  "six_five": "linear: at most 19 (n=1), min(11T+6n-9,6n+18+(n+4)T/2+(n+6)min(T/2,2n-2)) (n=2..5), max(6T+17n+3,41n+459) (n=6..35), 7T+4n+11 (n\u226536) characters: raced layouts",
+  "six_five": "linear: at most 20 (n=1), min(11T+6n-8,6n+19+(n+4)T/2+(n+6)min(T/2,2n-2)) (n=2..5), max(6T+17n+4,41n+460) (n=6..35), 7T+4n+12 (n\u226536) characters: raced layouts",
   "slashes": "linear: worst 76 (n=1), 95 (n=2), 107 (n=3), 5T/2+n+83 (n\u22654) characters",
   "slow_acv_mammalian": "linear: at most 20T+5(W+P+Q)+4(2C+U+M)+1681 characters",
   "smallfuck": "linear: at most P (n=1), P+20n+100 (n\u22652) characters: coefficient prefix and Davio tail",
