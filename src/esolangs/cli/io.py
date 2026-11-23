@@ -30,6 +30,7 @@ from io import (
     TextIOWrapper,
     UnsupportedOperation,
 )
+from json import JSONDecodeError
 from math import ceil
 from time import monotonic, sleep
 from typing import BinaryIO, NoReturn, TextIO, cast
@@ -51,6 +52,7 @@ from esolangs.exceptions import (
     TemplateError,
 )
 from esolangs.operations.source import _check_program
+from esolangs.raster.png import _SIGNATURE as _PNG_SIGNATURE
 from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._files import (
     _BLOCK,
@@ -72,10 +74,15 @@ from esolangs.runtime._input import (
     read_input,
 )
 from esolangs.runtime._program import Program
-from esolangs.runtime._source import _FileSource, _open_program_path
+from esolangs.runtime._source import _GZIP_SIGNATURE, _FileSource, _open_program_path
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
-from esolangs.runtime.source_hints import display_label, source_read_error
+from esolangs.runtime.source_hints import (
+    display_label,
+    shell_argument,
+    source_read_error,
+    with_hint,
+)
 from esolangs.settings import (
     DialectSettings,
     _check_dialect_conflicts,
@@ -189,7 +196,7 @@ def _read_program(
     def decode() -> ProgramArtifact[Program]:
         with nullcontext() if deadline is None else stream_read_deadline(deadline):
             if portable:
-                return _load_portable_source(language, label, data, settings, catalog)
+                return _load_portable_source(language, path, data, settings, catalog)
             return _check_program(
                 language,
                 _FileSource(label, data),
@@ -217,9 +224,22 @@ def _read_program(
         _fail(exc)
 
 
+def _native_run_hint(language: str, path: str, catalog: Catalog) -> str:
+    """Render the native command with the same operands when they are printable."""
+    encoding = _display_encoding(sys.stderr)
+    operand = _as_argument(language, catalog=catalog, encoding=encoding)
+    filename = shell_argument(path, encoding=encoding)
+    hint = "remove --artifact to run native source"
+    if operand is None or filename is None:
+        return hint
+    if operand.startswith("-- "):
+        filename = filename.removeprefix("-- ")
+    return f"{hint}, for example: esolangs run {operand} {filename}"
+
+
 def _load_portable_source(
     language: str,
-    label: str,
+    path: str,
     data: bytes,
     settings: DialectSettings | None,
     catalog: Catalog,
@@ -227,11 +247,28 @@ def _load_portable_source(
     """Restore runnable JSON and combine any explicit compatible choices."""
     from esolangs import from_json
 
+    for signature, kind in ((_PNG_SIGNATURE, "PNG"), (_GZIP_SIGNATURE, "gzip")):
+        if data.startswith(signature):
+            raise with_hint(
+                ProgramError(
+                    f"--artifact expects portable JSON; the input is native {kind}"
+                ),
+                _native_run_hint(language, path, catalog),
+            )
     try:
         document = decode_utf8(data)
     except UnicodeDecodeError as error:
-        raise source_read_error(label, error) from error
-    artifact = from_json(language, document, catalog=catalog)
+        raise source_read_error("stdin" if path == "-" else path, error) from error
+    try:
+        artifact = from_json(language, document, catalog=catalog)
+    except ProgramError as error:
+        cause = error.__cause__
+        if not isinstance(cause, JSONDecodeError):
+            raise
+        raise with_hint(
+            ProgramError(f"invalid portable program: {cause}"),
+            f"if this is a native program, {_native_run_hint(language, path, catalog)}",
+        ) from error
     if isinstance(artifact, TemplateArtifact):
         raise TemplateError("unfilled portable template; fill it before running")
     retained = artifact.settings
@@ -257,7 +294,7 @@ def _slurp_thread[SlurpT](
     work: Callable[[], SlurpT],
     deadline: float | None,
     *,
-    stdin_hint: str | None = None,
+    stdin_notice: str | None = None,
     on_timeout: Callable[[], NoReturn],
 ) -> SlurpT:
     """Accept a reader's result or exception only before the deadline.
@@ -283,7 +320,7 @@ def _slurp_thread[SlurpT](
         if isinstance(exc.__context__, KeyboardInterrupt):
             raise exc.__context__ from None
         raise
-    notice_at = None if stdin_hint is None else monotonic() + _WAITING_NOTICE_AFTER
+    notice_at = None if stdin_notice is None else monotonic() + _WAITING_NOTICE_AFTER
     # Poll the join so Python can handle signals delivered to the reader.
     while reader.is_alive():
         now = monotonic()
@@ -295,7 +332,7 @@ def _slurp_thread[SlurpT](
                 _diagnostic(
                     "still waiting for input on stdin after "
                     f"{_WAITING_NOTICE_AFTER:.0f}s; "
-                    f"nothing has closed it{stdin_hint}\n",
+                    f"{stdin_notice}\n",
                     ready_only=True,
                 )
                 notice_at = None
@@ -731,7 +768,14 @@ def _read_stdin(
             if deadline is None
             else lambda: _read_probed(terminal=_probe_stdin(stdin, deadline))
         )
-        return _slurp_thread(read, deadline, stdin_hint=hint, on_timeout=_on_timeout)
+        waiting = (
+            "the input row is incomplete"
+            if frame is not None
+            else "nothing has closed it"
+        )
+        return _slurp_thread(
+            read, deadline, stdin_notice=waiting + hint, on_timeout=_on_timeout
+        )
     except UnicodeDecodeError as exc:
         _fail(input_read_error(exc))
     except ExecutionBudgetError as exc:

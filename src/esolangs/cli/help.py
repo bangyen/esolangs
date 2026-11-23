@@ -245,9 +245,10 @@ Run a program through its interpreter and print what it writes.
 
 Use - as <program-file> to read source from stdin for interpreters that
 take no runtime input. Use ./- for a file named -.
-Interpreters with input support receive piped stdin as UTF-8, read through
-EOF. They consume it verbatim using the language's character, number, or
-string reads.
+Interpreters with input support receive piped stdin as UTF-8 through EOF.
+If the artifact records the input arity and the language supports framed
+input, a complete row suffices even when the pipe stays open. The
+interpreter uses its own character, number, or string reads.
 For generated Boolean programs, `esolangs encode-inputs` spells the input
 characters, numeric tokens, or lines.
 

@@ -397,8 +397,10 @@ Use `encode_inputs` to build stdin; it and this table use `describe`.
 [`EXAMPLES.md`](../src/esolangs/languages/EXAMPLES.md) lists each example’s
 input row and encoding.
 
-`esolangs run` reads piped stdin through EOF as UTF-8 for interpreters with
-input support and passes the text verbatim (`ab` reads as two bits in brainfuck).
+`esolangs run` reads piped stdin as UTF-8 through EOF. If the artifact
+records the input arity and the language supports framed input, a complete
+row suffices even when the pipe stays open. The interpreter reads the
+text as usual (`ab` reads as two bits in brainfuck).
 Piped text from `generate`, `encode-inputs`, `run`, and `read-answer` also uses UTF-8.
 
 ## Templates

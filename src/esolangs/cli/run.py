@@ -229,7 +229,7 @@ def _run(rest: list[str]) -> None:
                 )
                 text = _read_stdin(
                     _remaining(remaining, 0, input_flag),
-                    _INPUT_HINT,
+                    _INPUT_HINT if frame is None else "; send the rest of the row",
                     timeout_flag=input_flag,
                     frame=frame,
                 )

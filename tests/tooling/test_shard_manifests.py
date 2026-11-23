@@ -3,11 +3,12 @@
 import json
 import subprocess
 import sys
+from shutil import copytree
 
 import pytest
 
 from checks.check_shard_manifests import check
-from scripts.ci.shard import Recorder
+from scripts.ci.shard import Recorder, load_durations, refresh
 
 
 def evidence(tmp_path):
@@ -45,6 +46,39 @@ def evidence(tmp_path):
         )
         paths.append(path)
     return paths
+
+
+@pytest.mark.parametrize("duplicate", ["directory", "ID"])
+def test_timing_refresh_rejects_duplicate_runs(
+    tmp_path, monkeypatch, duplicate
+) -> None:
+    directories = []
+    for index, seconds in enumerate((1, 4, 16)):
+        directory = tmp_path / str(index)
+        if duplicate == "directory":
+            monkeypatch.delenv("GITHUB_RUN_ID", raising=False)
+            monkeypatch.delenv("GITHUB_RUN_ATTEMPT", raising=False)
+        else:
+            monkeypatch.setenv("GITHUB_RUN_ID", str(index // 2))
+            monkeypatch.setenv("GITHUB_RUN_ATTEMPT", str(1 + index % 2))
+        recorder = Recorder(directory / "timings.json")
+        recorder.collected.add("a")
+        recorder.finished.add("a")
+        recorder.durations["a"] = seconds
+        recorder.pytest_sessionfinish(0)
+        directories.append(directory)
+
+    destination = tmp_path / "snapshot.json"
+    refresh(directories, ["a"], destination)
+    assert load_durations(destination)["a"] == pytest.approx(4)
+    unchanged = destination.read_bytes()
+
+    repeated = directories[0]
+    if duplicate == "ID":
+        repeated = copytree(repeated, tmp_path / "copy")
+    with pytest.raises(ValueError, match=f"duplicate timing run {duplicate}"):
+        refresh([*directories, repeated], ["a"], destination)
+    assert destination.read_bytes() == unchanged
 
 
 def test_complete_shards_include_serial_exclusion(tmp_path) -> None:

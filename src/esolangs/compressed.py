@@ -121,6 +121,7 @@ class CompressedText:
     limits: TextLimits | None = None
     _size: int = field(init=False, repr=False)
     _has_newline: bool = field(init=False, repr=False, compare=False)
+    _has_carriage_return: bool = field(init=False, repr=False, compare=False)
     _tail: str = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -133,16 +134,18 @@ class CompressedText:
         if limits is not None:
             _check_gzip(limits, len(self.data))
         size = 0
-        has_newline = False
+        has_newline = has_carriage_return = False
         tail = ""
         for chunk in CompressedText.chunks(self):
             size += len(chunk)
             has_newline = has_newline or "\n" in chunk
+            has_carriage_return = has_carriage_return or "\r" in chunk
             tail = chunk[-1:] or tail
             if limits is not None:
                 _check_work(limits, size)
         object.__setattr__(self, "_size", size)
         object.__setattr__(self, "_has_newline", has_newline)
+        object.__setattr__(self, "_has_carriage_return", has_carriage_return)
         object.__setattr__(self, "_tail", tail)
 
     def __setstate__(
@@ -154,9 +157,18 @@ class CompressedText:
             attributes.get("_tail"), str
         ):
             raise ValueError("compressed text pickle requires measured line metadata")
+        if (
+            "_has_carriage_return" in attributes
+            and type(attributes["_has_carriage_return"]) is not bool
+        ):
+            raise ValueError("compressed text pickle requires measured line metadata")
         vars(self).update(attributes)
         for name, value in slots.items():
             object.__setattr__(self, name, value)
+        # Older pickles contain the archive but lack the carriage-return flag.
+        if "_has_carriage_return" not in attributes:
+            present = any("\r" in chunk for chunk in CompressedText.chunks(self))
+            object.__setattr__(self, "_has_carriage_return", present)
 
     def chunks(self) -> Iterator[str]:
         """Yield decoded text in bounded chunks, validating gzip and UTF-8."""
@@ -223,7 +235,7 @@ class CompressedText:
             _check_gzip(limits, _MIN_GZIP_BYTES)
         output = io.BytesIO()
         count = 0
-        has_newline = False
+        has_newline = has_carriage_return = False
         tail = ""
         # Python 3.15 defaults to level 6. Keep the existing archive bytes.
         with gzip.GzipFile(
@@ -238,6 +250,7 @@ class CompressedText:
                 chunk = str.__str__(text)
                 count += len(chunk)
                 has_newline = has_newline or "\n" in chunk
+                has_carriage_return = has_carriage_return or "\r" in chunk
                 tail = chunk[-1:] or tail
                 if limits is not None:
                     _check_work(limits, count)
@@ -254,7 +267,14 @@ class CompressedText:
         data = output.getvalue()
         if limits is not None:
             _check_gzip(limits, len(data))
-        return cls._measured(data, count, limits, has_newline=has_newline, tail=tail)
+        return cls._measured(
+            data,
+            count,
+            limits,
+            has_newline=has_newline,
+            has_carriage_return=has_carriage_return,
+            tail=tail,
+        )
 
     @classmethod
     def _measured(
@@ -264,6 +284,7 @@ class CompressedText:
         limits: TextLimits | None,
         *,
         has_newline: bool,
+        has_carriage_return: bool,
         tail: str,
     ) -> CompressedText:
         """Build from a stream already known valid and ``size`` characters long.
@@ -276,6 +297,7 @@ class CompressedText:
         object.__setattr__(text, "limits", limits)
         object.__setattr__(text, "_size", size)
         object.__setattr__(text, "_has_newline", has_newline)
+        object.__setattr__(text, "_has_carriage_return", has_carriage_return)
         object.__setattr__(text, "_tail", tail)
         return text
 
@@ -312,6 +334,7 @@ class CompressedText:
             self._size,
             combined,
             has_newline=self._has_newline,
+            has_carriage_return=self._has_carriage_return,
             tail=self._tail,
         )
 

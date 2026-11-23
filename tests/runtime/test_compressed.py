@@ -31,6 +31,42 @@ def test_pickles_require_measured_line_metadata() -> None:
             pickle.loads(pickle.dumps(incomplete))
 
 
+@pytest.mark.parametrize("text", ["+.", "+\r.", "+\r\n.\r", "+.\n"])
+def test_normalized_gzip_import_reuses_line_metadata(
+    tmp_path, monkeypatch, text
+) -> None:
+    path = tmp_path / "source.gz"
+    program = CompressedText.from_chunks((text,))
+    path.write_bytes(program.to_gzip())
+    chunks = CompressedText.chunks
+    passes = 0
+
+    def counted(self):
+        nonlocal passes
+        passes += 1
+        return chunks(self)
+
+    monkeypatch.setattr(CompressedText, "chunks", counted)
+    artifact = esolangs.Language(REFERENCE).from_file(path, normalize=True)
+    if text == "+.":
+        assert artifact.source == program
+        assert passes == 1
+    else:
+        assert artifact.source == text.replace("\r\n", "\n").replace(
+            "\r", "\n"
+        ).removesuffix("\n")
+    assert esolangs.run(REFERENCE, artifact).output == "\x01"
+
+
+def test_older_gzip_pickles_restore_carriage_return_metadata() -> None:
+    for text in ("+.", "+\r."):
+        program = CompressedText.from_chunks((text,))
+        object.__delattr__(program, "_has_carriage_return")
+        restored = pickle.loads(pickle.dumps(program))
+        assert restored._has_carriage_return is ("\r" in text)
+        assert str(restored) == text
+
+
 def test_streaming_text_round_trip_and_size(tmp_path: Path, monkeypatch) -> None:
     source = "aÿ\n" * 30000
     program = CompressedText.from_chunks((source[:65535], source[65535:]))

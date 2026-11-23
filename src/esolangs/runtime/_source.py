@@ -282,9 +282,7 @@ def _native_compressed_source(
     if _has_backing_type(value, CompressedText):
         # A measured final LF already requires a rewrite. Otherwise preserve
         # the native archive unless a carriage return needs translation.
-        if value._last_character() != "\n" and not any(  # noqa: SLF001
-            "\r" in chunk for chunk in value.chunks()
-        ):
+        if value._last_character() != "\n" and not value._has_carriage_return:  # noqa: SLF001
             return value
         chunks = _native_chunks(value.chunks())
         if recompress:

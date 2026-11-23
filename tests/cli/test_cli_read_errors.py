@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import os
 import select
+import shlex
 import signal
 import subprocess
 import sys
@@ -26,7 +27,30 @@ from esolangs.cli.io import (
     _write_output,
 )
 from esolangs.registry import _table
+from tests.support.cli_support import _failure
+from tests.support.pick import first
 from tests.support.reference import REFERENCE
+
+
+@pytest.mark.parametrize("kind", ["text", "gzip", "PNG"])
+def test_portable_run_suggests_native_command(tmp_path, capsys, kind) -> None:
+    language = (
+        first(source_kind="raster", boolean_generator=True)
+        if kind == "PNG"
+        else REFERENCE
+    )
+    api = esolangs.Language(language)
+    path = tmp_path / "xor program"
+    api.to_file(api.generate("0110"), path, gzip=kind == "gzip")
+
+    output, error = _failure(["run", "--artifact", language, str(path)], capsys)
+    assert output == ""
+    assert "remove --artifact" in error
+    assert f"esolangs run {shlex.quote(language)} {shlex.quote(str(path))}" in error
+    if kind != "text":
+        assert f"the input is native {kind}" in error
+    else:
+        assert "invalid portable program" in error
 
 
 @pytest.mark.parametrize("raw", [b"\xff", b"\x80"])

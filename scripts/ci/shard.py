@@ -215,7 +215,14 @@ def shard_main(argv: list[str] | None = None) -> int:
 
 
 def load_run(directory: Path, expected: set[str]) -> dict[str, float]:
-    """Validate sidecars and require every selected test exactly once per run."""
+    """Return timings for a complete, validated run."""
+    return _load_run(directory, expected)[0]
+
+
+def _load_run(
+    directory: Path, expected: set[str]
+) -> tuple[dict[str, float], dict[str, object]]:
+    """Validate sidecars and retain the identity shared by every shard."""
     paths = sorted(directory.rglob("*.json.meta.json"))
     if not paths:
         raise ValueError(f"{directory}: no timing completion metadata")
@@ -255,7 +262,8 @@ def load_run(directory: Path, expected: set[str]) -> dict[str, float]:
             result[node] = durations[node]
     if result.keys() != expected:
         raise ValueError(f"{directory}: missing {len(expected - result.keys())} tests")
-    return result
+    assert identity is not None
+    return result, identity
 
 
 def _collected_dates(output: Path) -> dict[str, str]:
@@ -281,18 +289,34 @@ def refresh(runs: list[Path], ids: list[str], output: Path) -> None:
     """Write median timings only after every input run passes validation."""
     if not runs or not ids:
         raise ValueError("runs and selected tests required")
-    samples = [load_run(run, set(ids)) for run in runs]
+    directories = [run.resolve() for run in runs]
+    if len(set(directories)) != len(directories):
+        raise ValueError("duplicate timing run directory")
+    expected = set(ids)
+    loaded = [_load_run(run, expected) for run in directories]
+    seen: set[tuple[str, str | None]] = set()
+    for directory, (_, identity) in zip(directories, loaded, strict=True):
+        run_id, attempt = identity.get("id"), identity.get("attempt")
+        if run_id is None:
+            continue
+        if not isinstance(run_id, str) or (
+            attempt is not None and not isinstance(attempt, str)
+        ):
+            raise ValueError(f"{directory}: invalid timing run identity")
+        key = (run_id, attempt)
+        if key in seen:
+            raise ValueError(
+                f"{directory}: duplicate timing run ID {run_id}, attempt {attempt}"
+            )
+        seen.add(key)
     cohorts = {
-        tuple(
-            json.loads(next(run.rglob("*.json.meta.json")).read_text())["run"].get(key)
-            for key in ("python", "platform", "machine", "harness")
-        )
-        for run in runs
+        tuple(identity.get(key) for key in ("python", "platform", "machine", "harness"))
+        for _, identity in loaded
     }
     if len(cohorts) != 1:
         raise ValueError("mixed timing environments or harness versions")
     durations = {
-        node: quantize_duration(statistics.median(sample[node] for sample in samples))
+        node: quantize_duration(statistics.median(sample[node] for sample, _ in loaded))
         for node in sorted(set(ids))
     }
     collected = _collected_dates(output)

@@ -13,6 +13,7 @@ import pytest
 import esolangs
 from esolangs import cli
 from esolangs.cli.help import help_text
+from esolangs.registry import LANGUAGES
 from tests.support.cli_support import _LOOPS, _program, _refused, call_both, call_main
 from tests.support.generator_support import evaluate_generated
 from tests.support.pick import first, languages
@@ -460,3 +461,50 @@ def test_isolated_options_fail_before_file_or_stdin_reads(
     with pytest.raises(SystemExit, match=r"^2$"):
         call_both(["run", *options, REFERENCE, "missing"], capsys)
     assert "cannot read" not in capsys.readouterr().err
+
+
+def test_framed_stdin_wait_notice_asks_for_rest_of_row(tmp_path) -> None:
+    language = next(
+        name
+        for name, declaration in LANGUAGES.items()
+        if declaration.contract.frame_stdin
+        and declaration.contract.input_shape == "char_stream"
+    )
+    api = esolangs.Language(language)
+    path = tmp_path / "xor.json"
+    path.write_text(api.to_json(api.generate("0110")), encoding="utf-8")
+    script = (
+        "import esolangs.cli.io as io; io._WAITING_NOTICE_AFTER = .1; "
+        "from esolangs.cli import main; main()"
+    )
+    command = [
+        sys.executable,
+        "-c",
+        script,
+        "run",
+        "--artifact",
+        "--execution-timeout",
+        "5",
+        language,
+        str(path),
+    ]
+    row = api.encode_inputs([0, 1]).encode()
+    with subprocess.Popen(
+        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as child:
+        assert child.stdin is not None
+        assert child.stderr is not None
+        assert child.stdout is not None
+        try:
+            child.stdin.write(row[:1])
+            child.stdin.flush()
+            notice = child.stderr.readline()
+            assert b"the input row is incomplete" in notice
+            assert b"send the rest of the row" in notice
+            child.stdin.write(row[1:])
+            child.stdin.flush()
+            assert child.wait(timeout=5) == 0
+            assert api.read_answer(child.stdout.read().decode()) == "1"
+        finally:
+            if child.poll() is None:
+                child.kill()
