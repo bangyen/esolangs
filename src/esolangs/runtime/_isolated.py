@@ -21,7 +21,7 @@ from esolangs.outcomes import ExecutionOutcome, _capture_outcome, _failed_outcom
 from esolangs.raster import Raster
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
-from esolangs.runtime._acquire import acquire, preparation_expired
+from esolangs.runtime._acquire import DeferredInput, acquire, preparation_expired
 from esolangs.runtime._error_causes import cause_chain, decode_cause, encode_cause
 from esolangs.runtime._execution import (
     check_seed_for,
@@ -51,13 +51,19 @@ from esolangs.runtime._source import ProgramSource, check_scale_for, effective_s
 from esolangs.runtime._validate import (
     _ISOLATED_TIMEOUT,
     _TIMEOUT_CEILING,
+    _has_backing_type,
     check_memory_size,
     check_seed,
     check_timeout,
     check_whole,
 )
 from esolangs.runtime._wait import wait_slice
-from esolangs.runtime._worker_pipe import communicate
+from esolangs.runtime._worker_pipe import (
+    communicate,
+    read_deferred_input,
+    spawn_worker,
+    write_request,
+)
 from esolangs.runtime.source_hints import with_hint
 from esolangs.settings import (
     DialectSettings,
@@ -417,6 +423,7 @@ def _invoke_worker(
     check_seed_for(name, seed, catalog=catalog)
     if not catalog.languages[name].runtime.reads_stdin:
         stdin = ""
+    deferred = _has_backing_type(stdin, DeferredInput)
     started = _ACQUISITION_STARTED.get()
     if started is None:
         started = monotonic()
@@ -465,7 +472,9 @@ def _invoke_worker(
                 max_output=max_output,
                 max_steps=max_steps,
                 report_prepared=(
-                    preparation_deadline is not None or execution_timeout is not None
+                    deferred
+                    or preparation_deadline is not None
+                    or execution_timeout is not None
                 ),
                 termination=termination,
                 catalog=catalog,
@@ -475,33 +484,50 @@ def _invoke_worker(
             )
             if stopped():
                 return None
-            wire["stdin"] = read_input(
-                checked_input, frame=_artifact_input_frame(artifact, catalog)
-            )
+            if not deferred:
+                wire["stdin"] = read_input(
+                    checked_input, frame=_artifact_input_frame(artifact, catalog)
+                )
         return worker_request(wire, stopped)
 
-    def expired() -> exceptions.ExecutionTimeoutError:
-        if preparation_deadline == acquisition_deadline < deadline:
+    def expired(
+        bound: float = acquisition_deadline,
+    ) -> exceptions.ExecutionTimeoutError:
+        if preparation_deadline == bound < deadline:
             return preparation_expired()
         error = exceptions.ExecutionTimeoutError(
             "execution timed out while loading input"
         )
-        if execution_deadline == acquisition_deadline < deadline:
+        if execution_deadline == bound < deadline:
             error.bound = "execution_timeout"
         return error
 
     request = acquire(capture, acquisition_deadline, expired, clock=monotonic)
+
+    def send_input(pipe: TextIO) -> None:
+        assert _has_backing_type(stdin, DeferredInput)
+        assert _loaded is not None
+        data = read_input(stdin.read(), frame=_artifact_input_frame(_loaded, catalog))
+        until = min(deadline, preparation_deadline or deadline)
+
+        def deliver(stopped: Callable[[], bool]) -> bool | None:
+            payload = worker_request(data, stopped)
+            if payload is None:
+                return None
+            write_request(pipe, payload)
+            return True
+
+        acquire(deliver, until, lambda: expired(until), clock=monotonic)
+
     with _timeout_named(timeout):
-        if preparation_deadline is None and execution_timeout is None:
-            result = _launch(request, deadline, max_output=max_output)
-        else:
-            result = _launch(
-                request,
-                deadline,
-                max_output=max_output,
-                preparation_deadline=preparation_deadline,
-                execution_timeout=execution_timeout,
-            )
+        result = _launch(
+            request,
+            deadline,
+            max_output=max_output,
+            preparation_deadline=preparation_deadline,
+            execution_timeout=execution_timeout,
+            send_input=send_input if deferred else None,
+        )
     if (
         isinstance(result, ExecutionOutcome)
         and isinstance(result.error, exceptions.ExecutionTimeoutError)
@@ -531,53 +557,15 @@ def _launch(
     max_output: int | None = None,
     preparation_deadline: float | None = None,
     execution_timeout: float | None = None,
+    send_input: Callable[[TextIO], None] | None = None,
 ) -> _WorkerResponse:
     """Run one JSON request, killing and reaping on deadline."""
-    env = {
-        name: value
-        for name, value in os.environ.items()
-        if not (sys.flags.ignore_environment and name.startswith("PYTHON"))
-    }
-    env.pop("PYTHONPATH", None)
-    env["PYTHONIOENCODING"] = "utf-8"
-    env["PYTHONINTMAXSTRDIGITS"] = str(sys.get_int_max_str_digits())
-    # Use the running interpreter's effective cache policy, which may have
-    # come from command-line flags or changed since startup.
-    for name, value in (
-        ("PYTHONDONTWRITEBYTECODE", "1" if sys.dont_write_bytecode else None),
-        ("PYTHONPYCACHEPREFIX", sys.pycache_prefix),
-        ("PYTHONOPTIMIZE", str(sys.flags.optimize) if sys.flags.optimize else None),
-    ):
-        if value is None:
-            env.pop(name, None)
-        else:
-            env[name] = value
-    # Match the importer's string-only search without embedding custom reprs.
-    search_path = [str.__str__(path) for path in sys.path if isinstance(path, str)]
-    # Site hooks run before the worker can restore the parent's search path.
-    startup_flags = ["-P"]
-    if sys.flags.no_site:
-        startup_flags.append("-S")
-    if sys.flags.no_user_site:
-        startup_flags.append("-s")
     phased = preparation_deadline is not None or execution_timeout is not None
-    streaming = max_output is not None or phased or not isinstance(request, str)
-    with subprocess.Popen(  # fixed executable and code, no shell.
-        [
-            sys.executable,
-            *startup_flags,
-            "-c",
-            f"import sys; sys.path[:] = {search_path!r}; "
-            "from esolangs.runtime._isolated import _worker; "
-            f"sys.setrecursionlimit({sys.getrecursionlimit()}); _worker()",
-        ],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL if streaming else subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        env=env,
-    ) as child:
+    deferred = send_input is not None
+    streaming = (
+        max_output is not None or phased or deferred or not isinstance(request, str)
+    )
+    with spawn_worker(streaming=streaming, deferred=deferred) as child:
         try:
             now = monotonic()
             if now >= deadline or (
@@ -589,16 +577,18 @@ def _launch(
                 if preparation_deadline is not None and preparation_deadline < deadline:
                     raise preparation_expired(partial_output=result.observation.output)
                 return result
-            if phased:
+            if phased or deferred:
                 return _bounded_output(
                     child,
                     request,
                     deadline,
                     preparation_deadline=preparation_deadline,
                     execution_timeout=execution_timeout,
+                    send_input=send_input,
                 )
-            if max_output is not None or not isinstance(request, str):
+            if streaming:
                 return _bounded_output(child, request, deadline)
+            assert isinstance(request, str)
             output, expired = communicate(child, request, deadline, clock=monotonic)
         except KeyboardInterrupt:
             if child.poll() is None:
@@ -615,6 +605,7 @@ def _bounded_output(
     *,
     preparation_deadline: float | None = None,
     execution_timeout: float | None = None,
+    send_input: Callable[[TextIO], None] | None = None,
 ) -> _WorkerResponse:
     """Read bounded worker records; kill and reap on an output limit or deadline."""
     records: Queue[str | BaseException | None] = Queue(maxsize=16)
@@ -634,12 +625,7 @@ def _bounded_output(
             # _launch always opens both streams with PIPE.
             stdin = cast("TextIO", child.stdin)
             stdout = cast("TextIO", child.stdout)
-            # Like communicate(), keep reading if the child closed its input.
-            with suppress(BrokenPipeError), stdin:
-                if isinstance(request, str):
-                    stdin.write(request)
-                else:
-                    stdin.writelines(request)
+            write_request(stdin, request, keep_open=send_input is not None)
             for line in stdout:
                 if not publish(line):
                     return
@@ -652,7 +638,12 @@ def _bounded_output(
     try:
         reader.start()
         return _read_worker_output(
-            child, records, deadline, preparation_deadline, execution_timeout
+            child,
+            records,
+            deadline,
+            preparation_deadline,
+            execution_timeout,
+            send_input,
         )
     finally:
         stopped.set()
@@ -697,6 +688,7 @@ def _read_worker_output(
     deadline: float,
     preparation_deadline: float | None,
     execution_timeout: float | None,
+    send_input: Callable[[TextIO], None] | None = None,
 ) -> _WorkerResponse:
     """Read the worker stream under the active phase deadline."""
     output: list[str] = []
@@ -704,7 +696,9 @@ def _read_worker_output(
     limited = False
     execution_deadline = None
     awaiting_prepared = (
-        preparation_deadline is not None or execution_timeout is not None
+        preparation_deadline is not None
+        or execution_timeout is not None
+        or send_input is not None
     )
 
     while True:
@@ -733,6 +727,8 @@ def _read_worker_output(
             break
         if awaiting_prepared and _prepared_record(message):
             awaiting_prepared = False
+            if send_input is not None:
+                send_input(cast("TextIO", child.stdin))
             preparation_deadline = None
             if execution_timeout is not None:
                 execution_deadline = monotonic() + execution_timeout
@@ -907,18 +903,18 @@ def _exit_with_parent() -> None:
     Thread(target=watch, daemon=True).start()
 
 
-def _worker(*, catalog: Catalog | None = None) -> None:
+def _worker(*, catalog: Catalog | None = None, deferred: bool = False) -> None:
     """Serve one request with invocation-owned streaming I/O."""
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
 
-    _serve_request(catalog=catalog)
+    _serve_request(catalog=catalog, deferred=deferred)
 
 
-def _read_request(stream: TextIO) -> dict[str, Any]:
+def _read_request(stream: TextIO, *, deferred: bool = False) -> dict[str, Any]:
     """Decode the canonical request; omitted options are protocol errors."""
-    request = worker_loads(stream.read())
+    request = worker_loads(stream.readline() if deferred else stream.read())
     if not isinstance(request, dict) or set(request) != _REQUEST_FIELDS:
         raise ValueError("invalid worker request fields")
     flags = (
@@ -967,7 +963,9 @@ def _read_request(stream: TextIO) -> dict[str, Any]:
     memory = request["max_memory"]
     if memory is not None and (type(memory) is not int or memory < 1):
         raise ValueError("invalid worker size")
-    if type(request["report_prepared"]) is not bool:
+    if type(request["report_prepared"]) is not bool or (
+        deferred and not request["report_prepared"]
+    ):
         raise ValueError("invalid worker preparation flag")
     if request["raster"]:
         _check_raster_request(request["program"])
@@ -1036,7 +1034,7 @@ def _failure_text(error: BaseException) -> str:
         return worker_dumps(_failure_wire(error, include_cause=False))
 
 
-def _serve_request(*, catalog: Catalog | None = None) -> None:
+def _serve_request(*, catalog: Catalog | None = None, deferred: bool = False) -> None:
     """Stream live output and validated execution or termination metadata."""
     from esolangs.registry._catalog import get_catalog
 
@@ -1044,7 +1042,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
     import esolangs.operations.execution as _execution_operations
     from esolangs.runtime.io import ScriptedIO, _output_text
 
-    request = _read_request(sys.stdin)
+    request = _read_request(sys.stdin, deferred=deferred)
     _exit_with_parent()
 
     def send(message: dict[str, Any]) -> None:
@@ -1138,7 +1136,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
             with interpreter_errors(
                 f"the {name} interpreter exceeded the recursion limit while preparing",
                 language=name,
-                input_acquired=True,
+                input_acquired=not deferred,
             ):
                 prepared = prepare_program(
                     name,
@@ -1149,6 +1147,8 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                     bind_machine=True,
                 )
             send({"prepared": True})
+        if deferred:
+            request["stdin"] = read_deferred_input(sys.stdin)
         if request["termination"]:
             from esolangs.runtime._termination import _termination_result
 

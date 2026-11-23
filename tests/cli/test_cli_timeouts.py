@@ -169,7 +169,12 @@ def test_shortest_deadline_applies_to_blocked_stdin(
         monkeypatch.setattr(io.sys.stdin, "read", blocked)
         return io._read_stdin(*args, **kwargs)
 
+    def prepared(_program, *, stdin, **_options):
+        stdin.read()
+
     monkeypatch.setattr("esolangs.cli.run._read_stdin", read_stdin)
+    # Start at the input barrier so worker startup cannot spend this budget.
+    monkeypatch.setattr("esolangs.cli.run._execute_loaded", prepared)
     try:
         with pytest.raises(SystemExit, match=r"^124$"):
             call_main(
@@ -187,6 +192,30 @@ def test_shortest_deadline_applies_to_blocked_stdin(
         assert f"({flag})" in capsys.readouterr().err
     finally:
         release.set()
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("flags", [[], ["--max-steps", "10"], ["--isolated"]])
+def test_syntax_error_precedes_runtime_stdin(tmp_path: Path, flags: list[str]) -> None:
+    cmd = [
+        sys.executable,
+        "-m",
+        "esolangs",
+        "run",
+        *flags,
+        REFERENCE,
+        _program(tmp_path, "]"),
+    ]
+    with subprocess.Popen(
+        cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as child:
+        try:
+            assert child.wait(timeout=3) == 2
+        finally:
+            if child.poll() is None:
+                child.kill()
+        assert child.stderr is not None
+        assert b"unmatched ']'" in child.stderr.read()
 
 
 @pytest.mark.medium

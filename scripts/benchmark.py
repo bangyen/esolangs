@@ -768,7 +768,9 @@ def main(argv: list[str] | None = None) -> int:
         help="one output bit per input row: 0110 is two-input XOR; '-' reads stdin",
     )
     parser.add_argument("--repeat", type=int, default=3)
-    parser.add_argument("--row", type=int)
+    parser.add_argument(
+        "--row", type=int, action="append", help="input row (repeatable)"
+    )
     parser.add_argument("--step-cap", type=int, default=2_000_000)
     bounds = parser.add_mutually_exclusive_group()
     bounds.add_argument("--timeout", type=float, default=30.0)
@@ -823,17 +825,20 @@ def main(argv: list[str] | None = None) -> int:
         _validate_truth_table(table)
     except ValueError as exc:
         parser.error(str(exc))
-    row = len(table) - 1 if args.row is None else args.row
-    if not 0 <= row < len(table):
+    rows = args.row or [len(table) - 1]
+    if any(not 0 <= row < len(table) for row in rows):
         parser.error(f"--row must be in [0, {len(table) - 1}]")
     try:
         result = measure(
             args.language,
             table,
             repeat=args.repeat,
-            row=row,
+            row=rows[-1],
             step_cap=args.step_cap,
             all_rows=args.all_rows,
+            sample_rows=tuple(dict.fromkeys(rows))
+            if args.row and not args.all_rows
+            else None,
             timeout=args.timeout,
             generation_timeout=args.generation_timeout,
             track_store=args.track_store,

@@ -31,7 +31,7 @@ import tempfile
 import time
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -41,6 +41,13 @@ _DUMP_TIMEOUT = 60
 _WITNESS_ROWS = 1 << 20
 type Outputs = dict[str, str]
 type WitnessRequests = dict[str, tuple[str, dict[str, Any]]]
+
+
+class Timings(NamedTuple):
+    """Elapsed time for generation and portable serialization."""
+
+    generation: float
+    serialization: float
 
 
 def _exhaustive_options(n: int) -> list[dict[str, Any]]:
@@ -65,16 +72,31 @@ def outputs(
     name: str, max_n: int = 3, *, witnesses: WitnessRequests | None = None
 ) -> Outputs:
     """Return each dumped program or error from the tree under test."""
+    return _timed_outputs(name, max_n, witnesses or {})[0]
+
+
+def _timed_outputs(
+    name: str, max_n: int, witnesses: WitnessRequests
+) -> tuple[Outputs, Timings]:
     import esolangs
 
     found: Outputs = {}
-    for key, table, option in _requests(max_n, witnesses or {}):
+    generation = serialization = 0.0
+    for key, table, option in _requests(max_n, witnesses):
         try:
-            program = esolangs.generate(name, table, **option)
-            found[key] = esolangs.to_json(name, program)
+            started = time.perf_counter()
+            try:
+                program = esolangs.generate(name, table, **option)
+            finally:
+                generation += time.perf_counter() - started
+            started = time.perf_counter()
+            try:
+                found[key] = esolangs.to_json(name, program)
+            finally:
+                serialization += time.perf_counter() - started
         except Exception as error:
             found[key] = f"{type(error).__name__}: {error}"
-    return found
+    return found, Timings(generation, serialization)
 
 
 def _construction_tables(name: str, max_n: int) -> WitnessRequests:
@@ -115,7 +137,7 @@ def _construction_tables(name: str, max_n: int) -> WitnessRequests:
 
 def _dump(
     src: Path, name: str, max_n: int, witnesses: WitnessRequests
-) -> tuple[Outputs, float]:
+) -> tuple[Outputs, Timings]:
     """Run :func:`outputs` against the tree at ``src``; return it and its time."""
     env = dict(os.environ, PYTHONPATH=str(src))
     command = [sys.executable, __file__, "--dump", name, "--max-n", str(max_n)]
@@ -136,7 +158,7 @@ def _dump(
     if result.returncode:
         raise SystemExit(f"generating from {src} failed:\n{result.stderr[-2000:]}")
     dumped = json.loads(result.stdout)
-    return dumped["outputs"], dumped["seconds"]
+    return dumped["outputs"], Timings(*dumped["seconds"])
 
 
 def _checkout(ref: str, scratch: Path) -> Path:
@@ -184,9 +206,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.dump:
         witnesses = json.load(sys.stdin)
-        start = time.perf_counter()
-        dumped = outputs(args.language, args.max_n, witnesses=witnesses)
-        seconds = time.perf_counter() - start
+        dumped, seconds = _timed_outputs(args.language, args.max_n, witnesses)
         print(json.dumps({"outputs": dumped, "seconds": seconds}))
         return 0
     sys.path.insert(0, str(ROOT / "src"))
@@ -221,13 +241,21 @@ def main(argv: list[str] | None = None) -> int:
         failed = bool(found)
         if args.speed:
             # Best of three each, alternating, as one lap is mostly noise.
+            old_laps, new_laps = [old_time], [new_time]
             for _ in range(2):
-                old_time = min(old_time, _dump(old_src, name, args.max_n, witnesses)[1])
-                new_time = min(
-                    new_time, _dump(ROOT / "src", name, args.max_n, witnesses)[1]
-                )
-            change = old_time / new_time - 1
-            print(f"speed: {old_time:.2f}s -> {new_time:.2f}s ({change:+.0%})")
+                old_laps.append(_dump(old_src, name, args.max_n, witnesses)[1])
+                new_laps.append(_dump(ROOT / "src", name, args.max_n, witnesses)[1])
+            old_generation = min(lap.generation for lap in old_laps)
+            new_generation = min(lap.generation for lap in new_laps)
+            change = old_generation / new_generation - 1
+            print(
+                f"speed: generation {old_generation:.3f}s -> {new_generation:.3f}s "
+                f"({change:+.0%})"
+            )
+            print(
+                f"serialization: {min(lap.serialization for lap in old_laps):.3f}s -> "
+                f"{min(lap.serialization for lap in new_laps):.3f}s"
+            )
             failed |= change < -SLOWDOWN
         if args.mutant is not None:
             mutant_src = _mutated(args.mutant, name, Path(scratch) / "mutant")

@@ -66,6 +66,26 @@ def test_matching_errors_without_a_program_fail(monkeypatch, capsys) -> None:
     assert "no matching successful generation pairs" in captured.err
 
 
+@pytest.mark.parametrize(("new_generation", "status"), [(1.0, 0), (1.3, 1)])
+def test_speed_gate_uses_only_generation(monkeypatch, capsys, new_generation, status):
+    old = REPO_ROOT / "old"
+    monkeypatch.setattr(gendiff, "_checkout", lambda *_: old)
+
+    def dump(source, *_):
+        timing = (
+            gendiff.Timings(1.0, 1.0)
+            if source == old
+            else gendiff.Timings(new_generation, 3.0)
+        )
+        return {"request": "{}"}, timing
+
+    monkeypatch.setattr(gendiff, "_dump", dump)
+    assert gendiff.main([REFERENCE, "--speed"]) == status
+    output = capsys.readouterr().out
+    assert "speed: generation " in output
+    assert "serialization: 1.000s -> 3.000s" in output
+
+
 @pytest.mark.medium  # three generator processes and a copy of src: ~3 s
 def test_an_unchanged_tree_matches_and_boundary_witnesses_catch_a_mutant(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

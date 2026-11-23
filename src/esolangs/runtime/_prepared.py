@@ -17,7 +17,7 @@ from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry._catalog import Catalog, get_catalog, resolve_origin
 from esolangs.results import ExecutionResult
-from esolangs.runtime._acquire import PendingInput
+from esolangs.runtime._acquire import DeferredInput, PendingInput
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
     execute_prepared,
@@ -309,6 +309,10 @@ class PreparedProgram:
         frame = self._input_frame
         if isinstance(stdin, PendingInput):
             stdin = stdin.snapshot(frame=frame)
+        elif not isinstance(stdin, str) and _has_backing_type(
+            stdin.stream, DeferredInput
+        ):
+            stdin = stdin.stream.read()
         return execute_prepared(
             self.language,
             runner,

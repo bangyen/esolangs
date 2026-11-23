@@ -110,6 +110,33 @@ def test_valid_multiline_protocol_runs_all_rows(monkeypatch, capsys) -> None:
         _check_store_sampling(patch)
 
 
+def test_benchmark_runs_selected_rows_in_request_order(capsys) -> None:
+    from scripts import benchmark
+
+    assert (
+        benchmark.main(
+            [
+                "brainfuck",
+                "0110",
+                "--repeat",
+                "1",
+                "--row",
+                "3",
+                "--row",
+                "1",
+                "--row",
+                "0",
+            ]
+        )
+        == 0
+    )
+    record = json.loads(capsys.readouterr().out)
+    assert [entry["row"] for entry in record["executions"]] == [3, 1, 0]
+    assert all(entry["matches"] for entry in record["executions"])
+    assert record["row"] == 0
+    assert record["all_rows"] is False
+
+
 def test_measure_prepares_once_and_records_first_sample(
     monkeypatch,
 ) -> None:

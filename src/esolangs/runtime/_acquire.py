@@ -19,6 +19,13 @@ from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
 
 
+@dataclass(frozen=True, slots=True)
+class DeferredInput:
+    """CLI input to acquire once the interpreter has prepared the source."""
+
+    read: Callable[[], str]
+
+
 def preparation_expired(*, partial_output: str = "") -> ExecutionTimeoutError:
     """Report a preparation timeout with any known worker output."""
     error = ExecutionTimeoutError("execution timed out during preparation")

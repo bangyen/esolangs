@@ -73,6 +73,15 @@ def test_contiguous_projection_holds_omitted_bits_at_zero() -> None:
         assert read_at(table, inputs, n) == "".join(table[row] for row in rows)
 
 
+def test_essential_inputs_after_ignoring_leading_halves() -> None:
+    n = 14
+    for inputs in ([1, 13], [3, 12, 13]):
+        mask = sum(1 << (n - 1 - index) for index in inputs)
+        table = "".join(str((row & mask).bit_count() & 1) for row in range(1 << n))
+        assert essential_inputs(table, n) == inputs
+    assert essential_inputs("0" * (1 << n), n) == []
+
+
 def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """``perm`` reaches the emission in exactly one place, and it shows."""
     from itertools import permutations

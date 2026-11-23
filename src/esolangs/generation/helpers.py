@@ -327,11 +327,12 @@ def _residual_ids(truth_table: str, n: int) -> ResidualDiagram:
 def essential_inputs(truth_table: str, n: int) -> list[int]:
     """Input positions affecting the table, with O(T) worst-case RAM work.
 
-    Slice comparisons stop early on dense tables. After four table lengths
-    of comparisons, canonical child IDs bound the remaining work instead.
+    Shrink equal leading halves as they are proved independent. After four
+    table lengths of comparisons, canonical child IDs bound remaining work.
     """
     budget = 4 * len(truth_table)
     result = []
+    ignored = 0
     for i in range(n):
         half = 1 << (n - 1 - i)
         block = 2 * half
@@ -339,16 +340,20 @@ def essential_inputs(truth_table: str, n: int) -> list[int]:
             if block > budget:
                 if truth_table.count(truth_table[0]) == len(truth_table):
                     return []
-                levels, children, _ = _residual_ids(truth_table, n)
+                levels, children, _ = _residual_ids(truth_table, n - ignored)
                 return [
-                    k
-                    for k in range(n)
+                    k + ignored
+                    for k in range(n - ignored)
                     if any(children[s][0] != children[s][1] for s in levels[k])
                 ]
             budget -= block
-            if truth_table[lo : lo + half] != truth_table[lo + half : lo + block]:
+            left = truth_table[lo : lo + half]
+            if not truth_table.startswith(left, lo + half, lo + block):
                 result.append(i)
                 break
+            if not result and block == len(truth_table):
+                truth_table = left
+                ignored += 1
     return result
 
 

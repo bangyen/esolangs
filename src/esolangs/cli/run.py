@@ -53,6 +53,7 @@ from esolangs.operations.execution import (
     default_total,
 )
 from esolangs.registry import Catalog, get_catalog
+from esolangs.runtime._acquire import DeferredInput
 from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._files import _source_directory
 from esolangs.runtime._input import InputSource
@@ -63,19 +64,6 @@ from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import display_label
 
 _INPUT_HINT = "; send the input this program needs, or close stdin"
-
-
-class _DeferredStdin:
-    """Wait for in-process runtime validation before reading stdin."""
-
-    def __init__(self, notices: ExitStack | None) -> None:
-        self._notices = notices
-
-    def read(self) -> str:
-        text = _read_stdin(hint=_INPUT_HINT)
-        if self._notices is not None:
-            self._notices.enter_context(_unbounded_notice("run"))
-        return text
 
 
 def _remaining(timeout: float | None, elapsed: float, flag: str) -> float | None:
@@ -150,19 +138,16 @@ def _run(rest: list[str]) -> None:
     worker_total = default_total(total, timeout) if worker else None
     # File and stdin share the tightest acquisition budget. Execution gets
     # its own execution_timeout after the worker has prepared the program.
-    acquisition, flag = min(
-        (
-            (bound, flag)
-            for bound, flag in (
-                (worker_total, "--total-timeout"),
-                (preparation, "--preparation-timeout"),
-                (timeout, "--execution-timeout"),
-            )
-            if bound is not None
-        ),
-        default=(None, ""),
-        key=lambda pair: pair[0],
-    )
+    bounds = [
+        (bound, flag)
+        for bound, flag in (
+            (worker_total, "--total-timeout"),
+            (preparation, "--preparation-timeout"),
+            (timeout, "--execution-timeout"),
+        )
+        if bound is not None
+    ]
+    acquisition, flag = min(bounds, default=(None, ""), key=lambda pair: pair[0])
     rest = _split_positional(rest, set(), value_options | flag_options | {"--set"})
     seed = _seed_of(options)
     scale = _scale_of(options)
@@ -214,18 +199,43 @@ def _run(rest: list[str]) -> None:
     try:
         if scale is None and program.scale is not None:
             check_scale_for(declaration.name, program.scale, catalog=catalog)
-        if reads_stdin and worker:
-            stdin = _read_stdin(
-                _remaining(acquisition, monotonic() - started, flag),
-                _INPUT_HINT,
-                timeout_flag=flag,
-            )
     except EsolangError as acquisition_error:
         _fail_run(acquisition_error, language, catalog)
-    _remaining(acquisition, monotonic() - started, flag)
+    source_elapsed = monotonic() - started
+    _remaining(acquisition, source_elapsed, flag)
     with ExitStack() as notices, _acquisition_started_at(started):
-        if reads_stdin and not worker:
-            stdin = cast("TextIO", _DeferredStdin(notices if unbounded else None))
+        if reads_stdin:
+
+            def read_stdin() -> str:
+                elapsed = monotonic() - started
+                # Charge interpreter preparation to the total and preparation
+                # bounds. The execution budget only charges I/O acquisition.
+                remaining, input_flag = min(
+                    (
+                        (
+                            bound
+                            - (
+                                source_elapsed
+                                if option == "--execution-timeout"
+                                else elapsed
+                            ),
+                            option,
+                        )
+                        for bound, option in bounds
+                    ),
+                    default=(None, ""),
+                    key=lambda pair: pair[0],
+                )
+                text = _read_stdin(
+                    _remaining(remaining, 0, input_flag),
+                    _INPUT_HINT,
+                    timeout_flag=input_flag,
+                )
+                if unbounded:
+                    notices.enter_context(_unbounded_notice("run"))
+                return text
+
+            stdin = cast("TextIO", DeferredInput(read_stdin))
         elif unbounded:
             notices.enter_context(_unbounded_notice("run"))
         outcome = _execute_loaded(

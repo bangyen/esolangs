@@ -167,9 +167,12 @@ def test_dependency_fallback_has_positive_control(monkeypatch) -> None:
         return original(table, n)
 
     monkeypatch.setattr(helpers, "_residual_ids", record)
-    assert helpers.essential_inputs("01" * 128, 8) == [7]
-    assert calls == [8]
+    table = "".join(str(((row >> 8) ^ row) & 1) for row in range(1024))
+    assert helpers.essential_inputs(table, 10) == [1, 9]
+    assert calls == [9]
     calls.clear()
+    assert helpers.essential_inputs("01" * 128, 8) == [7]
+    assert calls == []
     parity = "".join(str(row.bit_count() % 2) for row in range(256))
     assert helpers.essential_inputs(parity, 8) == list(range(8))
     assert calls == []
