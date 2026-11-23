@@ -577,6 +577,8 @@ just benchmark brainfuck 0110 --all-rows
 The JSON report holds rendered size, generation time, halt steps, expected
 and actual answers, and execution status. Wrong or undecided rows fail;
 unsupported stepping is distinct from a cap or timeout.
+`source_unit` labels `source_units` as characters or pixels. Raster records
+also give the image's pixel width and height and its declared scale in `raster`.
 
 - The row timeout defaults to 30 seconds. `--no-timeout` disables the
   signal guard for Windows or worker threads.

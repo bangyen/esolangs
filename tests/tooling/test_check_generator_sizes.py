@@ -252,6 +252,22 @@ def test_benchmark_uses_artifacts_without_source_facades(language):
     assert record["provenance"]["generated_artifact_sha256"] == b.artifact_hash(
         generated.source
     )
+    source = generated.source
+    if isinstance(source, esolangs.Raster):
+        assert isinstance(generated, esolangs.ProgramArtifact)
+        width, height = len(source.rows[0]), len(source.rows)
+        assert record["source_unit"] == "pixels"
+        assert record["source_units"] == width * height
+        assert record["source_utf8_bits"] is None
+        assert record["raster"] == {
+            "width": width,
+            "height": height,
+            "scale": generated.scale,
+        }
+    else:
+        assert record["source_unit"] == "characters"
+        assert record["source_units"] == len(source)
+        assert record["raster"] is None
 
 
 def test_checkout_change_invalidates_benchmark(monkeypatch) -> None:

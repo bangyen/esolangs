@@ -570,7 +570,16 @@ def _measure(
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
     facts = esolangs.describe(language)
-    digest = artifact_hash(program.source)
+    source = program.source
+    raster = None
+    if isinstance(source, esolangs.Raster):
+        assert isinstance(program, esolangs.ProgramArtifact)
+        raster = {
+            "width": len(source.rows[0]),
+            "height": len(source.rows),
+            "scale": program.scale,
+        }
+    digest = artifact_hash(source)
     rows = range(len(table)) if all_rows else sample_rows or (row,)
     executions = []
     for at in rows:
@@ -608,8 +617,10 @@ def _measure(
         "truth_table": table,
         "inputs": len(table).bit_length() - 1,
         "source_kind": facts.source_kind,
-        "source_units": source_units(program.source),
-        "source_utf8_bits": _utf8_bits(program.source),
+        "source_units": source_units(source),
+        "source_unit": "pixels" if raster is not None else "characters",
+        "source_utf8_bits": _utf8_bits(source),
+        "raster": raster,
         "generation_ns_best": min(timings),
         "generation_ns_median": int(statistics.median(timings)),
         "step_cap": step_cap,

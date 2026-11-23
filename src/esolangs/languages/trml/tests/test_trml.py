@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs.languages.trml.interpreter import run
+from esolangs.languages.trml.tests.oracle_checks import check_raw_trml
 from esolangs.runtime.io import ScriptedIO
 
 
@@ -20,3 +21,7 @@ def test_rewrite(source: str, expected: str) -> None:
     io = ScriptedIO()
     run(source, io)
     assert io.getvalue() == expected
+
+
+def test_rewrite_model() -> None:
+    check_raw_trml()

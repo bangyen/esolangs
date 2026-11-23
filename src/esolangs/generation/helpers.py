@@ -220,10 +220,9 @@ def _validate_shape(truth_table: str) -> int:
     A generator's ``_solve`` can reduce to essential inputs and reach a
     one-entry table on the way down; its public entry still validates in full.
     """
-    # Alphabet first: length-first answered ``01a`` with "got 3 entries"
-    # and never named the ``a``.  A set difference, since this runs per
-    # character on every candidate build.
-    if set(truth_table) - {"0", "1"}:
+    # Check the alphabet first so ``01a`` names the ``a``. Count in C on
+    # candidate builds and scan for the offending character only on error.
+    if str.count(truth_table, "0") + str.count(truth_table, "1") != len(truth_table):
         # The *argument*, plus which character is wrong and where.  This
         # printed ``sorted(set(...))``, so someone who typed ``nonsense``
         # was told "got 'enos'" -- a string they had never seen, which
