@@ -351,6 +351,12 @@ jobs:
         echo "ARTIFACT_PYTHON=$artifact_python" >> "$GITHUB_ENV"
         uv pip install --python "$artifact_python" dist/*.whl
         "$artifact_python" -I scripts/ci/release.py smoke
+    - name: Check release metadata and changelog before tagging
+      if: runner.os == 'Linux' && matrix.python-version == '3.12'
+      run: |
+        version="$("$ARTIFACT_PYTHON" -I -c 'from importlib.metadata import version; print(version("esolangs"))')"
+        "$ARTIFACT_PYTHON" -I scripts/ci/release.py notes "$version" >/dev/null
+        uvx --python 3.12 twine check dist/*
     - name: Install the optional extra and exercise PNG I/O
       run: |
         wheels=(dist/*.whl)

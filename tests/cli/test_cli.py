@@ -52,6 +52,20 @@ def test_generate_reads_a_truth_table_from_stdin(capsys) -> None:
     assert "truth table must contain only" in error
 
 
+def test_template_fill_hint_replays_the_stdin_table(capsys) -> None:
+    language = first(parameterized=True, answer_mode="output")
+    args = ["generate", "--width=4", language, "-"]
+    _, diagnostic = call_both(args, capsys, "0110\n")
+    command, _, reminder = diagnostic.split("fill them with: ", 1)[1].partition("\n")
+    assert reminder.strip() == "Supply the same truth table again on stdin."
+    argv = shlex.split(command)
+    assert argv == ["esolangs", "generate", "--bits", "<bits>", *args[1:]]
+    argv[3] = "10"
+    assert call_both(argv[1:], capsys, "0110\n") == call_both(
+        [*argv[1:-1], "0110"], capsys
+    )
+
+
 def test_bad_large_table_has_a_bounded_diagnostic(capsys) -> None:
     data = "0" * ((1 << 20) - 1) + "x"
     output, error = _failure(["generate", REFERENCE, "-"], capsys, stdin=data)

@@ -25,6 +25,7 @@ ROOT = pathlib.Path(__file__).parents[2]
 #: ``> name.txt`` and is a real part of a real command.
 _PLACEHOLDER = re.compile(r"<\w|\w>")
 _LANGUAGES = {name.lower(): name for name in LANGUAGES}
+_NEEDS_BASH = pytest.mark.skipif(shutil.which("bash") is None, reason="requires Bash")
 
 
 def _documents() -> dict[str, str]:
@@ -92,6 +93,23 @@ def _setup_command(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _run_command(
+    command: str, work: pathlib.Path, stdin: str = ""
+) -> subprocess.CompletedProcess[str]:
+    """Run an example with the same pipeline checks as the wheel quickstart."""
+    shell = command.replace("esolangs ", f"{shlex.quote(sys.executable)} -m esolangs ")
+    return subprocess.run(
+        ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", shell],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        cwd=work,
+        input=stdin,
+        check=False,
+    )
+
+
+@_NEEDS_BASH
 @pytest.mark.slow
 @pytest.mark.parametrize("where", sorted(_documents()))
 def test_every_documented_command_runs(where: str, tmp_path: pathlib.Path) -> None:
@@ -116,17 +134,7 @@ def test_every_documented_command_runs(where: str, tmp_path: pathlib.Path) -> No
         if language is not None and "|" not in command:
             encoded = _setup_command("encode-inputs", language, "10")
             stdin_text = encoded.stdout if encoded.returncode == 0 else ""
-        shell = command.replace("esolangs ", f"{sys.executable} -m esolangs ")
-        result = subprocess.run(
-            shell,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            cwd=work,
-            input=stdin_text,
-            check=False,
-        )
+        result = _run_command(command, work, stdin_text)
         produced.update(re.findall(r">\s*([\w.-]+\.txt)", command))
         if result.returncode != 0:
             first = result.stderr.strip().splitlines()
@@ -140,6 +148,16 @@ def test_every_documented_command_runs(where: str, tmp_path: pathlib.Path) -> No
             )
     assert not failures, f"in {where}:\n" + "\n".join(failures)
     shutil.rmtree(work, ignore_errors=True)
+
+
+@_NEEDS_BASH
+@pytest.mark.medium
+def test_documented_pipeline_reports_an_upstream_failure(
+    tmp_path: pathlib.Path,
+) -> None:
+    result = _run_command("esolangs list --json --detials | cat", tmp_path)
+    assert result.returncode == 2
+    assert "unknown option: --detials" in result.stderr
 
 
 def test_the_documents_really_do_contain_commands() -> None:

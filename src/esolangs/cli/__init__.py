@@ -491,7 +491,8 @@ def _generate(rest: list[str]) -> None:
     settings_arguments = _settings_arguments(options, set_pairs)
     catalog = get_catalog()
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten, catalog=catalog)
-    language, table = rest
+    language, table_operand = rest
+    table = table_operand
     encoding = _display_encoding(sys.stderr)
 
     def repair_options(target: LanguageDeclaration) -> list[str] | str:
@@ -509,7 +510,7 @@ def _generate(rest: list[str]) -> None:
     try:
         declaration = catalog.languages[catalog.resolve(language)]
         settings = _settings_of(settings_arguments, language=language, catalog=catalog)
-        if table == "-" and declaration.has_backend:
+        if table_operand == "-" and declaration.has_backend:
             table = _read_stdin(
                 hint="; finish the truth table or close stdin",
                 terminal_prompt="Enter a truth table, then signal EOF.\n",
@@ -578,19 +579,27 @@ def _generate(rest: list[str]) -> None:
         _emit(artifact, plain="--plain" in flags, gzip=gzip, catalog=catalog)
     if isinstance(artifact, TemplateArtifact):
         original = shlex.join(before)
+        fill = "fill them with: esolangs generate --bits <bits>"
+        stdin_hint = (
+            "\nSupply the same truth table again on stdin."
+            if table_operand == "-"
+            else ""
+        )
         if can_render_argument(original, encoding):
-            advice = f"fill them with: esolangs generate --bits <bits> {original}"
+            advice = f"{fill} {original}{stdin_hint}"
         else:
             options_text = repair_options(declaration)
             operand = _as_argument(language, catalog=catalog, encoding=encoding)
             if isinstance(options_text, str):
-                advice = f"rerun generation with --bits. {options_text}"
+                advice = f"rerun generation with --bits. {options_text}{stdin_hint}"
             elif operand is None:
                 advice = "fill them with instantiate() in Python"
             else:
                 flags_text = shlex.join(options_text)
-                tail = " ".join(part for part in (flags_text, operand, table) if part)
-                advice = f"fill them with: esolangs generate --bits <bits> {tail}"
+                tail = " ".join(
+                    part for part in (flags_text, operand, table_operand) if part
+                )
+                advice = f"{fill} {tail}{stdin_hint}"
         _diagnostic(
             f"note: this is a template with unfilled {artifact.bindings.char!r} "
             f"input slots; {advice}\n"
