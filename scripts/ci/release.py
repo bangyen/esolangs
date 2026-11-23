@@ -175,17 +175,19 @@ def _first_languages(wanted: Callable[[LanguageInfo], object], count: int) -> li
     )
 
 
-def smoke(*, image_extra: bool = False) -> None:
+def smoke(*, image_extra: bool = False, image_only: bool = False) -> None:
     """Check installed resources and behaviour outside the source checkout."""
     import esolangs
 
     package = Path(esolangs.__file__).resolve().parent
-    _smoke_install(package)
-    _smoke_generators(package, image_extra=image_extra)
-    _smoke_files()
-    _smoke_rasters(image_extra=image_extra)
-    _smoke_deadlines()
+    image_extra = image_extra or image_only
     _smoke_extras(image_extra=image_extra)
+    if not image_only:
+        _smoke_install(package)
+        _smoke_files()
+        _smoke_deadlines()
+    _smoke_generators(package, image_extra=image_extra, raster_only=image_only)
+    _smoke_rasters(image_extra=image_extra)
 
 
 def _smoke_install(package: Path) -> None:
@@ -263,18 +265,24 @@ def _smoke_quickstart(executable: Path) -> None:
     assert result.stdout == expected, (result.stdout, expected)
 
 
-def _smoke_generators(package: Path, *, image_extra: bool) -> None:
+def _smoke_generators(
+    package: Path, *, image_extra: bool, raster_only: bool = False
+) -> None:
     """Run every generator in its own process and check its shipped examples."""
     import esolangs
 
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
-        if facts.boolean_generator:
+        if facts.boolean_generator and (
+            not raster_only or facts.source_kind == "raster"
+        ):
             _generator_process(name, image_extra=image_extra)
             assert facts.examples, name
             for filename in facts.examples:
                 assert not Path(filename).is_absolute(), filename
                 assert (package / filename).is_file(), filename
+    if raster_only:
+        return
     examples = esolangs.describe("brainfuck").examples
     assert examples
     example = package / examples[0]
@@ -470,13 +478,19 @@ def _smoke_extras(*, image_extra: bool) -> None:
 def smoke_main(argv: list[str] | None = None) -> None:
     """Run the artifact smoke check with or without its optional extra."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--image", action="store_true")
+    image = parser.add_mutually_exclusive_group()
+    image.add_argument("--image", action="store_true", help="full check with Pillow")
+    image.add_argument(
+        "--image-only", action="store_true", help="check PNG after the full wheel pass"
+    )
     parser.add_argument("--language", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.language is not None:
+        if args.image_only:
+            parser.error("--image-only cannot be combined with --language")
         _generator(args.language, image_extra=args.image)
         return
-    smoke(image_extra=args.image)
+    smoke(image_extra=args.image, image_only=args.image_only)
     print("installed distribution smoke check passed")
 
 

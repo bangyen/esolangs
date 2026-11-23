@@ -4,11 +4,13 @@ import errno
 import io
 import os
 import re
+import signal
 import subprocess
 import sys
 import threading
 import time
 import tomllib
+from contextlib import suppress
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -551,6 +553,59 @@ def test_companion_checks_share_one_serial_lane(monkeypatch) -> None:
     failures, timings, _ = verify._run_steps(runnable, stream=False)
     assert len(failures) == 0
     assert {name for name, _ in timings} == {"pytest", "first", "second"}
+
+
+@pytest.mark.medium
+@pytest.mark.skipif(os.name != "posix", reason="deliver Ctrl-C to the gate PID")
+def test_interrupt_reaps_parallel_checks_before_shutdown(tmp_path) -> None:
+    driver = f"""
+import sys
+from pathlib import Path
+sys.path.insert(0, {str(SCRIPT.parents[1])!r})
+from verify import gate
+gate.ROOT = Path({str(tmp_path)!r})
+child = '''import os, sys, time
+from pathlib import Path
+Path(sys.argv[1]).write_text(str(os.getpid()))
+time.sleep(60)
+'''
+steps = [
+    (name, [sys.executable, "-c", child, str(gate.ROOT / name)], {{}})
+    for name in ("pytest", "shadow", "queued")
+]
+try:
+    gate._run_steps(steps, stream=False)
+except KeyboardInterrupt:
+    sys.exit(130)
+"""
+    markers = [tmp_path / name for name in ("pytest", "shadow", "queued")]
+    with subprocess.Popen(
+        [sys.executable, "-c", driver],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    ) as gate:
+        try:
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline and not all(
+                marker.exists() and marker.read_text() for marker in markers[:2]
+            ):
+                time.sleep(0.01)
+            pids = [int(marker.read_text()) for marker in markers[:2]]
+            gate.send_signal(signal.SIGINT)
+            output, _ = gate.communicate(timeout=2)
+            assert gate.returncode == 130, output
+            assert not markers[-1].exists()
+            for pid in pids:
+                with pytest.raises(ProcessLookupError):
+                    os.kill(pid, 0)
+        finally:
+            if gate.poll() is None:
+                gate.kill()
+            for marker in markers:
+                if marker.exists() and (pid := marker.read_text()):
+                    with suppress(ProcessLookupError):
+                        os.killpg(int(pid), signal.SIGKILL)
 
 
 @pytest.mark.parametrize(

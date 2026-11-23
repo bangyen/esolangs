@@ -230,9 +230,12 @@ def _validate_shape(truth_table: str) -> int:
         # reads like a shell-quoting bug rather than a typo.  The sibling
         # validator in ``encode-inputs`` echoed the argument all along.
         bad = next((i, c) for i, c in enumerate(truth_table) if c not in {"0", "1"})
+        preview = repr(truth_table[:64])
+        if len(truth_table) > 64:
+            preview += f"... ({len(truth_table)} characters)"
         raise with_hint(
             TruthTableError(
-                f"truth table must contain only '0' and '1', got {truth_table!r} "
+                f"truth table must contain only '0' and '1', got {preview} "
                 f"-- {bad[1]!r} at position {bad[0]} is not one of them"
             ),
             ("write adjacent 0/1 results in row order, without spaces or separators"),

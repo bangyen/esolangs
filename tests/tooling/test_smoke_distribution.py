@@ -71,6 +71,31 @@ def test_the_generator_self_invocation_is_accepted_by_the_dispatcher(
     assert smoke.main(captured["args"][3:]) == 0
 
 
+def test_image_only_pass_runs_every_raster_and_skips_text(monkeypatch) -> None:
+    runs = []
+    monkeypatch.setattr(
+        smoke,
+        "_generator_process",
+        lambda name, *, image_extra: runs.append((name, image_extra)),
+    )
+
+    def full_check(*_args):
+        pytest.fail("image-only pass ran a full wheel check")
+
+    monkeypatch.setattr(smoke, "_smoke_install", full_check)
+    monkeypatch.setattr(smoke, "_smoke_files", full_check)
+    monkeypatch.setattr(smoke, "_smoke_deadlines", full_check)
+    assert smoke.main(["smoke", "--image-only"]) == 0
+    rasters = [
+        name
+        for name in esolangs.list_languages()
+        if (facts := esolangs.describe(name)).boolean_generator
+        and facts.source_kind == "raster"
+    ]
+    assert rasters
+    assert runs == [(name, True) for name in rasters]
+
+
 def test_normalize_without_an_installed_package(tmp_path) -> None:
     archive = tmp_path / "source.tar.gz"
     payload = b"source payload\n"

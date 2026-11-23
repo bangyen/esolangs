@@ -143,7 +143,7 @@ jobs:
           uv pip install --python "$venv/bin/python" "${wheels[0]}"
           "$venv/bin/python" -I scripts/ci/release.py smoke
           uv pip install --python "$venv/bin/python" "${wheels[0]}[image]"
-          "$venv/bin/python" -I scripts/ci/release.py smoke --image
+          "$venv/bin/python" -I scripts/ci/release.py smoke --image-only
         done
 
     - name: Rebuild and test the sdist independently

@@ -52,6 +52,15 @@ def test_generate_reads_a_truth_table_from_stdin(capsys) -> None:
     assert "truth table must contain only" in error
 
 
+def test_bad_large_table_has_a_bounded_diagnostic(capsys) -> None:
+    data = "0" * ((1 << 20) - 1) + "x"
+    output, error = _failure(["generate", REFERENCE, "-"], capsys, stdin=data)
+    assert output == ""
+    assert "'x' at position 1048575" in error
+    assert "(1048576 characters)" in error
+    assert len(error) < 512
+
+
 @pytest.mark.medium
 def test_generate_from_stdin_bypasses_argument_size_limits(tmp_path) -> None:
     inputs = 20

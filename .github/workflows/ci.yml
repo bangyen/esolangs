@@ -355,7 +355,7 @@ jobs:
       run: |
         wheels=(dist/*.whl)
         uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[image]"
-        "$ARTIFACT_PYTHON" -I scripts/ci/release.py smoke --image
+        "$ARTIFACT_PYTHON" -I scripts/ci/release.py smoke --image-only
 
   execution-platform:
     runs-on: ${{ matrix.os }}

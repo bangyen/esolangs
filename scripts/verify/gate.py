@@ -23,9 +23,11 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
+from threading import Lock
 
 ROOT = Path(__file__).resolve().parents[2]
 # scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
@@ -40,6 +42,7 @@ from verify.failures import (  # noqa: E402
 from verify.process import (  # noqa: E402
     run_bounded,
     start_logged,
+    stop_process_tree,
     wait_with_heartbeat,
 )
 from verify.receipts import AcceptanceRun  # noqa: E402
@@ -484,6 +487,48 @@ def _drop_long_step_after_mutation_failure(
     return rest
 
 
+class _RunningChecks:
+    """Track child processes until their output collectors finish."""
+
+    def __init__(self) -> None:
+        self._lock = Lock()
+        self._children: set[subprocess.Popen[str]] = set()
+        self._cancelled = False
+
+    def start(
+        self, name: str, cmd: list[str], env: dict[str, str], *, stream: bool
+    ) -> subprocess.Popen[str] | None:
+        """Register a new check unless cancellation has started."""
+        with self._lock:
+            if self._cancelled:
+                return None
+            child = start_logged(cmd, name, env, ROOT, stream=stream)
+            self._children.add(child)
+            return child
+
+    def wait(
+        self, child: subprocess.Popen[str], name: str, started: float
+    ) -> tuple[str, int, float]:
+        """Collect a check's output and elapsed time."""
+        output, returncode = _wait_with_heartbeat(child, name, started)
+        with self._lock:
+            self._children.discard(child)
+        return output, returncode, time.monotonic() - started
+
+    @contextmanager
+    def stop_on_error(self) -> Iterator[None]:
+        """Stop active checks before the executors join their threads."""
+        try:
+            yield
+        except BaseException:
+            with self._lock:
+                self._cancelled = True
+                children = tuple(self._children)
+            for child in children:
+                stop_process_tree(child)
+            raise
+
+
 def _run_shadow_phase(
     long_step: tuple[str, list[str], dict[str, str]] | None,
     shadow: list[tuple[str, list[str], dict[str, str]]],
@@ -492,57 +537,52 @@ def _run_shadow_phase(
     stream: bool,
     run_serial: Callable[..., None],
     record: Callable[..., None],
+    running: _RunningChecks,
 ) -> list[tuple[str, list[str], dict[str, str]]]:
     """Launch the long step and run the cheap ones in its shadow.
 
     Returns the heavy steps still owed a serial phase: when the shadow
     ran on threads, the heavy steps already ran alongside it.
     """
-    proc = None
-    long_start = 0.0
+    if long_step is None:
+        for step in shadow:
+            run_serial(*step)
+        return heavy
+
     # Nothing to fill the shadow with: run it as an ordinary step, which lets
     # a single-step run (`just test-py`) stream its output live.
-    if long_step is not None and not shadow and (stream or not heavy):
+    if not shadow and (stream or not heavy):
         run_serial(*long_step)
-        long_step = None
-    if long_step is not None:
-        _, cmd, step_env = long_step
+        return heavy
+
+    with (
+        ThreadPoolExecutor(max_workers=1) as collector,
+        ThreadPoolExecutor(max_workers=2) as checks,
+        running.stop_on_error(),
+    ):
         long_start = time.monotonic()
-        proc = start_logged(cmd, LONG_STEP, step_env, ROOT, stream=False)
+        proc = running.start(*long_step, stream=False)
+        assert proc is not None
         print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
-
-    if proc is not None:
-
-        def collect_long(
-            child: subprocess.Popen[str], started: float
-        ) -> tuple[str, int, float]:
-            output, returncode = _wait_with_heartbeat(child, LONG_STEP, started)
-            return output, returncode, time.monotonic() - started
-
         # Drain immediately: waiting until the shadow ends can fill the pipe
         # and stall pytest. The collector also measures its actual finish.
-        with ThreadPoolExecutor(max_workers=1) as collector:
-            pending = collector.submit(collect_long, proc, long_start)
-            if stream:
-                for name, cmd, step_env in shadow:
-                    run_serial(name, cmd, step_env)
-            else:
+        pending = collector.submit(running.wait, proc, LONG_STEP, long_start)
+        if stream:
+            for step in shadow:
+                run_serial(*step)
+        else:
 
-                def run_shadow() -> None:
-                    for step in shadow:
-                        run_serial(*step)
+            def run_shadow() -> None:
+                for step in shadow:
+                    run_serial(*step)
 
-                with ThreadPoolExecutor(max_workers=2) as checks:
-                    results = [checks.submit(run_serial, *step) for step in heavy]
-                    results.append(checks.submit(run_shadow))
-                    for result in results:
-                        result.result()
-                heavy = []
-            output, returncode, elapsed = pending.result()
-        record(LONG_STEP, elapsed, returncode, output)
-    else:
-        for name, cmd, step_env in shadow:
-            run_serial(name, cmd, step_env)
+            results = [checks.submit(run_serial, *step) for step in heavy]
+            results.append(checks.submit(run_shadow))
+            for result in results:
+                result.result()
+            heavy = []
+        output, returncode, elapsed = pending.result()
+    record(LONG_STEP, elapsed, returncode, output)
     return heavy
 
 
@@ -570,6 +610,7 @@ def _run_steps(
     failed: list[tuple[str, int, str | None]] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.monotonic()
+    running = _RunningChecks()
 
     def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
         if _ACTIVE_ACCEPTANCE is not None:
@@ -580,12 +621,11 @@ def _run_steps(
 
     def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
         start = time.monotonic()
-        captured, returncode = _wait_with_heartbeat(
-            start_logged(cmd, name, step_env, ROOT, stream=stream),
-            name,
-            start,
-        )
-        record(name, time.monotonic() - start, returncode, captured)
+        with running.stop_on_error():
+            proc = running.start(name, cmd, step_env, stream=stream)
+            if proc is not None:
+                captured, returncode, elapsed = running.wait(proc, name, start)
+                record(name, elapsed, returncode, captured)
 
     for name, cmd, step_env in runnable:
         if name == MUTATES_TREE:
@@ -605,6 +645,7 @@ def _run_steps(
         stream=stream,
         run_serial=run_serial,
         record=record,
+        running=running,
     )
 
     # Phase 3: the parallel steps, now that they can have the machine.
@@ -775,6 +816,9 @@ def cli() -> int:
     _ACTIVE_ACCEPTANCE = receipt
     try:
         returncode = main()
+    except KeyboardInterrupt:
+        print("verification interrupted", file=sys.stderr)
+        returncode = 130
     except BaseException:
         path, _ = receipt.finish(None)
         print(f"[receipt] {path}")
