@@ -39,13 +39,17 @@ from .digits import (
     _D_LABEL,
     _D_SWAP_U,
     _D_SWAP_V,
+    _DIGIT,
     _GADGET,
     _allocate_cells,
+    _Choice,
     _continuation_cells,
+    _d_choice,
     _DCells,
     _emit_digit_jump,
     _emit_digit_setup,
     _emit_swap12,
+    _fold,
     _fold_state,
     _full_layout,
     _hubs,
@@ -101,17 +105,34 @@ _S_GADGET = (
 _S_GADGETS = (_S_GADGET, _GADGET, _GADGET, _GADGET, _GADGET)
 #: Inputs read per group.
 _S_READS = (4, 3, 3, 3, 3)
-#: Each group's ``(u, v)`` at trits 1..3, completing the abstract
-#: fold (found by search over the gadgets' attainable outputs; the
-#: positional trajectory's choices do not complete with a four-read
-#: first group, and a four-read last group completes for none).
-_S_OUTPUTS = (
-    ((2, 2), (2, 2), (2, 2)),
-    ((1, 2), (0, 1), (0, 1)),
-    ((0, 1), (0, 1), (0, 1)),
-    ((1, 2), (2, 1), (1, 2)),
-    ((1, 2), (1, 2), (1, 2)),
-)
+
+
+def _s_outputs() -> list[_Choice]:
+    """Propagate the fold trits from the four-read group's seed."""
+    # On read trit 1 or 2, the four-read circuit sends (2, 1, 2)
+    # to (0, 2, 2), giving (u, v) = (2, 2) at all three trits.
+    outputs: list[_Choice] = [((2, 2),) * 3]
+    state = _fold((1,) * 10, outputs[0], 0)
+    for group in range(1, len(_S_GADGETS)):
+        assert state is not None, group
+        first, middle, last = _d_choice(state, group)
+        # Use v3 = 1 where it leaves the fold unchanged and gives
+        # enough printable slots. When S3 is 0, crazy(1, 0)
+        # equals crazy(2, 0). When S3 is 2, changing v3 to 1 makes
+        # the intermediate trit 2, so effective u2 = 1 keeps it 2.
+        if state[3] == 2:
+            assert group == _D_SWAP_U
+            middle = (0, middle[1])  # The swap maps the raw 0 to 1.
+        if state[3] in (0, 2):
+            # u3 = 0 is attainable with v3 = 1. It folds like u3 = 1:
+            # the swap merges them in the first case, and crazy(0, .)
+            # merges them under the following zero trit in the second.
+            last = (0, 1)
+        choice = first, middle, last
+        outputs.append(choice)
+        state = _fold(state, choice, group)
+    assert state == (_DIGIT,) * 10, state
+    return outputs
 
 
 @cache
@@ -120,7 +141,7 @@ def _s_inits() -> tuple[tuple[int, ...], ...]:
     # (2, 1, 2) yields (2, 2) under either read trit of the four-read
     # gadget. The two outer cells share their middle trits and use slots 0, 1.
     trits = [((2, 1, 2),) * 3]
-    for first, middle, last in _S_OUTPUTS[1:]:
+    for first, middle, last in _s_outputs()[1:]:
         u, v = first
         low = (2 - u, 2, v)
         u, _ = middle
