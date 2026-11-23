@@ -175,11 +175,23 @@ class _Layout(NamedTuple):
     stubs: dict[str, tuple[int, str]]
 
 
-def _rotated_stub(address: int, rotations: int) -> tuple[int, str]:
-    """Undo the hub's 0/1 swap and rotations to get its stub builder."""
-    scale = 3**rotations
-    high, low = divmod(_s01(address), _WORDS // scale)
-    return low * scale + high, " ".join(["rot"] * rotations)
+def _lane_mid_stub(lane: int) -> tuple[int, str]:
+    """Place a stub at the midpoint of a 243-cell lane."""
+    # Five rotations move the five seed trits above five zero trits.
+    # The hub swap turns those zeros into the lane's midpoint.
+    return _s01(lane) % 3**5, _LANE_CHAIN
+
+
+def _block_mid_stub(block: int) -> tuple[int, str]:
+    """Use three rotations near the middle of a free 729-cell block."""
+    # The gap is the middle third of a 3**7 band. Three rotations put
+    # the low three seed trits in the band's number. The other seven
+    # trits are all ones after swapping, except for the seed quotient.
+    # Use the largest printable quotient (4 = 11 ternary) to clear
+    # the lowest two ones and leave the most room after the stub.
+    band = block // 3
+    prefix = 126 // 3**3
+    return prefix * 3**3 + _s01(band) % 3**3, "rot rot rot"
 
 
 @cache
@@ -204,24 +216,28 @@ def _short_layout(arity: int = _SHORT_N) -> _Layout:
             for slot, label in enumerate(_T_HUB_LABELS)
         }
 
-    # The missing digit at trits 6, 7 leaves block 16 free. Its three
-    # lanes fit a stub each. Rotating five times gives the lane center;
-    # rotating three times puts the middle stub four cells earlier.
-    lane = 3**5
-    gap = 16 * 3**6
-    midpoint = (lane - 1) // 2
-    one = _rotated_stub(gap + midpoint, 5)
-    negated = _rotated_stub(gap + lane + midpoint - 4, 3)
-    identity = _rotated_stub(gap + 2 * lane + midpoint, 5)
+    # The missing readout digit (1, 2) cuts a 729-cell gap out of
+    # each top-digit band. Use the first nonzero band for shared stubs.
+    missing = 1 + 2 * 3
+    block = 9 + missing
+    lane = 3 * block
+    one = _lane_mid_stub(lane)
+    negated = _block_mid_stub(block)
+    # The two long stubs and the three-character identity fit at the
+    # three lane centers. Reserve another lane or block for zero.
+    identity = _lane_mid_stub(lane + 2)
     if arity == 15:
-        # The tables start beyond the next lane as well.
-        zero, identity = identity, _rotated_stub(gap + 3 * lane + midpoint, 5)
+        # With top digits 0..2 unoccupied, the next lane is free too.
+        zero, identity = identity, _lane_mid_stub(lane + 3)
     elif arity == 14:
-        zero = _rotated_stub(25 * 3**6 + (3**6 - 1) // 2 - 4, 3)
+        zero = _block_mid_stub(2 * 9 + missing)
     else:
-        # K2 K0 retains only the 1s after the hub swap, placing the
-        # fourth stub just above the top table and the four hubs.
-        zero = (3**4 + 1, "K2 K0 rot rot")
+        # The tables stop before top digit 2. Its low two trits hold
+        # the hubs and their return bytes. Use the next binary mask
+        # bit (trit 2) for zero. K2 K0 and the hub swap keep only seed
+        # ones as twos; two rotations lift trit 0 and lower trit 4.
+        hub_trits = 2
+        zero = (1 + 3 ** (hub_trits + 2), "K2 K0 rot rot")
     return _Layout(seeds, {"1": one, "n": negated, "0": zero, "x": identity})
 
 
