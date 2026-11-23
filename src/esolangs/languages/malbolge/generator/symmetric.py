@@ -58,49 +58,47 @@ from .digits import (
 from .emitter import _Planner
 from .isa import _printable_slot, _program, _render
 
-#: The four-read gadget: the positional gadget's first two read
-#: blocks, a suffix folding in the fourth input, and a closing block
-#: restoring the digit constants (1, 2) at the trits above 0.  Trit 0
-#: maps each weight to a distinct digit: 0:(1, 2), 1:(2, 1),
-#: 2:(1, 0), 3:(2, 2), 4:(1, 1).
-_S_GADGET = (
-    "/",
-    "0",
-    "K2",
-    "0",
-    "/",
-    "2",
-    "0",
-    "2",
-    "0",
-    "K2",
-    "0",
-    "/",
-    "1",
-    "2",
-    "1",
-    "0",
-    "2",
-    "1",
-    "0",
-    "0",
-    "K2",
-    "1",
-    "/",
-    "0",
-    "K2",
-    "0",
-    "1",
-    "1",
-    "0",
-    "2",
-    "K2",
-    "1",
-    "K0",
-    "1",
-    "K2",
-    "2",
-)
+
+def _weight_gadget() -> tuple[str, ...]:
+    """Factor four-bit popcount into crazy operations on three cells."""
+    a, b, c = "0", "1", "2"
+    # Write C for crazy mod 3 and Kk(t) for C(k, t).
+    # From a binary cell, C(x, a) = 1-x and K2 makes it X = 2(1-x).
+    first = ("/", a, "K2", a)
+
+    # Start with Y = 1-y in c. Alternating a,c,a computes
+    # P = C(Y,X), Q = C(P,Y), R = C(Q,P). Store K2(R) in a.
+    # For xy = 00, 01, 10, 11, the pair (K2(R), Q) is respectively
+    # (2,2), (1,0), (0,1), (2,0).
+    second = ("/", c, a, c, a, "K2", a)
+
+    # Start with Z = 1-z. C(Z,Q) and C(C(Z,Q),Z) fold z into the
+    # two-read encoding. Combine the latter with a, then feed that
+    # result back through c and b. Substitution of the four pairs
+    # above gives (K2(b),c) = (2,2), (0,1), (2,0), (0,2) for
+    # weights 0..3. Self-mixing a via C(a,a) makes it binary again.
+    mix_third = ("/", b, c, b, a, c, b)
+    finish_third = (a, a, "K2", b)
+
+    # Encode D = 2(1-w) as in the first read. B = C(D,b) gives
+    # C(B,B) = parity of the total, since b is 2 for even prior
+    # weight and 0 for odd. Feed parity through D and c to get
+    # V = K2(C(C(parity,D),c)). U = K0(K2(parity)) = 1 + parity.
+    fourth = ("/", a, "K2", a)
+    parity_and_carry = (b, b, a, c)
+    encode_digit = ("K2", b, "K0", b, "K2", c)
+    return (
+        *first,
+        *second,
+        *mix_third,
+        *finish_third,
+        *fourth,
+        *parity_and_carry,
+        *encode_digit,
+    )
+
+
+_S_GADGET = _weight_gadget()
 #: Gadget per group: the four-read one first, then the positional.
 _S_GADGETS = (_S_GADGET, _GADGET, _GADGET, _GADGET, _GADGET)
 #: Inputs read per group.
