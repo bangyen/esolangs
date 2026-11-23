@@ -30,6 +30,7 @@ from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program
+from esolangs.runtime.memory import format_integer
 
 __all__ = ["super_snusp"]
 
@@ -37,11 +38,11 @@ __all__ = ["super_snusp"]
 def _decimal(value: int, width: int = 0) -> str:
     """Return ``value`` in decimal, zero-padded to ``width``.
 
-    Halves by powers of ten: ``str`` refuses integers past 4,300 digits, and
-    a global ``sys.set_int_max_str_digits`` would be process-wide state.
+    Halve large values by powers of ten. The shared formatter handles
+    each base case even under a lower process-wide digit limit.
     """
     if value.bit_length() <= 12000:
-        return str(value).zfill(width)
+        return format_integer(value).zfill(width)
     half = value.bit_length() * 3 // 20
     high, low = divmod(value, 10**half)
     return _decimal(high, max(width - half, 0)) + _decimal(low, half)

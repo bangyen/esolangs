@@ -1,5 +1,6 @@
 """Super SNUSP through the shared API, CLI and machinery."""
 
+import sys
 from unittest.mock import patch
 
 import pytest
@@ -101,6 +102,23 @@ def test_super_snusp_arithmetic_literals_preserve_stack_and_floor(
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Super SNUSP", bits)
         assert execute("Super SNUSP", program, stdin=stdin).output == table[row]
+
+
+def test_large_packed_literal_under_low_decimal_limit() -> None:
+    language = esolangs.Language("Super SNUSP")
+    n = 12
+    table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+    expected = language.generate(table).source
+    cap = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(640)
+        program = language.generate(table).source
+        assert program == expected
+        for row in (0, 1, 2048, 4095):
+            stdin = language.encode_inputs(list(map(int, f"{row:0{n}b}")))
+            assert execute(language.name, program, stdin=stdin).output == table[row]
+    finally:
+        sys.set_int_max_str_digits(cap)
 
 
 class TestSuperSNUSP:
