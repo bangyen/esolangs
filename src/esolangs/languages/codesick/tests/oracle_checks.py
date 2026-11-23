@@ -105,6 +105,8 @@ def _model(source, stdin, *, indirect_jumps=False):
     except ValueError:
         return "syntax", [(None, False, "", 0, 0)]
     labels = {row[1]: i for i, row in enumerate(program) if row[1] is not None}
+    if len(labels) != sum(row[1] is not None for row in program):
+        return "syntax", [(None, False, "", len(stdin), len(stdin))]
     memory, pc, output = {}, 0 if program else None, ""
     consumed = len(stdin) if reads else 0
 

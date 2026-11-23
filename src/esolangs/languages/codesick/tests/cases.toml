@@ -23,6 +23,12 @@ expect = "ProgramError"
 claim = "a duplicate label"
 
 [[spec_triggers]]
+program = "in codesick out A * x; x codesick out B * stop;"
+stdin = "x"
+expect = "ProgramError"
+claim = "a duplicate label after input substitution"
+
+[[spec_triggers]]
 program = "codesick \"a b c d;"
 stdin = ""
 expect = "ProgramError"

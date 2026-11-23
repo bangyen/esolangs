@@ -41,6 +41,7 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from esolangs.exceptions import ProgramError
 from esolangs.languages.codesick.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -176,6 +177,16 @@ class _Machine:
         self.labels = {
             ins[0]: k for k, ins in enumerate(self.program) if ins[0] is not None
         }
+        # Literal labels were checked during parsing. The only new collision
+        # can be at the value substituted for an input label.
+        if (
+            reads
+            and given in self.labels
+            and sum(ins[0] == given for ins in self.program) > 1
+        ):
+            raise ProgramError(
+                f"Codesick: duplicate label {given!r} after input substitution"
+            )
         #: Only the strings that no longer map to themselves.
         self.memory: dict[str, str] = {}
         self.pc: int | None = 0 if self.program else None

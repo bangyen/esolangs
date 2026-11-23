@@ -3,7 +3,9 @@
 Up to eight essential inputs are summed into a byte starting at zero.
 The decoder tests before each decrement and applies the table's changes
 while unwinding, so neither encoding nor decoding needs wrapping arithmetic.
-Wider tables branch on the leading input into blocks.
+Wider tables branch on the leading input into blocks. Interned subtable
+IDs and bottom-up dependency masks choose the blocks without rescanning
+their parent spans.
 
 Size:
     O(T) chars; parity and and are linear in n. n=10 parity: 665 chars,
@@ -18,9 +20,8 @@ from collections.abc import Sequence
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    constant_span_test,
-    essential_inputs,
     input_weights,
+    subtree_ids,
     symmetric_weights,
 )
 from esolangs.generation.requests import GenerationRequest
@@ -98,40 +99,53 @@ def bfstack(truth_table: str) -> str:
     return _bfstack_small(truth_table, n, symmetric)
 
 
-def _fits(truth_table: str, n: int) -> bool:
-    """Whether one byte-indexed block holds the table's essential inputs."""
-    return (
-        n <= _BLOCK_INPUTS or 0 < len(essential_inputs(truth_table, n)) <= _BLOCK_INPUTS
-    )
-
-
 def _bfstack_plain(truth_table: str) -> str:
-    """Build a BFStack program, routing wide tables into blocks.
-
-    Prefix branches select blocks of up to eight essential inputs before the
-    byte-indexed decoder runs.
-    """
+    """Route wide tables using bottom-up subtable dependencies."""
     n = _validate_truth_table(truth_table)
-    if _fits(truth_table, n):
+    if n <= _BLOCK_INPUTS:
         return _bfstack_small(truth_table, n)
-    constant = constant_span_test(truth_table)
 
-    def build(level: int, lo: int, hi: int) -> str:
+    ids = subtree_ids(truth_table)
+    # A level's input matters exactly when its children denote different
+    # functions. Either child can make any later input essential.
+    dependencies: dict[int, int] = {0: 0, 1: 0}
+    for level in range(n - 1, -1, -1):
+        bit = 1 << (n - level - 1)
+        children = iter(ids[level + 1])
+        for node, zero, one in zip(ids[level], children, children, strict=True):
+            if node not in dependencies:
+                dependencies[node] = (
+                    dependencies[zero] | dependencies[one] | (bit if zero != one else 0)
+                )
+
+    parts: list[str] = []
+
+    def emit(level: int, index: int) -> None:
         remaining = n - level
-        if constant(lo, hi):
-            return _constant_leaf(remaining, truth_table[lo])
-        if _fits(truth_table[lo:hi], remaining):
-            return _bfstack_small(truth_table[lo:hi], remaining) + "<"
-        mid = (lo + hi) // 2
-        if truth_table[lo:mid] == truth_table[mid:hi]:
-            # An input this subtree ignores is read and popped, not branched.
-            return ",<" + build(level + 1, lo, mid)
-        zero, one = build(level + 1, lo, mid), build(level + 1, mid, hi)
-        # The one arm clears the sentinel below the bit. Both arms restore
-        # their stack depth, so the zero arm runs only when the bit was zero.
-        return ">+," + "-" * _ASCII_ZERO + "[<-" + one + ">]<[<" + zero + ">]<"
+        node = ids[level][index]
+        if node < 2:
+            parts.append(_constant_leaf(remaining, str(node)))
+        elif dependencies[node].bit_count() <= _BLOCK_INPUTS:
+            lo = index << remaining
+            parts.append(
+                _bfstack_small(truth_table[lo : lo + (1 << remaining)], remaining)
+            )
+            if level:
+                parts.append("<")
+        elif ids[level + 1][2 * index] == ids[level + 1][2 * index + 1]:
+            # Drain an ignored input without duplicating the subtree.
+            parts.append(",<")
+            emit(level + 1, 2 * index)
+        else:
+            # The one arm clears the sentinel. Both arms restore stack depth.
+            parts.append(">+," + "-" * _ASCII_ZERO + "[<-")
+            emit(level + 1, 2 * index + 1)
+            parts.append(">]<[<")
+            emit(level + 1, 2 * index)
+            parts.append(">]<")
 
-    return build(0, 0, len(truth_table))
+    emit(0, 0)
+    return "".join(parts)
 
 
 def bfstack_request(request: GenerationRequest) -> Program:
