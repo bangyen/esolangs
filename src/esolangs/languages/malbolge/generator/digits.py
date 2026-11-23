@@ -112,20 +112,17 @@ from .isa import (
 #: and the last input read by the stub.
 #: Reads per gadget group.
 _READS = 3
-#: The ``_GADGET`` token index before which a discarded read drops a
-#: group's slot (1-based): the read lands where the next read or constant
-#: overwrites ``A``, so the gadget's cells never see the ignored input.
-#: Slot 4 is the read past the group -- the next group's first slot, or
-#: the stub's own input when the last group drops it.
-_DROP_TOKEN = {1: 0, 2: 2, 3: 4, 4: 13}
 
 
-def _digit_gadget() -> tuple[str, ...]:
-    """Factor the two output trits into accumulator operations."""
+def _digit_gadget() -> tuple[tuple[str, ...], tuple[int, ...]]:
+    """Factor the two output trits and mark where a read can be discarded."""
     x_cell, y_cell, z_cell = "0", "1", "2"
     # At trit 0 the prefix leaves X = 2(1-x), Y = 2(1-y), Z = 1-z,
     # with A = Z. Here C(a, b) is crazy modulo 3.
-    prefix = ("/", x_cell, "/", y_cell, "K2", x_cell, "K2", y_cell, "/", z_cell)
+    read_x, read_y = ("/", x_cell), ("/", y_cell)
+    prepare_xy = ("K2", x_cell, "K2", y_cell)
+    read_z = ("/", z_cell)
+    prefix = (*read_x, *read_y, *prepare_xy, *read_z)
     # F = C(Z, X) = 2(1-x) + xz. Then U = C(F, Y) = 1+x-y-xyz.
     fold_u = (x_cell, y_cell)
     # Keep F in x_cell so Q = C(U, F) can recover the other digit.
@@ -133,11 +130,15 @@ def _digit_gadget() -> tuple[str, ...]:
     # U is 2 for y=0, else 1-z. Thus Q=2 iff x=0 or (z=1 and y=0).
     # C(1, Q) retains 2 and maps 0 and 1 to 0. Applying C to that
     # result and Z gives 2-x for z=0 and xy for z=1.
-    fold_v = (x_cell, "K1", x_cell, z_cell)
-    return (*prefix, *fold_u, *fold_v)
+    before_reset = (*prefix, *fold_u, x_cell)
+    # Skipped inputs must land before an accumulator overwrite. The
+    # first two go before reads; the next goes before K2, after y is
+    # saved. The slot past the group goes before the K1 reset.
+    drops = (0, len(read_x), len(read_x) + len(read_y), len(before_reset))
+    return (*before_reset, "K1", x_cell, z_cell), drops
 
 
-_GADGET = _digit_gadget()
+_GADGET, _DROP_TOKENS = _digit_gadget()
 
 #: Gadget groups, one digit each.
 _D_GROUPS = 5
@@ -922,10 +923,9 @@ def _seventeen_program(truth_table: str) -> str | None:
     )
     if ignored == _DIGITS_N:
         return _render_build(projected, _digits(_DIGITS_N, drain_last=True))
-    position = ignored + 1
-    if position == _DIGITS_N:
-        drop = (_D_GROUPS - 1, _DROP_TOKEN[4])
+    if ignored == _DIGITS_N - 1:
+        drop = (_D_GROUPS - 1, _DROP_TOKENS[-1])
     else:
-        group, slot = divmod(position - 1, _READS)
-        drop = (group, _DROP_TOKEN[slot + 1])
+        group, slot = divmod(ignored, _READS)
+        drop = (group, _DROP_TOKENS[slot])
     return _render_build(projected, _digits(_DIGITS_N, drop))
