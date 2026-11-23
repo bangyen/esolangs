@@ -18,7 +18,8 @@ Size:
     table plus 4n + 101 chars and at most 35 of final rules. Subtract 21
     chars at n != 2 ([ablations.drop_input_marker]). n=4 parity:
     97 chars, n=10 random 1847: 667 chars. Constants: 2n+5 chars (16 at n=2),
-    two commands and 8max(n,2)+2 written bits.
+    two commands and 8max(n,2)+2 written bits below the name limit.
+    At 55,041 inputs the setup uses a mask with a fixed set of variable names.
 
 Decisions:
     Halving the table pairwise by a walking cursor (T + 101 chars) was not
@@ -55,6 +56,9 @@ _PAIR_FROM = 7
 _PAIR = {"00": "0", "11": "1", "01": "a", "10": "b"}
 #: Names for the projection's s-vars, one an input.
 _NAMES = ascii_letters + digits
+# _name would first produce a surrogate at input index 0xD800 - 0x100.
+_MASK_FROM = 0xD800 - 0x100 + 1
+_MASK_SKIP = 512
 
 
 def _name(k: int) -> str:
@@ -65,6 +69,8 @@ def sonata(truth_table: str) -> str:
     """Build a Sonata program whose final string ends in ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
     if truth_table == truth_table[0] * len(truth_table):
+        if n >= _MASK_FROM:
+            return _masked_program(n, [], truth_table[0])
         # Only n=2 can match the two-character result again: guard its first bit.
         if n == 2:
             return "".join(f"{bit}^a->={truth_table[0]}\n" for bit in "01")
@@ -72,6 +78,8 @@ def sonata(truth_table: str) -> str:
         return f"{bits}->={truth_table[0]}\n"
     essential = essential_inputs(truth_table, n)
     table = read_at(truth_table, essential, n)
+    if n >= _MASK_FROM:
+        return _masked_program(n, essential, table)
     symmetric = symmetric_weights(truth_table, n)
     if symmetric is not None:
         # A symmetric table counts its ones over m + 1 entries, never longer
@@ -80,6 +88,29 @@ def sonata(truth_table: str) -> str:
     if len(essential) >= _PAIR_FROM:
         return _pair_program(n, essential, table)
     return _program(n, essential, table, _DOUBLE)
+
+
+def _masked_program(n: int, essential: list[int], table: str) -> str:
+    """Consume a source mask in lockstep with the input, using fixed names."""
+    mask = bytearray(b"0") * n
+    for bit in essential:
+        mask[bit] = ord("1")
+    skip = ""
+    if n - len(essential) >= _MASK_SKIP:
+        # Skip runs of ignored bits with a fixed, UTF-8-safe set of names.
+        names = "".join("^" + chr(0x100 + k) for k in range(_MASK_SKIP))
+        zeros = "0" * _MASK_SKIP
+        skip = f"!{names}_R&{zeros}_M@_U#_T->!_R&_M@_U#_T\n"
+    return (
+        skip
+        + "!^a_R&0_M@_U#_T->!_R&_M@_U#_T\n"
+        + "!0_R&1_M@_U#_T->!_R&_M@_U_U#_T\n"
+        + "!1_R&1_M@_U#_T->!_R&_M@_U_Uu#_T\n"
+        + "!&@u_U#^x_T->!&@_U#_T\n"
+        + "!&@#^x_T->=^x\n"
+        + f"%_I->!_I&{mask.decode('ascii')}@#{table}\n"
+        + _MARKER
+    )
 
 
 def _pair_program(n: int, essential: list[int], table: str) -> str:

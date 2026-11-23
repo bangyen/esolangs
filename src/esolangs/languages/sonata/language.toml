@@ -11,7 +11,7 @@ admitted = 2026-10-21T23:43:42-04:00
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them"
+qualification = "the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them. At the Unicode name boundary, a fixed-name mask reads the same bits"
 
 [ablations]
 archive_refs = [
@@ -86,7 +86,7 @@ construction = "esolangs.languages.sonata.generator:sonata_request"
 witnesses = "esolangs.languages.sonata.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "T + n + 3 - min(1,(n-2)^2)"
+expression = "T+n+3-min(1,(n-2)^2)+min(1,floor(n/55041))"
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
@@ -94,7 +94,7 @@ unit = "steps"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: index, strips, halt" }
 
 [resource_evidence.workspace]
-expression = "16T + 10"
+expression = "16T+10+16min(1,floor(n/55041))"
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
@@ -106,6 +106,7 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 # The n=1 identity stays on doubling: symmetric_weights requires m>=2.
 # A projection costs 2**m+2n+2m+80, plus21 if n=2. Pair packing
 # from m=7 instead costs <=2**(m-1)+2n+2m+115, below this ceiling.
+# The mask layout uses at most T+n+1724 characters from n=55041.
 expression = "T+4n+101-21min(1,(n-2)^2)"
 exact = [1, 2, 3, 4, 5, 6]
 arities = [1, 2, 3, 5]

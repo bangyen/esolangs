@@ -1,5 +1,7 @@
 """Tests for the Sonata Boolean generator."""
 
+import pytest
+
 import esolangs
 from esolangs import run
 from esolangs.runtime.io import ScriptedIO
@@ -86,3 +88,35 @@ def _check_constants() -> None:
                 total_steps += 1
             assert io.getvalue() == "=" + table[row]
     assert (total_chars, total_steps) == (24980, 18080)
+
+
+def test_projection_mask_avoids_the_unicode_name_boundary() -> None:
+    from esolangs.languages.sonata.generator import _MASK_FROM, _masked_program
+    from esolangs.languages.sonata.interpreter import prepare_machine
+
+    n = _MASK_FROM
+    source = _masked_program(n, [0, n - 1], "0110")
+    plan = prepare_machine(source.encode("utf-8").decode("utf-8"), {})
+    middle = "01" * (n // 2 - 1) + "1"
+    assert len(middle) == n - 2
+    for first in "01":
+        for last in "01":
+            io = ScriptedIO(first + middle + last)
+            plan.run(io)
+            assert io.getvalue() == f"={int(first != last)}"
+    for malformed in (middle, "00" + middle + "0"):
+        io = ScriptedIO(malformed)
+        plan.run(io)
+        assert not io.getvalue().startswith("=")
+
+
+def test_public_generator_switches_to_masks(monkeypatch: pytest.MonkeyPatch) -> None:
+    from esolangs import Language
+    from esolangs.languages.sonata import generator
+
+    monkeypatch.setattr(generator, "_MASK_FROM", 3)
+    language = Language("Sonata")
+    for table in ("00000000", "01100110", "01101001"):
+        source = language.generate(table).source
+        for row, answer in enumerate(table):
+            assert language.run(source, stdin=f"{row:03b}").output == f"={answer}"
