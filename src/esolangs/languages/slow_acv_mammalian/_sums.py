@@ -173,40 +173,22 @@ def _apply(st: _Sums, tok: str, bit: int) -> None:
         st.ptr = (st.ptr + cells[st.acc]) % _ARRAYS
 
 
-def _leaf(digit: int, *, unit: int, guard: bool = True) -> list[str]:
-    """Return the tokens run ``digit`` executes, padded to one slot.
+def _print_chunk_seeds(
+    head: int, step: int, rest: int, cell_modulus: int, io_modulus: int
+) -> int:
+    """Reach one of the 31 highest output residues with the shortest seed run."""
+    heads = (
+        target
+        for byte in range(io_modulus - 31, io_modulus)
+        for target in range((byte - rest) % io_modulus, cell_modulus, io_modulus)
+    )
+    return _seeds_onto(head, step, heads, cell_modulus)
 
-    ``EXCRETE`` clears the accumulator the dispatch left, ``SPRINT`` rides
-    array 16's head to a print array, ``CONSUME`` lifts its middle cell
-    (``'0'`` or ``'1'``) and ``PRONOUNCE`` writes it.  The closing
-    ``LEAPFROG`` fires on the cell the print array keeps last, and aims at
-    the digit's code less the array's head, which is before the program
-    (a halt) once the head is that large (``generator._dispatch_head``).
-    One SEED separates the two print arrays, so the digit is the step count,
-    and nothing reads array 16's sum: every leaf has the same length
-    whatever row reached it.
 
-    ``guard`` ends the slot in a ``SPRINT``: a LEAPFROG that resumes at its
-    target instead of after it lands one token early, here, and the
-    accumulator exceeds the array, so it does nothing before falling into
-    the leaf.  The unguarded form keeps the closing ``EXCRETE`` that
-    zeroes the accumulator for the halt. Guarded leaves require a nonzero
-    print tail and a head larger than the printed digit.
-    """
-    body = [
-        "EXCRETE",
-        *["SEED"] * digit,
-        "SPRINT",
-        "CONSUME",
-        "PRONOUNCE",
-        "EXCRETE",
-        "LEAPFROG",
-    ]
-    if not guard:
-        return [*body, *["SEED"] * (unit - len(body))]
-    del body[-2]
-    if len(body) >= unit:  # pragma: no cover - callers pass unit >= 7
-        raise AssertionError(f"a {len(body)}-token leaf leaves no guard in {unit}")
+def _leaf(digit: int, *, unit: int) -> list[str]:
+    """Select a print bank and jump to its shared tail from one leaf slot."""
+    body = ["EXCRETE", *["SEED"] * digit, "SPRINT", "DIGEST", "LEAPFROG"]
+    assert len(body) < unit
     return [*body, *["SEED"] * (unit - len(body) - 1), "SPRINT"]
 
 

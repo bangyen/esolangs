@@ -88,7 +88,7 @@
   "shakespeare": "linear: at most 16T + 7n^2 + 180n + 300 characters",
   "six_five": "linear: at most 20 (n=1), min(11T+6n-8,6n+19+(n+4)T/2+(n+6)min(T/2,2n-2)) (n=2..5), max(6T+17n+4,41n+460) (n=6..35), 7T+4n+12 (n\u226536) characters: raced layouts",
   "slashes": "linear: worst 76 (n=1), 95 (n=2), 107 (n=3), 5T/2+n+83 (n\u22654) characters",
-  "slow_acv_mammalian": "linear: at most 20T+5(W+P+Q)+4(2C+U+M)+1681 characters",
+  "slow_acv_mammalian": "linear: at most 12(2(W+P+Q)+8194) characters",
   "smallfuck": "linear: at most P (n=1), P+20n+100 (n\u22652) characters: coefficient prefix and Davio tail",
   "smu": "linear: at most 7T+150",
   "sonata": "linear: worst T+4n+101-21min(1,(n-2)^2) characters: exact n=1..6, upper bound thereafter",

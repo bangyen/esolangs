@@ -2,6 +2,12 @@
 
 from dataclasses import dataclass, replace
 
+from esolangs.languages.slow_acv_mammalian._mammalian_compact import (
+    _Chain,
+)
+from esolangs.languages.slow_acv_mammalian._mammalian_compact import (
+    _State as _ChainState,
+)
 from esolangs.languages.slow_acv_mammalian._sums import _aim, _crossing_pair
 
 
@@ -67,13 +73,14 @@ class _State:
         return [*tokens, "DIGEST", "LEAPFROG"]
 
 
-def _leaf_tokens(state: _State, digit: str) -> list[str]:
+def _leaf_tokens(state: _State, digit: str, jump_array: int) -> list[str]:
     """Return one leaf's tokens: load its digit, print it, and jump to a halt."""
     tokens = state.clear()
     tokens += state.load(48 + int(digit))
-    # EXCRETE clears acc and leaves a nonzero last cell: the final
-    # LEAPFROG has a negative target and halts on both output digits.
-    return [*tokens, "PRONOUNCE", "EXCRETE", "LEAPFROG"]
+    tokens.append("PRONOUNCE")
+    tokens += state.clear()
+    tokens += state.seed((jump_array - state.head) % 255)
+    return [*tokens, "SPRINT", "DIGEST", "LEAPFROG"]
 
 
 def _node_header(state: _State, one_pos: int) -> tuple[list[str], _State, _State]:
@@ -95,7 +102,7 @@ def _node_header(state: _State, one_pos: int) -> tuple[list[str], _State, _State
 
 def decision_tree(table: str, inputs: int, *, io_modulus: int = 255) -> str:
     """Emit a fixed-layout tree for cell modulus 255 and either I/O modulus."""
-    leaf_size = 512 if io_modulus == 255 else 1024
+    leaf_size = 768 if io_modulus == 255 else 1536
     overhead = 2048 if io_modulus == 255 else 4096
     sizes, blocks = [leaf_size], [leaf_size]
     for _ in range(inputs):
@@ -105,15 +112,26 @@ def decision_tree(table: str, inputs: int, *, io_modulus: int = 255) -> str:
         blocks.append(block)
         sizes.append(block + 2 * sizes[-1])
 
+    target = 2 * sizes[-1] + 8192
+    chain = _Chain(255, io_modulus=io_modulus)
+    rack = _ChainState()
+    prefix = chain.route(rack, chain.weight, short=True)
+    prefix += chain.raise_to(rack, target)
+    prefix += chain.route(rack, 0, short=True)
+    # Root branch addresses include the prologue. Reserve its additional
+    # raise at the same 1/32 slope used for the other branch spans.
+    blocks[-1] += (len(prefix) + 31) // 32 + 2
+
     def build(rows: str, depth: int, pos: int, state: _State) -> list[str]:
         if not depth:
-            tokens = _leaf_tokens(state, rows)
+            tokens = _leaf_tokens(state, rows, chain.weight)
             # The slot ends in a SPRINT guard, never executed in
-            # sequence (the leaf's LEAPFROG halts first): a jump that
+            # sequence (the leaf jumps to the end first): a jump that
             # resumes at its target instead of after it lands here,
             # with a token address in the accumulator, which exceeds
             # every array here, so the SPRINT is a no-op.
-            return [*tokens, *["SEED"] * (sizes[0] - len(tokens) - 1), "SPRINT"]
+            assert len(tokens) < leaf_size
+            return [*tokens, *["SEED"] * (leaf_size - len(tokens) - 1), "SPRINT"]
 
         one_pos = pos + blocks[depth]
         zero_pos = one_pos + sizes[depth - 1]
@@ -133,4 +151,9 @@ def decision_tree(table: str, inputs: int, *, io_modulus: int = 255) -> str:
         tokens += build(rows[:middle], depth - 1, zero_pos, zero)
         return tokens
 
-    return " ".join(build(table, inputs, 0, _State(io_modulus=io_modulus)))
+    tokens = prefix + build(
+        table, inputs, len(prefix), _State(head=rack.head, io_modulus=io_modulus)
+    )
+    assert len(tokens) < target
+    tokens += ["SEED"] * (target - 1 - len(tokens))
+    return " ".join([*tokens, "SPRINT", "SPRINT"])

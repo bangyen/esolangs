@@ -2,13 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-mod255_tree_to_chain = { tables = [{ arity = 2, rule = "parity" }, { arity = 3, rule = "parity" }], benchmark = false, test = "test_boolean_slow_acv_mammalian.py::test_coprime_chain_generates_asymmetric_tables" }
-
-[deep_arities]
-# SLOW ACV MAMMALIAN's increments track per-level residues, not T: a
-# command adds at most one cell, so its arrays hold 23 + S bytes for S
-# poly n commands (dense x1.155); written bits 3077 at n=12, 3216 at 13.
-workspace_step_exempt = "increments track per-level residues, not T"
+mod255_tree_to_chain = { tables = [{ arity = 1, rule = "parity" }, { arity = 2, rule = "parity" }], benchmark = false, test = "test_boolean_slow_acv_mammalian.py::test_coprime_chain_generates_asymmetric_tables" }
 
 [curation]
 backlinks = 1
@@ -17,17 +11,17 @@ admitted = 2026-08-14T22:09:07-04:00
 [proof_status]
 labels = ["linear lookup"]
 qualification = "a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; up to four pooled weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf"
-definitions = ["C = constant layout flag", "S = constant seeds", "K = seed head widths", "J = first jump commands", "P = prologue commands", "V = sum of worst level paths", "N = token bound", "A = banked sum"]
+definitions = ["C = constant layout flag", "K = constant reader head bits", "N = emitted tokens", "S = constant reader seeds", "W = first window tokens", "P = prologue token bound", "Q = read level token bound"]
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 2698, "1" = 2703, "2" = 2703, "3" = 2708, "4" = 2702, "5" = 2707, "6" = 2707, "7" = 2713 }, source_units = 24713 }
-"00001100" = { commands_by_row = { "0" = 2372, "1" = 2374, "2" = 2377, "3" = 2379, "4" = 2377, "5" = 2379, "6" = 2381, "7" = 2383 }, source_units = 24423 }
-"00110110" = { commands_by_row = { "0" = 2698, "1" = 2703, "2" = 2704, "3" = 2709, "4" = 2702, "5" = 2708, "6" = 2708, "7" = 2712 }, source_units = 24713 }
-"0110" = { commands_by_row = { "0" = 2100, "1" = 2106, "2" = 2105, "3" = 2109 }, source_units = 18823 }
-"01101001" = { commands_by_row = { "0" = 2698, "1" = 2704, "2" = 2704, "3" = 2708, "4" = 2703, "5" = 2707, "6" = 2707, "7" = 2713 }, source_units = 24713 }
-"0110100110010110" = { commands_by_row = { "0" = 3284, "1" = 3290, "2" = 3290, "3" = 3294, "4" = 3290, "5" = 3294, "6" = 3294, "7" = 3300, "8" = 3545, "9" = 3549, "10" = 3549, "11" = 3555, "12" = 3549, "13" = 3555, "14" = 3555, "15" = 3559 }, source_units = 31751 }
-"1101001101101101" = { commands_by_row = { "0" = 3285, "1" = 3290, "2" = 3289, "3" = 3295, "4" = 3289, "5" = 3294, "6" = 3295, "7" = 3300, "8" = 3544, "9" = 3550, "10" = 3550, "11" = 3554, "12" = 3550, "13" = 3555, "14" = 3554, "15" = 3560 }, source_units = 31751 }
-"11111110" = { commands_by_row = { "0" = 2699, "1" = 2704, "2" = 2704, "3" = 2709, "4" = 2703, "5" = 2708, "6" = 2708, "7" = 2712 }, source_units = 24713 }
+"00000001" = { commands_by_row = { "0" = 3561, "1" = 3566, "2" = 3566, "3" = 3571, "4" = 3565, "5" = 3570, "6" = 3570, "7" = 3576 }, source_units = 84904 }
+"00001100" = { commands_by_row = { "0" = 3235, "1" = 3237, "2" = 3240, "3" = 3242, "4" = 3240, "5" = 3242, "6" = 3244, "7" = 3246 }, source_units = 84638 }
+"00110110" = { commands_by_row = { "0" = 3561, "1" = 3566, "2" = 3567, "3" = 3572, "4" = 3565, "5" = 3571, "6" = 3571, "7" = 3575 }, source_units = 84904 }
+"0110" = { commands_by_row = { "0" = 2887, "1" = 2893, "2" = 2892, "3" = 2896 }, source_units = 73794 }
+"01101001" = { commands_by_row = { "0" = 3561, "1" = 3567, "2" = 3567, "3" = 3571, "4" = 3566, "5" = 3570, "6" = 3570, "7" = 3576 }, source_units = 84904 }
+"0110100110010110" = { commands_by_row = { "0" = 4375, "1" = 4381, "2" = 4381, "3" = 4385, "4" = 4381, "5" = 4385, "6" = 4385, "7" = 4391, "8" = 4636, "9" = 4640, "10" = 4640, "11" = 4646, "12" = 4640, "13" = 4646, "14" = 4646, "15" = 4650 }, source_units = 98851 }
+"1101001101101101" = { commands_by_row = { "0" = 4376, "1" = 4381, "2" = 4380, "3" = 4386, "4" = 4380, "5" = 4385, "6" = 4386, "7" = 4391, "8" = 4635, "9" = 4641, "10" = 4641, "11" = 4645, "12" = 4641, "13" = 4646, "14" = 4645, "15" = 4651 }, source_units = 98851 }
+"11111110" = { commands_by_row = { "0" = 3562, "1" = 3567, "2" = 3567, "3" = 3572, "4" = 3566, "5" = 3571, "6" = 3571, "7" = 3575 }, source_units = 84904 }
 
 [catalogue]
 folding_constant_local = "_constant_read"  # scratch reads and untouched factored print head
@@ -73,7 +67,7 @@ version = 1
 arity = 10
 rule = "random"
 seed = 1847
-size = 126380
+size = 260455
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
@@ -82,7 +76,7 @@ construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammali
 arity = 12
 rule = "random"
 seed = 1847
-size = 323670
+size = 583406
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
@@ -100,8 +94,8 @@ version = 2
 construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
 
 [resource_evidence.execution]
-expression = "C*(n+3+S)+(1-C)*(J+P+V+192)"
-source_terms = { names = ["C", "S", "J", "P", "V"], provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:execution_terms" }
+expression = "N"
+source_terms = { names = ["N"], provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:token_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6]
 first = 1
@@ -109,9 +103,8 @@ unit = "commands"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-# Price arrays 0 and 16 at their final growth, with zero cells in the pools.
-expression = "C*(6n+K+9+bl(n+S+3))+(1-C)*(246+48n+8floor(N/254)+8floor(A/238)+16(2^min(n,5)+min(n,5)-3)+bl(N)+bl(N+256))+bl(n)"
-source_terms = { names = ["C", "S", "K", "N", "A"], provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:workspace_terms" }
+expression = "C*(6n+K+9+bl(n+S+3))+(1-C)*(8N+256+bl(N)+bl(512N))+bl(n)"
+source_terms = { names = ["C", "K", "N", "S"], provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:workspace_terms" }
 exact = false
 arities = [1, 2, 3, 4]
 first = 1
@@ -119,11 +112,9 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
-# W is the first window, P the prologue and Q the level token count.
-# The base token price is five characters. Chunk branches (C), prologue
-# non-SEEDs (U) and level non-SEEDs (M) pay four more each.
-expression = "20T+5(W+P+Q)+4(2C+U+M)+1681"
-source_terms = { names = ["C", "M", "P", "Q", "U", "W"], provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:scaling_terms" }
+# At most 12 characters per token, including its separator.
+expression = "12(2(W+P+Q)+8194)"
+source_terms = { names = ["W", "P", "Q"], provider = "esolangs.languages.slow_acv_mammalian.proof_formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 first = 1
@@ -142,9 +133,9 @@ tests = [
 kind = "measurement"
 audited = 2026-11-05
 witness = { arity = 3, rule = "random", seed = 1847 }
-source = { unit = "chars", value = 24423 }
+source = { unit = "chars", value = 84638 }
 scale = 1
 budget = 10
 band = "fast"
 construction = "esolangs.languages.slow_acv_mammalian.generator:slow_acv_mammalian_request"
-notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: construction repair: precompute weight-minus-suffix carry deltas, then update a leaf address at the lowest set bit of each binary row. Weight reads n5/6/7 fall160/384/896->5/6/7, removing the nT scan without changing leaf order or tokens.562 before/after programs are byte-identical;102 native controls include generic n5..12 and both IO moduli. All8 pins and Size anchors remain unchanged; numerical proof bounds/scopes unchanged. Pool wording now distinguishes the four blind pooled weights from the first light read arm."
+notes = "Current replay includes the common in-range print tail; original repair evidence is scoped in its commit: construction repair: precompute weight-minus-suffix carry deltas, then update a leaf address at the lowest set bit of each binary row. Weight reads n5/6/7 fall160/384/896->5/6/7, removing the nT scan without changing leaf order or tokens.562 before/after programs are byte-identical;102 native controls include generic n5..12 and both IO moduli. All8 pins and Size anchors remain unchanged; numerical proof bounds/scopes unchanged. Pool wording now distinguishes the four blind pooled weights from the first light read arm."

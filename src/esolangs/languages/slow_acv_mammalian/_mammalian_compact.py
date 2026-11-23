@@ -8,6 +8,7 @@ from esolangs.languages.slow_acv_mammalian._sums import (
     _aim,
     _crossing_pair,
     _leaf,
+    _print_chunk_seeds,
     _read_seeds,
     _seeds_onto,
 )
@@ -282,8 +283,7 @@ class _Chain:
     def plan(self, inputs: int) -> tuple[list[tuple[int, int | None]], int, int, int]:
         free = min(inputs, len(self.pools) + 1)
         fixed = inputs - free
-        # A nonzero print tail lets the leaf halt without a closing EXCRETE.
-        # Include its guard, and align binary I/O blocks without a large LCM.
+        # Include the leaf guard, and align binary I/O blocks without a large LCM.
         minimum = 6 + self.digit_seeds
         unit = minimum if self.io_modulus == 255 else 1 << (minimum - 1).bit_length()
         stride = lcm(self.io_modulus, unit)
@@ -333,16 +333,39 @@ class _Chain:
                 tokens += self.clear(state)
         return tokens + self.route(state, 0, short=True)
 
+    def plant_print(
+        self, state: _State, array: int, digit: int, target: int
+    ) -> list[str]:
+        """Build one print bank, with its digit centered and sum equal to target."""
+        route = self.route(state, array, short=True)
+        digit_tokens = self.append(state, digit)
+        ballast: list[str] = []
+        count = 0
+        maximum = self.io_modulus - 1
+        while target - state.rest[array] > 2 * maximum:
+            seeds = _print_chunk_seeds(
+                self.head(state),
+                array + 1,
+                state.rest[array],
+                self.modulus,
+                self.io_modulus,
+            )
+            ballast += self.seed(state, seeds)
+            state.acc = self.head(state) + state.rest[array]
+            ballast += ["DIGEST", *self.clear(state)]
+            count += 1
+        if target - state.rest[array] > maximum:
+            ballast += self.append(state, target - state.rest[array] - maximum)
+            count += 1
+        ballast += self.append(state, target - state.rest[array])
+        # count excludes the final write, and is the required leading padding.
+        return [*route, *["EXCRETE"] * count, *digit_tokens, *ballast]
+
     def plant_tables(
         self, state: _State, plan: list[tuple[int, int | None]], base: int
     ) -> list[str]:
-        """Plant the print arrays and pools, then raise the weight array to ``base``."""
+        """Plant the pools, then raise the weight array to ``base``."""
         tokens: list[str] = []
-        for digit, array in enumerate(self.prints):
-            tokens += self.route(state, array, short=True)
-            tokens += self.append(state, 48 + digit)
-            tokens += self.append(state, 1)
-            tokens += self.route(state, 0, short=True)
         for weight, pool in plan:
             if pool is not None:
                 tokens += self.plant_pool(state, weight, pool)
@@ -377,9 +400,15 @@ class _Chain:
         for weight, pool in plan:
             level, state = self.level(state, weight, len(tokens), pool)
             tokens += level
+        target = 2 * len(tokens) + 8192
+        for digit, array in enumerate(self.prints):
+            tokens += self.plant_print(state, array, 48 + digit, target)
         tokens += self.route(state, self.weight)
         tokens += self.set_head(state, self.dispatch_head)
-        return [*tokens, "DIGEST", "LEAPFROG"], base
+        tokens += ["DIGEST", "LEAPFROG"]
+        assert len(tokens) < target
+        tokens += ["SEED"] * (target - 1 - len(tokens))
+        return [*tokens, "SPRINT", "CONSUME", "PRONOUNCE"], base
 
     def build(self, table: str, inputs: int, *, project_inputs: bool = False) -> str:
         original_inputs = inputs

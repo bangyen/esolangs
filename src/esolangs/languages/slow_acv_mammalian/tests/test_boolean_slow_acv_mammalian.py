@@ -251,7 +251,7 @@ class TestSlowAcvMammalian:
         assert (st.nw, st.hw) == (255 + amount, array[0])
 
     def test_the_dispatch_lands_every_row_on_its_own_leaf(self) -> None:
-        """Each run halts inside the leaf slot its inputs selected."""
+        """Each run visits its selected leaf and falls off the shared print tail."""
         from esolangs.languages.slow_acv_mammalian.generator import _LEAF_UNIT, _weights
 
         table = "01101001"
@@ -262,21 +262,65 @@ class TestSlowAcvMammalian:
         weights = _weights(3)
         for row in range(8):
             bits = [(row >> (2 - i)) & 1 for i in range(3)]
-            machine = _Machine(program, ScriptedIO("".join(f"{b}" for b in bits)))
-            while not machine.halted:
-                machine.step()
+            io = ScriptedIO("".join(f"{b}" for b in bits))
+            machine = _Machine(program, io)
             banked = sum(w for w, b in zip(weights, bits, strict=True) if b)
-            assert machine.ind - leaf_base - banked in range(_LEAF_UNIT)
+            selected = leaf_base + banked
+            visited = False
+            while not machine.halted:
+                visited |= machine.ind == selected
+                machine.step()
+            assert visited
+            assert machine.ind == len(machine.tokens)
+            assert io.getvalue() == table[row]
 
     def test_the_emitted_size_is_pinned_and_linear(self) -> None:
-        """Exact sizes per arity, and the leaf table is the whole growth."""
+        """Pin both I/O dialects including the in-range print tail."""
         tables = ("01", "0110", "01101001")
         sizes = [len(boolean.slow_acv_mammalian(table)) for table in tables]
-        assert sizes == [11_962, 18_823, 24_713]
+        assert sizes == [62_806, 73_794, 84_904]
         sizes = [
             len(boolean.slow_acv_mammalian(table, io_modulus=256)) for table in tables
         ]
-        assert sizes == [12_002, 18_888, 24_798]
+        assert sizes == [62_886, 73_914, 85_064]
+
+    @pytest.mark.parametrize("cell_modulus", [255, 256])
+    @pytest.mark.parametrize("io_modulus", [255, 256])
+    @pytest.mark.parametrize("resume", ["at", "after"])
+    @pytest.mark.parametrize("table", ["01", "0110", "00101101"])
+    def test_all_taken_targets_stay_inside_the_program(
+        self, cell_modulus: int, io_modulus: int, resume: str, table: str
+    ) -> None:
+        from esolangs.languages.slow_acv_mammalian.interpreter import _prepare_source
+
+        n = len(table).bit_length() - 1
+        source = boolean.slow_acv_mammalian(
+            table, cell_modulus=cell_modulus, io_modulus=io_modulus
+        )
+        image = _prepare_source(
+            source,
+            cell_modulus=cell_modulus,
+            io_modulus=io_modulus,
+            leapfrog_resume=resume,
+        )
+        for row, answer in enumerate(table):
+            io = ScriptedIO(f"{row:0{n}b}")
+            machine = _Machine(image, io)
+            visited = set()
+            jumps = 0
+            while not machine.halted:
+                cursor = machine.ind
+                assert cursor not in visited
+                visited.add(cursor)
+                cells = machine.lst[machine.ptr]
+                if machine.tokens[cursor] == "LEAPFROG" and cells and cells[-1]:
+                    assert 1 <= machine.acc - cells[0] <= len(machine.tokens)
+                    jumps += 1
+                machine.step()
+            assert jumps
+            assert machine.ind == len(machine.tokens)
+            assert io.getvalue() == answer
+            assert io.reads == n
 
     @pytest.mark.parametrize("io_modulus", [255, 256])
     @pytest.mark.parametrize("table", ["01101001", "0110100110010110" * 4])
@@ -536,7 +580,7 @@ def test_coprime_chain_generates_asymmetric_tables(n: int, io_modulus: int) -> N
         n, table = witness.arity, witness.table()
         artifact = language.generate(table, settings=settings)
         chain = compact_chain(table, n, modulus=255, io_modulus=io_modulus)
-        assert (artifact.source == chain) == (n == 3)
+        assert (artifact.source == chain) == (n == 2)
         restored = language.from_json(language.to_json(artifact))
         prepared = language.prepare(restored)
         for row in range(len(table)):
@@ -740,7 +784,7 @@ def test_compact_pool_retrieves_weight_and_routes(
     assert sum(machine.lst[pool][1:]) == (chain.weight - pool) % 23
 
 
-@pytest.mark.parametrize(("modulus", "budget"), [(255, 65_787), (256, 66_253)])
+@pytest.mark.parametrize(("modulus", "budget"), [(255, 165_220), (256, 165_653)])
 def test_pool_compaction_preserves_three_input_size(modulus: int, budget: int) -> None:
 
     table = "00101101"
@@ -941,12 +985,10 @@ def test_equal_modulus_eleven_input_read_calibration(row: int) -> None:
         peak = max(peak, sum(map(len, machine.lst)))
     assert io.getvalue() == table[row]
     assert io.reads == 11
-    # The slowest sampled path took 10,863 steps; peak was 624 cells.
-    # (Both grew with the both-readings SPRINT guards: the leaf unit
-    # widened by one token, so every downstream address and raise did.)
-    assert steps <= 10_863
-    assert peak <= 624
-    assert len(source) <= 352_552
+    # These sampled peaks include the two print banks.
+    assert steps <= 16_094
+    assert peak <= 2820
+    assert len(source) <= 679_442
 
 
 def test_mammalian_uses_seed_sized_cells() -> None:

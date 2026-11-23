@@ -5,7 +5,7 @@ bit's whole effect is banked on array 16's non-head sum as a weight -- the
 pooled weights are banked blind, without ever reading the sum -- and the
 dispatch jump lands on the non-head sum, so the banked total names the
 leaf slot directly.  A leaf clears the accumulator, SPRINTs to a print
-array, CONSUMEs its middle cell, and PRONOUNCEs it.  All inputs are read
+array, and jumps to a shared tail that prints its middle cell.  All inputs are read
 unconditionally, and the merge equalities are asserted on every build.
 
 Three identities carry the control flow, each proved where it is used:
@@ -21,7 +21,7 @@ chunk window's end (:func:`_merge_address`); ballast is a division
 
 Size:
     O(T) size and build; n=8 zero: 119 chars.
-    n=10 random 1847: 126,380 chars, n=12 random 1847: 323,670 chars.
+    n=10 random 1847: 260,455 chars, n=12 random 1847: 583,406 chars.
     Executed evidence: every table through ``n == 3``, plus sampled rows of
     dense tables through ``n == 12``.
 
@@ -46,7 +46,9 @@ from esolangs.languages.slow_acv_mammalian._sums import (
     _J2,
     _MODULUS,
     _W,
+    _advance_heads,
     _leaf,
+    _print_chunk_seeds,
     _read_seeds,
     _replay,
     _seeds_onto,
@@ -98,11 +100,9 @@ _LEAF_UNIT = 8
 #: is why there is exactly one more of them than there are pools.
 _FREE = len(_POOLS) + 1
 
-#: Fewest inputs at which the cell-255 chain beats the tree, by I/O modulus:
-#: parity 65757 vs 95678 characters at n=3 with I/O 255, 121547 vs 191028
-#: with I/O 256.  One input fewer, the tree wins every table: 41949 vs 47427
-#: at n=2 with I/O 255, 83749 vs 87642 with I/O 256.
-_CHAIN_MIN_INPUTS = {255: 3, 256: 3}
+#: The tree is smaller for both one-bit tables. The chain is smaller
+#: for all 14 nonconstant two-bit tables, at either I/O modulus.
+_CHAIN_MIN_INPUTS = 2
 
 #: Leaf slot of the I/O-255 chain above :data:`_FREE` inputs: the longest
 #: leaf is seven tokens, and its weights step by 255 instead of 256, so 32
@@ -226,17 +226,44 @@ def _plant(st: _Sums) -> list[str]:
     return ["EXCRETE"]
 
 
-def _print_tail(st: _Sums) -> list[str]:
-    """Append a nonzero cell after a print array's digit, so its last cell survives.
+def _print_bank(st: _Sums, array: int, digit: int, target: int) -> list[str]:
+    """Place the digit in the middle and make the non-head sum the target."""
+    route = _route(st, array)
+    digit_tokens = _exact_append(st, digit)
+    rest = digit
+    maximum = st.io_modulus - 1
+    step = array + 1
+    inverse = pow(step, -1, _MODULUS)
+    ballast: list[str] = []
 
-    The leaf's ``CONSUME`` lifts the digit from the middle, and the
-    ``LEAPFROG`` after it fires only if the cell left at the end is nonzero.
-    """
-    tokens = ["DIGEST", "EXCRETE"]
-    _replay(st, tokens)
-    if not st.cells[st.ptr][-1]:  # pragma: no cover - head + digit is nonzero
-        raise AssertionError("the print array ends in a zero cell")
-    return tokens
+    def append(seeds: int) -> None:
+        nonlocal rest
+        _advance_heads(st, seeds)
+        byte = (st.heads[array] + rest) % st.io_modulus
+        st.append(array, byte)
+        rest += byte
+        ballast.extend(["SEED"] * seeds + ["DIGEST", "EXCRETE"])
+
+    def exact(byte: int) -> None:
+        head = (byte - rest) % st.io_modulus
+        append((head - st.heads[array]) * inverse % _MODULUS)
+
+    # Each bulk append adds at least 224 with at most 22 tokens. Keep
+    # the running sum locally so planting does not rescan the bank.
+    while target - rest > 2 * maximum:
+        append(_print_chunk_seeds(st.heads[array], step, rest, _MODULUS, st.io_modulus))
+    if target - rest > maximum:
+        exact(target - rest - maximum)
+    if target > rest:
+        exact(target - rest)
+    cells = st.cells[array]
+    pad = len(cells) - 2
+    assert pad >= 0
+    assert cells[-1]
+    assert rest == target
+    # Zero cells before the digit shift it into the position CONSUME reads.
+    cells[:0] = [0] * pad
+    return [*route, *["EXCRETE"] * pad, *digit_tokens, *ballast]
 
 
 def _route(st: _Sums, dest: int) -> list[str]:
@@ -431,44 +458,21 @@ def _arm_core(st: _Sums, weight: int, pool: int | None) -> list[str]:
 def _dispatch_head(st: _Sums) -> int:
     """Seeds putting array 16's head on the class both print arrays need.
 
-    A leaf SPRINTs with the head as written and the other leaf one SEED
-    later, so the head has to land on ``_PRINT[0]``'s residue *and* stay
-    below 239 -- past that the extra 17 wraps and the second leaf misses.
-    The leaf ends in a LEAPFROG with accumulator ``'0'`` or ``'1'`` on its
-    print array, which halts only when that array's head is at least the
-    digit's ASCII code, so both print heads must clear it as well.
+    The second leaf adds one SEED, so the first head must leave room for
+    the step of 17 without wrapping.
     """
-    heads = st.heads
     want = (_PRINT[0] - _W) % _ARRAYS
-    # Each target head is one seed count (the step is a unit); the print
-    # heads then only filter those counts.
-    counts = sorted(
-        (target - heads[_W]) * _W_INV % _MODULUS
-        for target in range(want, _GREEDY_MIN, _ARRAYS)
-    )
-    # Only SEED moves heads, so they share a phase modulo 256. Absolute phase
-    # 26 meets both print filters; every reachable phase can reach it.
-    return next(
-        count
-        for count in counts
-        if (heads[_PRINT[0]] + (_PRINT[0] + 1) * count) % _MODULUS >= _ASCII_ZERO
-        and (heads[_PRINT[1]] + (_PRINT[1] + 1) * (count + 1)) % _MODULUS > _ASCII_ZERO
-    )
+    return _seeds_onto(st.hw, _W_STEP, range(want, _GREEDY_MIN, _ARRAYS))
 
 
 def _prologue(st: _Sums, pairs: Sequence[tuple[int, int]], base: int) -> list[str]:
-    """Plant the print arrays and pools, then raise array 16 to ``base``.
+    """Plant the pools, then raise array 16 to ``base``.
 
     The raise happens *before* the first read, which is what leaves the
     dispatch with nothing to solve: array 16's non-head sum already names
     the leaf table, and the weights only push it along.
     """
     tokens: list[str] = []
-    for digit, arr in enumerate(_PRINT):
-        tokens += _route(st, arr)
-        tokens += _exact_append(st, _ASCII_ZERO + digit)
-        tokens += _print_tail(st)
-        tokens += _route(st, 0)
     for weight, pool in pairs:
         tokens += _build_pool(st, weight, pool)
     tokens += _route(st, _W)
@@ -717,7 +721,7 @@ def _program(
 
 def _unprojected_255(truth_table: str, n: int, io_modulus: int) -> str:
     """Cell modulus 255 over every input: the chain, or a tree below break-even."""
-    if n >= _CHAIN_MIN_INPUTS[io_modulus]:
+    if n >= _CHAIN_MIN_INPUTS:
         return compact_chain(truth_table, n, modulus=255, io_modulus=io_modulus)
     return decision_tree(truth_table, n, io_modulus=io_modulus)
 
@@ -789,6 +793,11 @@ def _emit(
         tokens += level
         if len(tokens) != pos:  # pragma: no cover - the merge address is the length
             raise AssertionError(f"level ended at {len(tokens)}, merged at {pos}")
+    # Both print banks together take less than a quarter of this target,
+    # plus fixed routing and final-appends overhead.
+    target = 2 * len(tokens) + 8192
+    for digit, array in enumerate(_PRINT):
+        tokens += _print_bank(st, array, _ASCII_ZERO + digit, target)
     tokens += _route(st, _W)
     tail = [*["SEED"] * _dispatch_head(st), "DIGEST", "LEAPFROG"]
     _replay(st, tail)
@@ -799,6 +808,9 @@ def _emit(
         _W + (st.hw + _W_STEP) % _MODULUS
     ) % _ARRAYS != _PRINT[1]:  # pragma: no cover - _dispatch_head solves both
         raise AssertionError(f"head {st.hw} misses the print pair")
+    assert len(tokens) < target
+    tokens += ["SEED"] * (target - 1 - len(tokens))
+    tokens += ["SPRINT", "CONSUME", "PRONOUNCE"]
     return tokens, base
 
 
