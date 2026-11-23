@@ -19,8 +19,7 @@ whose first group folds four inputs into their weight.
 Size:
     Nonconstants end at the highest live cell; n=10 random 1847:
     13,340 chars to n=13, 19,683 at n=14, 52,480 at n=15, and the whole
-    59,049-cell memory from n=16. Constants use 618..639 chars over
-    n=1..17; n=8 zero/one: 632/625 chars.
+    59,049-cell memory from n=16. Constants use 88/86 chars for zero/one over n=1..17.
 
 Raises:
     GeneratorCapError: past seventeen inputs, or seventeen in neither family.

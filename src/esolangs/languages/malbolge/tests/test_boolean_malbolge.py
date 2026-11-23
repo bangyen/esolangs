@@ -305,9 +305,7 @@ def test_first_free_matches_the_cell_scan() -> None:
 def test_constants_read_every_input(n: int, bit: str) -> None:
     table = bit * (1 << n)
     program = boolean.malbolge(table)
-    assert len(program) <= 639
-    if n == 8:
-        assert len(program) == (632 if bit == "0" else 625)
+    assert len(program) == (88 if bit == "0" else 86)
     assert _rows(table, [0, (1 << n) - 1, int(("01" * n)[:n], 2)]) == [bit] * 3
 
 

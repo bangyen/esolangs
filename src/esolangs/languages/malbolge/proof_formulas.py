@@ -12,8 +12,9 @@ def _stub(n: int) -> int:
 def _main(program: str) -> tuple[int, int]:
     """Find the main prefix and its closing instruction, if present."""
     for address, char in enumerate(program):
-        if _op(ord(char), address) == "i":
-            return address + 1, 1
+        op = _op(ord(char), address)
+        if op in ("i", "v"):
+            return address + 1, int(op == "i")
     return len(program), 0
 
 
@@ -35,5 +36,5 @@ def workspace_terms(n: int, program: str) -> dict[str, int]:
         "E": prefix,
         "W": writes,
         "J": _stub(n) if closed else 0,
-        "F": int(prefix < len(program)),
+        "F": closed,
     }

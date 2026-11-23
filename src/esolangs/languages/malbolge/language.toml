@@ -30,7 +30,7 @@ evidence = "docs/proofs/index.md#malbolge-bound"
 "11111110" = { commands_by_row = { "0" = 6656, "1" = 6656, "2" = 6656, "3" = 6656, "4" = 6656, "5" = 6656, "6" = 6657, "7" = 6657 }, source_units = 13340 }
 
 [catalogue]
-folding_constant = "direct constant builder after all reads: 618..639 characters over n=1..17"
+folding_constant = "direct constant builder after all reads: 88/86 characters for zero/one over n=1..17"
 
 
 [ablations]
