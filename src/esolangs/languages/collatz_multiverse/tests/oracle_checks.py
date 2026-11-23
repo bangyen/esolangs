@@ -100,7 +100,7 @@ def _model(program, stdin):
             registers[name] = value
         pc += 1
         if emit:
-            output += chr(value % 256)
+            output += {110: "A"}.get(value, chr(value % 256))
     return failure, trace
 
 

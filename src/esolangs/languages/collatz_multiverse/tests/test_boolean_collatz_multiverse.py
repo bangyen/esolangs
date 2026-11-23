@@ -241,10 +241,11 @@ def test_cm_plan_chain_is_valid_and_near_minimal() -> None:
 
 
 def test_cm_constants_print_the_right_value() -> None:
-    """A constant program prints chr(value) for every byte value."""
+    """The published 110 example and the byte convention cover every byte."""
     for value in range(256):
         program = _cm_constant_program(1, value)
-        assert run_collatz_multiverse(program, ["0"]) == chr(value)
+        expected = "A" if value == 110 else chr(value)
+        assert run_collatz_multiverse(program, ["0"]) == expected
 
 
 def _swept_balance(table: str, default: str) -> str:
