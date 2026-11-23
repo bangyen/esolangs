@@ -4,8 +4,9 @@ from io import BytesIO, StringIO
 
 import pytest
 
-from esolangs import ExecutionLimits, Language
+from esolangs import ArgumentError, ExecutionLimits, Language
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._input import InputFrame, read_input
 
 FRAMED = [entry.name for entry in LANGUAGES.values() if entry.contract.frame_stdin]
 
@@ -53,3 +54,36 @@ def test_isolated_boolean_artifact_keeps_the_next_record(name):
     assert lang.read_answer(result.output) == "0"
     assert result.input_position == len(first)
     assert stream.read() == second.encode()
+
+
+def test_framed_input_accepts_a_partial_record():
+    frame = InputFrame(2, lines=True)
+
+    assert read_input("first\nsecond", frame=frame) == "first\nsecond"
+    assert read_input(BytesIO(b"first\nsecond"), frame=frame) == "first\nsecond"
+
+
+def test_framed_input_counts_decoded_characters():
+    stream = BytesIO("éλtail".encode())
+
+    assert read_input(stream, frame=InputFrame(2, lines=False)) == "éλ"
+    assert stream.read() == b"tail"
+
+
+@pytest.mark.parametrize(
+    ("chunks", "message"),
+    [
+        ((b"\xc3", "é"), "changed from bytes to text"),
+        ((42,), "must return a string or bytes"),
+        (("ab",), r"too much input for read\(1\)"),
+    ],
+)
+def test_framed_input_rejects_invalid_reader_responses(chunks, message):
+    class Reader:
+        def read(self, size):
+            assert size == 1
+            return next(responses)
+
+    responses = iter(chunks)
+    with pytest.raises(ArgumentError, match=message):
+        read_input(Reader(), frame=InputFrame(1, lines=False))
