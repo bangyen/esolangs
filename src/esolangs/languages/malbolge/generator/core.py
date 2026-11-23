@@ -26,7 +26,9 @@ from .emitter import _Planner, _valid_chars
 from .isa import (
     _ACTIVE,
     _ALL1,
+    _ALL2,
     _CONSTS,
+    _ROTATE,
     _WORD_TRITS,
     _char_for,
     _first_free,
@@ -78,20 +80,17 @@ _BOOTSTRAP_Z0 = _BOOTSTRAP_Z1 - 3
 #: ``g`` either side of the first walked 80.
 _OPERAND_G = {"1": (71, _BOOTSTRAP_W, 71), "n": (70, _BOOTSTRAP_W, 69)}
 _OPERAND_CHAIN = "K0 K2"
-#: Stub address chains.  ``rot K2`` on ``g`` = 108 + 3 + ``g0`` (trits ``g0``,
-#: 1, 0, 1, 1) is ``(2, 0, 2, 2, 0, .., 0, s)`` with ``s`` 2 or 1: it and its
-#: 0/1 swap start three-cell stubs in clear nine-cell blocks, so one chain
-#: serves both hubs of ``0`` (``g0`` 1) or ``x`` (2).  ``rot`` three times on
-#: ``g`` = 83 + 3 * ``k`` (trits 2, ``k`` in base 3, 0, 0, 1) swaps to 361
-#: cells into the 729-cell run of trits 6, 7 = ``(1, 2)`` that trits 1, 2
-#: pick, room for an operand stub; each ``1`` and ``n`` hub takes its own.
-_SHORT_STUB_G = {"x": 113}
-_SHORT_STUB_CHAIN = "rot K2"
+#: Three rotations on ``g = 83 + 3*k`` swap to 361 cells into the
+#: 729-cell run of trits 6, 7 = ``(1, 2)`` that trits 1, 2 pick.
 _LONG_STUB_G = {"1": (83, 86), "n": (89, 92), "0": (98, 101)}
 _LONG_STUB_CHAIN = "rot rot rot"
-_LANE_CHAIN = "rot rot rot rot rot"
+# A half-word rotation maps the lane number straight to its base address.
+_LANE_TRITS = _WORD_TRITS // 2
+_LANE_WIDTH = 3**_LANE_TRITS
+_LANE_CHAIN = " ".join(["rot"] * _LANE_TRITS)
 # The missing digit (trits 6, 7) gives one 3**6-cell gap per top digit.
 _STUB_GAP_DIGIT = 1 + 2 * 3
+_STUB_GAP_WIDTH = 3**6
 # A printable jump lands at most at 127. The constants take the first
 # two walked cells immediately above that region.
 _WALKED_START = 128
@@ -259,6 +258,21 @@ def _s01(value: int) -> int:
     return _crazy(value, _ALL1)
 
 
+def _identity_stub_seed() -> int:
+    """Invert the chain for the identity stub at the end of a hub-sized block."""
+    block = 3**_HUB_LOW_TRITS
+    # Use the first nonzero top digit. Printable seeds have zero high
+    # trits, which become ones after the hub swap. The all-2 hub digit
+    # clears this block, and the final three cells hold the stub.
+    upper = (_ALL1 % _ROTATE) // block**2
+    base = (upper * block + block - 1) * block + block - 1 - len(_T_STUBS["x"])
+    rotated = _crazy(_ALL2, _s01(base))
+    return 3 * (rotated % _ROTATE) + rotated // _ROTATE
+
+
+_IDENTITY_STUB = _identity_stub_seed(), "rot K2"
+
+
 def _seed_g(m: int) -> int:
     """Return the ``m``-th label's seed ``g`` (:data:`_SEED_CHAIN`).
 
@@ -309,7 +323,8 @@ def _stub_builds(
     """
     if single is not None:
         return [(g, chain, hubs[lab]) for lab, (g, chain) in single.items()]
-    builds = [(g, _SHORT_STUB_CHAIN, hubs[lab]) for lab, g in _SHORT_STUB_G.items()]
+    g, chain = _IDENTITY_STUB
+    builds = [(g, chain, hubs["x"])]
     for lab, gs in _LONG_STUB_G.items():
         pairs = zip(gs, hubs[lab], strict=True)
         builds += [(g, _LONG_STUB_CHAIN, (v,)) for g, v in pairs]

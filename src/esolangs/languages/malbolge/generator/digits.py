@@ -64,11 +64,14 @@ from esolangs.languages.malbolge.interpreter import _crazy
 from .core import (
     _ANSWER,
     _HUB_LOW_TRITS,
+    _IDENTITY_STUB,
     _K_CELL,
     _LANE_CHAIN,
+    _LANE_WIDTH,
     _OPERAND_CHAIN,
     _SEED_CHAIN,
     _STUB_GAP_DIGIT,
+    _STUB_GAP_WIDTH,
     _T_HELPERS,
     _T_HUB_LABELS,
     _T_LABELS,
@@ -198,7 +201,7 @@ def _lane_mid_stub(lane: int) -> tuple[int, str]:
     """Place a stub at the midpoint of a 243-cell lane."""
     # Five rotations move the five seed trits above five zero trits.
     # The hub swap turns those zeros into the lane's midpoint.
-    return _s01(lane) % 3**5, _LANE_CHAIN
+    return _s01(lane) % _LANE_WIDTH, _LANE_CHAIN
 
 
 def _block_mid_stub(block: int) -> tuple[int, str]:
@@ -239,7 +242,7 @@ def _short_layout(arity: int = _SHORT_N) -> _Layout:
     # each top-digit band. Use the first nonzero band for shared stubs.
     missing = _STUB_GAP_DIGIT
     block = 9 + missing
-    lane = 3 * block
+    lane = block * (_STUB_GAP_WIDTH // _LANE_WIDTH)
     one = _lane_mid_stub(lane)
     negated = _block_mid_stub(block)
     # The two long stubs and the three-character identity fit at the
@@ -262,16 +265,24 @@ def _short_layout(arity: int = _SHORT_N) -> _Layout:
 def _full_layout(*, weight_fold: bool = False) -> _Layout:
     """Pack the operand stubs in the three lanes of the first free block."""
     seeds = {label: (g, _SEED_CHAIN) for label, g in _D_SEEDS.items()}
-    identity = (113, "rot K2")
+    # The first usable top band starts at _D_FLOOR. Invert the
+    # half-word rotation by using each free lane number as the seed.
+    gap_start = _D_FLOOR + _STUB_GAP_DIGIT * _STUB_GAP_WIDTH
+    first_lane = gap_start // _LANE_WIDTH
+    operands = "01n"
+    identity = _IDENTITY_STUB
     if weight_fold:
         # Rotating the readout moves a table onto the ordinary n hub.
         seeds["n"] = _seed_g(5), _SEED_CHAIN
-        identity = 51, _LANE_CHAIN
+        identity = first_lane + len(operands), _LANE_CHAIN
     return _Layout(
         seeds,
         {
             "x": identity,
-            **{label: (48 + lane, _LANE_CHAIN) for lane, label in enumerate("01n")},
+            **{
+                label: (lane, _LANE_CHAIN)
+                for lane, label in enumerate(operands, first_lane)
+            },
         },
     )
 
@@ -665,13 +676,14 @@ def _paginate(
         block = 2 * radix + _STUB_GAP_DIGIT
         # The first block number is below the printable range. Move
         # one more seed trit into it and use one more rotation.
-        specs = [(3 * block, 5, 3**6)] + [
-            (radix * top + _STUB_GAP_DIGIT, 4, 3**6) for top in range(3, radix)
+        specs = [(3 * block, 5, _STUB_GAP_WIDTH)] + [
+            (radix * top + _STUB_GAP_DIGIT, 4, _STUB_GAP_WIDTH)
+            for top in range(3, radix)
         ]
     elif n in (12, 13, 14):
         # Tail code starts at the first rotation-aligned address past
         # all tables, hubs, and stubs. Keep the page within one top band.
-        lane = 3**5
+        lane = _LANE_WIDTH
         seed = max(occupied) // lane + 1
         base = seed * lane
         width = _D_FLOOR - base % _D_FLOOR
