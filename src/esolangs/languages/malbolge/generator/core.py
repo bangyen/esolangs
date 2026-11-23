@@ -7,9 +7,8 @@ the table cell, ``j`` to the pointer cell ``T + 1``, ``j`` to the *hub*
 holds the labels, but they are written last: until then the working cells
 dead by that point (the setup helpers and the gadget's) sit there, where
 every ``j`` through an unwritten cell lands, and the rest in the walked
-cells ``128..419``.  Navigation is the chain-valued scan-greedy rule
-over ``o`` and ``j`` through every cell whose value is known
-(:class:`~.emitter._ScanGreedy`).
+cells ``128..281``. Navigation uses the indexed landing intervals
+in :mod:`.emitter`.
 
 The readouts are a product set: each two-trit digit of ``S`` misses one
 value, digit 1 (trits 2, 3) missing ``(2, 2)`` and digit 3 (trits 6, 7)
@@ -26,7 +25,7 @@ from esolangs.languages.malbolge.interpreter import _XLAT1, _crazy
 from .emitter import _Planner, _valid_chars
 from .isa import _ACTIVE, _ALL1, _CONSTS, _first_free, _g, _progression, _rot
 
-_ENTRY = 420
+_ENTRY = 282
 #: ``d`` after the entry ``j`` at ``_ENTRY``: the walked cell its character names.
 _START_D = 34 + (7 - _ENTRY) % 94
 #: Label of the pointer cell ``T + 1`` for ``T`` in ``33..126`` (``n`` is
@@ -65,6 +64,7 @@ _SHORT_STUB_G = {"x": 113}
 _SHORT_STUB_CHAIN = "rot K2"
 _LONG_STUB_G = {"1": (83, 86), "n": (89, 92), "0": (98, 101)}
 _LONG_STUB_CHAIN = "rot rot rot"
+_LANE_CHAIN = "rot rot rot rot rot"
 #: Fresh all-1 and all-2 cells just past the pointer region, for the paths.
 _T_LOW = (128, 129)
 #: ``g`` values of the constant-building cells; only ``z0`` (``K0``) is read
@@ -106,13 +106,22 @@ def _build_constants(main: _Planner, helper: dict[str, int]) -> None:
     main.op("*", helper["z1"])
 
 
-def _table_char(h: int, label: str, labels: dict[int, str]) -> int:
-    """Return the source character at ``h`` that points at a ``label`` cell."""
-    for op in _ACTIVE:
-        t = 33 + (_XLAT1.index(op) - h) % 94
-        if labels.get(t) == label:
-            return t
-    raise AssertionError(f"no {label} character at {h}")  # pragma: no cover
+_SOURCE_MASK = sum(1 << _XLAT1.index(op) for op in _ACTIVE)
+_LABEL_MASKS = {
+    label: sum(1 << i for i, x in enumerate(_T_LABELS) if x == label)
+    for label in "01xn"
+}
+
+
+def _table_char(h: int, label: str) -> int:
+    """Rotate the label mask into instruction coordinates and take its low bit."""
+    shift = h % 94
+    mask = _LABEL_MASKS[label]
+    valid = ((mask << shift) | (mask >> (94 - shift))) & _SOURCE_MASK
+    if not valid:
+        raise AssertionError(f"no {label} character at {h}")
+    offset = (valid & -valid).bit_length() - 1
+    return 33 + (offset - shift) % 94
 
 
 def _chain(value: int, ops: str) -> int:
@@ -173,10 +182,7 @@ def _walker(used: set[int], lo: int = 128, hi: int = _ENTRY) -> Callable[..., in
     """
 
     def walked(value: int | None = None) -> int:
-        if value is None:
-            address = next(a for a in range(lo, hi) if a not in used)
-        else:
-            address = _first_free(value, lo, hi, used)
+        address = _first_free(value, lo, hi, used)
         used.add(address)
         return address
 
@@ -273,6 +279,9 @@ def _hub_layout(
     avoid: set[int],
     floor: int,
     builds: list[_Build] | None = None,
+    *,
+    packed: bool = False,
+    claimed: set[int] | None = None,
 ) -> tuple[dict[int, int], dict[int, str]]:
     """Return the hubs' ``j`` characters and the stub code, by label's hubs.
 
@@ -287,9 +296,10 @@ def _hub_layout(
     for g, chain, vs in _stub_builds(hubs) if builds is None else builds:
         address = _chain(g, chain)
         for v in vs:
-            address = _s01(address)
+            if not packed or chain != _LANE_CHAIN:
+                address = _s01(address)
             lab = hub_label[v]
-            data[v + 2] = min(_valid_chars(v + 2))
+            data[v + 2] = (max if packed else min)(_valid_chars(v + 2))
             stub = _T_STUBS.get(lab) or _operand_stub(data[v + 2] + 1, operands[lab])
             stubs.update(enumerate(stub, address + 1))
             reserved += [v + 1, v + 2, *range(address, address + 1 + len(stub))]
@@ -297,6 +307,8 @@ def _hub_layout(
         raise AssertionError("a hub or stub collides")
     if min(reserved) < floor:
         raise AssertionError("a hub or stub sits below the floor")
+    if claimed is not None:
+        claimed.update(reserved)
     return data, stubs
 
 
@@ -306,6 +318,7 @@ def _write_hubs(
     pointer: dict[int, int],
     builds: list[_Build],
     builders: list[int],
+    swap_cell: int | None = None,
 ) -> None:
     """Prime every hub cell to all-1, then run each build and write its hubs.
 
@@ -317,7 +330,14 @@ def _write_hubs(
             main.hub(pointer[v], v)
             main.raw("p")
     for (_, chain, vs), cell in zip(builds, builders, strict=True):
+        swap = swap_cell is not None and chain == _LANE_CHAIN
+        if swap and swap_cell is not None:
+            main.op("*", helper["all1"])
+            main.op("p", swap_cell)
+            main.op("p", swap_cell)
         _emit_chain(main, cell, chain, helper)
+        if swap and swap_cell is not None:
+            main.op("p", swap_cell)
         for v in vs:
             main.hub(pointer[v], v)
             main.raw("p")
@@ -333,25 +353,19 @@ def _prime(main: _Planner, helper: dict[str, int], cells: Iterable[int]) -> None
 
 
 def _merge_code(
-    parts: Iterable[dict[int, str]],
+    main: dict[int, str],
+    stubs: dict[int, str],
     data: dict[int, int],
     tables: set[int],
-    code_end: int,
-    ceiling: int | None = None,
+    claimed: set[int],
 ) -> dict[int, str]:
-    """Return ``parts`` laid over ``o``; raises on any collision.
-
-    No part may overlap another or ``data``, and no table cell may sit on
-    code or data or at or below ``code_end``; ``ceiling`` caps ``code_end``.
-    """
-    code = dict.fromkeys(range(_ENTRY), "o")
-    for part in parts:
-        if clash := part.keys() & code.keys():
-            raise AssertionError(f"code overlaps at {min(clash)}")
-        code.update(part)
+    """Combine the code only after checking every occupied address."""
+    code = dict.fromkeys(range(_ENTRY), "o") | main
+    if code.keys() & claimed:
+        raise AssertionError("a main instruction overlaps a hub or stub")
+    code.update(stubs)
     if data.keys() & code.keys():
         raise AssertionError("a data cell overlaps code")
-    hits = tables & (code.keys() | data.keys())
-    if hits or min(tables) <= code_end or (ceiling is not None and code_end >= ceiling):
+    if tables & (code.keys() | data.keys()):
         raise AssertionError("a table cell collides with code")
     return code

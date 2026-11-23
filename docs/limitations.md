@@ -126,23 +126,12 @@ measurements for the other trials.
 
 ### Searches
 
-Malbolge's table-independent navigation (`emitter.py`'s `goto`) scans the
-next 32 cells and weighs jumps against walking, using pointer chains, cycle
-follows and bounded second-jump scans. Its main line ends at cell 6,530 for
-one input, below the 6,561 boundary. On the previously recorded memory states, the
-cheapest paths with at most three jumps per `goto` end at 6,607, and
-allowing four jumps brings the end to 6,558.
-
-The bounded-read lower bound concerns fixed probes plus cycle data
-(effective start and target). Across the traced states and their
-single-cell unwrite variants, changing any of 59 distinct cells can
-change the optimal first step. A fixed probe set of at most 58 cells
-therefore fails. A separate witness excludes even the full written
-pattern, and one state forces 15 reads with adaptive probes. The
-restricted algebraic signature (derived indices and per-trit algebra,
-with arbitrary constant equality and random access excluded) remains
-open for terms of any size. The classified invariant relations gave no
-separating product relation.
+Malbolge routes the data pointer through fixed landing intervals. Each
+interval is read from cumulative bit masks indexed by landing, and the
+lowest eligible source bit gives the jump. A fixed reset handles
+backward walks. Continuation pages occupy gaps between readout blocks.
+The earlier scan-greedy router and its fixed-probe lower bounds are
+recorded in the history of this section.
 
 Short-layout hubs use ternary masks, and stubs use the gaps left by
 held reads. The hub and stub layout checks every occupied cell against the

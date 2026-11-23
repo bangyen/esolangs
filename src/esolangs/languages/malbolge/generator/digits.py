@@ -21,14 +21,13 @@ arrives at trit 0 holding exactly the 1 or 2 it needs (:func:`_d_outputs`,
 Each digit misses one of its nine values.  A ``swap12`` on group 4's ``v``
 and on group 1's ``u`` and a final ``swap01`` of the whole word make the top
 digit miss ``(0, 0)`` and digit 1 miss ``(2, 2)``: every readout lies in
-6561..59039, so the code fits below the table and no cell wraps past 59048.
+6561..59039, and no cell wraps past 59048. Continuation pages use missing digit blocks.
 
 Up to fifteen inputs the last group's held reads are chosen so the tables
 pack low (``'1','0','1'`` to thirteen: 6562..13113; fourteen ``'1','0'``:
 ..19674; fifteen ``'0'``: 19684..52479), and each label has one hub and a
 stub in the gaps or just past the tables (:func:`_short_layout`): the source
-ends at its highest live cell, 13,340 characters to thirteen inputs, 19,683
-at fourteen, 52,480 at fifteen, instead of the 59,049-cell store.
+ends at its highest live cell, including any continuation page.
 
 Fewer than sixteen inputs hold ``16 - n`` of the fifteen reads at a
 constant, ``'0'`` unless the arity's tables need the ``'1'`` above: three per
@@ -54,7 +53,7 @@ weight, so one cell serves every row of a weight.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from functools import cache
 from typing import NamedTuple
 
@@ -65,6 +64,7 @@ from esolangs.languages.malbolge.interpreter import _crazy
 from .core import (
     _ANSWER,
     _K_CELL,
+    _LANE_CHAIN,
     _OPERAND_CHAIN,
     _SEED_CHAIN,
     _T_HELPERS,
@@ -91,7 +91,7 @@ from .core import (
     _walker,
     _write_hubs,
 )
-from .emitter import _Planner, _valid_chars
+from .emitter import _Page, _Planner, _valid_chars
 from .isa import (
     _CONSTS,
     _WORDS,
@@ -157,7 +157,7 @@ _D_SEEDS = {lab: _seed_g(m) for m, lab in enumerate(_T_HUB_LABELS, 1)}
 #: held reads are ``'1','0','1'`` (49, 48, 49), which puts every table in
 #: 6562..13113.  Each label has one hub (pointer value ``s01(chain(g))``, all
 #: its cells equal) at 13122..13130; its stub sits in the table-free run
-#: 11664..12392 or past 13113, so the source ends at 13,340.  Arities up to
+#: 11664..12392 or past 13113. Arities up to
 #: ``_SHORT_MAX`` get their own layout over their own tables: 14 holds
 #: ``'1','0'`` (tables 6562..19674), 15 holds ``'0'`` (tables 19684..52479;
 #: ``'1'`` would reach 59,039); 16 fills the store.
@@ -225,6 +225,23 @@ def _short_layout(arity: int = _SHORT_N) -> _Layout:
         # fourth stub just above the top table and the four hubs.
         zero = (3**4 + 1, "K2 K0 rot rot")
     return _Layout(seeds, {"1": one, "n": negated, "0": zero, "x": identity})
+
+
+def _full_layout(*, weight_fold: bool = False) -> _Layout:
+    """Pack the operand stubs in the three lanes of the first free block."""
+    seeds = {label: (g, _SEED_CHAIN) for label, g in _D_SEEDS.items()}
+    identity = (113, "rot K2")
+    if weight_fold:
+        # Rotating the readout moves a table onto the ordinary n hub.
+        seeds["n"] = _seed_g(5), _SEED_CHAIN
+        identity = 51, _LANE_CHAIN
+    return _Layout(
+        seeds,
+        {
+            "x": identity,
+            **{label: (48 + lane, _LANE_CHAIN) for lane, label in enumerate("01n")},
+        },
+    )
 
 
 def _longest_stub(n: int) -> int:
@@ -307,21 +324,15 @@ def _d_choice(s: tuple[int, ...], group: int) -> _Choice:
     ``S_1`` 1, or 2 when ``S_3 = 2``, from which 1 is out of reach.  Digits of
     ``S`` need ``v = 2`` above them and ``u = 1`` one trit lower.
     """
-    swap_u, swap_v = group == _D_SWAP_U, group == _D_SWAP_V
-    us = [_crazy(0, a) % 3 if swap_u else a for a in range(3)]
-    vs = [_crazy(0, a) % 3 if swap_v else a for a in range(3)]
     _, s1, s2, s3 = s[:4]
     trit1 = (0, 1) if s1 == 2 else (2, 2) if s2 == 2 else (1, 2)
     if s2 == _DIGIT:
-        v2 = vs.index(2)
+        v2 = 2
+    elif s2 == 2:
+        v2 = 0
     else:
-        target = 2 if us[trit1[0]] == 2 else 0
-        v2 = [_crazy(v, s2) % 3 for v in vs].index(target)
-    if s3 == _DIGIT:
-        u2 = us.index(1)
-    else:
-        a = _crazy(vs[2], s3) % 3
-        u2 = [_crazy(a, u) % 3 for u in us].index(2 if s3 == 2 else 1)
+        v2 = int(group != _D_SWAP_V)
+    u2 = int(group != _D_SWAP_U) if s3 == _DIGIT else 2 * int(s3 != 0)
     return trit1, (u2, v2), (1, 2)
 
 
@@ -457,12 +468,11 @@ def _readouts(n: int) -> tuple[int, ...]:
 
 
 class _Digits(NamedTuple):
-    """One arity's build: code, data, table cell per prefix, labels."""
+    """One arity's build: code, data, table cell per prefix, words."""
 
     code: dict[int, str]
     data: dict[int, int]
     tables: tuple[int, ...]
-    labels: dict[int, str]
     words: int
 
 
@@ -470,7 +480,7 @@ class _Digits(NamedTuple):
 def _digits(
     n: int, drop: tuple[int, int] | None = None, *, drain_last: bool = False
 ) -> _Digits:
-    """Return ``(code, data, table cell per prefix, labels)`` for ``n`` inputs.
+    """Return ``(code, data, table cell per prefix, words)`` for ``n`` inputs.
 
     ``drop`` is a ``(group, token)`` pair naming one discarded read in
     that gadget group (the seventeen-input projection build); the
@@ -478,40 +488,38 @@ def _digits(
     any code, stub, hub or data cell collides with another or with a
     table cell, or if the readouts are not distinct.
     """
-    tables = tuple(s + 1 for s in _readouts(n))
+    tables = _readouts_cells() if n == _DIGITS_N else tuple(s + 1 for s in _readouts(n))
     if len(set(tables)) != len(tables) or max(tables) >= _WORDS:
         raise AssertionError("readouts collide or wrap")
-    # Sixteen's cells hold every arity's, so every build avoids the same set.
-    arity = max(n, _SHORT_N)
-    layout = _short_layout(arity) if _short(n) else None
-    if layout:
-        # Smaller arities' cells are a subset of the largest short one's.
-        cells_of_tables = {s + 1 for s in _readouts(arity)}
-    else:
-        cells_of_tables = set(_readouts_cells())
+    short = _short(n)
+    layout = _short_layout(max(n, _SHORT_N)) if short else _full_layout()
     cells = _allocate_cells(layout)
-    _, pointer = _pointers(
-        _D_LABEL, _seed_values(layout).items(), single=layout is not None
+    _, pointer = _pointers(_D_LABEL, _seed_values(layout).items(), single=True)
+    occupied = set(tables)
+    claimed: set[int] = set()
+    data, stubs = _hub_layout(
+        _hubs(layout),
+        occupied,
+        _D_FLOOR,
+        cells.builds,
+        packed=not short,
+        claimed=claimed,
     )
-    builds = _stub_builds(_hubs(layout), layout.stubs) if layout else None
-    data, stubs = _hub_layout(_hubs(layout), cells_of_tables, _D_FLOOR, builds)
 
     main, _ = _main_planner(data)
     _emit_digit_setup(main, cells)
+    walked = _continuation_cells(cells)
+    _paginate(main, cells, walked, n, min(tables), claimed | occupied)
     _emit_digit_groups(main, n, cells, drop)
-    _emit_digit_jump(main, cells, pointer, layout, drain_last=drain_last)
+    swap_cell = None if short else walked()
+    _emit_digit_jump(
+        main, cells, pointer, layout, drain_last=drain_last, swap_cell=swap_cell
+    )
     if drain_last:
         stubs = {a: "o" if op == "/" else op for a, op in stubs.items()}
-    code_end = main.c
-
-    code = _merge_code(
-        (main.code, stubs), data, cells_of_tables, code_end, ceiling=_D_FLOOR
-    )
-    labels = {p - 1: lab for p, lab in _D_LABEL.items()}
-    words = _WORDS
-    if layout:
-        words = max(*code, *data, *tables) + 1
-    return _Digits(code, data, tables, labels, words)
+    code = _merge_code(main.code, stubs, data, occupied, claimed)
+    words = max(*code, *data, *tables) + 1 if short else _WORDS
+    return _Digits(code, data, tables, words)
 
 
 class _DCells(NamedTuple):
@@ -530,7 +538,11 @@ class _DCells(NamedTuple):
     to_49: int = -1
 
 
-def _allocate_cells(layout: _Layout | None = None) -> _DCells:
+def _allocate_cells(
+    layout: _Layout | None = None,
+    *,
+    inits: tuple[tuple[int, ...], ...] | None = None,
+) -> _DCells:
     """Allocate the working cells, each the least free one of its ``g`` value.
 
     Cells dead before the labels are written -- the setup helpers, the
@@ -538,14 +550,15 @@ def _allocate_cells(layout: _Layout | None = None) -> _DCells:
     through an unwritten cell lands, so a back jump is a short walk.  ``g``
     has period 94, so a value has one cell there.  The rest take walked
     cells ``128..``, past the operand cells.  With every cell walked the
-    main line would end past the tables. Its closing ``i`` is at 6,530
-    for n=1 and 5,753 for n=16.
+    main line would end past the tables.
     """
     operands = _operand_cells()
     used = {*_T_LOW, *(cell for cells in operands.values() for cell in cells)}
     helper = _helper_cells(used)
     low, walked = _walker(used, 34), _walker(used)
-    gadget = [[low(v) for v in init] for init in _d_inits()]
+    gadget = [
+        [low(v) for v in init] for init in (_d_inits() if inits is None else inits)
+    ]
     s_cell, z_cell = low(), walked()
     # ``p`` under ``A = all-1`` takes 38 to 2 and keeps 2.
     two = low(38)
@@ -576,6 +589,54 @@ def _allocate_cells(layout: _Layout | None = None) -> _DCells:
     )
 
 
+def _continuation_cells(cells: _DCells) -> Callable[..., int]:
+    """Allocate bridge words after reserving the fold's live operands."""
+    used = {
+        *cells.helper.values(),
+        *cells.builders,
+        *cells.seeds.values(),
+        cells.s_cell,
+        cells.z_cell,
+        cells.to_48,
+        cells.to_49,
+        cells.two,
+        cells.operand,
+        *(v for group in cells.gadget for v in group),
+        *(v for group in _operand_cells().values() for v in group),
+    }
+    return _walker(used)
+
+
+def _paginate(
+    main: _Planner,
+    cells: _DCells,
+    walked: Callable[..., int],
+    n: int,
+    limit: int,
+    occupied: set[int],
+) -> None:
+    """Put continuation pages in the held-read tail or in empty radix blocks."""
+    if n == _DIGITS_N:
+        # Top digits 2 through 8 have a free 729-cell block at digit 7.
+        specs = [(75, 5, 3**6)] + [(9 * top + 7, 4, 3**6) for top in range(3, 9)]
+    elif n in (12, 13, 14):
+        specs = [(82 if n == 14 else 55, 5, 3001)]
+    else:
+        return
+    pages = []
+    for seed, rotations, width in specs:
+        pointer = walked(seed)
+        chain = " ".join(["rot"] * rotations)
+        _emit_chain(main, pointer, chain, cells.helper)
+        base = _chain(seed, chain)
+        if main.mem[pointer] != base or any(
+            a in occupied for a in range(base, base + width)
+        ):
+            raise AssertionError("continuation page collides with occupied cells")
+        pages.append(_Page(pointer, base + 1, base + width))
+    main.paginate(limit, pages)
+
+
 def _emit_digit_setup(main: _Planner, cells: _DCells) -> None:
     """Emit the setup: the constants, then priming the working cells."""
     helper = cells.helper
@@ -592,6 +653,7 @@ def _emit_labels(
     cells: _DCells,
     pointer: dict[int, int],
     layout: _Layout | None = None,
+    swap_cell: int | None = None,
 ) -> None:
     """Emit the label cells, the hubs' stub addresses and the middle operand.
 
@@ -612,7 +674,7 @@ def _emit_labels(
     _seed_label_chains(
         main, helper, chains, cells.seeds, _D_LABEL, single=layout is not None
     )
-    _write_hubs(main, helper, pointer, cells.builds, cells.builders)
+    _write_hubs(main, helper, pointer, cells.builds, cells.builders, swap_cell)
     _emit_chain(main, cells.operand, _OPERAND_CHAIN, helper)
 
 
@@ -698,17 +760,19 @@ def _emit_digit_jump(
     layout: _Layout | None = None,
     *,
     drain_last: bool = False,
+    swap_cell: int | None = None,
+    rotate_readout: bool = False,
 ) -> None:
     """Emit the finish: the readout, the labels, then the jump to the row's stub."""
     main.op("p", cells.z_cell)
-    _emit_labels(main, cells, pointer, layout)
+    _emit_labels(main, cells, pointer, layout, swap_cell)
     _emit_zero(main, cells)
     if drain_last:
         # An unlabelled boot cell is dead. Save the final essential read there;
         # two all-2 swaps restore it after the discarded byte, then all-1
         # undoes the initial save. Stubs now receive A instead of reading it.
         helper = cells.helper
-        scratch = next(a for a in range(34, 128) if a not in _D_LABEL)
+        scratch = cells.two
         main.op("*", helper["all1"])
         main.op("p", scratch)
         main.op("p", scratch)
@@ -720,6 +784,9 @@ def _emit_digit_jump(
         main.op("*", helper["all2"])
         main.op("p", scratch)
         main.op("p", helper["all1"])
+    if rotate_readout:
+        main.op("*", cells.z_cell)
+        main.op("*", cells.z_cell)
     _t_jump(main, cells.z_cell)
 
 
@@ -747,12 +814,12 @@ def _hubs(layout: _Layout | None = None) -> dict[str, tuple[int, ...]]:
 
 def _render_build(truth_table: str, build: _Digits) -> str:
     """Return ``build``'s program with ``truth_table``'s answer cells filled."""
-    code, data, tables, labels, words = build
+    code, data, tables, words = build
     program = _program(code)
     program.update(data)
     for row, h in enumerate(tables):
         label = _ANSWER[truth_table[2 * row : 2 * row + 2]]
-        program[h] = _table_char(h, label, labels)
+        program[h] = _table_char(h, label)
     return _render(program, words)
 
 

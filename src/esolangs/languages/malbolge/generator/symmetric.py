@@ -28,35 +28,31 @@ from esolangs.languages.malbolge.interpreter import _crazy
 from .core import (
     _ANSWER,
     _K_CELL,
-    _T_LOW,
-    _Build,
     _hub_layout,
     _main_planner,
     _merge_code,
-    _operand_cells,
     _pointers,
-    _stub_builds,
     _table_char,
-    _walker,
 )
 from .digits import (
     _D_FLOOR,
     _D_LABEL,
-    _D_SEEDS,
     _D_SWAP_U,
     _D_SWAP_V,
     _GADGET,
+    _allocate_cells,
+    _continuation_cells,
     _DCells,
     _emit_digit_jump,
     _emit_digit_setup,
     _emit_swap12,
     _fold_state,
-    _helper_cells,
+    _full_layout,
     _hubs,
     _seed_values,
 )
 from .emitter import _Planner
-from .isa import _WORDS, _printable_slot, _program, _render
+from .isa import _printable_slot, _program, _render
 
 #: The four-read gadget: the positional gadget's first two read
 #: blocks, a suffix folding in the fourth input, and a closing block
@@ -176,38 +172,6 @@ class _Symmetric(NamedTuple):
     code: dict[int, str]
     data: dict[int, int]
     weights: dict[int, int]
-    labels: dict[int, str]
-
-
-def _s_allocate_cells() -> _DCells:
-    """Allocate the working cells, as the positional build does."""
-    operands = _operand_cells()
-    used = {*_T_LOW, *(cell for cells in operands.values() for cell in cells)}
-    helper = _helper_cells(used)
-    low, walked = _walker(used, 34), _walker(used)
-    gadget = [[low(v) for v in init] for init in _s_inits()]
-    s_cell, z_cell = low(), walked()
-    # ``p`` under ``A = all-1`` takes 38 to 2 and keeps 2.
-    two = low(38)
-    # ``p`` under ``A = all-2`` swaps 69 and 48.
-    to_48 = walked(69)
-    seeds = {lab: walked(g) for lab, g in _D_SEEDS.items()}
-    builds: list[_Build] = _stub_builds(_hubs())
-    builders = [walked(g) for g, _, _ in builds]
-    # Every operand stub shares the middle cell.
-    operand = operands["1"][1]
-    return _DCells(
-        helper,
-        gadget,
-        s_cell,
-        z_cell,
-        two,
-        to_48,
-        seeds,
-        builds,
-        builders,
-        operand,
-    )
 
 
 def _s_emit_groups(main: _Planner, cells: _DCells) -> None:
@@ -241,25 +205,39 @@ def _symmetric() -> _Symmetric:
     readout cell (the positional build's checks, over the 20,480
     readout cells instead of its 32,768).
     """
-    weights = _s_readouts()
-    if not weights or min(weights) < 0 or max(weights) >= _WORDS:
-        raise AssertionError("readouts wrap")
+    # The five-valued popcount digit becomes the most significant digit.
+    # Its three empty low blocks leave room for a contiguous main line.
+    weights = {
+        (cell - 1) // 9 + (cell - 1) % 9 * 9**4 + 1: weight
+        for cell, weight in _s_readouts().items()
+    }
     cells_of_tables = set(weights)
-    cells = _s_allocate_cells()
-    _, pointer = _pointers(_D_LABEL, _seed_values().items())
-    data, stubs = _hub_layout(_hubs(), cells_of_tables, _D_FLOOR)
+    layout = _full_layout(weight_fold=True)
+    cells = _allocate_cells(layout, inits=_s_inits())
+    _, pointer = _pointers(_D_LABEL, _seed_values(layout).items(), single=True)
+    claimed: set[int] = set()
+    data, stubs = _hub_layout(
+        _hubs(layout),
+        cells_of_tables,
+        _D_FLOOR,
+        cells.builds,
+        packed=True,
+        claimed=claimed,
+    )
 
     main, _ = _main_planner(data)
     _emit_digit_setup(main, cells)
     _s_emit_groups(main, cells)
-    _emit_digit_jump(main, cells, pointer)
-    code_end = main.c
-
-    code = _merge_code(
-        (main.code, stubs), data, cells_of_tables, code_end, ceiling=_D_FLOOR
+    _emit_digit_jump(
+        main,
+        cells,
+        pointer,
+        layout,
+        swap_cell=_continuation_cells(cells)(),
+        rotate_readout=True,
     )
-    labels = {p - 1: lab for p, lab in _D_LABEL.items()}
-    return _Symmetric(code, data, weights, labels)
+    code = _merge_code(main.code, stubs, data, cells_of_tables, claimed)
+    return _Symmetric(code, data, weights)
 
 
 def _symmetric_program(truth_table: str) -> str | None:
@@ -275,10 +253,10 @@ def _symmetric_program(truth_table: str) -> str | None:
     classes = symmetric_outputs(truth_table, 17)
     if classes is None:
         return None
-    code, data, weights, labels = _symmetric()
+    code, data, weights = _symmetric()
     program = _program(code)
     program.update(data)
     for cell, weight in weights.items():
         label = _ANSWER[classes[weight] + classes[weight + 1]]
-        program[cell] = _table_char(cell, label, labels)
+        program[cell] = _table_char(cell, label)
     return _render(program)

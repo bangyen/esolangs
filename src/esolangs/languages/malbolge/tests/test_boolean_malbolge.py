@@ -75,9 +75,11 @@ def test_ten_inputs_execute_every_row() -> None:
     assert _rows(table) == list(table)
 
 
-@pytest.mark.parametrize(("n", "size"), [(14, 19683), (15, 52480), (16, 3**10)])
-def test_program_size_from_fourteen_inputs(n: int, size: int) -> None:
-    """Fourteen and fifteen end at their top live cell; sixteen is the store."""
+@pytest.mark.parametrize(
+    ("n", "size"), [(12, 15266), (13, 15153), (14, 21611), (15, 52480), (16, 3**10)]
+)
+def test_program_size_from_twelve_inputs(n: int, size: int) -> None:
+    """Short builds end at the last live cell; sixteen uses the whole store."""
     assert len(boolean.malbolge("01" * 2 ** (n - 1))) == size
 
 
@@ -119,13 +121,12 @@ def test_tables_differ_in_one_cell_per_row_pair(n: int) -> None:
 
 
 def test_digit_readouts_are_distinct_and_clear_of_the_code() -> None:
-    """Every row pair owns a cell in 6562..59040, above the code, no wrap."""
+    """Every row pair owns a cell clear of main, stubs, and pointers."""
     cells = _digits._readouts_cells()
     assert len(set(cells)) == len(cells) == 2**15
     assert (min(cells), max(cells)) == (6562, 59040)
-    lengths = {_digits._digits(n).words for n in range(1, 14)}
-    (length,) = lengths
-    assert 13114 <= length < 3**10
+    build = _digits._digits(16)
+    assert not set(cells) & (build.code.keys() | build.data.keys())
     readouts = [h - 1 for h in _digits._readouts_cells()]
     for k in range(5):
         values = {(s // 9**k) % 9 for s in readouts}
@@ -140,6 +141,10 @@ def test_digit_readouts_are_distinct_and_clear_of_the_code() -> None:
     assert len(weights) == 20480
     assert (min(weights), max(weights)) == (6565, 59040)
     assert sorted(set(weights.values())) == list(range(17))
+    symmetric = _symmetric._symmetric()
+    assert not symmetric.weights.keys() & (
+        symmetric.code.keys() | symmetric.data.keys()
+    )
 
 
 @pytest.mark.medium
@@ -155,14 +160,13 @@ def test_lower_arities_reuse_sixteens_cells(n: int) -> None:
 @pytest.mark.parametrize("n", [15, 16])
 def test_digit_builds_label_every_cell(n: int) -> None:
     """Each table cell's residue admits the four single-cell answers."""
-    _, _, tables, labels, _ = _digits._digits(n)
+    tables = _digits._digits(n).tables
     for h in tables:
         for label in "01xn":
-            _table_char(h, label, labels)
-    _, _, _, labels, _ = _digits._digits(16)
+            _table_char(h, label)
     for h in range(94):
         for label in "01xn":
-            _table_char(h, label, labels)
+            _table_char(h, label)
 
 
 @pytest.mark.weekly

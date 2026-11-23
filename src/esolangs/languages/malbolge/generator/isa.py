@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Container
+from collections.abc import Iterable
 
 from esolangs.languages.malbolge.interpreter import _XLAT1, _XLAT2
 
@@ -13,7 +13,7 @@ _ROTATE = 3**9
 _ALL1 = 29524
 _ALL2 = 59048
 _CONSTS = (0, _ALL1, _ALL2)
-#: The eight instructions a cell can hold, in the order ``_table_char`` tries.
+#: The eight instructions a source cell can hold.
 _ACTIVE = "ji*p</vo"
 
 
@@ -59,12 +59,25 @@ def _progression(value: int, lo: int, hi: int) -> range:
     return range(lo + (_G_ADDRESSES[value][0] - lo) % 94, hi, 94)
 
 
-def _first_free(value: int, lo: int, hi: int, blocked: Container[int] = ()) -> int:
-    """Return the least unblocked address of :func:`_progression`."""
-    for address in _progression(value, lo, hi):
-        if address not in blocked:
-            return address
-    raise AssertionError(f"no address for value {value}")
+def _first_free(
+    value: int | None, lo: int, hi: int, blocked: Iterable[int] = ()
+) -> int:
+    """Take the low available bit of a contiguous or periodic address mask."""
+    if value is None:
+        candidates = ((1 << (hi - lo)) - 1) << lo
+    else:
+        members = _progression(value, lo, hi)
+        # A geometric series puts a bit at each step of the progression.
+        stride = 1 << members.step
+        candidates = ((stride ** len(members) - 1) // (stride - 1)) << members.start
+    unavailable = 0
+    for address in blocked:
+        if lo <= address < hi:
+            unavailable |= 1 << address
+    free = candidates & ~unavailable
+    if not free:
+        raise AssertionError(f"no address for value {value}")
+    return (free & -free).bit_length() - 1
 
 
 def _printable_slot(prefix: int, slots: dict[int, int]) -> int:

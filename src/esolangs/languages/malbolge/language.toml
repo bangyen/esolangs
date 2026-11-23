@@ -20,14 +20,14 @@ output_size = "Linear"
 evidence = "docs/proofs/index.md#malbolge-bound"
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 6659, "1" = 6659, "2" = 6659, "3" = 6659, "4" = 6659, "5" = 6659, "6" = 6463, "7" = 6463 }, source_units = 13340 }
-"00001100" = { commands_by_row = { "0" = 6659, "1" = 6659, "2" = 6659, "3" = 6659, "4" = 6656, "5" = 6656, "6" = 6659, "7" = 6659 }, source_units = 13340 }
-"00110110" = { commands_by_row = { "0" = 6659, "1" = 6659, "2" = 6656, "3" = 6656, "4" = 6463, "5" = 6463, "6" = 6657, "7" = 6657 }, source_units = 13340 }
-"0110" = { commands_by_row = { "0" = 6497, "1" = 6497, "2" = 6691, "3" = 6691 }, source_units = 13340 }
-"01101001" = { commands_by_row = { "0" = 6463, "1" = 6463, "2" = 6657, "3" = 6657, "4" = 6657, "5" = 6657, "6" = 6463, "7" = 6463 }, source_units = 13340 }
-"0110100110010110" = { commands_by_row = { "0" = 6425, "1" = 6425, "2" = 6619, "3" = 6619, "4" = 6619, "5" = 6619, "6" = 6425, "7" = 6425, "8" = 6619, "9" = 6619, "10" = 6425, "11" = 6425, "12" = 6425, "13" = 6425, "14" = 6619, "15" = 6619 }, source_units = 13340 }
-"1101001101101101" = { commands_by_row = { "0" = 6618, "1" = 6618, "2" = 6425, "3" = 6425, "4" = 6621, "5" = 6621, "6" = 6618, "7" = 6618, "8" = 6425, "9" = 6425, "10" = 6619, "11" = 6619, "12" = 6618, "13" = 6618, "14" = 6425, "15" = 6425 }, source_units = 13340 }
-"11111110" = { commands_by_row = { "0" = 6656, "1" = 6656, "2" = 6656, "3" = 6656, "4" = 6656, "5" = 6656, "6" = 6657, "7" = 6657 }, source_units = 13340 }
+"00000001" = { commands_by_row = { "0" = 8738, "1" = 8738, "2" = 8738, "3" = 8738, "4" = 8738, "5" = 8738, "6" = 8542, "7" = 8542 }, source_units = 13340 }
+"00001100" = { commands_by_row = { "0" = 8738, "1" = 8738, "2" = 8738, "3" = 8738, "4" = 8735, "5" = 8735, "6" = 8738, "7" = 8738 }, source_units = 13340 }
+"00110110" = { commands_by_row = { "0" = 8738, "1" = 8738, "2" = 8735, "3" = 8735, "4" = 8542, "5" = 8542, "6" = 8736, "7" = 8736 }, source_units = 13340 }
+"0110" = { commands_by_row = { "0" = 8595, "1" = 8595, "2" = 8789, "3" = 8789 }, source_units = 13340 }
+"01101001" = { commands_by_row = { "0" = 8542, "1" = 8542, "2" = 8736, "3" = 8736, "4" = 8736, "5" = 8736, "6" = 8542, "7" = 8542 }, source_units = 13340 }
+"0110100110010110" = { commands_by_row = { "0" = 8494, "1" = 8494, "2" = 8688, "3" = 8688, "4" = 8688, "5" = 8688, "6" = 8494, "7" = 8494, "8" = 8688, "9" = 8688, "10" = 8494, "11" = 8494, "12" = 8494, "13" = 8494, "14" = 8688, "15" = 8688 }, source_units = 13340 }
+"1101001101101101" = { commands_by_row = { "0" = 8687, "1" = 8687, "2" = 8494, "3" = 8494, "4" = 8690, "5" = 8690, "6" = 8687, "7" = 8687, "8" = 8494, "9" = 8494, "10" = 8688, "11" = 8688, "12" = 8687, "13" = 8687, "14" = 8494, "15" = 8494 }, source_units = 13340 }
+"11111110" = { commands_by_row = { "0" = 8735, "1" = 8735, "2" = 8735, "3" = 8735, "4" = 8735, "5" = 8735, "6" = 8736, "7" = 8736 }, source_units = 13340 }
 
 [catalogue]
 folding_constant = "direct constant builder after all reads: 88/86 characters for zero/one over n=1..17"
@@ -103,7 +103,7 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "unmeasured", claim = "at most", template = "{claim} {formula} {unit}. E is the main prefix and J the longest reachable stub" }
+description = { growth = "unmeasured", claim = "at most", template = "{claim} {formula} {unit}. E is the executed main line and J bounds the answer stub" }
 
 [resource_evidence.workspace]
 # Memory includes fill past short source. Each stub step may write one cell.
@@ -116,11 +116,13 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}. W prefix writes, F marks a following stub" }
 
 [resource_evidence.scaling]
-# 13340 characters to thirteen inputs, 19683 and 52480 at fourteen and
-# fifteen, the whole 3^10-cell store from sixteen.
+# The continuation page raises arities twelve through fourteen.
+# The whole 3^10-cell store is used from sixteen.
 cases = [
-    { through = 13, expression = "13340" },
-    { through = 14, expression = "19683" },
+    { through = 11, expression = "13340" },
+    { through = 12, expression = "15266" },
+    { through = 13, expression = "15153" },
+    { through = 14, expression = "21611" },
     { through = 15, expression = "52480" },
     { expression = "59049" },
 ]
@@ -128,7 +130,7 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", evidence = "measured", claim = "worst", template = "{claim} {formula}; final range uses the whole 3^10-cell store" }
+description = { growth = "linear", evidence = "measured", claim = "worst", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1
