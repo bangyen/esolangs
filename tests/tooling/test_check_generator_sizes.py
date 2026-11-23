@@ -228,6 +228,38 @@ def test_executed_artifact_and_provenance() -> None:
     )
 
 
+@pytest.mark.parametrize("replay", [False, True])
+def test_benchmark_replays_only_halts_without_proof_counts(monkeypatch, replay) -> None:
+    name = first(answer_mode="termination", parameterized=False)
+    facts = esolangs.describe(name)
+    halt = str(facts.answer_encoding.index("halts"))
+    pinned = recorded_baseline()["records"][name]
+    table = next(table for table in pinned if halt in table)
+    row = table.index(halt)
+    expected = pinned[table]["commands_by_row"][str(row)]
+    make_vm = b.debugger_api.make_vm
+    constructions = 0
+
+    def counted(*args, **kwargs):
+        nonlocal constructions
+        constructions += 1
+        return make_vm(*args, **kwargs)
+
+    monkeypatch.setattr(b.debugger_api, "make_vm", counted)
+    if replay:
+        prove = b._halt_or_cycle_result
+
+        def without_count(*args, **kwargs):
+            return prove(*args, **kwargs)._replace(commands=None)
+
+        monkeypatch.setattr(b, "_halt_or_cycle_result", without_count)
+    record = b._execute(name, esolangs.generate(name, table), table, row, 10000, 5.0)
+    assert record["matches"] is True
+    assert record["execution_status"] == "halted"
+    assert record["commands"] == expected
+    assert constructions == 1 + replay
+
+
 def test_raster_artifact_hash_preserves_canonical_rows() -> None:
     raster = esolangs.Raster(
         (((0, 1, 2), (10, 20, 30)), ((4, 5, 6), (0, 0, 0)))

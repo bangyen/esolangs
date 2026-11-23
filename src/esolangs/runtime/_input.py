@@ -76,6 +76,11 @@ class InputFrame:
                 consumed += len(data)
                 try:
                     char = decoder.decode(data, final=not data)
+                    if not data:
+                        # utf-8-sig can leave an incomplete BOM buffered at EOF.
+                        pending, _ = decoder.getstate()
+                        if pending:
+                            char += pending.decode(encoding)
                 except UnicodeDecodeError as error:
                     # The decoder includes any buffered prefix in its error.
                     raise input_read_error(

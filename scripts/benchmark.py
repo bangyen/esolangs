@@ -46,6 +46,7 @@ from verify.process import (
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs._cycles import _halt_or_cycle_result
 from esolangs.artifacts import Artifact
 from esolangs.cli.args import _settings_arguments, _settings_of
 from esolangs.generation.helpers import _validate_truth_table
@@ -58,12 +59,7 @@ from esolangs.runtime._validate import check_timeout
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import dialect_options
-from esolangs.vm import (
-    SnapshotVM,
-    _capture_workspace,
-    complete_vm,
-    run_until_halt_or_cycle,
-)
+from esolangs.vm import SnapshotVM, _capture_workspace, complete_vm
 from tests.support.execution import run_guard
 
 _TEXT_TYPES = (str, bytes, bytearray)
@@ -527,15 +523,16 @@ def _execute(
         vm = make_vm()
         terminating = facts.answer_mode == "termination"
         if terminating:
-            halted = run_until_halt_or_cycle(vm, limit=cap)
-            if not halted:
-                result["execution_status"] = "cycle"
-                result["actual_answer"] = str(
-                    list(facts.answer_encoding).index("diverges")
+            decision = _halt_or_cycle_result(vm, limit=cap)
+            if not decision.halts or decision.commands is not None:
+                answer = "halts" if decision.halts else "diverges"
+                result.update(
+                    commands=decision.commands if decision.halts else None,
+                    execution_status="halted" if decision.halts else "cycle",
+                    actual_answer=str(facts.answer_encoding.index(answer)),
                 )
                 return
-            # The detector unwraps the VM; replay a halt to retain the
-            # baseline's wrapper-step count, excluding its post-halt dump.
+            # Replay branching halts whose proof has no live command count.
             vm = make_vm()
 
         written = WrittenState(_capture_workspace(vm)) if track_store else None
@@ -568,7 +565,7 @@ def _execute(
             result["execution_status"] = "step_cap"
         elif terminating:
             result["execution_status"] = "halted"
-            result["actual_answer"] = str(list(facts.answer_encoding).index("halts"))
+            result["actual_answer"] = str(facts.answer_encoding.index("halts"))
         else:
             try:
                 output = complete_vm(vm, max_steps=0)

@@ -207,8 +207,9 @@ def test_portable_cli_handles_encoded_source(
 
 @pytest.mark.parametrize("flags", [[], ["--isolated"]])
 @pytest.mark.parametrize("shape", ["char_stream", "line_per_bit"])
+@pytest.mark.parametrize("prefix", [b"", b"\xef\xbb\xbf"])
 def test_portable_cli_executes_a_complete_input_frame_with_stdin_open(
-    tmp_path, flags, shape
+    tmp_path, flags, shape, prefix
 ) -> None:
     name = next(
         name
@@ -219,7 +220,7 @@ def test_portable_cli_executes_a_complete_input_frame_with_stdin_open(
     language = esolangs.Language(name)
     path = tmp_path / "xor.json"
     path.write_text(language.to_json(language.generate("0110")), encoding="utf-8")
-    row = language.encode_inputs([0, 1]).encode()
+    row = prefix + language.encode_inputs([0, 1]).encode()
     command = [
         sys.executable,
         "-m",
@@ -247,7 +248,14 @@ def test_portable_cli_executes_a_complete_input_frame_with_stdin_open(
 
 @pytest.mark.parametrize(
     ("payload", "offset"),
-    [(b"0\xff", 1), (b"\xef\xbb\xbf0\xff", 4), (b"0\xc3x", 1), (b"0\xc3", 1)],
+    [
+        (b"0\xff", 1),
+        (b"\xef\xbb\xbf0\xff", 4),
+        (b"0\xc3x", 1),
+        (b"0\xc3", 1),
+        (b"\xef", 0),
+        (b"\xef\xbb", 0),
+    ],
 )
 def test_portable_cli_reports_framed_utf8_byte_offset(
     tmp_path, payload, offset
