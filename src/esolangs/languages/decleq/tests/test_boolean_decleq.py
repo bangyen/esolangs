@@ -126,7 +126,25 @@ def test_constants_reuse_scratch_and_print_after_every_read() -> None:
     workspace = resource_bounds("Decleq")["workspace"].formula
 
     assert_oisc_constants("Decleq", workspace, decrement=True)
-    assert sum(len(boolean.decleq(format(v, "08b"))) for v in range(256)) == 42228
+    assert sum(len(boolean.decleq(format(v, "08b"))) for v in range(256)) == 44_532
+
+
+@pytest.mark.parametrize("table", ["0000", "1111", "0001", "0110"])
+def test_taken_branches_stay_in_the_program(table: str) -> None:
+    from esolangs.languages.decleq.interpreter import _Machine, _operands, _read
+
+    source = boolean.decleq(table)
+    for row, answer in enumerate(table):
+        io = ScriptedIO(f"{row:02b}")
+        machine = _Machine(source, io)
+        while not machine.halted:
+            a, _, target = _operands(machine.state)
+            if a >= 0 and _read(machine.state[1], a) <= 1:
+                assert 0 <= target < len(machine.state[1])
+            machine.step()
+        assert machine.pc == len(machine.state[1])
+        assert io.getvalue() == answer
+        assert io.reads == 2
 
 
 def _check_gadgets_and_owner_families() -> None:

@@ -61,7 +61,7 @@ def assert_oisc_constants(name, workspace, *, decrement=False, relaxed=False):
                 program = esolangs.generate(name, bit * (1 << n), **options).source
                 if decrement:
                     cells = list(map(int, program.split()))
-                    assert len(cells) == 3 * n + 9
+                    assert len(cells) == 3 * n + 12
                     assert all(
                         cells[3 * i : 3 * i + 3] == [-1, 3 * n + 7, 3 * i + 3]
                         for i in range(n)
@@ -70,7 +70,7 @@ def assert_oisc_constants(name, workspace, *, decrement=False, relaxed=False):
                 elif not options:
                     assert len(program) == 7 * n + 7
                 peak = 0
-                commands = n + 1 + (decrement)
+                commands = n + 1 + 2 * decrement
                 bound = workspace(n, program) if not relaxed or not options else None
                 for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                     marker = "Q" if decrement else "7"

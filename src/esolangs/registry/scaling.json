@@ -35,7 +35,7 @@
   "crement": "linear: worst 5+8min(1,n-1)+min(1,max(0,n-2))(3P+2n-10) lines: subtree ids",
   "cvnc": "linear: at most 17T/2 + 13 characters: pair 12, node 5, prologue 18",
   "cyclic_tag": "linear: worst 3T + 2n + 1 characters, weighted padding",
-  "decleq": "linear: at most 2(3\u2308(n+18)/3\u2309)+17n+12residuals_without_constants(n)+16+digits(3\u2308(n+18)/3\u2309)+2digits(n+17)+(2residuals_without_constants(n)+5)max(2,digits(3\u2308(n+18)/3\u2309+6n+6residuals_without_constants(n)+9)) characters: six cells per distinct subtree",
+  "decleq": "linear: at most 2(3\u2308(n+18)/3\u2309)+17n+12residuals_without_constants(n)+16+digits(3\u2308(n+18)/3\u2309)+2digits(n+17)+(2residuals_without_constants(n)+5)max(2,digits(3\u2308(n+18)/3\u2309+6n+6residuals_without_constants(n)+9))+3max(2,digits(3\u2308(n+18)/3\u2309+6n+6residuals_without_constants(n)+12))+3 characters: six cells per distinct subtree",
   "dimensional": "linear: worst 2T + 20n + 42 characters: two per entry",
   "egl": "linear: worst 3T+25n+digits(T)+8 (n=1..3), 2T+2^\u230a(n+3)/2\u230b+5\u00b72^(n-\u230a(n+3)/2\u230b)+25n+digits(2^\u230a(n+3)/2\u230b)+digits(3\u00b72^(n-\u230a(n+3)/2\u230b))+1 (n\u22654) characters: T-1 painted ones",
   "eval": "linear: worst 2T+7n (n=4..5), 7T/4+9n+1 (n\u22656) characters, unwrapped",

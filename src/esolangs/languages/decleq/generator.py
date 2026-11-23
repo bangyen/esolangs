@@ -12,8 +12,8 @@ and fixed thresholds 3..6 give each shared node a fall-through parent
 
 Size:
     O(T) cells, O(n) steps: one three-cell branch per distinct subtree,
-    at most one three-cell jump per node; n=10 random 1847: 3,496 chars.
-    Constants: n+2 commands; n=8: 93 chars.
+    at most one three-cell jump per node; n=10 random 1847: 3,507 chars.
+    Constants: n+3 commands; n=8: 102 chars.
 """
 
 from esolangs.generation.helpers import (
@@ -34,13 +34,13 @@ __all__ = ["decleq"]
 # Fixed low-memory layout. Cells 0-2 hold the entry instruction ``0 0 code``;
 # every unconditional decrement targets cell 0, whose negative value makes
 # every such branch unconditional. Cells 3-14 hold two print gadgets, each
-# a ``-2 K next`` decrement pair
+# a ``-2 K next`` print
 # followed by a ``0 0 END`` terminator; a constant subtree reaches a gadget by
 # jumping to its address (11110000 needs one branch).
 # Cells 15-16 hold the print constants; cells 17 onward hold the per-input
 # read cells.
 _OUT_ZERO = 3  # print-"0" gadget: ``-2 k48 6``
-_HALT = 6  # halt: ``0 0 END`` of the first gadget, jumping one past memory
+_HALT = 6  # halt: ``0 0 END`` of the first gadget, jumping to the final instruction
 _OUT_ONE = 9  # print-"1" gadget: ``-2 k49 12``
 _K48 = 15  # constant 48 (ASCII "0"), the print-"0" gadget's operand
 _K49 = 16  # constant 49 (ASCII "1"), the print-"1" gadget's operand
@@ -55,7 +55,7 @@ def decleq(truth_table: str) -> str:
         cells = [v for i in range(n) for v in (-1, scratch, 3 * i + 3)]
         # Full triples keep I/O fall-through and jump-to-c readings identical.
         cells += [-2, digit, 3 * n + 3, zero, zero, end, 48 + int(truth_table[0]), 0, 0]
-        return " ".join(map(str, cells))
+        return _finish(cells, digit)
     essential = essential_inputs(truth_table, n)
     # Routing only essential inputs drops ignored levels. All inputs are read;
     # only essential ones pay normalization. The historical full-routing race
@@ -63,6 +63,12 @@ def decleq(truth_table: str) -> str:
     reduced = read_at(truth_table, essential, n)
     builder = _OwnerBuilder if _owner_family(truth_table, n) else _CodeBuilder
     return builder(reduced, n, essential).build()
+
+
+def _finish(cells: list[int], digit: int) -> str:
+    """Make the END target a positive decrement that falls off the image."""
+    cells.extend((digit, digit, len(cells)))
+    return " ".join(map(str, cells))
 
 
 def _owner_family(table: str, n: int) -> bool:
@@ -111,13 +117,11 @@ class _CodeBuilder:
         self.mem += [47] + [0] * pad
         self._emit_preamble()
         self.node(0, 0)
-        # Deriving END from the cell count keeps it out of wrap_grid's way:
-        # every other operand is an address below it, so END is the widest
-        # operand in the program, and _cell_width drops an outlier only at
-        # twice the next width.
         for addr in self.ends:
-            self.mem[addr] = len(self.mem)
-        return " ".join(map(str, self.mem))
+            self.mem[addr] = self.pc()
+        # ASCII zero is positive on both routes and no longer needed once
+        # either print gadget has executed.
+        return _finish(self.mem, _K48)
 
     def emit(self, a: int, b: int, c: int) -> None:
         """Append one ``a b c`` instruction to the cell list."""
