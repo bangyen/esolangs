@@ -23,22 +23,24 @@ from collections.abc import Callable, Iterable
 from esolangs.languages.malbolge.interpreter import _XLAT1, _crazy
 
 from .emitter import _Planner, _valid_chars
-from .isa import _ACTIVE, _ALL1, _CONSTS, _first_free, _g, _progression, _rot
+from .isa import _ACTIVE, _ALL1, _CONSTS, _char_for, _first_free, _g, _progression, _rot
 
-_ENTRY = 282
-#: ``d`` after the entry ``j`` at ``_ENTRY``: the walked cell its character names.
-_START_D = 34 + (7 - _ENTRY) % 94
-#: Label of the pointer cell ``T + 1`` for ``T`` in ``33..126`` (``n`` is
-#: ``not x``; ``-`` is unlabelled).  A function of ``T mod 47``, so it wraps
-#: cleanly mod 94: the active ops' ``_XLAT1`` offsets, scaled by 23 mod 47
-#: and read mod 10, meet every label's class at every ``h``.
-_T_LABELS = "".join("--0n1xn1x0"[23 * t % 47 % 10] for t in range(94))
+_ENCODING_PERIOD = len(_XLAT1)
+#: The labels in seed order (:func:`_seed_g`).
+_T_HUB_LABELS = "n01x"
+# Repeat over two equal halves of the encoding period. In each half,
+# four pointer cells advance the label coordinate by one.
+_LABEL_PERIOD = _ENCODING_PERIOD // 2
+_LABEL_STEP = pow(len(_T_HUB_LABELS), -1, _LABEL_PERIOD)
+_LABEL_CYCLE = "-" + _T_HUB_LABELS
+_T_LABELS = "".join(
+    _LABEL_CYCLE[_LABEL_STEP * t % _LABEL_PERIOD % len(_LABEL_CYCLE)]
+    for t in range(_ENCODING_PERIOD)
+)
 #: Every stub reads the last input (a program consumes all ``n`` whatever
 #: the table) and prints only after it.  ``x`` prints the character read;
 #: ``0``, ``1`` and ``n`` are :func:`_operand_stub`.
 _T_STUBS = {"x": "/<v"}
-#: The labels in seed order (:func:`_seed_g`).
-_T_HUB_LABELS = "n01x"
 #: ``K0 K2`` sends trits 0 and 1 to 2 and 2 to 1; three rotations then put
 #: the five former zeros of ``g`` at trits 2..6 and ``g``'s trits 0..2 at
 #: 7..9.  With ``g``'s trit 3 at 2 and trit 4 at 0, trits 0, 1 are ``(1, 2)``,
@@ -65,8 +67,20 @@ _SHORT_STUB_CHAIN = "rot K2"
 _LONG_STUB_G = {"1": (83, 86), "n": (89, 92), "0": (98, 101)}
 _LONG_STUB_CHAIN = "rot rot rot"
 _LANE_CHAIN = "rot rot rot rot rot"
-#: Fresh all-1 and all-2 cells just past the pointer region, for the paths.
-_T_LOW = (128, 129)
+# The missing digit (trits 6, 7) gives one 3**6-cell gap per top digit.
+_STUB_GAP_DIGIT = 1 + 2 * 3
+# A printable jump lands at most at 127. The constants take the first
+# two walked cells immediately above that region.
+_WALKED_START = 128
+_T_LOW = (_WALKED_START, _WALKED_START + 1)
+# The bridge in top band 7 and the lower n operand both need g = 70.
+# Walk through the second occurrence, then align the reset to a period.
+_SHARED_BRIDGE_SEED = 7 * 3**2 + _STUB_GAP_DIGIT
+_LAST_REQUIRED = _progression(
+    _SHARED_BRIDGE_SEED, _WALKED_START, _WALKED_START + 2 * _ENCODING_PERIOD
+)[1]
+_ENTRY = (_LAST_REQUIRED // _ENCODING_PERIOD + 1) * _ENCODING_PERIOD
+_START_D = _char_for("j", _ENTRY) + 1
 #: ``g`` values of the constant-building cells; only ``z0`` (``K0``) is read
 #: after the setup.
 _T_HELPERS = {"z1": 40, "z0": 37, "w": 80, "v": 78}

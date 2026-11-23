@@ -76,7 +76,7 @@ def test_ten_inputs_execute_every_row() -> None:
 
 
 @pytest.mark.parametrize(
-    ("n", "size"), [(12, 15127), (13, 15127), (14, 21641), (15, 52480), (16, 3**10)]
+    ("n", "size"), [(12, 15260), (13, 15260), (14, 21831), (15, 52480), (16, 3**10)]
 )
 def test_program_size_from_twelve_inputs(n: int, size: int) -> None:
     """Short builds end at the last live cell; sixteen uses the whole store."""

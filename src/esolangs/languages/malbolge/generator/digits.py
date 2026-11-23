@@ -67,6 +67,7 @@ from .core import (
     _LANE_CHAIN,
     _OPERAND_CHAIN,
     _SEED_CHAIN,
+    _STUB_GAP_DIGIT,
     _T_HELPERS,
     _T_HUB_LABELS,
     _T_LABELS,
@@ -163,7 +164,20 @@ _SHORT_N = 13
 _SHORT_MAX = 15
 #: Arities up to this hold the last group's reads at ``_TOP_HELD``.
 _TOP_HELD_N = 14
-_TOP_HELD = (49, 48, 49)
+
+
+def _low_top_reads() -> tuple[int, int, int]:
+    """Invert the digit gadget at the lowest admissible top digit."""
+    # The last fold maps both gadget trits by t -> (t+1) mod 3.
+    top = 1
+    v = (top % 3 - 1) % 3
+    u = (top // 3 - 1) % 3
+    # v=0 forces z=1 and xy=0. Then u=1+x-y fixes both other reads.
+    difference = u - 1
+    return 48 + max(difference, 0), 48 + max(-difference, 0), 48 + int(v == 0)
+
+
+_TOP_HELD = _low_top_reads()
 #: ``p`` under ``A = all-2`` swaps 71 and 49 as it does 69 and 48.
 _ONE_CELL_G = 71
 
@@ -218,7 +232,7 @@ def _short_layout(arity: int = _SHORT_N) -> _Layout:
 
     # The missing readout digit (1, 2) cuts a 729-cell gap out of
     # each top-digit band. Use the first nonzero band for shared stubs.
-    missing = 1 + 2 * 3
+    missing = _STUB_GAP_DIGIT
     block = 9 + missing
     lane = 3 * block
     one = _lane_mid_stub(lane)
@@ -643,9 +657,21 @@ def _paginate(
     """Put continuation pages in the held-read tail or in empty radix blocks."""
     if n == _DIGITS_N:
         # Top digits 2 through 8 have a free 729-cell block at digit 7.
-        specs = [(75, 5, 3**6)] + [(9 * top + 7, 4, 3**6) for top in range(3, 9)]
+        radix = 3**2
+        block = 2 * radix + _STUB_GAP_DIGIT
+        # The first block number is below the printable range. Move
+        # one more seed trit into it and use one more rotation.
+        specs = [(3 * block, 5, 3**6)] + [
+            (radix * top + _STUB_GAP_DIGIT, 4, 3**6) for top in range(3, radix)
+        ]
     elif n in (12, 13, 14):
-        specs = [(82 if n == 14 else 55, 5, 3001)]
+        # Tail code starts at the first rotation-aligned address past
+        # all tables, hubs, and stubs. Keep the page within one top band.
+        lane = 3**5
+        seed = max(occupied) // lane + 1
+        base = seed * lane
+        width = _D_FLOOR - base % _D_FLOOR
+        specs = [(seed, 5, width)]
     else:
         return
     pages = []
