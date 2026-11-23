@@ -272,8 +272,14 @@ def _full_layout(*, weight_fold: bool = False) -> _Layout:
     operands = "01n"
     identity = _IDENTITY_STUB
     if weight_fold:
-        # Rotating the readout moves a table onto the ordinary n hub.
-        seeds["n"] = _seed_g(5), _SEED_CHAIN
+        # The rotated weight digit has upper trit 1 or 2. Use the
+        # last band below it: band 0 holds code and band 1 the stubs.
+        top_high, top_low = divmod(3 - 1, 3)
+        # The seed chain and hub swap send seed trits 1 and 2 to hub
+        # trits 8 and 9, mapping 0 to 2 and 2 to 0. Keep the other trits.
+        seed, chain = seeds["n"]
+        kept = seed - seed % 3**3 + seed % 3
+        seeds["n"] = kept + 3 * (2 - top_low) + 9 * (2 - top_high), chain
         identity = first_lane + len(operands), _LANE_CHAIN
     return _Layout(
         seeds,

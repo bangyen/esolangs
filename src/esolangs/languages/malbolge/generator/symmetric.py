@@ -224,8 +224,10 @@ def _symmetric() -> _Symmetric:
     readout cell (the positional build's checks, over the 20,480
     readout cells instead of its 32,768).
     """
-    # The five-valued popcount digit becomes the most significant digit.
-    # Its three empty low blocks leave room for a contiguous main line.
+    # The fold inserts crazy(2, u) as the upper weight trit, with
+    # u = 1 + parity. The four later folds add 1 modulo 3 each, then
+    # swap01 restores that trit to u. Moving this digit to the top
+    # leaves the three bands with upper trit 0 clear.
     weights = {
         (cell - 1) // 9 + (cell - 1) % 9 * 9**4 + 1: weight
         for cell, weight in _s_readouts().items()
