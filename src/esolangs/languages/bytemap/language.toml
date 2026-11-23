@@ -1,6 +1,11 @@
 # Language-owned data, one section per dataset; aggregators read
 # only their own section and skip this file when it is absent.
 
+[deep_arities]
+# The 16-block strip fills before paging starts at n = 12. Measure six
+# further increments so the dense fit sees the paged layout on both sides.
+workspace = 18
+
 [curation]
 # Wiki rev. 169841; 3 backlinks (Language list, User:Milcho, Unimplemented
 # By Date) in the 2026-11-17 screen; the page says no interpreter exists.
