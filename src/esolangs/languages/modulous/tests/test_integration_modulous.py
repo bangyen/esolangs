@@ -113,13 +113,15 @@ class TestOutputSurvivesAFailure:
         assert "printed 'Hi'" in "\n".join(getattr(caught.value, "__notes__", []))
 
     def test_a_timeout_carries_it(self) -> None:
-        """The case that matters most: a loop you meant to be finite."""
+        """An execution timeout retains the loop's output."""
+        # The budget also bounds input acquisition, which exceeded 10 ms in
+        # the weekly coverage shard before the interpreter printed anything.
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
             run(
                 "Modulous",
                 self.LOOPS_PRINTING,
                 stdin="",
-                limits=esolangs.ExecutionLimits(execution_timeout=0.01),
+                limits=esolangs.ExecutionLimits(execution_timeout=0.25),
             )
         assert caught.value.partial_output.startswith("999")
 
