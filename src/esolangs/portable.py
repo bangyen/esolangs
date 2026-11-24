@@ -58,8 +58,8 @@ from esolangs.settings import (
 _FORMAT = "esolangs.program"
 
 
-def _portable_record_owner(data: bytes) -> str | None:
-    """Read the envelope's language before resolving it or loading its source."""
+def _portable_record_header(data: bytes) -> tuple[str, bool] | None:
+    """Read the envelope's language and whether it holds a template."""
     if _FORMAT.encode("ascii") not in data and b"\\u" not in data:
         return None
     try:
@@ -75,17 +75,18 @@ def _portable_record_owner(data: bytes) -> str | None:
         and "settings" in value
         and isinstance(owner := value.get("language"), str)
     ):
-        return owner
+        return owner, value["kind"] == "template"
     return None
 
 
 class _ArtifactLanguageMismatchError(ValueError):
-    def __init__(self, requested: str, owner: str) -> None:
+    def __init__(self, requested: str, owner: str, *, is_template: bool) -> None:
         super().__init__(
             f"program language must be {display_label(requested)}"
             f"; artifact records {display_label(owner)}"
         )
         self.owner = owner
+        self.is_template = is_template
 
 
 def _terminated_text(
@@ -585,7 +586,9 @@ def from_json(
         if owner is None:
             raise ValueError(f"program language must be {display_label(name)}")
         if owner != name:
-            raise _ArtifactLanguageMismatchError(name, owner)
+            raise _ArtifactLanguageMismatchError(
+                name, owner, is_template=kind == "template"
+            )
         if not isinstance(value["source"], str):
             raise ValueError("source must be a string")
         # Strict UTF-8 everywhere, as a program file is read: a JSON

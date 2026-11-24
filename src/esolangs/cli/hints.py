@@ -132,6 +132,21 @@ def _template_hint(
     )
 
 
+def _saved_template_hint(language: str, path: str, catalog: Catalog) -> str:
+    """Suggest filling the existing artifact with a shell-ready filename."""
+    encoding = _display_encoding(sys.stderr)
+    operand = _as_argument(language, catalog=catalog, encoding=encoding)
+    if operand is None or not can_render_argument(path, encoding):
+        return (
+            "fill the saved template with esolangs generate --from-template and --bits"
+        )
+    return (
+        "fill the saved template, for example: "
+        f"esolangs generate --from-template={shlex.quote(path)} "
+        f"--bits BITS --artifact {operand}"
+    )
+
+
 #: The flag that raises each bound ``run`` can report.
 _BOUND_FLAGS = {
     "execution_timeout": "--execution-timeout",

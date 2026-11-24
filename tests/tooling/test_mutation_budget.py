@@ -1,12 +1,18 @@
 """Mutation baselines and probes cannot overrun the remaining sweep budget."""
 
 import json
+import os
+import signal
+import subprocess
+import sys
+import time
 from types import SimpleNamespace
 
 import pytest
 
 from scripts import mutants
 from tests.support.reference import REFERENCE
+from tests.tooling.script_support import REPO_ROOT
 
 
 @pytest.mark.parametrize("budget", [0, -1, float("nan"), float("inf")])
@@ -128,7 +134,7 @@ def test_sweep_budget_clips_probes_and_restores_source(
     monkeypatch.setattr(mutants, "candidates", lambda *_args: [mutant] * count)
     limits = []
 
-    def run(command, timeout):
+    def run(command, timeout, _termination):
         limits.append(timeout)
         if len(limits) == 1:
             assert "-x" not in command
@@ -149,3 +155,60 @@ def test_sweep_budget_clips_probes_and_restores_source(
     ] * completed
     assert source.read_text() == "value = 1\n"
     assert (tmp_path / "out-test-baseline.log").read_text() == "baseline"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX termination signals")
+def test_sigterm_stops_the_worker_and_preserves_the_original_bytes(tmp_path):
+    source = tmp_path / "source.py"
+    source.write_bytes(b"value = 1 + 2\r\n")
+    ready = tmp_path / "worker-pid"
+    worker = """
+import os
+import time
+from pathlib import Path
+
+assert Path("source.py").read_bytes() == b"value = 1 - 2\\r\\n"
+Path("worker-pid").write_text(str(os.getpid()))
+time.sleep(10)
+"""
+    driver = f"""
+import sys
+from pathlib import Path
+
+from scripts import mutants
+
+mutants.ROOT = Path(sys.argv[1])
+mutants._pytest = lambda _: [sys.executable, "-c", {worker!r}]
+mutants.candidates = lambda *_: [
+    {{"file": "source.py", "line": 1, "col": 10, "old": "+", "new": "-"}}
+]
+run = mutants._run
+mutants._run = lambda command, timeout, termination: (
+    run(command, timeout, termination) if "-x" in command else ("survived", "")
+)
+sys.exit(mutants.sweep(["sample"], mutants.ROOT / "out.jsonl", 1, 15))
+"""
+    with subprocess.Popen(
+        [sys.executable, "-c", driver, str(tmp_path)],
+        cwd=REPO_ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    ) as process:
+        try:
+            deadline = time.monotonic() + 5
+            pid = ""
+            while process.poll() is None and time.monotonic() < deadline:
+                if ready.is_file() and (pid := ready.read_text()):
+                    break
+                time.sleep(0.02)
+            assert pid, "mutation worker did not reach the changed source"
+            process.send_signal(signal.SIGTERM)
+            output = process.communicate(timeout=5)
+            assert process.returncode == 128 + signal.SIGTERM, output
+        finally:
+            if process.poll() is None:
+                process.kill()
+    assert source.read_bytes() == b"value = 1 + 2\r\n"
+    with pytest.raises(ProcessLookupError):
+        os.kill(int(pid), 0)

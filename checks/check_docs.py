@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from docs.anchors import anchors, mask_hidden
 from docs.writing import GENERATED_DOCS as GENERATED
+from docs.writing import generated_sources
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -54,7 +55,11 @@ def _manifest_is_stale() -> bool:
     from docs import examples
 
     manifest = examples.LANGUAGES_DIR / "EXAMPLES.md"
-    return manifest.read_text(encoding="utf-8") != examples.boolean_manifest_text()
+    try:
+        previous = manifest.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return True
+    return previous != examples.boolean_manifest_text()
 
 
 _ESCAPED = rf"\\([{re.escape(string.punctuation)}])"
@@ -265,31 +270,34 @@ def stale_generated() -> int:
 
     from docs import generate
 
-    if update_source_anchors(check=True):
-        print(
-            "generator size anchors are stale; run "
-            "python scripts/docs/generate.py anchors",
-            file=sys.stderr,
-        )
-        return 1
-
-    before = {path: (ROOT / path).read_bytes() for path in GENERATED}
-    with tempfile.TemporaryDirectory(prefix="generated-docs-") as directory:
-        output_root = Path(directory)
-        for path, content in before.items():
-            target = output_root / path
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(content)
-        try:
-            result = generate.docs_main(output_root=output_root)
-        except (OSError, ValueError) as error:
-            print(error, file=sys.stderr)
+    try:
+        before = {
+            name: path.read_bytes()
+            for name, path in generated_sources(ROOT, require_generated=True)
+        }
+        if update_source_anchors(check=True):
+            print(
+                "generator size anchors are stale; run "
+                "python scripts/docs/generate.py anchors",
+                file=sys.stderr,
+            )
             return 1
-        changed = [
-            path
-            for path, content in before.items()
-            if (output_root / path).read_bytes() != content
-        ]
+        with tempfile.TemporaryDirectory(prefix="generated-docs-") as directory:
+            output_root = Path(directory)
+            for path, content in before.items():
+                target = output_root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(content)
+            result = generate.docs_main(output_root=output_root)
+            changed = [
+                path
+                for path in GENERATED
+                if (output_root / path).read_bytes() != before[path]
+            ]
+        stale_manifest = not changed and _manifest_is_stale()
+    except (OSError, ValueError) as error:
+        print(error, file=sys.stderr)
+        return 1
     if changed:
         print(
             "generated documentation is stale; run python "
@@ -297,9 +305,9 @@ def stale_generated() -> int:
             file=sys.stderr,
         )
         return 1
-    if _manifest_is_stale():
+    if stale_manifest:
         print(
-            "languages/EXAMPLES.md is stale; run python "
+            "src/esolangs/languages/EXAMPLES.md is stale or missing; run python "
             "scripts/docs/generate.py examples",
             file=sys.stderr,
         )

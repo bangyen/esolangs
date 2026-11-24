@@ -18,7 +18,7 @@ import typing
 import esolangs
 from docs.curation import update_well_known, well_known
 from docs.proof_status import splice, update_catalogue, update_docs
-from docs.writing import GENERATED_DOCS
+from docs.writing import GENERATED_DOCS, generated_sources
 from docs.writing import write_if_changed as _write_if_changed
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
 
@@ -478,12 +478,10 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
         prefix=".docs-render-", dir=output_root
     ) as temporary:
         staging = pathlib.Path(temporary)
-        for relative in GENERATED_DOCS:
-            path = output_root / relative
-            if path.is_file():
-                staged = staging / relative
-                staged.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(path, staged)
+        for relative, path in generated_sources(output_root):
+            staged = staging / relative
+            staged.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, staged)
         messages = [message for update, message in updates if update(staging)]
         for relative in GENERATED_DOCS:
             staged = staging / relative

@@ -1,5 +1,8 @@
 """Fill portable template bindings through generate and execute the result."""
 
+import shlex
+from pathlib import Path
+
 import pytest
 
 import esolangs
@@ -125,3 +128,35 @@ def test_saved_template_rejects_wrong_record_owner_and_row(language, capsys) -> 
         )
         assert not output
         assert message in error
+
+
+def test_run_points_directly_to_a_fill_command(language, tmp_path, capsys, monkeypatch):
+    document = call_main(["generate", "--artifact", language.name, "0110"], capsys)
+    monkeypatch.chdir(tmp_path)
+    path = "--saved 'xor'.json"
+    Path(path).write_text(document, encoding="utf-8")
+    for flags, owner, filename in (
+        ([], language.name, path),
+        (["--artifact"], language.name, path),
+        (["--artifact"], REFERENCE, path),
+        ([], language.name, "-"),
+    ):
+        stdin = document if filename == "-" else ""
+        output, error = _failure(
+            ["run", *flags, "--", owner, filename], capsys, stdin=stdin
+        )
+        assert output == ""
+        hint = shlex.split(error.split("for example: ", 1)[1])
+        assert hint == [
+            "esolangs",
+            "generate",
+            f"--from-template={filename}",
+            "--bits",
+            "BITS",
+            "--artifact",
+            language.name,
+        ]
+        hint[hint.index("BITS")] = "01"
+        filled = call_main(hint[1:], capsys, stdin=stdin)
+        output = call_main(["run", "--artifact", language.name, "-"], capsys, filled)
+        assert language.read_answer(output) == "1"

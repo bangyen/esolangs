@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 
 GENERATED_DOCS = (
@@ -13,6 +14,28 @@ GENERATED_DOCS = (
     "docs/usage.md",
     "docs/limitations.md",
 )
+
+
+def generated_sources(
+    root: Path, *, require_generated: bool = False
+) -> Iterator[tuple[str, Path]]:
+    """Yield existing inputs and require the Markdown pages with source prose."""
+    for name in GENERATED_DOCS:
+        path = root / name
+        if path.is_file():
+            yield name, path
+        elif path.exists():
+            raise ValueError(f"{name}: expected a file")
+        elif name.endswith(".md"):
+            raise ValueError(
+                f"{name}: missing Markdown source. "
+                "Restore the page before running just docs."
+            )
+        elif require_generated:
+            raise ValueError(
+                f"{name}: missing generated file. "
+                "Restore it from Git, then run just docs."
+            )
 
 
 def write_if_changed(path: Path, text: str, *, encoding: str | None = None) -> bool:

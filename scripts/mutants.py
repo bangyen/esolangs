@@ -17,6 +17,7 @@ stops after three consecutive timeouts.  Records
 append to ``--out`` as JSON lines for manual triage. Duration-only failures
 are tolerated in the baseline and leave mutant verdicts inconclusive.
 Inconclusive results exit 1, and timeouts or the global deadline exit 124.
+SIGTERM stops the current test run, restores the source, and exits 143.
 """
 
 from __future__ import annotations
@@ -35,7 +36,11 @@ import sys
 import tempfile
 import time
 import tokenize
+from collections.abc import Iterator
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
+from threading import current_thread, main_thread
+from types import FrameType
 from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -48,6 +53,7 @@ from verify.failures import (  # noqa: E402
     failure_sections,
     section_matches,
 )
+from verify.process import stop_process_tree  # noqa: E402
 from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN  # noqa: E402
 
 LANGUAGES = ROOT / "src" / "esolangs" / "languages"
@@ -225,7 +231,36 @@ def _clear_bytecode() -> None:
         shutil.rmtree(cache, ignore_errors=True)
 
 
-def _run(command: list[str], timeout: float) -> tuple[str, str]:
+class _Termination:
+    """Defer SIGTERM while entering or restoring a mutation."""
+
+    signum: int | None = None
+    waiting = False
+
+    def receive(self, signum: int, _frame: FrameType | None) -> None:
+        self.signum = signum
+        if self.waiting:
+            self.waiting = False
+            self.check()
+
+    def check(self) -> None:
+        if self.signum is not None:
+            raise SystemExit(128 + self.signum)
+
+    @contextmanager
+    def interruptible(self) -> Iterator[None]:
+        """Allow termination to unwind the worker wait after the process is owned."""
+        try:
+            self.waiting = True
+            self.check()
+            yield
+        finally:
+            self.waiting = False
+
+
+def _run(
+    command: list[str], timeout: float, termination: _Termination | None = None
+) -> tuple[str, str]:
     """Return the status and output of one capped test run."""
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     with tempfile.TemporaryDirectory(prefix="mutation-tests-") as directory:
@@ -237,15 +272,18 @@ def _run(command: list[str], timeout: float) -> tuple[str, str]:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            start_new_session=True,
+            start_new_session=os.name == "posix",
             env=env,
         ) as process:
             try:
-                output, _ = process.communicate(timeout=timeout)
+                with termination.interruptible() if termination else nullcontext():
+                    output, _ = process.communicate(timeout=timeout)
             except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGKILL)
-                process.communicate()
+                stop_process_tree(process)
                 return "timeout", ""
+            except BaseException:
+                stop_process_tree(process)
+                raise
         try:
             execution = json.loads(path.read_bytes())
         except (OSError, ValueError):
@@ -284,6 +322,24 @@ def _incomplete(reason: str, code: int = 124) -> int:
 
 def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> int:
     """Run the mutation cases allowed by the finite sweep budget."""
+    termination = _Termination()
+    if current_thread() is not main_thread():
+        return _sweep(packages, out, per_language, budget, termination)
+    previous = signal.signal(signal.SIGTERM, termination.receive)
+    try:
+        return _sweep(packages, out, per_language, budget, termination)
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+        termination.check()
+
+
+def _sweep(
+    packages: list[str],
+    out: Path,
+    per_language: int,
+    budget: float,
+    termination: _Termination,
+) -> int:
     if not math.isfinite(budget) or budget <= 0:
         raise ValueError("--budget must be positive and finite")
     if per_language < 1:
@@ -293,6 +349,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
     began = time.monotonic()
     planned = []
     for package in packages:
+        termination.check()
         command = _pytest(package)
         sample = candidates(package, per_language)
         if not sample:
@@ -317,7 +374,8 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                 flush=True,
             )
             start = time.monotonic()
-            status, output = _run(command, min(60, remaining))
+            status, output = _run(command, min(60, remaining), termination)
+            termination.check()
             baseline = time.monotonic() - start
             out.with_name(f"{out.stem}-{package}-baseline.log").write_text(
                 output, encoding="utf-8"
@@ -344,6 +402,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                 )
             timeout, streak = max(60.0, 3 * baseline), 0
             for mutant in sample:
+                termination.check()
                 remaining = budget - (time.monotonic() - began)
                 if remaining <= 0:
                     return _incomplete("global budget spent before the next mutant")
@@ -351,13 +410,17 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                     print(f"{package}: skipped after three consecutive timeouts")
                     break
                 path = ROOT / mutant["file"]
-                original = path.read_text(encoding="utf-8")
+                original_bytes = path.read_bytes()
+                original = original_bytes.decode("utf-8")
                 try:
-                    path.write_text(_replaced(original, mutant), encoding="utf-8")
+                    path.write_bytes(_replaced(original, mutant).encode("utf-8"))
                     _clear_bytecode()
-                    status, output = _run([*command, "-x"], min(timeout, remaining))
+                    status, output = _run(
+                        [*command, "-x"], min(timeout, remaining), termination
+                    )
                 finally:
-                    path.write_text(original, encoding="utf-8")
+                    path.write_bytes(original_bytes)
+                termination.check()
                 flips = _duration_flips(output) if status == "killed" else None
                 if flips is not None:
                     status = "inconclusive"

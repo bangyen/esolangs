@@ -67,10 +67,9 @@ def test_main_updates_all_registry_derived_docs(
     module.update_readme = lambda _root: called.append("readme") or True
     module.update_usage = lambda _root: called.append("usage") or True
     module.update_limitations = lambda _root: called.append("limitations") or True
-    for relative in (
-        "docs/proofs/index.md",
-        "src/esolangs/registry/scaling.json",
-    ):
+    for relative in module.GENERATED_DOCS:
+        if relative == "src/esolangs/registry/well_known.json":
+            continue
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((REPO_ROOT / relative).read_bytes())
@@ -251,6 +250,40 @@ def test_documentation_check_preserves_source_files(
         assert error == ""
     else:
         assert f"run python scripts/docs/generate.py docs: {stale}" in error
+
+
+@pytest.mark.parametrize(
+    ("missing", "recovery"),
+    [
+        ("docs/languages.md", "Restore the page before running just docs"),
+        ("src/esolangs/registry/well_known.json", "Restore it from Git"),
+        ("src/esolangs/languages/EXAMPLES.md", "scripts/docs/generate.py examples"),
+    ],
+)
+def test_missing_generated_docs_report_recovery(
+    tmp_path, monkeypatch, capsys, missing, recovery
+):
+    from checks import check_docs
+    from docs import evidence, examples, generate
+
+    for relative in check_docs.GENERATED:
+        if relative != missing:
+            target = tmp_path / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((REPO_ROOT / relative).read_bytes())
+    monkeypatch.setattr(check_docs, "ROOT", tmp_path)
+    monkeypatch.setattr(evidence, "update_source_anchors", lambda **_kwargs: False)
+    monkeypatch.setattr(examples, "LANGUAGES_DIR", tmp_path / "src/esolangs/languages")
+    if missing.endswith("EXAMPLES.md"):
+        monkeypatch.setattr(generate, "docs_main", lambda **_kwargs: 0)
+    assert check_docs.stale_generated() == 1
+    diagnostic = capsys.readouterr().err
+    assert missing in diagnostic
+    assert recovery in diagnostic
+    if missing == "docs/languages.md":
+        with pytest.raises(ValueError, match=recovery):
+            generate.docs_main(output_root=tmp_path)
+    assert not list(tmp_path.glob(".docs-render-*"))
 
 
 def test_missing_canonical_interpreter_does_not_link_to_an_old_path(tmp_path) -> None:

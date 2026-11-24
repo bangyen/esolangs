@@ -42,6 +42,7 @@ from esolangs.cli.hints import (
     _cli_error_text,
     _display_encoding,
     _exit_code,
+    _saved_template_hint,
     _timeout_text,
 )
 from esolangs.exceptions import (
@@ -253,15 +254,21 @@ def _reject_portable_source(
     """Stop a portable envelope from reaching a native interpreter."""
     if not data.lstrip().startswith(b"{"):
         return
-    from esolangs.portable import _portable_record_owner
+    from esolangs.portable import _portable_record_header
     from esolangs.registry._catalog import resolve_origin
 
-    if (recorded := _portable_record_owner(data)) is None:
+    if (header := _portable_record_header(data)) is None:
         return
+    recorded, is_template = header
     message = f"{label} contains a portable JSON artifact"
     if (owner := resolve_origin(recorded, catalog=catalog)) is None:
         raise ProgramError(
             f"{message} for unavailable language {display_label(recorded)}"
+        )
+    if is_template:
+        raise with_hint(
+            TemplateError("unfilled portable template"),
+            _saved_template_hint(owner, path, catalog),
         )
     raise with_hint(
         ProgramError(message),
@@ -302,16 +309,16 @@ def _load_portable_source(
     except ProgramError as error:
         cause = error.__cause__
         if isinstance(cause, _ArtifactLanguageMismatchError):
-            with_hint(
-                error,
-                _portable_run_hint(
+            if cause.is_template:
+                hint = _saved_template_hint(cause.owner, path, catalog)
+            else:
+                hint = _portable_run_hint(
                     cause.owner,
                     path,
                     catalog,
                     "pass the artifact's recorded language to esolangs run --artifact",
-                ),
-            )
-            raise
+                )
+            raise with_hint(error, hint) from cause
         if not isinstance(cause, JSONDecodeError):
             raise
         raise with_hint(
@@ -319,8 +326,9 @@ def _load_portable_source(
             f"if this is a native program, {_native_run_hint(language, path, catalog)}",
         ) from error
     if isinstance(artifact, TemplateArtifact):
-        raise TemplateError(
-            "unfilled portable template; use generate --from-template with --bits"
+        raise with_hint(
+            TemplateError("unfilled portable template"),
+            _saved_template_hint(artifact.language, path, catalog),
         )
     retained = artifact.settings
     if settings is not None and retained is not None:
