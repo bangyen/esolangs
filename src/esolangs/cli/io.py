@@ -665,12 +665,14 @@ def _override_io_method(
 
 
 def _read_stdin_bytes(
-    stream: BinaryIO, deadline: float | None, *, size: int | None = None
+    stream: BinaryIO,
+    deadline: float | None,
+    *,
+    size: int | None = None,
+    pipe_check: Callable[[bytes, bytearray], None] | None = None,
 ) -> bytes:
     if isinstance(stream, BufferedReader):
-        if size is None:
-            return _read_buffered_stdin(stream, deadline)
-        return _read_buffered_stdin(stream, deadline, size=size)
+        return _read_buffered_stdin(stream, deadline, size=size, pipe_check=pipe_check)
     value = read_snapshot(stream, size=size)
     return _binary_chunk(value)
 
@@ -749,11 +751,7 @@ def _read_wrapped_stdin(
         # suffix with its current state while no further I/O can block.
         data = _read_stdin_bytes(stream, deadline)
         return _read_prefetched_stdin(stdin, stream, data)
-    if pipe_check is not None and isinstance(stream, BufferedReader):
-        return decode_utf8(
-            _read_buffered_stdin(stream, deadline, pipe_check=pipe_check)
-        )
-    return decode_utf8(_read_stdin_bytes(stream, deadline))
+    return decode_utf8(_read_stdin_bytes(stream, deadline, pipe_check=pipe_check))
 
 
 def _custom_text_reader(stdin: TextIOWrapper) -> bool:

@@ -80,6 +80,8 @@ def test_malformed_receipts_name_the_file_and_field(tmp_path) -> None:
     result = subprocess.run(
         [
             sys.executable,
+            "-I",
+            "-S",
             str(REPO_ROOT / "scripts/verify/receipts.py"),
             "--archive",
             str(receipt),
@@ -166,7 +168,23 @@ def test_archive_retains_logs_and_pytest_sidecar_after_worktree_removal(tmp_path
     _commit(source, "Integrate verified program")
     commit = _git(source, "rev-parse", "HEAD")
     _git(primary, "merge", "--ff-only", commit)
-    saved = archive(receipt, source, primary)
+    archived = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            str(REPO_ROOT / "scripts/verify/receipts.py"),
+            "--archive",
+            str(receipt),
+            str(primary),
+        ],
+        cwd=source,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=True,
+    )
+    saved = Path(archived.stdout.strip())
     assert (
         saved
         == primary

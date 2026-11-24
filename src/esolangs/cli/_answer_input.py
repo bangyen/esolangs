@@ -45,17 +45,30 @@ class _AnswerTail:
     def _read_native(self, stream: BufferedReader, deadline: float | None) -> str:
         decoder = UTF8Decoder()
         offset = 0
+
+        def decode(data: bytes, *, final: bool = False) -> None:
+            nonlocal offset
+            pending, _ = decoder.getstate()
+            try:
+                self._add(decoder.decode(data, final=final))
+            except UnicodeDecodeError as error:
+                raise input_read_error(
+                    error, byte_offset=offset - len(pending)
+                ) from error
+            offset += len(data)
+
+        def check_chunk(chunk: bytes, _buffer: bytearray) -> None:
+            decode(chunk)
+
         with stream_read_deadline(deadline):
             while True:
-                data = _read_stdin_bytes(stream, deadline, size=_BLOCK)
+                start = offset
+                data = _read_stdin_bytes(
+                    stream, deadline, size=_BLOCK, pipe_check=check_chunk
+                )
                 final = len(data) < _BLOCK
-                pending, _ = decoder.getstate()
-                try:
-                    self._add(decoder.decode(data, final=final))
-                except UnicodeDecodeError as error:
-                    raise input_read_error(
-                        error, byte_offset=offset - len(pending)
-                    ) from error
+                # Pipe chunks were decoded as they arrived.
+                if final or offset == start:
+                    decode(data[offset - start :], final=final)
                 if final:
                     return self.text
-                offset += len(data)

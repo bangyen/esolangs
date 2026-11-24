@@ -16,6 +16,7 @@ from scripts.ci.shard import collect_ids
 
 ROOT = Path(__file__).resolve().parents[2]
 SERIAL_TEST_NODES = ".github/serial-test-nodes.txt"
+REGULAR_SHARD_MARKER = "not slow and not weekly"
 
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="workflow uses Bash")
@@ -53,6 +54,8 @@ def test_serial_workflow_keeps_the_last_node_without_newline(
         assert result.returncode == 0, result.stderr
         args = result.stdout.decode("utf-8").removesuffix("\x00").split("\x00")
         if "--exclude-node" in args:
+            marker = REGULAR_SHARD_MARKER if workflow == "ci" else ""
+            assert args[args.index("--marker") + 1] == marker
             assert [
                 args[i + 1] for i, arg in enumerate(args) if arg == "--exclude-node"
             ] == nodes
@@ -69,9 +72,9 @@ def test_serial_test_nodes_are_collectable() -> None:
     )
     files = {node.partition("::")[0] for node in nodes}
     existing = sorted(file for file in files if (ROOT / file).is_file())
-    collected = collect_ids("", paths=existing) if existing else []
+    collected = collect_ids(REGULAR_SHARD_MARKER, paths=existing) if existing else []
     missing = sorted(set(nodes).difference(collected))
-    assert not missing, f"{SERIAL_TEST_NODES}: uncollected test IDs: {missing}"
+    assert not missing, f"{SERIAL_TEST_NODES}: IDs outside the regular shard: {missing}"
 
 
 def test_combining_shards_retains_every_branch(tmp_path) -> None:

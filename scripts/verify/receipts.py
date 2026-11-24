@@ -510,14 +510,23 @@ def _receipt_shape(record: object) -> dict[str, Any]:
     return value
 
 
+def _receipt_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject repeated fields even when archiving without a package install."""
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            label = key if key.isprintable() else repr(key)[1:-1]
+            raise ValueError(f"duplicate field: {label}")
+        result[key] = value
+    return result
+
+
 def _read_receipt(path: Path) -> dict[str, Any]:
     """Load a receipt with a path-qualified error for malformed JSON or fields."""
-    from esolangs.runtime._json import unique_object
-
     try:
         return _receipt_shape(
             json.loads(
-                path.read_text(encoding="utf-8"), object_pairs_hook=unique_object
+                path.read_text(encoding="utf-8"), object_pairs_hook=_receipt_object
             )
         )
     except (ValueError, RecursionError) as error:
