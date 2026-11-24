@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import json
 import keyword
 import shlex
 import subprocess
@@ -141,13 +142,15 @@ from esolangs.runtime._capabilities import DebugSpec, MachineCapabilities
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._definition import RuntimeSpec
 
-LANGUAGE = Language("{name}", RuntimeSpec(
+LANGUAGE = LanguageDeclaration(
+    "{name}", RuntimeSpec(
         "{slug}", category="{category}",
         machine_preparation="prepare_machine", completion_entrypoint="_execute",
         capabilities=MachineCapabilities(
             completion=Completion.HALTED, debug=DebugSpec(ip="ind")
         ),
-    ))
+    ),
+)
 '''
 
 
@@ -187,11 +190,13 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
         raise ValueError(_readmission(name))
     slug = _slug(name)
     package = ROOT / "src/esolangs/languages" / slug
-    fields = {"name": name, "slug": slug, "category": category}
+    # JSON's string escapes also work inside the generated Python docstrings.
+    escaped_name = json.dumps(name, ensure_ascii=False)[1:-1]
+    fields = {"name": escaped_name, "slug": slug, "category": category}
     files = {
-        package / "interpreter.py": _interpreter_stub(name),
+        package / "interpreter.py": _interpreter_stub(escaped_name),
         package / "tests" / f"test_{slug}.py": (
-            f'"""Tests for the {name} interpreter."""\n\n'
+            f'"""Tests for the {escaped_name} interpreter."""\n\n'
             "import pytest\n\n"
             f"from esolangs.languages.{slug}.interpreter import run\n"
             "from esolangs.runtime.io import ScriptedIO\n\n\n"
@@ -235,15 +240,15 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
         raise FileExistsError(f"refusing to overwrite {joined}")
     for path, text in files.items():
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text)
+        path.write_text(text, encoding="utf-8")
     return list(files)
 
 
-def _interpreter_stub(name: str) -> str:
+def _interpreter_stub(escaped_name: str) -> str:
     """Return ``_template.py`` named for ``name``, its maintainer comment dropped."""
-    template = (ROOT / "src/esolangs/runtime/_template.py").read_text()
+    template = (ROOT / "src/esolangs/runtime/_template.py").read_text(encoding="utf-8")
     _, doc, body = template.split('"""', 2)
-    return '"""' + doc.replace("<Language>", name) + '"""' + body
+    return '"""' + doc.replace("<Language>", escaped_name) + '"""' + body
 
 
 @dataclass(frozen=True)

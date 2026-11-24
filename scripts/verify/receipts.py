@@ -28,8 +28,8 @@ class _Input(TypedDict):
 
 class _PytestExecution(NamedTuple):
     record: dict[str, Any]
-    called: set[str]
     failed: set[str]
+    passed: set[str]
 
 
 def digest(path: Path) -> str:
@@ -177,6 +177,7 @@ def _read_execution(root: Path, file: str, returncode: int) -> _PytestExecution 
             set(data[key]) for key in ("selected", "called", "finished")
         )
         failed = set(data.get("failed_calls", []))
+        passed = set(data.get("passed_calls", []))
         selection = data["selection"]
         if (
             data["schema"] != 1
@@ -184,7 +185,7 @@ def _read_execution(root: Path, file: str, returncode: int) -> _PytestExecution 
             or selection["collect_only"]
             or not called
             or not called <= selected
-            or not failed <= called
+            or not failed | passed <= called
             or (returncode == 0 and failed)
             or finished != selected
         ):
@@ -198,7 +199,7 @@ def _read_execution(root: Path, file: str, returncode: int) -> _PytestExecution 
         "selected": len(selected),
         "called": len(called),
     }
-    return _PytestExecution(record, called, failed)
+    return _PytestExecution(record, failed, passed)
 
 
 def _bound_execution(root: Path, row: dict[str, Any]) -> _PytestExecution | None:
@@ -212,7 +213,7 @@ def _bound_execution(root: Path, row: dict[str, Any]) -> _PytestExecution | None
 def _pytest_retry_covers(
     root: Path, checks: list[dict[str, Any]], ids: list[str] | None = None
 ) -> bool:
-    """Bind the retry's actual calls to every failed call in the first run."""
+    """Require a passing retry report for each failed call in the first run."""
     original = [row for row in checks if row["name"] == "pytest"]
     retries = [row for row in checks if row["name"] == "pytest retry"]
     if len(original) != 1 or len(retries) != 1 or retries[0]["returncode"] != 0:
@@ -224,7 +225,7 @@ def _pytest_retry_covers(
         and retry is not None
         and failed.failed
         and (ids is None or failed.failed == set(ids))
-        and failed.failed <= retry.called
+        and failed.failed <= retry.passed
     )
 
 
@@ -346,7 +347,7 @@ class AcceptanceRun:
             self.steps.append(row)
 
     def pytest_retry_covers(self, ids: list[str]) -> bool:
-        """Confirm that the diagnosed tests failed and ran on retry."""
+        """Confirm that the diagnosed tests failed and passed on retry."""
         return _pytest_retry_covers(self.root, self.steps, ids)
 
     def finish(self, returncode: int | None) -> tuple[Path, bool]:

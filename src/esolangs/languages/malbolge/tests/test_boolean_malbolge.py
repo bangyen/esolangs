@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
+from pathlib import Path
 
 import pytest
 
@@ -334,3 +335,38 @@ def test_seventeen_projection_prefers_last_ignored_position() -> None:
     table = "".join(bit * 2 for bit in base) * 2
     expected = _digits._render_build(table[::2], _digits._digits(16, drain_last=True))
     assert boolean.malbolge(table) == expected
+
+
+@pytest.mark.medium  # three generator processes and a copy of src
+def test_mutant_target_replaces_a_split_generator_helper(tmp_path, capsys, monkeypatch):
+    from scripts import gendiff
+    from tests.tooling.script_support import REPO_ROOT
+
+    monkeypatch.setattr(gendiff, "_checkout", lambda *_: REPO_ROOT / "src")
+    monkeypatch.setattr(gendiff, "_construction_tables", lambda *_: {})
+    target = Path("src/esolangs/languages/malbolge/generator/digits.py")
+    mutant = tmp_path / "digits.py"
+    mutant.write_text(
+        (REPO_ROOT / target).read_text(encoding="utf-8")
+        + "\n_unmutated_digits = _digits_program\n"
+        "def _digits_program(truth_table, n):\n"
+        "    return _unmutated_digits(truth_table[::-1], n)\n",
+        encoding="utf-8",
+    )
+    assert (
+        gendiff.main(
+            [
+                "Malbolge",
+                "--max-n",
+                "1",
+                "--mutant",
+                str(mutant),
+                "--mutant-target",
+                str(target),
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert "0 differ from main" in output
+    assert "control: mutant differs on 12" in output

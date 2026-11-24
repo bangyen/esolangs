@@ -21,6 +21,7 @@ class ExecutionEvidence:
         self.called: set[str] = set()
         self.finished: set[str] = set()
         self.failures: set[str] = set()
+        self.passed: set[str] = set()
 
     def pytest_collection_finish(self, session: pytest.Session) -> None:
         """Record the serial selection."""
@@ -32,11 +33,13 @@ class ExecutionEvidence:
         self.collected.update(ids)
 
     def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
-        """Retain call failures and completed test lifecycles."""
+        """Retain call outcomes and completed test lifecycles."""
         if report.when == "call":
             self.called.add(report.nodeid)
             if report.failed:
                 self.failures.add(report.nodeid)
+            elif report.passed and not hasattr(report, "wasxfail"):
+                self.passed.add(report.nodeid)
         elif report.when == "teardown":
             self.finished.add(report.nodeid)
 
@@ -57,6 +60,7 @@ class ExecutionEvidence:
             "called": sorted(self.called),
             "finished": sorted(self.finished),
             "failed_calls": sorted(self.failures),
+            "passed_calls": sorted(self.passed),
         }
         write_text(self.destination, json.dumps(evidence, sort_keys=True) + "\n")
 

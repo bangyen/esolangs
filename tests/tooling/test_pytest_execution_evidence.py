@@ -72,13 +72,29 @@ def test_receipt_captures_execution_and_effective_selection(
             validate(receipt, root, {"pytest"})
 
 
-@pytest.mark.parametrize("keyword", ["", "test_first"])
-def test_accepted_retry_must_call_every_failed_test(tmp_path, monkeypatch, keyword):
+@pytest.mark.parametrize(
+    ("keyword", "outcome", "accepted"),
+    [
+        ("", "pass", True),
+        ("test_first", "pass", False),
+        ("", "skip", False),
+        ("", "xfail", False),
+        ("", "xpass", False),
+    ],
+)
+def test_accepted_retry_requires_each_failed_call_to_pass(
+    tmp_path, monkeypatch, keyword, outcome, accepted
+):
     root = _checkout(tmp_path / "checkout")
     (root / "test_probe.py").write_text(
-        "import os\n"
-        'def test_first():\n    assert os.getenv("RETRY")\n'
-        'def test_second():\n    assert os.getenv("RETRY")\n',
+        "import os\nimport pytest\n"
+        'retry = os.getenv("RETRY")\n'
+        "def test_first():\n    assert retry\n"
+        '@pytest.mark.xfail(retry == "xpass", reason="expected failure")\n'
+        "def test_second():\n"
+        '    if retry == "skip":\n        pytest.skip("skipped in call")\n'
+        '    if retry == "xfail":\n        pytest.xfail("expected failure")\n'
+        "    assert retry\n",
         encoding="utf-8",
     )
     monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
@@ -100,7 +116,7 @@ def test_accepted_retry_must_call_every_failed_test(tmp_path, monkeypatch, keywo
     run.declare([("pytest", original, env)])
     for name, args, options, expected in (
         ("pytest", original, env, 1),
-        ("pytest retry", retry, {**env, "RETRY": "1"}, 0),
+        ("pytest retry", retry, {**env, "RETRY": outcome}, 0),
     ):
         result = subprocess.run(
             args,
@@ -115,7 +131,9 @@ def test_accepted_retry_must_call_every_failed_test(tmp_path, monkeypatch, keywo
         run.record(name, 0.1, result.returncode, result.stdout, command=args)
 
     ids = ["test_probe.py::test_first", "test_probe.py::test_second"]
-    accepted = keyword == ""
+    reports = json.loads((root / "notes" / "retry.json").read_text())
+    assert reports["called"] == (ids[:1] if keyword else ids)
+    assert reports["passed_calls"] == (ids if accepted else ids[:1])
     assert run.pytest_retry_covers(ids) is accepted
     assert not run.pytest_retry_covers(ids[:1])
     run.accepted_retries.add("pytest")

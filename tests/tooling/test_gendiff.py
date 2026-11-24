@@ -92,6 +92,25 @@ def test_missing_baseline_fails_before_generator_witnesses(monkeypatch, capsys):
     )
 
 
+@pytest.mark.parametrize(
+    ("options", "message"),
+    [
+        ([], "--mutant-target requires --mutant"),
+        (["--mutant", "mutant.py"], "one of its package files"),
+    ],
+)
+def test_bad_mutant_target_fails_before_generation(
+    monkeypatch, capsys, options, message
+):
+    monkeypatch.setattr(gendiff, "_checkout", lambda *_: pytest.fail("checkout"))
+    with pytest.raises(SystemExit) as caught:
+        gendiff.main(
+            [REFERENCE, "--mutant-target", "src/esolangs/__init__.py", *options]
+        )
+    assert caught.value.code == 2
+    assert message in capsys.readouterr().err
+
+
 @pytest.mark.parametrize(("new_generation", "status"), [(1.0, 0), (1.3, 1)])
 def test_speed_gate_uses_only_generation(monkeypatch, capsys, new_generation, status):
     old = REPO_ROOT / "old"

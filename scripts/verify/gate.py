@@ -424,7 +424,9 @@ def _load_verdict(
     if returncode == 0:
         if _ACTIVE_ACCEPTANCE is not None:
             if not _ACTIVE_ACCEPTANCE.pytest_retry_covers(ids):
-                print("[load] pytest: retry evidence does not cover every failed test")
+                print(
+                    "[load] pytest: retry did not record a pass for every failed test"
+                )
                 return failures
             _ACTIVE_ACCEPTANCE.accepted_retries.add(LONG_STEP)
         print(

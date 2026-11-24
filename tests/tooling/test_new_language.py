@@ -74,6 +74,23 @@ def test_an_interpreter_only_language_gets_no_generator() -> None:
     assert not (new_language.ROOT / "src/esolangs/generation/tiny.py").exists()
 
 
+@pytest.mark.usefixtures("root")
+@pytest.mark.parametrize("generator", [False, True])
+def test_scaffold_compiles_and_registers_a_quoted_name(*, generator: bool) -> None:
+    name = 'Tïny """Probe""" \\ lab'
+    files = new_language.scaffold(name, "other", generator=generator)
+    for path in files:
+        if path.suffix != ".py":
+            continue
+        code = compile(path.read_text(encoding="utf-8"), str(path), "exec")
+        if path.name == "descriptor.py":
+            namespace = {}
+            exec(code, namespace)
+            declaration = namespace["LANGUAGE"]
+            assert declaration.name == name
+            assert declaration.has_backend is generator
+
+
 def test_scaffold_records_the_language_as_unassessed(root: Path) -> None:
     new_language.scaffold("Tiny Lang", "other", generator=False)
     fragment = root / "src/esolangs/languages/tiny_lang/language.toml"

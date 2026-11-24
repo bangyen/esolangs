@@ -215,15 +215,35 @@ def _checkout(ref: str, scratch: Path) -> Path:
     return scratch / "src"
 
 
-def _mutated(mutant: Path, name: str, scratch: Path) -> Path:
-    """Copy the working ``src`` with the generator's module replaced by ``mutant``."""
+def _mutant_target(name: str, target: Path | None) -> Path:
+    """Locate the generator entry point or an explicitly selected package file."""
     import esolangs.registry
 
     backend = esolangs.registry.LANGUAGES[name].backend
     if backend is None:
-        raise SystemExit(f"{name} has no Boolean generator")
+        raise ValueError(f"{name} has no Boolean generator")
     module = backend.generate.__module__
-    target = Path(importlib.import_module(module).__file__ or "")
+    entry = Path(importlib.import_module(module).__file__ or "").resolve()
+    path = entry if target is None else (ROOT / target).resolve()
+    if path != entry and (
+        entry.name != "__init__.py" or not path.is_relative_to(entry.parent)
+    ):
+        raise ValueError(
+            "mutant target must be the generator or one of its package files"
+        )
+    if (
+        not path.is_relative_to(ROOT / "src")
+        or not path.is_file()
+        or path.suffix != ".py"
+    ):
+        raise ValueError(
+            "mutant target must be an existing Python source file under src"
+        )
+    return path
+
+
+def _mutated(mutant: Path, target: Path, scratch: Path) -> Path:
+    """Copy the working source tree and replace only the selected file."""
     src = scratch / "src"
     shutil.copytree(ROOT / "src", src, ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copyfile(mutant, src / target.relative_to(ROOT / "src"))
@@ -277,6 +297,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--old", default="main", help="git revision (default main)")
     parser.add_argument("--mutant", type=Path, help="broken generator module copy")
     parser.add_argument(
+        "--mutant-target", type=Path, help="repo-relative generator file to replace"
+    )
+    parser.add_argument(
         "--max-n",
         type=int,
         default=_MAX_EXHAUSTIVE_ARITY,
@@ -286,6 +309,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--speed", action="store_true", help="also compare time")
     parser.add_argument("--dump", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.mutant_target is not None and args.mutant is None:
+        parser.error("--mutant-target requires --mutant")
     try:
         exhaustive = _exhaustive_count(args.max_n)
     except ValueError as error:
@@ -300,6 +325,9 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         name = resolve(args.language)
+        target = (
+            None if args.mutant is None else _mutant_target(name, args.mutant_target)
+        )
     except ValueError as exc:
         parser.error(str(exc))
     with tempfile.TemporaryDirectory() as scratch:
@@ -345,7 +373,8 @@ def main(argv: list[str] | None = None) -> int:
                 dump, old, (args.old, old_src, old_time), ("new", new_src, new_time)
             )
         if args.mutant is not None:
-            mutant_src = _mutated(args.mutant, name, Path(scratch) / "mutant")
+            assert target is not None
+            mutant_src = _mutated(args.mutant, target, Path(scratch) / "mutant")
             caught = len(differences(old, dump(mutant_src)[0]))
             print(f"control: mutant differs on {caught}")
             failed |= not caught
