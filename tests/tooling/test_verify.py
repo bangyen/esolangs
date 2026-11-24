@@ -36,6 +36,70 @@ def load_scope() -> Any:
     return load(SCOPE_SCRIPT)
 
 
+@pytest.mark.skipif(os.name != "posix", reason="POSIX pre-push hook")
+def test_pre_push_checks_the_actual_commit_in_a_clean_checkout(tmp_path) -> None:
+    checkout = _checkout(tmp_path / "checkout")
+
+    def git(*args):
+        return subprocess.check_output(
+            ["git", *args], cwd=checkout, text=True, timeout=5
+        ).strip()
+
+    old = git("rev-parse", "HEAD")
+    gate = checkout / "scripts/verify/gate.py"
+    gate.parent.mkdir(parents=True)
+    gate.write_text(
+        "import os\nfrom pathlib import Path\nprint('gate ran')\n"
+        "if os.environ.get('CHANGE_INPUT'):\n"
+        "    Path('program.py').write_text('changed during checks')\n",
+        encoding="utf-8",
+    )
+    git("add", "scripts/verify/gate.py")
+    git(
+        "-c",
+        "user.name=Hook Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "-qm",
+        "Install gate probe",
+    )
+    head = git("rev-parse", "HEAD")
+
+    def push(commit, **env):
+        ref = f"refs/heads/main {commit} refs/heads/main {old}\n"
+        return subprocess.run(
+            ["sh", str(REPO_ROOT / ".githooks/pre-push")],
+            input=ref,
+            cwd=checkout,
+            env={**os.environ, "PY": sys.executable, **env},
+            text=True,
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+
+    wrong = push(old)
+    assert wrong.returncode == 1
+    assert f"but HEAD is {head}" in wrong.stderr
+    assert "gate ran" not in wrong.stdout
+    untracked = checkout / "new.py"
+    untracked.touch()
+    dirty = push(head)
+    assert dirty.returncode == 1
+    assert "clean checkout" in dirty.stderr
+    assert "gate ran" not in dirty.stdout
+    assert push("0" * len(head)).returncode == 0
+    untracked.unlink()
+    clean = push(head)
+    assert clean.returncode == 0
+    assert "gate ran" in clean.stdout
+    changed = push(head, CHANGE_INPUT="1")
+    assert changed.returncode == 1
+    assert "gate ran" in changed.stdout
+    assert "clean checkout" in changed.stderr
+
+
 class TestPytestScopeCollects:
     @pytest.mark.parametrize(
         ("path", "scoped"),

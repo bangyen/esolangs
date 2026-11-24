@@ -220,7 +220,7 @@ def _capture_trace(
     *,
     runtime: RuntimeSpec,
 ) -> tuple[list[Event], int]:
-    """Return one event per step: views, snapshot and output so far.
+    """Record views, snapshot and output at entry and after each command.
 
     Completion comes from the runtime declaration, never a machine-class flag.
     The runtime declares source splitting, random draws and the preparation hook:
@@ -239,7 +239,7 @@ def _capture_trace(
     events: list[Event] = []
     commands = 0
     try:
-        for _ in range(LIMIT):
+        for step in range(LIMIT + 1):
             events.append((_views(machine, ignored), machine.snapshot(), io.getvalue()))
             if machine.halted:
                 if policy is Completion.POST_HALT:
@@ -253,9 +253,11 @@ def _capture_trace(
                             io.getvalue(),
                         )
                     )
-                elif len(events) == LIMIT:
-                    # At the last captured event, length alone is ambiguous.
+                elif step == LIMIT:
+                    # The full-length trace can end with or without a halt.
                     events[-1] = ("halted", *events[-1])
+                break
+            if step == LIMIT:
                 break
             machine.step()
             commands += 1
@@ -279,7 +281,7 @@ def _halts(events: list[Event]) -> bool:
     """Whether a trace ended by halting: no error, and inside the step limit."""
     outcome = events[-1][0]
     return outcome in ("dumped", "halted") or (
-        outcome != "error" and len(events) < LIMIT
+        outcome != "error" and len(events) <= LIMIT
     )
 
 

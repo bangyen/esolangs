@@ -233,15 +233,36 @@ def test_cli_rejects_an_error_only_corpus(monkeypatch, capsys) -> None:
     assert "no matching clean halt or declared cycle" in captured.err
 
 
-def test_halt_at_the_last_trace_event_counts(monkeypatch) -> None:
+def test_last_command_records_its_output_and_halt(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(tracediff, "LIMIT", 2)
     module = tracediff._load(_INTERPRETER, "boundary_halt")
+    program = ("+.", "")
+    events, commands = tracediff._capture_trace(
+        module, program, frozenset(), runtime=_runtime()
+    )
+    assert commands == 2
+    assert len(events) == 3
+    assert tracediff._halts(events)
+    assert events[-1][-1] == "\x01"
     report = tracediff._compare(
-        module, module, [("+", "")], frozenset(), runtime=_runtime()
+        module, module, [program], frozenset(), runtime=_runtime()
     )
     assert report.differences == []
     assert report.halting == 1
     assert report.witnessed
+
+    source = _INTERPRETER.read_text(encoding="utf-8")
+    assert "byte = chr(tape[ptr])" in source
+    path = tmp_path / "final_command.py"
+    path.write_text(source.replace("byte = chr(tape[ptr])", "byte = chr(0)"))
+    mutant = tracediff._load(path, "boundary_mutant")
+    [(changed, step, before, after)] = tracediff.differences(
+        module, mutant, [program], runtime=_runtime()
+    )
+    assert changed == program
+    assert step == 2
+    assert before[-1] == "\x01"
+    assert after[-1] == "\x00"
 
 
 def test_comparison_counts_traces_once_and_accepts_an_explicit_cycle(
@@ -321,7 +342,8 @@ def prepare_machine(code, options):
 """
 
 
-def test_declared_completion_finalizes_and_keeps_the_final_state(tmp_path):
+def test_declared_completion_finalizes_and_keeps_the_final_state(tmp_path, monkeypatch):
+    monkeypatch.setattr(tracediff, "LIMIT", 1)
     path = tmp_path / "post_halt.py"
     path.write_text(_POST_HALT)
     timestamp = path.stat().st_mtime_ns

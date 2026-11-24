@@ -43,6 +43,7 @@ from verify.process import (
     spool,
     stop_process_tree,
 )
+from verify.receipts import file_fingerprint
 
 import esolangs
 import esolangs.debugger as debugger_api
@@ -147,10 +148,13 @@ def source_identity(timeout: float = 60) -> dict[str, Any]:
         git("ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
     ):
         if name:
+            path = root / os.fsdecode(name)
+            entry = file_fingerprint(path)
+            if entry is None:
+                raise ValueError(f"cannot fingerprint untracked input {str(path)!r}")
             untracked.update(name + b"\0")
-            untracked.update(
-                hashlib.sha256((root / os.fsdecode(name)).read_bytes()).digest()
-            )
+            untracked.update(entry["mode"].encode("ascii"))
+            untracked.update(bytes.fromhex(entry["sha256"]))
     return {
         "untracked_sha256": untracked.hexdigest(),
         "commit": git("rev-parse", "HEAD").decode().strip(),
@@ -691,7 +695,7 @@ def _measure(
             "platform": platform.platform(),
             "machine": platform.machine(),
             "cpu": cpu_model(),
-            "harness": 1,
+            "harness": 2,
             "generated_artifact_sha256": digests[0],
             "generated_record_sha256": digests[1],
         },

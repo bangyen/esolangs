@@ -44,7 +44,8 @@ def _git_bytes(root: Path, *args: str) -> bytes:
     ).stdout
 
 
-def _working_input(path: Path, index_mode: str | None) -> _Input | None:
+def file_fingerprint(path: Path, index_mode: str | None = None) -> _Input | None:
+    """Hash a file or link with its Git mode, or return None for absent files."""
     try:
         mode = path.lstat().st_mode
     except (FileNotFoundError, NotADirectoryError):
@@ -55,7 +56,7 @@ def _working_input(path: Path, index_mode: str | None) -> _Input | None:
     if not stat.S_ISREG(mode):
         return None
     executable = (
-        bool(mode & stat.S_IXUSR) if index_mode is None else index_mode == "100755"
+        bool(mode & stat.S_IXUSR) if os.name == "posix" else index_mode == "100755"
     )
     return {"mode": "100755" if executable else "100644", "sha256": digest(path)}
 
@@ -73,9 +74,7 @@ def inputs(root: Path) -> dict[str, _Input | None]:
                 if stage == "0":
                     modes[name] = mode
     return {
-        name: _working_input(
-            root / name, None if os.name == "posix" else modes.get(name, "100644")
-        )
+        name: file_fingerprint(root / name, modes.get(name))
         for name in sorted(set(names.split("\0")) - {""})
     }
 

@@ -1,6 +1,7 @@
 """Reject malformed worker records without losing legitimate row deadlines."""
 
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -418,6 +419,30 @@ def test_pytest_cache_staging_dir_is_not_checkout_state(tmp_path, monkeypatch):
     assert benchmark.source_identity() != before
     scratch.unlink()
     assert benchmark.source_identity() == before
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file modes and symlinks")
+def test_provenance_fingerprints_untracked_modes_and_links(tmp_path, monkeypatch):
+    from scripts import benchmark
+    from tests.tooling.receipt_support import _checkout
+
+    root = _checkout(tmp_path / "checkout")
+    monkeypatch.setattr(benchmark, "__file__", str(root / "scripts/benchmark.py"))
+    untracked = root / "untracked"
+    untracked.write_text("same bytes\n")
+    untracked.chmod(0o644)
+    regular = benchmark.source_identity()["untracked_sha256"]
+    untracked.chmod(0o755)
+    executable = benchmark.source_identity()["untracked_sha256"]
+    assert executable != regular
+
+    untracked.unlink()
+    untracked.symlink_to("missing")
+    dangling = benchmark.source_identity()["untracked_sha256"]
+    assert dangling != executable
+    untracked.unlink()
+    untracked.symlink_to("also-missing")
+    assert benchmark.source_identity()["untracked_sha256"] != dangling
 
 
 def _check_store_sampling(monkeypatch) -> None:
