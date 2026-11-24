@@ -310,7 +310,7 @@ jobs:
       run: >
         uv run python scripts/ci/shard.py shard --marker ""
         --shard ${{ matrix.shard }} --shards 4
-        --manifest notes/ci/deadcode.shard.json --
+        --manifest notes/ci/deadcode.shard.json --bind-coverage "$COVERAGE_FILE" --
         -q -n 4 -p scripts.ci.shard --cov --cov-branch --cov-report=
         --duration-output notes/ci/test-durations.json
     - name: Retain measured test durations
@@ -324,7 +324,9 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: deadcode-coverage-${{ matrix.shard }}
-        path: .coverage.deadcode-${{ matrix.shard }}
+        path: |
+          .coverage.deadcode-${{ matrix.shard }}
+          .coverage.deadcode-${{ matrix.shard }}.inputs.json
         include-hidden-files: true
         if-no-files-found: error
         retention-days: 1
@@ -368,13 +370,12 @@ jobs:
       with:
         pattern: deadcode-coverage-*
         merge-multiple: true
-    # Combine, then the report exactly as the single run produced it:
-    # --data reads the combined file instead of collecting.
+    # Validate every shard's inputs and test selection before combining.
     - name: Check for unreached generator code
       run: |
         test -f .coverage.deadcode-0
         test -f .coverage.deadcode-1
         test -f .coverage.deadcode-2
         test -f .coverage.deadcode-3
-        uv run coverage combine .coverage.deadcode-0 .coverage.deadcode-1 .coverage.deadcode-2 .coverage.deadcode-3
-        uv run python scripts/deadcode.py --data .coverage
+        uv run python scripts/deadcode.py --data .coverage --combine-data \
+          .coverage.deadcode-0 .coverage.deadcode-1 .coverage.deadcode-2 .coverage.deadcode-3

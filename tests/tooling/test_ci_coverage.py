@@ -178,6 +178,7 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
     assert '--marker ""' in command
     assert "--exclude-node" not in command
     assert "--cov-branch" in command
+    assert '--bind-coverage "$COVERAGE_FILE"' in command
     assert "--duration-output notes/ci/test-durations.json" in command
     arguments = shlex.split(command.split(" -- ", 1)[1])
     timings = tmp_path / "durations.json"
@@ -213,6 +214,7 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
     commands = "\n".join(step.get("run", "") for step in gate["steps"])
     for shard in scan["strategy"]["matrix"]["shard"]:
         assert f"test -f .coverage.deadcode-{shard}" in commands
+    assert "--combine-data" in commands
 
 
 def test_failure_log_uploads_are_unconditional_and_unique() -> None:

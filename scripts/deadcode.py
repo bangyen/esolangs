@@ -1,8 +1,8 @@
 """Generator lines and branch arms that no test reaches, against a baseline.
 
 A scan runs every band (fast, medium and slow) under branch coverage, or
-reads ``--data`` when it exists, and lists the generator lines and branch
-arms that never executed.  Entries are keyed by source text, not line number,
+reads current coverage previously saved with ``--data``. It lists the generator
+lines and branch arms that never executed. Entries are keyed by source text,
 so unrelated edits do not churn ``deadcode_known.toml``; a scan exits 1 on any
 entry the baseline lacks.  ``--update`` rewrites the baseline after triage:
 each kept entry is reachable only past the tested arities or is a guard.
@@ -30,6 +30,9 @@ from pathlib import Path
 from typing import Any
 
 from mutants import registry_keyword
+from verify import coverage as evidence
+from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN
+from verify.receipts import digest
 
 from esolangs.registry import LANGUAGES as REGISTRY
 from esolangs.registry import resolve
@@ -39,9 +42,10 @@ LANGUAGES = ROOT / "src" / "esolangs" / "languages"
 KNOWN = Path(__file__).parent / "baselines/deadcode_known.toml"
 
 
-def _collect(data: Path, packages: list[str]) -> None:
+def _collect(data: Path, packages: list[str]) -> list[str]:
     """Run the suite, or ``packages``' tests, under branch coverage into ``data``."""
     env = {**os.environ, "COVERAGE_FILE": str(data)}
+    env.pop("PYTEST_ADDOPTS", None)
     cmd = [sys.executable, "-m", "pytest", "-q", "-m", "", "-n", "4"]
     cmd += ["--cov", "--cov-branch", "--cov-report="]
     if packages:
@@ -60,11 +64,88 @@ def _collect(data: Path, packages: list[str]) -> None:
             flush=True,
         )
     try:
-        subprocess.run(cmd, cwd=ROOT, env=env, check=True)
+        with tempfile.TemporaryDirectory(prefix="deadcode-execution-") as temporary:
+            execution = Path(temporary) / "pytest.json"
+            subprocess.run(
+                [*cmd, "-p", PLUGIN, OUTPUT_OPTION, str(execution)],
+                cwd=ROOT,
+                env=env,
+                check=True,
+            )
+            return evidence.completed(execution)
     except subprocess.CalledProcessError:
         # A later --data run must not accept this incomplete collection.
         data.unlink(missing_ok=True)
         raise
+
+
+def _combine(data: Path, shards: list[Path], state: str) -> list[str]:
+    """Combine a complete partition of the full test selection."""
+    indices: set[int] = set()
+    nodes: set[str] = set()
+    catalogue = None
+    for shard in shards:
+        selection = evidence.read(shard, state)
+        index = selection.get("shard")
+        selected = selection.get("nodes")
+        if (
+            type(index) is not int
+            or not 0 <= index < len(shards)
+            or index in indices
+            or selection.get("shards") != len(shards)
+            or not isinstance(selected, list)
+            or not selected
+            or any(not isinstance(node, str) for node in selected)
+            or not nodes.isdisjoint(selected)
+        ):
+            raise ValueError(f"invalid or overlapping coverage shard {shard}")
+        collected = selection.get("collected")
+        if not isinstance(collected, str) or catalogue not in (None, collected):
+            raise ValueError(f"coverage shard {shard} has a different test collection")
+        catalogue = collected
+        indices.add(index)
+        nodes.update(selected)
+    ordered = sorted(nodes)
+    if evidence.fingerprint(ordered) != catalogue:
+        raise ValueError("coverage shards do not cover the full test collection")
+    subprocess.run(
+        [sys.executable, "-m", "coverage", "combine", "--keep", *map(str, shards)],
+        cwd=ROOT,
+        env={**os.environ, "COVERAGE_FILE": str(data)},
+        check=True,
+    )
+    return ordered
+
+
+def _saved_report(
+    data: Path, packages: list[str], shards: list[Path]
+) -> dict[str, set[str]]:
+    """Read only coverage bound to this checkout and requested test scope."""
+    outputs = (data, *shards)
+    state = evidence.checkout(ROOT, *outputs)
+    if shards or not data.exists():
+        with tempfile.TemporaryDirectory(prefix=".coverage.", dir=data.parent) as stage:
+            staged = Path(stage) / ".coverage"
+            nodes = (
+                _combine(staged, shards, state)
+                if shards
+                else _collect(staged, packages)
+            )
+            if evidence.checkout(ROOT, *outputs) != state:
+                raise ValueError("checkout inputs changed during coverage collection")
+            evidence.publish(
+                staged, data, state, {"packages": packages, "nodes": nodes}
+            )
+    before = digest(data)
+    selection = evidence.read(data, state)
+    if selection.get("packages") != packages or not selection.get("nodes"):
+        raise ValueError(
+            f"coverage in {data} was collected for a different test selection"
+        )
+    found = _entries(_report(data, packages))
+    if digest(data) != before or evidence.checkout(ROOT, *outputs) != state:
+        raise ValueError("coverage inputs changed while preparing the report")
+    return found
 
 
 def _report(data: Path, packages: list[str]) -> dict[str, dict[str, Any]]:
@@ -147,23 +228,32 @@ def main() -> int:
     parser.add_argument(
         "--data",
         type=Path,
-        help=".coverage file: read it, or collect into it if missing",
+        help=".coverage file and receipt: read them, or collect if missing",
     )
+    parser.add_argument("--combine-data", nargs="+", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--update", action="store_true", help="rewrite the baseline")
     parser.add_argument("languages", nargs="*", help="scan only these")
     args = parser.parse_args()
     try:
-        packages = [REGISTRY[resolve(n)].id.replace("-", "_") for n in args.languages]
+        packages = sorted(
+            {REGISTRY[resolve(n)].id.replace("-", "_") for n in args.languages}
+        )
     except ValueError as exc:
         parser.error(str(exc))
     if packages and args.update:
         parser.error("--update rewrites the whole-tree baseline: name no languages")
-    data = args.data or Path(tempfile.mkdtemp()) / ".coverage"
-    if not data.exists():
-        _collect(data, packages)
+    shards = [path.resolve() for path in args.combine_data or ()]
+    if shards and (args.data is None or packages or args.data.resolve() in shards):
+        parser.error(
+            "--combine-data requires a distinct --data destination and no languages"
+        )
     try:
-        found = _entries(_report(data, packages))
-    except ValueError as exc:
+        if args.data is None:
+            with tempfile.TemporaryDirectory(prefix="deadcode-") as temporary:
+                found = _saved_report(Path(temporary) / ".coverage", packages, [])
+        else:
+            found = _saved_report(args.data.resolve(), packages, shards)
+    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
         parser.error(str(exc))
     if args.update:
         _dump(found)

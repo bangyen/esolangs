@@ -18,10 +18,13 @@ import statistics
 import subprocess
 import tempfile
 from datetime import date
+from typing import Any
 
 import pytest
 from _pytest.reports import TestReport
+from verify import coverage as coverage_evidence
 from verify.process import write_text
+from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -163,6 +166,7 @@ def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
     parser.add_argument("--durations", type=Path, help="recorded seconds by node ID")
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--exclude-node", action="append", default=[])
+    parser.add_argument("--bind-coverage", type=Path, help=argparse.SUPPRESS)
     args, rest = parser.parse_known_args(argv)
     if rest[:1] == ["--"]:
         rest = rest[1:]
@@ -170,12 +174,18 @@ def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
         parser.error("--shards must be at least 1")
     if not 0 <= args.shard < args.shards:
         parser.error("--shard must lie in [0, --shards)")
+    if args.bind_coverage and (
+        args.marker or args.exclude_node or "--cov-branch" not in rest
+    ):
+        parser.error("--bind-coverage requires the full corpus and branch coverage")
     return args, rest
 
 
 def shard_main(argv: list[str] | None = None) -> int:
     """Collect the band, run this shard's slice, return pytest's exit code."""
     args, rest = _parse_args(argv)
+    data = args.bind_coverage.resolve() if args.bind_coverage is not None else None
+    state = coverage_evidence.checkout(ROOT, data) if data is not None else ""
     durations = load_durations(args.durations) if args.durations else None
     collected = collect_ids(args.marker)
     excluded = set(args.exclude_node)
@@ -216,14 +226,59 @@ def shard_main(argv: list[str] | None = None) -> int:
         )
     if not ids:
         print(f"shard {args.shard}/{args.shards} of -m {args.marker}: no tests")
-        return 0
+        return int(data is not None)
     print(f"shard {args.shard}/{args.shards} of -m {args.marker}: {len(ids)} tests")
+    if data is not None:
+        return _run_coverage_shard(
+            data,
+            state,
+            rest,
+            {
+                "shard": args.shard,
+                "shards": args.shards,
+                "collected": coverage_evidence.fingerprint(collected),
+                "nodes": ids,
+            },
+        )
     return subprocess.run(
         [sys.executable, "-m", "pytest", *rest, *ids],
         cwd=ROOT,
         env=_pytest_env(),
         check=False,
     ).returncode
+
+
+def _run_coverage_shard(
+    data: Path, state: str, pytest_args: list[str], selection: dict[str, Any]
+) -> int:
+    """Publish coverage with the completed shard selection."""
+    with tempfile.TemporaryDirectory(prefix=".coverage.", dir=data.parent) as stage:
+        staged = Path(stage) / ".coverage"
+        execution = Path(stage) / "pytest.json"
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                *pytest_args,
+                "-p",
+                PLUGIN,
+                OUTPUT_OPTION,
+                str(execution),
+                *selection["nodes"],
+            ],
+            cwd=ROOT,
+            env={**_pytest_env(), "COVERAGE_FILE": str(staged)},
+            check=False,
+        )
+        if result.returncode:
+            return result.returncode
+        if coverage_evidence.completed(execution) != selection["nodes"]:
+            raise ValueError("coverage shard ran a different selection")
+        if coverage_evidence.checkout(ROOT, data) != state:
+            raise ValueError("checkout inputs changed during coverage collection")
+        coverage_evidence.publish(staged, data, state, selection)
+    return 0
 
 
 def load_run(directory: Path, expected: set[str]) -> dict[str, float]:

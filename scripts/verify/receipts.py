@@ -67,7 +67,9 @@ def file_fingerprint(path: Path, index_mode: str | None = None) -> _Input | None
     return {"mode": "100755" if executable else "100644", "sha256": digest(path)}
 
 
-def inputs(root: Path) -> dict[str, _Input | None]:
+def inputs(
+    root: Path, *, exclude: frozenset[str] = frozenset()
+) -> dict[str, _Input | None]:
     """Fingerprint Git modes and bytes in the checkout, including deletions."""
     names = _git(root, "ls-files", "--cached", "--others", "--exclude-standard", "-z")
     # Git on Windows stores executable bits in the index, not on disk.
@@ -81,7 +83,7 @@ def inputs(root: Path) -> dict[str, _Input | None]:
                     modes[name] = mode
     return {
         name: file_fingerprint(root / name, modes.get(name))
-        for name in sorted(set(names.split("\0")) - {""})
+        for name in sorted(set(names.split("\0")) - {""} - exclude)
     }
 
 

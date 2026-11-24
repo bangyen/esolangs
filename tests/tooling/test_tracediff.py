@@ -3,6 +3,7 @@
 import importlib
 import os
 import shutil
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -249,6 +250,28 @@ def test_trace_arguments_are_checked_before_corpus(monkeypatch, capsys, args, me
         tracediff.main([REFERENCE, *args])
     assert caught.value.code == 2
     assert message in capsys.readouterr().err
+
+
+def test_trace_rejects_an_oversized_corpus_before_checkout(monkeypatch, capsys):
+    monkeypatch.setattr(tracediff, "_checkout", lambda *_: pytest.fail("checkout"))
+    with pytest.raises(SystemExit) as caught:
+        tracediff.main([REFERENCE, "--random", "1000000000"])
+    assert caught.value.code == 2
+    assert "--random must be at most 10,000" in capsys.readouterr().err
+
+
+def test_trace_deadline_covers_the_entire_sweep(monkeypatch, capsys):
+    def time_out(command, *, timeout, cwd):
+        assert command[2:] == ["--sweep", REFERENCE, "--random", "0", "--speed"]
+        assert timeout == tracediff._SWEEP_TIMEOUT
+        assert cwd == REPO_ROOT
+        raise subprocess.TimeoutExpired(command, timeout)
+
+    monkeypatch.setattr(tracediff, "run_bounded", time_out)
+    assert (
+        tracediff.main([REFERENCE, "--random", "0", "--speed"], supervise=True) == 124
+    )
+    assert "trace sweep" in capsys.readouterr().err
 
 
 def test_last_command_records_its_output_and_halt(tmp_path, monkeypatch) -> None:

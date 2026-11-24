@@ -11,6 +11,8 @@ that must differ somewhere, or the corpus never reached the change.
 Baselines and mutants must expose the declared preparation hook.
 ``--speed`` also times both over the longest-running programs: a teaching
 rewrite once cost Deadfish a third of its step rate, unmeasured.
+``--random`` allows up to 10,000 random programs. The sweep has a 300-second
+wall-clock limit including corpus construction. A sweep timeout exits 124.
 
 Exits 1 on a difference, when no matching run halts cleanly or witnesses a
 declared nonterminating contract, on a mutant that went unseen, or with
@@ -47,6 +49,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from gendiff import _checkout, _mutated, _read_mutant, _replacement_target  # noqa: E402
+from verify.process import run_bounded  # noqa: E402
 
 import esolangs  # noqa: E402
 from esolangs.exceptions import GeneratorCapError  # noqa: E402
@@ -62,8 +65,10 @@ from esolangs.runtime.randomness import Seeded  # noqa: E402
 #: Steps traced per program; past it a run counts as non-halting.
 LIMIT = 400
 _WORKER_TIMEOUT = 120
+_SWEEP_TIMEOUT = 300
 _RECORD_SIZE = struct.Struct(">Q")
 RANDOM_PROGRAMS = 3000
+_MAX_RANDOM_PROGRAMS = 10_000
 #: The slowdown a refactor may cost before ``--speed`` fails it.
 SLOWDOWN = 0.10
 _ADDRESS = re.compile(r"<[\w.]+\.(\w+) object at 0x[0-9a-f]+>| at 0x[0-9a-f]+")
@@ -717,7 +722,7 @@ def _worker_speeds(
     return was, now
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, supervise: bool = False) -> int:
     """Print the first differences and the counts; return the exit status."""
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -734,8 +739,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--ignore-views", default="", help="comma-separated renamed views"
     )
-    parser.add_argument("--random", type=int, default=RANDOM_PROGRAMS)
+    parser.add_argument(
+        "--random",
+        type=int,
+        default=RANDOM_PROGRAMS,
+        help=f"seeded random programs (0-{_MAX_RANDOM_PROGRAMS:,})",
+    )
     parser.add_argument("--speed", action="store_true", help="also compare steps/s")
+    argv = sys.argv[1:] if argv is None else argv
     args = parser.parse_args(argv)
     if args.worker:
         _worker(args.language, *args.worker, timing=args.speed)
@@ -744,6 +755,18 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--mutant-target requires --mutant")
     if args.random < 0:
         parser.error("--random must be nonnegative")
+    if args.random > _MAX_RANDOM_PROGRAMS:
+        parser.error(f"--random must be at most {_MAX_RANDOM_PROGRAMS:,}")
+    if supervise:
+        command = [sys.executable, __file__, "--sweep", *argv]
+        try:
+            return run_bounded(command, timeout=_SWEEP_TIMEOUT, cwd=ROOT).returncode
+        except subprocess.TimeoutExpired:
+            print(
+                f"trace sweep for {args.language} exceeded {_SWEEP_TIMEOUT:g}s",
+                file=sys.stderr,
+            )
+            return 124
     replacement = None
     try:
         name = resolve(args.language)
@@ -820,4 +843,6 @@ def _compare_revisions(
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    if sys.argv[1:2] == ["--sweep"]:
+        raise SystemExit(main(sys.argv[2:]))
+    raise SystemExit(main(sys.argv[1:], supervise=True))
