@@ -144,6 +144,7 @@ def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch) 
     )
     monkeypatch.setattr(pytest_shard, "ROOT", tmp_path)
     monkeypatch.setenv("PYTHONPATH", str(Path(__file__).resolve().parents[2]))
+    monkeypatch.setenv("PYTEST_ADDOPTS", "-k 'test_one or test_serial'")
     paths = []
     for index in range(2):
         directory = tmp_path / str(index)
@@ -173,8 +174,14 @@ def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch) 
         )
         paths.append(path)
     corpus = pytest_shard.collect_ids("not slow")
+    assert corpus == [
+        "test_example.py::test_one",
+        "test_example.py::test_serial",
+        "test_example.py::test_two",
+    ]
     with pytest.raises(ValueError, match="omit"):
         check(paths, corpus, "not slow", 2)
+    monkeypatch.delenv("PYTEST_ADDOPTS")
     subprocess.run(
         [
             sys.executable,

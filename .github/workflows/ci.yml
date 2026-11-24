@@ -141,6 +141,8 @@ jobs:
     # Runs 42238353250/1-2: these 3.12 witnesses overrun alongside workers.
     # Keep their bands; the completeness referee includes this separate receipt.
     - name: Check Python 3.12 witnesses without competing workers
+      env:
+        PYTEST_ADDOPTS: ""
       if: ${{ !cancelled() && matrix.python-version == '3.12' && matrix.shard == 0 }}
       run: |
         nodes=()

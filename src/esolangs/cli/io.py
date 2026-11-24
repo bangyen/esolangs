@@ -53,7 +53,7 @@ from esolangs.exceptions import (
 )
 from esolangs.operations.source import _check_program
 from esolangs.raster.png import _SIGNATURE as _PNG_SIGNATURE
-from esolangs.registry import Catalog, get_catalog
+from esolangs.registry import Catalog, LanguageDeclaration, get_catalog
 from esolangs.runtime._files import (
     _BLOCK,
     StreamReadTimeoutError,
@@ -463,7 +463,11 @@ def _wait_for_pipe_data(deadline: float | None) -> None:
 
 
 def _read_pipe_without_poll(
-    stream: BufferedReader, fd: int, deadline: float | None, size: int | None
+    stream: BufferedReader,
+    fd: int,
+    deadline: float | None,
+    size: int | None,
+    pipe_check: Callable[[bytes], None] | None,
 ) -> bytes:
     """Drain an anonymous pipe where poll is unavailable, including Windows."""
     blocking = os.get_blocking(fd)
@@ -487,12 +491,18 @@ def _read_pipe_without_poll(
         chunk = _binary_chunk(chunk)
         if not chunk:
             break
+        if pipe_check is not None:
+            pipe_check(chunk)
         data.extend(chunk)
     return bytes(data)
 
 
 def _read_buffered_stdin(
-    stream: BufferedReader, deadline: float | None, *, size: int | None = None
+    stream: BufferedReader,
+    deadline: float | None,
+    *,
+    size: int | None = None,
+    pipe_check: Callable[[bytes], None] | None = None,
 ) -> bytes:
     """Drain buffered bytes without holding the stdin lock across a pipe wait."""
     _time_remaining(deadline)
@@ -509,7 +519,7 @@ def _read_buffered_stdin(
         return read_snapshot(stream, size=size)
     if not hasattr(select, "poll"):
         if stat.S_ISFIFO(mode):
-            return _read_pipe_without_poll(stream, fd, deadline, size)
+            return _read_pipe_without_poll(stream, fd, deadline, size, pipe_check)
         return read_snapshot(raw, size=size)
     if not os.get_blocking(fd):
         return read_snapshot(stream, size=size)
@@ -534,6 +544,8 @@ def _read_buffered_stdin(
         chunk = _binary_chunk(chunk)
         if not chunk:
             break
+        if pipe_check is not None:
+            pipe_check(chunk)
         data.extend(chunk)
     return bytes(data)
 
@@ -659,7 +671,10 @@ def _read_prefetched_stdin(stdin: TextIOWrapper, stream: BinaryIO, data: bytes) 
 
 
 def _read_wrapped_stdin(
-    stdin: TextIOWrapper, stream: BinaryIO, deadline: float | None
+    stdin: TextIOWrapper,
+    stream: BinaryIO,
+    deadline: float | None,
+    pipe_check: Callable[[bytes], None] | None,
 ) -> str:
     try:
         # Setting the same error handler distinguishes a fresh wrapper from
@@ -670,6 +685,10 @@ def _read_wrapped_stdin(
         # suffix with its current state while no further I/O can block.
         data = _read_stdin_bytes(stream, deadline)
         return _read_prefetched_stdin(stdin, stream, data)
+    if pipe_check is not None and isinstance(stream, BufferedReader):
+        return decode_utf8(
+            _read_buffered_stdin(stream, deadline, pipe_check=pipe_check)
+        )
     return decode_utf8(_read_stdin_bytes(stream, deadline))
 
 
@@ -699,7 +718,11 @@ def _snapshot_frame(stdin: TextIO, deadline: float | None, frame: InputFrame) ->
 
 
 def _snapshot_stdin(
-    stdin: TextIO, deadline: float | None, frame: InputFrame | None = None
+    stdin: TextIO,
+    deadline: float | None,
+    frame: InputFrame | None = None,
+    *,
+    pipe_check: Callable[[bytes], None] | None = None,
 ) -> str:
     _time_remaining(deadline)
     with stream_read_deadline(deadline):
@@ -719,7 +742,7 @@ def _snapshot_stdin(
         if stream is None:
             raise _unreadable_input(stdin)
         if _has_backing_type(stdin, TextIOWrapper) and hasattr(stream, "__dict__"):
-            return _read_wrapped_stdin(stdin, stream, deadline)
+            return _read_wrapped_stdin(stdin, stream, deadline, pipe_check)
         return decode_utf8(_read_stdin_bytes(stream, deadline))
 
 
@@ -751,6 +774,7 @@ def _read_stdin(
     timeout_flag: str = "",
     terminal_prompt: str | None = None,
     frame: InputFrame | None = None,
+    pipe_check: Callable[[bytes], None] | None = None,
 ) -> str:
     """Return this command's stdin, or exit if it is not text or never comes.
 
@@ -763,7 +787,7 @@ def _read_stdin(
     deadline = None if timeout is None else monotonic() + timeout
 
     def _read_text() -> str:
-        return _snapshot_stdin(stdin, deadline, frame)
+        return _snapshot_stdin(stdin, deadline, frame, pipe_check=pipe_check)
 
     def _on_timeout() -> NoReturn:
         bound = f" ({timeout_flag})" if timeout_flag else ""
@@ -814,12 +838,32 @@ def _read_stdin(
         _fail(input_read_error(exc))
 
 
-def _read_truth_table() -> str:
+def _read_truth_table(declaration: LanguageDeclaration | None = None) -> str:
     """Read a UTF-8 table, allowing one leading BOM and outer whitespace."""
+    pipe_check = None
+    backend = None if declaration is None else declaration.backend
+    if (
+        declaration is not None
+        and backend is not None
+        and backend.max_inputs is not None
+    ):
+        cap = backend.max_inputs
+        check_arity = partial(backend.check_arity, declaration.name)
+        rows = 0
+
+        def check_chunk(chunk: bytes) -> None:
+            nonlocal rows
+            # ASCII bit bytes cannot be part of a UTF-8 multibyte sequence.
+            rows += chunk.count(b"0") + chunk.count(b"1")
+            if rows and (arity := (rows - 1).bit_length()) > cap:
+                check_arity(arity)
+
+        pipe_check = check_chunk
     return (
         _read_stdin(
             hint="; finish the truth table or close stdin",
             terminal_prompt="Enter a truth table, then signal EOF.\n",
+            pipe_check=pipe_check,
         )
         .removeprefix("\ufeff")
         .strip()

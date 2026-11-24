@@ -26,6 +26,13 @@ from verify.process import write_text
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _pytest_env() -> dict[str, str]:
+    """Use the declared selectors even when a caller has local pytest options."""
+    env = dict(os.environ)
+    env.pop("PYTEST_ADDOPTS", None)
+    return env
+
+
 def collect_ids(marker: str) -> list[str]:
     """Return the sorted node IDs pytest collects for ``-m marker``.
 
@@ -53,6 +60,7 @@ def collect_ids(marker: str) -> list[str]:
                 marker,
             ],
             cwd=ROOT,
+            env=_pytest_env(),
             capture_output=True,
             text=True,
             check=False,
@@ -210,7 +218,10 @@ def shard_main(argv: list[str] | None = None) -> int:
         return 0
     print(f"shard {args.shard}/{args.shards} of -m {args.marker}: {len(ids)} tests")
     return subprocess.run(
-        [sys.executable, "-m", "pytest", *rest, *ids], cwd=ROOT, check=False
+        [sys.executable, "-m", "pytest", *rest, *ids],
+        cwd=ROOT,
+        env=_pytest_env(),
+        check=False,
     ).returncode
 
 

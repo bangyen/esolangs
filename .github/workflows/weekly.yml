@@ -74,6 +74,8 @@ jobs:
         uv run python scripts/ci/shard.py shard --marker "" --durations snapshot.json --shard ${{ matrix.shard }} --shards 2 --manifest notes/ci/weekly.shard.json "${excluded[@]}" -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
 
     - name: Check witnesses without competing workers
+      env:
+        PYTEST_ADDOPTS: ""
       if: ${{ !cancelled() && matrix.shard == 0 }}
       run: |
         nodes=()

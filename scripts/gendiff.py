@@ -29,7 +29,7 @@ import sys
 import tarfile
 import tempfile
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -212,6 +212,39 @@ def differences(old: Outputs, new: Outputs) -> list[str]:
     return [key for key in old.keys() | new.keys() if old.get(key) != new.get(key)]
 
 
+def _speed_failed(
+    dump: Callable[[Path], tuple[Outputs, Timings]],
+    expected: Outputs,
+    old: tuple[str, Path, Timings],
+    new: tuple[str, Path, Timings],
+) -> bool:
+    """Compare best-of-three timings only for stable, identical outputs."""
+    old_laps, new_laps = [old[2]], [new[2]]
+    for lap in (2, 3):
+        for (label, source, _), timings in ((old, old_laps), (new, new_laps)):
+            outputs, timing = dump(source)
+            changed = differences(expected, outputs)
+            if changed:
+                print(
+                    f"{label}: generation changed on timing pass {lap}: {min(changed)}",
+                    file=sys.stderr,
+                )
+                return True
+            timings.append(timing)
+    old_generation = min(lap.generation for lap in old_laps)
+    new_generation = min(lap.generation for lap in new_laps)
+    change = old_generation / new_generation - 1
+    print(
+        f"speed: generation {old_generation:.3f}s -> {new_generation:.3f}s "
+        f"({change:+.0%})"
+    )
+    print(
+        f"serialization: {min(lap.serialization for lap in old_laps):.3f}s -> "
+        f"{min(lap.serialization for lap in new_laps):.3f}s"
+    )
+    return change < -SLOWDOWN
+
+
 def main(argv: list[str] | None = None) -> int:
     """Print the first differences and the counts; return the exit status."""
     parser = argparse.ArgumentParser(
@@ -251,13 +284,18 @@ def main(argv: list[str] | None = None) -> int:
     passes = (6 if args.speed else 2) + (args.mutant is not None)
     print(
         f"{name}: {requests:,} generation requests per pass, "
-        f"{requests * passes:,} across {passes} passes",
+        f"up to {requests * passes:,} across {passes} passes",
         flush=True,
     )
+
+    def dump(source: Path) -> tuple[Outputs, Timings]:
+        return _dump(source, name, args.max_n, witnesses)
+
     with tempfile.TemporaryDirectory() as scratch:
         old_src = _checkout(args.old, Path(scratch) / "old")
-        old, old_time = _dump(old_src, name, args.max_n, witnesses)
-        new, new_time = _dump(ROOT / "src", name, args.max_n, witnesses)
+        new_src = ROOT / "src"
+        old, old_time = dump(old_src)
+        new, new_time = dump(new_src)
         found = sorted(differences(old, new))
         for key in found[:3]:
             print(f"DIFF {key}")
@@ -276,29 +314,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{name}: no matching successful generation pairs", file=sys.stderr)
             return 1
         failed = bool(found)
-        if args.speed:
-            # Best of three each, alternating, as one lap is mostly noise.
-            old_laps, new_laps = [old_time], [new_time]
-            for _ in range(2):
-                old_laps.append(_dump(old_src, name, args.max_n, witnesses)[1])
-                new_laps.append(_dump(ROOT / "src", name, args.max_n, witnesses)[1])
-            old_generation = min(lap.generation for lap in old_laps)
-            new_generation = min(lap.generation for lap in new_laps)
-            change = old_generation / new_generation - 1
-            print(
-                f"speed: generation {old_generation:.3f}s -> {new_generation:.3f}s "
-                f"({change:+.0%})"
+        if args.speed and not failed:
+            failed = _speed_failed(
+                dump, old, (args.old, old_src, old_time), ("new", new_src, new_time)
             )
-            print(
-                f"serialization: {min(lap.serialization for lap in old_laps):.3f}s -> "
-                f"{min(lap.serialization for lap in new_laps):.3f}s"
-            )
-            failed |= change < -SLOWDOWN
         if args.mutant is not None:
             mutant_src = _mutated(args.mutant, name, Path(scratch) / "mutant")
-            caught = len(
-                differences(old, _dump(mutant_src, name, args.max_n, witnesses)[0])
-            )
+            caught = len(differences(old, dump(mutant_src)[0]))
             print(f"control: mutant differs on {caught}")
             failed |= not caught
     return int(failed)

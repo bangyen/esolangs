@@ -97,9 +97,32 @@ def test_speed_gate_uses_only_generation(monkeypatch, capsys, new_generation, st
     monkeypatch.setattr(gendiff, "_construction_tables", lambda *_: {})
     assert gendiff.main([REFERENCE, "--speed"]) == status
     output = capsys.readouterr().out
-    assert "632 generation requests per pass, 3,792 across 6 passes" in output
+    assert "632 generation requests per pass, up to 3,792 across 6 passes" in output
     assert "speed: generation " in output
     assert "serialization: 1.000s -> 3.000s" in output
+
+
+@pytest.mark.parametrize("changes_on", [2, 3, 4])
+def test_speed_stops_on_any_output_change(monkeypatch, capsys, changes_on) -> None:
+    old = REPO_ROOT / "old"
+    monkeypatch.setattr(gendiff, "_checkout", lambda *_: old)
+    monkeypatch.setattr(gendiff, "_construction_tables", lambda *_: {})
+    visited = []
+
+    def dump(source, *_):
+        visited.append(source)
+        artifact = '{"different": true}' if len(visited) == changes_on else "{}"
+        return {"same": "{}", "changed": artifact}, gendiff.Timings(1.0, 0.0)
+
+    monkeypatch.setattr(gendiff, "_dump", dump)
+    assert gendiff.main([REFERENCE, "--max-n", "1", "--speed"]) == 1
+    assert visited == [old, REPO_ROOT / "src", old, REPO_ROOT / "src"][:changes_on]
+    captured = capsys.readouterr()
+    assert "speed: generation" not in captured.out
+    if changes_on == 2:
+        assert "DIFF changed" in captured.out
+    else:
+        assert "generation changed on timing pass 2: changed" in captured.err
 
 
 @pytest.mark.medium  # three generator processes and a copy of src: ~3 s

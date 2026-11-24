@@ -67,6 +67,34 @@ def test_portable_run_reports_the_recorded_language(tmp_path, capsys) -> None:
     assert shlex.split(command) == ["esolangs", "run", "--artifact", owner, str(path)]
 
 
+def test_generate_rejects_oversized_pipe_before_eof() -> None:
+    language = next(
+        name
+        for name, lang in _table.LANGUAGES.items()
+        if lang.runtime.compressed_source
+    )
+    cap = esolangs.describe(language).generator_max_inputs
+    assert cap is not None
+    with subprocess.Popen(
+        [sys.executable, "-m", "esolangs", "generate", "--artifact", language, "-"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as child:
+        assert child.stdin is not None
+        assert child.stdout is not None
+        assert child.stderr is not None
+        try:
+            child.stdin.write(b"\xef\xbb\xbf \t" + b"0" * ((1 << cap) + 1))
+            child.stdin.flush()
+            assert child.wait(timeout=5) == 2
+            assert child.stdout.read() == b""
+            assert f"max-inputs={cap}".encode() in child.stderr.read()
+        finally:
+            if child.poll() is None:
+                child.kill()
+
+
 @pytest.mark.parametrize("raw", [b"\xff", b"\x80"])
 def test_stdin_rejects_surrogateescaped_binary(monkeypatch, capsys, raw) -> None:
     text = raw.decode("utf-8", "surrogateescape")
