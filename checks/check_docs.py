@@ -26,11 +26,14 @@ language names carry are kept.
 
 from __future__ import annotations
 
+import os
+import posixpath
 import re
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from urllib.parse import unquote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
@@ -72,61 +75,94 @@ def _targets(text: str) -> list[str]:
     return [m.group(1) for m in _LINK.finditer(stripped)]
 
 
-def broken_links(root: Path, files: list[str]) -> list[tuple[str, str]]:
-    """Return ``(file, target)`` for every internal link with no target."""
-    index = {path: anchors((root / path).read_text(encoding="utf-8")) for path in files}
+def broken_links(root: Path, files: list[str] | None = None) -> list[tuple[str, str]]:
+    """List internal links missing from the checkout or index."""
+    tracked = _tracked_paths(root)
+    if files is None:
+        if tracked is None:
+            skip = {".git", "notes", ".worktrees", ".venv"}
+            files = sorted(
+                path.relative_to(root).as_posix()
+                for path in root.rglob("*.md")
+                if not skip & set(path.relative_to(root).parts)
+            )
+        else:
+            files = sorted(path for path in tracked if path.endswith(".md"))
+    # Git trees have directories only where they contain a tracked path.
+    targets = (
+        None
+        if tracked is None
+        else tracked
+        | {
+            parent.as_posix()
+            for path in tracked
+            for parent in PurePosixPath(path).parents
+        }
+    )
+    pages = {
+        path: (root / path).read_text(encoding="utf-8")
+        for path in files
+        if (root / path).is_file()
+    }
+    root = root.resolve()
+    index = {path: anchors(text) for path, text in pages.items()}
     broken: list[tuple[str, str]] = []
-    for path in files:
-        for target in _targets((root / path).read_text(encoding="utf-8")):
+    for path, text in pages.items():
+        for target in _targets(text):
             if _EXTERNAL.match(target):
                 continue
             target_path, _, fragment = target.partition("#")
+            target_path = unquote(
+                target_path.partition("?")[0], errors="surrogateescape"
+            )
             if target_path:
-                resolved = _relative(root, (root / path).parent / target_path)
-                if resolved is None or not (root / resolved).exists():
+                resolved = posixpath.normpath(
+                    posixpath.join(posixpath.dirname(path), target_path)
+                )
+                candidate = root / resolved
+                if (
+                    (targets is not None and resolved not in targets)
+                    or not candidate.exists()
+                    or not candidate.resolve().is_relative_to(root)
+                ):
                     broken.append((path, target))
                     continue
             else:
                 resolved = path
             # A fragment on a non-Markdown file (or one with no index entry)
             # has nothing to resolve against; the file check above is all there is.
+            fragment = unquote(fragment)
             if fragment and fragment not in index.get(resolved, {fragment}):
                 broken.append((path, target))
     return broken
 
 
-def _relative(root: Path, path: Path) -> str | None:
-    """Return ``path`` relative to ``root`` as a POSIX string, or None if outside."""
-    try:
-        return path.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError:
-        return None
-
-
-def tracked_markdown() -> list[str]:
-    """Return the tracked ``*.md`` paths, or every one on disk without git."""
+def _tracked_paths(root: Path) -> set[str] | None:
+    """Read the Git index, allowing the disk-only check in source archives."""
     try:
         result = subprocess.run(
-            ["git", "ls-files", "-z", "--", "*.md"],
-            cwd=ROOT,
+            ["git", "ls-files", "--cached", "-z"],
+            cwd=root,
             capture_output=True,
             check=True,
-            text=True,
+            timeout=10,
         )
-    except (OSError, subprocess.CalledProcessError):
-        skip = {".git", "notes", ".worktrees", ".venv"}
-        return sorted(
-            p.relative_to(ROOT).as_posix()
-            for p in ROOT.rglob("*.md")
-            if not skip & set(p.parts)
-        )
-    return sorted(name for name in result.stdout.split("\0") if name)
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        if (root / ".git").exists():
+            raise ValueError(
+                "could not read the Git index for documentation links"
+            ) from error
+        return None
+    return {os.fsdecode(name) for name in result.stdout.split(b"\0") if name}
 
 
 def broken_internal_links() -> int:
     """Report every dead internal link; exit nonzero if any."""
-    files = tracked_markdown()
-    broken = broken_links(ROOT, files)
+    try:
+        broken = broken_links(ROOT)
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 1
     if broken:
         print("broken internal documentation links:")
         for path, target in broken:

@@ -242,7 +242,9 @@ def _import_references(
 ) -> set[str]:
     """Return every module, owner and imported name ``source`` refers to."""
     references = set()
-    package = list(source.parent.relative_to(ROOT / "src").parts)
+    package = list(source.parent.relative_to(ROOT).parts)
+    if package and package[0] == "src":
+        package.pop(0)
     for node in ast.walk(ast.parse(text)):
         if isinstance(node, ast.ImportFrom):
             prefix = node.module or ""
@@ -364,32 +366,81 @@ def _generator_test_scope(module: str) -> list[str] | None:
     return selected
 
 
+def _inside_tests(path: str) -> bool:
+    return path.startswith("tests/") or (
+        path.startswith("src/esolangs/languages/") and "/tests/" in path
+    )
+
+
+def _test_dependents(tests: set[str]) -> set[str] | None:
+    """Follow imports of changed tests, widening for shared helpers."""
+    selected = tests.copy()
+    pending = list(tests)
+    if not pending:
+        return selected
+    try:
+        sources = {
+            source: source.read_text(encoding="utf-8")
+            for source in (
+                *ROOT.glob("*.py"),
+                *(
+                    path
+                    for tree in ("tests", "src", "scripts", "checks")
+                    for path in (ROOT / tree).rglob("*.py")
+                ),
+            )
+        }
+        imports: dict[Path, set[str]] = {}
+        while pending:
+            path = Path(pending.pop())
+            module = path.with_suffix("").as_posix().removeprefix("src/")
+            names = {module.replace("/", "."), path.stem}
+            for source, text in sources.items():
+                if path.stem not in text:
+                    continue
+                relative = source.relative_to(ROOT).as_posix()
+                if relative in selected:
+                    continue
+                if source not in imports:
+                    imports[source] = _import_references(source, text, str, {})
+                if not imports[source] & names:
+                    continue
+                if not (_inside_tests(relative) and _is_collected(relative)):
+                    # A shared helper may be used by tests outside this suite.
+                    return None
+                selected.add(relative)
+                pending.append(relative)
+    except (OSError, SyntaxError, UnicodeError):
+        return None
+    return selected
+
+
 def _pytest_scope(changed: list[str]) -> list[str] | str:
     """Return the pytest paths covering *changed*.
 
-    An interpreter runs its language suite and shared contracts; anything under
-    ``tests/`` is run directly.  ``WHOLE_SUITE`` means the coverage is not
+    An interpreter runs its language suite and shared contracts. A changed
+    test also runs its consumers. ``WHOLE_SUITE`` means coverage is not
     localisable -- a new interpreter with no test module yet, or a source file
     whose tests live somewhere this cannot predict -- so everything runs rather
     than guessing.  An empty list means the branch touched nothing the Python
     tests cover (docs, assembly, CI config), so there is nothing to run.
     """
     paths: set[str] = set()
+    changed_tests: set[str] = set()
     for f in changed:
-        if (
-            f == "conftest.py"
-            or f.startswith("tests/")
-            or (f.startswith("src/esolangs/languages/") and "/tests/" in f)
-        ):
+        if f == "conftest.py" or _inside_tests(f):
             # A conftest configures every test beneath it, a non-.py file is
             # fixture data some unknown test reads, and a module pytest does
             # not collect is a helper imported from tests that live elsewhere.
             # Scoped to itself each collects nothing, which pytest exits
             # non-zero for, so all three widen.
-            if Path(f).name == "conftest.py" or not _is_collected(f):
+            if (
+                Path(f).name == "conftest.py"
+                or not _is_collected(f)
+                or not (ROOT / f).is_file()
+            ):
                 return WHOLE_SUITE
-            if (ROOT / f).exists():
-                paths.add(f)
+            changed_tests.add(f)
             continue
         if f.startswith("src/esolangs/languages/"):
             relative = Path(f).relative_to("src/esolangs/languages")
@@ -423,7 +474,8 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             # follow the interpreter naming convention, so there is no way to
             # tell which module covers them.
             return WHOLE_SUITE
-    return sorted(paths)
+    test_paths = _test_dependents(changed_tests)
+    return WHOLE_SUITE if test_paths is None else sorted(paths | test_paths)
 
 
 def whole_tree_cmd(cmd: list[str]) -> list[str]:

@@ -1,5 +1,6 @@
 """The docs gate flags dead anchors and passes real cross-references."""
 
+import subprocess
 from functools import partial
 from pathlib import Path
 
@@ -100,6 +101,31 @@ def test_proof_evidence_shares_the_link_gates_anchors(
 
 def test_the_committed_tree_has_no_dead_links() -> None:
     checker = load_script()
-    files = checker.tracked_markdown()
-    assert files, "no Markdown files found"
-    assert checker.broken_links(checker.ROOT, files) == []
+    assert "README.md" in checker._tracked_paths(checker.ROOT)
+    assert checker.broken_links(checker.ROOT) == []
+
+
+def test_links_use_index_paths_and_decode_destinations(tmp_path: Path) -> None:
+    checker = load_script()
+    _tree(
+        tmp_path,
+        {
+            "guide.md": (
+                "[local only](local.py) [tracked code](code/example.py)\n"
+                "[directory](code/) [encoded](my%20page%23.md#caf%C3%A9)\n"
+            ),
+            "local.py": "",
+            "code/example.py": "",
+            "my page#.md": "# Café\n",
+        },
+    )
+    for args in (("init", "-q"), ("add", "guide.md", "code", "my page#.md")):
+        subprocess.run(
+            ["git", *args], cwd=tmp_path, capture_output=True, check=True, timeout=10
+        )
+    assert checker.broken_links(tmp_path) == [("guide.md", "local.py")]
+    (tmp_path / "code/example.py").unlink()
+    assert checker.broken_links(tmp_path) == [
+        ("guide.md", "local.py"),
+        ("guide.md", "code/example.py"),
+    ]

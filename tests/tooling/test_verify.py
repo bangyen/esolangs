@@ -1101,6 +1101,18 @@ def test_colocated_test_changes_run_directly_and_helpers_widen(
     verify = colocated_scope
     test = "src/esolangs/languages/target/tests/test_target.py"
     assert verify._pytest_scope([test]) == [test]
+    consumer = "src/esolangs/languages/target/tests/test_boolean_target.py"
+    (verify.ROOT / consumer).write_text("from . import test_target\n")
+    assert verify._pytest_scope([test]) == [consumer, test]
+    downstream = "tests/generators/test_contracts.py"
+    (verify.ROOT / downstream).write_text(
+        "from esolangs.languages.target.tests import test_boolean_target\n"
+    )
+    assert verify._pytest_scope([test]) == [consumer, test, downstream]
+    (verify.ROOT / "tests/generators/helper.py").write_text(
+        "from . import test_contracts\n"
+    )
+    assert verify._pytest_scope([test]) == verify.WHOLE_SUITE
     assert (
         verify._pytest_scope(["src/esolangs/languages/target/tests/__init__.py"])
         == verify.WHOLE_SUITE

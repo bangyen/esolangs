@@ -65,6 +65,60 @@ def test_oversized_record_is_bounded() -> None:
     assert worker.process is None
 
 
+@pytest.mark.parametrize(
+    ("option", "value", "message"),
+    [
+        ("--generation-timeout", "-1", "--generation-timeout must be positive"),
+        ("--timeout", "inf", "--timeout must be finite"),
+        ("--width", "0", "width must be positive"),
+        ("--row", "-1", "--row must be nonnegative"),
+        ("--scale", "2", "scale is only supported for raster generators"),
+    ],
+)
+def test_benchmark_validates_options_before_stdin(
+    monkeypatch, capsys, option, value, message
+):
+    from scripts import benchmark
+
+    monkeypatch.setattr(
+        benchmark, "_read_truth_table", lambda *_: pytest.fail("waited for stdin")
+    )
+    with pytest.raises(SystemExit) as caught:
+        benchmark.main(["brainfuck", "-", option, value])
+    assert caught.value.code == 2
+    assert message in capsys.readouterr().err
+
+
+def test_benchmark_checks_arity_before_starting_a_worker(monkeypatch, capsys) -> None:
+    from scripts import benchmark
+
+    language = next(
+        lang for lang in LANGUAGES.values() if lang.runtime.compressed_source
+    )
+    cap = language.backend.max_inputs
+    assert cap is not None
+    monkeypatch.setattr(
+        benchmark, "measure", lambda *_args, **_kw: pytest.fail("worker started")
+    )
+    with pytest.raises(SystemExit) as caught:
+        benchmark.main([language.name, "0" * (1 << (cap + 1))])
+    assert caught.value.code == 2
+    assert f"max-inputs={cap}" in capsys.readouterr().err
+
+
+def test_benchmark_reports_table_dependent_caps(monkeypatch, capsys) -> None:
+    from scripts import benchmark
+
+    def reject(*_args, **_kwargs):
+        raise benchmark.esolangs.GeneratorCapError("table exceeds source cap")
+
+    monkeypatch.setattr(benchmark, "measure", reject)
+    with pytest.raises(SystemExit) as caught:
+        benchmark.main(["brainfuck", "0110"])
+    assert caught.value.code == 2
+    assert "error: table exceeds source cap" in capsys.readouterr().err
+
+
 @pytest.mark.parametrize("phase", ["generation", "execution"])
 def test_benchmark_deadline_reports_phase_and_log(monkeypatch, capsys, phase) -> None:
     import esolangs

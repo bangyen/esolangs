@@ -28,11 +28,8 @@ from operator import is_not
 from pathlib import Path
 from typing import Any, BinaryIO, cast
 
-# scripts/ holds the sibling `verify` package. Redundant when run as
-# `python scripts/benchmark.py` (the script's directory is already first),
-# but required when imported as `scripts.benchmark`, e.g. by tests.
+# Resolve sibling tools on import and the test alarm guard on direct execution.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-# The repository root, for the test-support alarm guard.
 sys.path.insert(1, str(Path(__file__).resolve().parents[1]))
 
 from source_units import source_units
@@ -50,13 +47,15 @@ import esolangs.debugger as debugger_api
 from esolangs._cycles import _halt_or_cycle_result
 from esolangs.artifacts import Artifact
 from esolangs.cli.args import _settings_arguments, _settings_of
+from esolangs.cli.io import _read_truth_table
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.operations.generation import _check_generation_scale
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._certification import load as load_certification
 from esolangs.registry._info import LanguageInfo
 from esolangs.runtime._json import record_dumps
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime._validate import check_timeout
+from esolangs.runtime._validate import check_timeout, check_width
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import dialect_options
@@ -818,26 +817,30 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:
         parser.error("--repeat and --step-cap must be positive")
-    # Here, not in the worker: a typo there surfaced as a traceback.
+    if any(row < 0 for row in args.row or ()):
+        parser.error("--row must be nonnegative")
     try:
-        args.language = resolve(args.language)
+        declaration = LANGUAGES[resolve(args.language)]
+        check_timeout(args.timeout, "--timeout")
+        check_timeout(args.generation_timeout, "--generation-timeout")
+        check_width(args.width)
+        _check_generation_scale(declaration, args.scale)
     except ValueError as exc:
         parser.error(str(exc))
-    options: dict[str, str] = {}
-    if args.settings:
-        if len(args.settings) != 1:
-            parser.error("--settings may appear only once")
-        options["--settings"] = args.settings[0]
+    backend = declaration.backend
+    if backend is None:
+        parser.error(f"{declaration.name} has no Boolean generator")
+    if args.settings and len(args.settings) != 1:
+        parser.error("--settings may appear only once")
+    options = {"--settings": args.settings[0]} if args.settings else {}
     settings = _settings_of(
-        _settings_arguments(options, args.set), language=args.language
+        _settings_arguments(options, args.set), language=declaration.name
     )
-    table = args.truth_table
-    if table == "-":
-        from esolangs.cli.io import _read_truth_table
-
-        table = _read_truth_table()
+    table = (
+        _read_truth_table(declaration) if args.truth_table == "-" else args.truth_table
+    )
     try:
-        _validate_truth_table(table)
+        backend.check_arity(declaration.name, _validate_truth_table(table))
     except ValueError as exc:
         parser.error(str(exc))
     rows = args.row or [len(table) - 1]
@@ -845,7 +848,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"--row must be in [0, {len(table) - 1}]")
     try:
         result = measure(
-            args.language,
+            declaration.name,
             table,
             repeat=args.repeat,
             row=rows[-1],
@@ -862,7 +865,7 @@ def main(argv: list[str] | None = None) -> int:
             scale=args.scale,
             settings=settings,
         )
-    except esolangs.ArgumentError as exc:
+    except (esolangs.ArgumentError, esolangs.GeneratorCapError) as exc:
         parser.error(str(exc))
     except (esolangs.ExecutionTimeoutError, esolangs.ProgramError) as exc:
         print(exc, file=sys.stderr)
