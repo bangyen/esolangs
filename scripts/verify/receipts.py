@@ -55,6 +55,41 @@ def _log(root: Path, output: str) -> dict[str, str]:
     return {"path": str(path.relative_to(root)), "sha256": digest(path)}
 
 
+def _execution(
+    root: Path, command: list[str] | None, returncode: int
+) -> dict[str, Any] | None:
+    """Bind completed pytest reports and selection to the receipt."""
+    if command is None or "--verification-output" not in command:
+        return None
+    try:
+        path = (root / command[command.index("--verification-output") + 1]).resolve()
+        relative = path.relative_to(root.resolve())
+        contents = path.read_bytes()
+        data = json.loads(contents)
+        selected, called, finished = (
+            set(data[key]) for key in ("selected", "called", "finished")
+        )
+        selection = data["selection"]
+        if (
+            data["schema"] != 1
+            or data["exitstatus"] != returncode
+            or selection["collect_only"]
+            or not called
+            or not called <= selected
+            or finished != selected
+        ):
+            return None
+    except (OSError, IndexError, KeyError, TypeError, ValueError):
+        return None
+    return {
+        "path": str(relative),
+        "sha256": hashlib.sha256(contents).hexdigest(),
+        "selection": selection,
+        "selected": len(selected),
+        "called": len(called),
+    }
+
+
 def _successful(
     plan: dict[str, list[str]],
     checks: list[dict[str, Any]],
@@ -67,10 +102,14 @@ def _successful(
         rows = [row for row in checks if row["name"] == name]
         if len(rows) != 1 or rows[0]["command"] != command:
             return False
+        if name == "pytest" and rows[0].get("execution") is None:
+            return False
         if rows[0]["returncode"] == 0:
             continue
         repeated = [row for row in checks if row["name"] == f"{name} retry"]
         if name not in retries or len(repeated) != 1 or repeated[0]["returncode"] != 0:
+            return False
+        if name == "pytest" and repeated[0].get("execution") is None:
             return False
     return True
 
@@ -151,9 +190,10 @@ class AcceptanceRun:
         command: list[str] | None = None,
     ) -> None:
         """Attach a completed check and the hash of its complete log."""
-        row = {
+        resolved_command = self.plan.get(name) if command is None else command
+        row: dict[str, Any] = {
             "name": name,
-            "command": self.plan.get(name) if command is None else command,
+            "command": resolved_command,
             "seconds": seconds,
             "returncode": returncode,
             "deadline_seconds": self.bounds.get(
@@ -161,6 +201,8 @@ class AcceptanceRun:
             ),
             "evidence": _log(self.root, output or ""),
         }
+        if name in {"pytest", "pytest retry"}:
+            row["execution"] = _execution(self.root, resolved_command, returncode)
         with self.lock:
             self.steps.append(row)
 
@@ -225,6 +267,10 @@ def validate(path: Path, root: Path, required: set[str]) -> None:
     if not required <= checks.keys():
         raise ValueError("receipt is missing completed checks")
     for row in value["checks"]:
+        if row["name"] in {"pytest", "pytest retry"} and row.get("execution") != (
+            _execution(root, row["command"], row["returncode"])
+        ):
+            raise ValueError("pytest execution evidence was changed")
         evidence = row["evidence"]
         if "path" in evidence:
             log = (root / evidence["path"]).resolve()

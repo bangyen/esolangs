@@ -200,6 +200,23 @@ def test_a_machine_that_draws_traces_the_same_every_time(tmp_path: Path) -> None
     assert len(events[-1][1]) == 5
 
 
+def test_timing_uses_completed_commands_and_excludes_parse_failures() -> None:
+    module = tracediff._load(_INTERPRETER, "command_counts")
+    programs = [("+.", ""), ("]", ""), ("+,", "")]
+    traces = [
+        tracediff._capture_trace(module, program, frozenset(), runtime=_runtime())
+        for program in programs
+    ]
+    assert [commands for _, commands in traces] == [2, 0, 1]
+    assert tracediff._timing_work(
+        (program, commands)
+        for program, (_, commands) in zip(programs, traces, strict=True)
+    ) == [(programs[0], 2), (programs[2], 1)]
+    tracediff._lap(module, [(programs[0], 2), (programs[2], 1)], runtime=_runtime())
+    with pytest.raises(ValueError, match="halted before"):
+        tracediff._lap(module, [(programs[0], 3)], runtime=_runtime())
+
+
 def test_an_error_records_the_state_it_leaves() -> None:
     """A draft moving its pointer before a failing read passed an error-only diff."""
     module = tracediff._load(_INTERPRETER, "tracediff_error")
@@ -230,7 +247,7 @@ def test_halt_at_the_last_trace_event_counts(monkeypatch) -> None:
 def test_comparison_counts_traces_once_and_accepts_an_explicit_cycle(
     monkeypatch,
 ) -> None:
-    trace = tracediff.trace
+    trace = tracediff._capture_trace
     calls = 0
 
     def counted(*args, **kwargs):
@@ -238,7 +255,7 @@ def test_comparison_counts_traces_once_and_accepts_an_explicit_cycle(
         calls += 1
         return trace(*args, **kwargs)
 
-    monkeypatch.setattr(tracediff, "trace", counted)
+    monkeypatch.setattr(tracediff, "_capture_trace", counted)
     module = tracediff._load(_INTERPRETER, "bounded_cycle")
     programs = [("+[]", "")]
     for allow_cycles in (False, True):

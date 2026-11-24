@@ -37,7 +37,6 @@ import tempfile
 import time
 import tomllib
 from collections.abc import Iterable, Iterator, Mapping
-from contextlib import suppress
 from dataclasses import asdict
 from pathlib import Path
 from types import ModuleType
@@ -214,13 +213,13 @@ def _plain(value: object, memo: dict[int, object]) -> object:
     return result
 
 
-def trace(
+def _capture_trace(
     module: ModuleType,
     program: Program,
     ignored: frozenset[str],
     *,
     runtime: RuntimeSpec,
-) -> list[Event]:
+) -> tuple[list[Event], int]:
     """Return one event per step: views, snapshot and output so far.
 
     Completion comes from the runtime declaration, never a machine-class flag.
@@ -236,8 +235,9 @@ def trace(
     try:
         machine = _machine(module, code, io, runtime=runtime)
     except Exception as error:
-        return [("error", *_error(error))]
+        return [("error", *_error(error))], 0
     events: list[Event] = []
+    commands = 0
     try:
         for _ in range(LIMIT):
             events.append((_views(machine, ignored), machine.snapshot(), io.getvalue()))
@@ -258,9 +258,21 @@ def trace(
                     events[-1] = ("halted", *events[-1])
                 break
             machine.step()
+            commands += 1
     except Exception as error:
         events.append(("error", *_error(error), machine.snapshot()))
-    return events
+    return events, commands
+
+
+def trace(
+    module: ModuleType,
+    program: Program,
+    ignored: frozenset[str],
+    *,
+    runtime: RuntimeSpec,
+) -> list[Event]:
+    """Return the trace events without timing metadata."""
+    return _capture_trace(module, program, ignored, runtime=runtime)[0]
 
 
 def _halts(events: list[Event]) -> bool:
@@ -413,7 +425,7 @@ def _repeated_snapshot(events: list[Event]) -> bool:
     return False
 
 
-type Observation = tuple[list[Event], bool]
+type Observation = tuple[list[Event], bool, int]
 
 
 def _observe(
@@ -424,8 +436,9 @@ def _observe(
     runtime: RuntimeSpec,
     allow_cycles: bool,
 ) -> Observation:
-    events = trace(module, program, ignored, runtime=runtime)
-    return events, allow_cycles and not _halts(events) and _repeated_snapshot(events)
+    events, commands = _capture_trace(module, program, ignored, runtime=runtime)
+    cycle = allow_cycles and not _halts(events) and _repeated_snapshot(events)
+    return events, cycle, commands
 
 
 def _summarize(
@@ -437,7 +450,7 @@ def _summarize(
     found = []
     halting = 0
     witnessed = False
-    for program, ((before, old_cycle), (after, new_cycle)) in zip(
+    for program, ((before, old_cycle, _), (after, new_cycle, _)) in zip(
         programs, pairs, strict=True
     ):
         halted = _halts(after)
@@ -489,11 +502,22 @@ def _lap(
     _preparation(module, runtime)
     start = time.perf_counter()
     for (code, stdin), steps in work:
-        with suppress(Exception):  # an error ends the run, as it did when traced
-            machine = _machine(module, code, ScriptedIO(stdin), runtime=runtime)
-            for _ in range(steps):
-                machine.step()
+        machine = _machine(module, code, ScriptedIO(stdin), runtime=runtime)
+        for _ in range(steps):
+            if machine.halted:
+                raise ValueError("timing workload halted before its traced commands")
+            machine.step()
     return time.perf_counter() - start
+
+
+def _timing_work[T](work: Iterable[tuple[T, int]]) -> list[tuple[T, int]]:
+    """Select the longest successful command prefixes."""
+    selected = sorted(
+        (case for case in work if case[1]), key=lambda case: case[1], reverse=True
+    )[:40]
+    if not selected:
+        raise ValueError("no completed commands to time")
+    return selected
 
 
 def speeds(
@@ -506,15 +530,16 @@ def speeds(
 ) -> tuple[float, float]:
     """Return each copy's steps per second over the longest-running programs.
 
-    Both run the same steps, the trace's length, repeated until a lap takes
+    Both run the same completed commands, repeated until a lap takes
     0.2 s. Both copies warm the sized workload before timed laps; laps
     alternate and the fastest of ``rounds`` counts.
     """
     _preparation(old, runtime)
     _preparation(new, runtime)
-    lengths = [(len(trace(new, p, frozenset(), runtime=runtime)), p) for p in programs]
-    lengths.sort(key=lambda pair: pair[0], reverse=True)
-    work = [(program, steps) for steps, program in lengths[:40]]
+    work = _timing_work(
+        (program, _capture_trace(new, program, frozenset(), runtime=runtime)[1])
+        for program in programs
+    )
     work *= max(1, math.ceil(0.2 / max(_lap(new, work, runtime=runtime), 1e-6)))
     # Line's inherited warm prefix gave the baseline 15 misses versus 20.
     _lap(old, work, runtime=runtime)
@@ -613,7 +638,7 @@ def _worker(
     )
     with gzip.open(output, "wb", compresslevel=1) as stream:
         for record in packed:
-            events, cycle = _observe(
+            events, cycle, commands = _observe(
                 module,
                 _unpack_program(api, record, artifacts),
                 ignored,
@@ -623,7 +648,7 @@ def _worker(
             # Project private classes before crossing revisions and preserve wide ints.
             memo: dict[int, object] = {}
             record_bytes = marshal.dumps(
-                ([_plain(event, memo) for event in events], cycle)
+                ([_plain(event, memo) for event in events], cycle, commands)
             )
             stream.write(_RECORD_SIZE.pack(len(record_bytes)))
             stream.write(record_bytes)
@@ -673,12 +698,10 @@ def _observations(path: Path) -> Iterator[Observation]:
 def _worker_speeds(
     old: Path, new: Path, name: str, packed: list[tuple[object, str]], scratch: Path
 ) -> tuple[float, float]:
-    lengths = [
-        (index, len(events))
-        for index, (events, _) in enumerate(_observations(scratch / "new.gz"))
-    ]
-    lengths.sort(key=lambda pair: pair[1], reverse=True)
-    selected = lengths[:40]
+    selected = _timing_work(
+        (index, commands)
+        for index, (_, _, commands) in enumerate(_observations(scratch / "new.gz"))
+    )
     request, output = scratch / "speed.in", scratch / "speed.out"
     repeats: int | None = None
     rates = []
@@ -776,8 +799,12 @@ def _compare_revisions(
         print(f"{name}: no matching clean halt or declared cycle", file=sys.stderr)
         return 1
     failed = bool(found)
-    if args.speed:
-        was, now = _worker_speeds(old, new, name, packed, scratch)
+    if args.speed and not failed:
+        try:
+            was, now = _worker_speeds(old, new, name, packed, scratch)
+        except ValueError as error:
+            print(f"{name}: {error}", file=sys.stderr)
+            return 1
         change = now / was - 1
         print(f"speed: {was:,.0f} -> {now:,.0f} steps/s ({change:+.0%})")
         failed |= change < -SLOWDOWN

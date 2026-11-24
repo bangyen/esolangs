@@ -48,6 +48,7 @@ from verify.process import (  # noqa: E402
     stop_process_tree,
     wait_with_heartbeat,
 )
+from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN  # noqa: E402
 from verify.receipts import AcceptanceRun  # noqa: E402
 from verify.scope import (  # noqa: E402
     _scope_changed_files,
@@ -352,6 +353,16 @@ def _duration_only_ids(output: str) -> list[str] | None:
     return ids
 
 
+def _with_pytest_evidence(command: list[str]) -> list[str]:
+    """Give each receipt's pytest invocation its own completion sidecar."""
+    if _ACTIVE_ACCEPTANCE is None:
+        return command
+    destination = ROOT / "notes" / "verification"
+    destination.mkdir(parents=True, exist_ok=True)
+    directory = Path(tempfile.mkdtemp(prefix="pytest-execution-", dir=destination))
+    return [*command, "-p", PLUGIN, OUTPUT_OPTION, str(directory / "execution.json")]
+
+
 def _rerun_alone(ids: list[str]) -> tuple[int, str]:
     """Rerun the failed tests *ids* alone, serially; return exit and output.
 
@@ -360,7 +371,9 @@ def _rerun_alone(ids: list[str]) -> tuple[int, str]:
     the gate's scoping.  Bounded by the pytest step's own deadline: a rerun
     that needs longer has not exonerated anything.
     """
-    command = [*PY, "-m", "pytest", "-q", "-n", "0", "-m", "", *ids]
+    command = _with_pytest_evidence(
+        [*PY, "-m", "pytest", "-q", "-n", "0", "-m", "", *ids]
+    )
     started = time.monotonic()
     result = run_bounded(
         command,
@@ -754,6 +767,8 @@ def main() -> int:
         step_env = env
         if only is None and name == LONG_STEP:
             cmd = _pytest_cmd(cmd, full=full, changed=changed)
+        if name == LONG_STEP:
+            cmd = _with_pytest_evidence(cmd)
         runnable.append((name, cmd, step_env))
 
     if "LEAKSWEEP_JOBS" not in env:

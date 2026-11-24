@@ -31,6 +31,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import tokenize
 from pathlib import Path
@@ -46,6 +47,7 @@ from verify.failures import (  # noqa: E402
     failure_sections,
     section_matches,
 )
+from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN  # noqa: E402
 
 LANGUAGES = ROOT / "src" / "esolangs" / "languages"
 SWAP = {
@@ -223,22 +225,38 @@ def _clear_bytecode() -> None:
 def _run(command: list[str], timeout: float) -> tuple[str, str]:
     """Return the status and output of one capped test run."""
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
-    with subprocess.Popen(
-        command,
-        cwd=ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        start_new_session=True,
-        env=env,
-    ) as process:
+    with tempfile.TemporaryDirectory(prefix="mutation-tests-") as directory:
+        path = Path(directory) / "execution.json"
+        command = [*command, "-p", PLUGIN, OUTPUT_OPTION, str(path)]
+        with subprocess.Popen(
+            command,
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+            env=env,
+        ) as process:
+            try:
+                output, _ = process.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.communicate()
+                return "timeout", ""
         try:
-            output, _ = process.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
-            process.communicate()
-            return "timeout", ""
-        return ("killed" if process.returncode else "survived"), output
+            execution = json.loads(path.read_bytes())
+        except (OSError, ValueError):
+            return "inconclusive", output
+        if execution["exitstatus"] == process.returncode:
+            if process.returncode == 1 and execution["failed_calls"]:
+                return "killed", output
+            if (
+                process.returncode == 0
+                and execution["called"]
+                and execution["finished"] == execution["selected"]
+            ):
+                return "survived", output
+        return "inconclusive", output
 
 
 def _in_worktree() -> bool:
