@@ -90,12 +90,16 @@ class TestDifferences:
             f"baseline schema {SCHEMA - 1!r}, expected {SCHEMA}"
         ]
 
-    def test_a_changed_corpus_short_circuits(self) -> None:
-        """Comparing across corpora would read as a whole-registry change."""
-        measured = _measured()
-        stale = {**measured, "records": {REFERENCE: {"1001": {"source_units": 1}}}}
+    def test_corpus_drift_does_not_mask_changes_to_shared_witnesses(self) -> None:
+        other = {**RECORD, "language": "Other"}
+        stale = baseline([RECORD, {**RECORD, "truth_table": "1001"}, other])
+        measured = baseline(
+            [{**RECORD, "commands": 180}, {**other, "source_units": 206}]
+        )
         assert differences(stale, measured) == [
-            f"baseline corpus changed for {REFERENCE}; re-record it"
+            f"baseline corpus changed for {REFERENCE}; re-record it",
+            f"Other [{TABLES[0]}] source_units: 205 -> 206",
+            f"{REFERENCE} [{TABLES[0]}] commands: 179 -> 180",
         ]
 
 

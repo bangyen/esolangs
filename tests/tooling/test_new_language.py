@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from scripts import new_language
+from tests.support.pick import first
 from tests.support.reference import REFERENCE
 
 
@@ -190,6 +191,28 @@ def test_bounds_generates_each_measured_table_once(monkeypatch: pytest.MonkeyPat
     (result,) = new_language.bounds(REFERENCE, range(1, 2))
     assert generated == list(tables(REFERENCE, 1))
     assert result[0] == 1
+
+
+def test_bounds_refuses_a_wrong_answer(monkeypatch, capsys):
+    import esolangs
+
+    program = esolangs.generate(REFERENCE, "00")
+    monkeypatch.setattr(esolangs, "generate", lambda *_a, **_kw: program)
+    assert new_language.main(["bounds", REFERENCE, "--max-n", "1"]) == 1
+    captured = capsys.readouterr()
+    assert f"{REFERENCE} [01] row 1: expected 1, got 0" in captured.err
+    assert "witness tables (steps, bits)" not in captured.out
+
+
+@pytest.mark.parametrize(
+    "contract", [{"dumps_on_the_post_halt_step": True}, {"steppable_to_answer": False}]
+)
+def test_checked_bounds_read_dumps_without_changing_counts(contract):
+    from tests.proofs.measurement import measure
+
+    name = first(boolean_generator=True, **contract)
+    checked = measure(name, "01", written=True, check_answers=True)
+    assert checked == measure(name, "01", written=True)
 
 
 def test_bounds_rejects_impossible_arity_before_measuring(monkeypatch, capsys):

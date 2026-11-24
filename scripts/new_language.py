@@ -766,7 +766,9 @@ def bounds(
             )
         for table in witnesses:
             program = esolangs.generate(name, table)
-            worst[table] = measure(name, table, written=True, program=program)
+            worst[table] = measure(
+                name, table, written=True, program=program, check_answers=True
+            )
             size = max(size, source_units(program.source))
         steps = max(worst, key=lambda t: worst[t][0])
         bits = max(worst, key=lambda t: worst[t][1])
@@ -998,6 +1000,8 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as exc:
             parser.error(f"{exc}; a new one starts with: just new-language")
     if args.command == "bounds":
+        from esolangs import ProgramError
+
         try:
             declaration = _bounds_language(args.name, args.max_n)
         except ValueError as exc:
@@ -1006,6 +1010,9 @@ def main(argv: list[str] | None = None) -> int:
             _print_bounds(declaration, args.max_n)
         except NotImplementedError:
             print(f"{args.name}: implement the generator first", file=sys.stderr)
+            return 1
+        except ProgramError as exc:
+            print(exc, file=sys.stderr)
             return 1
         return 0
     if args.command == "check":

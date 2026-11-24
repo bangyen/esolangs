@@ -18,7 +18,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.mark.parametrize(
     ("options", "accepted"),
-    [("--collect-only", False), ("-k test_selected", True)],
+    [
+        ("--collect-only", False),
+        ("-k test_skipped", False),
+        ("-k test_selected", True),
+    ],
 )
 def test_receipt_captures_execution_and_effective_selection(
     tmp_path, monkeypatch, options, accepted
@@ -26,7 +30,10 @@ def test_receipt_captures_execution_and_effective_selection(
     root = _checkout(tmp_path / "checkout")
     program = root / "test_probe.py"
     program.write_text(
-        "def test_other():\n    assert False\ndef test_selected():\n    assert True\n",
+        "import pytest\n"
+        "def test_other():\n    assert False\n"
+        "def test_selected():\n    assert True\n"
+        'def test_skipped():\n    pytest.skip("skipped during call")\n',
         encoding="utf-8",
     )
     output = root / "notes" / "execution.json"
@@ -68,6 +75,10 @@ def test_receipt_captures_execution_and_effective_selection(
         with pytest.raises(ValueError, match="execution evidence was changed"):
             validate(receipt, root, {"pytest"})
     else:
+        evidence = json.loads(output.read_text())
+        assert evidence["passed_calls"] == []
+        if options == "-k test_skipped":
+            assert evidence["called"] == ["test_probe.py::test_skipped"]
         with pytest.raises(ValueError, match="acceptance"):
             validate(receipt, root, {"pytest"})
 

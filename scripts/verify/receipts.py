@@ -177,6 +177,7 @@ def _read_execution(root: Path, file: str, returncode: int) -> _PytestExecution 
             set(data[key]) for key in ("selected", "called", "finished")
         )
         failed = set(data.get("failed_calls", []))
+        # Earlier archives did not record passing calls.
         passed = set(data.get("passed_calls", []))
         selection = data["selection"]
         if (
@@ -186,7 +187,7 @@ def _read_execution(root: Path, file: str, returncode: int) -> _PytestExecution 
             or not called
             or not called <= selected
             or not failed | passed <= called
-            or (returncode == 0 and failed)
+            or (returncode == 0 and (failed or ("passed_calls" in data and not passed)))
             or finished != selected
         ):
             return None

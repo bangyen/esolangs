@@ -223,13 +223,11 @@ def differences(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
     if old.get("schema") != new["schema"]:
         return [f"baseline schema {old.get('schema')!r}, expected {SCHEMA}"]
     was, is_ = old.get("records", {}), new["records"]
-    # The record keys are the corpus: a changed table set would otherwise read
-    # as a diff in every language.
     moved = sorted(
         name for name in set(was) & set(is_) if set(was[name]) != set(is_[name])
     )
     if moved:
-        return [f"baseline corpus changed for {', '.join(moved)}; re-record it"]
+        lines.append(f"baseline corpus changed for {', '.join(moved)}; re-record it")
     for name in sorted(set(was) | set(is_)):
         if name not in was:
             lines.append(f"{name}: not in the baseline (new language?)")
@@ -237,12 +235,8 @@ def differences(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
         if name not in is_:
             lines.append(f"{name}: in the baseline but not in the registry")
             continue
-        for table in sorted(set(was[name]) | set(is_[name])):
-            # Both sides are read with .get: a record missing a table has to
-            # report as a difference, not raise -- a gate that crashes on an
-            # incomplete sweep says nothing about the sweep it did finish.
-            before = was[name].get(table, {})
-            after = is_[name].get(table, {})
+        for table in sorted(was[name].keys() & is_[name].keys()):
+            before, after = was[name][table], is_[name][table]
             lines.extend(
                 f"{name} [{table}] {field}: {before.get(field)} -> {after.get(field)}"
                 for field in sorted(set(before) | set(after))

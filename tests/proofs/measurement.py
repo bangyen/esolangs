@@ -1,7 +1,7 @@
 """Run resource witnesses and measure native commands and written state."""
 
 import esolangs
-from esolangs.vm import _capture_workspace, complete_vm, make_vm
+from esolangs.vm import VM, _capture_workspace, _DelegatingVM, complete_vm, make_vm
 from scripts.benchmark import WrittenState
 from scripts.docs.resource_evidence import resource_corpus, resource_witnesses
 from tests.proofs._witnesses import (
@@ -32,14 +32,46 @@ def tables(name: str, n: int) -> tuple[str, ...]:
     return tuple(dict.fromkeys((*tables, *resource_witnesses(name, n))))
 
 
+def _measured_steps(
+    machine: VM, state: WrittenState | None, *, check_answer: bool
+) -> int:
+    if check_answer and not machine.steppable_to_answer:
+        # The periodic driver renders the answer from this same execution.
+        assert isinstance(machine, _DelegatingVM)
+
+        def step() -> None:
+            machine.step()
+            if state is not None:
+                state.sample(_capture_workspace(machine))
+
+        report = machine._complete_repeating(step)
+        assert report is not None
+        assert report.cycle is not None
+        return report.cycle.repeat_pass * report.cycle.commands_per_pass
+    steps = run_to_answer(machine, sample=state.sample if state is not None else None)
+    assert steps is not None  # no cap
+    return steps
+
+
+def _check_answer(name: str, table: str, row: int, output: str) -> None:
+    subject = f"{name} [{table}] row {row}"
+    try:
+        actual = esolangs.read_answer(name, output)
+    except esolangs.ProgramError as error:
+        raise esolangs.ProgramError(f"{subject}: {error}") from error
+    if actual != table[row]:
+        raise esolangs.ProgramError(f"{subject}: expected {table[row]}, got {actual}")
+
+
 def measure(
     name: str,
     table: str,
     *,
     written: bool = False,
     program: esolangs.ProgramSource | None = None,
+    check_answers: bool = False,
 ) -> tuple[int, int]:
-    """Most commands and optional written-state bits over halting rows."""
+    """Measure command and workspace maxima, optionally checking answers."""
     facts = esolangs.describe(name)
     halts = None
     if facts.answer_mode == "termination":
@@ -61,14 +93,14 @@ def measure(
             )
         machine = make_vm(name, source, stdin=stdin)
         state = WrittenState(_capture_workspace(machine)) if written else None
-        steps = run_to_answer(
-            machine, sample=state.sample if state is not None else None
-        )
-        assert steps is not None  # no cap
+        steps = _measured_steps(machine, state, check_answer=check_answers)
         worst_steps = max(worst_steps, steps)
-        if state is not None:
-            if machine.dumps_on_the_post_halt_step:
-                complete_vm(machine, max_steps=0)
+        if (state is not None or check_answers) and machine.dumps_on_the_post_halt_step:
+            complete_vm(machine, max_steps=0)
+            if state is not None:
                 state.sample(_capture_workspace(machine))
+        if check_answers and halts is None:
+            _check_answer(name, table, row, machine.output)
+        if state is not None:
             worst_bits = max(worst_bits, state.bits)
     return worst_steps, worst_bits
