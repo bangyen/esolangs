@@ -30,12 +30,16 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 @contextmanager
-def _staged_normalization(path: Path, epoch: int) -> Iterator[tuple[Path, Path]]:
+def _staged_normalization(
+    path: Path, epoch: int, *, retained: set[Path] | None = None
+) -> Iterator[tuple[Path, Path]]:
     """Normalize an archive into a temporary directory on its own filesystem."""
     path = path.resolve(strict=True)
     fixed_metadata = {"mtime", "atime", "ctime", "uid", "gid", "uname", "gname"}
-    with tempfile.TemporaryDirectory(dir=path.parent) as scratch:
-        staged = Path(scratch) / "normalized"
+    scratch = tempfile.TemporaryDirectory(dir=path.parent, delete=False)
+    directory = Path(scratch.name)
+    try:
+        staged = directory / "normalized"
         with (
             tarfile.open(path, "r:gz") as source,
             staged.open("wb") as stream,
@@ -61,12 +65,25 @@ def _staged_normalization(path: Path, epoch: int) -> Iterator[tuple[Path, Path]]
                 )
         staged.chmod(stat.S_IMODE(path.stat().st_mode))
         yield path, staged
+    finally:
+        if retained is None or directory not in retained:
+            scratch.cleanup()
 
 
 def normalize(path: Path, epoch: int) -> None:
     """Preserve payloads while fixing gzip and tar metadata deterministically."""
     with _staged_normalization(path, epoch) as (path, staged):
         staged.replace(path)
+
+
+def _restore_archive(path: Path, backup: Path, retained: set[Path]) -> None:
+    """Preserve the saved bytes if an archive cannot be restored in place."""
+    try:
+        backup.replace(path)
+    except OSError as error:
+        retained.add(backup.parent)
+        print(f"could not restore {path}: {error}", file=sys.stderr)
+        print(f"original archive kept at {backup}", file=sys.stderr)
 
 
 def normalize_main(argv: list[str]) -> int:
@@ -87,12 +104,13 @@ def normalize_main(argv: list[str]) -> int:
         parser.error(message)
     if not 0 <= epoch <= max_epoch:
         parser.error(message)
+    retained: set[Path] = set()
     with ExitStack() as scratch, ExitStack() as rollback:
         pending: dict[Path, tuple[Path, Path | None]] = {}
         for archive in args.archives:
             try:
                 path, staged = scratch.enter_context(
-                    _staged_normalization(archive, epoch)
+                    _staged_normalization(archive, epoch, retained=retained)
                 )
                 if path in pending:
                     continue
@@ -109,7 +127,7 @@ def normalize_main(argv: list[str]) -> int:
             except OSError as error:
                 parser.exit(1, f"{path}: {error}\n")
             if backup is not None:
-                rollback.callback(backup.replace, path)
+                rollback.callback(_restore_archive, path, backup, retained)
         rollback.pop_all()
     return 0
 

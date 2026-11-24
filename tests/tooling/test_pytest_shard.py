@@ -86,6 +86,40 @@ def test_invalid_marker_reports_the_error_and_keeps_the_collection_log(
     assert "Wrong expression passed to '-m'" in contents
 
 
+def test_stale_exclusions_name_the_nodes_without_replacing_the_manifest(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    shard = load_script()
+    manifest = tmp_path / "shard.json"
+    manifest.write_bytes(b"previous\n")
+    existing = "tests/test_sample.py::test_ok"
+    missing = ["tests/test_sample.py::test_old", "tests/test_sample.py::test_typo"]
+    monkeypatch.setattr(shard, "collect_ids", lambda _: [existing])
+    monkeypatch.setattr(
+        shard.subprocess, "run", lambda *_args, **_kwargs: pytest.fail("ran pytest")
+    )
+    status = shard.shard_main(
+        [
+            "--marker",
+            "",
+            "--shard",
+            "0",
+            "--shards",
+            "1",
+            "--manifest",
+            str(manifest),
+            *(f"--exclude-node={node}" for node in [existing, *missing]),
+        ]
+    )
+    assert status == 2
+    message = capsys.readouterr().err
+    assert message.startswith("--exclude-node: not in the collected corpus:")
+    assert all(node in message for node in missing)
+    assert existing not in message
+    assert "Traceback" not in message
+    assert manifest.read_bytes() == b"previous\n"
+
+
 def test_duration_assignment_improves_longest_shard_and_covers_unknowns() -> None:
     shard = load_script()
     ids = list("abcdefghij")

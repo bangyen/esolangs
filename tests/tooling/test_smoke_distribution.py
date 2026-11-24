@@ -135,7 +135,9 @@ def test_normalize_rejects_invalid_epoch_before_opening_archives(
     else:
         monkeypatch.setenv("SOURCE_DATE_EPOCH", epoch)
     monkeypatch.setattr(
-        smoke, "_staged_normalization", lambda *_: pytest.fail("opened archive")
+        smoke,
+        "_staged_normalization",
+        lambda *_, **_kwargs: pytest.fail("opened archive"),
     )
     with pytest.raises(SystemExit) as caught:
         smoke.main(["normalize", "first.tar.gz", "second.tar.gz"])
@@ -178,6 +180,41 @@ def test_normalize_preserves_archives_when_a_batch_fails(
     for path in (first, second):
         with tarfile.open(path) as archive:
             assert archive.getmember("example").mtime == 1700000000
+
+
+def test_failed_release_restore_preserves_the_original_for_recovery(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    targets = [tmp_path / f"{index}.tar.gz" for index in range(3)]
+    for path in targets:
+        with tarfile.open(path, "w:gz") as archive:
+            archive.addfile(tarfile.TarInfo("example"))
+    originals = [path.read_bytes() for path in targets]
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
+    replace = Path.replace
+
+    def replace_with_failures(path, target):
+        if path.name == "normalized" and target == targets[2].resolve():
+            raise OSError("injected publication failure")
+        if path.name == "original" and target == targets[1].resolve():
+            raise OSError("injected restore failure")
+        return replace(path, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "replace", replace_with_failures)
+        with pytest.raises(SystemExit) as caught:
+            smoke.main(["normalize", *(str(path) for path in targets)])
+    assert caught.value.code == 1
+    message = capsys.readouterr().err
+    assert f"{targets[2]}: injected publication failure" in message
+    assert (
+        f"could not restore {targets[1].resolve()}: injected restore failure" in message
+    )
+    backup = Path(message.partition("original archive kept at ")[2].strip())
+    assert backup.read_bytes() == originals[1]
+    assert set(tmp_path.iterdir()) == {*targets, backup.parent}
+    backup.replace(targets[1])
+    assert [path.read_bytes() for path in targets] == originals
 
 
 def test_normalize_without_an_installed_package(tmp_path) -> None:

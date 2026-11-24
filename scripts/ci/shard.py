@@ -291,8 +291,10 @@ def shard_main(argv: list[str] | None = None) -> int:
         print(error, file=sys.stderr)
         return 2
     excluded = set(args.exclude_node)
-    if not excluded <= set(collected):
-        raise ValueError("excluded nodes must belong to the collected corpus")
+    if unknown := sorted(excluded.difference(collected)):
+        nodes = ", ".join(repr(node) for node in unknown)
+        print(f"--exclude-node: not in the collected corpus: {nodes}", file=sys.stderr)
+        return 2
     eligible = [node for node in collected if node not in excluded]
     ids = shard_ids(eligible, args.shard, args.shards, durations)
     if args.manifest is not None:

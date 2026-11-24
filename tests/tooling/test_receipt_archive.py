@@ -111,6 +111,28 @@ def test_repeated_receipt_fields_cannot_replace_the_schema(tmp_path) -> None:
         assert str(receipt) in str(error.value)
 
 
+def test_receipts_require_each_checks_log_and_checksum(tmp_path) -> None:
+    root = _checkout(tmp_path / "checkout")
+    run, log = completed(root)
+    receipt, passed = run.finish(0)
+    assert passed
+    record = json.loads(receipt.read_text(encoding="utf-8"))
+    path = record["checks"][0]["evidence"]["path"]
+    log.unlink()
+    for evidence, field in (({}, "path"), ({"path": path}, "sha256")):
+        record["checks"][0]["evidence"] = evidence
+        receipt.write_text(json.dumps(record), encoding="utf-8")
+        for action in (
+            lambda: validate(receipt, root, {"probe"}),
+            lambda: archive(receipt, root, root),
+        ):
+            with pytest.raises(ValueError, match="missing receipt field") as error:
+                action()
+            assert str(receipt) in str(error.value)
+            assert f"'checks[0].evidence.{field}'" in str(error.value)
+    assert not (root / "notes/verification/commits").exists()
+
+
 def test_archive_retains_logs_and_pytest_sidecar_after_worktree_removal(tmp_path):
     primary = _checkout(tmp_path / "primary")
     source = tmp_path / "worktree"

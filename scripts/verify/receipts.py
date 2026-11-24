@@ -437,10 +437,9 @@ def _validate_receipt(
         ):
             raise ValueError("pytest execution evidence was changed")
         evidence = row["evidence"]
-        if "path" in evidence:
-            log = _evidence_path(evidence_root, evidence["path"])
-            if digest(log) != evidence["sha256"]:
-                raise ValueError("receipt log was changed")
+        log = _evidence_path(evidence_root, evidence["path"])
+        if digest(log) != evidence["sha256"]:
+            raise ValueError("receipt log was changed")
 
 
 def _evidence_path(root: Path, relative: str) -> Path:
@@ -503,10 +502,9 @@ def _receipt_shape(record: object) -> dict[str, Any]:
             },
             location,
         )
-        if "path" in check["evidence"]:
-            _receipt_fields(
-                check["evidence"], {"path": str, "sha256": str}, f"{location}.evidence"
-            )
+        _receipt_fields(
+            check["evidence"], {"path": str, "sha256": str}, f"{location}.evidence"
+        )
         if check.get("execution") is not None:
             _receipt_fields(check["execution"], {"path": str}, f"{location}.execution")
     return value
@@ -556,7 +554,7 @@ def archive(path: Path, root: Path, primary: Path) -> Path:
         bundle = Path(scratch)
         for row in value["checks"]:
             for evidence in (row["evidence"], row.get("execution")):
-                if evidence is None or "path" not in evidence:
+                if evidence is None:
                     continue
                 original = _evidence_path(root, evidence["path"])
                 copy = _evidence_path(bundle, evidence["path"])
