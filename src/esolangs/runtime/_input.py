@@ -55,11 +55,9 @@ class InputFrame:
             lambda: read_snapshot(bound.stream, reader=bound.read, size=1)
         )
 
-    def read_units(
-        self, read: Callable[[], str | bytes], *, encoding: str = "utf-8"
-    ) -> str:
-        """Read single units through the frame using the caller's transport."""
-        decoder = getincrementaldecoder(encoding)()
+    def read_units(self, read: Callable[[], str | bytes]) -> str:
+        """Read a frame, accepting one leading UTF-8 BOM on binary transport."""
+        decoder = getincrementaldecoder("utf-8-sig")()
         remaining = self.units
         parts: list[str] = []
         binary = False
@@ -71,6 +69,8 @@ class InputFrame:
                     raise TypeError("stdin stream changed from bytes to text")
                 char = str.__str__(value)
             elif _has_backing_type(value, bytes):
+                if not binary and parts:
+                    decoder = getincrementaldecoder("utf-8")()
                 binary = True
                 data = bytes.__bytes__(value)
                 consumed += len(data)
@@ -80,7 +80,7 @@ class InputFrame:
                         # utf-8-sig can leave an incomplete BOM buffered at EOF.
                         pending, _ = decoder.getstate()
                         if pending:
-                            char += pending.decode(encoding)
+                            char += pending.decode("utf-8")
                 except UnicodeDecodeError as error:
                     # The decoder includes any buffered prefix in its error.
                     raise input_read_error(
@@ -108,7 +108,14 @@ class _BoundReader:
     read: Callable[..., str | bytes | None]
 
 
-type CheckedInput = str | _BoundReader
+@dataclass(frozen=True, slots=True)
+class _DecodedBytes:
+    """Keep byte provenance after eager validation of a literal input."""
+
+    text: str
+
+
+type CheckedInput = str | _BoundReader | _DecodedBytes
 
 _STANDARD_STREAMS = (
     BufferedRandom,
@@ -170,7 +177,7 @@ def check_input(source: InputSource) -> CheckedInput:
     if _has_backing_type(source, str):
         return str.__str__(source)
     if _has_backing_type(source, bytes):
-        return _decode_input(source)
+        return _DecodedBytes(_decode_input(source))
     checked = _bind_input_reader(cast("IO[str] | IO[bytes]", source))
     if checked is None:
         raise _unreadable_input(source)
@@ -202,10 +209,17 @@ def read_input(
     bound = (
         source
         if _has_backing_type(source, _BoundReader)
+        or _has_backing_type(source, _DecodedBytes)
         else check_input(cast("InputSource", source))
     )
     if isinstance(bound, str):
         return bound if frame is None else frame.prefix(bound)
+    if isinstance(bound, _DecodedBytes):
+        return (
+            bound.text
+            if frame is None
+            else frame.prefix(bound.text.removeprefix("\ufeff"))
+        )
     try:
         if frame is not None:
             return frame.read(bound)

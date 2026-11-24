@@ -12,6 +12,7 @@ from esolangs.runtime._input import (
     CheckedInput,
     InputFrame,
     InputSource,
+    _BoundReader,
     check_input,
     read_input,
 )
@@ -102,7 +103,9 @@ class PendingInput:
         )
 
 
-def bind_prepared_input(stdin: InputSource, timeout: float) -> str | PendingInput:
+def bind_prepared_input(
+    stdin: InputSource, timeout: float
+) -> CheckedInput | PendingInput:
     """Decode bytes or bind a reader under the preparation deadline."""
     if _has_backing_type(stdin, str):
         return read_input(stdin)
@@ -120,4 +123,4 @@ def bind_prepared_input(stdin: InputSource, timeout: float) -> str | PendingInpu
         clock=monotonic,
         context=context,
     )
-    return bound.checked if isinstance(bound.checked, str) else bound
+    return bound if isinstance(bound.checked, _BoundReader) else bound.checked

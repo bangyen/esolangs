@@ -17,6 +17,58 @@ from esolangs.vm import complete_vm
 from tests.support.reference import REFERENCE
 
 
+@pytest.mark.parametrize("shape", ["char_stream", "line_per_bit"])
+@pytest.mark.parametrize("route", ["native", "stepped", "prepared", "isolated"])
+def test_framed_binary_input_accepts_bom_and_leaves_the_next_row(shape, route):
+    name = next(
+        name
+        for name, language in LANGUAGES.items()
+        if language.contract.frame_stdin and language.contract.input_shape == shape
+    )
+    api = esolangs.Language(name)
+    artifact = api.generate("01")
+    leading = b"\xef\xbb\xbf" + api.encode_inputs([1]).encode()
+    following = api.encode_inputs([0]).encode()
+    if route == "prepared":
+        prepared = api.prepare(artifact)
+
+        def run(stdin):
+            return prepared.run(
+                stdin=stdin, limits=esolangs.ExecutionLimits(preparation_timeout=2)
+            )
+    else:
+
+        def run(stdin):
+            limits = (
+                esolangs.ExecutionLimits(max_steps=100_000)
+                if route == "stepped"
+                else None
+            )
+            return api.run(
+                artifact, stdin=stdin, limits=limits, isolated=route == "isolated"
+            )
+
+    assert api.read_answer(run(leading + following).output) == "1"
+    stream = io.BytesIO(leading + following + b"\xff")
+    assert api.read_answer(run(stream).output) == "1"
+    assert stream.tell() == len(leading)
+    assert api.read_answer(run(stream).output) == "0"
+    assert stream.read() == b"\xff"
+
+
+def test_framing_consumes_only_one_binary_bom():
+    from esolangs.runtime._input import InputFrame, read_input
+
+    frame = InputFrame(1, lines=False)
+    bom = b"\xef\xbb\xbf"
+    assert read_input(bom + b"x", frame=frame) == "x"
+    assert read_input(bom + b"x") == "\ufeffx"
+    assert read_input("\ufeffx", frame=frame) == "\ufeff"
+    stream = io.BytesIO(bom + bom + b"x")
+    assert read_input(stream, frame=frame) == "\ufeff"
+    assert stream.read() == b"x"
+
+
 @pytest.mark.parametrize("prepared", [False, True])
 @pytest.mark.parametrize("route", ["native", "bounded", "isolated", "vm", "debugger"])
 def test_invocation_uses_the_first_managed_input_reader(prepared, route) -> None:

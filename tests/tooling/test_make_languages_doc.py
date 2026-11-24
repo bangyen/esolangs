@@ -85,6 +85,31 @@ def test_main_updates_all_registry_derived_docs(
     assert "2 generated artifacts already up to date" in out
 
 
+@pytest.mark.parametrize("side", ["START", "END"])
+def test_failed_docs_render_preserves_all_published_files(tmp_path, capsys, side):
+    module = load_script()
+    for relative in module.GENERATED_DOCS:
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((REPO_ROOT / relative).read_bytes())
+    proof = tmp_path / "docs/proofs/index.md"
+    marker = "<!-- PROOF-TOTALS:START -->"
+    proof.write_text(proof.read_text().replace(marker, marker + "\nold proof table"))
+    usage = tmp_path / "docs/usage.md"
+    missing = f"<!-- PUBLIC-API:{side} -->"
+    usage.write_text(usage.read_text().replace(missing, ""))
+    before = {name: (tmp_path / name).read_bytes() for name in module.GENERATED_DOCS}
+
+    with pytest.raises(
+        ValueError, match=f"docs/usage.md: missing generated marker {missing}"
+    ):
+        module.docs_main(output_root=tmp_path)
+
+    assert {name: (tmp_path / name).read_bytes() for name in before} == before
+    assert not list(tmp_path.glob(".docs-render-*"))
+    assert capsys.readouterr().out == ""
+
+
 @pytest.mark.usefixtures("retired_source_adapters")
 def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
     """The ``update_*`` writers splice the marked blocks, as generate.py does."""
@@ -180,13 +205,15 @@ def test_language_listing_only_lists_available_interpreters(
 
 # Standalone coverage run: 2.64s exceeds the fast band.
 @pytest.mark.medium
-@pytest.mark.parametrize("stale", [False, True])
+@pytest.mark.parametrize(
+    "stale", [None, "README.md", "src/esolangs/registry/well_known.json"]
+)
 def test_documentation_check_preserves_source_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     *,
-    stale: bool,
+    stale: str | None,
 ) -> None:
     from checks import check_docs
 
@@ -195,12 +222,14 @@ def test_documentation_check_preserves_source_files(
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((REPO_ROOT / relative).read_bytes())
     readme = tmp_path / "README.md"
-    if stale:
+    if stale == "README.md":
         text = readme.read_text()
         start, end = _markers("PACKAGE-COUNT")
         readme.write_text(
             text.replace(_marked(text, start, end), start + "\nstale\n" + end)
         )
+    elif stale is not None:
+        (tmp_path / stale).write_text("[]\n")
     before = {
         relative: (
             (tmp_path / relative).read_bytes(),
@@ -209,7 +238,7 @@ def test_documentation_check_preserves_source_files(
         for relative in check_docs.GENERATED
     }
     monkeypatch.setattr(check_docs, "ROOT", tmp_path)
-    assert check_docs.stale_generated() == int(stale)
+    assert check_docs.stale_generated() == int(stale is not None)
     assert {
         relative: (
             (tmp_path / relative).read_bytes(),
@@ -218,7 +247,10 @@ def test_documentation_check_preserves_source_files(
         for relative in check_docs.GENERATED
     } == before
     error = capsys.readouterr().err
-    assert ("run python scripts/docs/generate.py docs: README.md" in error) == stale
+    if stale is None:
+        assert error == ""
+    else:
+        assert f"run python scripts/docs/generate.py docs: {stale}" in error
 
 
 def test_missing_canonical_interpreter_does_not_link_to_an_old_path(tmp_path) -> None:

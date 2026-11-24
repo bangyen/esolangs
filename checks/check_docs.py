@@ -39,19 +39,10 @@ from urllib.parse import unquote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from docs.anchors import FENCE, anchors
+from docs.anchors import anchors, mask_hidden
+from docs.writing import GENERATED_DOCS as GENERATED
 
 ROOT = Path(__file__).resolve().parents[1]
-GENERATED = (
-    "README.md",
-    "docs/languages.md",
-    "docs/proofs/index.md",
-    "docs/roadmap.md",
-    "docs/usage.md",
-    "docs/limitations.md",
-    "docs/CONTRIBUTING.md",
-    "src/esolangs/registry/scaling.json",
-)
 
 
 def _manifest_is_stale() -> bool:
@@ -66,7 +57,6 @@ def _manifest_is_stale() -> bool:
     return manifest.read_text(encoding="utf-8") != examples.boolean_manifest_text()
 
 
-_INLINE_CODE = re.compile(r"(?<!`)(`+)(?!`)[^\n]*?(?<!`)\1(?!`)")
 _ESCAPED = rf"\\([{re.escape(string.punctuation)}])"
 _UNESCAPE = re.compile(_ESCAPED)
 _BRACKET = re.compile(rf"{_ESCAPED}|[\[\]]")
@@ -139,8 +129,8 @@ def _references(text: str, visible: str) -> tuple[dict[str, str], str]:
 
 def _targets(text: str) -> Iterator[str]:
     """Yield destinations from inline links and resolved references."""
-    text = FENCE.sub("\n", text)
-    visible = _INLINE_CODE.sub(lambda match: " " * len(match[0]), text)
+    text = mask_hidden(text)
+    visible = mask_hidden(text, inline_code=True)
     references, visible = _references(text, visible)
     openings: list[int] = []
     cursor = 0
@@ -290,7 +280,11 @@ def stale_generated() -> int:
             target = output_root / path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(content)
-        result = generate.docs_main(output_root=output_root)
+        try:
+            result = generate.docs_main(output_root=output_root)
+        except (OSError, ValueError) as error:
+            print(error, file=sys.stderr)
+            return 1
         changed = [
             path
             for path, content in before.items()

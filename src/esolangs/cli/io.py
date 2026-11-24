@@ -752,10 +752,7 @@ def _snapshot_frame(stdin: TextIO, deadline: float | None, frame: InputFrame) ->
             pass  # A prefetched wrapper must keep its decoder state.
         else:
             stream = stdin.buffer
-            return frame.read_units(
-                lambda: _read_stdin_bytes(stream, deadline, size=1),
-                encoding="utf-8-sig",
-            )
+            return frame.read_units(lambda: _read_stdin_bytes(stream, deadline, size=1))
     return _managed_stdin_text(read_input(stdin, frame=frame), stdin)
 
 

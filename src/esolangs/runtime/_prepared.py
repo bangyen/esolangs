@@ -27,7 +27,7 @@ from esolangs.runtime._execution import (
     prepare_call,
     runtime_hook,
 )
-from esolangs.runtime._input import CheckedInput, InputFrame, InputSource
+from esolangs.runtime._input import CheckedInput, InputFrame, InputSource, _BoundReader
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import (
     MachineFactory,
@@ -309,7 +309,7 @@ class PreparedProgram:
         frame = self._input_frame
         if isinstance(stdin, PendingInput):
             stdin = stdin.snapshot(frame=frame)
-        elif not isinstance(stdin, str) and _has_backing_type(
+        elif isinstance(stdin, _BoundReader) and _has_backing_type(
             stdin.stream, DeferredInput
         ):
             stdin = stdin.stream.read()

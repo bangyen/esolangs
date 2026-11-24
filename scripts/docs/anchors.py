@@ -8,7 +8,13 @@ from __future__ import annotations
 
 import re
 
-FENCE = re.compile(r"^(```|~~~).*?^\1", re.DOTALL | re.MULTILINE)
+_MARKUP = re.compile(
+    r"(?P<fenced>^(?P<fence>```|~~~)[\s\S]*?^(?P=fence))"
+    r"|(?P<comment><!--[\s\S]*?(?:-->|\Z))"
+    r"|(?P<inline>(?<!`)(?P<ticks>`+)(?!`)[^\n]*?(?<!`)(?P=ticks)(?!`))"
+    r"|(?P<escape>\\[\\<`])",
+    re.MULTILINE,
+)
 _HEADING = re.compile(r"^#{1,6}\s+(.*?)\s*#*\s*$", re.MULTILINE)
 _EXPLICIT_ANCHOR = re.compile(r"<a\s+(?:id|name)=\"([^\"]+)\"")
 
@@ -25,10 +31,25 @@ def slug(heading: str) -> str:
     return text.replace(" ", "-")
 
 
+def mask_hidden(
+    text: str, *, inline_code: bool = False, keep_columns: bool = True
+) -> str:
+    """Hide comments and code blocks while retaining line boundaries."""
+
+    def mask(match: re.Match[str]) -> str:
+        kind = match.lastgroup
+        if kind in {"fenced", "comment"} or (inline_code and kind == "inline"):
+            return re.sub(r"[^\n]", " " if keep_columns else "", match[0])
+        return match[0]
+
+    # Match constructs in source order so a literal opener inside a code
+    # span or fenced block never starts a comment outside it.
+    return _MARKUP.sub(mask, text)
+
+
 def anchors(text: str) -> set[str]:
     """Return every heading and explicit anchor a reader can link to in ``text``."""
-    # A fenced block renders as code, so nothing inside it is a target.
-    text = FENCE.sub("", text)
+    text = mask_hidden(text, keep_columns=False)
     headings = [slug(m.group(1)) for m in _HEADING.finditer(text)]
     found = set(headings)
     found |= {m.group(1) for m in _EXPLICIT_ANCHOR.finditer(text)}
