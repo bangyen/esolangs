@@ -64,12 +64,28 @@ def test_native_run_keeps_json_with_only_a_similar_format_marker(tmp_path, capsy
     value = json.loads(api.to_json(api.from_source("+.")))
     path = tmp_path / "native.json"
     path.write_text(
-        json.dumps({"format": value["format"], "language": value["language"]}),
+        json.dumps(
+            {"format": value["format"] + "_other", "language": value["language"]}
+        ),
         encoding="utf-8",
     )
     output, error = call_both(["run", REFERENCE, str(path)], capsys, stdin="A")
     assert output == "\x00"
     assert error == ""
+
+
+@pytest.mark.parametrize("field", ["settings", "language", "source"])
+def test_native_run_rejects_a_tagged_artifact_with_missing_fields(
+    tmp_path, capsys, field
+) -> None:
+    record = json.loads(esolangs.to_json(REFERENCE, "+."))
+    del record[field]
+    path = tmp_path / "incomplete.json"
+    path.write_text(json.dumps(record), encoding="utf-8")
+    output, error = _failure(["run", REFERENCE, str(path)], capsys, stdin="A")
+    assert not output
+    assert str(path) in error
+    assert "invalid portable program: unexpected or missing fields" in error
 
 
 @pytest.mark.parametrize("bom_count", [1, 2])

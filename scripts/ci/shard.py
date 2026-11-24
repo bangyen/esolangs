@@ -107,6 +107,26 @@ def read_timing_json(path: Path, *, data: bytes | None = None) -> Any:
         raise ValueError(f"{path}: invalid timing JSON: {error}") from error
 
 
+def read_completion_metadata(path: Path) -> dict[str, Any]:
+    """Read the identity and unique node IDs before consumers compare them."""
+    metadata = read_timing_json(path)
+    if not isinstance(metadata, dict):
+        raise ValueError(f"{path}: timing completion metadata must be an object")
+    run = metadata.get("run")
+    if not isinstance(run, dict):
+        raise ValueError(f"{path}: invalid completion field 'run': expected an object")
+    nodes = metadata.get("collected")
+    if (
+        not isinstance(nodes, list)
+        or not all(isinstance(node, str) for node in nodes)
+        or len(set(nodes)) != len(nodes)
+    ):
+        raise ValueError(
+            f"{path}: invalid completion field 'collected': expected unique test IDs"
+        )
+    return metadata
+
+
 def _parse_durations(data: bytes, path: Path) -> dict[str, float]:
     """Parse the bytes read from a timing file or checked against a sidecar."""
     raw = _timing_map(read_timing_json(path, data=data))
@@ -340,28 +360,22 @@ def _load_run(directory: Path, expected: set[str]) -> _TimingRun:
     sources: dict[str, Path] = {}
     identity = None
     for path in paths:
-        metadata = read_timing_json(path)
+        metadata = read_completion_metadata(path)
         durations_path = path.with_suffix("").with_suffix("")
-        if isinstance(metadata, dict) and "durations_file" in metadata:
+        if "durations_file" in metadata:
             name = metadata["durations_file"]
             if not isinstance(name, str) or Path(name).name != name:
                 raise ValueError(f"{path}: invalid timing snapshot path")
             durations_path = path.parent / name
         if (
-            not isinstance(metadata, dict)
-            or metadata.get("schema") != 1
+            metadata.get("schema") != 1
             or metadata.get("exitstatus") != 0
-            or not isinstance(metadata.get("collected"), list)
-            or not all(isinstance(node, str) for node in metadata["collected"])
             or metadata.get("finished") != metadata["collected"]
-            or len(set(metadata["collected"])) != len(metadata["collected"])
         ):
             raise ValueError(f"{path}: failed, incomplete, or altered timing run")
         data = durations_path.read_bytes()
         if metadata.get("durations_sha256") != hashlib.sha256(data).hexdigest():
             raise ValueError(f"{path}: altered timing run")
-        if not isinstance(metadata.get("run"), dict):
-            raise ValueError(f"{path}: missing run identity")
         if identity is not None and identity != metadata["run"]:
             raise ValueError(f"{directory}: mixed CI runs or Python versions")
         identity = metadata["run"]

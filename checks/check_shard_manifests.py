@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from ci.shard import collect_ids, load_run, read_timing_json
+from ci.shard import collect_ids, load_run, read_completion_metadata
 
 
 def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> None:
@@ -53,7 +53,9 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
         if set(record["collected"]) != expected:
             raise ValueError("shard collection differs from current corpus")
         run = record.get("run")
-        if not isinstance(run, dict) or (identity is not None and run != identity):
+        if not isinstance(run, dict):
+            raise ValueError(f"{path}: invalid shard field 'run': expected an object")
+        if identity is not None and run != identity:
             raise ValueError("mixed shard run identities")
         for key, value in current_run.items():
             if run.get(key) != value:
@@ -74,23 +76,16 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
         selected.update(nodes)
         actual = set()
         for sidecar in path.parent.rglob("*.json.meta.json"):
-            metadata = read_timing_json(sidecar)
-            if (
-                not isinstance(metadata, dict)
-                or not isinstance(metadata.get("collected"), list)
-                or any(
-                    metadata.get("run", {}).get(key) != value
-                    for key, value in run.items()
+            metadata = read_completion_metadata(sidecar)
+            if any(metadata["run"].get(key) != value for key, value in run.items()):
+                raise ValueError(
+                    f"{sidecar}: completion field 'run' differs from {path}"
                 )
-            ):
-                raise ValueError("missing or mixed execution identity")
             actual.update(metadata["collected"])
         if not nodes <= actual or not actual <= nodes | omissions or actual & executed:
             raise ValueError("missing, overlapping, or unexpected executed tests")
         if actual:
             load_run(path.parent, actual)
-        elif nodes:
-            raise ValueError("missing completion evidence")
         executed.update(actual)
     if selected != expected - (excluded or set()) or executed != expected:
         raise ValueError("shards omit collected tests")

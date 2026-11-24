@@ -195,9 +195,9 @@ def write_set(name: str) -> None:
         if name == "boolean":
             relative = pathlib.Path("EXAMPLES.md")
             path = LANGUAGES_DIR / relative
-            text = boolean_manifest_text()
-            if not path.exists() or path.read_text(encoding="utf-8") != text:
-                (staging / relative).write_text(text, encoding="utf-8")
+            contents = boolean_manifest_text().encode("utf-8")
+            if not path.exists() or path.read_bytes() != contents:
+                (staging / relative).write_bytes(contents)
             pending.append(relative)
 
         for relative in pending:

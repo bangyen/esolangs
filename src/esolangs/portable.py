@@ -58,25 +58,39 @@ from esolangs.settings import (
 _FORMAT = "esolangs.program"
 
 
-def _portable_record_header(data: bytes) -> tuple[str, bool] | None:
-    """Read the envelope's language and whether it holds a template."""
+def _portable_record_candidate(data: bytes) -> dict[str, Any] | None:
+    """Recognize JSON objects that declare the portable program format."""
     if _FORMAT.encode("ascii") not in data and b"\\u" not in data:
         return None
     try:
         value = record_loads(decode_utf8(data))
     except (ValueError, RecursionError):
         return None
+    return value if isinstance(value, dict) and value.get("format") == _FORMAT else None
+
+
+def _check_portable_fields(value: dict[str, Any]) -> None:
+    """Validate the envelope before interpreting its language or source."""
+    fields = {"format", "version", "language", "settings", "kind", "source"}
+    kind = value.get("kind")
+    if kind == "gzip":
+        fields.add("limits")
+    if kind == "png" and "scale" in value:
+        fields.add("scale")
+    if kind == "template":
+        fields |= {"char", "setters", "spans"}
+        if "generation_width" in value:
+            fields.add("generation_width")
+    elif "input_arity" in value:
+        fields.add("input_arity")
+    if set(value) != fields:
+        raise ValueError("unexpected or missing fields")
     if (
-        isinstance(value, dict)
-        and value.get("format") == _FORMAT
-        and type(value.get("version")) is int
-        and value.get("kind") in ("text", "png", "gzip", "template")
-        and isinstance(value.get("source"), str)
-        and "settings" in value
-        and isinstance(owner := value.get("language"), str)
+        value["format"] != _FORMAT
+        or type(value["version"]) is not int
+        or value["version"] != 1
     ):
-        return owner, value["kind"] == "template"
-    return None
+        raise ValueError("unsupported program format or version")
 
 
 class _ArtifactLanguageMismatchError(ValueError):
@@ -559,26 +573,8 @@ def from_json(
         value = record_loads(document)
         if not isinstance(value, dict):
             raise ValueError("document must be an object")
-        fields = {"format", "version", "language", "settings", "kind", "source"}
-        kind = value.get("kind")
-        if kind == "gzip":
-            fields.add("limits")
-        if kind == "png" and "scale" in value:
-            fields.add("scale")
-        if kind == "template":
-            fields |= {"char", "setters", "spans"}
-            if "generation_width" in value:
-                fields.add("generation_width")
-        elif "input_arity" in value:
-            fields.add("input_arity")
-        if set(value) != fields:
-            raise ValueError("unexpected or missing fields")
-        if (
-            value["format"] != _FORMAT
-            or type(value["version"]) is not int
-            or value["version"] != 1
-        ):
-            raise ValueError("unsupported program format or version")
+        _check_portable_fields(value)
+        kind = value["kind"]
         origin = value["language"]
         owner = (
             resolve_origin(origin, catalog=catalog) if isinstance(origin, str) else None

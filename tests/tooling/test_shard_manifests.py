@@ -229,6 +229,25 @@ def test_shard_evidence_must_match_active_ci_run(tmp_path, monkeypatch, variable
 
 
 @pytest.mark.parametrize(
+    ("field", "value"),
+    [("run", None), ("collected", [{}]), ("collected", ["b", "b"])],
+)
+def test_bad_completion_fields_name_the_sidecar(tmp_path, field, value) -> None:
+    paths = evidence(tmp_path)
+    sidecar = paths[1].parent / "test-durations.json.meta.json"
+    metadata = json.loads(sidecar.read_text(encoding="utf-8"))
+    metadata[field] = value
+    sidecar.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(
+        ValueError, match=f"invalid completion field '{field}'"
+    ) as error:
+        check(paths, ["a", "b", "serial"], "slow", 2)
+    assert str(sidecar) in str(error.value)
+    with pytest.raises(ValueError, match=f"invalid completion field '{field}'"):
+        load_run(paths[1].parent, {"b"})
+
+
+@pytest.mark.parametrize(
     "fault",
     [
         "missing",

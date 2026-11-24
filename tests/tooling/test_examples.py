@@ -420,6 +420,17 @@ class TestTheWritersWriteWhatTheBuildersBuild:
                 restored, [bit], limits=esolangs.ExecutionLimits(max_steps=200_000)
             ).answer == str(bit)
 
+    def test_regeneration_replaces_a_manifest_with_invalid_utf8(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        module = self._redirect(monkeypatch, tmp_path)
+        monkeypatch.setitem(module.SETS, "boolean", lambda: iter(()))
+        target = tmp_path / "EXAMPLES.md"
+        target.write_bytes(b"\xff")
+        expected = module.boolean_manifest_text().encode("utf-8")
+        module.write_set("boolean")
+        assert target.read_bytes() == expected
+
     def test_main_with_no_arguments_writes_every_set(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
