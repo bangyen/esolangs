@@ -72,6 +72,7 @@ class _CatalogFacts(TypedDict):
     """Fields shared by ``describe`` and ``list --json --details``."""
 
     name: str
+    id: str
     generator_scaling: str | None
     well_known: bool
     source_kind: SourceForm
@@ -131,6 +132,7 @@ def _catalog_facts(lang: LanguageDeclaration, *, catalog: Catalog) -> _CatalogFa
         )
     return {
         "name": lang.name,
+        "id": lang.id,
         "generator_scaling": _SCALING.get(lang.id) if packaged else None,
         "well_known": _well_known(lang),
         "source_kind": lang.runtime.source_kind.value,
@@ -212,7 +214,6 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
         **_catalog_facts(lang, catalog=catalog),
         dialect_settings=dialect_choices(name, catalog=catalog),
         spec=_spec(name, catalog=catalog),
-        id=lang.id,
         reads_input=reads_input,
         input_encoding=contract.alphabet if reads_input else None,
         answer_pattern=answer_pattern_text(name, contract.answer_pattern),

@@ -81,7 +81,7 @@ class TestJsonOutput:
             shape = "template" if facts.parameterized else facts.input_shape
             want = {key: getattr(facts, key) for key in row} | {"input_shape": shape}
             assert row == json.loads(json.dumps(want))  # a tuple prints as a list
-            assert {"boolean_generator", "parameterized", "examples"} <= set(row)
+            assert {"id", "boolean_generator", "parameterized", "examples"} <= set(row)
 
     def test_list_json_agrees_with_the_marker_column(
         self, capsys: pytest.CaptureFixture[str]

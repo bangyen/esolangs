@@ -161,7 +161,7 @@ def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
     ) in {(gap.where, gap.fix) for gap in gaps}
 
 
-def test_finish_still_runs_the_gate_past_open_steps(
+def test_finish_reports_open_steps_before_regenerating(
     root: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     fragment = root / "src/esolangs/languages/tiny/language.toml"
@@ -169,11 +169,20 @@ def test_finish_still_runs_the_gate_past_open_steps(
     fragment.write_text("[curation]\nunassessed = true\n")
     gap = new_language.Gap("somewhere", "do it")
     monkeypatch.setattr(new_language, "check", lambda _: [gap])
-    ran = []
-    monkeypatch.setattr(new_language, "_gate", lambda: ran.append(1) or 0)
+    monkeypatch.setattr(new_language, "_gate", lambda: pytest.fail("ran the gate"))
     assert new_language.finish("Tiny") == 1
-    assert ran == [1]
-    assert "curation unassessed" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "somewhere" in output
+    assert "do it" in output
+    assert "curation unassessed" in output
+
+
+@pytest.mark.parametrize("gate_status", [0, 1])
+def test_finish_verifies_a_ready_language(monkeypatch, gate_status):
+    monkeypatch.setattr(new_language, "check", lambda _: [])
+    monkeypatch.setattr(new_language, "_curation", lambda _: {})
+    monkeypatch.setattr(new_language, "_gate", lambda: gate_status)
+    assert new_language.finish("Tiny") == gate_status
 
 
 def test_bounds_generates_each_measured_table_once(monkeypatch: pytest.MonkeyPatch):

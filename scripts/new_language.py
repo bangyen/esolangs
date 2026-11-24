@@ -11,8 +11,8 @@ to add; ``tests/tooling/test_new_language.py`` runs it over the registry,
 so the list cannot drift from what the suite enforces.  Once the list is
 empty it runs the seconds-long tests ``finish`` would otherwise fail late.
 ``bounds`` measures resource maxima and their witnesses.
-``finish`` regenerates every committed artifact and runs the full
-``verify/gate.py`` gate.
+``finish`` checks for missing integration points before regenerating
+committed artifacts and running the full ``verify/gate.py`` gate.
 """
 
 from __future__ import annotations
@@ -860,22 +860,20 @@ def _print_bounds(declaration: LanguageDeclaration, max_n: int) -> None:
 
 
 def finish(name: str) -> int:
-    """Regenerate every committed artifact, then run the full gate.
+    """Check readiness before regenerating committed artifacts and verifying.
 
     Several minutes on a laptop: run it in the background.
     """
     gaps = check(name)
     if gaps:
         _report(name, gaps)
-        print("running the gate anyway, to list every other failure")
-    gate = _gate()
     if _curation(name).get("unassessed"):
         print(
             f"{name}: curation unassessed; before merging, replace "
             "`unassessed = true` in its language.toml with backlinks = <the "
             'wiki\'s "What links here" count>'
         )
-    return 1 if gaps else gate
+    return 1 if gaps else _gate()
 
 
 def _curation(name: str) -> dict[str, Any]:

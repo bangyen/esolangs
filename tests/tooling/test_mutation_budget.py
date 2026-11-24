@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from scripts import mutants
+from tests.support.reference import REFERENCE
 
 
 @pytest.mark.parametrize("budget", [0, -1, float("nan"), float("inf")])
@@ -32,6 +33,56 @@ def test_invalid_count_is_rejected_before_opening_output(tmp_path, capsys, count
         mutants.main(["test", "--out", str(out), "--per-language", str(count)])
     assert caught.value.code == 2
     assert message in capsys.readouterr().err
+    assert not out.exists()
+
+
+@pytest.mark.parametrize(
+    ("registered", "message"),
+    [
+        (False, "no registered language has this package"),
+        (True, "no compiling generator mutants"),
+    ],
+)
+def test_all_packages_are_checked_before_any_baseline_or_output(
+    tmp_path, monkeypatch, capsys, registered, message
+):
+    from esolangs.registry import LANGUAGES
+
+    first = LANGUAGES[REFERENCE].id.replace("-", "_")
+    second = (
+        next(
+            lang.id.replace("-", "_")
+            for lang in LANGUAGES.values()
+            if not lang.has_backend and not mutants.generator_files(lang.id)
+        )
+        if registered
+        else "no_such_mutation_package"
+    )
+    packages = [first, second]
+    out = tmp_path / "existing.jsonl"
+    out.write_text("previous\n")
+    monkeypatch.setattr(mutants, "_run", lambda *_: pytest.fail("ran a baseline"))
+    monkeypatch.setattr(mutants, "_in_worktree", lambda: True)
+
+    with pytest.raises(ValueError, match=message):
+        mutants.sweep(packages, out, 1, 10)
+    with pytest.raises(SystemExit) as caught:
+        mutants.main([*packages, "--out", str(out), "--per-language", "1"])
+    assert caught.value.code == 2
+    assert f"{second}: {message}" in capsys.readouterr().err
+    assert out.read_text() == "previous\n"
+    assert list(tmp_path.iterdir()) == [out]
+
+
+def test_preflight_uses_the_sweep_budget(tmp_path, monkeypatch, capsys):
+    clock = iter([0, 11])
+    monkeypatch.setattr(mutants, "time", SimpleNamespace(monotonic=lambda: next(clock)))
+    monkeypatch.setattr(mutants, "_pytest", lambda _: [])
+    monkeypatch.setattr(mutants, "candidates", lambda *_: [object()])
+    monkeypatch.setattr(mutants, "_run", lambda *_: pytest.fail("ran a baseline"))
+    out = tmp_path / "out.jsonl"
+    assert mutants.sweep(["test"], out, 1, 10) == 124
+    assert "global budget spent during preflight" in capsys.readouterr().err
     assert not out.exists()
 
 
@@ -67,7 +118,7 @@ def test_sweep_budget_clips_probes_and_restores_source(
     source.write_text("value = 1\n")
     mutant = {"file": "source.py", "line": 1, "col": 8, "old": "1", "new": "2"}
     clock = iter(
-        [0, 0, 0, 1, 2, 11] if cutoff == "global" else [0, 0, 0, 1, 2, 2, 2, 2]
+        [0, 0, 0, 0, 1, 2, 11] if cutoff == "global" else [0, 0, 0, 0, 1, 2, 2, 2, 2]
     )
     monkeypatch.setattr(mutants, "time", SimpleNamespace(monotonic=lambda: next(clock)))
     monkeypatch.setattr(mutants, "ROOT", tmp_path)
@@ -77,10 +128,12 @@ def test_sweep_budget_clips_probes_and_restores_source(
     monkeypatch.setattr(mutants, "candidates", lambda *_args: [mutant] * count)
     limits = []
 
-    def run(_command, timeout):
+    def run(command, timeout):
         limits.append(timeout)
         if len(limits) == 1:
+            assert "-x" not in command
             return "survived", "baseline"
+        assert "-x" in command
         assert source.read_text() == "value = 2\n"
         return ("survived", "") if cutoff == "global" else ("timeout", "")
 

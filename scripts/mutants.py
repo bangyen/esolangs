@@ -1,7 +1,8 @@
 """Seeded token mutants of a generator, run against its tests.
 
-Takes package directories (``alight``), prices one baseline
-run each, then applies ``--per-language`` seeded mutants one at a time:
+Preflights candidates for every requested package directory (``alight``).
+It prices one baseline run each, then applies ``--per-language`` seeded
+mutants one at a time:
 operator swaps (``+``/``-``, ``<``/``<=``, ``and``/``or``, ...) and integer
 constants plus one, in generator source only.  Each runs the package's tests
 plus the registry tests matching its name, ``pytest -x``; a mutant that no
@@ -158,13 +159,13 @@ def registry_keyword(package: str) -> str:
         lang.name for lang in REGISTRY.values() if lang.id.replace("-", "_") == package
     ]
     if not names:
-        raise SystemExit(f"{package}: no registered language has this package")
+        raise ValueError(f"{package}: no registered language has this package")
     name = names[0]
     words = " and ".join(re.findall(r"[A-Za-z0-9_]+", name))
     return f"{package} or ({words})" if words else package
 
 
-def _pytest(package: str, *, stop: bool) -> list[str]:
+def _pytest(package: str) -> list[str]:
     command = [
         "uv",
         "run",
@@ -175,7 +176,7 @@ def _pytest(package: str, *, stop: bool) -> list[str]:
         "-p",
         "no:cacheprovider",
     ]
-    command += ["--tb=short", "-rf", "-m", "not weekly", *(["-x"] if stop else [])]
+    command += ["--tb=short", "-rf", "-m", "not weekly"]
     # The harness's deadline tests (under tests/, exercising the
     # worker-reaping machinery) can kill no generator mutant, and the
     # substring match drags them into package "line"'s selection ("line"
@@ -287,7 +288,18 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
         raise ValueError("--budget must be positive and finite")
     if per_language < 1:
         raise ValueError("--per-language must be positive")
+    if not packages:
+        raise ValueError("at least one package is required")
     began = time.monotonic()
+    planned = []
+    for package in packages:
+        command = _pytest(package)
+        sample = candidates(package, per_language)
+        if not sample:
+            raise ValueError(f"{package}: no compiling generator mutants")
+        planned.append((package, command, sample))
+    if time.monotonic() - began >= budget:
+        return _incomplete("global budget spent during preflight")
     statuses: set[str] = set()
     # A baseline alone may take minutes with nothing printed; say what runs.
     print(
@@ -296,7 +308,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
         flush=True,
     )
     with out.open("a", encoding="utf-8") as sink:
-        for package in packages:
+        for package, command, sample in planned:
             remaining = budget - (time.monotonic() - began)
             if remaining <= 0:
                 return _incomplete("global budget spent before baseline")
@@ -305,7 +317,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                 flush=True,
             )
             start = time.monotonic()
-            status, output = _run(_pytest(package, stop=False), min(60, remaining))
+            status, output = _run(command, min(60, remaining))
             baseline = time.monotonic() - start
             out.with_name(f"{out.stem}-{package}-baseline.log").write_text(
                 output, encoding="utf-8"
@@ -331,7 +343,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                     flush=True,
                 )
             timeout, streak = max(60.0, 3 * baseline), 0
-            for mutant in candidates(package, per_language):
+            for mutant in sample:
                 remaining = budget - (time.monotonic() - began)
                 if remaining <= 0:
                     return _incomplete("global budget spent before the next mutant")
@@ -343,9 +355,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                 try:
                     path.write_text(_replaced(original, mutant), encoding="utf-8")
                     _clear_bytecode()
-                    status, output = _run(
-                        _pytest(package, stop=True), min(timeout, remaining)
-                    )
+                    status, output = _run([*command, "-x"], min(timeout, remaining))
                 finally:
                     path.write_text(original, encoding="utf-8")
                 flips = _duration_flips(output) if status == "killed" else None
@@ -396,7 +406,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--per-language must be positive")
     if not _in_worktree():
         parser.error("mutants edit source in place: run a sweep in a git worktree")
-    return sweep(args.packages, args.out, args.per_language, args.budget)
+    try:
+        return sweep(args.packages, args.out, args.per_language, args.budget)
+    except ValueError as error:
+        parser.error(str(error))
 
 
 if __name__ == "__main__":
