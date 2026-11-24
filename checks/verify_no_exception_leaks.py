@@ -11,7 +11,8 @@ KeyError -- is a bug in the interpreter, not in the program it was given.
 The corpus is deliberately hostile but *derived from real programs*: the
 generic fragments below, plus every shipped example for the language, plus
 mutations of those examples (truncated, a character dropped, one doubled,
-one inserted).  A language's ``fuzz_max_digits`` shortens its numbers before
+one inserted). Compressed examples run directly without text mutations.
+A language's ``fuzz_max_digits`` shortens its numbers before
 mutation where operand size changes cost, not interpreter paths.  Truncation finds the
 interesting cases -- a half-written program reaches states no hand-written
 test thinks to build.
@@ -229,11 +230,11 @@ def _select(
     ):
         return langs, "source removed; dependency resolution is incomplete"
     changed_examples = {
-        pathlib.Path(name).stem
+        pathlib.Path(name.removesuffix(".gz")).stem
         for name in changed
         if name.startswith("src/esolangs/languages/")
         and len(pathlib.Path(name).parts) == 5
-        and pathlib.Path(name).suffix in {".txt", ".png"}
+        and name.endswith((".txt", ".png", ".txt.gz"))
     }
     stems = example_stems()
     changed_paths = {(_ROOT / name).resolve() for name in changed}
@@ -313,6 +314,9 @@ def _corpus(lang: str, examples: dict[str, list[Program]]) -> list[Program]:
         return progs
     progs = list(GENERIC)
     for raw_src in examples[lang]:
+        if isinstance(raw_src, CompressedText):
+            progs.append(raw_src)
+            continue
         assert isinstance(raw_src, str)
         src = raw_src
         if digits := load_certification(LANGUAGES[lang]).fuzz_max_digits:
@@ -350,7 +354,11 @@ def _sweep_one(lang: str, progs: list[Program]) -> tuple[int, list[dict[str, str
                         {
                             "exc": type(e).__name__,
                             "msg": str(e)[:120],
-                            "program": str(prog)[:120],
+                            "program": (
+                                f"<gzip source: {len(prog):,} characters>"
+                                if isinstance(prog, CompressedText)
+                                else str(prog)[:120]
+                            ),
                             "stdin": stdin,
                         }
                     )
@@ -393,6 +401,9 @@ def _examples_by_slug() -> dict[str, list[Program]]:
         path = directory / slug / f"{stem}.txt"
         if path.exists():
             by_slug.setdefault(slug, []).append(path.read_text())
+        compressed = path.with_suffix(".txt.gz")
+        if compressed.is_file():
+            by_slug.setdefault(slug, []).append(CompressedText(compressed.read_bytes()))
         image = directory / slug / f"{stem}.png"
         if image.exists():
             from esolangs.raster.scale import normalize

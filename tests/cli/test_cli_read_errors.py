@@ -564,7 +564,7 @@ from esolangs.cli import io, main
 
 read = io._read_buffered_stdin
 
-def signal_reader(*args):
+def signal_reader(*args, **kwargs):
     target = threading.get_ident()
     assert target != threading.main_thread().ident
 
@@ -575,7 +575,7 @@ def signal_reader(*args):
     sender = threading.Timer(0.2, interrupt)
     sender.daemon = True
     sender.start()
-    return read(*args)
+    return read(*args, **kwargs)
 
 io._read_buffered_stdin = signal_reader
 main()

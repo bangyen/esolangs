@@ -206,20 +206,25 @@ def read_answer(language: str, output: str, *, catalog: "Catalog | None" = None)
     return _read_output_answer(name, output, values, pattern, contract.note)
 
 
+_ANSWER_TAIL_SIZE = 40
+
+
 def _read_output_answer(
     name: str,
     output: str,
     values: tuple[str, str],
     pattern: re.Pattern[str] | None,
     note: str,
+    *,
+    last_character: str | None = None,
 ) -> str:
-    """Read output using validated encodings and the compiled pattern, if any."""
+    """Decode validated output, which may be a suffix with the answer supplied."""
     if pattern is not None:
         raw = None
         for match in pattern.finditer(output):
             raw = match[1 if match.re.groups else 0]
     else:
-        raw = output.strip()[-1:] or None
+        raw = last_character or output.strip()[-1:] or None
     zero, one = values
     if raw == one:
         return "1"
@@ -234,5 +239,5 @@ def _read_output_answer(
         detail += f" (matched with {pattern.pattern!r})"
     raise ProgramError(
         f"{name} produced no answer this could read: expected {zero!r} or "
-        f"{one!r} {where}, got {output[-40:]!r}{detail}"
+        f"{one!r} {where}, got {output[-_ANSWER_TAIL_SIZE:]!r}{detail}"
     )

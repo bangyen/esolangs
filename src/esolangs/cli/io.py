@@ -817,6 +817,7 @@ def _read_stdin(
     terminal_prompt: str | None = None,
     frame: InputFrame | None = None,
     pipe_check: Callable[[bytes, bytearray], None] | None = None,
+    snapshot: Callable[[TextIO, float | None], str] | None = None,
 ) -> str:
     """Return this command's stdin, or exit if it is not text or never comes.
 
@@ -829,6 +830,8 @@ def _read_stdin(
     deadline = None if timeout is None else monotonic() + timeout
 
     def _read_text() -> str:
+        if snapshot is not None:
+            return snapshot(stdin, deadline)
         return _snapshot_stdin(stdin, deadline, frame, pipe_check=pipe_check)
 
     def _on_timeout() -> NoReturn:

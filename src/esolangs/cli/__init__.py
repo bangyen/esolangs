@@ -50,6 +50,7 @@ from esolangs import (
     list_languages,
 )
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
+from esolangs.cli._answer_input import _AnswerTail
 from esolangs.cli.args import (
     _VALUE_OPTIONS,
     _check_count,
@@ -854,13 +855,22 @@ def _read_answer(rest: list[str]) -> None:
             "halts. A timeout leaves the answer undecided."
         )
     eof = "Ctrl-Z then Enter" if os.name == "nt" else "Ctrl-D (twice on a partial line)"
+    tail = _AnswerTail() if pattern is None else None
     output = _read_stdin(
         hint="; pipe a program's output in, or close stdin",
         terminal_prompt=f"Paste the program's output, then send EOF with {eof}.",
+        snapshot=None if tail is None else tail.snapshot,
     )
     # NQ's false answer is a space; only absent output is empty stdin.
     try:
-        answer = _read_output_answer(label, output, values, pattern, contract.note)
+        answer = _read_output_answer(
+            label,
+            output,
+            values,
+            pattern,
+            contract.note,
+            last_character=None if tail is None else tail.last_character,
+        )
     except ProgramError as exc:
         # Output with no readable answer is the program's failure, as in run.
         if not output:

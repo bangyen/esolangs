@@ -295,7 +295,10 @@ def _speed_failed(
             timings.append(timing)
     old_generation = min(lap.generation for lap in old_laps)
     new_generation = min(lap.generation for lap in new_laps)
-    change = old_generation / new_generation - 1
+    if min(old_generation, new_generation) <= 0:
+        print("generation timings must be positive", file=sys.stderr)
+        return True
+    change = new_generation / old_generation - 1
     print(
         f"speed: generation {old_generation:.3f}s -> {new_generation:.3f}s "
         f"({change:+.0%})"
@@ -304,7 +307,7 @@ def _speed_failed(
         f"serialization: {min(lap.serialization for lap in old_laps):.3f}s -> "
         f"{min(lap.serialization for lap in new_laps):.3f}s"
     )
-    return change < -SLOWDOWN
+    return new_generation > old_generation * (1 + SLOWDOWN)
 
 
 def main(argv: list[str] | None = None) -> int:

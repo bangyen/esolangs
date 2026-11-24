@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from checks import verify_no_exception_leaks as leaks
+from esolangs.compressed import CompressedText
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec
 
@@ -148,7 +149,7 @@ def test_missing_imported_module_fails_closed(source_tree) -> None:
         leaks._sources("fixture")
 
 
-@pytest.mark.parametrize("extension", ["txt", "png"])
+@pytest.mark.parametrize("extension", ["txt", "png", "txt.gz"])
 @pytest.mark.parametrize("exists", [False, True])
 def test_shipped_example_selects_its_language(source_tree, extension, exists) -> None:
     from types import SimpleNamespace
@@ -205,6 +206,41 @@ def test_language_corpus_is_independent_of_other_examples(monkeypatch) -> None:
     assert leaks._corpus("fixture", examples) == old
     examples["fixture"] = ["++."]
     assert leaks._corpus("fixture", examples) != old
+
+
+def test_gzip_example_reaches_the_bounded_sweep_as_compressed_source(
+    source_tree, monkeypatch
+) -> None:
+    path = source_tree / "src/esolangs/languages/fixture/fixture-name.txt.gz"
+    path.parent.mkdir(parents=True)
+    compressed = CompressedText.from_chunks(("00", "0000"))
+    path.write_bytes(compressed.to_gzip())
+    monkeypatch.setattr(leaks, "example_stems", lambda: {"fixture": "fixture-name"})
+
+    def fail_expansion(_source):
+        pytest.fail("expanded gzip source to text")
+
+    monkeypatch.setattr(CompressedText, "__str__", fail_expansion)
+    examples = leaks._examples_by_slug()
+    [seed] = examples["fixture"]
+    assert isinstance(seed, CompressedText)
+    assert seed.to_gzip() == compressed.to_gzip()
+    programs = leaks._corpus("fixture", examples)
+    assert programs == [*leaks.GENERIC, seed]
+
+    def drive(_language, program, _stdin, cap):
+        assert cap == leaks._CAP_LADDER[0]
+        if program is seed:
+            raise RuntimeError("compressed example control")
+        return True
+
+    monkeypatch.setattr(leaks, "_drive", drive)
+    runs, findings = leaks._sweep_one("fixture", programs)
+    assert runs == len(programs) * len(leaks.STDINS)
+    assert len(findings) == len(leaks.STDINS)
+    assert {finding["program"] for finding in findings} == {
+        "<gzip source: 6 characters>"
+    }
 
 
 def test_runtime_changes_invalidate_clean_fingerprints(

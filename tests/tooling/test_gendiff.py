@@ -111,8 +111,13 @@ def test_bad_mutant_target_fails_before_generation(
     assert message in capsys.readouterr().err
 
 
-@pytest.mark.parametrize(("new_generation", "status"), [(1.0, 0), (1.3, 1)])
-def test_speed_gate_uses_only_generation(monkeypatch, capsys, new_generation, status):
+@pytest.mark.parametrize(
+    ("new_generation", "status", "change"),
+    [(0.90, 0, "-10%"), (1.0, 0, "+0%"), (1.10, 0, "+10%"), (1.11, 1, "+11%")],
+)
+def test_speed_gate_uses_only_generation(
+    monkeypatch, capsys, new_generation, status, change
+):
     old = REPO_ROOT / "old"
     monkeypatch.setattr(gendiff, "_checkout", lambda *_: old)
 
@@ -129,7 +134,7 @@ def test_speed_gate_uses_only_generation(monkeypatch, capsys, new_generation, st
     assert gendiff.main([REFERENCE, "--speed"]) == status
     output = capsys.readouterr().out
     assert "632 generation requests per pass, up to 3,792 across 6 passes" in output
-    assert "speed: generation " in output
+    assert f"speed: generation 1.000s -> {new_generation:.3f}s ({change})" in output
     assert "serialization: 1.000s -> 3.000s" in output
 
 
