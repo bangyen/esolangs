@@ -86,6 +86,7 @@ def test_generate_refuses_impossible_options_before_stdin(
         (["--scale", "2", REFERENCE], False, "scale is only supported for raster"),
         ([_RASTER], True, "generates a PNG"),
         (["--gzip", REFERENCE], True, "generates gzip"),
+        ([_GZIP], True, "generates gzip"),
     ],
 )
 def test_generate_checks_scale_and_terminal_before_stdin(
@@ -94,7 +95,7 @@ def test_generate_checks_scale_and_terminal_before_stdin(
     def unread(*_args, **_kwargs):
         pytest.fail("invalid output settings reached stdin")
 
-    monkeypatch.setattr("esolangs.cli._read_stdin", unread)
+    monkeypatch.setattr("esolangs.cli._read_truth_table", unread)
     monkeypatch.setattr(sys.stdout, "isatty", lambda: is_terminal)
     output, diagnostic = _failure(["generate", *args, "-"], capsys)
     assert output == ""

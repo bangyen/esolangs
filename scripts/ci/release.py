@@ -10,6 +10,7 @@ import json
 import os
 import re
 import signal
+import stat
 import subprocess
 import sys
 import tarfile
@@ -29,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def normalize(path: Path, epoch: int) -> None:
     """Preserve payloads while fixing gzip and tar metadata deterministically."""
+    path = path.resolve(strict=True)
     buffer = io.BytesIO()
     with (
         tarfile.open(path, "r:gz") as source,
@@ -46,13 +48,17 @@ def normalize(path: Path, epoch: int) -> None:
             target.addfile(
                 member, source.extractfile(member) if member.isfile() else None
             )
-    with (
-        path.open("wb") as stream,
-        gzip.GzipFile(
-            filename="", mode="wb", fileobj=stream, mtime=epoch
-        ) as compressed,
-    ):
-        compressed.write(buffer.getvalue())
+    with tempfile.TemporaryDirectory(dir=path.parent) as scratch:
+        staged = Path(scratch) / path.name
+        with (
+            staged.open("wb") as stream,
+            gzip.GzipFile(
+                filename="", mode="wb", fileobj=stream, mtime=epoch
+            ) as compressed,
+        ):
+            compressed.write(buffer.getvalue())
+        staged.chmod(stat.S_IMODE(path.stat().st_mode))
+        staged.replace(path)
 
 
 def normalize_main(argv: list[str]) -> int:

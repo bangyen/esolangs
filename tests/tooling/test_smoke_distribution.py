@@ -2,6 +2,7 @@
 
 import io
 import os
+import stat
 import subprocess
 import sys
 import tarfile
@@ -107,6 +108,8 @@ def test_normalize_without_an_installed_package(tmp_path) -> None:
     member.pax_headers = {"mtime": "123456.5", "atime": "123457", "ctime": "123458"}
     with tarfile.open(archive, "w:gz", format=tarfile.PAX_FORMAT) as source:
         source.addfile(member, io.BytesIO(payload))
+    archive.chmod(0o640)
+    mode = stat.S_IMODE(archive.stat().st_mode)
     script = Path(smoke.__file__).resolve()
     # -I -S excludes both the checkout and installed site packages.
     result = subprocess.run(
@@ -118,6 +121,7 @@ def test_normalize_without_an_installed_package(tmp_path) -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
+    assert stat.S_IMODE(archive.stat().st_mode) == mode
     assert int.from_bytes(archive.read_bytes()[4:8], "little") == 1700000000
     with tarfile.open(archive) as source:
         normalized = source.getmember(member.name)
@@ -128,6 +132,24 @@ def test_normalize_without_an_installed_package(tmp_path) -> None:
         stream = source.extractfile(normalized)
         assert stream is not None
         assert stream.read() == payload
+
+
+def test_normalize_leaves_original_if_compression_fails(tmp_path, monkeypatch) -> None:
+    archive = tmp_path / "source.tar.gz"
+    with tarfile.open(archive, "w:gz") as source:
+        member = tarfile.TarInfo("package/source.py")
+        member.size = 1
+        source.addfile(member, io.BytesIO(b"x"))
+    original = archive.read_bytes()
+
+    def fail(*_args):
+        raise OSError("compression write failed")
+
+    monkeypatch.setattr(smoke.gzip.GzipFile, "write", fail)
+    with pytest.raises(OSError, match="compression write failed"):
+        smoke.normalize(archive, 0)
+    assert archive.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [archive]
 
 
 def test_release_notes_are_the_tag_changelog_section() -> None:

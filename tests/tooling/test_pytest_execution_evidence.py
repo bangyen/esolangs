@@ -72,6 +72,64 @@ def test_receipt_captures_execution_and_effective_selection(
             validate(receipt, root, {"pytest"})
 
 
+@pytest.mark.parametrize("keyword", ["", "test_first"])
+def test_accepted_retry_must_call_every_failed_test(tmp_path, monkeypatch, keyword):
+    root = _checkout(tmp_path / "checkout")
+    (root / "test_probe.py").write_text(
+        "import os\n"
+        'def test_first():\n    assert os.getenv("RETRY")\n'
+        'def test_second():\n    assert os.getenv("RETRY")\n',
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
+    monkeypatch.delenv("RETRY", raising=False)
+    env = {**os.environ, "PYTHONPATH": str(ROOT), "PYTHONDONTWRITEBYTECODE": "1"}
+    command = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "-p",
+        PLUGIN,
+    ]
+    original = [*command, OUTPUT_OPTION, str(root / "notes" / "original.json")]
+    retry = [*command, OUTPUT_OPTION, str(root / "notes" / "retry.json"), "-k", keyword]
+    run = AcceptanceRun(root, [], {"default": 10.0})
+    run.declare([("pytest", original, env)])
+    for name, args, options, expected in (
+        ("pytest", original, env, 1),
+        ("pytest retry", retry, {**env, "RETRY": "1"}, 0),
+    ):
+        result = subprocess.run(
+            args,
+            cwd=root,
+            env=options,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        assert result.returncode == expected, result.stdout + result.stderr
+        run.record(name, 0.1, result.returncode, result.stdout, command=args)
+
+    ids = ["test_probe.py::test_first", "test_probe.py::test_second"]
+    accepted = keyword == ""
+    assert run.pytest_retry_covers(ids) is accepted
+    assert not run.pytest_retry_covers(ids[:1])
+    run.accepted_retries.add("pytest")
+    receipt, passed = run.finish(0)
+    assert passed is accepted
+    if accepted:
+        validate(receipt, root, {"pytest"})
+    else:
+        record = json.loads(receipt.read_text())
+        receipt.write_text(json.dumps({**record, "status": "passed"}))
+        with pytest.raises(ValueError, match="acceptance"):
+            validate(receipt, root, {"pytest"})
+
+
 @pytest.mark.parametrize(
     ("assertion", "options", "status"),
     [

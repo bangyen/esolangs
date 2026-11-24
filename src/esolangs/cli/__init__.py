@@ -590,7 +590,10 @@ def _generate(rest: list[str]) -> None:
             _check_generation_output(declaration, bits, gzip=gzip)
             _check_generation_scale(declaration, scale)
             raster = declaration.runtime.source_kind is SourceKind.RASTER
-            if "--artifact" not in flags and (raster or gzip):
+            native_gzip = (
+                declaration.runtime.compressed_source and "--plain" not in flags
+            )
+            if "--artifact" not in flags and (raster or gzip or native_gzip):
                 _check_binary_terminal(declaration.name, raster=raster, gzip=gzip)
             table = _read_truth_table(declaration)
         row = _generation_bits(declaration, table, bits, gzip=gzip)

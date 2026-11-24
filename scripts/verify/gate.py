@@ -423,6 +423,9 @@ def _load_verdict(
     returncode, rerun_output = _rerun_alone(ids)
     if returncode == 0:
         if _ACTIVE_ACCEPTANCE is not None:
+            if not _ACTIVE_ACCEPTANCE.pytest_retry_covers(ids):
+                print("[load] pytest: retry evidence does not cover every failed test")
+                return failures
             _ACTIVE_ACCEPTANCE.accepted_retries.add(LONG_STEP)
         print(
             f"[load] pytest: all {len(ids)} failed tests passed alone: the "

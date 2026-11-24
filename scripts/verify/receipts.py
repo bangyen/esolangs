@@ -18,12 +18,18 @@ import time
 import uuid
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, NamedTuple, TypedDict
 
 
 class _Input(TypedDict):
     mode: str
     sha256: str
+
+
+class _PytestExecution(NamedTuple):
+    record: dict[str, Any]
+    called: set[str]
+    failed: set[str]
 
 
 def digest(path: Path) -> str:
@@ -156,10 +162,11 @@ def _execution(
         path = command[command.index("--verification-output") + 1]
     except IndexError:
         return None
-    return _read_execution(root, path, returncode)
+    execution = _read_execution(root, path, returncode)
+    return None if execution is None else execution.record
 
 
-def _read_execution(root: Path, file: str, returncode: int) -> dict[str, Any] | None:
+def _read_execution(root: Path, file: str, returncode: int) -> _PytestExecution | None:
     """Read completed pytest reports from their bound path."""
     try:
         path = (root / file).resolve()
@@ -169,6 +176,7 @@ def _read_execution(root: Path, file: str, returncode: int) -> dict[str, Any] | 
         selected, called, finished = (
             set(data[key]) for key in ("selected", "called", "finished")
         )
+        failed = set(data.get("failed_calls", []))
         selection = data["selection"]
         if (
             data["schema"] != 1
@@ -176,21 +184,52 @@ def _read_execution(root: Path, file: str, returncode: int) -> dict[str, Any] | 
             or selection["collect_only"]
             or not called
             or not called <= selected
+            or not failed <= called
+            or (returncode == 0 and failed)
             or finished != selected
         ):
             return None
     except (OSError, KeyError, TypeError, ValueError):
         return None
-    return {
+    record = {
         "path": str(relative),
         "sha256": hashlib.sha256(contents).hexdigest(),
         "selection": selection,
         "selected": len(selected),
         "called": len(called),
     }
+    return _PytestExecution(record, called, failed)
+
+
+def _bound_execution(root: Path, row: dict[str, Any]) -> _PytestExecution | None:
+    record = row.get("execution")
+    if record is None:
+        return None
+    execution = _read_execution(root, record["path"], row["returncode"])
+    return execution if execution is not None and execution.record == record else None
+
+
+def _pytest_retry_covers(
+    root: Path, checks: list[dict[str, Any]], ids: list[str] | None = None
+) -> bool:
+    """Bind the retry's actual calls to every failed call in the first run."""
+    original = [row for row in checks if row["name"] == "pytest"]
+    retries = [row for row in checks if row["name"] == "pytest retry"]
+    if len(original) != 1 or len(retries) != 1 or retries[0]["returncode"] != 0:
+        return False
+    failed = _bound_execution(root, original[0])
+    retry = _bound_execution(root, retries[0])
+    return bool(
+        failed is not None
+        and retry is not None
+        and failed.failed
+        and (ids is None or failed.failed == set(ids))
+        and failed.failed <= retry.called
+    )
 
 
 def _successful(
+    root: Path,
     plan: dict[str, list[str]],
     checks: list[dict[str, Any]],
     retries: set[str],
@@ -209,7 +248,7 @@ def _successful(
         repeated = [row for row in checks if row["name"] == f"{name} retry"]
         if name not in retries or len(repeated) != 1 or repeated[0]["returncode"] != 0:
             return False
-        if name == "pytest" and repeated[0].get("execution") is None:
+        if name == "pytest" and not _pytest_retry_covers(root, checks):
             return False
     return True
 
@@ -306,12 +345,16 @@ class AcceptanceRun:
         with self.lock:
             self.steps.append(row)
 
+    def pytest_retry_covers(self, ids: list[str]) -> bool:
+        """Confirm that the diagnosed tests failed and ran on retry."""
+        return _pytest_retry_covers(self.root, self.steps, ids)
+
     def finish(self, returncode: int | None) -> tuple[Path, bool]:
         """Write a unique receipt; changed inputs and vacuous runs cannot pass."""
         after = inputs(self.root)
         unchanged = self.before == after
         passed = unchanged and _successful(
-            self.plan, self.steps, self.accepted_retries, returncode
+            self.root, self.plan, self.steps, self.accepted_retries, returncode
         )
         value = {
             "schema": 2,
@@ -353,6 +396,7 @@ def _validate_receipt(
         schema not in (1, 2)
         or value["status"] != "passed"
         or not _successful(
+            evidence_root,
             value["scope"],
             value["checks"],
             set(value["accepted_retries"]),
@@ -386,9 +430,9 @@ def _validate_receipt(
     if not required <= checks.keys():
         raise ValueError("receipt is missing completed checks")
     for row in value["checks"]:
-        execution = row.get("execution")
-        if execution is not None and execution != _read_execution(
-            evidence_root, execution["path"], row["returncode"]
+        if (
+            row.get("execution") is not None
+            and _bound_execution(evidence_root, row) is None
         ):
             raise ValueError("pytest execution evidence was changed")
         evidence = row["evidence"]
