@@ -59,14 +59,36 @@ _FORMAT = "esolangs.program"
 
 
 def _portable_record_candidate(data: bytes) -> dict[str, Any] | None:
-    """Recognize JSON objects that declare the portable program format."""
+    """Recognize a top-level format tag even when strict decoding rejects it."""
     if _FORMAT.encode("ascii") not in data and b"\\u" not in data:
         return None
     try:
-        value = record_loads(decode_utf8(data))
-    except (ValueError, RecursionError):
+        document = decode_utf8(data)
+    except UnicodeDecodeError:
         return None
-    return value if isinstance(value, dict) and value.get("format") == _FORMAT else None
+    try:
+        value = record_loads(document)
+    except (json.JSONDecodeError, RecursionError):
+        return None
+    except ValueError:
+        # Keep all top-level pairs so a later format field cannot hide the tag.
+        try:
+            pairs = json.loads(document, object_pairs_hook=tuple, parse_int=str)
+        except (ValueError, RecursionError):
+            return None
+        if isinstance(pairs, tuple) and ("format", _FORMAT) in pairs:
+            raise
+        return None
+    if not isinstance(value, dict) or value.get("format") != _FORMAT:
+        return None
+    _check_portable_fields(value)
+    if not isinstance(value["language"], str):
+        raise ValueError("language must be a string")
+    if not isinstance(value["source"], str):
+        raise ValueError("source must be a string")
+    if value["kind"] not in ("text", "png", "gzip", "template"):
+        raise ValueError("unknown source kind")
+    return value
 
 
 def _check_portable_fields(value: dict[str, Any]) -> None:

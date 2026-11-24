@@ -247,23 +247,20 @@ def _reject_portable_source(
     document = data[start:]
     if not document.lstrip().startswith(b"{"):
         return
-    from esolangs.portable import _check_portable_fields, _portable_record_candidate
+    from esolangs.portable import _portable_record_candidate
     from esolangs.registry._catalog import resolve_origin
 
-    if (record := _portable_record_candidate(document)) is None:
+    try:
+        record = _portable_record_candidate(document)
+    except ValueError as error:
+        if start:
+            raise _portable_bom_error(label) from error
+        raise ProgramError(f"{label}: invalid portable program: {error}") from error
+    if record is None:
         return
     if start:
         raise _portable_bom_error(label)
-    try:
-        _check_portable_fields(record)
-        if not isinstance(recorded := record["language"], str):
-            raise ValueError("language must be a string")
-        if not isinstance(record["source"], str):
-            raise ValueError("source must be a string")
-        if record["kind"] not in ("text", "png", "gzip", "template"):
-            raise ValueError("unknown source kind")
-    except ValueError as error:
-        raise ProgramError(f"{label}: invalid portable program: {error}") from error
+    recorded = record["language"]
     message = f"{label} contains a portable JSON artifact"
     if (owner := resolve_origin(recorded, catalog=catalog)) is None:
         raise ProgramError(

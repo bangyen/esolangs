@@ -470,7 +470,11 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
                 relative.parts[1:2] == ("interpreter",)
                 or relative.parts[1:] == ("interpreter.py",)
             ):
-                suites = sorted(local_tests.rglob("test_*.py"))
+                suites = sorted(
+                    path
+                    for path in local_tests.rglob("*.py")
+                    if _is_collected(path.name) and path.is_file()
+                )
                 if not suites:
                     return WHOLE_SUITE
                 paths.update(test.relative_to(ROOT).as_posix() for test in suites)

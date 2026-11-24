@@ -99,6 +99,22 @@ class TestWidensToEverything:
         assert scope._scoped_cmd("pytest", ["pytest"], ["docs/usage.md"]) is None
 
 
+def test_interpreter_scope_uses_both_pytest_filename_patterns(tmp_path, monkeypatch):
+    scope = load_script()
+    monkeypatch.setattr(scope, "ROOT", tmp_path)
+    package = Path("src/esolangs/languages/sample")
+    local = package / "tests"
+    (tmp_path / local / "nested").mkdir(parents=True)
+    collected = [local / "test_prefix.py", local / "nested/suffix_test.py"]
+    for path in [*collected, local / "helper.py"]:
+        (tmp_path / path).touch()
+    selected = scope._pytest_scope([(package / "interpreter.py").as_posix()])
+    assert isinstance(selected, list)
+    assert set(selected) == set(scope.INTERPRETER_CONTRACT_TESTS) | {
+        path.as_posix() for path in collected
+    }
+
+
 @pytest.mark.parametrize("workflow", ["ci.yml", "weekly.yml", "release.yml"])
 def test_workflow_only_change_runs_its_pytest_suites(workflow) -> None:
     scope = load_script()

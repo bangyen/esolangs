@@ -59,19 +59,41 @@ def test_native_rejection_suggests_running_portable_json(tmp_path, capsys, langu
         assert "--artifact" not in error
 
 
-def test_native_run_keeps_json_with_only_a_similar_format_marker(tmp_path, capsys):
+@pytest.mark.parametrize("duplicate", [False, True])
+def test_native_run_keeps_json_with_only_a_similar_format_marker(
+    tmp_path, capsys, duplicate
+):
     api = esolangs.Language(REFERENCE)
     value = json.loads(api.to_json(api.from_source("+.")))
     path = tmp_path / "native.json"
-    path.write_text(
-        json.dumps(
-            {"format": value["format"] + "_other", "language": value["language"]}
-        ),
-        encoding="utf-8",
+    document = json.dumps(
+        {"format": value["format"] + "_other", "language": value["language"]}
     )
-    output, error = call_both(["run", REFERENCE, str(path)], capsys, stdin="A")
+    if duplicate:
+        document = document[:-1] + ',"version":1,"version":1}'
+    path.write_text(document, encoding="utf-8")
+    output, error = call_both(["run", REFERENCE, str(path)], capsys, stdin="AAA")
     assert output == "\x00"
     assert error == ""
+
+
+@pytest.mark.parametrize(
+    ("field", "duplicate"), [("version", "1"), ("format", '"other"')]
+)
+def test_native_run_refuses_duplicate_fields_in_tagged_artifacts(
+    tmp_path, capsys, field, duplicate
+) -> None:
+    record = esolangs.to_json(REFERENCE, "+.").rstrip()
+    if field == "format":
+        record = record.replace("esolangs.program", r"esolangs.\u0070rogram")
+    path = tmp_path / "duplicate.json"
+    path.write_text(
+        record[:-1] + f",{json.dumps(field)}:{duplicate}" + "}", encoding="utf-8"
+    )
+    output, error = _failure(["run", REFERENCE, str(path)], capsys, stdin="AAAAAAAA")
+    assert not output
+    assert str(path) in error
+    assert f"invalid portable program: duplicate field: {field}" in error
 
 
 @pytest.mark.parametrize("field", ["settings", "language", "source"])

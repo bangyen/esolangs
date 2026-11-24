@@ -248,6 +248,32 @@ def test_bad_completion_fields_name_the_sidecar(tmp_path, field, value) -> None:
 
 
 @pytest.mark.parametrize(
+    ("key", "value"), [("python", []), ("attempt", {}), ("harness", False)]
+)
+def test_refresh_names_invalid_identity_values_before_replacing_snapshot(
+    tmp_path, monkeypatch, capsys, key, value
+) -> None:
+    run = tmp_path / "run"
+    run.mkdir()
+    paths = evidence(run)
+    sidecar = paths[1].parent / "test-durations.json.meta.json"
+    metadata = json.loads(sidecar.read_text(encoding="utf-8"))
+    metadata["run"][key] = value
+    sidecar.write_text(json.dumps(metadata), encoding="utf-8")
+    snapshot = tmp_path / "snapshot.json"
+    previous = b'{"collected":{},"durations":{}}\n'
+    snapshot.write_bytes(previous)
+    monkeypatch.setattr("scripts.ci.shard.collect_ids", lambda _: ["a", "b", "serial"])
+    with pytest.raises(SystemExit) as error:
+        refresh_main([str(run), "--output", str(snapshot)])
+    assert error.value.code == 2
+    message = capsys.readouterr().err
+    assert str(sidecar) in message
+    assert f"invalid completion field 'run.{key}'" in message
+    assert snapshot.read_bytes() == previous
+
+
+@pytest.mark.parametrize(
     "fault",
     [
         "missing",

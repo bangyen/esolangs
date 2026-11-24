@@ -115,6 +115,19 @@ def read_completion_metadata(path: Path) -> dict[str, Any]:
     run = metadata.get("run")
     if not isinstance(run, dict):
         raise ValueError(f"{path}: invalid completion field 'run': expected an object")
+    for key in ("id", "attempt", "commit", "python", "platform", "machine"):
+        value = run.get(key)
+        if value is not None and not isinstance(value, str):
+            raise ValueError(
+                f"{path}: invalid completion field 'run.{key}': "
+                "expected a string or null"
+            )
+    harness = run.get("harness")
+    if harness is not None and type(harness) is not int:
+        raise ValueError(
+            f"{path}: invalid completion field 'run.harness': "
+            "expected an integer or null"
+        )
     nodes = metadata.get("collected")
     if (
         not isinstance(nodes, list)
@@ -440,16 +453,12 @@ def refresh(runs: list[Path], ids: list[str], output: Path) -> None:
         raise ValueError("duplicate timing run directory")
     expected = set(ids)
     loaded = [_load_run(run, expected) for run in directories]
-    seen: set[tuple[str, str | None]] = set()
+    seen: set[tuple[object, object]] = set()
     for directory, run in zip(directories, loaded, strict=True):
         identity = run.identity
         run_id, attempt = identity.get("id"), identity.get("attempt")
         if run_id is None:
             continue
-        if not isinstance(run_id, str) or (
-            attempt is not None and not isinstance(attempt, str)
-        ):
-            raise ValueError(f"{directory}: invalid timing run identity")
         key = (run_id, attempt)
         if key in seen:
             raise ValueError(
