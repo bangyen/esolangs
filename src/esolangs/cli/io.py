@@ -36,6 +36,7 @@ from time import monotonic, sleep
 from typing import BinaryIO, NoReturn, TextIO, cast
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
+from esolangs.cli._table_input import _TruthTablePipeCheck
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _as_argument,
@@ -888,38 +889,13 @@ def _read_truth_table(
     timeout_flag: str = "",
 ) -> str:
     """Read a UTF-8 table, allowing one leading BOM and outer whitespace."""
-    pipe_check = None
-    backend = None if declaration is None else declaration.backend
-    if (
-        declaration is not None
-        and backend is not None
-        and backend.max_inputs is not None
-    ):
-        cap = backend.max_inputs
-        check_arity = partial(backend.check_arity, declaration.name)
-        rows = 0
-
-        def check_chunk(chunk: bytes, received: bytearray) -> None:
-            nonlocal rows
-            # ASCII bit bytes cannot be part of a UTF-8 multibyte sequence.
-            rows += chunk.count(b"0") + chunk.count(b"1")
-            if rows and (arity := (rows - 1).bit_length()) > cap:
-                # The last UTF-8 character may still be in flight.
-                table = UTF8Decoder().decode(received).removeprefix("\ufeff").strip()
-                if len(table) != rows:
-                    from esolangs.generation.helpers import _validate_truth_table
-
-                    _validate_truth_table(table)
-                check_arity(arity)
-
-        pipe_check = check_chunk
     return (
         _read_stdin(
             timeout,
             hint="; finish the truth table or close stdin",
             timeout_flag=timeout_flag,
             terminal_prompt="Enter a truth table, then signal EOF.\n",
-            pipe_check=pipe_check,
+            pipe_check=_TruthTablePipeCheck(declaration),
         )
         .removeprefix("\ufeff")
         .strip()

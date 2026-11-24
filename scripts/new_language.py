@@ -24,6 +24,8 @@ import keyword
 import shlex
 import subprocess
 import sys
+import tempfile
+from contextlib import ExitStack, suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -224,7 +226,7 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     namespace = package.parent / "__init__.py"
     if not namespace.exists():
         files[namespace] = '"""Language-owned interpreters and generators."""\n'
-    collisions = [path for path in files if path.exists()]
+    collisions = [path for path in files if path.exists() or path.is_symlink()]
     collisions += [
         path
         for path in (
@@ -232,16 +234,60 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
             ROOT / "src/esolangs/runtime" / slug,
             ROOT / "src/esolangs/generation" / slug,
         )
-        if path.exists()
+        if path.exists() or path.is_symlink()
     ]
 
     if collisions:
         joined = ", ".join(str(path.relative_to(ROOT)) for path in collisions)
         raise FileExistsError(f"refusing to overwrite {joined}")
-    for path, text in files.items():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+    _publish_scaffold(package.parent, files)
     return list(files)
+
+
+def _remove_empty(path: Path) -> None:
+    with suppress(OSError):
+        path.rmdir()
+
+
+def _scaffold_directory(path: Path, rollback: ExitStack) -> None:
+    if path.is_dir():
+        return
+    _scaffold_directory(path.parent, rollback)
+    try:
+        path.mkdir()
+    except FileExistsError:
+        if not path.is_dir():
+            raise
+    else:
+        rollback.callback(_remove_empty, path)
+
+
+def _remove_published(path: Path, staged: Path) -> None:
+    with suppress(FileNotFoundError, NotADirectoryError):
+        if path.samefile(staged):
+            path.unlink()
+
+
+def _publish_scaffold(parent: Path, files: dict[Path, str]) -> None:
+    """Stage all stubs and roll back only the files this call published."""
+    with ExitStack() as directories:
+        for path in files:
+            _scaffold_directory(path.parent, directories)
+        with (
+            tempfile.TemporaryDirectory(prefix=".scaffold-", dir=parent) as scratch,
+            ExitStack() as published,
+        ):
+            staged = {}
+            for index, (path, text) in enumerate(files.items()):
+                source = Path(scratch) / str(index)
+                source.write_text(text, encoding="utf-8")
+                staged[path] = source
+            for path, source in staged.items():
+                # Publish atomically and fail if a concurrent writer owns the path.
+                path.hardlink_to(source)
+                published.callback(_remove_published, path, source)
+            published.pop_all()
+        directories.pop_all()
 
 
 def _interpreter_stub(escaped_name: str) -> str:
@@ -1053,7 +1099,7 @@ def main(argv: list[str] | None = None) -> int:
         return finish(args.name)
     try:
         paths = scaffold(args.name, args.category, generator=not args.interpreter_only)
-    except (ValueError, FileExistsError) as exc:
+    except (ValueError, OSError) as exc:
         parser.error(str(exc))
     for path in paths:
         print(f"created {path.relative_to(ROOT)}")

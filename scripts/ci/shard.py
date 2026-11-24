@@ -17,8 +17,9 @@ import platform
 import statistics
 import subprocess
 import tempfile
+from contextlib import suppress
 from datetime import date
-from typing import Any
+from typing import Any, NamedTuple
 
 import pytest
 from _pytest.reports import TestReport
@@ -90,22 +91,31 @@ def _timing_map(raw: object) -> object:
 
 def load_durations(path: Path) -> dict[str, float]:
     """Return finite positive timings, refusing a corrupt timing file."""
-    return _parse_durations(path.read_bytes())
+    return _parse_durations(path.read_bytes(), path)
 
 
-def _parse_durations(data: bytes) -> dict[str, float]:
+def _parse_durations(data: bytes, path: Path) -> dict[str, float]:
     """Parse the bytes read from a timing file or checked against a sidecar."""
-    raw = _timing_map(json.loads(data.decode("utf-8")))
-    if not isinstance(raw, dict) or any(
-        not isinstance(key, str)
-        or isinstance(value, bool)
-        or not isinstance(value, int | float)
-        or not math.isfinite(value)
-        or value <= 0
-        for key, value in raw.items()
-    ):
-        raise ValueError("durations must map node IDs to finite positive seconds")
-    return {key: float(value) for key, value in raw.items()}
+    try:
+        raw = _timing_map(json.loads(data.decode("utf-8")))
+    except ValueError as error:
+        raise ValueError(f"{path}: invalid timing JSON: {error}") from error
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"{path}: durations must map node IDs to finite positive seconds"
+        )
+    durations: dict[str, float] = {}
+    for node, value in raw.items():
+        seconds = math.nan
+        if isinstance(value, int | float) and not isinstance(value, bool):
+            with suppress(OverflowError):
+                seconds = float(value)
+        if not math.isfinite(seconds) or seconds <= 0:
+            raise ValueError(
+                f"{path}: duration for {node!r} must be finite positive seconds"
+            )
+        durations[node] = seconds
+    return durations
 
 
 _GRID_RATIO = math.sqrt(2)
@@ -129,7 +139,17 @@ def quantize_duration(value: float) -> float:
 def _fallback(durations: dict[str, float], nodes: list[str]) -> float:
     """Return the median known duration among ``nodes``, else one second."""
     known = [durations[node] for node in nodes if node in durations]
-    return statistics.median(known) if known else 1.0
+    return _median_duration(known) if known else 1.0
+
+
+def _median_duration(samples: list[float]) -> float:
+    """Average the center pair without overflowing for large positive timings."""
+    median = statistics.median(samples)
+    if math.isfinite(median):
+        return median
+    lower = statistics.median_low(samples)
+    upper = statistics.median_high(samples)
+    return lower + (upper - lower) / 2
 
 
 def shard_ids(
@@ -184,9 +204,13 @@ def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
 def shard_main(argv: list[str] | None = None) -> int:
     """Collect the band, run this shard's slice, return pytest's exit code."""
     args, rest = _parse_args(argv)
+    try:
+        durations = load_durations(args.durations) if args.durations else None
+    except (OSError, ValueError) as error:
+        print(error, file=sys.stderr)
+        return 2
     data = args.bind_coverage.resolve() if args.bind_coverage is not None else None
     state = coverage_evidence.checkout(ROOT, data) if data is not None else ""
-    durations = load_durations(args.durations) if args.durations else None
     collected = collect_ids(args.marker)
     excluded = set(args.exclude_node)
     if not excluded <= set(collected):
@@ -281,19 +305,26 @@ def _run_coverage_shard(
     return 0
 
 
+class _TimingRun(NamedTuple):
+    """Timings from one run and the file that supplied each sample."""
+
+    durations: dict[str, float]
+    identity: dict[str, object]
+    sources: dict[str, Path]
+
+
 def load_run(directory: Path, expected: set[str]) -> dict[str, float]:
     """Return timings for a complete, validated run."""
-    return _load_run(directory, expected)[0]
+    return _load_run(directory, expected).durations
 
 
-def _load_run(
-    directory: Path, expected: set[str]
-) -> tuple[dict[str, float], dict[str, object]]:
+def _load_run(directory: Path, expected: set[str]) -> _TimingRun:
     """Validate sidecars and retain the identity shared by every shard."""
     paths = sorted(directory.rglob("*.json.meta.json"))
     if not paths:
         raise ValueError(f"{directory}: no timing completion metadata")
     result: dict[str, float] = {}
+    sources: dict[str, Path] = {}
     identity = None
     for path in paths:
         metadata = json.loads(path.read_text(encoding="utf-8"))
@@ -321,17 +352,34 @@ def _load_run(
         if identity is not None and identity != metadata["run"]:
             raise ValueError(f"{directory}: mixed CI runs or Python versions")
         identity = metadata["run"]
-        durations = _parse_durations(data)
+        durations = _parse_durations(data, durations_path)
         if set(durations) != set(metadata["collected"]):
             raise ValueError(f"{path}: incomplete timing corpus")
         for node in expected & durations.keys():
             if node in result:
                 raise ValueError(f"{directory}: duplicate test {node}")
             result[node] = durations[node]
+            sources[node] = durations_path
     if result.keys() != expected:
         raise ValueError(f"{directory}: missing {len(expected - result.keys())} tests")
     assert identity is not None
-    return result, identity
+    return _TimingRun(result, identity, sources)
+
+
+def _rounded_duration(node: str, runs: list[_TimingRun]) -> float:
+    """Round a median, naming its input files if the grid cannot represent it."""
+    median = _median_duration([run.durations[node] for run in runs])
+    try:
+        rounded = quantize_duration(median)
+    except OverflowError:
+        rounded = math.inf
+    if not math.isfinite(rounded) or rounded <= 0:
+        sources = ", ".join(str(run.sources[node]) for run in runs)
+        raise ValueError(
+            f"{sources}: duration for {node!r} "
+            "cannot be rounded to finite positive seconds"
+        )
+    return rounded
 
 
 def _collected_dates(output: Path) -> dict[str, str]:
@@ -365,7 +413,8 @@ def refresh(runs: list[Path], ids: list[str], output: Path) -> None:
     expected = set(ids)
     loaded = [_load_run(run, expected) for run in directories]
     seen: set[tuple[str, str | None]] = set()
-    for directory, (_, identity) in zip(directories, loaded, strict=True):
+    for directory, run in zip(directories, loaded, strict=True):
+        identity = run.identity
         run_id, attempt = identity.get("id"), identity.get("attempt")
         if run_id is None:
             continue
@@ -380,15 +429,15 @@ def refresh(runs: list[Path], ids: list[str], output: Path) -> None:
             )
         seen.add(key)
     cohorts = {
-        tuple(identity.get(key) for key in ("python", "platform", "machine", "harness"))
-        for _, identity in loaded
+        tuple(
+            run.identity.get(key)
+            for key in ("python", "platform", "machine", "harness")
+        )
+        for run in loaded
     }
     if len(cohorts) != 1:
         raise ValueError("mixed timing environments or harness versions")
-    durations = {
-        node: quantize_duration(statistics.median(sample[node] for sample, _ in loaded))
-        for node in sorted(set(ids))
-    }
+    durations = {node: _rounded_duration(node, loaded) for node in sorted(expected)}
     collected = _collected_dates(output)
     collected["durations"] = date.today().isoformat()
     snapshot = {"collected": collected, "durations": durations}

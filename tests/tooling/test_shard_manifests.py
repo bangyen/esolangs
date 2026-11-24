@@ -100,6 +100,34 @@ def test_timing_refresh_preserves_census_dates(tmp_path) -> None:
     assert observed == collected
 
 
+def test_unroundable_timing_names_the_sample_and_preserves_the_snapshot(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    run = tmp_path / "run"
+    run.mkdir()
+    timings = run / "timings.json"
+    recorder = Recorder(timings)
+    recorder.collected.add("test_example")
+    recorder.finished.add("test_example")
+    recorder.durations["test_example"] = sys.float_info.max
+    recorder.pytest_sessionfinish(0)
+    artifact = json.loads(timings.with_suffix(".json.meta.json").read_text())[
+        "durations_file"
+    ]
+    output = tmp_path / "snapshot.json"
+    previous = b'{"collected": {"curation": "2026-10-06"}, "durations": {}}\n'
+    output.write_bytes(previous)
+    monkeypatch.setattr("scripts.ci.shard.collect_ids", lambda _: ["test_example"])
+
+    with pytest.raises(SystemExit) as caught:
+        refresh_main([str(run), "--output", str(output)])
+    assert caught.value.code == 2
+    message = capsys.readouterr().err
+    assert str(run / artifact) in message
+    assert "duration for 'test_example' cannot be rounded" in message
+    assert output.read_bytes() == previous
+
+
 @pytest.mark.parametrize(
     "malformed",
     ['{"collected": {"curation": "2026-10-06"},', '{"collected":{"curation": null}}'],

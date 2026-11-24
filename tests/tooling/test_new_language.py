@@ -363,3 +363,44 @@ def test_scaffold_collision_is_atomic(root: Path) -> None:
     assert not (package / "interpreter.py").exists()
     assert not (root / "src/esolangs/runtime/tiny.py").exists()
     assert (package / "__init__.py").read_text() == "owned"
+
+
+def test_scaffold_can_retry_after_a_blocked_parent(root: Path, capsys) -> None:
+    package = root / "src/esolangs/languages/tiny"
+    package.mkdir(parents=True)
+    blocker = package / "tests"
+    blocker.write_text("owned")
+    with pytest.raises(SystemExit) as caught:
+        new_language.main(["start", "Tiny", "--category", "other"])
+    assert caught.value.code == 2
+    assert str(blocker) in capsys.readouterr().err
+    assert list(package.iterdir()) == [blocker]
+
+    preserved = blocker.rename(package / "original.txt")
+    assert all(path.is_file() for path in new_language.scaffold("Tiny", "other"))
+    assert preserved.read_text() == "owned"
+
+
+def test_scaffold_rolls_back_if_publishing_a_later_stub_fails(
+    root: Path, monkeypatch
+) -> None:
+    package = root / "src/esolangs/languages/tiny"
+    package.mkdir(parents=True)
+    previous = package / "original.txt"
+    previous.write_text("owned")
+    publish = Path.hardlink_to
+
+    def fail_on_descriptor(path, source):
+        if path.name == "descriptor.py":
+            assert (package / "interpreter.py").is_file()
+            raise PermissionError("cannot publish descriptor")
+        publish(path, source)
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(Path, "hardlink_to", fail_on_descriptor)
+        with pytest.raises(PermissionError, match="cannot publish descriptor"):
+            new_language.scaffold("Tiny", "other")
+    assert list(package.iterdir()) == [previous]
+    assert previous.read_text() == "owned"
+    assert not list(package.parent.glob(".scaffold-*"))
+    assert all(path.is_file() for path in new_language.scaffold("Tiny", "other"))

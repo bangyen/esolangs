@@ -81,12 +81,41 @@ def test_duration_assignment_improves_longest_shard_and_covers_unknowns() -> Non
     assert shard.shard_ids(ids, 0, 3, {"stale": 5})
 
 
-@pytest.mark.parametrize("payload", ["[]", '{"a": -1}', '{"a": true}', '{"a": NaN}'])
+@pytest.mark.parametrize(
+    "payload", ["[]", '{"a": -1}', '{"a": true}', '{"a": NaN}', '{"a": 1e-400}']
+)
 def test_bad_durations_are_refused(tmp_path, payload) -> None:
     path = tmp_path / "durations.json"
     path.write_text(payload)
     with pytest.raises(ValueError, match="finite positive"):
         load_script().load_durations(path)
+
+
+def test_shard_reports_an_overflowing_duration_before_collection(
+    tmp_path, monkeypatch, capsys
+):
+    shard = load_script()
+    path = tmp_path / "timings.json"
+    path.write_text(f'{{"test_example": {10**400}}}')
+    monkeypatch.setattr(shard, "collect_ids", lambda _: pytest.fail("collected tests"))
+    assert (
+        shard.shard_main(
+            [
+                "--marker",
+                "slow",
+                "--shard",
+                "0",
+                "--shards",
+                "1",
+                "--durations",
+                str(path),
+            ]
+        )
+        == 2
+    )
+    message = capsys.readouterr().err
+    assert str(path) in message
+    assert "duration for 'test_example' must be finite positive seconds" in message
 
 
 def test_invalid_shard_arguments_are_refused() -> None:
