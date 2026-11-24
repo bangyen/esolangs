@@ -10,7 +10,24 @@ from pathlib import Path
 import coverage
 import yaml
 
+from scripts.ci.shard import collect_ids
+
 ROOT = Path(__file__).resolve().parents[2]
+SERIAL_TEST_NODES = ".github/serial-test-nodes.txt"
+
+
+def test_serial_test_nodes_are_collectable() -> None:
+    nodes = (ROOT / SERIAL_TEST_NODES).read_text(encoding="utf-8").splitlines()
+    assert nodes, SERIAL_TEST_NODES
+    assert len(nodes) == len(set(nodes)), SERIAL_TEST_NODES
+    assert all("::" in node and node == node.strip() for node in nodes), (
+        SERIAL_TEST_NODES
+    )
+    files = {node.partition("::")[0] for node in nodes}
+    existing = sorted(file for file in files if (ROOT / file).is_file())
+    collected = collect_ids("", paths=existing) if existing else []
+    missing = sorted(set(nodes).difference(collected))
+    assert not missing, f"{SERIAL_TEST_NODES}: uncollected test IDs: {missing}"
 
 
 def test_combining_shards_retains_every_branch(tmp_path) -> None:
@@ -111,11 +128,7 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
         if step.get("name") == "Test one full-suite shard"
     )
     assert '--marker ""' in full_command
-    manifest = ".github/serial-test-nodes.txt"
-    serial_nodes = (ROOT / manifest).read_text().splitlines()
-    assert serial_nodes
-    assert len(serial_nodes) == len(set(serial_nodes))
-    assert all("::" in node and node == node.strip() for node in serial_nodes)
+    manifest = SERIAL_TEST_NODES
     regular = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
     regular_commands = {
         step["name"]: step["run"]

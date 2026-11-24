@@ -113,6 +113,16 @@ def test_workflow_only_change_runs_its_pytest_suites(workflow) -> None:
     assert scope.local_tooling_deselections(changed) == []
 
 
+def test_serial_manifest_change_runs_its_pytest_suite() -> None:
+    scope = load_script()
+    changed = [".github/serial-test-nodes.txt"]
+    assert scope.widens_to_everything(changed) is None
+    assert scope._scoped_cmd("pytest", ["pytest"], changed) == [
+        "pytest",
+        "tests/tooling/test_ci_coverage.py",
+    ]
+
+
 def test_empty_branch_diff_does_not_fall_back_to_previous_commit() -> None:
     scope = load_script()
     responses = [

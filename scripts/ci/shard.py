@@ -17,6 +17,7 @@ import platform
 import statistics
 import subprocess
 import tempfile
+from collections.abc import Sequence
 from contextlib import suppress
 from datetime import date
 from typing import Any, NamedTuple
@@ -39,7 +40,7 @@ def _pytest_env() -> dict[str, str]:
     return env
 
 
-def collect_ids(marker: str) -> list[str]:
+def collect_ids(marker: str, *, paths: Sequence[str] = ()) -> list[str]:
     """Return the sorted node IDs pytest collects for ``-m marker``.
 
     ``-o addopts=`` neutralizes the repo's own ``--verbose``, which would
@@ -64,6 +65,7 @@ def collect_ids(marker: str) -> list[str]:
                 str(destination),
                 "-m",
                 marker,
+                *paths,
             ],
             cwd=ROOT,
             env=_pytest_env(),

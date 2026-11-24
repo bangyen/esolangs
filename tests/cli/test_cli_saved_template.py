@@ -165,7 +165,7 @@ def test_saved_template_wrong_owner_suggests_a_runnable_retry(
 def test_run_points_directly_to_a_fill_command(language, tmp_path, capsys, monkeypatch):
     document = call_main(["generate", "--artifact", language.name, "0110"], capsys)
     monkeypatch.chdir(tmp_path)
-    path = "--saved 'xor'.json"
+    path = "--saved 'width=80'.json"
     Path(path).write_text(document, encoding="utf-8")
     for flags, owner, filename in (
         ([], language.name, path),

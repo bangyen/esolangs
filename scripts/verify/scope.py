@@ -150,6 +150,7 @@ def widens_to_everything(changed: list[str]) -> str | None:
 
 
 _WORKFLOWS = ".github/workflows/"
+_SERIAL_TEST_NODES = ".github/serial-test-nodes.txt"
 _WORKFLOW_TESTS = (
     "tests/tooling/test_ci_coverage.py",
     "tests/tooling/test_ci_setup.py",
@@ -442,6 +443,9 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
     paths: set[str] = set()
     changed_tests: set[str] = set()
     for f in changed:
+        if f == _SERIAL_TEST_NODES:
+            paths.add("tests/tooling/test_ci_coverage.py")
+            continue
         if f.startswith(_WORKFLOWS) and f.endswith((".yml", ".yaml")):
             paths.update(_WORKFLOW_TESTS)
             continue

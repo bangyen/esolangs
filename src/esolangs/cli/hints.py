@@ -38,6 +38,15 @@ from esolangs.runtime.source_hints import (
 _TIMEOUT_EXIT = 124
 
 
+class _CliHint(str):
+    """A note already written for the CLI, with literal shell arguments."""
+
+
+def _with_cli_hint[E: Exception](error: E, hint: str) -> E:
+    error.add_note(_CliHint(f"hint: {hint}"))
+    return error
+
+
 def _exit_code(exc: EsolangError) -> int:
     """Return the exit code ``exc`` should leave behind.
 
@@ -55,33 +64,37 @@ def _cli_error_text(
     exc: BaseException, *, language: str | None = None, catalog: Catalog | None = None
 ) -> str:
     """Render notes using CLI flags, preserving the original diagnostic."""
-    message = str(exc)
-    render: Callable[[str], str] | None = None
+    repair = None
     if language is not None and catalog is not None:
         name = catalog.resolve(language)
         argument = shell_argument(name)
         if argument is not None and not can_render_argument(
             name, _display_encoding(sys.stderr)
         ):
-            original = f"hint: {syntax_repair(argument)}"
-            replacement = f"hint: {syntax_repair(_as_argument(name, catalog=catalog))}"
+            repair = (
+                f"hint: {syntax_repair(argument)}",
+                f"hint: {syntax_repair(_as_argument(name, catalog=catalog))}",
+            )
 
-            def render(note: str) -> str:
-                return replacement if note == original else note
+    def render(note: str) -> str:
+        if isinstance(note, _CliHint):
+            return note
+        if repair is not None and note == repair[0]:
+            return repair[1]
+        for parameter, flag in (
+            ("timeout=5.0", "--execution-timeout 5.0"),
+            ("scale=1", "--scale 1"),
+            ("omit scale", "omit --scale"),
+            ("use scale 1", "use --scale 1"),
+            ("width=80", "--width 80"),
+            ("seed=0", "--seed 0"),
+            ("omit seed", "omit --seed"),
+            ("integer bits to instantiate()", "0/1 digits to --bits"),
+        ):
+            note = note.replace(parameter, flag)
+        return note
 
-    notes = error_text(exc, render_hint=render)[len(message) :]
-    for parameter, flag in (
-        ("timeout=5.0", "--execution-timeout 5.0"),
-        ("scale=1", "--scale 1"),
-        ("omit scale", "omit --scale"),
-        ("use scale 1", "use --scale 1"),
-        ("width=80", "--width 80"),
-        ("seed=0", "--seed 0"),
-        ("omit seed", "omit --seed"),
-        ("integer bits to instantiate()", "0/1 digits to --bits"),
-    ):
-        notes = notes.replace(parameter, flag)
-    return message + notes
+    return error_text(exc, render_hint=render)
 
 
 def _notes(exc: BaseException) -> str:

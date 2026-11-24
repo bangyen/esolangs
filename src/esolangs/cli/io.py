@@ -47,6 +47,7 @@ from esolangs.cli.hints import (
     _run_source_command,
     _saved_template_hint,
     _timeout_text,
+    _with_cli_hint,
 )
 from esolangs.exceptions import (
     ArgumentError,
@@ -260,11 +261,11 @@ def _reject_portable_source(
             f"{message} for unavailable language {display_label(recorded)}"
         )
     if is_template:
-        raise with_hint(
+        raise _with_cli_hint(
             TemplateError("unfilled portable template"),
             _saved_template_hint(owner, path, catalog),
         )
-    raise with_hint(
+    raise _with_cli_hint(
         ProgramError(message),
         _portable_run_hint(owner, path, catalog, "use --artifact to run portable JSON"),
     )
@@ -292,7 +293,7 @@ def _load_portable_source(
 
     for signature, kind in ((_PNG_SIGNATURE, "PNG"), (_GZIP_SIGNATURE, "gzip")):
         if data.startswith(signature):
-            raise with_hint(
+            raise _with_cli_hint(
                 ProgramError(
                     f"--artifact expects portable JSON; the input is native {kind}"
                 ),
@@ -312,15 +313,15 @@ def _load_portable_source(
                     catalog,
                     "pass the artifact's recorded language to esolangs run --artifact",
                 )
-            raise with_hint(error, hint) from cause
+            raise _with_cli_hint(error, hint) from cause
         if not isinstance(cause, JSONDecodeError):
             raise
-        raise with_hint(
+        raise _with_cli_hint(
             ProgramError(f"invalid portable program: {cause}"),
             f"if this is a native program, {_native_run_hint(language, path, catalog)}",
         ) from error
     if isinstance(artifact, TemplateArtifact):
-        raise with_hint(
+        raise _with_cli_hint(
             TemplateError("unfilled portable template"),
             _saved_template_hint(artifact.language, path, catalog),
         )

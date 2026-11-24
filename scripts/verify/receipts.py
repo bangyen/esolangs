@@ -397,16 +397,12 @@ def _validate_receipt(
     value: dict[str, Any], root: Path, evidence_root: Path, required: set[str]
 ) -> None:
     schema = value["schema"]
-    if (
-        schema not in (1, 2)
-        or value["status"] != "passed"
-        or not _successful(
-            evidence_root,
-            value["scope"],
-            value["checks"],
-            set(value["accepted_retries"]),
-            value["returncode"],
-        )
+    if value["status"] != "passed" or not _successful(
+        evidence_root,
+        value["scope"],
+        value["checks"],
+        set(value["accepted_retries"]),
+        value["returncode"],
     ):
         raise ValueError("receipt does not establish acceptance")
     expected = value["inputs"]
@@ -456,9 +452,77 @@ def _evidence_path(root: Path, relative: str) -> Path:
     return path
 
 
+def _receipt_fields(
+    value: object, fields: dict[str, type | tuple[type, ...]], location: str = ""
+) -> dict[str, Any]:
+    """Check the fields consumed by verification, including their container types."""
+    if not isinstance(value, dict):
+        raise ValueError(f"invalid {location or 'receipt'}: expected an object")
+    for name, expected in fields.items():
+        field = f"{location}.{name}" if location else name
+        if name not in value:
+            raise ValueError(f"missing receipt field {field!r}")
+        types = expected if isinstance(expected, tuple) else (expected,)
+        if type(value[name]) not in types:
+            raise ValueError(f"invalid receipt field {field!r}")
+    return value
+
+
+def _receipt_shape(record: object) -> dict[str, Any]:
+    """Check structure before using receipt fields to locate or verify evidence."""
+    value = _receipt_fields(
+        record,
+        {
+            "schema": int,
+            "status": str,
+            "scope": dict,
+            "checks": list,
+            "accepted_retries": list,
+            "returncode": (int, type(None)),
+            "inputs": dict,
+            "inputs_unchanged": bool,
+        },
+    )
+    if value["schema"] not in (1, 2):
+        raise ValueError(f"unsupported receipt schema {value['schema']}")
+    if "committed_revision" in value:
+        _receipt_fields(value, {"committed_revision": str})
+    if any(not isinstance(name, str) for name in value["accepted_retries"]):
+        raise ValueError(
+            "invalid receipt field 'accepted_retries': expected step names"
+        )
+    for index, row in enumerate(value["checks"]):
+        location = f"checks[{index}]"
+        check = _receipt_fields(
+            row,
+            {
+                "name": str,
+                "command": (list, type(None)),
+                "returncode": int,
+                "evidence": dict,
+            },
+            location,
+        )
+        if "path" in check["evidence"]:
+            _receipt_fields(
+                check["evidence"], {"path": str, "sha256": str}, f"{location}.evidence"
+            )
+        if check.get("execution") is not None:
+            _receipt_fields(check["execution"], {"path": str}, f"{location}.execution")
+    return value
+
+
+def _read_receipt(path: Path) -> dict[str, Any]:
+    """Load a receipt with a path-qualified error for malformed JSON or fields."""
+    try:
+        return _receipt_shape(json.loads(path.read_text(encoding="utf-8")))
+    except (ValueError, RecursionError) as error:
+        raise ValueError(f"{path}: {error}") from error
+
+
 def validate(path: Path, root: Path, required: set[str]) -> None:
     """Verify evidence and inputs against the live checkout or recorded commit."""
-    value = json.loads(path.read_text())
+    value = _read_receipt(path)
     evidence_root = path.parent if "committed_revision" in value else root
     _validate_receipt(value, root, evidence_root, required)
 
@@ -471,7 +535,7 @@ def archive(path: Path, root: Path, primary: Path) -> Path:
     if _git(root, *common).strip() != _git(primary, *common).strip():
         raise ValueError("verification archive must stay in the same repository")
     commit = _git(root, "rev-parse", "HEAD").strip()
-    value = json.loads(path.read_text())
+    value = _read_receipt(path)
     if "committed_revision" in value:
         raise ValueError("receipt is already archived")
     value["committed_revision"] = commit

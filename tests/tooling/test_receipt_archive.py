@@ -4,12 +4,14 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from scripts.verify.receipts import AcceptanceRun, archive, digest, validate
 from tests.tooling.receipt_support import _checkout, completed
+from tests.tooling.script_support import REPO_ROOT
 
 
 def _git(root, *args):
@@ -49,6 +51,48 @@ def _commit(root, message):
         "-qam",
         message,
     )
+
+
+def test_malformed_receipts_name_the_file_and_field(tmp_path) -> None:
+    root = _checkout(tmp_path / "checkout")
+    run, _ = completed(root)
+    receipt, passed = run.finish(0)
+    assert passed
+    valid = json.loads(receipt.read_text(encoding="utf-8"))
+    broken = {"checks": [{**valid["checks"][0], "evidence": []}]}
+    for fields, expected in (
+        ({}, "missing receipt field 'schema'"),
+        ({**valid, "scope": []}, "invalid receipt field 'scope'"),
+        ({**valid, **broken}, "invalid receipt field 'checks[0].evidence'"),
+    ):
+        receipt.write_text(json.dumps(fields), encoding="utf-8")
+        for action in (
+            lambda: validate(receipt, root, set()),
+            lambda: archive(receipt, root, root),
+        ):
+            with pytest.raises(ValueError, match="receipt field") as error:
+                action()
+            assert str(receipt) in str(error.value)
+            assert expected in str(error.value)
+    assert not (root / "notes/verification/commits").exists()
+
+    receipt.write_text("{}", encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts/verify/receipts.py"),
+            "--archive",
+            str(receipt),
+            str(root),
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert result.stderr.strip() == f"{receipt}: missing receipt field 'schema'"
 
 
 def test_archive_retains_logs_and_pytest_sidecar_after_worktree_removal(tmp_path):

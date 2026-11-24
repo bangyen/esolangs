@@ -82,6 +82,7 @@ from esolangs.cli.hints import (
     _saved_template_hint,
     _shell_hint,
     _timeout_text,
+    _with_cli_hint,
 )
 from esolangs.cli.io import (
     _MAX_PROGRAM_BYTES,
@@ -562,8 +563,7 @@ def _read_saved_template(
             hint = _saved_template_hint(
                 cause.owner, path, catalog, options=retry_options
             )
-            # CLI note rewrites could change a literal filename or flag.
-            _fail(f"{_cli_error_text(error)}\nhint: {hint}")
+            raise _with_cli_hint(error, hint) from cause
         if not isinstance(cause, json.JSONDecodeError):
             raise
         label = "stdin" if path == "-" else display_label(path)
