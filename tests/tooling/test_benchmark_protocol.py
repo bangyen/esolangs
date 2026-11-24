@@ -129,6 +129,59 @@ def test_timing_journal_is_scratch_but_source_edits_change_identity(
     )
 
 
+def test_pytest_cache_staging_dir_is_not_checkout_state(tmp_path, monkeypatch):
+    """pytest's atomic cache-dir staging must not move the identity.
+
+    _make_cachedir stages .pytest_cache as pytest-cache-files-* next to
+    its target (the repo root) and the loser of a concurrent creation
+    race deletes it; if git lists the staging files, source_identity
+    crashes reading the vanished ones (weekly run 45266426182).
+    """
+    import subprocess
+    from pathlib import Path
+
+    from scripts import benchmark
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=tmp_path, capture_output=True, check=True)
+
+    git("init", "-q")
+    repo_root = Path(__file__).resolve().parents[2]
+    (tmp_path / ".gitignore").write_text((repo_root / ".gitignore").read_text())
+    source = tmp_path / "source.py"
+    source.write_text("value = 1\n")
+    git("add", ".")
+    git(
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.test",
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "commit",
+        "-qm",
+        "fixture",
+    )
+    monkeypatch.setattr(benchmark, "__file__", str(tmp_path / "scripts/benchmark.py"))
+    before = benchmark.source_identity()
+    # Only README.md: the window in _make_cachedir after the first file
+    # is written but before its .gitignore (containing "*") lands — or
+    # during the loser's rmtree after .gitignore is deleted first. Once
+    # the .gitignore exists the dir self-ignores and git lists nothing,
+    # so a fixture with all three files cannot reproduce the failure.
+    staging = tmp_path / "pytest-cache-files-qm6epucl"
+    staging.mkdir()
+    (staging / "README.md").write_text("# pytest cache directory #\n")
+    assert benchmark.source_identity() == before
+    scratch = tmp_path / "scratch.txt"
+    scratch.write_text("not staging\n")
+    assert benchmark.source_identity() != before
+    scratch.unlink()
+    assert benchmark.source_identity() == before
+
+
 def _check_store_sampling(monkeypatch) -> None:
     import esolangs
     from esolangs.registry import LANGUAGES

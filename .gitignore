@@ -25,6 +25,11 @@ env/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+# pytest stages its cache dir as pytest-cache-files-* next to the target
+# (the repo root for .pytest_cache); the loser of a concurrent creation
+# race deletes it, and untracked enumeration in between crashes on the
+# vanished files (weekly run 45266426182).
+pytest-cache-files-*/
 .hypothesis/
 .dmypy.json
 dmypy.json
