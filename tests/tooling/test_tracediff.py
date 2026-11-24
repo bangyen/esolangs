@@ -233,6 +233,24 @@ def test_cli_rejects_an_error_only_corpus(monkeypatch, capsys) -> None:
     assert "no matching clean halt or declared cycle" in captured.err
 
 
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (
+            ["--old", "nosuch-trace-baseline"],
+            "--old 'nosuch-trace-baseline' does not resolve",
+        ),
+        (["--random", "-1"], "--random must be nonnegative"),
+    ],
+)
+def test_trace_arguments_are_checked_before_corpus(monkeypatch, capsys, args, message):
+    monkeypatch.setattr(tracediff, "corpus", lambda *_: pytest.fail("corpus"))
+    with pytest.raises(SystemExit) as caught:
+        tracediff.main([REFERENCE, *args])
+    assert caught.value.code == 2
+    assert message in capsys.readouterr().err
+
+
 def test_last_command_records_its_output_and_halt(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(tracediff, "LIMIT", 2)
     module = tracediff._load(_INTERPRETER, "boundary_halt")

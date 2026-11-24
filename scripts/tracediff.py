@@ -760,14 +760,21 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.mutant_target is not None and args.mutant is None:
         parser.error("--mutant-target requires --mutant")
+    if args.random < 0:
+        parser.error("--random must be nonnegative")
     try:
         name = resolve(args.language)
     except ValueError as exc:
         parser.error(str(exc))
     ignored = frozenset(filter(None, args.ignore_views.split(",")))
-    programs = corpus(name, args.random)
     with tempfile.TemporaryDirectory() as directory:
-        return _compare_revisions(name, programs, ignored, args, Path(directory))
+        scratch = Path(directory)
+        try:
+            old = _checkout(args.old, scratch / "old")
+        except ValueError as error:
+            parser.error(str(error))
+        programs = corpus(name, args.random)
+        return _compare_revisions(name, programs, ignored, args, old, scratch)
 
 
 def _compare_revisions(
@@ -775,9 +782,9 @@ def _compare_revisions(
     programs: list[Program],
     ignored: frozenset[str],
     args: argparse.Namespace,
+    old: Path,
     scratch: Path,
 ) -> int:
-    old = _checkout(args.old, scratch / "old")
     new = ROOT / "src"
     request = scratch / "corpus"
     before_path, after_path = scratch / "old.gz", scratch / "new.gz"

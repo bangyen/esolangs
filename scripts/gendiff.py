@@ -183,10 +183,33 @@ def _dump(
 
 def _checkout(ref: str, scratch: Path) -> Path:
     """Write ``src`` as it is at git ``ref`` into ``scratch``; return it."""
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "--verify", "--end-of-options", f"{ref}^{{commit}}"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        raise ValueError(
+            f"--old {ref!r} does not resolve to a readable commit"
+        ) from error
     scratch.mkdir(parents=True)
     archive = scratch / "src.tar"
-    with archive.open("wb") as out:
-        subprocess.run(["git", "archive", ref, "src"], cwd=ROOT, check=True, stdout=out)
+    try:
+        with archive.open("wb") as out:
+            subprocess.run(
+                ["git", "archive", commit, "--", "src"],
+                cwd=ROOT,
+                check=True,
+                stdout=out,
+                stderr=subprocess.PIPE,
+                timeout=_DUMP_TIMEOUT,
+            )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        raise ValueError(f"could not read src from --old {ref!r}: {error}") from error
     with tarfile.open(archive) as tar:
         tar.extractall(scratch, filter="data")
     return scratch / "src"
@@ -279,20 +302,23 @@ def main(argv: list[str] | None = None) -> int:
         name = resolve(args.language)
     except ValueError as exc:
         parser.error(str(exc))
-    witnesses = _construction_tables(name, args.max_n)
-    requests = exhaustive + len(witnesses)
-    passes = (6 if args.speed else 2) + (args.mutant is not None)
-    print(
-        f"{name}: {requests:,} generation requests per pass, "
-        f"up to {requests * passes:,} across {passes} passes",
-        flush=True,
-    )
-
-    def dump(source: Path) -> tuple[Outputs, Timings]:
-        return _dump(source, name, args.max_n, witnesses)
-
     with tempfile.TemporaryDirectory() as scratch:
-        old_src = _checkout(args.old, Path(scratch) / "old")
+        try:
+            old_src = _checkout(args.old, Path(scratch) / "old")
+        except ValueError as error:
+            parser.error(str(error))
+        witnesses = _construction_tables(name, args.max_n)
+        requests = exhaustive + len(witnesses)
+        passes = (6 if args.speed else 2) + (args.mutant is not None)
+        print(
+            f"{name}: {requests:,} generation requests per pass, "
+            f"up to {requests * passes:,} across {passes} passes",
+            flush=True,
+        )
+
+        def dump(source: Path) -> tuple[Outputs, Timings]:
+            return _dump(source, name, args.max_n, witnesses)
+
         new_src = ROOT / "src"
         old, old_time = dump(old_src)
         new, new_time = dump(new_src)

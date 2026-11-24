@@ -80,6 +80,18 @@ def test_matching_errors_without_a_program_fail(monkeypatch, capsys) -> None:
     assert "no matching successful generation pairs" in captured.err
 
 
+def test_missing_baseline_fails_before_generator_witnesses(monkeypatch, capsys):
+    monkeypatch.setattr(
+        gendiff, "_construction_tables", lambda *_: pytest.fail("corpus")
+    )
+    with pytest.raises(SystemExit) as caught:
+        gendiff.main([REFERENCE, "--old", "nosuch-generator-baseline"])
+    assert caught.value.code == 2
+    assert (
+        "--old 'nosuch-generator-baseline' does not resolve" in capsys.readouterr().err
+    )
+
+
 @pytest.mark.parametrize(("new_generation", "status"), [(1.0, 0), (1.3, 1)])
 def test_speed_gate_uses_only_generation(monkeypatch, capsys, new_generation, status):
     old = REPO_ROOT / "old"

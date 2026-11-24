@@ -17,6 +17,7 @@ append to ``--out`` as JSON lines for manual triage. A failure that is only a
 duration-band flip (see ``_duration_flips``) never counts: a baseline
 passes when every one of its failures is a flip, and a mutant is recorded
 survived, with the flips listed, when no test functionally kills it.
+An incomplete sweep due to a timeout or the global deadline exits 124.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import math
 import os
 import random
 import re
@@ -270,9 +272,17 @@ def _in_worktree() -> bool:
     return "/worktrees/" in git_dir
 
 
+def _incomplete(reason: str) -> int:
+    print(f"mutation sweep incomplete: {reason}", file=sys.stderr)
+    return 124
+
+
 def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> int:
-    """Run every package's mutants; return 1 if a baseline fails."""
+    """Run the mutation cases allowed by the finite sweep budget."""
+    if not math.isfinite(budget) or budget <= 0:
+        raise ValueError("--budget must be positive and finite")
     began = time.monotonic()
+    incomplete = False
     # A baseline alone may take minutes with nothing printed; say what runs.
     print(
         f"{len(packages)} package(s), up to {per_language} mutants each, "
@@ -283,8 +293,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
         for package in packages:
             remaining = budget - (time.monotonic() - began)
             if remaining <= 0:
-                print("global budget spent before baseline")
-                return 0
+                return _incomplete("global budget spent before baseline")
             print(
                 f"{package}: baseline test run ({min(60, remaining):g} s cap)",
                 flush=True,
@@ -302,6 +311,8 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                 flush=True,
             )
             flips = _duration_flips(output) if status == "killed" else None
+            if status == "timeout":
+                return _incomplete(f"{package} baseline timed out")
             if status != "survived" and flips is None:
                 print(
                     f"{package}: baseline {status}\n{output[-2000:]}", file=sys.stderr
@@ -317,8 +328,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
             for mutant in candidates(package, per_language):
                 remaining = budget - (time.monotonic() - began)
                 if remaining <= 0:
-                    print("global budget spent")
-                    return 0
+                    return _incomplete("global budget spent before the next mutant")
                 if streak == 3:
                     print(f"{package}: skipped after three consecutive timeouts")
                     break
@@ -335,6 +345,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                 flips = _duration_flips(output) if status == "killed" else None
                 if flips is not None:
                     status = "survived"
+                incomplete |= status == "timeout"
                 streak = streak + 1 if status == "timeout" else 0
                 failed = sorted(set(re.findall(r"^FAILED (\S+)", output, re.MULTILINE)))
                 line = original.split("\n")[mutant["line"] - 1].strip()
@@ -356,7 +367,7 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                     flush=True,
                 )
     _clear_bytecode()
-    return 0
+    return _incomplete("one or more mutants timed out") if incomplete else 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -369,6 +380,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--per-language", type=int, default=30)
     parser.add_argument("--budget", type=float, default=2 * 3600, help="seconds")
     args = parser.parse_args(argv)
+    if not math.isfinite(args.budget) or args.budget <= 0:
+        parser.error("--budget must be positive and finite")
     if not _in_worktree():
         parser.error("mutants edit source in place: run a sweep in a git worktree")
     return sweep(args.packages, args.out, args.per_language, args.budget)

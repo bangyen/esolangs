@@ -31,6 +31,30 @@ from tests.support.cli_support import (
 from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
 
+
+@pytest.mark.parametrize("language", one(source_kind="raster", boolean_generator=True))
+def test_native_rejection_suggests_running_portable_json(tmp_path, capsys, language):
+    api = esolangs.Language(language)
+    document = api.to_json(api.generate("01"))
+    path = tmp_path / "owner's portable program.json"
+    path.write_text(document, encoding="utf-8")
+    output, error = _failure(["run", language, str(path)], capsys)
+    assert output == ""
+    assert "use --artifact to run portable JSON" in error
+    command = shlex.split(error.split("for example: ", 1)[1].strip())
+    assert command == ["esolangs", "run", "--artifact", language, str(path)]
+    for bit in (0, 1):
+        output, error = call_both(command[1:], capsys, stdin=api.encode_inputs([bit]))
+        assert api.read_answer(output) == str(bit)
+        assert error == ""
+
+    value = json.loads(document)
+    value["format"] = {"name": value["format"]}
+    path.write_text(json.dumps(value), encoding="utf-8")
+    _, error = _failure(["run", language, str(path)], capsys)
+    assert "--artifact" not in error
+
+
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
 _SPELLED = one_where(lambda d: d.input_encoding != ("0", "1"), reads_input=True)
 _STREAM = one(input_shape="char_stream")
