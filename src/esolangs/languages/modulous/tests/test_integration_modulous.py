@@ -1,6 +1,7 @@
 """Modulous through the shared API, CLI and machinery."""
 
 from pathlib import Path
+from time import monotonic
 
 import pytest
 
@@ -112,17 +113,36 @@ class TestOutputSurvivesAFailure:
             run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
         assert "printed 'Hi'" in "\n".join(getattr(caught.value, "__notes__", []))
 
-    def test_a_timeout_carries_it(self) -> None:
+    def test_a_timeout_carries_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """An execution timeout retains the loop's output."""
-        # The budget also bounds input acquisition, which exceeded 10 ms in
-        # the weekly coverage shard before the interpreter printed anything.
+        from esolangs.runtime import _isolated
+
+        budget = 5.0
+        elapsed = 0.0
+        printed = 0
+        decode = _isolated.worker_loads
+
+        def decode_record(record: str) -> object:
+            nonlocal elapsed, printed
+            message = decode(record)
+            if isinstance(message, dict) and set(message) == {"output"}:
+                printed += len(message["output"])
+                if printed >= 3:
+                    elapsed = budget
+            return message
+
+        # Expire after streamed output so coverage overhead during input
+        # acquisition cannot spend the short execution window.
+        monkeypatch.setattr(_isolated, "monotonic", lambda: monotonic() + elapsed)
+        monkeypatch.setattr(_isolated, "worker_loads", decode_record)
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
             run(
                 "Modulous",
                 self.LOOPS_PRINTING,
                 stdin="",
-                limits=esolangs.ExecutionLimits(execution_timeout=0.25),
+                limits=esolangs.ExecutionLimits(execution_timeout=budget),
             )
+        assert caught.value.bound == "execution_timeout"
         assert caught.value.partial_output.startswith("999")
 
     def test_an_error_before_the_run_carries_nothing(self) -> None:
