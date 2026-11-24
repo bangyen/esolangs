@@ -5,6 +5,7 @@ from __future__ import annotations
 from encodings.utf_8 import IncrementalDecoder
 from typing import TYPE_CHECKING
 
+from esolangs.exceptions import ArgumentError
 from esolangs.runtime._input import input_read_error
 
 if TYPE_CHECKING:
@@ -14,9 +15,15 @@ if TYPE_CHECKING:
 class _TruthTablePipeCheck:
     """Reject invalid input while a producer may still hold the pipe open."""
 
-    def __init__(self, declaration: LanguageDeclaration | None) -> None:
+    def __init__(
+        self,
+        declaration: LanguageDeclaration | None,
+        *,
+        expected_inputs: int | None = None,
+    ) -> None:
         self.declaration = declaration
         self.backend = None if declaration is None else declaration.backend
+        self.expected_inputs = expected_inputs
         self.decoder = IncrementalDecoder()
         self.at_start = True
         self.rows = 0
@@ -44,9 +51,16 @@ class _TruthTablePipeCheck:
             _validate_truth_table(prefix.removeprefix("\ufeff").strip())
         self.rows += bits
         self.trailing_space |= len(body) != len(content)
+        if not self.rows:
+            return
+        arity = (self.rows - 1).bit_length()
         backend = self.backend
-        if backend is not None and backend.max_inputs is not None and self.rows:
-            arity = (self.rows - 1).bit_length()
-            if arity > backend.max_inputs:
-                assert self.declaration is not None
-                backend.check_arity(self.declaration.name, arity)
+        if backend is not None and backend.max_inputs is not None:
+            assert self.declaration is not None
+            backend.check_arity(self.declaration.name, arity)
+        inputs = self.expected_inputs
+        if inputs is not None and arity > inputs:
+            raise ArgumentError(
+                f"piped truth table exceeds the {1 << inputs} rows required "
+                f"by --bits ({inputs} input bits)"
+            )

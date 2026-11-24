@@ -676,7 +676,9 @@ def _generate(rest: list[str]) -> None:
             )
             if "--artifact" not in flags and (raster or gzip or native_gzip):
                 _check_binary_terminal(declaration.name, raster=raster, gzip=gzip)
-            table = _read_truth_table(declaration)
+            table = _read_truth_table(
+                declaration, expected_inputs=None if bits is None else len(bits)
+            )
         row = _generation_bits(declaration, table, bits, gzip=gzip)
         # Widthed at both ends, and that is not a mistake.  ``generate``
         # wraps the template (or hands the width to a *layout* language,

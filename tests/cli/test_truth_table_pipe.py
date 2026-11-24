@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs.cli._table_input import _TruthTablePipeCheck
+from tests.support.pick import first
 from tests.support.reference import REFERENCE
 from tests.tooling.script_support import REPO_ROOT
 
@@ -35,6 +36,10 @@ from tests.tooling.script_support import REPO_ROOT
     ],
 )
 def test_bad_piped_table_exits_before_eof(args, payload, diagnostic) -> None:
+    _assert_pipe_rejection(args, payload, diagnostic)
+
+
+def _assert_pipe_rejection(args: list[str], payload: bytes, diagnostic: bytes) -> None:
     with subprocess.Popen(
         [sys.executable, *args],
         stdin=subprocess.PIPE,
@@ -70,3 +75,16 @@ def test_table_pipe_keeps_one_bom_and_surrounding_unicode_space() -> None:
     )
     for bits, expected in zip(("00", "01", "10", "11"), "0110", strict=True):
         assert esolangs.run(REFERENCE, generated, stdin=bits).output == expected
+
+
+def test_template_pipe_checks_the_rows_required_by_bits() -> None:
+    name = first(parameterized=True, answer_mode="output", width_effect="wrap")
+    args = ["-m", "esolangs", "generate", "--bits", "01", name, "-"]
+    _assert_pipe_rejection(args, b"\t01100", b"exceeds the 4 rows required by --bits")
+    generated = subprocess.check_output(
+        [sys.executable, *args],
+        input=b"\t0110 \n",
+        timeout=5,
+    )
+    result = esolangs.run(name, generated)
+    assert esolangs.read_answer(name, result.output) == "1"

@@ -885,6 +885,7 @@ def _read_stdin(
 def _read_truth_table(
     declaration: LanguageDeclaration | None = None,
     *,
+    expected_inputs: int | None = None,
     timeout: float | None = None,
     timeout_flag: str = "",
 ) -> str:
@@ -895,7 +896,9 @@ def _read_truth_table(
             hint="; finish the truth table or close stdin",
             timeout_flag=timeout_flag,
             terminal_prompt="Enter a truth table, then signal EOF.\n",
-            pipe_check=_TruthTablePipeCheck(declaration),
+            pipe_check=_TruthTablePipeCheck(
+                declaration, expected_inputs=expected_inputs
+            ),
         )
         .removeprefix("\ufeff")
         .strip()

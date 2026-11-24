@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from ci.shard import collect_ids, load_run
+from ci.shard import collect_ids, load_run, read_timing_json
 
 
 def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> None:
@@ -74,7 +74,7 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
         selected.update(nodes)
         actual = set()
         for sidecar in path.parent.rglob("*.json.meta.json"):
-            metadata = json.loads(sidecar.read_text())
+            metadata = read_timing_json(sidecar)
             if (
                 not isinstance(metadata, dict)
                 or not isinstance(metadata.get("collected"), list)

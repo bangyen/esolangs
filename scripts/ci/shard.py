@@ -27,6 +27,8 @@ from verify import coverage as coverage_evidence
 from verify.process import write_text
 from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN
 
+from esolangs.runtime._json import unique_object
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -94,12 +96,18 @@ def load_durations(path: Path) -> dict[str, float]:
     return _parse_durations(path.read_bytes(), path)
 
 
+def read_timing_json(path: Path, *, data: bytes | None = None) -> Any:
+    """Read unique timing fields, reusing already hashed bytes when supplied."""
+    try:
+        payload = path.read_bytes() if data is None else data
+        return json.loads(payload.decode("utf-8"), object_pairs_hook=unique_object)
+    except (OSError, ValueError) as error:
+        raise ValueError(f"{path}: invalid timing JSON: {error}") from error
+
+
 def _parse_durations(data: bytes, path: Path) -> dict[str, float]:
     """Parse the bytes read from a timing file or checked against a sidecar."""
-    try:
-        raw = _timing_map(json.loads(data.decode("utf-8")))
-    except ValueError as error:
-        raise ValueError(f"{path}: invalid timing JSON: {error}") from error
+    raw = _timing_map(read_timing_json(path, data=data))
     if not isinstance(raw, dict):
         raise ValueError(
             f"{path}: durations must map node IDs to finite positive seconds"
@@ -327,7 +335,7 @@ def _load_run(directory: Path, expected: set[str]) -> _TimingRun:
     sources: dict[str, Path] = {}
     identity = None
     for path in paths:
-        metadata = json.loads(path.read_text(encoding="utf-8"))
+        metadata = read_timing_json(path)
         durations_path = path.with_suffix("").with_suffix("")
         if isinstance(metadata, dict) and "durations_file" in metadata:
             name = metadata["durations_file"]
@@ -389,11 +397,12 @@ def _collected_dates(output: Path) -> dict[str, str]:
     dates beside them are another producer's record and carry over.
     """
     try:
-        raw = json.loads(output.read_text(encoding="utf-8"))
+        data = output.read_bytes()
     except FileNotFoundError:
         return {}
-    except (OSError, ValueError) as error:
+    except OSError as error:
         raise ValueError(f"{output}: cannot read timing snapshot: {error}") from error
+    raw = read_timing_json(output, data=data)
     if (
         not isinstance(raw, dict)
         or not isinstance(collected := raw.get("collected"), dict)

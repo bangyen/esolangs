@@ -149,11 +149,19 @@ def widens_to_everything(changed: list[str]) -> str | None:
     return None
 
 
+_WORKFLOWS = ".github/workflows/"
+_WORKFLOW_TESTS = (
+    "tests/tooling/test_ci_coverage.py",
+    "tests/tooling/test_ci_setup.py",
+    "tests/tooling/test_pytest_shard.py",
+)
+
+
 TOOLING_INTEGRATIONS = {
     "tests/tooling/test_ci_coverage.py": (
         ("test_combining_shards_retains_every_branch",),
         (
-            ".github/workflows/",
+            _WORKFLOWS,
             ".github/actions/",
             "scripts/ci/shard.py",
         ),
@@ -424,15 +432,19 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
     """Return the pytest paths covering *changed*.
 
     An interpreter runs its language suite and shared contracts. A changed
-    test also runs its consumers. ``WHOLE_SUITE`` means coverage is not
+    test also runs its consumers. Workflows run the suites that read them.
+    ``WHOLE_SUITE`` means coverage is not
     localisable -- a new interpreter with no test module yet, or a source file
     whose tests live somewhere this cannot predict -- so everything runs rather
     than guessing.  An empty list means the branch touched nothing the Python
-    tests cover (docs, assembly, CI config), so there is nothing to run.
+    tests cover, so there is nothing to run.
     """
     paths: set[str] = set()
     changed_tests: set[str] = set()
     for f in changed:
+        if f.startswith(_WORKFLOWS) and f.endswith((".yml", ".yaml")):
+            paths.update(_WORKFLOW_TESTS)
+            continue
         if f == "conftest.py" or _inside_tests(f):
             # A conftest configures every test beneath it, a non-.py file is
             # fixture data some unknown test reads, and a module pytest does

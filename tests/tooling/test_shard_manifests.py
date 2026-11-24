@@ -1,5 +1,6 @@
 """Shard evidence proves successful, exactly-once execution of fresh collection."""
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -130,7 +131,11 @@ def test_unroundable_timing_names_the_sample_and_preserves_the_snapshot(
 
 @pytest.mark.parametrize(
     "malformed",
-    ['{"collected": {"curation": "2026-10-06"},', '{"collected":{"curation": null}}'],
+    [
+        '{"collected": {"curation": "2026-10-06"},',
+        '{"collected":{"curation": null}}',
+        '{"collected":{"curation":"2026-10-06","curation":"2026-10-07"}}',
+    ],
 )
 def test_timing_refresh_reports_and_preserves_invalid_snapshot(
     tmp_path, monkeypatch, capsys, malformed
@@ -148,6 +153,43 @@ def test_timing_refresh_reports_and_preserves_invalid_snapshot(
     assert error.value.code == 2
     assert str(destination) in capsys.readouterr().err
     assert destination.read_text(encoding="utf-8") == malformed
+
+
+@pytest.mark.parametrize("kind", ["duration", "completion"])
+def test_duplicate_timing_fields_report_the_file_and_leave_the_snapshot(
+    tmp_path, kind
+) -> None:
+    run = tmp_path / "run"
+    run.mkdir()
+    paths = evidence(run)
+    output = tmp_path / "snapshot.json"
+    nodes = ["a", "b", "serial"]
+    refresh([run], nodes, output)
+    previous = output.read_bytes()
+    sidecar = paths[0].parent / "test-durations.json.meta.json"
+    complete = sidecar.read_text(encoding="utf-8")
+    if kind == "duration":
+        metadata = json.loads(complete)
+        path = sidecar.parent / metadata["durations_file"]
+        key = "a"
+        data = b'{"a": -1, "a": 1, "serial": 1}'
+        path.write_bytes(data)
+        metadata["durations_sha256"] = hashlib.sha256(data).hexdigest()
+        sidecar.write_text(json.dumps(metadata), encoding="utf-8")
+    else:
+        path = sidecar
+        key = "python"
+        path.write_text(
+            complete.replace('"run": {', '"run": {"python": "other", ', 1),
+            encoding="utf-8",
+        )
+
+    with pytest.raises(ValueError, match=f"duplicate field: {key}") as error:
+        refresh([run], nodes, output)
+    assert str(path) in str(error.value)
+    assert output.read_bytes() == previous
+    with pytest.raises(ValueError, match=f"duplicate field: {key}"):
+        check(paths, nodes, "slow", 2)
 
 
 def test_timing_load_parses_the_snapshot_it_hashed(tmp_path, monkeypatch) -> None:
