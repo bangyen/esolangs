@@ -157,6 +157,55 @@ def test_deadcode_combines_only_complete_bound_shards(tmp_path, monkeypatch):
     assert module.evidence.read(dest, state) == {"packages": [], "nodes": nodes}
 
 
+def test_deadcode_combines_the_shard_bytes_that_passed_validation(
+    tmp_path, monkeypatch
+):
+    from coverage import CoverageData
+
+    from tests.tooling.script_support import REPO_ROOT, load
+
+    scripts = REPO_ROOT / "scripts"
+    monkeypatch.syspath_prepend(str(scripts))
+    module = load(scripts / "deadcode.py")
+    shard, replacement, output = (
+        tmp_path / part for part in (".coverage.0", "replacement", "combined")
+    )
+    source = str(tmp_path / "generator.py")
+    for path, arc in ((shard, (1, 2)), (replacement, (10, 20))):
+        data = CoverageData(basename=str(path))
+        data.add_arcs({source: [arc]})
+        data.write()
+    state = "checkout"
+    nodes = ["test_witness"]
+    module.evidence.record(
+        shard,
+        state,
+        {
+            "shard": 0,
+            "shards": 1,
+            "nodes": nodes,
+            "collected": module.evidence.fingerprint(nodes),
+        },
+    )
+    read = module.evidence.read
+    snapshots = []
+
+    def replace_after_validation(path, checkout, **kwargs):
+        selection = read(path, checkout, **kwargs)
+        snapshots.append(kwargs.get("snapshot", path))
+        replacement.replace(path)
+        return selection
+
+    monkeypatch.setattr(module.evidence, "read", replace_after_validation)
+    assert module._combine(output, [shard], state) == nodes
+    combined = CoverageData(basename=str(output))
+    combined.read()
+    assert combined.arcs(source) == [(1, 2)]
+    assert not replacement.exists()
+    assert snapshots
+    assert not snapshots[0].exists()
+
+
 def _contract_summary_counts_outcomes_and_reasons():
     lines = []
     reporter = SimpleNamespace(

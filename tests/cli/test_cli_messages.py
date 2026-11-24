@@ -71,6 +71,23 @@ def test_native_run_keeps_json_with_only_a_similar_format_marker(tmp_path, capsy
     assert error == ""
 
 
+@pytest.mark.parametrize("escaped_format", [False, True])
+def test_native_run_stops_a_portable_record_for_an_unavailable_language(
+    tmp_path, capsys, escaped_format
+) -> None:
+    record = json.loads(esolangs.to_json(REFERENCE, "+++++."))
+    record["language"] = "UnavailableDialect"
+    document = json.dumps(record)
+    if escaped_format:
+        document = document.replace(record["format"], r"esolangs.\u0070rogram")
+    path = tmp_path / "unavailable.json"
+    path.write_text(document, encoding="utf-8")
+
+    output, error = _failure(["run", REFERENCE, str(path)], capsys, stdin="A")
+    assert output == ""
+    assert "portable JSON artifact for unavailable language UnavailableDialect" in error
+
+
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
 _SPELLED = one_where(lambda d: d.input_encoding != ("0", "1"), reads_input=True)
 _STREAM = one(input_shape="char_stream")

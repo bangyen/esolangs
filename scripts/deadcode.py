@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -80,12 +81,30 @@ def _collect(data: Path, packages: list[str]) -> list[str]:
 
 
 def _combine(data: Path, shards: list[Path], state: str) -> list[str]:
-    """Combine a complete partition of the full test selection."""
+    """Combine private, verified copies of a complete coverage partition."""
+    with tempfile.TemporaryDirectory(prefix="deadcode-shards-") as directory:
+        staged, ordered = _verified_shards(Path(directory), shards, state)
+        subprocess.run(
+            [sys.executable, "-m", "coverage", "combine", "--keep", *map(str, staged)],
+            cwd=ROOT,
+            env={**os.environ, "COVERAGE_FILE": str(data)},
+            check=True,
+        )
+    return ordered
+
+
+def _verified_shards(
+    directory: Path, shards: list[Path], state: str
+) -> tuple[list[Path], list[str]]:
+    """Verify the staged bytes and return their complete test selection."""
+    staged: list[Path] = []
     indices: set[int] = set()
     nodes: set[str] = set()
     catalogue = None
-    for shard in shards:
-        selection = evidence.read(shard, state)
+    for number, shard in enumerate(shards):
+        snapshot = directory / f".coverage.{number}"
+        shutil.copyfile(shard, snapshot)
+        selection = evidence.read(shard, state, snapshot=snapshot)
         index = selection.get("shard")
         selected = selection.get("nodes")
         if (
@@ -105,16 +124,11 @@ def _combine(data: Path, shards: list[Path], state: str) -> list[str]:
         catalogue = collected
         indices.add(index)
         nodes.update(selected)
+        staged.append(snapshot)
     ordered = sorted(nodes)
     if evidence.fingerprint(ordered) != catalogue:
         raise ValueError("coverage shards do not cover the full test collection")
-    subprocess.run(
-        [sys.executable, "-m", "coverage", "combine", "--keep", *map(str, shards)],
-        cwd=ROOT,
-        env={**os.environ, "COVERAGE_FILE": str(data)},
-        check=True,
-    )
-    return ordered
+    return staged, ordered
 
 
 def _saved_report(

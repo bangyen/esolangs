@@ -39,11 +39,13 @@ sys.path.append(str(REPO_ROOT))  # for the sibling checks.generator_sizes
 
 from benchmark import evidence_session, measure  # noqa: E402
 from docs.evidence import construction_boundaries  # noqa: E402
+from docs.fragments import FRAGMENT  # noqa: E402
 
 import esolangs  # noqa: E402
 from checks import generator_sizes  # noqa: E402
 from esolangs.registry import LANGUAGES  # noqa: E402
 from esolangs.registry._certification import load as load_certification  # noqa: E402
+from esolangs.runtime._files import destination_path, reserve_staged, write_staged  # noqa: E402
 
 
 def benchmark_tables() -> tuple[str, ...]:
@@ -259,12 +261,29 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    records = sweep(repeat=args.repeat)
+    target = None
     if args.timings is not None:
-        args.timings.parent.mkdir(parents=True, exist_ok=True)
-        args.timings.write_text(
-            json.dumps(records, indent=1, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        try:
+            resolved = args.timings.resolve()
+            packages = generator_sizes.PACKAGES
+            fragments = (packages / lang.id / FRAGMENT for lang in LANGUAGES.values())
+            if any(resolved == fragment.resolve() for fragment in fragments):
+                raise ValueError("timing output would replace a language baseline")
+            args.timings.parent.mkdir(parents=True, exist_ok=True)
+            target = destination_path(resolved)
+            # Clean up the preflight file before fingerprinting the checkout.
+            with reserve_staged(target):
+                pass
+        except (OSError, ValueError, RuntimeError) as error:
+            parser.error(f"--timings {args.timings}: {error}")
+
+    records = sweep(repeat=args.repeat)
+    if target is not None:
+        try:
+            payload = json.dumps(records, indent=1, sort_keys=True) + "\n"
+            write_staged(target, (payload.encode("utf-8"),))
+        except (OSError, ValueError) as error:
+            parser.error(f"--timings {args.timings}: {error}")
         print(f"wrote {args.timings}")
     measured = baseline(records)
     if args.update:

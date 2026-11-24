@@ -50,8 +50,8 @@ def publish(staged: Path, data: Path, state: str, selection: dict[str, Any]) -> 
     sidecar(staged).replace(sidecar(data))
 
 
-def read(data: Path, state: str) -> dict[str, Any]:
-    """Reject missing, mismatched, and stale coverage receipts."""
+def read(data: Path, state: str, *, snapshot: Path | None = None) -> dict[str, Any]:
+    """Validate the receipt against the database or a private copy of it."""
     try:
         value = json.loads(sidecar(data).read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -68,7 +68,7 @@ def read(data: Path, state: str) -> dict[str, Any]:
         raise ValueError(f"invalid coverage receipt for {data}")
     if value.get("checkout") != state:
         raise ValueError(f"stale coverage in {data}; the checkout inputs changed")
-    if value.get("sha256") != digest(data):
+    if value.get("sha256") != digest(data if snapshot is None else snapshot):
         raise ValueError(f"coverage database {data} does not match its receipt")
     return selection
 

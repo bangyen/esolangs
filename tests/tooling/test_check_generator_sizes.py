@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 from dataclasses import replace
 from typing import Any
 
@@ -116,6 +117,88 @@ class TestCommittedBaseline:
             ), name
             for table, fields in rows.items():
                 assert fields["source_units"] > 0, (name, table)
+
+
+@pytest.mark.parametrize(
+    "target_kind",
+    [
+        "directory",
+        "baseline",
+        "missing-baseline",
+        pytest.param(
+            "baseline-alias",
+            marks=pytest.mark.skipif(os.name != "posix", reason="POSIX symlink"),
+        ),
+    ],
+)
+def test_timing_destination_is_checked_before_the_sweep(
+    tmp_path,
+    monkeypatch,
+    capsys,
+    target_kind,
+) -> None:
+    from checks import check_generator_sizes as sizes
+
+    packages = tmp_path / "packages"
+    monkeypatch.setattr(sizes.generator_sizes, "PACKAGES", packages)
+    fragment = packages / sizes.LANGUAGES[REFERENCE].id / "language.toml"
+    target = tmp_path if target_kind == "directory" else fragment
+    if target_kind in {"baseline", "baseline-alias"}:
+        fragment.parent.mkdir(parents=True)
+        fragment.write_bytes(b"[generator_sizes]\n")
+    if target_kind == "baseline-alias":
+        target = tmp_path / "timings.json"
+        target.symlink_to(fragment)
+    monkeypatch.setattr(
+        sizes, "sweep", lambda **_kwargs: pytest.fail("invalid output started a sweep")
+    )
+    with pytest.raises(SystemExit) as caught:
+        sizes.main(["--timings", str(target)])
+    assert caught.value.code == 2
+    diagnostic = capsys.readouterr().err
+    assert str(target) in diagnostic
+    if target_kind == "directory":
+        assert "directory" in diagnostic
+    else:
+        assert "would replace a language baseline" in diagnostic
+    if target_kind in {"baseline", "baseline-alias"}:
+        assert fragment.read_bytes() == b"[generator_sizes]\n"
+    else:
+        assert not fragment.exists()
+
+
+def test_timing_publication_preserves_existing_report_on_failure(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    from checks import check_generator_sizes as sizes
+    from esolangs.runtime import _files
+
+    report = tmp_path / "timings.json"
+    original = b'["previous sweep"]\n'
+    report.write_bytes(original)
+
+    def sweep(**_kwargs):
+        assert list(tmp_path.iterdir()) == [report]
+        return [RECORD]
+
+    def refuse_replace(*_args, **_kwargs):
+        raise PermissionError("cannot replace timing report")
+
+    monkeypatch.setattr(sizes, "sweep", sweep)
+    monkeypatch.setattr(sizes, "recorded_baseline", _measured)
+    command = ["--timings", str(report)]
+    with monkeypatch.context() as scoped:
+        scoped.setattr(_files.os, "replace", refuse_replace)
+        with pytest.raises(SystemExit) as caught:
+            sizes.main(command)
+    assert caught.value.code == 2
+    assert "cannot replace timing report" in capsys.readouterr().err
+    assert report.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [report]
+
+    assert sizes.main(command) == 0
+    assert json.loads(report.read_text()) == [RECORD]
+    assert list(tmp_path.iterdir()) == [report]
 
 
 def test_update_does_not_rewrite_an_unchanged_baseline(

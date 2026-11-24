@@ -198,13 +198,7 @@ def _read_program(
         with nullcontext() if deadline is None else stream_read_deadline(deadline):
             if portable:
                 return _load_portable_source(language, path, data, settings, catalog)
-            if (owner := _portable_source_owner(data, catalog)) is not None:
-                raise with_hint(
-                    ProgramError(f"{label} contains a portable JSON artifact"),
-                    _portable_run_hint(
-                        owner, path, catalog, "use --artifact to run portable JSON"
-                    ),
-                )
+            _reject_portable_source(data, path, label, catalog)
             return _check_program(
                 language,
                 _FileSource(label, data),
@@ -253,32 +247,26 @@ def _native_run_hint(language: str, path: str, catalog: Catalog) -> str:
     return f"{hint}, for example: {command}" if command else hint
 
 
-def _portable_source_owner(data: bytes, catalog: Catalog) -> str | None:
-    """Recognize a portable JSON envelope without loading its source payload."""
+def _reject_portable_source(
+    data: bytes, path: str, label: str, catalog: Catalog
+) -> None:
+    """Stop a portable envelope from reaching a native interpreter."""
     if not data.lstrip().startswith(b"{"):
-        return None
-    from esolangs.portable import _FORMAT
+        return
+    from esolangs.portable import _portable_record_owner
     from esolangs.registry._catalog import resolve_origin
-    from esolangs.runtime._json import record_loads
 
-    if _FORMAT.encode("ascii") not in data:
-        return None
-    try:
-        value = record_loads(decode_utf8(data))
-    except (ValueError, RecursionError):
-        return None
-    if (
-        isinstance(value, dict)
-        and value.get("format") == _FORMAT
-        and type(value.get("version")) is int
-        and value.get("kind") in ("text", "png", "gzip", "template")
-        and isinstance(value.get("source"), str)
-        and "settings" in value
-    ):
-        owner = value.get("language")
-        if isinstance(owner, str):
-            return resolve_origin(owner, catalog=catalog)
-    return None
+    if (recorded := _portable_record_owner(data)) is None:
+        return
+    message = f"{label} contains a portable JSON artifact"
+    if (owner := resolve_origin(recorded, catalog=catalog)) is None:
+        raise ProgramError(
+            f"{message} for unavailable language {display_label(recorded)}"
+        )
+    raise with_hint(
+        ProgramError(message),
+        _portable_run_hint(owner, path, catalog, "use --artifact to run portable JSON"),
+    )
 
 
 def _portable_run_hint(owner: str, path: str, catalog: Catalog, hint: str) -> str:

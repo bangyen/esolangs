@@ -33,7 +33,7 @@ from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failur
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
-from esolangs.runtime._files import destination_path, reserve_staged
+from esolangs.runtime._files import decode_utf8, destination_path, reserve_staged
 from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._source import (
     ProgramSource,
@@ -56,6 +56,27 @@ from esolangs.settings import (
 )
 
 _FORMAT = "esolangs.program"
+
+
+def _portable_record_owner(data: bytes) -> str | None:
+    """Read the envelope's language before resolving it or loading its source."""
+    if _FORMAT.encode("ascii") not in data and b"\\u" not in data:
+        return None
+    try:
+        value = record_loads(decode_utf8(data))
+    except (ValueError, RecursionError):
+        return None
+    if (
+        isinstance(value, dict)
+        and value.get("format") == _FORMAT
+        and type(value.get("version")) is int
+        and value.get("kind") in ("text", "png", "gzip", "template")
+        and isinstance(value.get("source"), str)
+        and "settings" in value
+        and isinstance(owner := value.get("language"), str)
+    ):
+        return owner
+    return None
 
 
 class _ArtifactLanguageMismatchError(ValueError):
