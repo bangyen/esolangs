@@ -112,6 +112,35 @@ def test_image_only_pass_runs_every_raster_and_skips_text(monkeypatch) -> None:
     assert runs == [(name, True) for name in rasters]
 
 
+def test_normalize_help_and_missing_paths_are_checked_before_the_epoch(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+    with pytest.raises(SystemExit) as help_exit:
+        smoke.main(["normalize", "--help"])
+    assert help_exit.value.code == 0
+    assert "archives" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as missing_paths:
+        smoke.main(["normalize"])
+    assert missing_paths.value.code == 2
+    assert "the following arguments are required: archives" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("epoch", [None, "not seconds", "-1", str(2**32)])
+def test_normalize_rejects_invalid_epoch_before_opening_archives(
+    monkeypatch, capsys, epoch
+) -> None:
+    if epoch is None:
+        monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+    else:
+        monkeypatch.setenv("SOURCE_DATE_EPOCH", epoch)
+    monkeypatch.setattr(smoke, "normalize", lambda *_: pytest.fail("opened archive"))
+    with pytest.raises(SystemExit) as caught:
+        smoke.main(["normalize", "first.tar.gz", "second.tar.gz"])
+    assert caught.value.code == 2
+    assert "SOURCE_DATE_EPOCH must be an integer" in capsys.readouterr().err
+
+
 def test_normalize_without_an_installed_package(tmp_path) -> None:
     archive = tmp_path / "source.tar.gz"
     payload = b"source payload\n"

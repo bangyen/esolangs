@@ -123,6 +123,22 @@ def test_invalid_shard_arguments_are_refused() -> None:
         load_script().shard_ids([], -1, 2)
 
 
+@pytest.mark.parametrize("option", ["--duraton", "--durat", "-n"])
+def test_only_pytest_options_after_the_separator_are_forwarded(
+    monkeypatch, capsys, option
+) -> None:
+    shard = load_script()
+    monkeypatch.setattr(shard, "collect_ids", lambda _: pytest.fail("collected tests"))
+    base = ["--marker", "", "--shard", "0", "--shards", "1"]
+    with pytest.raises(SystemExit) as caught:
+        shard.shard_main([*base, option, "0", "--", "-n", "0"])
+    assert caught.value.code == 2
+    assert f"unrecognized arguments: {option} 0" in capsys.readouterr().err
+    selected, forwarded = shard._parse_args([*base, "--", "-n", "0", "--shard", "9"])
+    assert selected.shard == 0
+    assert forwarded == ["-n", "0", "--shard", "9"]
+
+
 @pytest.mark.parametrize(
     ("excluded", "expected"),
     [

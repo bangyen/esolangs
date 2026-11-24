@@ -3,17 +3,61 @@
 import json
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import coverage
+import pytest
 import yaml
 
 from scripts.ci.shard import collect_ids
 
 ROOT = Path(__file__).resolve().parents[2]
 SERIAL_TEST_NODES = ".github/serial-test-nodes.txt"
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="workflow uses Bash")
+@pytest.mark.parametrize(("workflow", "job"), [("ci", "test"), ("weekly", "slow")])
+def test_serial_workflow_keeps_the_last_node_without_newline(
+    tmp_path, workflow, job
+) -> None:
+    manifest = tmp_path / SERIAL_TEST_NODES
+    manifest.parent.mkdir()
+    nodes = ["tests/sample.py::test_first", "tests/sample.py::test_last[with space]"]
+    manifest.write_bytes("\n".join(nodes).encode("utf-8"))
+    steps = yaml.safe_load(
+        (ROOT / ".github/workflows" / f"{workflow}.yml").read_text(encoding="utf-8")
+    )["jobs"][job]["steps"]
+    readers = [
+        step["run"] for step in steps if f"< {SERIAL_TEST_NODES}" in step.get("run", "")
+    ]
+    assert len(readers) == 2
+    for reader in readers:
+        script = reader.replace("${{ matrix.shard }}", "0")
+        result = subprocess.run(
+            [
+                "bash",
+                "--noprofile",
+                "--norc",
+                "-ec",
+                "uv() { printf '%s\\0' \"$@\"; }\n" + script,
+            ],
+            cwd=tmp_path,
+            env={**os.environ, "TEST_PYTHON": "3.12"},
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        args = result.stdout.decode("utf-8").removesuffix("\x00").split("\x00")
+        if "--exclude-node" in args:
+            assert [
+                args[i + 1] for i, arg in enumerate(args) if arg == "--exclude-node"
+            ] == nodes
+        else:
+            assert args[-len(nodes) :] == nodes
 
 
 def test_serial_test_nodes_are_collectable() -> None:

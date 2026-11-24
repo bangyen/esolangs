@@ -62,9 +62,24 @@ def normalize(path: Path, epoch: int) -> None:
 
 def normalize_main(argv: list[str]) -> int:
     """Normalize every archive named on the command line to SOURCE_DATE_EPOCH."""
-    epoch = int(os.environ["SOURCE_DATE_EPOCH"])
-    for name in argv:
-        normalize(Path(name), epoch)
+    parser = argparse.ArgumentParser(
+        prog="release.py normalize", description=normalize_main.__doc__
+    )
+    parser.add_argument(
+        "archives", nargs="+", type=Path, help="source .tar.gz archives"
+    )
+    args = parser.parse_args(argv)
+    # A gzip header stores mtime as an unsigned 32-bit integer.
+    max_epoch = 2**32 - 1
+    message = f"SOURCE_DATE_EPOCH must be an integer between 0 and {max_epoch}"
+    try:
+        epoch = int(os.environ.get("SOURCE_DATE_EPOCH", ""))
+    except ValueError:
+        parser.error(message)
+    if not 0 <= epoch <= max_epoch:
+        parser.error(message)
+    for archive in args.archives:
+        normalize(archive, epoch)
     return 0
 
 

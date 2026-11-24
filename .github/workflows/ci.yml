@@ -132,7 +132,7 @@ jobs:
       run: |
         excluded=()
         if [[ "$TEST_PYTHON" == "3.12" ]]; then
-          while IFS= read -r node; do
+          while IFS= read -r node || [[ -n "$node" ]]; do
             excluded+=(--exclude-node "$node")
           done < .github/serial-test-nodes.txt
         fi
@@ -146,7 +146,9 @@ jobs:
       if: ${{ !cancelled() && matrix.python-version == '3.12' && matrix.shard == 0 }}
       run: |
         nodes=()
-        while IFS= read -r node; do nodes+=("$node"); done < .github/serial-test-nodes.txt
+        while IFS= read -r node || [[ -n "$node" ]]; do
+          nodes+=("$node")
+        done < .github/serial-test-nodes.txt
         test "${#nodes[@]}" -gt 0
         uv run python -m pytest -q -n 0 -m "" -p scripts.ci.shard --duration-output notes/ci/test-durations-serial.json "${nodes[@]}"
 

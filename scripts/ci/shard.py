@@ -189,7 +189,9 @@ def shard_ids(
 
 def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
     """Split the shard selection from the pytest arguments after ``--``."""
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__, epilog="Pass pytest options after --.", allow_abbrev=False
+    )
     parser.add_argument("--marker", required=True, help="pytest marker band to run")
     parser.add_argument("--shard", type=int, required=True, help="this job's slice")
     parser.add_argument("--shards", type=int, required=True, help="slice count")
@@ -197,9 +199,10 @@ def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--exclude-node", action="append", default=[])
     parser.add_argument("--bind-coverage", type=Path, help=argparse.SUPPRESS)
-    args, rest = parser.parse_known_args(argv)
-    if rest[:1] == ["--"]:
-        rest = rest[1:]
+    argv = sys.argv[1:] if argv is None else argv
+    boundary = argv.index("--") if "--" in argv else len(argv)
+    args = parser.parse_args(argv[:boundary])
+    rest = argv[boundary + 1 :]
     if args.shards < 1:
         parser.error("--shards must be at least 1")
     if not 0 <= args.shard < args.shards:

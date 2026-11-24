@@ -68,7 +68,7 @@ jobs:
     - name: Test one full-suite shard
       run: |
         excluded=()
-        while IFS= read -r node; do
+        while IFS= read -r node || [[ -n "$node" ]]; do
           excluded+=(--exclude-node "$node")
         done < .github/serial-test-nodes.txt
         uv run python scripts/ci/shard.py shard --marker "" --durations snapshot.json --shard ${{ matrix.shard }} --shards 2 --manifest notes/ci/weekly.shard.json "${excluded[@]}" -- -n auto -p scripts.ci.shard --duration-output notes/ci/test-durations.json
@@ -79,7 +79,9 @@ jobs:
       if: ${{ !cancelled() && matrix.shard == 0 }}
       run: |
         nodes=()
-        while IFS= read -r node; do nodes+=("$node"); done < .github/serial-test-nodes.txt
+        while IFS= read -r node || [[ -n "$node" ]]; do
+          nodes+=("$node")
+        done < .github/serial-test-nodes.txt
         test "${#nodes[@]}" -gt 0
         uv run python -m pytest -q -n 0 -m "" -p scripts.ci.shard --duration-output notes/ci/test-durations-serial.json "${nodes[@]}"
 
