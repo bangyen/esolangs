@@ -43,10 +43,17 @@ TABLE3 = "01101001"
 
 def test_generate_reads_a_truth_table_from_stdin(capsys) -> None:
     expected = call_both(["generate", "--width=4", REFERENCE, "0110"], capsys)
-    assert (
-        call_both(["generate", "--width=4", REFERENCE, "-"], capsys, " \t0110\r\n")
-        == expected
-    )
+    for prefix in ("", "\ufeff"):
+        assert (
+            call_both(
+                ["generate", "--width=4", REFERENCE, "-"],
+                capsys,
+                f"{prefix} \t0110\r\n",
+            )
+            == expected
+        )
+    _, error = _failure(["generate", REFERENCE, "-"], capsys, stdin="\ufeff\ufeff0110")
+    assert "truth table must contain only" in error
     output, error = _failure(["generate", REFERENCE, "-"], capsys, stdin="01\n10")
     assert output == ""
     assert "truth table must contain only" in error

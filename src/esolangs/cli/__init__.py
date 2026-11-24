@@ -88,6 +88,7 @@ from esolangs.cli.io import (
     _flush_stdout,
     _output_unavailable,
     _read_stdin,
+    _read_truth_table,
     _stdout_is_terminal,
     _StdoutEncodingError,
     _StdoutError,
@@ -591,10 +592,7 @@ def _generate(rest: list[str]) -> None:
             raster = declaration.runtime.source_kind is SourceKind.RASTER
             if "--artifact" not in flags and (raster or gzip):
                 _check_binary_terminal(declaration.name, raster=raster, gzip=gzip)
-            table = _read_stdin(
-                hint="; finish the truth table or close stdin",
-                terminal_prompt="Enter a truth table, then signal EOF.\n",
-            ).strip()
+            table = _read_truth_table()
         row = _generation_bits(declaration, table, bits, gzip=gzip)
         # Widthed at both ends, and that is not a mistake.  ``generate``
         # wraps the template (or hands the width to a *layout* language,

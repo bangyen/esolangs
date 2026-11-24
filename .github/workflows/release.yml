@@ -150,7 +150,8 @@ jobs:
       run: |
         mkdir /tmp/sdist-source
         tar -xzf dist/*.tar.gz -C /tmp/sdist-source --strip-components=1
-        uv build --wheel /tmp/sdist-source --out-dir /tmp/sdist-wheel
+        uv build --wheel --python 3.12 /tmp/sdist-source --out-dir /tmp/sdist-wheel
+        cmp dist/*.whl /tmp/sdist-wheel/*.whl
         uv pip install --python /tmp/relcheck-3.12/bin/python --reinstall /tmp/sdist-wheel/*.whl
         /tmp/relcheck-3.12/bin/python -I scripts/ci/release.py smoke --image
 

@@ -203,9 +203,8 @@ def test_benchmark_reads_large_truth_table_from_stdin() -> None:
             "--repeat",
             "1",
         ],
-        input=f" \t{table}\r\n",
+        input=f"\ufeff \t{table}\r\n".encode(),
         capture_output=True,
-        text=True,
         timeout=15,
         check=True,
     )

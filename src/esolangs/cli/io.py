@@ -790,6 +790,18 @@ def _read_stdin(
         _fail(input_read_error(exc))
 
 
+def _read_truth_table() -> str:
+    """Read a UTF-8 table, allowing one leading BOM and outer whitespace."""
+    return (
+        _read_stdin(
+            hint="; finish the truth table or close stdin",
+            terminal_prompt="Enter a truth table, then signal EOF.\n",
+        )
+        .removeprefix("\ufeff")
+        .strip()
+    )
+
+
 class _StdoutError(Exception):
     """A write or flush failed at the output destination."""
 

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import importlib.metadata
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -58,11 +61,20 @@ def _log(root: Path, output: str) -> dict[str, str]:
 def _execution(
     root: Path, command: list[str] | None, returncode: int
 ) -> dict[str, Any] | None:
-    """Bind completed pytest reports and selection to the receipt."""
+    """Bind the reports produced at the invocation's declared destination."""
     if command is None or "--verification-output" not in command:
         return None
     try:
-        path = (root / command[command.index("--verification-output") + 1]).resolve()
+        path = command[command.index("--verification-output") + 1]
+    except IndexError:
+        return None
+    return _read_execution(root, path, returncode)
+
+
+def _read_execution(root: Path, file: str, returncode: int) -> dict[str, Any] | None:
+    """Read completed pytest reports from their bound path."""
+    try:
+        path = (root / file).resolve()
         relative = path.relative_to(root.resolve())
         contents = path.read_bytes()
         data = json.loads(contents)
@@ -79,7 +91,7 @@ def _execution(
             or finished != selected
         ):
             return None
-    except (OSError, IndexError, KeyError, TypeError, ValueError):
+    except (OSError, KeyError, TypeError, ValueError):
         return None
     return {
         "path": str(relative),
@@ -245,9 +257,9 @@ class AcceptanceRun:
         return path, passed
 
 
-def validate(path: Path, root: Path, required: set[str]) -> None:
-    """Refuse stale inputs, changed logs, missing scope and failed receipts."""
-    value = json.loads(path.read_text())
+def _validate_receipt(
+    value: dict[str, Any], root: Path, evidence_root: Path, required: set[str]
+) -> None:
     if (
         value["schema"] != 1
         or value["status"] != "passed"
@@ -259,7 +271,16 @@ def validate(path: Path, root: Path, required: set[str]) -> None:
         )
     ):
         raise ValueError("receipt does not establish acceptance")
-    if not value["inputs_unchanged"] or value["inputs"] != inputs(root):
+    expected = value["inputs"]
+    commit = value.get("committed_revision")
+    if commit is not None:
+        if commit != _git(root, "rev-parse", "HEAD").strip():
+            raise ValueError("archived receipt belongs to a different commit")
+        # A deleted path was still in the index when the gate ran.
+        expected = {
+            name: digest for name, digest in expected.items() if digest is not None
+        }
+    if not value["inputs_unchanged"] or expected != inputs(root):
         raise ValueError("receipt inputs do not match this checkout")
     if not required <= value["scope"].keys():
         raise ValueError("receipt does not cover the required scope")
@@ -267,19 +288,91 @@ def validate(path: Path, root: Path, required: set[str]) -> None:
     if not required <= checks.keys():
         raise ValueError("receipt is missing completed checks")
     for row in value["checks"]:
-        if row["name"] in {"pytest", "pytest retry"} and row.get("execution") != (
-            _execution(root, row["command"], row["returncode"])
+        execution = row.get("execution")
+        if execution is not None and execution != _read_execution(
+            evidence_root, execution["path"], row["returncode"]
         ):
             raise ValueError("pytest execution evidence was changed")
         evidence = row["evidence"]
         if "path" in evidence:
-            log = (root / evidence["path"]).resolve()
-            log.relative_to(root.resolve())
+            log = _evidence_path(evidence_root, evidence["path"])
             if digest(log) != evidence["sha256"]:
                 raise ValueError("receipt log was changed")
 
 
+def _evidence_path(root: Path, relative: str) -> Path:
+    """Resolve a bound evidence file within its receipt's evidence root."""
+    if Path(relative).is_absolute():
+        raise ValueError("receipt evidence paths must be relative")
+    path = (root / relative).resolve()
+    path.relative_to(root.resolve())
+    return path
+
+
+def validate(path: Path, root: Path, required: set[str]) -> None:
+    """Verify a live receipt or an archive against the matching checkout."""
+    value = json.loads(path.read_text())
+    evidence_root = path.parent if "committed_revision" in value else root
+    _validate_receipt(value, root, evidence_root, required)
+
+
+def archive(path: Path, root: Path, primary: Path) -> Path:
+    """Publish a verified receipt and its evidence under the current commit."""
+    if _git(root, "status", "--porcelain=v1", "--untracked-files=all"):
+        raise ValueError("archive verification after committing the checked files")
+    common = ("rev-parse", "--path-format=absolute", "--git-common-dir")
+    if _git(root, *common).strip() != _git(primary, *common).strip():
+        raise ValueError("verification archive must stay in the same repository")
+    commit = _git(root, "rev-parse", "HEAD").strip()
+    value = json.loads(path.read_text())
+    if "committed_revision" in value:
+        raise ValueError("receipt is already archived")
+    value["committed_revision"] = commit
+    _validate_receipt(value, root, root, set())
+
+    parent = primary.resolve() / "notes" / "verification" / "commits" / commit
+    parent.mkdir(parents=True, exist_ok=True)
+    destination = parent / path.stem
+    if destination.exists():
+        raise FileExistsError(f"receipt archive already exists: {destination}")
+    with tempfile.TemporaryDirectory(prefix=".archive-", dir=parent) as scratch:
+        bundle = Path(scratch)
+        for row in value["checks"]:
+            for evidence in (row["evidence"], row.get("execution")):
+                if evidence is None or "path" not in evidence:
+                    continue
+                original = _evidence_path(root, evidence["path"])
+                copy = _evidence_path(bundle, evidence["path"])
+                copy.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(original, copy)
+        _validate_receipt(value, root, bundle, set())
+        (bundle / "receipt.json").write_text(
+            json.dumps(value, sort_keys=True, indent=2) + "\n"
+        )
+        bundle.rename(destination)
+    return destination / "receipt.json"
+
+
+def main() -> int:
+    """Print the check environment or archive the current commit's receipt."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    command = parser.add_mutually_exclusive_group(required=True)
+    command.add_argument("--environment", action="store_true")
+    command.add_argument(
+        "--archive", nargs=2, type=Path, metavar=("RECEIPT", "PRIMARY")
+    )
+    args = parser.parse_args()
+    if args.environment:
+        print(json.dumps(environment()))
+    else:
+        try:
+            path, primary = args.archive
+            print(archive(path, Path.cwd(), primary))
+        except (OSError, ValueError, subprocess.CalledProcessError) as error:
+            print(error, file=sys.stderr)
+            return 1
+    return 0
+
+
 if __name__ == "__main__":
-    if sys.argv[1:] != ["--environment"]:
-        raise SystemExit("usage: receipts.py --environment")
-    print(json.dumps(environment()))
+    raise SystemExit(main())

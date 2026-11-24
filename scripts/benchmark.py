@@ -829,12 +829,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     table = args.truth_table
     if table == "-":
-        from esolangs.cli.io import _read_stdin
+        from esolangs.cli.io import _read_truth_table
 
-        table = _read_stdin(
-            hint="; finish the truth table or close stdin",
-            terminal_prompt="Enter a truth table, then signal EOF.\n",
-        ).strip()
+        table = _read_truth_table()
     try:
         _validate_truth_table(table)
     except ValueError as exc:
