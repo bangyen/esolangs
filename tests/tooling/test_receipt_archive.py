@@ -1,12 +1,13 @@
 """Retain verification evidence when the producing worktree is removed."""
 
 import json
+import os
 import subprocess
 
 import pytest
 
 from scripts.verify.receipts import AcceptanceRun, archive, validate
-from tests.tooling.receipt_support import _checkout
+from tests.tooling.receipt_support import _checkout, completed
 
 
 def _git(root, *args):
@@ -91,9 +92,43 @@ def test_archive_retains_logs_and_pytest_sidecar_after_worktree_removal(tmp_path
         validate(saved, primary, {"pytest"})
     saved.write_text(contents)
 
+    legacy = {**json.loads(contents), "schema": 1}
+    legacy["inputs"] = {
+        name: entry["sha256"] for name, entry in legacy["inputs"].items()
+    }
+    saved.write_text(json.dumps(legacy))
+    validate(saved, primary, {"pytest"})
+    saved.write_text(contents)
+
     row = record["checks"][0]
     log = saved.parent / row["evidence"]["path"]
     assert log.read_text() == "test command ran"
     (saved.parent / row["execution"]["path"]).write_text("{}")
     with pytest.raises(ValueError, match="execution evidence was changed"):
         validate(saved, primary, {"pytest"})
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX executable bit")
+def test_receipt_rejects_mode_only_changes(tmp_path):
+    root = _checkout(tmp_path / "checkout")
+    program = root / "program.py"
+    program.chmod(0o755)
+    _git(root, "add", "--chmod=+x", "program.py")
+    _commit(root, "Make program executable")
+    run, _ = completed(root)
+    receipt, passed = run.finish(0)
+    assert passed
+    validate(receipt, root, {"probe"})
+    validate(archive(receipt, root, root), root, {"probe"})
+
+    program.chmod(0o644)
+    invalid, passed = run.finish(0)
+    assert not passed
+    assert json.loads(invalid.read_text())["changed_inputs"] == ["program.py"]
+    with pytest.raises(ValueError, match="inputs do not match this checkout"):
+        validate(receipt, root, {"probe"})
+
+    _git(root, "add", "--chmod=-x", "program.py")
+    _commit(root, "Drop executable bit")
+    with pytest.raises(ValueError, match="inputs do not match the recorded commit"):
+        archive(receipt, root, root)

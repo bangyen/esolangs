@@ -9,6 +9,7 @@ import json
 import os
 import platform
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -17,7 +18,12 @@ import time
 import uuid
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
+
+
+class _Input(TypedDict):
+    mode: str
+    sha256: str
 
 
 def digest(path: Path) -> str:
@@ -38,23 +44,44 @@ def _git_bytes(root: Path, *args: str) -> bytes:
     ).stdout
 
 
-def _working_digest(path: Path) -> str | None:
-    if path.is_symlink():
-        return hashlib.sha256(os.fsencode(os.readlink(path))).hexdigest()
-    return digest(path) if path.is_file() else None
+def _working_input(path: Path, index_mode: str | None) -> _Input | None:
+    try:
+        mode = path.lstat().st_mode
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    if stat.S_ISLNK(mode):
+        target = os.fsencode(os.readlink(path))
+        return {"mode": "120000", "sha256": hashlib.sha256(target).hexdigest()}
+    if not stat.S_ISREG(mode):
+        return None
+    executable = (
+        bool(mode & stat.S_IXUSR) if index_mode is None else index_mode == "100755"
+    )
+    return {"mode": "100755" if executable else "100644", "sha256": digest(path)}
 
 
-def inputs(root: Path) -> dict[str, str | None]:
-    """Fingerprint tracked and nonignored new files, including deletions."""
+def inputs(root: Path) -> dict[str, _Input | None]:
+    """Fingerprint Git modes and bytes in the checkout, including deletions."""
     names = _git(root, "ls-files", "--cached", "--others", "--exclude-standard", "-z")
+    # Git on Windows stores executable bits in the index, not on disk.
+    modes: dict[str, str] = {}
+    if os.name != "posix":
+        for entry in _git(root, "ls-files", "--stage", "-z").split("\0"):
+            if entry:
+                header, name = entry.split("\t", 1)
+                mode, _, stage = header.split()
+                if stage == "0":
+                    modes[name] = mode
     return {
-        name: _working_digest(root / name)
+        name: _working_input(
+            root / name, None if os.name == "posix" else modes.get(name, "100644")
+        )
         for name in sorted(set(names.split("\0")) - {""})
     }
 
 
-def _commit_inputs(root: Path, commit: str) -> dict[str, str]:
-    """Hash the raw blobs at a full commit ID, regardless of the checkout."""
+def _commit_inputs(root: Path, commit: str) -> dict[str, _Input]:
+    """Read Git modes and hash raw blobs at a full commit ID."""
     literal = ("--no-replace-objects",)
     try:
         resolved = _git(
@@ -69,17 +96,17 @@ def _commit_inputs(root: Path, commit: str) -> dict[str, str]:
         raise ValueError("archived receipt commit is unavailable") from error
     if resolved != commit:
         raise ValueError("archived receipt requires a full commit ID")
-    entries: dict[str, bytes] = {}
+    entries: dict[str, tuple[str, bytes]] = {}
     tree = _git_bytes(root, *literal, "ls-tree", "--full-tree", "-r", "-z", commit)
     for entry in tree.split(b"\0"):
         if entry:
             header, name = entry.split(b"\t", 1)
-            _, kind, oid = header.split()
+            mode, kind, oid = header.split()
             if kind == b"blob":
-                entries[os.fsdecode(name)] = oid
+                entries[os.fsdecode(name)] = (mode.decode("ascii"), oid)
 
     hashes = {}
-    oids = dict.fromkeys(entries.values())
+    oids = dict.fromkeys(oid for _, oid in entries.values())
     # Spool the batch so large trees need only one blob in memory at a time.
     with tempfile.TemporaryFile() as blobs:
         subprocess.run(
@@ -99,7 +126,10 @@ def _commit_inputs(root: Path, commit: str) -> dict[str, str]:
             if len(data) != size or blobs.read(1) != b"\n":
                 raise ValueError("archived receipt blob is incomplete")
             hashes[oid] = hashlib.sha256(data).hexdigest()
-    return {name: hashes[oid] for name, oid in entries.items()}
+    return {
+        name: {"mode": mode, "sha256": hashes[oid]}
+        for name, (mode, oid) in entries.items()
+    }
 
 
 def _log(root: Path, output: str) -> dict[str, str]:
@@ -285,7 +315,7 @@ class AcceptanceRun:
             self.plan, self.steps, self.accepted_retries, returncode
         )
         value = {
-            "schema": 1,
+            "schema": 2,
             "revision": self.revision,
             "argv": self.argv,
             "started": self.started,
@@ -319,8 +349,9 @@ class AcceptanceRun:
 def _validate_receipt(
     value: dict[str, Any], root: Path, evidence_root: Path, required: set[str]
 ) -> None:
+    schema = value["schema"]
     if (
-        value["schema"] != 1
+        schema not in (1, 2)
         or value["status"] != "passed"
         or not _successful(
             value["scope"],
@@ -332,7 +363,7 @@ def _validate_receipt(
         raise ValueError("receipt does not establish acceptance")
     expected = value["inputs"]
     commit = value.get("committed_revision")
-    actual: Mapping[str, str | None]
+    actual: Mapping[str, _Input | None]
     if commit is None:
         actual = inputs(root)
         mismatch = "receipt inputs do not match this checkout"
@@ -343,7 +374,12 @@ def _validate_receipt(
         }
         actual = _commit_inputs(root, commit)
         mismatch = "receipt inputs do not match the recorded commit"
-    if not value["inputs_unchanged"] or expected != actual:
+    observed = (
+        {name: entry["sha256"] if entry else None for name, entry in actual.items()}
+        if schema == 1
+        else actual
+    )
+    if not value["inputs_unchanged"] or expected != observed:
         raise ValueError(mismatch)
     if not required <= value["scope"].keys():
         raise ValueError("receipt does not cover the required scope")

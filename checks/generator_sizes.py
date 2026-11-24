@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING, Any
 
 from docs.fragments import FRAGMENT, AggregateKey, aggregate, sections
 
+from esolangs.runtime._files import destination_path, write_staged
+
 if TYPE_CHECKING:
     from esolangs.registry import LanguageDeclaration
 
@@ -166,7 +168,7 @@ def _section_span(lines: list[str]) -> tuple[int, int] | None:
     return start, end
 
 
-def _replace_section(text: str, rendered: str | None) -> str:
+def _replace_section(path: Path, text: str, rendered: str | None) -> str:
     """Return ``text`` with its generator_sizes section swapped or dropped.
 
     Only the section's own span changes; everything else is byte-preserved,
@@ -200,6 +202,8 @@ def _replace_section(text: str, rendered: str | None) -> str:
     for key in set(before) | set(after):
         if key != SECTION and before.get(key) != after.get(key):
             raise ValueError(f"section surgery disturbed [{key}]")
+    if rendered is not None:
+        _validate_section(path, after[SECTION])
     return result
 
 
@@ -208,7 +212,7 @@ def write_fragments(
     languages: Iterable[LanguageDeclaration],
     records: Mapping[str, Mapping[str, Any]],
 ) -> bool:
-    """Write each language's records into its package fragment.
+    """Validate the full update, then atomically replace changed fragments.
 
     Returns True when any file changed.  A language with no records loses
     its section; a measured name outside the registry raises, since the
@@ -218,21 +222,21 @@ def write_fragments(
     unknown = set(records) - set(by_name)
     if unknown:
         raise ValueError(f"measured languages not in the registry: {sorted(unknown)}")
-    changed = False
+    updates: dict[Path, bytes] = {}
     for lang in by_name.values():
-        path = packages / lang.id / FRAGMENT
+        path = (packages / lang.id / FRAGMENT).resolve()
         rows = records.get(lang.name)
-        rendered = render_section(rows) if rows else None
-        if not path.is_file():
-            if rendered is None:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            if not rows:
                 continue
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(_HEADER + rendered, encoding="utf-8")
-            changed = True
-            continue
-        text = path.read_text(encoding="utf-8")
-        new_text = _replace_section(text, rendered)
+            text = _HEADER
+        rendered = render_section(rows) if rows else None
+        new_text = _replace_section(path, text, rendered)
         if new_text != text:
-            path.write_text(new_text, encoding="utf-8")
-            changed = True
-    return changed
+            updates[path] = new_text.encode("utf-8")
+    for path, payload in updates.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_staged(destination_path(path), (payload,))
+    return bool(updates)

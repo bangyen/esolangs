@@ -144,6 +144,34 @@ def test_update_does_not_rewrite_an_unchanged_baseline(
     assert (fragment.read_bytes(), fragment.stat().st_mtime_ns) == before
 
 
+def test_update_preflights_later_fragments_before_writing(tmp_path) -> None:
+    from checks.check_generator_sizes import LANGUAGES
+    from checks.generator_sizes import write_fragments
+
+    first = LANGUAGES[REFERENCE]
+    second = replace(first, id="second", name="Second")
+    path = tmp_path / first.id / "language.toml"
+    path.parent.mkdir()
+    original = '[reference]\nmarker = "keep"\n'
+    path.write_text(original, encoding="utf-8")
+    bad = tmp_path / second.id / "language.toml"
+    bad.parent.mkdir()
+    invalid = '[generator_sizes]\n# move this comment\n"01" = {}\n'
+    bad.write_text(invalid, encoding="utf-8")
+    row = {"source_units": 4, "commands": 2, "commands_by_row": {"0": 1, "1": 2}}
+    records = {first.name: {"01": row}, second.name: {"01": row}}
+
+    with pytest.raises(ValueError, match="comment inside"):
+        write_fragments(tmp_path, [first, second], records)
+    assert path.read_text(encoding="utf-8") == original
+    assert bad.read_text(encoding="utf-8") == invalid
+
+    bad.write_text(invalid.replace("# move this comment\n", ""), encoding="utf-8")
+    assert write_fragments(tmp_path, [first, second], records)
+    assert path.read_text(encoding="utf-8").startswith(original)
+    assert not write_fragments(tmp_path, [first, second], records)
+
+
 @pytest.mark.parametrize("matches", [False, None])
 def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch, matches) -> None:
     from checks import check_generator_sizes as sizes
